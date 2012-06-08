@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.graal.api.code.CiValueUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.Mark;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiTargetMethod.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -40,8 +41,8 @@ public class AMD64Call {
         private final Object targetMethod;
         private final Map<XirMark, Mark> marks;
 
-        public DirectCallOp(Object targetMethod, CiValue result, CiValue[] parameters, LIRDebugInfo info, Map<XirMark, Mark> marks) {
-            super("CALL_DIRECT", new CiValue[] {result}, info, parameters, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public DirectCallOp(Object targetMethod, RiValue result, RiValue[] parameters, LIRDebugInfo info, Map<XirMark, Mark> marks) {
+            super("CALL_DIRECT", new RiValue[] {result}, info, parameters, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
             this.targetMethod = targetMethod;
             this.marks = marks;
         }
@@ -70,19 +71,19 @@ public class AMD64Call {
         private final Object targetMethod;
         private final Map<XirMark, Mark> marks;
 
-        private static CiValue[] concat(CiValue[] parameters, CiValue targetAddress) {
-            CiValue[] result = Arrays.copyOf(parameters, parameters.length + 1);
+        private static RiValue[] concat(RiValue[] parameters, RiValue targetAddress) {
+            RiValue[] result = Arrays.copyOf(parameters, parameters.length + 1);
             result[result.length - 1] = targetAddress;
             return result;
         }
 
-        public IndirectCallOp(Object targetMethod, CiValue result, CiValue[] parameters, CiValue targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks) {
-            super("CALL_INDIRECT", new CiValue[] {result}, info, concat(parameters, targetAddress), LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public IndirectCallOp(Object targetMethod, RiValue result, RiValue[] parameters, RiValue targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks) {
+            super("CALL_INDIRECT", new RiValue[] {result}, info, concat(parameters, targetAddress), LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
             this.targetMethod = targetMethod;
             this.marks = marks;
         }
 
-        private CiValue targetAddress() {
+        private RiValue targetAddress() {
             return input(inputs.length - 1);
         }
 

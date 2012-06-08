@@ -28,12 +28,12 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.java.bytecode.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 
 /**
@@ -141,7 +141,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         throw new UnsupportedOperationException("jniSymbol");
     }
 
-    public CiBitMap[] livenessMap() {
+    public RiBitMap[] livenessMap() {
         return null;
     }
 

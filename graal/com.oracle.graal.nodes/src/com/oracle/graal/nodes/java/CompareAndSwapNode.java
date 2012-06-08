@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * Represents an atomic compare-and-swap operation
@@ -62,7 +62,7 @@ public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit
     }
 
     public CompareAndSwapNode(ValueNode object, int displacement, ValueNode offset, ValueNode expected, ValueNode newValue) {
-        super(StampFactory.forKind(CiKind.Boolean.stackKind()));
+        super(StampFactory.forKind(RiKind.Boolean.stackKind()));
         assert expected.kind() == newValue.kind();
         this.object = object;
         this.offset = offset;

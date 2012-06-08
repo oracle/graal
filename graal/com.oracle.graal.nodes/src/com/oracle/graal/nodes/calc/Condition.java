@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.util.*;
 
 /**
@@ -246,7 +246,7 @@ public enum Condition {
      * @return {@link Boolean#TRUE} if the comparison is known to be true,
      * {@link Boolean#FALSE} if the comparison is known to be false
      */
-    public boolean foldCondition(CiConstant lt, CiConstant rt, RiRuntime runtime) {
+    public boolean foldCondition(RiConstant lt, RiConstant rt, RiRuntime runtime) {
         assert !lt.kind.isFloatOrDouble() && !rt.kind.isFloatOrDouble();
         return foldCondition(lt, rt, runtime, false);
     }
@@ -259,7 +259,7 @@ public enum Condition {
      * @param unorderedIsTrue true if an undecided float comparison should result in "true"
      * @return true if the comparison is known to be true, false if the comparison is known to be false
      */
-    public boolean foldCondition(CiConstant lt, CiConstant rt, RiRuntime runtime, boolean unorderedIsTrue) {
+    public boolean foldCondition(RiConstant lt, RiConstant rt, RiRuntime runtime, boolean unorderedIsTrue) {
         switch (lt.kind) {
             case Boolean:
             case Byte:

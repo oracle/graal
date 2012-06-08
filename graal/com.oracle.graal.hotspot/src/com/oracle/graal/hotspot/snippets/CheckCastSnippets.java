@@ -31,6 +31,8 @@ import java.util.*;
 
 import sun.misc.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.cri.*;
@@ -49,8 +51,6 @@ import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Cache;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 import com.oracle.graal.snippets.nodes.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 
 /**
@@ -74,7 +74,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
         if (objectHub != exactHub) {
             exactMiss.inc();
-            DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
         }
         exactHit.inc();
         return object;
@@ -96,7 +96,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
         if (UnsafeLoadNode.loadObject(objectHub, 0, superCheckOffset, true) != hub) {
             displayMiss.inc();
-            DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
         }
         displayHit.inc();
         return object;
@@ -122,7 +122,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             }
         }
         if (!checkSecondarySubType(hub, objectHub)) {
-            DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
         }
         return object;
     }
@@ -148,14 +148,14 @@ public class CheckCastSnippets implements SnippetsInterface {
             }
         }
         if (!checkUnknownSubType(hub, objectHub)) {
-            DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
         }
         return object;
     }
 
     //This is used instead of a Java array read to avoid the array bounds check.
     static Object loadNonNullObjectElement(Object array, int index) {
-        return UnsafeLoadNode.loadObject(array, arrayBaseOffset(CiKind.Object), index * arrayIndexScale(CiKind.Object), true);
+        return UnsafeLoadNode.loadObject(array, arrayBaseOffset(RiKind.Object), index * arrayIndexScale(RiKind.Object), true);
     }
 
     static boolean checkSecondarySubType(Object t, Object s) {
@@ -187,7 +187,7 @@ public class CheckCastSnippets implements SnippetsInterface {
 
     static boolean checkUnknownSubType(Object t, Object s) {
         // int off = T.offset
-        int superCheckOffset = UnsafeLoadNode.load(t, 0, superCheckOffsetOffset(), CiKind.Int);
+        int superCheckOffset = UnsafeLoadNode.load(t, 0, superCheckOffsetOffset(), RiKind.Int);
         boolean primary = superCheckOffset != secondarySuperCacheOffset();
 
         // if (T = S[off]) return true
@@ -276,22 +276,22 @@ public class CheckCastSnippets implements SnippetsInterface {
 
     @Fold
     private static int superCheckOffsetOffset() {
-        return CompilerImpl.getInstance().getConfig().superCheckOffsetOffset;
+        return HotSpotCompilerImpl.getInstance().getConfig().superCheckOffsetOffset;
     }
 
     @Fold
     private static int secondarySuperCacheOffset() {
-        return CompilerImpl.getInstance().getConfig().secondarySuperCacheOffset;
+        return HotSpotCompilerImpl.getInstance().getConfig().secondarySuperCacheOffset;
     }
 
     @Fold
     private static int secondarySupersOffset() {
-        return CompilerImpl.getInstance().getConfig().secondarySupersOffset;
+        return HotSpotCompilerImpl.getInstance().getConfig().secondarySupersOffset;
     }
 
     @Fold
     private static int hubOffset() {
-        return CompilerImpl.getInstance().getConfig().hubOffset;
+        return HotSpotCompilerImpl.getInstance().getConfig().hubOffset;
     }
 
     public static void printCounter(PrintStream out, Counter c, long total) {

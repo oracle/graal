@@ -24,12 +24,12 @@ package com.oracle.graal.nodes.extended;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * The ValueAnchor instruction keeps non-CFG (floating) nodes above a certain point in the graph.
@@ -69,7 +69,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
             if (node instanceof IntegerDivNode || node instanceof IntegerRemNode) {
                 ArithmeticNode arithmeticNode = (ArithmeticNode) node;
                 if (arithmeticNode.y().isConstant()) {
-                    CiConstant  constant = arithmeticNode.y().asConstant();
+                    RiConstant  constant = arithmeticNode.y().asConstant();
                     assert constant.kind == arithmeticNode.kind() : constant.kind + " != " + arithmeticNode.kind();
                     if (constant.asLong() != 0) {
                         continue;

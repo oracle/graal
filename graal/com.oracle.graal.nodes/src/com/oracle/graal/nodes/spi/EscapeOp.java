@@ -24,7 +24,7 @@ package com.oracle.graal.nodes.spi;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -94,9 +94,9 @@ public abstract class EscapeOp {
     }
 
     public static boolean isValidConstantIndex(AccessIndexedNode x) {
-        CiConstant index = x.index().asConstant();
+        RiConstant index = x.index().asConstant();
         if (x.array() instanceof NewArrayNode) {
-            CiConstant length = ((NewArrayNode) x.array()).dimension(0).asConstant();
+            RiConstant length = ((NewArrayNode) x.array()).dimension(0).asConstant();
             return index != null && length != null && index.asInt() >= 0 && index.asInt() < length.asInt();
         } else {
             return false;

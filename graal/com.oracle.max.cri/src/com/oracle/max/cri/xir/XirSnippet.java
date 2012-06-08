@@ -24,8 +24,8 @@ package com.oracle.max.cri.xir;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
+import com.oracle.graal.api.code.CiTargetMethod.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.cri.xir.CiXirAssembler.*;
 
 /**
@@ -58,7 +58,7 @@ public class XirSnippet {
     }
 
     private static boolean assertArgumentCorrect(XirParameter param, XirArgument arg) {
-        if (param.kind == CiKind.Illegal || param.kind == CiKind.Void) {
+        if (param.kind == RiKind.Illegal || param.kind == RiKind.Void) {
             if (arg != null) {
                 return false;
             }

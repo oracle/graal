@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.max.cri.ci.*;
 
 @NodeInfo(shortName = "<")
 public final class IntegerLessThanNode extends CompareNode {
@@ -38,8 +38,8 @@ public final class IntegerLessThanNode extends CompareNode {
      */
     public IntegerLessThanNode(ValueNode x, ValueNode y) {
         super(x, y);
-        assert !x.kind().isFloatOrDouble() && x.kind() != CiKind.Object;
-        assert !y.kind().isFloatOrDouble() && y.kind() != CiKind.Object;
+        assert !x.kind().isFloatOrDouble() && x.kind() != RiKind.Object;
+        assert !y.kind().isFloatOrDouble() && y.kind() != RiKind.Object;
     }
 
     @Override
@@ -53,9 +53,9 @@ public final class IntegerLessThanNode extends CompareNode {
     }
 
     @Override
-    protected ValueNode optimizeNormalizeCmp(CiConstant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+    protected ValueNode optimizeNormalizeCmp(RiConstant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         assert condition() == Condition.LT;
-        if (constant.kind == CiKind.Int && constant.asInt() == 0) {
+        if (constant.kind == RiKind.Int && constant.asInt() == 0) {
             ValueNode a = mirrored ? normalizeNode.y() : normalizeNode.x();
             ValueNode b = mirrored ? normalizeNode.x() : normalizeNode.y();
 

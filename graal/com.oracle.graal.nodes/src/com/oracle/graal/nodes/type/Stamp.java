@@ -22,20 +22,19 @@
  */
 package com.oracle.graal.nodes.type;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.types.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 
 public abstract class Stamp {
 
-    private final CiKind kind;
+    private final RiKind kind;
 
-    protected Stamp(CiKind kind) {
+    protected Stamp(RiKind kind) {
         this.kind = kind;
     }
 
-    public CiKind kind() {
+    public RiKind kind() {
         return kind;
     }
 

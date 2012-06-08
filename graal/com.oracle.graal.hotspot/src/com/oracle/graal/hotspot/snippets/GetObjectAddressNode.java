@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * Intrinsification for getting the address of an object.
@@ -37,7 +37,7 @@ class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
     @Input private ValueNode object;
 
     public GetObjectAddressNode(ValueNode obj) {
-        super(StampFactory.forKind(CiKind.Long));
+        super(StampFactory.forKind(RiKind.Long));
         this.object = obj;
     }
 
@@ -49,7 +49,7 @@ class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        CiValue obj = gen.newVariable(gen.target().wordKind);
+        RiValue obj = gen.newVariable(gen.target().wordKind);
         gen.emitMove(gen.operand(object), obj);
         gen.setResult(this, obj);
     }

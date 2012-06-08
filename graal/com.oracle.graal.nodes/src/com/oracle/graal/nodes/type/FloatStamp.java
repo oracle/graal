@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.nodes.type;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 
 
 public class FloatStamp extends Stamp {
 
-    protected FloatStamp(CiKind kind) {
+    protected FloatStamp(RiKind kind) {
         super(kind);
-        assert kind == CiKind.Float || kind == CiKind.Double;
+        assert kind == RiKind.Float || kind == RiKind.Double;
     }
 
     @Override

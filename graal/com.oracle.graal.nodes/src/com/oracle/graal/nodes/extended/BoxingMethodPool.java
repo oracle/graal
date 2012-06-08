@@ -24,16 +24,16 @@ package com.oracle.graal.nodes.extended;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 
 public class BoxingMethodPool {
 
     private final Set<RiMethod> specialMethods = new HashSet<>();
     private final RiRuntime runtime;
-    private final RiResolvedMethod[] boxingMethods = new RiResolvedMethod[CiKind.values().length];
-    private final RiResolvedMethod[] unboxingMethods = new RiResolvedMethod[CiKind.values().length];
-    private final RiResolvedField[] boxFields = new RiResolvedField[CiKind.values().length];
+    private final RiResolvedMethod[] boxingMethods = new RiResolvedMethod[RiKind.values().length];
+    private final RiResolvedMethod[] unboxingMethods = new RiResolvedMethod[RiKind.values().length];
+    private final RiResolvedField[] boxFields = new RiResolvedField[RiKind.values().length];
 
     public BoxingMethodPool(RiRuntime runtime) {
         this.runtime = runtime;
@@ -42,14 +42,14 @@ public class BoxingMethodPool {
 
     private void initialize() {
         try {
-            initialize(CiKind.Boolean, Boolean.class, "booleanValue");
-            initialize(CiKind.Byte, Byte.class, "byteValue");
-            initialize(CiKind.Char, Character.class, "charValue");
-            initialize(CiKind.Short, Short.class, "shortValue");
-            initialize(CiKind.Int, Integer.class, "intValue");
-            initialize(CiKind.Long, Long.class, "longValue");
-            initialize(CiKind.Float, Float.class, "floatValue");
-            initialize(CiKind.Double, Double.class, "doubleValue");
+            initialize(RiKind.Boolean, Boolean.class, "booleanValue");
+            initialize(RiKind.Byte, Byte.class, "byteValue");
+            initialize(RiKind.Char, Character.class, "charValue");
+            initialize(RiKind.Short, Short.class, "shortValue");
+            initialize(RiKind.Int, Integer.class, "intValue");
+            initialize(RiKind.Long, Long.class, "longValue");
+            initialize(RiKind.Float, Float.class, "floatValue");
+            initialize(RiKind.Double, Double.class, "doubleValue");
         } catch (SecurityException e) {
             throw new RuntimeException(e);
         } catch (NoSuchMethodException e) {
@@ -57,7 +57,7 @@ public class BoxingMethodPool {
         }
     }
 
-    private void initialize(CiKind kind, Class<?> type, String unboxMethod) throws SecurityException, NoSuchMethodException {
+    private void initialize(RiKind kind, Class<?> type, String unboxMethod) throws SecurityException, NoSuchMethodException {
 
         // Get boxing method from runtime.
         RiResolvedMethod boxingMethod = runtime.getRiMethod(type.getDeclaredMethod("valueOf", kind.toJavaClass()));
@@ -81,22 +81,22 @@ public class BoxingMethodPool {
     }
 
     public boolean isBoxingMethod(RiResolvedMethod method) {
-        return isSpecialMethod(method) && method.signature().returnKind(false) == CiKind.Object;
+        return isSpecialMethod(method) && method.signature().returnKind(false) == RiKind.Object;
     }
 
     public boolean isUnboxingMethod(RiResolvedMethod method) {
-        return isSpecialMethod(method) && method.signature().returnKind(false) != CiKind.Object;
+        return isSpecialMethod(method) && method.signature().returnKind(false) != RiKind.Object;
     }
 
-    public RiResolvedMethod getBoxingMethod(CiKind kind) {
+    public RiResolvedMethod getBoxingMethod(RiKind kind) {
         return boxingMethods[kind.ordinal()];
     }
 
-    public RiResolvedMethod getUnboxingMethod(CiKind kind) {
+    public RiResolvedMethod getUnboxingMethod(RiKind kind) {
         return unboxingMethods[kind.ordinal()];
     }
 
-    public RiResolvedField getBoxField(CiKind kind) {
+    public RiResolvedField getBoxField(RiKind kind) {
         return boxFields[kind.ordinal()];
     }
 }

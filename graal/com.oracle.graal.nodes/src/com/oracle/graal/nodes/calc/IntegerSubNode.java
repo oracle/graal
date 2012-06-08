@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "-")
 public final class IntegerSubNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
 
-    public IntegerSubNode(CiKind kind, ValueNode x, ValueNode y) {
+    public IntegerSubNode(RiKind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
     }
 
@@ -40,10 +40,10 @@ public final class IntegerSubNode extends IntegerArithmeticNode implements Canon
             return ConstantNode.forIntegerKind(kind(), 0, graph());
         }
         if (x().isConstant() && y().isConstant()) {
-            if (kind() == CiKind.Int) {
+            if (kind() == RiKind.Int) {
                 return ConstantNode.forInt(x().asConstant().asInt() - y().asConstant().asInt(), graph());
             } else {
-                assert kind() == CiKind.Long;
+                assert kind() == RiKind.Long;
                 return ConstantNode.forLong(x().asConstant().asLong() - y().asConstant().asLong(), graph());
             }
         } else if (y().isConstant()) {
@@ -51,10 +51,10 @@ public final class IntegerSubNode extends IntegerArithmeticNode implements Canon
             if (c == 0) {
                 return x();
             }
-            if (kind() == CiKind.Int) {
+            if (kind() == RiKind.Int) {
                 return graph().unique(new IntegerAddNode(kind(), x(), ConstantNode.forInt((int) -c, graph())));
             } else {
-                assert kind() == CiKind.Long;
+                assert kind() == RiKind.Long;
                 return graph().unique(new IntegerAddNode(kind(), x(), ConstantNode.forLong(-c, graph())));
             }
         } else if (x().isConstant()) {

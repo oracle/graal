@@ -24,8 +24,8 @@ package com.oracle.graal.compiler.phases;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.graph.*;
 import com.oracle.graal.compiler.util.*;
@@ -241,13 +241,13 @@ public class EscapeAnalysisPhase extends Phase {
     }
 
     private final CiTarget target;
-    private final GraalRuntime runtime;
+    private final ExtendedRiRuntime runtime;
     private final CiAssumptions assumptions;
     private final RiGraphCache cache;
     private final PhasePlan plan;
     private final OptimisticOptimizations optimisticOpts;
 
-    public EscapeAnalysisPhase(CiTarget target, GraalRuntime runtime, CiAssumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public EscapeAnalysisPhase(CiTarget target, ExtendedRiRuntime runtime, CiAssumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this.runtime = runtime;
         this.target = target;
         this.assumptions = assumptions;

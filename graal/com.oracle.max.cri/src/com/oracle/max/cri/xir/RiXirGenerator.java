@@ -22,9 +22,8 @@
  */
 package com.oracle.max.cri.xir;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.Representation;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiType.*;
 
 /**
  * Represents the interface through which the compiler requests the XIR for a given bytecode from the runtime system.
@@ -45,7 +44,7 @@ public interface RiXirGenerator {
 
     XirSnippet genNewInstance(XirSite site, RiType type);
 
-    XirSnippet genNewArray(XirSite site, XirArgument length, CiKind elementKind, RiType componentType, RiType arrayType);
+    XirSnippet genNewArray(XirSite site, XirArgument length, RiKind elementKind, RiType componentType, RiType arrayType);
 
     XirSnippet genNewMultiArray(XirSite site, XirArgument[] lengths, RiType type);
 

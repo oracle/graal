@@ -26,7 +26,7 @@ import java.io.*;
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;

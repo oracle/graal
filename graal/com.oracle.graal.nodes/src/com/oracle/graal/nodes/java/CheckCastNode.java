@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -29,8 +30,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * Implements a type check that results in a {@link ClassCastException} if it fails.
@@ -53,7 +52,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     }
 
     public CheckCastNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiTypeProfile profile) {
-        super(targetClass == null ? StampFactory.forKind(CiKind.Object) : StampFactory.declared(targetClass));
+        super(targetClass == null ? StampFactory.forKind(RiKind.Object) : StampFactory.declared(targetClass));
         this.targetClassInstruction = targetClassInstruction;
         this.targetClass = targetClass;
         this.object = object;
@@ -82,9 +81,9 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             }
         }
 
-        CiConstant constant = object().asConstant();
+        RiConstant constant = object().asConstant();
         if (constant != null) {
-            assert constant.kind == CiKind.Object;
+            assert constant.kind == RiKind.Object;
             if (constant.isNull()) {
                 return object();
             }
@@ -102,7 +101,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     @Override
     public Result canonical(TypeFeedbackTool tool) {
         ObjectTypeQuery query = tool.queryObject(object());
-        if (query.constantBound(Condition.EQ, CiConstant.NULL_OBJECT)) {
+        if (query.constantBound(Condition.EQ, RiConstant.NULL_OBJECT)) {
             return new Result(object(), query);
         } else if (targetClass() != null) {
             if (query.declaredType(targetClass())) {

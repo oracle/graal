@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -30,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "*")
 public final class IntegerMulNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
 
-    public IntegerMulNode(CiKind kind, ValueNode x, ValueNode y) {
+    public IntegerMulNode(RiKind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
     }
 
@@ -40,10 +41,10 @@ public final class IntegerMulNode extends IntegerArithmeticNode implements Canon
             return graph().unique(new IntegerMulNode(kind(), y(), x()));
         }
         if (x().isConstant()) {
-            if (kind() == CiKind.Int) {
+            if (kind() == RiKind.Int) {
                 return ConstantNode.forInt(x().asConstant().asInt() * y().asConstant().asInt(), graph());
             } else {
-                assert kind() == CiKind.Long;
+                assert kind() == RiKind.Long;
                 return ConstantNode.forLong(x().asConstant().asLong() * y().asConstant().asLong(), graph());
             }
         } else if (y().isConstant()) {
@@ -62,10 +63,10 @@ public final class IntegerMulNode extends IntegerArithmeticNode implements Canon
                 IntegerMulNode other = (IntegerMulNode) x();
                 if (other.y().isConstant()) {
                     ConstantNode sum;
-                    if (kind() == CiKind.Int) {
+                    if (kind() == RiKind.Int) {
                         sum = ConstantNode.forInt(y().asConstant().asInt() * other.y().asConstant().asInt(), graph());
                     } else {
-                        assert kind() == CiKind.Long;
+                        assert kind() == RiKind.Long;
                         sum = ConstantNode.forLong(y().asConstant().asLong() * other.y().asConstant().asLong(), graph());
                     }
                     return graph().unique(new IntegerMulNode(kind(), other.x(), sum));
@@ -77,10 +78,10 @@ public final class IntegerMulNode extends IntegerArithmeticNode implements Canon
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        CiValue op1 = gen.operand(x());
-        CiValue op2 = gen.operand(y());
+        RiValue op1 = gen.operand(x());
+        RiValue op2 = gen.operand(y());
         if (!y().isConstant() && !FloatAddNode.livesLonger(this, y(), gen)) {
-            CiValue op = op1;
+            RiValue op = op1;
             op1 = op2;
             op2 = op;
         }

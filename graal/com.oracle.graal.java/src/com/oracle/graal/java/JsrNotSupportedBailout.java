@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.java;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.code.*;
 
 
 public class JsrNotSupportedBailout extends CiBailout{

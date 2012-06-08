@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -74,8 +73,8 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLow
     @Override
     public void typeFeedback(TypeFeedbackTool tool) {
         for (ValueNode length : dimensions) {
-            assert length.kind() == CiKind.Int;
-            tool.addScalar(length).constantBound(Condition.GE, CiConstant.INT_0);
+            assert length.kind() == RiKind.Int;
+            tool.addScalar(length).constantBound(Condition.GE, RiConstant.INT_0);
         }
     }
 }

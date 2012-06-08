@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * The {@code AccessIndexedNode} class is the base class of instructions that read or write
@@ -35,7 +35,7 @@ import com.oracle.max.cri.ci.*;
 public abstract class AccessIndexedNode extends AccessArrayNode implements TypeFeedbackProvider {
 
     @Input private ValueNode index;
-    private final CiKind elementType;
+    private final RiKind elementType;
     private final long leafGraphId;
 
     public ValueNode index() {
@@ -49,7 +49,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
      * @param index the instruction producing the index
      * @param elementKind the type of the elements of the array
      */
-    protected AccessIndexedNode(Stamp stamp, ValueNode array, ValueNode index, CiKind elementKind, long leafGraphId) {
+    protected AccessIndexedNode(Stamp stamp, ValueNode array, ValueNode index, RiKind elementKind, long leafGraphId) {
         super(stamp, array);
         this.index = index;
         this.elementType = elementKind;
@@ -60,7 +60,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
      * Gets the element type of the array.
      * @return the element type
      */
-    public CiKind elementKind() {
+    public RiKind elementKind() {
         return elementType;
     }
 
@@ -70,6 +70,6 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
 
     @Override
     public void typeFeedback(TypeFeedbackTool tool) {
-        tool.addScalar(index()).constantBound(Condition.GE, CiConstant.INT_0);
+        tool.addScalar(index()).constantBound(Condition.GE, RiConstant.INT_0);
     }
 }

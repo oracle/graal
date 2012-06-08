@@ -22,14 +22,12 @@
  */
 package com.oracle.graal.alloc.util;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.graal.alloc.util.LocationUtil.*;
-
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.alloc.simple.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.*;
@@ -37,7 +35,7 @@ import com.oracle.graal.lir.cfg.*;
 
 public final class IntervalPrinter {
 
-    public static void printBeforeAllocation(String label, LIR lir, RiRegisterConfig registerConfig, DataFlowAnalysis dataFlow) {
+    public static void printBeforeAllocation(String label, LIR lir, CiRegisterConfig registerConfig, DataFlowAnalysis dataFlow) {
         if (Debug.isDumpEnabled()) {
             IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, null);
             Debug.dump(lir, label);
@@ -45,7 +43,7 @@ public final class IntervalPrinter {
         }
     }
 
-    public static void printAfterAllocation(String label, LIR lir, RiRegisterConfig registerConfig, DataFlowAnalysis dataFlow, LocationMap[] blockEndLocations) {
+    public static void printAfterAllocation(String label, LIR lir, CiRegisterConfig registerConfig, DataFlowAnalysis dataFlow, LocationMap[] blockEndLocations) {
         if (Debug.isDumpEnabled()) {
             IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, blockEndLocations);
             Debug.dump(lir, label);
@@ -98,13 +96,13 @@ public final class IntervalPrinter {
 
 
     private final LIR lir;
-    private final RiRegisterConfig registerConfig;
+    private final CiRegisterConfig registerConfig;
     private final DataFlowAnalysis dataFlow;
     private final LocationMap[] blockEndLocations;
     private final Variable[] variables;
     private final Map<String, Interval> intervals;
 
-    private IntervalPrinter(LIR lir, RiRegisterConfig registerConfig, DataFlowAnalysis dataFlow, LocationMap[] blockEndLocations) {
+    private IntervalPrinter(LIR lir, CiRegisterConfig registerConfig, DataFlowAnalysis dataFlow, LocationMap[] blockEndLocations) {
         this.lir = lir;
         this.registerConfig = registerConfig;
         this.dataFlow = dataFlow;
@@ -113,7 +111,7 @@ public final class IntervalPrinter {
         this.intervals = new HashMap<>();
     }
 
-    private boolean isAllocatableRegister(CiValue value) {
+    private boolean isAllocatableRegister(RiValue value) {
         return isRegister(value) && registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
     }
 
@@ -121,7 +119,7 @@ public final class IntervalPrinter {
     private String curUseKind;
 
     public Interval[] execute() {
-        ValueProcedure varProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return var(value); } };
+        ValueProcedure varProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return var(value); } };
 
         for (Block block : lir.linearScanOrder()) {
             for (LIRInstruction op : block.lir) {
@@ -129,8 +127,8 @@ public final class IntervalPrinter {
             }
         }
 
-        ValueProcedure useProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
-        ValueProcedure defProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, flags); } };
+        ValueProcedure useProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
+        ValueProcedure defProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, flags); } };
 
         intervals.put("call", new Interval(-2, "call", "", "call", "hasCall"));
         intervals.put("st", new Interval(-1, "st", "", "st", "hasState"));
@@ -192,7 +190,7 @@ public final class IntervalPrinter {
         return intervalsArray;
     }
 
-    public CiValue var(CiValue value) {
+    public RiValue var(RiValue value) {
         if (isLocation(value)) {
             variables[asLocation(value).variable.index] = asLocation(value).variable;
         } else if (isVariable(value)) {
@@ -201,7 +199,7 @@ public final class IntervalPrinter {
         return value;
     }
 
-    private Interval findInterval(CiValue value) {
+    private Interval findInterval(RiValue value) {
         Interval interval;
         if (isLocation(value)) {
             Interval parent = findInterval(asLocation(value).variable);
@@ -237,7 +235,7 @@ public final class IntervalPrinter {
         }
     }
 
-    private CiValue use(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private RiValue use(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
         Interval interval = findInterval(value);
         if (interval != null) {
             if (interval.uses.size() == 0 || interval.uses.get(interval.uses.size() - 1).pos != curOpId) {
@@ -250,7 +248,7 @@ public final class IntervalPrinter {
         return value;
     }
 
-    private CiValue def(CiValue value, EnumSet<OperandFlag> flags) {
+    private RiValue def(RiValue value, EnumSet<OperandFlag> flags) {
         Interval interval = findInterval(value);
         if (interval != null) {
             interval.uses.add(new UsePosition(curOpId, useKind(flags)));
@@ -264,7 +262,7 @@ public final class IntervalPrinter {
         return value;
     }
 
-    private CiValue out(CiValue value) {
+    private RiValue out(RiValue value) {
         Interval interval = findInterval(value);
         if (interval != null) {
             interval.lastTo = curOpId;

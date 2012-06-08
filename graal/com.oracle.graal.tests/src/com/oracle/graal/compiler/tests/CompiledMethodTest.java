@@ -26,14 +26,13 @@ import java.lang.reflect.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiCompiledMethod.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiCompiledMethod.MethodInvalidatedException;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant 0. Then
@@ -61,7 +60,7 @@ public class CompiledMethodTest extends GraphTest {
         for (Node node : graph.getNodes()) {
             if (node instanceof ConstantNode) {
                 ConstantNode constant = (ConstantNode) node;
-                if (constant.kind() == CiKind.Object && " ".equals(constant.value.asObject())) {
+                if (constant.kind() == RiKind.Object && " ".equals(constant.value.asObject())) {
                     graph.replaceFloating(constant, ConstantNode.forObject("-", runtime, graph));
                 }
             }
@@ -118,7 +117,7 @@ public class CompiledMethodTest extends GraphTest {
         for (Node node : graph.getNodes()) {
             if (node instanceof ConstantNode) {
                 ConstantNode constant = (ConstantNode) node;
-                if (constant.kind() == CiKind.Object && "1 ".equals(constant.value.asObject())) {
+                if (constant.kind() == RiKind.Object && "1 ".equals(constant.value.asObject())) {
                     graph.replaceFloating(constant, ConstantNode.forObject("1-", runtime, graph));
                 }
             }

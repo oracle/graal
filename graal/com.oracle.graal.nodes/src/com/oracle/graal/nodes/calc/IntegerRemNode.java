@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "%")
 public final class IntegerRemNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
 
-    public IntegerRemNode(CiKind kind, ValueNode x, ValueNode y) {
+    public IntegerRemNode(RiKind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
     }
 
@@ -41,10 +41,10 @@ public final class IntegerRemNode extends IntegerArithmeticNode implements Canon
             if (yConst == 0) {
                 return this; // this will trap, can not canonicalize
             }
-            if (kind() == CiKind.Int) {
+            if (kind() == RiKind.Int) {
                 return ConstantNode.forInt(x().asConstant().asInt() % (int) yConst, graph());
             } else {
-                assert kind() == CiKind.Long;
+                assert kind() == RiKind.Long;
                 return ConstantNode.forLong(x().asConstant().asLong() % yConst, graph());
             }
         } else if (y().isConstant()) {

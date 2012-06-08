@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.type;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 
 
 public class IntegerStamp extends Stamp {
@@ -30,11 +30,11 @@ public class IntegerStamp extends Stamp {
     private final long lowerBound;
     private final long upperBound;
 
-    public IntegerStamp(CiKind kind) {
+    public IntegerStamp(RiKind kind) {
         this(kind, kind.minValue(), kind.maxValue());
     }
 
-    public IntegerStamp(CiKind kind, long lowerBound, long upperBound) {
+    public IntegerStamp(RiKind kind, long lowerBound, long upperBound) {
         super(kind);
         assert lowerBound <= upperBound;
         this.lowerBound = lowerBound;

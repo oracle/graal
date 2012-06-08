@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.nodes.type;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 
 
 public class ObjectStamp extends Stamp {
@@ -33,7 +32,7 @@ public class ObjectStamp extends Stamp {
     private final boolean nonNull;
 
     public ObjectStamp(RiResolvedType type, boolean exactType, boolean nonNull) {
-        super(CiKind.Object);
+        super(RiKind.Object);
         assert !exactType || type != null;
         this.type = type;
         this.exactType = exactType;

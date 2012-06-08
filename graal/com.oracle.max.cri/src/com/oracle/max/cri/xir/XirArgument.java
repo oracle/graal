@@ -22,18 +22,18 @@
  */
 package com.oracle.max.cri.xir;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * Represents an argument to an {@link XirSnippet}.
- * Currently, this is a <i>union </i> type; it is either a {@link CiConstant} or an {@code Object}.
+ * Currently, this is a <i>union </i> type; it is either a {@link RiConstant} or an {@code Object}.
  */
 public final class XirArgument {
 
-    public final CiConstant constant;
+    public final RiConstant constant;
     public final Object object;
 
-    private XirArgument(CiConstant value) {
+    private XirArgument(RiConstant value) {
         this.constant = value;
         this.object = null;
     }
@@ -48,15 +48,15 @@ public final class XirArgument {
     }
 
     public static XirArgument forInt(int x) {
-        return new XirArgument(CiConstant.forInt(x));
+        return new XirArgument(RiConstant.forInt(x));
     }
 
     public static XirArgument forLong(long x) {
-        return new XirArgument(CiConstant.forLong(x));
+        return new XirArgument(RiConstant.forLong(x));
     }
 
     public static XirArgument forObject(Object o) {
-        return new XirArgument(CiConstant.forObject(o));
+        return new XirArgument(RiConstant.forObject(o));
     }
 
     @Override

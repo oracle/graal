@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -42,7 +41,7 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
     public abstract RiType returnType();
 
-    public abstract CiKind returnKind();
+    public abstract RiKind returnKind();
 
     @Override
     public void generate(LIRGeneratorTool gen) {

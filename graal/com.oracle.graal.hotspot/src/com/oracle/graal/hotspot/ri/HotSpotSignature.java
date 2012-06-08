@@ -24,10 +24,9 @@ package com.oracle.graal.hotspot.ri;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 import com.oracle.graal.java.*;
 
 /**
@@ -42,7 +41,7 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     private RiType[] argumentTypes;
     private RiType returnTypeCache;
 
-    public HotSpotSignature(Compiler compiler, String signature) {
+    public HotSpotSignature(HotSpotCompiler compiler, String signature) {
         super(compiler);
         assert signature.length() > 0;
         this.originalString = signature;
@@ -100,8 +99,8 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     }
 
     @Override
-    public CiKind argumentKindAt(int index, boolean architecture) {
-        return CiKind.fromTypeString(arguments.get(index));
+    public RiKind argumentKindAt(int index, boolean architecture) {
+        return RiKind.fromTypeString(arguments.get(index));
     }
 
     @Override
@@ -132,8 +131,8 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     }
 
     @Override
-    public CiKind returnKind(boolean architecture) {
-        return CiKind.fromTypeString(returnType);
+    public RiKind returnKind(boolean architecture) {
+        return RiKind.fromTypeString(returnType);
     }
 
     @Override

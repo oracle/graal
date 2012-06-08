@@ -22,8 +22,8 @@
  */
 package com.oracle.max.criutils;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * A implementation of {@link RiField} for an unresolved field.
@@ -48,7 +48,7 @@ public class BaseUnresolvedField implements RiField {
         return type;
     }
 
-    public CiKind kind(boolean architecture) {
+    public RiKind kind(boolean architecture) {
         return type.kind(architecture);
     }
 

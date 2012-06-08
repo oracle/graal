@@ -26,12 +26,12 @@ package com.oracle.graal.hotspot.ri;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiType.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 
 /**
  * Represents a field in a HotSpot type.
@@ -44,9 +44,9 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
     private final RiType type;
     private final int offset;
     private final int accessFlags;
-    private CiConstant constant;                // Constant part only valid for static fields.
+    private RiConstant constant;                // Constant part only valid for static fields.
 
-    public HotSpotField(Compiler compiler, RiResolvedType holder, String name, RiType type, int offset, int accessFlags) {
+    public HotSpotField(HotSpotCompiler compiler, RiResolvedType holder, String name, RiType type, int offset, int accessFlags) {
         super(compiler);
         this.holder = holder;
         this.name = name;
@@ -62,13 +62,13 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
     }
 
     @Override
-    public CiConstant constantValue(CiConstant receiver) {
+    public RiConstant constantValue(RiConstant receiver) {
         if (receiver == null) {
             assert Modifier.isStatic(accessFlags);
             if (constant == null) {
                 if (holder.isInitialized() && holder.toJava() != System.class) {
                     if (Modifier.isFinal(accessFlags()) || assumeStaticFieldsFinal(holder.toJava())) {
-                        CiConstant encoding = holder.getEncoding(Representation.StaticFields);
+                        RiConstant encoding = holder.getEncoding(Representation.StaticFields);
                         constant = this.kind(false).readUnsafeConstant(encoding.asObject(), offset);
                     }
                 }
@@ -94,7 +94,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
     }
 
     @Override
-    public CiKind kind(boolean architecture) {
+    public RiKind kind(boolean architecture) {
         return type().kind(architecture);
     }
 

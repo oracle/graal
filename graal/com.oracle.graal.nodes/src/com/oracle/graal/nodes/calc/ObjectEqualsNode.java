@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.max.cri.ci.*;
 
 @NodeInfo(shortName = "==")
 public final class ObjectEqualsNode extends CompareNode {
@@ -38,8 +38,8 @@ public final class ObjectEqualsNode extends CompareNode {
      */
     public ObjectEqualsNode(ValueNode x, ValueNode y) {
         super(x, y);
-        assert x.kind() == CiKind.Object;
-        assert y.kind() == CiKind.Object;
+        assert x.kind() == RiKind.Object;
+        assert y.kind() == RiKind.Object;
     }
 
     @Override

@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.compiler.alloc;
 
-import static com.oracle.max.cri.ci.CiUtil.*;
 import static com.oracle.graal.alloc.util.LocationUtil.*;
+import static com.oracle.graal.api.code.CiUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
 import com.oracle.max.criutils.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiRegister.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
 import com.oracle.graal.compiler.alloc.Interval.RegisterPriority;
@@ -94,7 +95,7 @@ final class LinearScanWalker extends IntervalWalker {
     }
 
     void excludeFromUse(Interval i) {
-        CiValue location = i.location();
+        RiValue location = i.location();
         int i1 = asRegister(location).number;
         if (i1 >= availableRegs[0].number && i1 <= availableRegs[availableRegs.length - 1].number) {
             usePos[i1] = 0;
@@ -674,7 +675,7 @@ final class LinearScanWalker extends IntervalWalker {
         return true;
     }
 
-    CiRegister findLockedRegister(int regNeededUntil, int intervalTo, CiValue ignoreReg, boolean[] needSplit) {
+    CiRegister findLockedRegister(int regNeededUntil, int intervalTo, RiValue ignoreReg, boolean[] needSplit) {
         int maxReg = -1;
         CiRegister ignore = isRegister(ignoreReg) ? asRegister(ignoreReg) : null;
 
@@ -905,7 +906,7 @@ final class LinearScanWalker extends IntervalWalker {
             TTY.println("      splitParent: %s, insertMoveWhenActivated: %b", interval.splitParent().operandNumber, interval.insertMoveWhenActivated());
         }
 
-        final CiValue operand = interval.operand;
+        final RiValue operand = interval.operand;
         if (interval.location() != null && isStackSlot(interval.location())) {
             // activating an interval that has a stack slot assigned . split it at first use position
             // used for method parameters

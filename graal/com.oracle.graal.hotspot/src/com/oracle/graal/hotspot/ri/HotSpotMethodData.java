@@ -26,11 +26,11 @@ import java.util.*;
 
 import sun.misc.*;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiTypeProfile.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiTypeProfile.*;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 
 
 public final class HotSpotMethodData extends CompilerObject {
@@ -38,7 +38,7 @@ public final class HotSpotMethodData extends CompilerObject {
     private static final long serialVersionUID = -8873133496591225071L;
 
     static {
-        config = CompilerImpl.getInstance().getConfig();
+        config = HotSpotCompilerImpl.getInstance().getConfig();
     }
 
     // TODO (chaeubl) use same logic as in NodeClass?
@@ -57,7 +57,7 @@ public final class HotSpotMethodData extends CompilerObject {
     private int normalDataSize;
     private int extraDataSize;
 
-    private HotSpotMethodData(Compiler compiler) {
+    private HotSpotMethodData(HotSpotCompiler compiler) {
         super(compiler);
         throw new IllegalStateException("this constructor is never actually called, because the objects are allocated from within the VM");
     }
@@ -344,7 +344,7 @@ public final class HotSpotMethodData extends CompilerObject {
                     Object graalMirror = unsafe.getObject(receiverKlassOop, (long) config.graalMirrorKlassOffset);
                     if (graalMirror == null) {
                         Class<?> javaClass = (Class<?>) unsafe.getObject(receiverKlassOop, (long) config.classMirrorOffset);
-                        graalMirror = CompilerImpl.getInstance().getCompilerToVM().getType(javaClass);
+                        graalMirror = HotSpotCompilerImpl.getInstance().getCompilerToVM().getType(javaClass);
                         assert graalMirror != null : "must not return null";
                     }
 

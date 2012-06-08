@@ -24,10 +24,10 @@ package com.oracle.graal.hotspot.ri;
 
 import java.lang.reflect.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 
 /**
  * Implementation of RiCompiledMethod for HotSpot.
@@ -42,7 +42,7 @@ public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledM
     private final RiResolvedMethod method;
     private long nmethod;
 
-    public HotSpotCompiledMethod(Compiler compiler, RiResolvedMethod method) {
+    public HotSpotCompiledMethod(HotSpotCompiler compiler, RiResolvedMethod method) {
         super(compiler);
         this.method = method;
     }
@@ -65,14 +65,14 @@ public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledM
     @Override
     public Object execute(Object arg1, Object arg2, Object arg3) {
         assert method.signature().argumentCount(!Modifier.isStatic(method.accessFlags())) == 3;
-        assert method.signature().argumentKindAt(0, false) == CiKind.Object;
-        assert method.signature().argumentKindAt(1, false) == CiKind.Object;
-        assert !Modifier.isStatic(method.accessFlags()) || method.signature().argumentKindAt(2, false) == CiKind.Object;
+        assert method.signature().argumentKindAt(0, false) == RiKind.Object;
+        assert method.signature().argumentKindAt(1, false) == RiKind.Object;
+        assert !Modifier.isStatic(method.accessFlags()) || method.signature().argumentKindAt(2, false) == RiKind.Object;
         return compiler.getCompilerToVM().executeCompiledMethod(this, arg1, arg2, arg3);
     }
 
     private boolean checkArgs(Object... args) {
-        CiKind[] sig = CiUtil.signatureToKinds(method);
+        RiKind[] sig = CiUtil.signatureToKinds(method);
         assert args.length == sig.length : CiUtil.format("%H.%n(%p): expected ", method) + sig.length + " args, got " + args.length;
         for (int i = 0; i < sig.length; i++) {
             Object arg = args[i];

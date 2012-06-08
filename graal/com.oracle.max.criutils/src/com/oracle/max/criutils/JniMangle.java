@@ -22,8 +22,7 @@
  */
 package com.oracle.max.criutils;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * A utility for mangling Java method name and signatures into C function names.
@@ -81,7 +80,7 @@ public final class JniMangle {
      */
     public static String mangleMethod(RiResolvedType declaringClass, String name, RiSignature signature, boolean splitSuffix) {
         final StringBuilder result = new StringBuilder(100);
-        final String declaringClassName = CiUtil.toJavaName(declaringClass);
+        final String declaringClassName = RiUtil.toJavaName(declaringClass);
         result.append("Java_").append(mangle(declaringClassName)).append('_').append(mangle(name));
         if (signature != null) {
             if (splitSuffix) {

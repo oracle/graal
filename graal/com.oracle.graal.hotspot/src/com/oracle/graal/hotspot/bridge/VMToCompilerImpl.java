@@ -29,21 +29,21 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.hotspot.server.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 
 /**
@@ -51,7 +51,7 @@ import com.oracle.max.criutils.*;
  */
 public class VMToCompilerImpl implements VMToCompiler, Remote {
 
-    private final Compiler compiler;
+    private final HotSpotCompiler compiler;
     private IntrinsifyArrayCopyPhase intrinsifyArrayCopy;
 
     public final HotSpotTypePrimitive typeBoolean;
@@ -70,18 +70,18 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
     private PrintStream log = System.out;
 
-    public VMToCompilerImpl(Compiler compiler) {
+    public VMToCompilerImpl(HotSpotCompiler compiler) {
         this.compiler = compiler;
 
-        typeBoolean = new HotSpotTypePrimitive(compiler, CiKind.Boolean);
-        typeChar = new HotSpotTypePrimitive(compiler, CiKind.Char);
-        typeFloat = new HotSpotTypePrimitive(compiler, CiKind.Float);
-        typeDouble = new HotSpotTypePrimitive(compiler, CiKind.Double);
-        typeByte = new HotSpotTypePrimitive(compiler, CiKind.Byte);
-        typeShort = new HotSpotTypePrimitive(compiler, CiKind.Short);
-        typeInt = new HotSpotTypePrimitive(compiler, CiKind.Int);
-        typeLong = new HotSpotTypePrimitive(compiler, CiKind.Long);
-        typeVoid = new HotSpotTypePrimitive(compiler, CiKind.Void);
+        typeBoolean = new HotSpotTypePrimitive(compiler, RiKind.Boolean);
+        typeChar = new HotSpotTypePrimitive(compiler, RiKind.Char);
+        typeFloat = new HotSpotTypePrimitive(compiler, RiKind.Float);
+        typeDouble = new HotSpotTypePrimitive(compiler, RiKind.Double);
+        typeByte = new HotSpotTypePrimitive(compiler, RiKind.Byte);
+        typeShort = new HotSpotTypePrimitive(compiler, RiKind.Short);
+        typeInt = new HotSpotTypePrimitive(compiler, RiKind.Int);
+        typeLong = new HotSpotTypePrimitive(compiler, RiKind.Long);
+        typeVoid = new HotSpotTypePrimitive(compiler, RiKind.Void);
     }
 
     public void startCompiler() throws Throwable {
@@ -454,37 +454,37 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     }
 
     @Override
-    public CiConstant createCiConstant(CiKind kind, long value) {
-        if (kind == CiKind.Long) {
-            return CiConstant.forLong(value);
-        } else if (kind == CiKind.Int) {
-            return CiConstant.forInt((int) value);
-        } else if (kind == CiKind.Short) {
-            return CiConstant.forShort((short) value);
-        } else if (kind == CiKind.Char) {
-            return CiConstant.forChar((char) value);
-        } else if (kind == CiKind.Byte) {
-            return CiConstant.forByte((byte) value);
-        } else if (kind == CiKind.Boolean) {
-            return (value == 0) ? CiConstant.FALSE : CiConstant.TRUE;
+    public RiConstant createCiConstant(RiKind kind, long value) {
+        if (kind == RiKind.Long) {
+            return RiConstant.forLong(value);
+        } else if (kind == RiKind.Int) {
+            return RiConstant.forInt((int) value);
+        } else if (kind == RiKind.Short) {
+            return RiConstant.forShort((short) value);
+        } else if (kind == RiKind.Char) {
+            return RiConstant.forChar((char) value);
+        } else if (kind == RiKind.Byte) {
+            return RiConstant.forByte((byte) value);
+        } else if (kind == RiKind.Boolean) {
+            return (value == 0) ? RiConstant.FALSE : RiConstant.TRUE;
         } else {
             throw new IllegalArgumentException();
         }
     }
 
     @Override
-    public CiConstant createCiConstantFloat(float value) {
-        return CiConstant.forFloat(value);
+    public RiConstant createCiConstantFloat(float value) {
+        return RiConstant.forFloat(value);
     }
 
     @Override
-    public CiConstant createCiConstantDouble(double value) {
-        return CiConstant.forDouble(value);
+    public RiConstant createCiConstantDouble(double value) {
+        return RiConstant.forDouble(value);
     }
 
     @Override
-    public CiConstant createCiConstantObject(Object object) {
-        return CiConstant.forObject(object);
+    public RiConstant createCiConstantObject(Object object) {
+        return RiConstant.forObject(object);
     }
 
 

@@ -27,6 +27,8 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.loop.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.debug.*;
@@ -40,8 +42,6 @@ import com.oracle.graal.snippets.Snippet.Constant;
 import com.oracle.graal.snippets.Snippet.Multiple;
 import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.nodes.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * A snippet template is a graph created by parsing a snippet method and then
@@ -195,9 +195,9 @@ public class SnippetTemplate {
                 String name = c.value();
                 Object arg = key.get(name);
                 assert arg != null : method + ": requires a constant named " + name;
-                CiKind kind = signature.argumentKindAt(i, false);
+                RiKind kind = signature.argumentKindAt(i, false);
                 assert checkConstantArgument(method, signature, i, name, arg, kind);
-                replacements.put(snippetGraph.getLocal(i), ConstantNode.forCiConstant(CiConstant.forBoxed(kind, arg), runtime, snippetCopy));
+                replacements.put(snippetGraph.getLocal(i), ConstantNode.forCiConstant(RiConstant.forBoxed(kind, arg), runtime, snippetCopy));
             } else {
                 Parameter p = CiUtil.getParameterAnnotation(Parameter.class, i, method);
                 assert p != null : method + ": parameter " + i + " must be annotated with either @Constant or @Parameter";
@@ -324,7 +324,7 @@ public class SnippetTemplate {
         return true;
     }
 
-    private static boolean checkConstantArgument(final RiResolvedMethod method, RiSignature signature, int i, String name, Object arg, CiKind kind) {
+    private static boolean checkConstantArgument(final RiResolvedMethod method, RiSignature signature, int i, String name, Object arg, RiKind kind) {
         if (kind.isObject()) {
             Class<?> type = signature.argumentTypeAt(i, method.holder()).resolve(method.holder()).toJava();
             assert type.isInstance(arg) :
@@ -384,8 +384,8 @@ public class SnippetTemplate {
                 if (argument instanceof ValueNode) {
                     replacements.put((LocalNode) parameter, (ValueNode) argument);
                 } else {
-                    CiKind kind = ((LocalNode) parameter).kind();
-                    CiConstant constant = CiConstant.forBoxed(kind, argument);
+                    RiKind kind = ((LocalNode) parameter).kind();
+                    RiConstant constant = RiConstant.forBoxed(kind, argument);
                     replacements.put((LocalNode) parameter, ConstantNode.forCiConstant(constant, runtime, replaceeGraph));
                 }
             } else {
@@ -398,7 +398,7 @@ public class SnippetTemplate {
                 for (int j = 0; j < length; j++) {
                     LocalNode local = locals[j];
                     assert local != null;
-                    CiConstant constant = CiConstant.forBoxed(local.kind(), Array.get(array, j));
+                    RiConstant constant = RiConstant.forBoxed(local.kind(), Array.get(array, j));
                     ConstantNode element = ConstantNode.forCiConstant(constant, runtime, replaceeGraph);
                     replacements.put(local, element);
                 }

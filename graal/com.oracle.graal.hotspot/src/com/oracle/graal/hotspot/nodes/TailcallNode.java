@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.nodes;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.target.amd64.*;
@@ -57,20 +57,20 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
     @Override
     public void generate(LIRGeneratorTool generator) {
         LIRGenerator gen = (LIRGenerator) generator;
-        HotSpotVMConfig config = CompilerImpl.getInstance().getConfig();
+        HotSpotVMConfig config = HotSpotCompilerImpl.getInstance().getConfig();
         RiResolvedMethod method = frameState.method();
         boolean isStatic = Modifier.isStatic(method.accessFlags());
 
-        CiKind[] signature = CiUtil.signatureToKinds(method.signature(), isStatic ? null : method.holder().kind(true));
+        RiKind[] signature = CiUtil.signatureToKinds(method.signature(), isStatic ? null : method.holder().kind(true));
         CiCallingConvention cc = gen.frameMap().registerConfig.getCallingConvention(CiCallingConvention.Type.JavaCall, signature, gen.target(), false);
         gen.frameMap().callsMethod(cc, CiCallingConvention.Type.JavaCall); // TODO (aw): I think this is unnecessary for a tail call.
         List<ValueNode> parameters = new ArrayList<>();
         for (int i = 0, slot = 0; i < cc.locations.length; i++, slot += FrameStateBuilder.stackSlots(frameState.localAt(slot).kind())) {
             parameters.add(frameState.localAt(slot));
         }
-        List<CiValue> argList = gen.visitInvokeArguments(cc, parameters);
+        List<RiValue> argList = gen.visitInvokeArguments(cc, parameters);
 
-        CiValue entry = gen.emitLoad(new CiAddress(CiKind.Long, gen.operand(target), config.nmethodEntryOffset), false);
+        RiValue entry = gen.emitLoad(new CiAddress(RiKind.Long, gen.operand(target), config.nmethodEntryOffset), false);
 
         gen.append(new AMD64TailcallOp(argList, entry, cc.locations));
     }

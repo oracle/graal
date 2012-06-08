@@ -22,16 +22,16 @@
  */
 package com.oracle.max.asm.target.amd64;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * This class implements commonly used X86 code patterns.
  */
 public class AMD64MacroAssembler extends AMD64Assembler {
 
-    public AMD64MacroAssembler(CiTarget target, RiRegisterConfig registerConfig) {
+    public AMD64MacroAssembler(CiTarget target, CiRegisterConfig registerConfig) {
         super(target, registerConfig);
     }
 
@@ -317,7 +317,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     public void flog(CiRegister dest, CiRegister value, boolean base10) {
         assert value.spillSlotSize == dest.spillSlotSize;
 
-        CiAddress tmp = new CiAddress(CiKind.Double, AMD64.RSP);
+        CiAddress tmp = new CiAddress(RiKind.Double, AMD64.RSP);
         if (base10) {
             fldlg2();
         } else {
@@ -347,7 +347,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     private void ftrig(CiRegister dest, CiRegister value, char op) {
         assert value.spillSlotSize == dest.spillSlotSize;
 
-        CiAddress tmp = new CiAddress(CiKind.Double, AMD64.RSP);
+        CiAddress tmp = new CiAddress(RiKind.Double, AMD64.RSP);
         subq(AMD64.rsp, value.spillSlotSize);
         movsd(tmp, value);
         fld(tmp);

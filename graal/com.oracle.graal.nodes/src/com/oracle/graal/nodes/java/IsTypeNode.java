@@ -22,13 +22,12 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiType.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.Representation;
 
 public final class IsTypeNode extends BooleanNode implements Canonicalizable, LIRLowerable {
 
@@ -47,7 +46,7 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
      */
     public IsTypeNode(ValueNode objectClass, RiResolvedType type) {
         super(StampFactory.condition());
-        assert objectClass == null || objectClass.kind() == CiKind.Object;
+        assert objectClass == null || objectClass.kind() == RiKind.Object;
         this.type = type;
         this.objectClass = objectClass;
     }
@@ -64,8 +63,8 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (objectClass().isConstant()) {
-            CiConstant constant = objectClass().asConstant();
-            CiConstant typeHub = type.getEncoding(Representation.ObjectHub);
+            RiConstant constant = objectClass().asConstant();
+            RiConstant typeHub = type.getEncoding(Representation.ObjectHub);
             assert constant.kind == typeHub.kind;
             return ConstantNode.forBoolean(constant.equivalent(typeHub), graph());
         }

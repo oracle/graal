@@ -24,7 +24,8 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -182,7 +183,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
             stateSplit.setStateAfter(state);
         }
         if (node == null) {
-            assert kind() == CiKind.Void && usages().isEmpty();
+            assert kind() == RiKind.Void && usages().isEmpty();
             ((StructuredGraph) graph()).removeSplit(this, NORMAL_EDGE);
         } else if (node instanceof DeoptimizeNode) {
             this.replaceAtPredecessor(node);

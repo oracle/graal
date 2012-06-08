@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
 public abstract class FloatArithmeticNode extends ArithmeticNode {
 
-    public FloatArithmeticNode(CiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+    public FloatArithmeticNode(RiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(kind, x, y, isStrictFP);
     }
 

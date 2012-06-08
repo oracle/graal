@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.lir;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.graal.api.code.CiValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiCallingConvention.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiCallingConvention.Type;
-import com.oracle.max.cri.ri.*;
 
 /**
  * This class is used to build the stack frame layout for a compiled method.
@@ -82,7 +82,7 @@ import com.oracle.max.cri.ri.*;
 public final class FrameMap {
     public final RiRuntime runtime;
     public final CiTarget target;
-    public final RiRegisterConfig registerConfig;
+    public final CiRegisterConfig registerConfig;
 
     /**
      * The initial frame size, not including the size of the return address.
@@ -125,7 +125,7 @@ public final class FrameMap {
     /**
      * Creates a new frame map for the specified method.
      */
-    public FrameMap(RiRuntime runtime, CiTarget target, RiRegisterConfig registerConfig) {
+    public FrameMap(RiRuntime runtime, CiTarget target, CiRegisterConfig registerConfig) {
         this.runtime = runtime;
         this.target = target;
         this.registerConfig = registerConfig;
@@ -241,7 +241,7 @@ public final class FrameMap {
         outgoingSize = Math.max(outgoingSize, argsSize);
     }
 
-    private CiStackSlot getSlot(CiKind kind, int additionalOffset) {
+    private CiStackSlot getSlot(RiKind kind, int additionalOffset) {
         return CiStackSlot.get(kind, -spillSize + additionalOffset, true);
     }
 
@@ -251,7 +251,7 @@ public final class FrameMap {
      * @param kind The kind of the spill slot to be reserved.
      * @return A spill slot denoting the reserved memory area.
      */
-    public CiStackSlot allocateSpillSlot(CiKind kind) {
+    public CiStackSlot allocateSpillSlot(RiKind kind) {
         assert frameSize == -1 : "frame size must not yet be fixed";
         int size = target.sizeInBytes(kind);
         spillSize = NumUtil.roundUp(spillSize + size, size);
@@ -276,10 +276,10 @@ public final class FrameMap {
 
         if (refs) {
             assert size % target.wordSize == 0;
-            CiStackSlot result = getSlot(CiKind.Object, 0);
+            CiStackSlot result = getSlot(RiKind.Object, 0);
             objectStackBlocks.add(result);
             for (int i = target.wordSize; i < size; i += target.wordSize) {
-                objectStackBlocks.add(getSlot(CiKind.Object, i));
+                objectStackBlocks.add(getSlot(RiKind.Object, i));
             }
             return result;
 
@@ -297,8 +297,8 @@ public final class FrameMap {
     /**
      * Initializes a reference map that covers all registers of the target architecture.
      */
-    public CiBitMap initRegisterRefMap() {
-        return new CiBitMap(target.arch.registerReferenceMapBitCount);
+    public RiBitMap initRegisterRefMap() {
+        return new RiBitMap(target.arch.registerReferenceMapBitCount);
     }
 
     /**
@@ -306,8 +306,8 @@ public final class FrameMap {
      * slots in the frame. If the method has incoming reference arguments on the stack,
      * the reference map might grow later when such a reference is set.
      */
-    public CiBitMap initFrameRefMap() {
-        CiBitMap frameRefMap = new CiBitMap(frameSize() / target.wordSize);
+    public RiBitMap initFrameRefMap() {
+        RiBitMap frameRefMap = new RiBitMap(frameSize() / target.wordSize);
         for (CiStackSlot slot : objectStackBlocks) {
             setReference(slot, null, frameRefMap);
         }
@@ -317,14 +317,14 @@ public final class FrameMap {
     /**
      * Marks the specified location as a reference in the reference map of the debug information.
      * The tracked location can be a {@link CiRegisterValue} or a {@link CiStackSlot}. Note that a
-     * {@link CiConstant} is automatically tracked.
+     * {@link RiConstant} is automatically tracked.
      *
      * @param location The location to be added to the reference map.
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
-    public void setReference(CiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
-        if (location.kind == CiKind.Object) {
+    public void setReference(RiValue location, RiBitMap registerRefMap, RiBitMap frameRefMap) {
+        if (location.kind == RiKind.Object) {
             if (isRegister(location)) {
                 assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;
                 registerRefMap.set(asRegister(location).number);
@@ -341,14 +341,14 @@ public final class FrameMap {
     /**
      * Clears the specified location as a reference in the reference map of the debug information.
      * The tracked location can be a {@link CiRegisterValue} or a {@link CiStackSlot}. Note that a
-     * {@link CiConstant} is automatically tracked.
+     * {@link RiConstant} is automatically tracked.
      *
      * @param location The location to be removed from the reference map.
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
-    public void clearReference(CiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
-        if (location.kind == CiKind.Object) {
+    public void clearReference(RiValue location, RiBitMap registerRefMap, RiBitMap frameRefMap) {
+        if (location.kind == RiKind.Object) {
             if (location instanceof CiRegisterValue) {
                 assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;
                 registerRefMap.clear(asRegister(location).number);

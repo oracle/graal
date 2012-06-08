@@ -25,10 +25,10 @@ package com.oracle.graal.printer;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.graal.alloc.util.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
@@ -141,22 +141,19 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             final CiTargetMethod tm = (CiTargetMethod) object;
             final byte[] code = Arrays.copyOf(tm.targetCode(), tm.targetCodeSize());
             RiCodeInfo info = new RiCodeInfo() {
-                public CiTargetMethod targetMethod() {
-                    return tm;
+                public RiResolvedMethod method() {
+                    return null;
                 }
                 public long start() {
                     return 0L;
-                }
-                public RiResolvedMethod method() {
-                    return null;
                 }
                 public byte[] code() {
                     return code;
                 }
             };
-            cfgPrinter.printMachineCode(runtime.disassemble(info), message);
+            cfgPrinter.printMachineCode(runtime.disassemble(info, tm), message);
         } else if (object instanceof RiCodeInfo) {
-            cfgPrinter.printMachineCode(runtime.disassemble((RiCodeInfo) object), message);
+            cfgPrinter.printMachineCode(runtime.disassemble((RiCodeInfo) object, null), message);
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);
 

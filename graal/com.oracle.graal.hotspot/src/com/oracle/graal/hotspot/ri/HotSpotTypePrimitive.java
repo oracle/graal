@@ -25,10 +25,9 @@ package com.oracle.graal.hotspot.ri;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 
 /**
  * Implementation of RiType for primitive HotSpot types.
@@ -36,10 +35,10 @@ import com.oracle.graal.hotspot.Compiler;
 public final class HotSpotTypePrimitive extends HotSpotType implements RiResolvedType {
 
     private static final long serialVersionUID = -6208552348908071473L;
-    private CiKind kind;
+    private RiKind kind;
     private final HotSpotKlassOop klassOop;
 
-    public HotSpotTypePrimitive(Compiler compiler, CiKind kind) {
+    public HotSpotTypePrimitive(HotSpotCompiler compiler, RiKind kind) {
         super(compiler);
         this.kind = kind;
         this.name = String.valueOf(Character.toUpperCase(kind.typeChar));
@@ -78,12 +77,12 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     }
 
     @Override
-    public CiConstant getEncoding(Representation r) {
+    public RiConstant getEncoding(Representation r) {
         throw GraalInternalError.unimplemented("HotSpotTypePrimitive.getEncoding");
     }
 
     @Override
-    public CiKind getRepresentationKind(Representation r) {
+    public RiKind getRepresentationKind(Representation r) {
         return kind;
     }
 
@@ -113,7 +112,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     }
 
     @Override
-    public boolean isInstance(CiConstant obj) {
+    public boolean isInstance(RiConstant obj) {
         return false;
     }
 
@@ -133,7 +132,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     }
 
     @Override
-    public CiKind kind(boolean architecture) {
+    public RiKind kind(boolean architecture) {
         return kind;
     }
 

@@ -25,6 +25,8 @@ package com.oracle.graal.compiler.phases;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.Fold;
@@ -33,8 +35,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 public class SnippetIntrinsificationPhase extends Phase {
 
@@ -86,7 +86,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             }
 
             // Call the method
-            CiConstant constant = callMethod(target.signature().returnKind(false), target.holder().toJava(), target.name(), parameterTypes, receiver, arguments);
+            RiConstant constant = callMethod(target.signature().returnKind(false), target.holder().toJava(), target.name(), parameterTypes, receiver, arguments);
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
@@ -120,7 +120,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             if (folding || CiUtil.getParameterAnnotation(ConstantNodeParameter.class, parameterIndex, target) != null) {
                 assert argument instanceof ConstantNode : "parameter " + parameterIndex + " must be a compile time constant for calling " + invoke.callTarget().targetMethod() + ": " + argument;
                 ConstantNode constantNode = (ConstantNode) argument;
-                CiConstant constant = constantNode.asConstant();
+                RiConstant constant = constantNode.asConstant();
                 Object o = constant.boxedValue();
                 if (o instanceof Class< ? >) {
                     reflectionCallArguments[i] = runtime.getType((Class< ? >) o);
@@ -214,7 +214,7 @@ public class SnippetIntrinsificationPhase extends Phase {
     /**
      * Calls a Java method via reflection.
      */
-    private static CiConstant callMethod(CiKind returnKind, Class< ? > holder, String name, Class< ? >[] parameterTypes, Object receiver, Object[] arguments) {
+    private static RiConstant callMethod(RiKind returnKind, Class< ? > holder, String name, Class< ? >[] parameterTypes, Object receiver, Object[] arguments) {
         Method method;
         try {
             method = holder.getDeclaredMethod(name, parameterTypes);
@@ -227,14 +227,14 @@ public class SnippetIntrinsificationPhase extends Phase {
             if (result == null) {
                 return null;
             }
-            return CiConstant.forBoxed(returnKind, result);
+            return RiConstant.forBoxed(returnKind, result);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
     public void cleanUpReturnCheckCast(Node newInstance) {
-        if (newInstance instanceof ValueNode && ((ValueNode) newInstance).kind() != CiKind.Object) {
+        if (newInstance instanceof ValueNode && ((ValueNode) newInstance).kind() != RiKind.Object) {
             StructuredGraph graph = (StructuredGraph) newInstance.graph();
             for (CheckCastNode checkCastNode : newInstance.usages().filter(CheckCastNode.class).snapshot()) {
                 for (ValueProxyNode vpn : checkCastNode.usages().filter(ValueProxyNode.class).snapshot()) {

@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.bridge;
 
 import java.lang.reflect.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.hotspot.server.*;
@@ -93,7 +93,7 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     public native RiType RiType_leastCommonAncestor(HotSpotTypeResolved thisType, HotSpotTypeResolved otherType);
 
     @Override
-    public native RiType getPrimitiveArrayType(CiKind kind);
+    public native RiType getPrimitiveArrayType(RiKind kind);
 
     @Override
     public native RiType RiType_arrayOf(HotSpotTypeResolved klass);
@@ -117,17 +117,17 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     public native RiType getType(Class<?> javaClass);
 
     @Override
-    public int getArrayLength(CiConstant array) {
+    public int getArrayLength(RiConstant array) {
         return Array.getLength(array.asObject());
     }
 
     @Override
-    public boolean compareConstantObjects(CiConstant x, CiConstant y) {
+    public boolean compareConstantObjects(RiConstant x, RiConstant y) {
         return x.asObject() == y.asObject();
     }
 
     @Override
-    public RiType getRiType(CiConstant constant) {
+    public RiType getRiType(RiConstant constant) {
         Object o = constant.asObject();
         if (o == null) {
             return null;

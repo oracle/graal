@@ -26,8 +26,9 @@ import static com.oracle.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.graph.*;
@@ -401,17 +402,17 @@ public final class Interval {
     /**
      * The {@linkplain CiRegisterValue register} or {@linkplain Variable variable} for this interval prior to register allocation.
      */
-    public final CiValue operand;
+    public final RiValue operand;
 
     /**
-     * The {@linkplain OperandPool#operandNumber(CiValue) operand number} for this interval's {@linkplain #operand operand}.
+     * The {@linkplain OperandPool#operandNumber(RiValue) operand number} for this interval's {@linkplain #operand operand}.
      */
     public final int operandNumber;
 
     /**
      * The {@linkplain CiRegisterValue register}, {@linkplain CiStackSlot spill slot} or {@linkplain CiAddress address} assigned to this interval.
      */
-    private CiValue location;
+    private RiValue location;
 
     /**
      * The stack slot to which all splits of this interval are spilled if necessary.
@@ -422,7 +423,7 @@ public final class Interval {
      * The kind of this interval.
      * Only valid if this is a {@linkplain #xxisVariable() variable}.
      */
-    private CiKind kind;
+    private RiKind kind;
 
     /**
      * The head of the list of ranges describing this interval. This list is sorted by {@linkplain LIRInstruction#id instruction ids}.
@@ -486,17 +487,17 @@ public final class Interval {
      */
     private Interval locationHint;
 
-    void assignLocation(CiValue newLocation) {
+    void assignLocation(RiValue newLocation) {
         if (isRegister(newLocation)) {
             assert this.location == null : "cannot re-assign location for " + this;
-            if (newLocation.kind == CiKind.Illegal && kind != CiKind.Illegal) {
+            if (newLocation.kind == RiKind.Illegal && kind != RiKind.Illegal) {
                 this.location = asRegister(newLocation).asValue(kind);
                 return;
             }
         } else {
             assert this.location == null || isRegister(this.location) : "cannot re-assign location for " + this;
             assert isStackSlot(newLocation);
-            assert newLocation.kind != CiKind.Illegal;
+            assert newLocation.kind != RiKind.Illegal;
             assert newLocation.kind == this.kind;
         }
         this.location = newLocation;
@@ -505,18 +506,18 @@ public final class Interval {
     /**
      * Gets the {@linkplain CiRegisterValue register}, {@linkplain CiStackSlot spill slot} or {@linkplain CiAddress address} assigned to this interval.
      */
-    public CiValue location() {
+    public RiValue location() {
         return location;
     }
 
-    public CiKind kind() {
+    public RiKind kind() {
         assert !isRegister(operand) : "cannot access type for fixed interval";
         return kind;
     }
 
-    void setKind(CiKind kind) {
-        assert isRegister(operand) || this.kind() == CiKind.Illegal || this.kind() == kind : "overwriting existing type";
-        assert kind == kind.stackKind() || kind == CiKind.Short : "these kinds should have int type registers";
+    void setKind(RiKind kind) {
+        assert isRegister(operand) || this.kind() == RiKind.Illegal || this.kind() == kind : "overwriting existing type";
+        assert kind == kind.stackKind() || kind == RiKind.Short : "these kinds should have int type registers";
         this.kind = kind;
     }
 
@@ -658,9 +659,9 @@ public final class Interval {
     /**
      * Sentinel interval to denote the end of an interval list.
      */
-    static final Interval EndMarker = new Interval(CiValue.IllegalValue, -1);
+    static final Interval EndMarker = new Interval(RiValue.IllegalValue, -1);
 
-    Interval(CiValue operand, int operandNumber) {
+    Interval(RiValue operand, int operandNumber) {
         assert operand != null;
         this.operand = operand;
         this.operandNumber = operandNumber;
@@ -669,7 +670,7 @@ public final class Interval {
         } else {
             assert isIllegal(operand) || isVariable(operand);
         }
-        this.kind = CiKind.Illegal;
+        this.kind = RiKind.Illegal;
         this.first = Range.EndMarker;
         this.usePosList = new UsePosList(4);
         this.current = Range.EndMarker;

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -30,17 +30,17 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "%")
 public final class FloatRemNode extends FloatArithmeticNode implements Canonicalizable, LIRLowerable {
 
-    public FloatRemNode(CiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+    public FloatRemNode(RiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(kind, x, y, isStrictFP);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (x().isConstant() && y().isConstant()) {
-            if (kind() == CiKind.Float) {
+            if (kind() == RiKind.Float) {
                 return ConstantNode.forFloat(x().asConstant().asFloat() % y().asConstant().asFloat(), graph());
             } else {
-                assert kind() == CiKind.Double;
+                assert kind() == RiKind.Double;
                 return ConstantNode.forDouble(x().asConstant().asDouble() % y().asConstant().asDouble(), graph());
             }
         }

@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.bridge;
 
 import java.lang.reflect.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.ri.*;
 
@@ -73,7 +73,7 @@ public interface CompilerToVM {
 
     RiType RiType_leastCommonAncestor(HotSpotTypeResolved thisType, HotSpotTypeResolved otherType);
 
-    RiType getPrimitiveArrayType(CiKind kind);
+    RiType getPrimitiveArrayType(RiKind kind);
 
     RiType RiType_arrayOf(HotSpotTypeResolved klass);
 
@@ -87,11 +87,11 @@ public interface CompilerToVM {
 
     RiType RiType_superType(HotSpotTypeResolved klass);
 
-    int getArrayLength(CiConstant array);
+    int getArrayLength(RiConstant array);
 
-    boolean compareConstantObjects(CiConstant x, CiConstant y);
+    boolean compareConstantObjects(RiConstant x, RiConstant y);
 
-    RiType getRiType(CiConstant constant);
+    RiType getRiType(RiConstant constant);
 
     RiResolvedField[] RiType_fields(HotSpotTypeResolved klass);
 

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "+")
 public final class FloatAddNode extends FloatArithmeticNode implements Canonicalizable, LIRLowerable {
 
-    public FloatAddNode(CiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+    public FloatAddNode(RiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(kind, x, y, isStrictFP);
     }
 
@@ -40,20 +40,20 @@ public final class FloatAddNode extends FloatArithmeticNode implements Canonical
             return graph().unique(new FloatAddNode(kind(), y(), x(), isStrictFP()));
         }
         if (x().isConstant()) {
-            if (kind() == CiKind.Float) {
+            if (kind() == RiKind.Float) {
                 return ConstantNode.forFloat(x().asConstant().asFloat() + y().asConstant().asFloat(), graph());
             } else {
-                assert kind() == CiKind.Double;
+                assert kind() == RiKind.Double;
                 return ConstantNode.forDouble(x().asConstant().asDouble() + y().asConstant().asDouble(), graph());
             }
         } else if (y().isConstant()) {
-            if (kind() == CiKind.Float) {
+            if (kind() == RiKind.Float) {
                 float c = y().asConstant().asFloat();
                 if (c == 0.0f) {
                     return x();
                 }
             } else {
-                assert kind() == CiKind.Double;
+                assert kind() == RiKind.Double;
                 double c = y().asConstant().asDouble();
                 if (c == 0.0) {
                     return x();
@@ -65,10 +65,10 @@ public final class FloatAddNode extends FloatArithmeticNode implements Canonical
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        CiValue op1 = gen.operand(x());
-        CiValue op2 = gen.operand(y());
+        RiValue op1 = gen.operand(x());
+        RiValue op2 = gen.operand(y());
         if (!y().isConstant() && !livesLonger(this, y(), gen)) {
-            CiValue op = op1;
+            RiValue op = op1;
             op1 = op2;
             op2 = op;
         }

@@ -27,12 +27,17 @@ import static com.oracle.max.cri.util.MemoryBarriers.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiTargetMethod.*;
+import com.oracle.graal.api.code.CiUtil.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiType.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.hotspot.target.amd64.*;
@@ -42,27 +47,19 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.Call;
-import com.oracle.max.cri.ci.CiTargetMethod.DataPatch;
-import com.oracle.max.cri.ci.CiTargetMethod.Mark;
-import com.oracle.max.cri.ci.CiTargetMethod.Safepoint;
-import com.oracle.max.cri.ci.CiUtil.RefMapFormatter;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.Representation;
 import com.oracle.max.criutils.*;
 
 /**
  * CRI runtime implementation for the HotSpot VM.
  */
-public class HotSpotRuntime implements GraalRuntime {
+public class HotSpotRuntime implements ExtendedRiRuntime {
     public final HotSpotVMConfig config;
     final HotSpotRegisterConfig regConfig;
     private final HotSpotRegisterConfig globalStubRegConfig;
-    private final Compiler compiler;
+    private final HotSpotCompiler compiler;
     private CheckCastSnippets.Templates checkcasts;
 
-    public HotSpotRuntime(HotSpotVMConfig config, Compiler compiler) {
+    public HotSpotRuntime(HotSpotVMConfig config, HotSpotCompiler compiler) {
         this.config = config;
         this.compiler = compiler;
         regConfig = new HotSpotRegisterConfig(config, false);
@@ -80,16 +77,15 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
 
-    public Compiler getCompiler() {
+    public HotSpotCompiler getCompiler() {
         return compiler;
     }
 
     @Override
-    public String disassemble(RiCodeInfo info) {
+    public String disassemble(RiCodeInfo info, CiTargetMethod tm) {
         byte[] code = info.code();
         CiTarget target = compiler.getTarget();
         HexCodeFile hcf = new HexCodeFile(code, info.start(), target.arch.name, target.wordSize * 8);
-        CiTargetMethod tm = info.targetMethod();
         if (tm != null) {
             HexCodeFile.addAnnotations(hcf, tm.annotations());
             addExceptionHandlersComment(tm, hcf);
@@ -184,12 +180,12 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     @Override
-    public RiResolvedType asRiType(CiKind kind) {
+    public RiResolvedType asRiType(RiKind kind) {
         return (RiResolvedType) compiler.getCompilerToVM().getType(kind.toJavaClass());
     }
 
     @Override
-    public RiResolvedType getTypeOf(CiConstant constant) {
+    public RiResolvedType getTypeOf(RiConstant constant) {
         return (RiResolvedType) compiler.getCompilerToVM().getRiType(constant);
     }
 
@@ -200,12 +196,12 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     @Override
-    public boolean areConstantObjectsEqual(CiConstant x, CiConstant y) {
+    public boolean areConstantObjectsEqual(RiConstant x, RiConstant y) {
         return compiler.getCompilerToVM().compareConstantObjects(x, y);
     }
 
     @Override
-    public RiRegisterConfig getRegisterConfig(RiMethod method) {
+    public CiRegisterConfig getRegisterConfig(RiMethod method) {
         return regConfig;
     }
 
@@ -224,7 +220,7 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     @Override
-    public int getArrayLength(CiConstant array) {
+    public int getArrayLength(RiConstant array) {
         return compiler.getCompilerToVM().getArrayLength(array);
     }
 
@@ -239,7 +235,7 @@ public class HotSpotRuntime implements GraalRuntime {
         } else if (n instanceof LoadFieldNode) {
             LoadFieldNode field = (LoadFieldNode) n;
             int displacement = ((HotSpotField) field.field()).offset();
-            assert field.kind() != CiKind.Illegal;
+            assert field.kind() != RiKind.Illegal;
             ReadNode memoryRead = graph.add(new ReadNode(field.object(), LocationNode.create(field.field(), field.field().kind(true), displacement, graph), field.stamp()));
             memoryRead.dependencies().add(tool.createNullCheckGuard(field.object(), field.leafGraphId()));
             graph.replaceFixedWithFixed(field, memoryRead);
@@ -258,7 +254,7 @@ public class HotSpotRuntime implements GraalRuntime {
             graph.replaceFixedWithFixed(storeField, memoryWrite);
 
             FixedWithNextNode last = memoryWrite;
-            if (field.kind(true) == CiKind.Object && !memoryWrite.value().isNullConstant()) {
+            if (field.kind(true) == RiKind.Object && !memoryWrite.value().isNullConstant()) {
                 FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(memoryWrite.object()));
                 graph.addAfterFixed(memoryWrite, writeBarrier);
                 last = writeBarrier;
@@ -273,7 +269,7 @@ public class HotSpotRuntime implements GraalRuntime {
             // Separate out GC barrier semantics
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
             ValueNode expected = cas.expected();
-            if (expected.kind() == CiKind.Object && !cas.newValue().isNullConstant()) {
+            if (expected.kind() == RiKind.Object && !cas.newValue().isNullConstant()) {
                 RiResolvedType type = cas.object().objectStamp().type();
                 if (type != null && !type.isArrayClass() && type.toJava() != Object.class) {
                     // Use a field write barrier since it's not an array store
@@ -290,7 +286,7 @@ public class HotSpotRuntime implements GraalRuntime {
 
             ValueNode boundsCheck = createBoundsCheck(loadIndexed, tool);
 
-            CiKind elementKind = loadIndexed.elementKind();
+            RiKind elementKind = loadIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, loadIndexed.index());
             ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), arrayLocation, loadIndexed.stamp()));
             memoryRead.dependencies().add(boundsCheck);
@@ -299,12 +295,12 @@ public class HotSpotRuntime implements GraalRuntime {
             StoreIndexedNode storeIndexed = (StoreIndexedNode) n;
             ValueNode boundsCheck = createBoundsCheck(storeIndexed, tool);
 
-            CiKind elementKind = storeIndexed.elementKind();
+            RiKind elementKind = storeIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index());
             ValueNode value = storeIndexed.value();
             CheckCastNode checkcast = null;
             ValueNode array = storeIndexed.array();
-            if (elementKind == CiKind.Object && !value.isNullConstant()) {
+            if (elementKind == RiKind.Object && !value.isNullConstant()) {
                 // Store check!
                 RiResolvedType arrayType = array.objectStamp().type();
                 if (arrayType != null && array.objectStamp().isExactType()) {
@@ -319,9 +315,9 @@ public class HotSpotRuntime implements GraalRuntime {
                     }
                 } else {
                     ValueNode guard = tool.createNullCheckGuard(array, StructuredGraph.INVALID_GRAPH_ID);
-                    FloatingReadNode arrayClass = graph.unique(new FloatingReadNode(array, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), null, StampFactory.objectNonNull()));
+                    FloatingReadNode arrayClass = graph.unique(new FloatingReadNode(array, LocationNode.create(LocationNode.FINAL_LOCATION, RiKind.Object, config.hubOffset, graph), null, StampFactory.objectNonNull()));
                     arrayClass.dependencies().add(guard);
-                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), null, StampFactory.objectNonNull()));
+                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, LocationNode.create(LocationNode.FINAL_LOCATION, RiKind.Object, config.arrayClassElementOffset, graph), null, StampFactory.objectNonNull()));
                     checkcast = graph.add(new CheckCastNode(arrayElementKlass, null, value));
                     graph.addBeforeFixed(storeIndexed, checkcast);
                     value = checkcast;
@@ -333,12 +329,12 @@ public class HotSpotRuntime implements GraalRuntime {
 
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 
-            if (elementKind == CiKind.Object && !value.isNullConstant()) {
+            if (elementKind == RiKind.Object && !value.isNullConstant()) {
                 graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation)));
             }
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
-            assert load.kind() != CiKind.Illegal;
+            assert load.kind() != RiKind.Illegal;
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.loadKind(), load.displacement(), load.offset(), graph, false);
             ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp()));
             memoryRead.dependencies().add(tool.createNullCheckGuard(load.object(), StructuredGraph.INVALID_GRAPH_ID));
@@ -349,13 +345,13 @@ public class HotSpotRuntime implements GraalRuntime {
             WriteNode write = graph.add(new WriteNode(store.object(), store.value(), location));
             write.setStateAfter(store.stateAfter());
             graph.replaceFixedWithFixed(store, write);
-            if (write.value().kind() == CiKind.Object && !write.value().isNullConstant()) {
+            if (write.value().kind() == RiKind.Object && !write.value().isNullConstant()) {
                 FieldWriteBarrier barrier = graph.add(new FieldWriteBarrier(write.object()));
                 graph.addBeforeFixed(write, barrier);
             }
         } else if (n instanceof ReadHubNode) {
             ReadHubNode objectClassNode = (ReadHubNode) n;
-            LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph);
+            LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, RiKind.Object, config.hubOffset, graph);
             ReadNode memoryRead = graph.add(new ReadNode(objectClassNode.object(), location, StampFactory.objectNonNull()));
             memoryRead.dependencies().add(tool.createNullCheckGuard(objectClassNode.object(), StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixed(objectClassNode, memoryRead);
@@ -380,18 +376,18 @@ public class HotSpotRuntime implements GraalRuntime {
         return false;
     }
 
-    private IndexedLocationNode createArrayLocation(Graph graph, CiKind elementKind, ValueNode index) {
+    private IndexedLocationNode createArrayLocation(Graph graph, RiKind elementKind, ValueNode index) {
         return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, config.getArrayOffset(elementKind), index, graph, true);
     }
 
     private SafeReadNode safeReadArrayLength(ValueNode array, long leafGraphId) {
-        return safeRead(array.graph(), CiKind.Int, array, config.arrayLengthOffset, StampFactory.positiveInt(), leafGraphId);
+        return safeRead(array.graph(), RiKind.Int, array, config.arrayLengthOffset, StampFactory.positiveInt(), leafGraphId);
     }
 
     private static ValueNode createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) n.graph();
         ArrayLengthNode arrayLength = graph.add(new ArrayLengthNode(n.array()));
-        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), RiDeoptReason.BoundsCheckException, RiDeoptAction.InvalidateReprofile, n.leafGraphId());
+        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), RiDeoptReason.BoundsCheckException, CiDeoptAction.InvalidateReprofile, n.leafGraphId());
 
         graph.addBeforeFixed(n, arrayLength);
         return guard;
@@ -417,7 +413,7 @@ public class HotSpotRuntime implements GraalRuntime {
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
                 SafeReadNode klassOop = safeReadHub(graph, receiver, StructuredGraph.INVALID_GRAPH_ID);
                 Stamp resultStamp = StampFactory.declaredNonNull(getType(Class.class));
-                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.classMirrorOffset, graph), null, resultStamp));
+                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, RiKind.Object, config.classMirrorOffset, graph), null, resultStamp));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 graph.start().setNext(klassOop);
                 klassOop.setNext(ret);
@@ -427,10 +423,10 @@ public class HotSpotRuntime implements GraalRuntime {
             if (fullName.equals("getModifiers()I")) {
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
-                SafeReadNode klassOop = safeRead(graph, CiKind.Object, receiver, config.klassOopOffset, StampFactory.objectNonNull(), StructuredGraph.INVALID_GRAPH_ID);
+                SafeReadNode klassOop = safeRead(graph, RiKind.Object, receiver, config.klassOopOffset, StampFactory.objectNonNull(), StructuredGraph.INVALID_GRAPH_ID);
                 graph.start().setNext(klassOop);
                 // TODO(thomaswue): Care about primitive classes! Crashes for primitive classes at the moment (klassOop == null)
-                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Int, config.klassModifierFlagsOffset, graph), null, StampFactory.intValue()));
+                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, RiKind.Int, config.klassModifierFlagsOffset, graph), null, StampFactory.intValue()));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 klassOop.setNext(ret);
                 return graph;
@@ -447,10 +443,10 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     private SafeReadNode safeReadHub(Graph graph, ValueNode value, long leafGraphId) {
-        return safeRead(graph, CiKind.Object, value, config.hubOffset, StampFactory.objectNonNull(), leafGraphId);
+        return safeRead(graph, RiKind.Object, value, config.hubOffset, StampFactory.objectNonNull(), leafGraphId);
     }
 
-    private static SafeReadNode safeRead(Graph graph, CiKind kind, ValueNode value, int offset, Stamp stamp, long leafGraphId) {
+    private static SafeReadNode safeRead(Graph graph, RiKind kind, ValueNode value, int offset, Stamp stamp, long leafGraphId) {
         return graph.add(new SafeReadNode(value, LocationNode.create(LocationNode.FINAL_LOCATION, kind, offset, graph), stamp, leafGraphId));
     }
 
@@ -479,7 +475,6 @@ public class HotSpotRuntime implements GraalRuntime {
         return hsInfo;
     }
 
-    @Override
     public void installMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
         compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), true, hsInfo);
@@ -492,7 +487,7 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     @Override
-    public RiRegisterConfig getGlobalStubRegisterConfig() {
+    public CiRegisterConfig getGlobalStubRegisterConfig() {
         return globalStubRegConfig;
     }
 
@@ -503,7 +498,7 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     @Override
-    public int encodeDeoptActionAndReason(RiDeoptAction action, RiDeoptReason reason) {
+    public int encodeDeoptActionAndReason(CiDeoptAction action, RiDeoptReason reason) {
         final int actionShift = 0;
         final int reasonShift = 3;
 
@@ -513,7 +508,7 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     @Override
-    public int convertDeoptAction(RiDeoptAction action) {
+    public int convertDeoptAction(CiDeoptAction action) {
         switch(action) {
             case None: return 0;
             case RecompileIfTooManyDeopts: return 1;

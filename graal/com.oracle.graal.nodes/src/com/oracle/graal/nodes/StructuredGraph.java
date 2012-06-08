@@ -25,7 +25,7 @@ package com.oracle.graal.nodes;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;

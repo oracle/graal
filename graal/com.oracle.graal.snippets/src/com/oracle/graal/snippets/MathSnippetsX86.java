@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.snippets;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.nodes.*;
 import com.oracle.graal.snippets.nodes.MathIntrinsicNode.Operation;

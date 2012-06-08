@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -35,7 +35,7 @@ public abstract class LogicNode extends BinaryNode {
      * @param x the first input into this node
      * @param y the second input into this node
      */
-    public LogicNode(CiKind kind, ValueNode x, ValueNode y) {
+    public LogicNode(RiKind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
     }
 }

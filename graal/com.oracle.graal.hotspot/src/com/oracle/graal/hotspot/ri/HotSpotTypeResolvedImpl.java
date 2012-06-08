@@ -26,9 +26,8 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * Implementation of RiType for resolved non-primitive HotSpot classes.
@@ -115,22 +114,22 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public CiConstant getEncoding(Representation r) {
+    public RiConstant getEncoding(Representation r) {
         switch (r) {
             case JavaClass:
-                return CiConstant.forObject(javaMirror);
+                return RiConstant.forObject(javaMirror);
             case ObjectHub:
-                return CiConstant.forObject(klassOop());
+                return RiConstant.forObject(klassOop());
             case StaticFields:
-                return CiConstant.forObject(javaMirror);
+                return RiConstant.forObject(javaMirror);
             default:
                 return null;
         }
     }
 
     @Override
-    public CiKind getRepresentationKind(Representation r) {
-        return CiKind.Object;
+    public RiKind getRepresentationKind(Representation r) {
+        return RiKind.Object;
     }
 
     @Override
@@ -162,7 +161,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public boolean isInstance(CiConstant obj) {
+    public boolean isInstance(RiConstant obj) {
         return javaMirror.isInstance(obj);
     }
 
@@ -186,8 +185,8 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public CiKind kind(boolean architecture) {
-        return CiKind.Object;
+    public RiKind kind(boolean architecture) {
+        return RiKind.Object;
     }
 
     @Override
@@ -277,7 +276,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
         return klassOopCache;
     }
 
-    private static final int SECONDARY_SUPER_CACHE_OFFSET = CompilerImpl.getInstance().getConfig().secondarySuperCacheOffset;
+    private static final int SECONDARY_SUPER_CACHE_OFFSET = HotSpotCompilerImpl.getInstance().getConfig().secondarySuperCacheOffset;
 
     public boolean isPrimaryType() {
         return SECONDARY_SUPER_CACHE_OFFSET != superCheckOffset;

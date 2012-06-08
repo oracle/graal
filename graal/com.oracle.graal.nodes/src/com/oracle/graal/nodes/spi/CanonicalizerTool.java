@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 
 
 public interface CanonicalizerTool {
@@ -35,5 +35,5 @@ public interface CanonicalizerTool {
      * Determines if a given constant is an object/array whose current
      * fields/elements will never change.
      */
-    boolean isImmutable(CiConstant objectConstant);
+    boolean isImmutable(RiConstant objectConstant);
 }

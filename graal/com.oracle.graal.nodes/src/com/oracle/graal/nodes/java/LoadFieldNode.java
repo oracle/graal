@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -45,8 +45,8 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     private static Stamp createStamp(RiResolvedField field) {
-        CiKind kind = field.kind(false);
-        if (kind == CiKind.Object && field.type() instanceof RiResolvedType) {
+        RiKind kind = field.kind(false);
+        if (kind == RiKind.Object && field.type() instanceof RiResolvedType) {
             return StampFactory.declared((RiResolvedType) field.type());
         } else {
             return StampFactory.forKind(kind);
@@ -57,7 +57,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     public ValueNode canonical(CanonicalizerTool tool) {
         RiRuntime runtime = tool.runtime();
         if (runtime != null) {
-            CiConstant constant = null;
+            RiConstant constant = null;
             if (isStatic()) {
                 constant = field().constantValue(null);
             } else if (object().isConstant() && !object().isNullConstant()) {

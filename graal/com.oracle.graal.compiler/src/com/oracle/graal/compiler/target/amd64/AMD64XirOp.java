@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.compiler.target.amd64;
 
-import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
-import static com.oracle.max.cri.ci.CiValue.*;
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.graal.api.code.CiCallingConvention.Type.*;
+import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.meta.RiValue.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiTargetMethod.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
@@ -35,8 +38,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.Mark;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.cri.xir.CiXirAssembler.RuntimeCallInformation;
 import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
@@ -44,7 +45,7 @@ import com.oracle.max.cri.xir.CiXirAssembler.XirLabel;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 
 public class AMD64XirOp extends LIRXirInstruction {
-    public AMD64XirOp(XirSnippet snippet, CiValue[] operands, CiValue outputOperand, CiValue[] inputs, CiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
+    public AMD64XirOp(XirSnippet snippet, RiValue[] operands, RiValue outputOperand, RiValue[] inputs, RiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
                         LIRDebugInfo info, LIRDebugInfo infoAfter, LabelRef trueSuccessor, LabelRef falseSuccessor) {
         super("XIR", snippet, operands, outputOperand, inputs, temps, inputOperandIndices, tempOperandIndices, outputOperandIndex, info, infoAfter, trueSuccessor, falseSuccessor);
     }
@@ -105,7 +106,7 @@ public class AMD64XirOp extends LIRXirInstruction {
     }
 
 
-    protected void emitXirInstructions(TargetMethodAssembler tasm, AMD64MacroAssembler masm, XirInstruction[] instructions, Label[] labels, CiValue[] operands, Map<XirMark, Mark> marks) {
+    protected void emitXirInstructions(TargetMethodAssembler tasm, AMD64MacroAssembler masm, XirInstruction[] instructions, Label[] labels, RiValue[] operands, Map<XirMark, Mark> marks) {
         for (XirInstruction inst : instructions) {
             switch (inst.op) {
                 case Add:
@@ -153,15 +154,15 @@ public class AMD64XirOp extends LIRXirInstruction {
                     break;
 
                 case Mov: {
-                    CiValue result = operands[inst.result.index];
-                    CiValue source = operands[inst.x().index];
+                    RiValue result = operands[inst.result.index];
+                    RiValue source = operands[inst.x().index];
                     AMD64Move.move(tasm, masm, result, source);
                     break;
                 }
 
                 case PointerLoad: {
-                    CiValue result = operands[inst.result.index];
-                    CiValue pointer = operands[inst.x().index];
+                    RiValue result = operands[inst.result.index];
+                    RiValue pointer = operands[inst.x().index];
                     CiRegisterValue register = assureInRegister(tasm, masm, pointer);
 
                     AMD64Move.load(tasm, masm, result, new CiAddress(inst.kind, register), (Boolean) inst.extra ? info : null);
@@ -169,8 +170,8 @@ public class AMD64XirOp extends LIRXirInstruction {
                 }
 
                 case PointerStore: {
-                    CiValue value = assureNot64BitConstant(tasm, masm, operands[inst.y().index]);
-                    CiValue pointer = operands[inst.x().index];
+                    RiValue value = assureNot64BitConstant(tasm, masm, operands[inst.y().index]);
+                    RiValue pointer = operands[inst.x().index];
                     assert isRegister(pointer);
 
                     AMD64Move.store(tasm, masm, new CiAddress(inst.kind, pointer), value, (Boolean) inst.extra ? info : null);
@@ -184,17 +185,17 @@ public class AMD64XirOp extends LIRXirInstruction {
                     CiAddress.Scale scale = addressInformation.scale;
                     int displacement = addressInformation.disp;
 
-                    CiValue result = operands[inst.result.index];
-                    CiValue pointer = operands[inst.x().index];
-                    CiValue index = operands[inst.y().index];
+                    RiValue result = operands[inst.result.index];
+                    RiValue pointer = operands[inst.x().index];
+                    RiValue index = operands[inst.y().index];
 
                     pointer = assureInRegister(tasm, masm, pointer);
                     assert isRegister(pointer);
 
                     CiAddress src;
                     if (isConstant(index)) {
-                        assert index.kind == CiKind.Int;
-                        CiConstant constantIndex = (CiConstant) index;
+                        assert index.kind == RiKind.Int;
+                        RiConstant constantIndex = (RiConstant) index;
                         src = new CiAddress(inst.kind, pointer, constantIndex.asInt() * scale.value + displacement);
                     } else {
                         src = new CiAddress(inst.kind, pointer, index, scale, displacement);
@@ -210,13 +211,13 @@ public class AMD64XirOp extends LIRXirInstruction {
                     CiAddress.Scale scale = addressInformation.scale;
                     int displacement = addressInformation.disp;
 
-                    CiValue result = operands[inst.result.index];
-                    CiValue pointer = operands[inst.x().index];
-                    CiValue index = operands[inst.y().index];
+                    RiValue result = operands[inst.result.index];
+                    RiValue pointer = operands[inst.x().index];
+                    RiValue index = operands[inst.y().index];
 
                     pointer = assureInRegister(tasm, masm, pointer);
                     assert isRegister(pointer);
-                    CiAddress src = new CiAddress(CiKind.Illegal, pointer, index, scale, displacement);
+                    CiAddress src = new CiAddress(RiKind.Illegal, pointer, index, scale, displacement);
                     masm.leaq(asRegister(result), src);
                     break;
                 }
@@ -228,17 +229,17 @@ public class AMD64XirOp extends LIRXirInstruction {
                     CiAddress.Scale scale = addressInformation.scale;
                     int displacement = addressInformation.disp;
 
-                    CiValue value = assureNot64BitConstant(tasm, masm, operands[inst.z().index]);
-                    CiValue pointer = operands[inst.x().index];
-                    CiValue index = operands[inst.y().index];
+                    RiValue value = assureNot64BitConstant(tasm, masm, operands[inst.z().index]);
+                    RiValue pointer = operands[inst.x().index];
+                    RiValue index = operands[inst.y().index];
 
                     pointer = assureInRegister(tasm, masm, pointer);
                     assert isRegister(pointer);
 
                     CiAddress dst;
                     if (isConstant(index)) {
-                        assert index.kind == CiKind.Int;
-                        CiConstant constantIndex = (CiConstant) index;
+                        assert index.kind == RiKind.Int;
+                        RiConstant constantIndex = (RiConstant) index;
                         dst = new CiAddress(inst.kind, pointer, IllegalValue, scale, constantIndex.asInt() * scale.value + displacement);
                     } else {
                         dst = new CiAddress(inst.kind, pointer, index, scale, displacement);
@@ -265,8 +266,8 @@ public class AMD64XirOp extends LIRXirInstruction {
                 case PointerCAS:
                     assert asRegister(operands[inst.x().index]).equals(AMD64.rax) : "wrong input x: " + operands[inst.x().index];
 
-                    CiValue exchangedVal = operands[inst.y().index];
-                    CiValue exchangedAddress = operands[inst.x().index];
+                    RiValue exchangedVal = operands[inst.y().index];
+                    RiValue exchangedAddress = operands[inst.x().index];
                     CiRegisterValue pointerRegister = assureInRegister(tasm, masm, exchangedAddress);
                     CiAddress addr = new CiAddress(tasm.target.wordKind, pointerRegister);
 
@@ -278,15 +279,15 @@ public class AMD64XirOp extends LIRXirInstruction {
                     break;
 
                 case CallRuntime: {
-                    CiKind[] signature = new CiKind[inst.arguments.length];
+                    RiKind[] signature = new RiKind[inst.arguments.length];
                     for (int i = 0; i < signature.length; i++) {
                         signature[i] = inst.arguments[i].kind;
                     }
 
                     CiCallingConvention cc = tasm.frameMap.registerConfig.getCallingConvention(RuntimeCall, signature, tasm.target, false);
                     for (int i = 0; i < inst.arguments.length; i++) {
-                        CiValue argumentLocation = cc.locations[i];
-                        CiValue argumentSourceLocation = operands[inst.arguments[i].index];
+                        RiValue argumentLocation = cc.locations[i];
+                        RiValue argumentSourceLocation = operands[inst.arguments[i].index];
                         if (argumentLocation != argumentSourceLocation) {
                             AMD64Move.move(tasm, masm, argumentLocation, argumentSourceLocation);
                         }
@@ -295,9 +296,9 @@ public class AMD64XirOp extends LIRXirInstruction {
                     RuntimeCallInformation runtimeCallInformation = (RuntimeCallInformation) inst.extra;
                     AMD64Call.directCall(tasm, masm, runtimeCallInformation.target, (runtimeCallInformation.useInfoAfter) ? infoAfter : info);
 
-                    if (inst.result != null && inst.result.kind != CiKind.Illegal && inst.result.kind != CiKind.Void) {
+                    if (inst.result != null && inst.result.kind != RiKind.Illegal && inst.result.kind != RiKind.Void) {
                         CiRegister returnRegister = tasm.frameMap.registerConfig.getReturnRegister(inst.result.kind);
-                        CiValue resultLocation = returnRegister.asValue(inst.result.kind.stackKind());
+                        RiValue resultLocation = returnRegister.asValue(inst.result.kind.stackKind());
                         AMD64Move.move(tasm, masm, operands[inst.result.index], resultLocation);
                     }
                     break;
@@ -313,11 +314,11 @@ public class AMD64XirOp extends LIRXirInstruction {
                 }
                 case DecAndJumpNotZero: {
                     Label label = labels[((XirLabel) inst.extra).index];
-                    CiValue value = operands[inst.x().index];
-                    if (value.kind == CiKind.Long) {
+                    RiValue value = operands[inst.x().index];
+                    if (value.kind == RiKind.Long) {
                         masm.decq(asRegister(value));
                     } else {
-                        assert value.kind == CiKind.Int;
+                        assert value.kind == RiKind.Int;
                         masm.decl(asRegister(value));
                     }
                     masm.jcc(ConditionFlag.notZero, label);
@@ -366,12 +367,12 @@ public class AMD64XirOp extends LIRXirInstruction {
 
                 case Jbset: {
                     Label label = labels[((XirLabel) inst.extra).index];
-                    CiValue pointer = operands[inst.x().index];
-                    CiValue offset = operands[inst.y().index];
-                    CiValue bit = operands[inst.z().index];
+                    RiValue pointer = operands[inst.x().index];
+                    RiValue offset = operands[inst.y().index];
+                    RiValue bit = operands[inst.z().index];
                     assert isConstant(offset) && isConstant(bit);
-                    CiConstant constantOffset = (CiConstant) offset;
-                    CiConstant constantBit = (CiConstant) bit;
+                    RiConstant constantOffset = (RiConstant) offset;
+                    RiConstant constantBit = (RiConstant) bit;
                     CiAddress src = new CiAddress(inst.kind, pointer, constantOffset.asInt());
                     masm.btli(src, constantBit.asInt());
                     masm.jcc(ConditionFlag.aboveEqual, label);
@@ -391,7 +392,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                 }
                 case NullCheck: {
                     tasm.recordImplicitException(masm.codeBuffer.position(), info);
-                    CiValue pointer = operands[inst.x().index];
+                    RiValue pointer = operands[inst.x().index];
                     masm.nullCheck(asRegister(pointer));
                     break;
                 }
@@ -401,7 +402,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     break;
                 }
                 case Pop: {
-                    CiValue result = operands[inst.result.index];
+                    RiValue result = operands[inst.result.index];
                     if (isRegister(result)) {
                         masm.pop(asRegister(result));
                     } else {
@@ -439,7 +440,7 @@ public class AMD64XirOp extends LIRXirInstruction {
     }
 
     private static void emitXirViaLir(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Arithmetic intOp, AMD64Arithmetic longOp, AMD64Arithmetic floatOp,
-                    AMD64Arithmetic doubleOp, CiValue left, CiValue right, CiValue result) {
+                    AMD64Arithmetic doubleOp, RiValue left, RiValue right, RiValue result) {
         AMD64Arithmetic code;
         switch (result.kind) {
             case Int: code = intOp; break;
@@ -457,9 +458,9 @@ public class AMD64XirOp extends LIRXirInstruction {
         }
     }
 
-    private static void emitXirCompare(TargetMethodAssembler tasm, AMD64MacroAssembler masm, XirInstruction inst, ConditionFlag cflag, CiValue[] ops, Label label) {
-        CiValue x = ops[inst.x().index];
-        CiValue y = ops[inst.y().index];
+    private static void emitXirCompare(TargetMethodAssembler tasm, AMD64MacroAssembler masm, XirInstruction inst, ConditionFlag cflag, RiValue[] ops, Label label) {
+        RiValue x = ops[inst.x().index];
+        RiValue y = ops[inst.y().index];
         AMD64Compare code;
         switch (x.kind) {
             case Int: code = AMD64Compare.ICMP; break;
@@ -473,8 +474,8 @@ public class AMD64XirOp extends LIRXirInstruction {
         masm.jcc(cflag, label);
     }
 
-    private static CiValue assureNot64BitConstant(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue value) {
-        if (isConstant(value) && (value.kind == CiKind.Long || value.kind == CiKind.Object)) {
+    private static RiValue assureNot64BitConstant(TargetMethodAssembler tasm, AMD64MacroAssembler masm, RiValue value) {
+        if (isConstant(value) && (value.kind == RiKind.Long || value.kind == RiKind.Object)) {
             CiRegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(value.kind);
             AMD64Move.move(tasm, masm, register, value);
             return register;
@@ -482,7 +483,7 @@ public class AMD64XirOp extends LIRXirInstruction {
         return value;
     }
 
-    private static CiRegisterValue assureInRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue pointer) {
+    private static CiRegisterValue assureInRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, RiValue pointer) {
         if (isConstant(pointer)) {
             CiRegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(pointer.kind);
             AMD64Move.move(tasm, masm, register, pointer);

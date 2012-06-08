@@ -24,9 +24,9 @@ package com.oracle.graal.compiler.tests;
 
 import org.junit.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * Tests the implementation of checkcast, allowing profiling information to

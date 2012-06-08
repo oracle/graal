@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import static com.oracle.max.cri.ci.CiKind.*;
+import static com.oracle.graal.api.meta.RiKind.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -55,10 +55,10 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
         MOV_F2I(Float, Int),
         MOV_D2L(Double, Long);
 
-        public final CiKind from;
-        public final CiKind to;
+        public final RiKind from;
+        public final RiKind to;
 
-        private Op(CiKind from, CiKind to) {
+        private Op(RiKind from, RiKind to) {
             this.from = from;
             this.to = to;
         }
@@ -89,7 +89,7 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (value instanceof ConstantNode) {
-            CiConstant c = ((ConstantNode) value).asConstant();
+            RiConstant c = ((ConstantNode) value).asConstant();
             switch (opcode) {
                 case I2L: return ConstantNode.forLong(c.asInt(), graph());
                 case L2I: return ConstantNode.forInt((int) c.asLong(), graph());

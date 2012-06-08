@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.ri;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 
 /**
  * Implementation of {@link RiCodeInfo} for HotSpot.
@@ -39,7 +39,7 @@ public class HotSpotCodeInfo extends CompilerObject implements RiCodeInfo {
     public final CiTargetMethod targetMethod;
     private HotSpotMethodResolved method;
 
-    public HotSpotCodeInfo(Compiler compiler, CiTargetMethod targetMethod, HotSpotMethodResolved method) {
+    public HotSpotCodeInfo(HotSpotCompiler compiler, CiTargetMethod targetMethod, HotSpotMethodResolved method) {
         super(compiler);
         assert targetMethod != null;
         this.method = method;
@@ -61,11 +61,6 @@ public class HotSpotCodeInfo extends CompilerObject implements RiCodeInfo {
         int size = code == null ? 0 : code.length;
         return "installed code @[" + Long.toHexString(start) + "-" + Long.toHexString(start + size) + "]";
 
-    }
-
-    @Override
-    public CiTargetMethod targetMethod() {
-        return targetMethod;
     }
 
     @Override

@@ -29,7 +29,7 @@ import java.util.*;
 import javax.net.*;
 
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 
@@ -44,9 +44,9 @@ public class CompilationServer implements Runnable {
 
     public interface ConnectionObserver {
 
-        void connectionStarted(Compiler compiler);
+        void connectionStarted(HotSpotCompiler compiler);
 
-        void connectionFinished(Compiler compiler);
+        void connectionFinished(HotSpotCompiler compiler);
     }
 
     private final boolean multiple;
@@ -92,7 +92,7 @@ public class CompilationServer implements Runnable {
                 CompilerToVM toVM = (CompilerToVM) streams.getInvocation().waitForResult(false);
 
                 // return the initialized compiler to the client
-                Compiler compiler = CompilerImpl.initializeServer(toVM);
+                HotSpotCompiler compiler = HotSpotCompilerImpl.initializeServer(toVM);
                 compiler.getCompiler();
                 streams.getInvocation().sendResult(compiler);
 

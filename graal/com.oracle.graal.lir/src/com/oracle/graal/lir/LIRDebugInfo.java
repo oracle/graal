@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.lir;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.graal.api.code.CiValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
@@ -78,9 +79,9 @@ public class LIRDebugInfo {
      */
     private static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
 
-    private void processValues(CiValue[] values, ValueProcedure proc) {
+    private void processValues(RiValue[] values, ValueProcedure proc) {
         for (int i = 0; i < values.length; i++) {
-            CiValue value = values[i];
+            RiValue value = values[i];
             if (value instanceof CiMonitorValue) {
                 CiMonitorValue monitor = (CiMonitorValue) value;
                 if (processed(monitor.owner)) {
@@ -93,7 +94,7 @@ public class LIRDebugInfo {
         }
     }
 
-    private boolean processed(CiValue value) {
+    private boolean processed(RiValue value) {
         if (isIllegal(value)) {
             // Ignore dead local variables.
             return false;
@@ -109,7 +110,7 @@ public class LIRDebugInfo {
     }
 
 
-    public void finish(CiBitMap registerRefMap, CiBitMap frameRefMap, FrameMap frameMap) {
+    public void finish(RiBitMap registerRefMap, RiBitMap frameRefMap, FrameMap frameMap) {
         debugInfo = new CiDebugInfo(topFrame, registerRefMap, frameRefMap);
 
         // Add additional stack slots for outgoing method parameters.

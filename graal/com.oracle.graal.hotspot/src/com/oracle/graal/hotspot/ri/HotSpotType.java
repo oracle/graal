@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.ri;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 
 /**
  * Common interface for all HotSpot RiType-implementations.
@@ -33,7 +33,7 @@ public abstract class HotSpotType extends CompilerObject implements RiType {
     private static final long serialVersionUID = -4252886265301910771L;
     protected String name;
 
-    protected HotSpotType(Compiler compiler) {
+    protected HotSpotType(HotSpotCompiler compiler) {
         super(compiler);
     }
 

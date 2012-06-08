@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiType.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.*;
 
 // TODO (chaeubl) this should be a FloatingNode but Lowering is not possible in that case
 public final class ReadHubNode extends FixedWithNextNode implements Lowerable, Canonicalizable {

@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /* TODO (thomaswue/gdub) For high-level optimization purpose the compare node should be a boolean *value* (it is currently only a helper node)
  * But in the back-end the comparison should not always be materialized (for example in x86 the comparison result will not be in a register but in a flag)
@@ -80,9 +80,9 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
     }
 
 
-    private ValueNode optimizeMaterialize(CiConstant constant, MaterializeNode materializeNode, RiRuntime runtime, Condition cond) {
-        CiConstant trueConstant = materializeNode.trueValue().asConstant();
-        CiConstant falseConstant = materializeNode.falseValue().asConstant();
+    private ValueNode optimizeMaterialize(RiConstant constant, MaterializeNode materializeNode, RiRuntime runtime, Condition cond) {
+        RiConstant trueConstant = materializeNode.trueValue().asConstant();
+        RiConstant falseConstant = materializeNode.falseValue().asConstant();
 
         if (falseConstant != null && trueConstant != null) {
             Boolean trueResult = cond.foldCondition(trueConstant, constant, runtime, unorderedIsTrue());
@@ -109,7 +109,7 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
         return this;
     }
 
-    protected ValueNode optimizeNormalizeCmp(CiConstant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+    protected ValueNode optimizeNormalizeCmp(RiConstant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         throw new GraalInternalError("NormalizeCompareNode connected to %s (%s %s %s)", this, constant, normalizeNode, mirrored);
     }
 

@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.alloc.simple;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.graal.alloc.util.LocationUtil.*;
-
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
 import com.oracle.graal.alloc.util.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiRegister.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
@@ -60,7 +59,7 @@ public class LinearScanAllocator {
         }
 
         @Override
-        protected CiValue scratchRegister(Variable spilled) {
+        protected RiValue scratchRegister(Variable spilled) {
             GraalInternalError.shouldNotReachHere("needs working implementation");
 
             EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = frameMap.registerConfig.getCategorizedAllocatableRegisters();
@@ -106,7 +105,7 @@ public class LinearScanAllocator {
         return frameMap.target.arch.registers.length;
     }
 
-    private boolean isAllocatableRegister(CiValue value) {
+    private boolean isAllocatableRegister(RiValue value) {
         return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
     }
 
@@ -141,8 +140,8 @@ public class LinearScanAllocator {
 
     private MoveResolver moveResolver;
     private LocationMap curLocations;
-    private CiValue[] curInRegisterState;
-    private CiValue[] curOutRegisterState;
+    private RiValue[] curInRegisterState;
+    private RiValue[] curOutRegisterState;
     private BitSet curLiveIn;
     private LIRInstruction curOp;
 
@@ -181,19 +180,19 @@ public class LinearScanAllocator {
     }
 
     private void allocate() {
-        ValueProcedure recordUseProc =    new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return recordUse(value); } };
-        ValueProcedure killNonLiveProc =  new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return killNonLive(value); } };
-        ValueProcedure unblockProc =      new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return unblock(value); } };
-        ValueProcedure killProc =         new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return kill(value); } };
-        ValueProcedure blockProc =        new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return block(value); } };
-        ValueProcedure useProc =          new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
-        ValueProcedure defProc =          new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
+        ValueProcedure recordUseProc =    new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return recordUse(value); } };
+        ValueProcedure killNonLiveProc =  new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return killNonLive(value); } };
+        ValueProcedure unblockProc =      new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return unblock(value); } };
+        ValueProcedure killProc =         new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return kill(value); } };
+        ValueProcedure blockProc =        new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return block(value); } };
+        ValueProcedure useProc =          new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
+        ValueProcedure defProc =          new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
 
         Debug.log("==== start linear scan allocation ====");
         canonicalSpillLocations = new LocationMap(lir.numVariables());
         hintRegisterLocations = new LocationMap(lir.numVariables());
-        curInRegisterState = new CiValue[maxRegisterNum()];
-        curOutRegisterState = new CiValue[maxRegisterNum()];
+        curInRegisterState = new RiValue[maxRegisterNum()];
+        curOutRegisterState = new RiValue[maxRegisterNum()];
         for (Block block : lir.linearScanOrder()) {
             Debug.log("start block %s %s", block, block.getLoop());
 
@@ -273,7 +272,7 @@ public class LinearScanAllocator {
         Debug.log("==== end linear scan allocation ====");
     }
 
-    private CiValue killNonLive(CiValue value) {
+    private RiValue killNonLive(RiValue value) {
         assert isLocation(value);
         if (!curLiveIn.get(asLocation(value).variable.index)) {
             return null;
@@ -286,7 +285,7 @@ public class LinearScanAllocator {
         return value;
     }
 
-    private CiValue unblock(CiValue value) {
+    private RiValue unblock(RiValue value) {
         if (isAllocatableRegister(value)) {
             Debug.log("    unblock register %s", value);
             int regNum = asRegister(value).number;
@@ -296,7 +295,7 @@ public class LinearScanAllocator {
         return value;
     }
 
-    private CiValue kill(CiValue value) {
+    private RiValue kill(RiValue value) {
         if (isVariable(value)) {
             Location location = curLocations.get(asVariable(value));
             Debug.log("    kill location %s", location);
@@ -312,7 +311,7 @@ public class LinearScanAllocator {
     }
 
 
-    private CiValue block(CiValue value) {
+    private RiValue block(RiValue value) {
         if (isAllocatableRegister(value)) {
             Debug.log("    block %s", value);
             int regNum = asRegister(value).number;
@@ -325,14 +324,14 @@ public class LinearScanAllocator {
     private void spillCallerSaveRegisters() {
         Debug.log("    spill caller save registers in curInRegisterState %s", Arrays.toString(curInRegisterState));
         for (CiRegister reg : frameMap.registerConfig.getCallerSaveRegisters()) {
-            CiValue in = curInRegisterState[reg.number];
+            RiValue in = curInRegisterState[reg.number];
             if (in != null && isLocation(in)) {
                 spill(asLocation(in));
             }
         }
     }
 
-    private CiValue recordUse(CiValue value) {
+    private RiValue recordUse(RiValue value) {
         if (isVariable(value)) {
             assert lastUseFor(asVariable(value)) <= curOp.id();
             setLastUseFor(asVariable(value), curOp.id());
@@ -341,7 +340,7 @@ public class LinearScanAllocator {
         return value;
     }
 
-    private CiValue use(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private RiValue use(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
         assert mode == OperandMode.Input || mode == OperandMode.Alive;
         if (isVariable(value)) {
             // State values are not recorded beforehand because it does not matter if they are spilled. Still, it is necessary to record them as used now.
@@ -376,7 +375,7 @@ public class LinearScanAllocator {
 
     private static final EnumSet<OperandFlag> SPILL_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
 
-    private CiValue def(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private RiValue def(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
         assert mode == OperandMode.Temp || mode == OperandMode.Output;
         if (isVariable(value)) {
             Debug.log("    def %s %s", mode, value);
@@ -391,8 +390,8 @@ public class LinearScanAllocator {
 
     private void fixupEvicted() {
         for (int i = 0; i < curInRegisterState.length; i++) {
-            CiValue in = curInRegisterState[i];
-            CiValue out = curOutRegisterState[i];
+            RiValue in = curInRegisterState[i];
+            RiValue out = curOutRegisterState[i];
 
             if (in != null && in != out && isLocation(in) && curLocations.get(asLocation(in).variable) == in) {
                 Debug.log("    %s was evicted by %s, need to allocate new location", in, out);
@@ -409,13 +408,13 @@ public class LinearScanAllocator {
 
     private void phiRegisterHints(Block block) {
         Debug.log("    phi register hints for %s", block);
-        CiValue[] phiDefinitions = ((StandardOp.PhiLabelOp) block.lir.get(0)).getPhiDefinitions();
+        RiValue[] phiDefinitions = ((StandardOp.PhiLabelOp) block.lir.get(0)).getPhiDefinitions();
         for (Block pred : block.getPredecessors()) {
-            CiValue[] phiInputs = ((StandardOp.PhiJumpOp) pred.lir.get(pred.lir.size() - 1)).getPhiInputs();
+            RiValue[] phiInputs = ((StandardOp.PhiJumpOp) pred.lir.get(pred.lir.size() - 1)).getPhiInputs();
 
             for (int i = 0; i < phiDefinitions.length; i++) {
-                CiValue phiDefinition = phiDefinitions[i];
-                CiValue phiInput = phiInputs[i];
+                RiValue phiDefinition = phiDefinitions[i];
+                RiValue phiInput = phiInputs[i];
 
                 if (isVariable(phiDefinition)) {
                     Location hintResult = processRegisterHint(asVariable(phiDefinition), OperandMode.Output, phiInput);
@@ -427,7 +426,7 @@ public class LinearScanAllocator {
         }
     }
 
-    private Location processRegisterHint(Variable variable, OperandMode mode, CiValue registerHint) {
+    private Location processRegisterHint(Variable variable, OperandMode mode, RiValue registerHint) {
         if (registerHint == null) {
             return null;
         }
@@ -446,9 +445,9 @@ public class LinearScanAllocator {
 
     private Location allocateRegister(final Variable variable, final OperandMode mode, EnumSet<OperandFlag> flags) {
         if (flags.contains(OperandFlag.RegisterHint)) {
-            CiValue hintResult = curOp.forEachRegisterHint(variable, mode, new ValueProcedure() {
+            RiValue hintResult = curOp.forEachRegisterHint(variable, mode, new ValueProcedure() {
                 @Override
-                public CiValue doValue(CiValue registerHint) {
+                public RiValue doValue(RiValue registerHint) {
                     return processRegisterHint(variable, mode, registerHint);
                 }
             });
@@ -457,7 +456,7 @@ public class LinearScanAllocator {
             }
         }
 
-        CiValue hintResult = processRegisterHint(variable, mode, hintRegisterLocations.get(variable));
+        RiValue hintResult = processRegisterHint(variable, mode, hintRegisterLocations.get(variable));
         if (hintResult != null) {
             return asLocation(hintResult);
         }
@@ -519,8 +518,8 @@ public class LinearScanAllocator {
     }
 
     private Location spillCandidate(CiRegister reg) {
-        CiValue in = curInRegisterState[reg.number];
-        CiValue out = curOutRegisterState[reg.number];
+        RiValue in = curInRegisterState[reg.number];
+        RiValue out = curOutRegisterState[reg.number];
         if (in == out && in != null && isLocation(in) && lastUseFor(asLocation(in).variable) < curOp.id()) {
             return asLocation(in);
         }
@@ -580,7 +579,7 @@ public class LinearScanAllocator {
         final BitSet liveState = new BitSet();
         curLocations.forEachLocation(new ValueProcedure() {
             @Override
-            public CiValue doValue(CiValue value) {
+            public RiValue doValue(RiValue value) {
                 liveState.set(asLocation(value).variable.index);
 
                 for (Block pred : block.getPredecessors()) {
@@ -604,7 +603,7 @@ public class LinearScanAllocator {
         sb.append("  current lcoations: ");
         curLocations.forEachLocation(new ValueProcedure() {
             @Override
-            public CiValue doValue(CiValue value) {
+            public RiValue doValue(RiValue value) {
                 sb.append(value).append(" ");
                 return value;
             }

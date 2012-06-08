@@ -24,8 +24,7 @@ package com.oracle.graal.nodes.spi.types;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -45,7 +44,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         }
 
         @Override
-        public boolean constantBound(Condition condition, final CiConstant constant) {
+        public boolean constantBound(Condition condition, final RiConstant constant) {
             assert condition == Condition.EQ || condition == Condition.NE;
             if (condition == Condition.EQ) {
                 return store.prove(Equals.class, new BooleanPredicate<Equals>() {
@@ -150,9 +149,9 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     private static final class Equals extends Info {
-        public final CiConstant constant;
+        public final RiConstant constant;
 
-        public Equals(CiConstant constant) {
+        public Equals(RiConstant constant) {
             this.constant = constant;
         }
 
@@ -163,9 +162,9 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     private static final class NotEquals extends Info {
-        public final CiConstant constant;
+        public final RiConstant constant;
 
-        public NotEquals(CiConstant constant) {
+        public NotEquals(RiConstant constant) {
             this.constant = constant;
         }
 
@@ -291,7 +290,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     @Override
-    public void constantBound(Condition condition, CiConstant constant) {
+    public void constantBound(Condition condition, RiConstant constant) {
         assert condition == Condition.EQ || condition == Condition.NE;
 
         if (condition == Condition.EQ) {
@@ -358,7 +357,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
                 if (typeInfo.type == type && index == 0) {
                     if (index == 0) {
                         if (nonNull) {
-                            constantBound(Condition.NE, CiConstant.NULL_OBJECT);
+                            constantBound(Condition.NE, RiConstant.NULL_OBJECT);
                         }
                         return;
                     } else {
@@ -370,7 +369,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         infos.add(new ObjectTypeDeclared(type));
         updateDependency();
         if (nonNull) {
-            constantBound(Condition.NE, CiConstant.NULL_OBJECT);
+            constantBound(Condition.NE, RiConstant.NULL_OBJECT);
         }
     }
 
@@ -385,7 +384,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
                 ObjectTypeExact typeInfo = (ObjectTypeExact) info;
                 if (typeInfo.type == type && index == 0) {
                     if (index == 0) {
-                        constantBound(Condition.NE, CiConstant.NULL_OBJECT);
+                        constantBound(Condition.NE, RiConstant.NULL_OBJECT);
                         return;
                     } else {
                         iter.remove();
@@ -395,7 +394,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         }
         infos.add(new ObjectTypeExact(type));
         updateDependency();
-        constantBound(Condition.NE, CiConstant.NULL_OBJECT);
+        constantBound(Condition.NE, RiConstant.NULL_OBJECT);
     }
 
     @Override

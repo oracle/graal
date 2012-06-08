@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -34,21 +33,21 @@ import com.oracle.graal.nodes.type.*;
 public final class UnboxNode extends FixedWithNextNode implements Node.IterableNodeType, Canonicalizable {
 
     @Input private ValueNode source;
-    private CiKind destinationKind;
+    private RiKind destinationKind;
 
-    public UnboxNode(CiKind kind, ValueNode source) {
+    public UnboxNode(RiKind kind, ValueNode source) {
         super(StampFactory.forKind(kind));
         this.source = source;
         this.destinationKind = kind;
-        assert kind != CiKind.Object : "can only unbox to primitive";
-        assert source.kind() == CiKind.Object : "can only unbox objects";
+        assert kind != RiKind.Object : "can only unbox to primitive";
+        assert source.kind() == RiKind.Object : "can only unbox objects";
     }
 
     public ValueNode source() {
         return source;
     }
 
-    public CiKind destinationKind() {
+    public RiKind destinationKind() {
         return destinationKind;
     }
 
@@ -62,7 +61,7 @@ public final class UnboxNode extends FixedWithNextNode implements Node.IterableN
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (source.isConstant()) {
-            CiConstant constant = source.asConstant();
+            RiConstant constant = source.asConstant();
             Object o = constant.asObject();
             if (o != null) {
                 switch (destinationKind) {

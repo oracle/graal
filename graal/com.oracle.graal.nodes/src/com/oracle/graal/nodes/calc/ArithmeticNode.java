@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -39,7 +39,7 @@ public abstract class ArithmeticNode extends BinaryNode {
      * @param y the second input instruction
      * @param isStrictFP indicates this operation has strict rounding semantics
      */
-    public ArithmeticNode(CiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+    public ArithmeticNode(RiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(kind, x, y);
         this.isStrictFP = isStrictFP;
     }

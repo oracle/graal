@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot;
 
 import java.io.*;
 
-import com.oracle.max.cri.ci.CiKind.FormatWithToString;
+import com.oracle.graal.api.meta.RiKind.*;
 
 
 /**
@@ -32,9 +32,9 @@ import com.oracle.max.cri.ci.CiKind.FormatWithToString;
  */
 public abstract class CompilerObject implements Serializable, FormatWithToString {
     private static final long serialVersionUID = -4551670987101214877L;
-    protected final Compiler compiler;
+    protected final HotSpotCompiler compiler;
 
-    protected CompilerObject(Compiler compiler) {
+    protected CompilerObject(HotSpotCompiler compiler) {
         this.compiler = compiler;
     }
 

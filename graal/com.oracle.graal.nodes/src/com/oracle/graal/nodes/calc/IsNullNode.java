@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * An IsNullNode will be true if the supplied value is null, and false if it is non-null.
@@ -45,7 +45,7 @@ public final class IsNullNode extends BooleanNode implements Canonicalizable, LI
      */
     public IsNullNode(ValueNode object) {
         super(StampFactory.condition());
-        assert object.kind() == CiKind.Object : object.kind();
+        assert object.kind() == RiKind.Object : object.kind();
         this.object = object;
     }
 
@@ -63,9 +63,9 @@ public final class IsNullNode extends BooleanNode implements Canonicalizable, LI
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        CiConstant constant = object().asConstant();
+        RiConstant constant = object().asConstant();
         if (constant != null) {
-            assert constant.kind == CiKind.Object;
+            assert constant.kind == RiKind.Object;
             return ConstantNode.forBoolean(constant.isNull(), graph());
         }
         if (object.objectStamp().nonNull()) {

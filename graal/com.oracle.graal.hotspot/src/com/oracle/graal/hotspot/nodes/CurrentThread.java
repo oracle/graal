@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -40,7 +40,7 @@ public final class CurrentThread extends FloatingNode implements LIRLowerable {
 
     @Override
     public void generate(LIRGeneratorTool generator) {
-        generator.setResult(this, generator.emitLoad(new CiAddress(CiKind.Object, AMD64.r15.asValue(generator.target().wordKind), threadObjectOffset), false));
+        generator.setResult(this, generator.emitLoad(new CiAddress(RiKind.Object, AMD64.r15.asValue(generator.target().wordKind), threadObjectOffset), false));
     }
 
     @SuppressWarnings("unused")

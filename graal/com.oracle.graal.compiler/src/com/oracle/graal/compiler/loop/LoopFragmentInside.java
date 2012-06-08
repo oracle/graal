@@ -69,6 +69,7 @@ public class LoopFragmentInside extends LoopFragment {
         return (LoopFragmentInside) super.original();
     }
 
+    @SuppressWarnings("unused")
     public void appendInside(LoopEx loop) {
         // TODO (gd)
     }

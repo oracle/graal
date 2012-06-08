@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * A guard is a node that deoptimizes based on a conditional expression. Guards are not attached to a certain frame
@@ -45,7 +46,7 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
     @Input private BooleanNode condition;
     @Input(notDataflow = true) private FixedNode anchor;
     private final RiDeoptReason reason;
-    private final RiDeoptAction action;
+    private final CiDeoptAction action;
     private boolean negated;
     private final long leafGraphId;
 
@@ -78,11 +79,11 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         return reason;
     }
 
-    public RiDeoptAction action() {
+    public CiDeoptAction action() {
         return action;
     }
 
-    public GuardNode(BooleanNode condition, FixedNode anchor, RiDeoptReason reason, RiDeoptAction action, boolean negated, long leafGraphId) {
+    public GuardNode(BooleanNode condition, FixedNode anchor, RiDeoptReason reason, CiDeoptAction action, boolean negated, long leafGraphId) {
         super(StampFactory.dependency());
         this.condition = condition;
         this.anchor = anchor;

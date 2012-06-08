@@ -27,14 +27,14 @@ import static com.oracle.max.asm.target.amd64.AMD64.*;
 import java.util.*;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiCallingConvention.Type;
-import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiCallingConvention.*;
+import com.oracle.graal.api.code.CiRegister.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 
-public class HotSpotRegisterConfig implements RiRegisterConfig {
+public class HotSpotRegisterConfig implements CiRegisterConfig {
 
     // be careful - the contents of this array are duplicated in graal_CodeInstaller.cpp
     private final CiRegister[] allocatable = {
@@ -45,7 +45,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
 
     private final EnumMap<RegisterFlag, CiRegister[]> categorized = CiRegister.categorize(allocatable);
 
-    private final RiRegisterAttributes[] attributesMap;
+    private final CiRegisterAttributes[] attributesMap;
 
     @Override
     public CiRegister[] getAllocatableRegisters() {
@@ -58,7 +58,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
     }
 
     @Override
-    public RiRegisterAttributes[] getAttributesMap() {
+    public CiRegisterAttributes[] getAttributesMap() {
         return attributesMap;
     }
 
@@ -92,7 +92,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
             csl = new CiCalleeSaveLayout(0, size, 8, regs);
         }
 
-        attributesMap = RiRegisterAttributes.createMap(this, AMD64.allRegisters);
+        attributesMap = CiRegisterAttributes.createMap(this, AMD64.allRegisters);
         allParameterRegisters = Arrays.copyOf(generalParameterRegisters, generalParameterRegisters.length + xmmParameterRegisters.length);
         System.arraycopy(xmmParameterRegisters, 0, allParameterRegisters, generalParameterRegisters.length, xmmParameterRegisters.length);
     }
@@ -108,7 +108,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
     }
 
     @Override
-    public CiCallingConvention getCallingConvention(Type type, CiKind[] parameters, CiTarget target, boolean stackOnly) {
+    public CiCallingConvention getCallingConvention(Type type, RiKind[] parameters, CiTarget target, boolean stackOnly) {
         if (type == Type.NativeCall) {
             throw new UnsupportedOperationException();
         }
@@ -119,15 +119,15 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
         return allParameterRegisters;
     }
 
-    private CiCallingConvention callingConvention(CiKind[] types, Type type, CiTarget target, boolean stackOnly) {
-        CiValue[] locations = new CiValue[types.length];
+    private CiCallingConvention callingConvention(RiKind[] types, Type type, CiTarget target, boolean stackOnly) {
+        RiValue[] locations = new RiValue[types.length];
 
         int currentGeneral = 0;
         int currentXMM = 0;
         int currentStackOffset = 0;
 
         for (int i = 0; i < types.length; i++) {
-            final CiKind kind = types[i];
+            final RiKind kind = types[i];
 
             switch (kind) {
                 case Byte:
@@ -163,7 +163,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
     }
 
     @Override
-    public CiRegister getReturnRegister(CiKind kind) {
+    public CiRegister getReturnRegister(RiKind kind) {
         switch (kind) {
             case Boolean:
             case Byte:

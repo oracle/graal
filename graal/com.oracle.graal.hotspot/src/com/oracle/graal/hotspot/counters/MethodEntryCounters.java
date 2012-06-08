@@ -22,24 +22,24 @@
  */
 package com.oracle.graal.hotspot.counters;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.graal.api.code.CiValueUtil.*;
 
 import java.util.*;
 
 import sun.misc.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 
 
@@ -69,8 +69,8 @@ public class MethodEntryCounters {
 
         protected final Counter counter;
 
-        protected AMD64MethodEntryOp(Counter counter, CiValue counterArr, CiValue callerPc) {
-            super("ENTRY_COUNTER", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, new CiValue[] {counterArr, callerPc});
+        protected AMD64MethodEntryOp(Counter counter, RiValue counterArr, RiValue callerPc) {
+            super("ENTRY_COUNTER", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, new RiValue[] {counterArr, callerPc});
             this.counter = counter;
         }
 
@@ -78,19 +78,19 @@ public class MethodEntryCounters {
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             int start = masm.codeBuffer.position();
 
-            CiValue counterArr = temp(0);
-            CiValue callerPc = temp(1);
+            RiValue counterArr = temp(0);
+            RiValue callerPc = temp(1);
 
             int off = Unsafe.getUnsafe().arrayBaseOffset(long[].class);
             int scale = Unsafe.getUnsafe().arrayIndexScale(long[].class);
 
-            AMD64Move.move(tasm, masm, counterArr, CiConstant.forObject(counter.counts));
-            AMD64Move.load(tasm, masm, callerPc, new CiAddress(CiKind.Long, AMD64.rbp.asValue(CiKind.Long), 8), null);
+            AMD64Move.move(tasm, masm, counterArr, RiConstant.forObject(counter.counts));
+            AMD64Move.load(tasm, masm, callerPc, new CiAddress(RiKind.Long, AMD64.rbp.asValue(RiKind.Long), 8), null);
 
             Label done = new Label();
             for (int i = 0; i < counter.counts.length - 2; i += 2) {
-                CiAddress counterPcAddr = new CiAddress(CiKind.Long, counterArr, i * scale + off);
-                CiAddress counterValueAddr = new CiAddress(CiKind.Long, counterArr, (i + 1) * scale + off);
+                CiAddress counterPcAddr = new CiAddress(RiKind.Long, counterArr, i * scale + off);
+                CiAddress counterValueAddr = new CiAddress(RiKind.Long, counterArr, (i + 1) * scale + off);
 
                 Label skipClaim = new Label();
                 masm.cmpq(counterPcAddr, 0);
@@ -106,7 +106,7 @@ public class MethodEntryCounters {
                 masm.bind(skipInc);
             }
 
-            CiAddress counterValueAddr = new CiAddress(CiKind.Long, counterArr, (counter.counts.length - 1) * scale + off);
+            CiAddress counterValueAddr = new CiAddress(RiKind.Long, counterArr, (counter.counts.length - 1) * scale + off);
             masm.addq(counterValueAddr, 1);
             masm.bind(done);
 
@@ -131,7 +131,7 @@ public class MethodEntryCounters {
         if (!GraalOptions.MethodEntryCounters) {
             return;
         }
-        gen.append(new AMD64MethodEntryOp(new Counter(method), gen.newVariable(CiKind.Long), gen.newVariable(CiKind.Long)));
+        gen.append(new AMD64MethodEntryOp(new Counter(method), gen.newVariable(RiKind.Long), gen.newVariable(RiKind.Long)));
     }
 
     public static int getCodeSize() {
@@ -142,7 +142,7 @@ public class MethodEntryCounters {
     }
 
 
-    public static void printCounters(Compiler compiler) {
+    public static void printCounters(HotSpotCompiler compiler) {
         if (!GraalOptions.MethodEntryCounters) {
             return;
         }

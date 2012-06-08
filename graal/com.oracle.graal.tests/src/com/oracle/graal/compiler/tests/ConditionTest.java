@@ -28,7 +28,7 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.calc.*;
 
 
@@ -42,8 +42,8 @@ public class ConditionTest {
                 boolean implies = c1.implies(c2);
                 if (implies) {
                     for (int i = 0; i < 1000; i++) {
-                        CiConstant a = CiConstant.forInt(rand.nextInt());
-                        CiConstant b = CiConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
+                        RiConstant a = RiConstant.forInt(rand.nextInt());
+                        RiConstant b = RiConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
                         boolean result1 = c1.foldCondition(a, b, null, false);
                         boolean result2 = c2.foldCondition(a, b, null, false);
                         if (result1 && implies) {
@@ -64,8 +64,8 @@ public class ConditionTest {
                 assertTrue(join == c2.join(c1));
                 if (join != null) {
                     for (int i = 0; i < 1000; i++) {
-                        CiConstant a = CiConstant.forInt(rand.nextInt());
-                        CiConstant b = CiConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
+                        RiConstant a = RiConstant.forInt(rand.nextInt());
+                        RiConstant b = RiConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
                         boolean result1 = c1.foldCondition(a, b, null, false);
                         boolean result2 = c2.foldCondition(a, b, null, false);
                         boolean resultJoin = join.foldCondition(a, b, null, false);
@@ -87,8 +87,8 @@ public class ConditionTest {
                 assertTrue(meet == c2.meet(c1));
                 if (meet != null) {
                     for (int i = 0; i < 1000; i++) {
-                        CiConstant a = CiConstant.forInt(rand.nextInt());
-                        CiConstant b = CiConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
+                        RiConstant a = RiConstant.forInt(rand.nextInt());
+                        RiConstant b = RiConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
                         boolean result1 = c1.foldCondition(a, b, null, false);
                         boolean result2 = c2.foldCondition(a, b, null, false);
                         boolean resultMeet = meet.foldCondition(a, b, null, false);

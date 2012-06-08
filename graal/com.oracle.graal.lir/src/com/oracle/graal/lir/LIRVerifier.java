@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.lir;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.graal.api.code.CiValueUtil.*;
 import static com.oracle.graal.lir.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.cfg.*;
@@ -53,12 +54,12 @@ public final class LIRVerifier {
         return frameMap.target.arch.registers.length;
     }
 
-    private boolean isAllocatableRegister(CiValue value) {
+    private boolean isAllocatableRegister(RiValue value) {
         return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
     }
 
     public static boolean verify(final LIRInstruction op) {
-        ValueProcedure allowedProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return allowed(op, value, mode, flags); } };
+        ValueProcedure allowedProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return allowed(op, value, mode, flags); } };
 
         op.forEachInput(allowedProc);
         op.forEachAlive(allowedProc);
@@ -86,21 +87,21 @@ public final class LIRVerifier {
     }
 
     private BitSet curVariablesLive;
-    private CiValue[] curRegistersLive;
+    private RiValue[] curRegistersLive;
 
     private Block curBlock;
     private Object curInstruction;
     private BitSet curRegistersDefined;
 
     private void verify() {
-        ValueProcedure useProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
-        ValueProcedure defProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
+        ValueProcedure useProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
+        ValueProcedure defProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
 
         curRegistersDefined = new BitSet();
         for (Block block : lir.linearScanOrder()) {
             curBlock = block;
             curVariablesLive = new BitSet();
-            curRegistersLive = new CiValue[maxRegisterNum()];
+            curRegistersLive = new RiValue[maxRegisterNum()];
 
             if (block.getDominator() != null) {
                 curVariablesLive.or(liveOutFor(block.getDominator()));
@@ -109,7 +110,7 @@ public final class LIRVerifier {
             assert block.lir.get(0) instanceof StandardOp.LabelOp : "block must start with label";
             if (block.numberOfPreds() > 1) {
                 assert block.lir.get(0) instanceof StandardOp.PhiLabelOp : "phi mapping required for multiple predecessors";
-                CiValue[] phiDefinitions = ((StandardOp.PhiLabelOp) block.lir.get(0)).getPhiDefinitions();
+                RiValue[] phiDefinitions = ((StandardOp.PhiLabelOp) block.lir.get(0)).getPhiDefinitions();
                 if (!beforeRegisterAllocation) {
                     assert phiDefinitions.length == 0;
                 }
@@ -117,7 +118,7 @@ public final class LIRVerifier {
                     assert pred.numberOfSux() == 1;
                     LIRInstruction last = pred.lir.get(pred.lir.size() - 1);
                     assert last instanceof StandardOp.PhiJumpOp : "phi mapping required for multiple successors";
-                    CiValue[] phiUses = ((StandardOp.PhiJumpOp) last).getPhiInputs();
+                    RiValue[] phiUses = ((StandardOp.PhiJumpOp) last).getPhiInputs();
                     if (!beforeRegisterAllocation) {
                         assert phiUses.length == 0;
                     }
@@ -151,7 +152,7 @@ public final class LIRVerifier {
         }
     }
 
-    private CiValue use(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private RiValue use(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
         allowed(curInstruction, value, mode, flags);
 
         if (isVariable(value)) {
@@ -184,7 +185,7 @@ public final class LIRVerifier {
         return value;
     }
 
-    private CiValue def(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private RiValue def(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
         allowed(curInstruction, value, mode, flags);
 
         if (isVariable(value)) {
@@ -225,7 +226,7 @@ public final class LIRVerifier {
         return value;
     }
 
-    private static CiValue allowed(Object op, CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private static RiValue allowed(Object op, RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
         if ((isVariable(value)  && flags.contains(OperandFlag.Register)) ||
             (isRegister(value)  && flags.contains(OperandFlag.Register)) ||
             (isStackSlot(value) && flags.contains(OperandFlag.Stack)) ||

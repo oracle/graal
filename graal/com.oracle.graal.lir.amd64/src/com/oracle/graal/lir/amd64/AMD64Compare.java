@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.graal.api.code.CiValueUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -36,14 +36,14 @@ public enum AMD64Compare {
     ICMP, LCMP, ACMP, FCMP, DCMP;
 
     public static class CompareOp extends AMD64LIRInstruction {
-        public CompareOp(AMD64Compare opcode, CiValue x, CiValue y) {
-            super(opcode, LIRInstruction.NO_OPERANDS, null, new CiValue[] {x, y}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public CompareOp(AMD64Compare opcode, RiValue x, RiValue y) {
+            super(opcode, LIRInstruction.NO_OPERANDS, null, new RiValue[] {x, y}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            CiValue x = input(0);
-            CiValue y = input(1);
+            RiValue x = input(0);
+            RiValue y = input(1);
             emit(tasm, masm, (AMD64Compare) code, x, y);
         }
 
@@ -59,20 +59,20 @@ public enum AMD64Compare {
 
         @Override
         protected void verify() {
-            CiValue x = input(0);
-            CiValue y = input(1);
+            RiValue x = input(0);
+            RiValue y = input(1);
 
             super.verify();
-            assert (name().startsWith("I") && x.kind == CiKind.Int && y.kind.stackKind() == CiKind.Int)
-                || (name().startsWith("I") && x.kind == CiKind.Jsr && y.kind == CiKind.Jsr)
-                || (name().startsWith("L") && x.kind == CiKind.Long && y.kind == CiKind.Long)
-                || (name().startsWith("A") && x.kind == CiKind.Object && y.kind == CiKind.Object)
-                || (name().startsWith("F") && x.kind == CiKind.Float && y.kind == CiKind.Float)
-                || (name().startsWith("D") && x.kind == CiKind.Double && y.kind == CiKind.Double);
+            assert (name().startsWith("I") && x.kind == RiKind.Int && y.kind.stackKind() == RiKind.Int)
+                || (name().startsWith("I") && x.kind == RiKind.Jsr && y.kind == RiKind.Jsr)
+                || (name().startsWith("L") && x.kind == RiKind.Long && y.kind == RiKind.Long)
+                || (name().startsWith("A") && x.kind == RiKind.Object && y.kind == RiKind.Object)
+                || (name().startsWith("F") && x.kind == RiKind.Float && y.kind == RiKind.Float)
+                || (name().startsWith("D") && x.kind == RiKind.Double && y.kind == RiKind.Double);
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Compare opcode, CiValue x, CiValue y) {
+    public static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Compare opcode, RiValue x, RiValue y) {
         if (isRegister(y)) {
             switch (opcode) {
                 case ICMP: masm.cmpl(asIntReg(x), asIntReg(y)); break;
@@ -87,7 +87,7 @@ public enum AMD64Compare {
                 case ICMP: masm.cmpl(asIntReg(x), tasm.asIntConst(y)); break;
                 case LCMP: masm.cmpq(asLongReg(x), tasm.asIntConst(y)); break;
                 case ACMP:
-                    if (((CiConstant) y).isNull()) {
+                    if (((RiConstant) y).isNull()) {
                         masm.cmpq(asObjectReg(x), 0); break;
                     } else {
                         throw GraalInternalError.shouldNotReachHere("Only null object constants are allowed in comparisons");

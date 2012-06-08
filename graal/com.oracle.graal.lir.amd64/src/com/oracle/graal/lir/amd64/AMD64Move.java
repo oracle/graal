@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.graal.api.code.CiValueUtil.*;
 import static java.lang.Double.*;
 import static java.lang.Float.*;
 
@@ -30,7 +30,8 @@ import java.util.*;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.*;
@@ -39,8 +40,8 @@ import com.oracle.graal.lir.asm.*;
 public class AMD64Move {
 
     public static class SpillMoveOp extends AMD64LIRInstruction implements MoveOp {
-        public SpillMoveOp(CiValue result, CiValue input) {
-            super("MOVE", new CiValue[] {result}, null, new CiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public SpillMoveOp(RiValue result, RiValue input) {
+            super("MOVE", new RiValue[] {result}, null, new RiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
@@ -49,11 +50,11 @@ public class AMD64Move {
         }
 
         @Override
-        public CiValue getInput() {
+        public RiValue getInput() {
             return input(0);
         }
         @Override
-        public CiValue getResult() {
+        public RiValue getResult() {
             return output(0);
         }
 
@@ -70,8 +71,8 @@ public class AMD64Move {
 
 
     public static class MoveToRegOp extends AMD64LIRInstruction implements MoveOp {
-        public MoveToRegOp(CiValue result, CiValue input) {
-            super("MOVE", new CiValue[] {result}, null, new CiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public MoveToRegOp(RiValue result, RiValue input) {
+            super("MOVE", new RiValue[] {result}, null, new RiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
@@ -80,11 +81,11 @@ public class AMD64Move {
         }
 
         @Override
-        public CiValue getInput() {
+        public RiValue getInput() {
             return input(0);
         }
         @Override
-        public CiValue getResult() {
+        public RiValue getResult() {
             return output(0);
         }
 
@@ -101,8 +102,8 @@ public class AMD64Move {
 
 
     public static class MoveFromRegOp extends AMD64LIRInstruction implements MoveOp {
-        public MoveFromRegOp(CiValue result, CiValue input) {
-            super("MOVE", new CiValue[] {result}, null, new CiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public MoveFromRegOp(RiValue result, RiValue input) {
+            super("MOVE", new RiValue[] {result}, null, new RiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
@@ -111,11 +112,11 @@ public class AMD64Move {
         }
 
         @Override
-        public CiValue getInput() {
+        public RiValue getInput() {
             return input(0);
         }
         @Override
-        public CiValue getResult() {
+        public RiValue getResult() {
             return output(0);
         }
 
@@ -132,8 +133,8 @@ public class AMD64Move {
 
 
     public static class LoadOp extends AMD64LIRInstruction {
-        public LoadOp(CiValue result, CiValue address, LIRDebugInfo info) {
-            super("LOAD", new CiValue[] {result}, info, new CiValue[] {address}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public LoadOp(RiValue result, RiValue address, LIRDebugInfo info) {
+            super("LOAD", new RiValue[] {result}, info, new RiValue[] {address}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
@@ -154,8 +155,8 @@ public class AMD64Move {
 
 
     public static class StoreOp extends AMD64LIRInstruction {
-        public StoreOp(CiValue address, CiValue input, LIRDebugInfo info) {
-            super("STORE", LIRInstruction.NO_OPERANDS, info, new CiValue[] {address, input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public StoreOp(RiValue address, RiValue input, LIRDebugInfo info) {
+            super("STORE", LIRInstruction.NO_OPERANDS, info, new RiValue[] {address, input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
@@ -176,8 +177,8 @@ public class AMD64Move {
 
 
     public static class LeaOp extends AMD64LIRInstruction {
-        public LeaOp(CiValue result, CiValue address) {
-            super("LEA", new CiValue[] {result}, null, new CiValue[] {address}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public LeaOp(RiValue result, RiValue address) {
+            super("LEA", new RiValue[] {result}, null, new RiValue[] {address}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
@@ -219,7 +220,7 @@ public class AMD64Move {
 
     public static class NullCheckOp extends AMD64LIRInstruction {
         public NullCheckOp(Variable input, LIRDebugInfo info) {
-            super("NULL_CHECK", LIRInstruction.NO_OPERANDS, info, new CiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+            super("NULL_CHECK", LIRInstruction.NO_OPERANDS, info, new RiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
@@ -239,8 +240,8 @@ public class AMD64Move {
 
 
     public static class CompareAndSwapOp extends AMD64LIRInstruction {
-        public CompareAndSwapOp(CiValue result, CiAddress address, CiValue cmpValue, CiValue newValue) {
-            super("CAS", new CiValue[] {result}, null, new CiValue[] {address, cmpValue, newValue}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public CompareAndSwapOp(RiValue result, CiAddress address, RiValue cmpValue, RiValue newValue) {
+            super("CAS", new RiValue[] {result}, null, new RiValue[] {address, cmpValue, newValue}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
@@ -264,7 +265,7 @@ public class AMD64Move {
     }
 
 
-    public static void move(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiValue input) {
+    public static void move(TargetMethodAssembler tasm, AMD64MacroAssembler masm, RiValue result, RiValue input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
                 reg2reg(masm, result, input);
@@ -281,9 +282,9 @@ public class AMD64Move {
             }
         } else if (isConstant(input)) {
             if (isRegister(result)) {
-                const2reg(tasm, masm, result, (CiConstant) input);
+                const2reg(tasm, masm, result, (RiConstant) input);
             } else if (isStackSlot(result)) {
-                const2stack(tasm, masm, result, (CiConstant) input);
+                const2stack(tasm, masm, result, (RiConstant) input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -292,7 +293,7 @@ public class AMD64Move {
         }
     }
 
-    private static void reg2reg(AMD64MacroAssembler masm, CiValue result, CiValue input) {
+    private static void reg2reg(AMD64MacroAssembler masm, RiValue result, RiValue input) {
         if (input.equals(result)) {
             return;
         }
@@ -307,7 +308,7 @@ public class AMD64Move {
         }
     }
 
-    private static void reg2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiValue input) {
+    private static void reg2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, RiValue result, RiValue input) {
         switch (input.kind) {
             case Jsr:
             case Int:    masm.movl(tasm.asAddress(result),   asRegister(input)); break;
@@ -319,7 +320,7 @@ public class AMD64Move {
         }
     }
 
-    private static void stack2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiValue input) {
+    private static void stack2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, RiValue result, RiValue input) {
         switch (input.kind) {
             case Jsr:
             case Int:    masm.movl(asRegister(result),    tasm.asAddress(input)); break;
@@ -331,7 +332,7 @@ public class AMD64Move {
         }
     }
 
-    private static void const2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiConstant input) {
+    private static void const2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, RiValue result, RiConstant input) {
         // Note: we use the kind of the input operand (and not the kind of the result operand) because they don't match
         // in all cases. For example, an object constant can be loaded to a long register when unsafe casts occurred (e.g.,
         // for a write barrier where arithmetic operations are then performed on the pointer).
@@ -383,7 +384,7 @@ public class AMD64Move {
         }
     }
 
-    private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiConstant input) {
+    private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, RiValue result, RiConstant input) {
         switch (input.kind.stackKind()) {
             case Jsr:
             case Int:    masm.movl(tasm.asAddress(result), input.asInt()); break;
@@ -403,7 +404,7 @@ public class AMD64Move {
     }
 
 
-    public static void load(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiAddress loadAddr, LIRDebugInfo info) {
+    public static void load(TargetMethodAssembler tasm, AMD64MacroAssembler masm, RiValue result, CiAddress loadAddr, LIRDebugInfo info) {
         if (info != null) {
             tasm.recordImplicitException(masm.codeBuffer.position(), info);
         }
@@ -421,7 +422,7 @@ public class AMD64Move {
         }
     }
 
-    public static void store(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiAddress storeAddr, CiValue input, LIRDebugInfo info) {
+    public static void store(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiAddress storeAddr, RiValue input, LIRDebugInfo info) {
         if (info != null) {
             tasm.recordImplicitException(masm.codeBuffer.position(), info);
         }
@@ -440,7 +441,7 @@ public class AMD64Move {
                 default:     throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(input)) {
-            CiConstant c = (CiConstant) input;
+            RiConstant c = (RiConstant) input;
             switch (storeAddr.kind) {
                 case Boolean:
                 case Byte:   masm.movb(storeAddr, c.asInt() & 0xFF); break;
@@ -473,7 +474,7 @@ public class AMD64Move {
         }
     }
 
-    protected static void compareAndSwap(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiAddress address, CiValue cmpValue, CiValue newValue) {
+    protected static void compareAndSwap(TargetMethodAssembler tasm, AMD64MacroAssembler masm, RiValue result, CiAddress address, RiValue cmpValue, RiValue newValue) {
         assert asRegister(cmpValue) == AMD64.rax && asRegister(result) == AMD64.rax;
 
         if (tasm.target.isMP) {

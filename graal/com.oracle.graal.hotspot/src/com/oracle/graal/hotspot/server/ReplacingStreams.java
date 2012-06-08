@@ -26,7 +26,7 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 
 public class ReplacingStreams {
@@ -46,7 +46,7 @@ public class ReplacingStreams {
         input = new ReplacingInputStream(new BufferedInputStream(inputStream));
         invocation = new InvocationSocket(output, input);
 
-        addStaticObject(CiValue.IllegalValue);
+        addStaticObject(RiValue.IllegalValue);
         addStaticObject(HotSpotProxy.DUMMY_CONSTANT_OBJ);
     }
 
@@ -165,9 +165,9 @@ public class ReplacingStreams {
             }
 
             // is the object a constant of object type?
-            if (obj.getClass() == CiConstant.class) {
-                CiConstant constant = (CiConstant) obj;
-                if (constant.kind != CiKind.Object) {
+            if (obj.getClass() == RiConstant.class) {
+                RiConstant constant = (RiConstant) obj;
+                if (constant.kind != RiKind.Object) {
                     return obj;
                 }
                 Object contents = constant.asObject();
@@ -180,12 +180,12 @@ public class ReplacingStreams {
                 }
                 placeholder = objectMap.get(contents);
                 if (placeholder != null) {
-                    return CiConstant.forObject(placeholder);
+                    return RiConstant.forObject(placeholder);
                 }
                 if (contents instanceof Remote) {
-                    return CiConstant.forObject(createRemoteCallPlaceholder(contents));
+                    return RiConstant.forObject(createRemoteCallPlaceholder(contents));
                 }
-                return CiConstant.forObject(createDummyPlaceholder(contents));
+                return RiConstant.forObject(createDummyPlaceholder(contents));
             }
             return obj;
         }

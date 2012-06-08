@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiTargetMethod.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.ri.*;
 
@@ -42,7 +42,7 @@ public final class HotSpotTargetMethod extends CompilerObject {
     public final Site[] sites;
     public final ExceptionHandler[] exceptionHandlers;
 
-    public HotSpotTargetMethod(Compiler compiler, HotSpotMethodResolved method, CiTargetMethod targetMethod) {
+    public HotSpotTargetMethod(HotSpotCompiler compiler, HotSpotMethodResolved method, CiTargetMethod targetMethod) {
         super(compiler);
         this.method = method;
         this.targetMethod = targetMethod;
@@ -56,7 +56,7 @@ public final class HotSpotTargetMethod extends CompilerObject {
         }
     }
 
-    private HotSpotTargetMethod(Compiler compiler, CiTargetMethod targetMethod, String name) {
+    private HotSpotTargetMethod(HotSpotCompiler compiler, CiTargetMethod targetMethod, String name) {
         super(compiler);
         this.method = null;
         this.targetMethod = targetMethod;

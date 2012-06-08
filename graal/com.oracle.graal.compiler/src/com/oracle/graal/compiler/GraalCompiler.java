@@ -27,6 +27,8 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.alloc.simple.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.phases.*;
@@ -40,8 +42,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 
 public class GraalCompiler {
@@ -54,7 +54,7 @@ public class GraalCompiler {
     /**
      * The runtime that this compiler has been configured for.
      */
-    public final GraalRuntime runtime;
+    public final ExtendedRiRuntime runtime;
 
     /**
      * The XIR generator that lowers Java operations to machine operations.
@@ -66,7 +66,7 @@ public class GraalCompiler {
      */
     public final Backend backend;
 
-    public GraalCompiler(GraalRuntime runtime, CiTarget target, Backend backend, RiXirGenerator xirGen) {
+    public GraalCompiler(ExtendedRiRuntime runtime, CiTarget target, Backend backend, RiXirGenerator xirGen) {
         this.runtime = runtime;
         this.target = target;
         this.xir = xirGen;

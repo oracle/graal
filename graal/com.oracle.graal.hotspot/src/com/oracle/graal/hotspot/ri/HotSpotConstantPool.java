@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.ri;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 
 /**
  * Implementation of RiConstantPool for HotSpot.
@@ -35,7 +35,7 @@ public class HotSpotConstantPool extends CompilerObject implements RiConstantPoo
 
     private final HotSpotTypeResolvedImpl type;
 
-    public HotSpotConstantPool(Compiler compiler, HotSpotTypeResolvedImpl type) {
+    public HotSpotConstantPool(HotSpotCompiler compiler, HotSpotTypeResolvedImpl type) {
         super(compiler);
         this.type = type;
     }

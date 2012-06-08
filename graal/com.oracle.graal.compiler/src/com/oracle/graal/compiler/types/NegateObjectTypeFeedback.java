@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.compiler.types;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.types.*;
@@ -38,7 +37,7 @@ public class NegateObjectTypeFeedback implements ObjectTypeFeedbackTool {
     }
 
     @Override
-    public void constantBound(Condition condition, CiConstant constant) {
+    public void constantBound(Condition condition, RiConstant constant) {
         delegate.constantBound(condition.negate(), constant);
     }
 

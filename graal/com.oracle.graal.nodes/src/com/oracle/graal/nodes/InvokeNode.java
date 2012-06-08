@@ -24,7 +24,8 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -141,7 +142,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
             stateSplit.setStateAfter(stateAfter);
         }
         if (node == null) {
-            assert kind() == CiKind.Void && usages().isEmpty();
+            assert kind() == RiKind.Void && usages().isEmpty();
             ((StructuredGraph) graph()).removeFixed(this);
         } else {
             if (node instanceof FixedWithNextNode) {

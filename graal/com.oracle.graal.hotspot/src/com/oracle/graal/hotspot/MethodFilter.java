@@ -25,8 +25,7 @@ package com.oracle.graal.hotspot;
 import java.util.*;
 import java.util.regex.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * This class implements a method filter that can filter based on class name, method name and parameters.
@@ -112,7 +111,7 @@ public class MethodFilter {
         if (methodName != null && !methodName.matcher(o.name()).matches()) {
             return false;
         }
-        if (clazz != null && !clazz.matcher(CiUtil.toJavaName(o.holder())).matches()) {
+        if (clazz != null && !clazz.matcher(RiUtil.toJavaName(o.holder())).matches()) {
             return false;
         }
         if (signature != null) {
@@ -122,7 +121,7 @@ public class MethodFilter {
             }
             for (int i = 0; i < signature.length; i++) {
                 RiType type = sig.argumentTypeAt(i, null);
-                String javaName = CiUtil.toJavaName(type);
+                String javaName = RiUtil.toJavaName(type);
                 if (signature[i] != null && !signature[i].matcher(javaName).matches()) {
                     return false;
                 }

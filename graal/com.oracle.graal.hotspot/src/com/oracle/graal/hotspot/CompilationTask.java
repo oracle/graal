@@ -24,13 +24,13 @@ package com.oracle.graal.hotspot;
 
 import java.util.concurrent.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 
 
@@ -47,18 +47,18 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
 
     private volatile boolean cancelled;
 
-    private final Compiler compiler;
+    private final HotSpotCompiler compiler;
     private final PhasePlan plan;
     private final HotSpotMethodResolved method;
     private final OptimisticOptimizations optimisticOpts;
     private final int id;
     private final int priority;
 
-    public static CompilationTask create(Compiler compiler, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotMethodResolved method, int id, int priority) {
+    public static CompilationTask create(HotSpotCompiler compiler, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotMethodResolved method, int id, int priority) {
         return new CompilationTask(compiler, plan, optimisticOpts, method, id, priority);
     }
 
-    private CompilationTask(Compiler compiler, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotMethodResolved method, int id, int priority) {
+    private CompilationTask(HotSpotCompiler compiler, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotMethodResolved method, int id, int priority) {
         this.compiler = compiler;
         this.plan = plan;
         this.method = method;

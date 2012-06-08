@@ -27,8 +27,8 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.regex.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiTargetMethod.*;
 
 
 /**

@@ -26,6 +26,8 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.util.*;
@@ -36,8 +38,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 
 public class InliningPhase extends Phase implements InliningCallback {
@@ -48,7 +48,7 @@ public class InliningPhase extends Phase implements InliningCallback {
      */
 
     private final CiTarget target;
-    private final GraalRuntime runtime;
+    private final ExtendedRiRuntime runtime;
 
     private final Collection<? extends Invoke> hints;
 
@@ -66,7 +66,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
 
-    public InliningPhase(CiTarget target, GraalRuntime runtime, Collection<? extends Invoke> hints, CiAssumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public InliningPhase(CiTarget target, ExtendedRiRuntime runtime, Collection<? extends Invoke> hints, CiAssumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this.target = target;
         this.runtime = runtime;
         this.hints = hints;
@@ -365,7 +365,7 @@ public class InliningPhase extends Phase implements InliningCallback {
             if (GraalOptions.InliningBonusPerTransferredValue != 0) {
                 RiSignature signature = info.invoke.callTarget().targetMethod().signature();
                 int transferredValues = signature.argumentCount(!Modifier.isStatic(info.invoke.callTarget().targetMethod().accessFlags()));
-                if (signature.returnKind(false) != CiKind.Void) {
+                if (signature.returnKind(false) != RiKind.Void) {
                     transferredValues++;
                 }
                 maxSize += transferredValues * GraalOptions.InliningBonusPerTransferredValue;

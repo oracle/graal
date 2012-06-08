@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.compiler.alloc;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.graal.api.code.CiValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.graph.*;
@@ -44,7 +45,7 @@ final class RegisterVerifier {
     ArrayMap<Interval[]> savedStates; // saved information of previous check
 
     // simplified access to methods of LinearScan
-    Interval intervalAt(CiValue operand) {
+    Interval intervalAt(RiValue operand) {
         return allocator.intervalFor(operand);
     }
 
@@ -177,7 +178,7 @@ final class RegisterVerifier {
         return inputState.clone();
     }
 
-    static void statePut(Interval[] inputState, CiValue location, Interval interval) {
+    static void statePut(Interval[] inputState, RiValue location, Interval interval) {
         if (location != null && isRegister(location)) {
             CiRegister reg = asRegister(location);
             int regNum = reg.number;
@@ -195,7 +196,7 @@ final class RegisterVerifier {
         }
     }
 
-    static boolean checkState(Interval[] inputState, CiValue reg, Interval interval) {
+    static boolean checkState(Interval[] inputState, RiValue reg, Interval interval) {
         if (reg != null && isRegister(reg)) {
             if (inputState[asRegister(reg).number] != interval) {
                 throw new GraalInternalError("!! Error in register allocation: register %s does not contain interval %s but interval %s", reg, interval.operand, inputState[asRegister(reg).number]);
@@ -215,7 +216,7 @@ final class RegisterVerifier {
 
             ValueProcedure useProc = new ValueProcedure() {
                 @Override
-                public CiValue doValue(CiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                public RiValue doValue(RiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                     if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
                         Interval interval = intervalAt(operand);
                         if (op.id() != -1) {
@@ -230,7 +231,7 @@ final class RegisterVerifier {
 
             ValueProcedure defProc = new ValueProcedure() {
                 @Override
-                public CiValue doValue(CiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                public RiValue doValue(RiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                     if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
                         Interval interval = intervalAt(operand);
                         if (op.id() != -1) {

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -35,7 +35,7 @@ public abstract class ShiftNode extends BinaryNode {
      * @param x the first input value
      * @param s the second input value
      */
-    public ShiftNode(CiKind kind, ValueNode x, ValueNode s) {
+    public ShiftNode(RiKind kind, ValueNode x, ValueNode s) {
         super(kind, x, s);
         // TODO (cwimmer) Why check for null here - what is a shift with no left operand?
         assert x == null || x.kind() == kind;

@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.printer;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.graal.api.code.CiValueUtil.*;
 
 import java.io.*;
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.graal.alloc.util.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.alloc.Interval.UsePosList;
 import com.oracle.graal.compiler.gen.*;
@@ -307,7 +308,7 @@ class CFGPrinter extends CompilationPrinter {
         out.print("tid ").print(nodeToString(node)).println(COLUMN_END);
 
         if (lirGenerator != null) {
-            CiValue operand = lirGenerator.nodeOperands.get(node);
+            RiValue operand = lirGenerator.nodeOperands.get(node);
             if (operand != null) {
                 out.print("result ").print(operand.toString()).println(COLUMN_END);
             }
@@ -406,7 +407,7 @@ class CFGPrinter extends CompilationPrinter {
     private String stateValueToString(ValueNode value) {
         String result = nodeToString(value);
         if (lirGenerator != null && lirGenerator.nodeOperands != null && value != null) {
-            CiValue operand = lirGenerator.nodeOperands.get(value);
+            RiValue operand = lirGenerator.nodeOperands.get(value);
             if (operand != null) {
                 result += ": " + operand;
             }
@@ -462,7 +463,7 @@ class CFGPrinter extends CompilationPrinter {
             prefix = "B";
         } else if (node instanceof ValueNode) {
             ValueNode value = (ValueNode) node;
-            if (value.kind() == CiKind.Illegal) {
+            if (value.kind() == RiKind.Illegal) {
                 prefix = "v";
             } else {
                 prefix = String.valueOf(value.kind().typeChar);

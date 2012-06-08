@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that
@@ -56,7 +57,7 @@ class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        CiValue v = gen.operand(value);
+        RiValue v = gen.operand(value);
         gen.emitStore(new CiAddress(v.kind, gen.operand(address)), v, false);
     }
 }

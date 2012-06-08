@@ -24,8 +24,8 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.spi.*;
@@ -208,9 +208,9 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
      * values in pushedValues pushed on the stack. The pushedValues are expected to be in slot encoding: a long
      * or double is followed by a null slot.
      */
-    public FrameState duplicateModified(int newBci, boolean newRethrowException, CiKind popKind, ValueNode... pushedValues) {
+    public FrameState duplicateModified(int newBci, boolean newRethrowException, RiKind popKind, ValueNode... pushedValues) {
         int popSlots = 0;
-        if (popKind != CiKind.Void) {
+        if (popKind != RiKind.Void) {
             if (stackAt(stackSize() - 1) == null) {
                 popSlots = 2;
             } else {
@@ -344,7 +344,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
     public boolean verify() {
         for (ValueNode value : values) {
             assert assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes");
-            assert assertTrue(value == null || value instanceof VirtualObjectNode || (value.kind() != CiKind.Void && value.kind() != CiKind.Illegal), "unexpected value: %s", value);
+            assert assertTrue(value == null || value instanceof VirtualObjectNode || (value.kind() != RiKind.Void && value.kind() != RiKind.Illegal), "unexpected value: %s", value);
         }
         return super.verify();
     }

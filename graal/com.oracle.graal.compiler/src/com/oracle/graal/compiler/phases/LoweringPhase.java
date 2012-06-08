@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
@@ -30,8 +32,6 @@ import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * Processes all {@link Lowerable} nodes to do their lowering.
@@ -41,7 +41,7 @@ public class LoweringPhase extends Phase {
     private class LoweringToolBase implements CiLoweringTool {
 
         @Override
-        public GraalRuntime getRuntime() {
+        public ExtendedRiRuntime getRuntime() {
             return runtime;
         }
 
@@ -52,16 +52,16 @@ public class LoweringPhase extends Phase {
 
         @Override
         public ValueNode createNullCheckGuard(ValueNode object, long leafGraphId) {
-            return createGuard(object.graph().unique(new IsNullNode(object)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, true, leafGraphId);
+            return createGuard(object.graph().unique(new IsNullNode(object)), RiDeoptReason.NullCheckException, CiDeoptAction.InvalidateReprofile, true, leafGraphId);
         }
 
         @Override
-        public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {
+        public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, long leafGraphId) {
             return createGuard(condition, deoptReason, action, false, leafGraphId);
         }
 
         @Override
-        public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId) {
+        public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
             // TODO (thomaswue): Document why this must not be called on floating nodes.
             throw new UnsupportedOperationException();
         }
@@ -72,10 +72,10 @@ public class LoweringPhase extends Phase {
         }
     }
 
-    private final GraalRuntime runtime;
+    private final ExtendedRiRuntime runtime;
     private final CiAssumptions assumptions;
 
-    public LoweringPhase(GraalRuntime runtime, CiAssumptions assumptions) {
+    public LoweringPhase(ExtendedRiRuntime runtime, CiAssumptions assumptions) {
         this.runtime = runtime;
         this.assumptions = assumptions;
     }
@@ -150,7 +150,7 @@ public class LoweringPhase extends Phase {
             }
 
             @Override
-            public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId) {
+            public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
                 FixedNode guardAnchor = (FixedNode) getGuardAnchor();
                 if (GraalOptions.OptEliminateGuards) {
                     for (Node usage : condition.usages()) {

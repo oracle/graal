@@ -22,14 +22,14 @@
  */
 package com.oracle.max.asm.target.amd64;
 
+import static com.oracle.graal.api.code.CiValueUtil.*;
 import static com.oracle.max.asm.NumUtil.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
-import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.cri.util.MemoryBarriers.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * This class implements an assembler that can encode most X86 instructions.
@@ -38,7 +38,7 @@ public class AMD64Assembler extends AbstractAssembler {
     /**
      * The kind for pointers and raw registers.  Since we know we are 64 bit here, we can hardcode it.
      */
-    private static final CiKind Word = CiKind.Long;
+    private static final RiKind Word = RiKind.Long;
 
     private static final int MinEncodingNeedsRex = 8;
 
@@ -136,7 +136,7 @@ public class AMD64Assembler extends AbstractAssembler {
      *            {@link CiRegister#CallerFrame} to physical registers. This value can be null if this assembler
      *            instance will not be used to assemble instructions using these logical registers.
      */
-    public AMD64Assembler(CiTarget target, RiRegisterConfig registerConfig) {
+    public AMD64Assembler(CiTarget target, CiRegisterConfig registerConfig) {
         super(target);
         this.frameRegister = registerConfig == null ? null : registerConfig.getFrameRegister();
     }
@@ -2217,7 +2217,7 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
-    private static boolean needsRex(CiValue value) {
+    private static boolean needsRex(RiValue value) {
         return isRegister(value) && asRegister(value).encoding >= MinEncodingNeedsRex;
     }
 

@@ -26,6 +26,9 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiTypeProfile.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.cri.*;
@@ -38,9 +41,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiTypeProfile.ProfiledType;
 
 public class InliningUtil {
 
@@ -124,7 +124,7 @@ public class InliningUtil {
          * @param runtime
          * @param callback
          */
-        public abstract void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback);
+        public abstract void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback);
     }
 
     /**
@@ -140,7 +140,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph compilerGraph, GraalRuntime runtime, final InliningCallback callback) {
+        public void inline(StructuredGraph compilerGraph, ExtendedRiRuntime runtime, final InliningCallback callback) {
             StructuredGraph graph = getGraph(concrete, callback);
             assert !IntrinsificationPhase.canIntrinsify(invoke, concrete, runtime);
             callback.recordMethodContentsAssumption(concrete);
@@ -183,13 +183,13 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
+        public void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
             // receiver null check must be before the type check
             InliningUtil.receiverNullCheck(invoke);
             ValueNode receiver = invoke.callTarget().receiver();
             ReadHubNode objectClass = graph.add(new ReadHubNode(receiver));
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClass, type));
-            FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode, RiDeoptReason.TypeCheckedInliningViolated, RiDeoptAction.InvalidateReprofile, invoke.leafGraphId()));
+            FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode, RiDeoptReason.TypeCheckedInliningViolated, CiDeoptAction.InvalidateReprofile, invoke.leafGraphId()));
             AnchorNode anchor = graph.add(new AnchorNode());
             assert invoke.predecessor() != null;
 
@@ -249,9 +249,9 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
+        public void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
             int numberOfMethods = concretes.size();
-            boolean hasReturnValue = invoke.node().kind() != CiKind.Void;
+            boolean hasReturnValue = invoke.node().kind() != RiKind.Void;
 
             // receiver null check must be the first node
             InliningUtil.receiverNullCheck(invoke);
@@ -266,7 +266,7 @@ public class InliningUtil {
             return notRecordedTypeProbability > 0;
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
+        private void inlineMultipleMethods(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
             FixedNode continuation = invoke.next();
 
             // setup merge and phi nodes for results and exceptions
@@ -291,8 +291,8 @@ public class InliningUtil {
 
                 FixedNode exceptionSux = exceptionObject.next();
                 graph.addBeforeFixed(exceptionSux, exceptionMerge);
-                exceptionObjectPhi = graph.unique(new PhiNode(CiKind.Object, exceptionMerge));
-                exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, CiKind.Void, exceptionObjectPhi));
+                exceptionObjectPhi = graph.unique(new PhiNode(RiKind.Object, exceptionMerge));
+                exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, RiKind.Void, exceptionObjectPhi));
             }
 
             // create one separate block for each invoked method
@@ -315,7 +315,7 @@ public class InliningUtil {
             if (shouldFallbackToInvoke()) {
                 unknownTypeNode = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, 1, notRecordedTypeProbability, false);
             } else {
-                unknownTypeNode = graph.add(new DeoptimizeNode(RiDeoptAction.InvalidateReprofile, RiDeoptReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
+                unknownTypeNode = graph.add(new DeoptimizeNode(CiDeoptAction.InvalidateReprofile, RiDeoptReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
             }
 
             // replace the invoke exception edge
@@ -372,7 +372,7 @@ public class InliningUtil {
             return commonType;
         }
 
-        private void inlineSingleMethod(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
+        private void inlineSingleMethod(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
             assert concretes.size() == 1 && ptypes.length > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
             MergeNode calleeEntryNode = graph.add(new MergeNode());
@@ -380,7 +380,7 @@ public class InliningUtil {
             ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.callTarget().receiver()));
             graph.addBeforeFixed(invoke.node(), objectClassNode);
 
-            FixedNode unknownTypeNode = graph.add(new DeoptimizeNode(RiDeoptAction.InvalidateReprofile, RiDeoptReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
+            FixedNode unknownTypeNode = graph.add(new DeoptimizeNode(CiDeoptAction.InvalidateReprofile, RiDeoptReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
             FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, new BeginNode[] {calleeEntryNode}, unknownTypeNode);
 
             FixedWithNextNode pred = (FixedWithNextNode) invoke.node().predecessor();
@@ -460,7 +460,7 @@ public class InliningUtil {
             result.setUseForInlining(useForInlining);
             result.setProbability(probability);
 
-            CiKind kind = invoke.node().kind();
+            RiKind kind = invoke.node().kind();
             if (!kind.isVoid()) {
                 FrameState stateAfter = invoke.stateAfter();
                 stateAfter = stateAfter.duplicate(stateAfter.bci);
@@ -479,7 +479,7 @@ public class InliningUtil {
                 BeginNode newExceptionEdge = (BeginNode) exceptionEdge.copyWithInputs();
                 ExceptionObjectNode newExceptionObject = (ExceptionObjectNode) exceptionObject.copyWithInputs();
                 // set new state (pop old exception object, push new one)
-                newExceptionObject.setStateAfter(stateAfterException.duplicateModified(stateAfterException.bci, stateAfterException.rethrowException(), CiKind.Object, newExceptionObject));
+                newExceptionObject.setStateAfter(stateAfterException.duplicateModified(stateAfterException.bci, stateAfterException.rethrowException(), RiKind.Object, newExceptionObject));
                 newExceptionEdge.setNext(newExceptionObject);
 
                 EndNode endNode = graph.add(new EndNode());
@@ -522,7 +522,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
+        public void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
             if (Debug.isLogEnabled()) {
                 String targetName = CiUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod());
                 String concreteName = CiUtil.format("%H.%n(%p):%r", concrete);
@@ -552,7 +552,7 @@ public class InliningUtil {
      * @param callback a callback that is used to determine the weight of a specific inlining
      * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
      */
-    public static InlineInfo getInlineInfo(Invoke invoke, int level, GraalRuntime runtime, CiAssumptions assumptions, InliningCallback callback, OptimisticOptimizations optimisticOpts) {
+    public static InlineInfo getInlineInfo(Invoke invoke, int level, ExtendedRiRuntime runtime, CiAssumptions assumptions, InliningCallback callback, OptimisticOptimizations optimisticOpts) {
         RiResolvedMethod parent = invoke.stateAfter().method();
         MethodCallTargetNode callTarget = invoke.callTarget();
         RiResolvedMethod targetMethod = callTarget.targetMethod();
@@ -828,7 +828,7 @@ public class InliningUtil {
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
-                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(RiDeoptAction.InvalidateRecompile, RiDeoptReason.NotCompiledExceptionHandler, invoke.leafGraphId());
+                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(CiDeoptAction.InvalidateRecompile, RiDeoptReason.NotCompiledExceptionHandler, invoke.leafGraphId());
                 unwindDuplicate.replaceAndDelete(graph.add(deoptimizeNode));
                 // move the deopt upwards if there is a monitor exit that tries to use the "after exception" frame state
                 // (because there is no "after exception" frame state!)
@@ -907,8 +907,8 @@ public class InliningUtil {
         StructuredGraph graph = (StructuredGraph) invoke.graph();
         NodeInputList<ValueNode> parameters = callTarget.arguments();
         ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
-        if (!callTarget.isStatic() && firstParam.kind() == CiKind.Object && !firstParam.objectStamp().nonNull()) {
-            graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new IsNullNode(firstParam)), RiDeoptReason.ClassCastException, RiDeoptAction.InvalidateReprofile, true, invoke.leafGraphId())));
+        if (!callTarget.isStatic() && firstParam.kind() == RiKind.Object && !firstParam.objectStamp().nonNull()) {
+            graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new IsNullNode(firstParam)), RiDeoptReason.ClassCastException, CiDeoptAction.InvalidateReprofile, true, invoke.leafGraphId())));
         }
     }
 }

@@ -24,12 +24,12 @@ package com.oracle.graal.nodes.extended;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * A floating read of a value from memory specified in terms of an object base and an object relative location.
@@ -61,12 +61,12 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         RiRuntime runtime = tool.runtime();
-        if (runtime != null && object() != null && object().isConstant() && object().kind() == CiKind.Object) {
+        if (runtime != null && object() != null && object().isConstant() && object().kind() == RiKind.Object) {
             if (this.location() == LocationNode.FINAL_LOCATION && location().getClass() == LocationNode.class) {
                 Object value = object().asConstant().asObject();
                 long displacement = location().displacement();
-                CiKind kind = location().kind();
-                CiConstant constant = kind.readUnsafeConstant(value, displacement);
+                RiKind kind = location().kind();
+                RiConstant constant = kind.readUnsafeConstant(value, displacement);
                 if (constant != null) {
                     return ConstantNode.forCiConstant(constant, runtime, graph());
                 }

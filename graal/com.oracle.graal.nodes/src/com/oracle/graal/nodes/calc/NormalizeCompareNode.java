@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -41,7 +41,7 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
      * @param isUnorderedLess true when an unordered floating point comparison is interpreted as less, false when greater.
      */
     public NormalizeCompareNode(ValueNode x, ValueNode y, boolean isUnorderedLess) {
-        super(CiKind.Int, x, y);
+        super(RiKind.Int, x, y);
         this.isUnorderedLess = isUnorderedLess;
     }
 

@@ -24,7 +24,7 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
@@ -135,7 +135,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                             if (trueValue.kind() != falseValue.kind()) {
                                 return;
                             }
-                            if (trueValue.kind() != CiKind.Int && trueValue.kind() != CiKind.Long) {
+                            if (trueValue.kind() != RiKind.Int && trueValue.kind() != RiKind.Long) {
                                 return;
                             }
                             if (trueValue.isConstant() && falseValue.isConstant()) {

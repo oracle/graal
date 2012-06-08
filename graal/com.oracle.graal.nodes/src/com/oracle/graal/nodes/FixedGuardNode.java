@@ -22,17 +22,18 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ri.*;
 
 public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, LIRLowerable, Node.IterableNodeType, Negatable {
 
     @Input private BooleanNode condition;
     private final RiDeoptReason deoptReason;
-    private final RiDeoptAction action;
+    private final CiDeoptAction action;
     private boolean negated;
     private final long leafGraphId;
 
@@ -45,11 +46,11 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
         condition = x;
     }
 
-    public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {
+    public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, long leafGraphId) {
         this(condition, deoptReason, action, false, leafGraphId);
     }
 
-    public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId) {
+    public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
         super(StampFactory.forVoid());
         this.action = action;
         this.negated = negated;
@@ -83,7 +84,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
                 if (next != null) {
                     tool.deleteBranch(next);
                 }
-                setNext(graph().add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile, deoptReason, leafGraphId)));
+                setNext(graph().add(new DeoptimizeNode(CiDeoptAction.InvalidateRecompile, deoptReason, leafGraphId)));
                 return;
             }
         }

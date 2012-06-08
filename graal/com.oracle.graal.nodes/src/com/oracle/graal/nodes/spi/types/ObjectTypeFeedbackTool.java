@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.nodes.spi.types;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
 public interface ObjectTypeFeedbackTool {
 
-    void constantBound(Condition condition, CiConstant constant);
+    void constantBound(Condition condition, RiConstant constant);
 
     void valueBound(Condition condition, ValueNode otherValue);
 

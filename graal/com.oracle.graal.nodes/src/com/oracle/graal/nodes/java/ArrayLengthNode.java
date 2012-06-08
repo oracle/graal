@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -54,7 +54,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
         }
         RiRuntime runtime = tool.runtime();
         if (runtime != null && array().isConstant() && !array().isNullConstant()) {
-            CiConstant constantValue = array().asConstant();
+            RiConstant constantValue = array().asConstant();
             if (constantValue != null && constantValue.isNonNull()) {
                 return ConstantNode.forInt(runtime.getArrayLength(constantValue), graph());
             }

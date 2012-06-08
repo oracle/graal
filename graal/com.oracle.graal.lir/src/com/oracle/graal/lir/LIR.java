@@ -24,7 +24,7 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
@@ -65,8 +65,8 @@ public class LIR {
     public SpillMoveFactory spillMoveFactory;
 
     public interface SpillMoveFactory {
-        LIRInstruction createMove(CiValue result, CiValue input);
-        LIRInstruction createExchange(CiValue input1, CiValue input2);
+        LIRInstruction createMove(RiValue result, RiValue input);
+        LIRInstruction createExchange(RiValue input1, RiValue input2);
     }
 
     private boolean hasArgInCallerFrame;

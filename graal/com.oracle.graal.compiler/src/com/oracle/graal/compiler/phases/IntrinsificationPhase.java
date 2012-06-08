@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.phases;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
@@ -31,9 +31,9 @@ import com.oracle.graal.nodes.*;
 
 public class IntrinsificationPhase extends Phase {
 
-    private final GraalRuntime runtime;
+    private final ExtendedRiRuntime runtime;
 
-    public IntrinsificationPhase(GraalRuntime runtime) {
+    public IntrinsificationPhase(ExtendedRiRuntime runtime) {
         this.runtime = runtime;
     }
 
@@ -47,18 +47,18 @@ public class IntrinsificationPhase extends Phase {
         }
     }
 
-    public static boolean canIntrinsify(Invoke invoke, RiResolvedMethod target, GraalRuntime runtime) {
+    public static boolean canIntrinsify(Invoke invoke, RiResolvedMethod target, ExtendedRiRuntime runtime) {
         return getIntrinsicGraph(invoke, target, runtime) != null;
     }
 
-    private static void tryIntrinsify(Invoke invoke, GraalRuntime runtime) {
+    private static void tryIntrinsify(Invoke invoke, ExtendedRiRuntime runtime) {
         RiResolvedMethod target = invoke.callTarget().targetMethod();
         if (target != null) {
             tryIntrinsify(invoke, target, runtime);
         }
     }
 
-    private static void tryIntrinsify(Invoke invoke, RiResolvedMethod target, GraalRuntime runtime) {
+    private static void tryIntrinsify(Invoke invoke, RiResolvedMethod target, ExtendedRiRuntime runtime) {
         StructuredGraph intrinsicGraph = getIntrinsicGraph(invoke, target, runtime);
         if (intrinsicGraph != null) {
             Debug.log(" > Intrinsify %s", target);
@@ -66,7 +66,7 @@ public class IntrinsificationPhase extends Phase {
         }
     }
 
-    private static StructuredGraph getIntrinsicGraph(Invoke invoke, RiResolvedMethod target, GraalRuntime runtime) {
+    private static StructuredGraph getIntrinsicGraph(Invoke invoke, RiResolvedMethod target, ExtendedRiRuntime runtime) {
         StructuredGraph intrinsicGraph = (StructuredGraph) target.compilerStorage().get(Graph.class);
         if (intrinsicGraph == null) {
             // TODO remove once all intrinsics are available via compilerStorage
