@@ -28,7 +28,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.ri.*;
@@ -40,28 +39,10 @@ import com.oracle.max.cri.xir.*;
  */
 public final class HotSpotCompilerImpl implements GraalRuntime {
 
-    private static HotSpotCompilerImpl theInstance;
+    private static final HotSpotCompilerImpl instance = new HotSpotCompilerImpl();
 
     public static HotSpotCompilerImpl getInstance() {
-        if (theInstance == null) {
-            initialize();
-        }
-        return theInstance;
-    }
-
-    public static synchronized void initialize() {
-        if (theInstance != null) {
-            return;
-        }
-
-        // ordinary local compilation
-        theInstance = new HotSpotCompilerImpl(null);
-    }
-
-    public static HotSpotCompilerImpl initializeServer(CompilerToVM entries) {
-        assert theInstance == null;
-        theInstance = new HotSpotCompilerImpl(entries);
-        return theInstance;
+        return instance;
     }
 
     private final CompilerToVM compilerToVm;
@@ -78,13 +59,9 @@ public final class HotSpotCompilerImpl implements GraalRuntime {
         return config;
     }
 
-    private HotSpotCompilerImpl(CompilerToVM initialEntries) {
+    private HotSpotCompilerImpl() {
 
-        CompilerToVM toVM = initialEntries;
-        // initialize CompilerToVM
-        if (toVM == null) {
-            toVM = new CompilerToVMImpl();
-        }
+        CompilerToVM toVM = new CompilerToVMImpl();
 
         // initialize VmToCompiler
         VMToCompiler toCompiler = new VMToCompilerImpl(this);
@@ -102,8 +79,6 @@ public final class HotSpotCompilerImpl implements GraalRuntime {
         // set the final fields
         compilerToVm = toVM;
         vmToCompiler = toCompiler;
-
-        // initialize compiler
         config = compilerToVm.getConfiguration();
         config.check();
 
@@ -131,20 +106,6 @@ public final class HotSpotCompilerImpl implements GraalRuntime {
         }
 
         return target;
-    }
-
-    /**
-     * Factory method for getting a {@link ExtendedRiRuntime} instance. This method is called via reflection.
-     */
-    public static ExtendedRiRuntime getGraalRuntime() {
-        return getInstance().getRuntime();
-    }
-
-    /**
-     * Factory method for getting a {@link GraalCompiler} instance. This method is called via reflection.
-     */
-    public static GraalCompiler getGraalCompiler() {
-        return getInstance().getCompiler();
     }
 
     public GraalCompiler getCompiler() {

@@ -91,7 +91,7 @@ public class CompilationServer implements Runnable {
                 CompilerToVM toVM = (CompilerToVM) streams.getInvocation().waitForResult(false);
 
                 // return the initialized compiler to the client
-                HotSpotCompilerImpl compiler = HotSpotCompilerImpl.initializeServer(toVM);
+                HotSpotCompilerImpl compiler = initializeServer(toVM);
                 compiler.getCompiler();
                 streams.getInvocation().sendResult(compiler);
 
@@ -117,5 +117,11 @@ public class CompilationServer implements Runnable {
                 }
             }
         } while (multiple);
+    }
+
+    @SuppressWarnings("unused")
+    private static HotSpotCompilerImpl initializeServer(CompilerToVM toVM) {
+        // TODO(thomaswue): Fix creation of compiler instances on server side.
+        return null;
     }
 }
