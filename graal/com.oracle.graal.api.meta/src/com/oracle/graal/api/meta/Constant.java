@@ -56,20 +56,8 @@ public final class Constant extends Value {
     public static final Constant FALSE = new Constant(Kind.Boolean, 0L);
 
     static {
-        assert NULL_OBJECT.isDefaultValue();
-        assert INT_0.isDefaultValue();
-        assert FLOAT_0.isDefaultValue();
-        assert DOUBLE_0.isDefaultValue();
-        assert FALSE.isDefaultValue();
-
-        // Ensure difference between 0.0f and -0.0f is preserved
-        assert FLOAT_0 != forFloat(-0.0F);
-        assert !forFloat(-0.0F).isDefaultValue();
-
-        // Ensure difference between 0.0d and -0.0d is preserved
-        assert DOUBLE_0 != forDouble(-0.0d);
-        assert !forDouble(-0.0D).isDefaultValue();
-
+        assert FLOAT_0 != forFloat(-0.0F) : "Constant for 0.0f must be different from -0.0f";
+        assert DOUBLE_0 != forDouble(-0.0d) : "Constant for 0.0d must be different from -0.0d";
         assert NULL_OBJECT.isNull();
     }
 
@@ -304,50 +292,6 @@ public final class Constant extends Value {
     @Override
     public boolean equals(Object o) {
         return o == this || o instanceof Constant && valueEqual((Constant) o, false);
-    }
-
-    /**
-     * Checks whether this constant is identical to another constant or has the same value as it.
-     * @param other the constant to compare for equality against this constant
-     * @return {@code true} if this constant is equivalent to {@code other}
-     */
-    public boolean equivalent(Constant other) {
-        return other == this || valueEqual(other, false);
-    }
-
-    /**
-     * Checks whether this constant is the default value for its type.
-     * @return {@code true} if the value is the default value for its type; {@code false} otherwise
-     */
-    public boolean isDefaultValue() {
-        // Checkstyle: stop
-        switch (kind.stackKind()) {
-            case Int: return asInt() == 0;
-            case Long: return asLong() == 0;
-            case Float: return this == FLOAT_0;
-            case Double: return this == DOUBLE_0;
-            case Object: return object == null;
-        }
-        // Checkstyle: resume
-        throw new IllegalArgumentException("Cannot det default CiConstant for kind " + kind);
-    }
-
-    /**
-     * Gets the default value for a given kind.
-     *
-     * @return the default value for {@code kind}'s {@linkplain Kind#stackKind() stack kind}
-     */
-    public static Constant defaultValue(Kind kind) {
-        // Checkstyle: stop
-        switch (kind.stackKind()) {
-            case Int: return INT_0;
-            case Long: return LONG_0;
-            case Float: return FLOAT_0;
-            case Double: return DOUBLE_0;
-            case Object: return NULL_OBJECT;
-        }
-        // Checkstyle: resume
-        throw new IllegalArgumentException("Cannot get default CiConstant for kind " + kind);
     }
 
     /**

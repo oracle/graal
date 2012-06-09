@@ -544,7 +544,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     protected void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks) {
         if (isConstant(targetAddress)) {
-            assert asConstant(targetAddress).isDefaultValue() : "destination address should be zero";
             append(new DirectCallOp(targetMethod, result, arguments.toArray(new Value[arguments.size()]), info, marks));
         } else {
             append(new IndirectCallOp(targetMethod, result, arguments.toArray(new Value[arguments.size()]), targetAddress, info, marks));

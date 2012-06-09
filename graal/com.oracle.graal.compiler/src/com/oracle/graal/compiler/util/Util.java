@@ -329,25 +329,6 @@ public class Util {
         return (short) v;
     }
 
-    /**
-     * Checks that two instructions are equivalent, optionally comparing constants.
-     * @param x the first instruction
-     * @param y the second instruction
-     * @param compareConstants {@code true} if equivalent constants should be considered equivalent
-     * @return {@code true} if the instructions are equivalent; {@code false} otherwise
-     */
-    public static boolean equivalent(FixedWithNextNode x, FixedWithNextNode y, boolean compareConstants) {
-        if (x == y) {
-            return true;
-        }
-        if (compareConstants && x != null && y != null) {
-            if (x.isConstant() && x.asConstant().equivalent(y.asConstant())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public static boolean isFixed(Node n) {
         return n instanceof FixedNode;
     }
