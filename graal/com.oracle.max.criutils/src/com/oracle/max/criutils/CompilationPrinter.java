@@ -106,7 +106,7 @@ public class CompilationPrinter {
     /**
      * Formats a given {@linkplain FrameState JVM frame state} as a multi line string.
      */
-    protected String debugInfoToString(CiCodePos codePos, CiBitMap registerRefMap, CiBitMap frameRefMap, CiArchitecture arch) {
+    protected String debugInfoToString(CiCodePos codePos, BitSet registerRefMap, BitSet frameRefMap, CiArchitecture arch) {
         StringBuilder sb = new StringBuilder();
 
         if (registerRefMap != null) {

@@ -23,6 +23,7 @@
 package com.oracle.graal.api.code;
 
 import java.io.*;
+import java.util.*;
 
 /**
  * Represents the debugging information for a particular place in the code,
@@ -43,13 +44,13 @@ public class CiDebugInfo implements Serializable {
      * for bit {@code k} in byte {@code n}, it refers to the register whose
      * {@linkplain CiRegister#number number} is {@code (k + n * 8)}.
      */
-    public final CiBitMap registerRefMap;
+    public final BitSet registerRefMap;
 
     /**
      * The reference map for the stack frame at this point. A set bit at {@code k} in the map
      * represents stack slot number {@code k}.
      */
-    public final CiBitMap frameRefMap;
+    public final BitSet frameRefMap;
 
     /**
      * Creates a new {@code CiDebugInfo} from the given values.
@@ -58,7 +59,7 @@ public class CiDebugInfo implements Serializable {
      * @param registerRefMap the register map
      * @param frameRefMap the reference map for {@code frame}, which may be {@code null}
      */
-    public CiDebugInfo(CiCodePos codePos, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+    public CiDebugInfo(CiCodePos codePos, BitSet registerRefMap, BitSet frameRefMap) {
         this.codePos = codePos;
         this.registerRefMap = registerRefMap;
         this.frameRefMap = frameRefMap;

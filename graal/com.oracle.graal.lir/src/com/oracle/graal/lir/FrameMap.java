@@ -297,8 +297,8 @@ public final class FrameMap {
     /**
      * Initializes a reference map that covers all registers of the target architecture.
      */
-    public CiBitMap initRegisterRefMap() {
-        return new CiBitMap(target.arch.registerReferenceMapBitCount);
+    public BitSet initRegisterRefMap() {
+        return new BitSet(target.arch.registerReferenceMapBitCount);
     }
 
     /**
@@ -306,8 +306,8 @@ public final class FrameMap {
      * slots in the frame. If the method has incoming reference arguments on the stack,
      * the reference map might grow later when such a reference is set.
      */
-    public CiBitMap initFrameRefMap() {
-        CiBitMap frameRefMap = new CiBitMap(frameSize() / target.wordSize);
+    public BitSet initFrameRefMap() {
+        BitSet frameRefMap = new BitSet(frameSize() / target.wordSize);
         for (CiStackSlot slot : objectStackBlocks) {
             setReference(slot, null, frameRefMap);
         }
@@ -323,14 +323,12 @@ public final class FrameMap {
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
-    public void setReference(Value location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+    public void setReference(Value location, BitSet registerRefMap, BitSet frameRefMap) {
         if (location.kind == Kind.Object) {
             if (isRegister(location)) {
-                assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;
                 registerRefMap.set(asRegister(location).number);
             } else if (isStackSlot(location)) {
                 int index = frameRefMapIndex(asStackSlot(location));
-                frameRefMap.grow(index + 1);
                 frameRefMap.set(index);
             } else {
                 assert isConstant(location);
@@ -347,10 +345,9 @@ public final class FrameMap {
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
-    public void clearReference(Value location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+    public void clearReference(Value location, BitSet registerRefMap, BitSet frameRefMap) {
         if (location.kind == Kind.Object) {
             if (location instanceof CiRegisterValue) {
-                assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;
                 registerRefMap.clear(asRegister(location).number);
             } else if (isStackSlot(location)) {
                 int index = frameRefMapIndex(asStackSlot(location));

@@ -1652,7 +1652,7 @@ public final class LinearScan {
         return new IntervalWalker(this, oopIntervals, nonOopIntervals);
     }
 
-    void computeOopMap(IntervalWalker iw, LIRInstruction op, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+    void computeOopMap(IntervalWalker iw, LIRInstruction op, BitSet registerRefMap, BitSet frameRefMap) {
         if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("creating oop map at opId %d", op.id());
         }
@@ -1712,8 +1712,8 @@ public final class LinearScan {
 
 
     private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRDebugInfo info) {
-        CiBitMap registerRefMap = op.hasCall() ? null : frameMap.initRegisterRefMap();
-        CiBitMap frameRefMap = frameMap.initFrameRefMap();
+        BitSet registerRefMap = op.hasCall() ? null : frameMap.initRegisterRefMap();
+        BitSet frameRefMap = frameMap.initFrameRefMap();
         computeOopMap(iw, op, registerRefMap, frameRefMap);
 
         info.forEachState(new ValueProcedure() {
