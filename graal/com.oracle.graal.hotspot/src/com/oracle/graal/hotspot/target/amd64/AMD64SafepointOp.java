@@ -49,17 +49,17 @@ public class AMD64SafepointOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm) {
-        CiRegister scratch = tasm.frameMap.registerConfig.getScratchRegister();
+        Register scratch = tasm.frameMap.registerConfig.getScratchRegister();
         int pos = asm.codeBuffer.position();
         if (config.isPollingPageFar) {
             asm.movq(scratch, config.safepointPollingAddress);
             tasm.recordMark(MARK_POLL_FAR);
             tasm.recordSafepoint(pos, info);
-            asm.movq(scratch, new CiAddress(tasm.target.wordKind, scratch.asValue()));
+            asm.movq(scratch, new Address(tasm.target.wordKind, scratch.asValue()));
         } else {
             tasm.recordMark(MARK_POLL_NEAR);
             tasm.recordSafepoint(pos, info);
-            asm.movq(scratch, new CiAddress(tasm.target.wordKind, rip.asValue()));
+            asm.movq(scratch, new Address(tasm.target.wordKind, rip.asValue()));
         }
     }
 

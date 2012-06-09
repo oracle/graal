@@ -30,16 +30,16 @@ import com.oracle.graal.api.meta.*;
  * Represents a code position, that is, a chain of inlined methods with bytecode
  * locations, that is communicated from the compiler to the runtime system. A code position
  * can be used by the runtime system to reconstruct a source-level stack trace
- * for exceptions and to create {@linkplain CiFrame frames} for deoptimization.
+ * for exceptions and to create {@linkplain BytecodeFrame frames} for deoptimization.
  */
-public abstract class CiCodePos implements Serializable {
+public abstract class BytecodePosition implements Serializable {
 
     private static final long serialVersionUID = 8633885274526033515L;
 
     /**
      * The position where this position has been called, {@code null} if none.
      */
-    public final CiCodePos caller;
+    public final BytecodePosition caller;
 
     /**
      * The runtime interface method for this position.
@@ -60,7 +60,7 @@ public abstract class CiCodePos implements Serializable {
      * @param method the method
      * @param bci a BCI within the method
      */
-    public CiCodePos(CiCodePos caller, ResolvedJavaMethod method, int bci) {
+    public BytecodePosition(BytecodePosition caller, ResolvedJavaMethod method, int bci) {
         assert method != null;
         this.caller = caller;
         this.method = method;
@@ -73,7 +73,7 @@ public abstract class CiCodePos implements Serializable {
      */
     @Override
     public String toString() {
-        return CiUtil.append(new StringBuilder(100), this).toString();
+        return CodeUtil.append(new StringBuilder(100), this).toString();
     }
 
     /**
@@ -84,8 +84,8 @@ public abstract class CiCodePos implements Serializable {
         if (obj == this) {
             return true;
         }
-        if (obj instanceof CiCodePos) {
-            CiCodePos other = (CiCodePos) obj;
+        if (obj instanceof BytecodePosition) {
+            BytecodePosition other = (BytecodePosition) obj;
             if (other.method.equals(method) && other.bci == bci) {
                 if (caller == null) {
                     return other.caller == null;

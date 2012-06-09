@@ -55,8 +55,8 @@ public final class IntegerMulNode extends IntegerArithmeticNode implements Canon
             if (c == 0) {
                 return ConstantNode.defaultForKind(kind(), graph());
             }
-            if (c > 0 && CiUtil.isPowerOf2(c)) {
-                return graph().unique(new LeftShiftNode(kind(), x(), ConstantNode.forInt(CiUtil.log2(c), graph())));
+            if (c > 0 && CodeUtil.isPowerOf2(c)) {
+                return graph().unique(new LeftShiftNode(kind(), x(), ConstantNode.forInt(CodeUtil.log2(c), graph())));
             }
             // canonicalize expressions like "(a * 1) * 2"
             if (x() instanceof IntegerMulNode) {

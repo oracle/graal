@@ -27,8 +27,8 @@ import com.oracle.graal.api.meta.*;
 
 
 public interface CanonicalizerTool {
-    CiTarget target();
-    CiAssumptions assumptions();
+    TargetDescription target();
+    Assumptions assumptions();
     CodeCacheProvider runtime();
 
     /**

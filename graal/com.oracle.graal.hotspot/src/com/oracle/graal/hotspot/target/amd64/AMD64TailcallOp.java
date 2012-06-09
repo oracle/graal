@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.target.amd64;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 

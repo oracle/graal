@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.alloc.simple;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
-import static com.oracle.graal.lir.ValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
 
@@ -36,9 +36,9 @@ import com.oracle.graal.lir.cfg.*;
 
 public class DataFlowAnalysis {
     private final LIR lir;
-    private final CiRegisterConfig registerConfig;
+    private final RegisterConfig registerConfig;
 
-    public DataFlowAnalysis(LIR lir, CiRegisterConfig registerConfig) {
+    public DataFlowAnalysis(LIR lir, RegisterConfig registerConfig) {
         this.lir = lir;
         this.registerConfig = registerConfig;
     }

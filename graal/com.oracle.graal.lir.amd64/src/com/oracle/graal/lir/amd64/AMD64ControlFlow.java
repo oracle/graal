@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 
@@ -30,7 +30,7 @@ import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CiAddress.*;
+import com.oracle.graal.api.code.Address.*;
 import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -238,7 +238,7 @@ public class AMD64ControlFlow {
     }
 
 
-    private static void tableswitch(TargetMethodAssembler tasm, AMD64MacroAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, CiRegister value, CiRegister scratch) {
+    private static void tableswitch(TargetMethodAssembler tasm, AMD64MacroAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Register value, Register scratch) {
         Buffer buf = masm.codeBuffer;
         // Compare index against jump table bounds
         int highKey = lowKey + targets.length - 1;
@@ -255,11 +255,11 @@ public class AMD64ControlFlow {
 
         // Set scratch to address of jump table
         int leaPos = buf.position();
-        masm.leaq(scratch, new CiAddress(tasm.target.wordKind, AMD64.rip.asValue(), 0));
+        masm.leaq(scratch, new Address(tasm.target.wordKind, AMD64.rip.asValue(), 0));
         int afterLea = buf.position();
 
         // Load jump table entry into scratch and jump to it
-        masm.movslq(value, new CiAddress(Kind.Int, scratch.asValue(), value.asValue(), Scale.Times4, 0));
+        masm.movslq(value, new Address(Kind.Int, scratch.asValue(), value.asValue(), Scale.Times4, 0));
         masm.addq(scratch, value);
         masm.jmp(scratch);
 
@@ -271,7 +271,7 @@ public class AMD64ControlFlow {
         // Patch LEA instruction above now that we know the position of the jump table
         int jumpTablePos = buf.position();
         buf.setPosition(leaPos);
-        masm.leaq(scratch, new CiAddress(tasm.target.wordKind, AMD64.rip.asValue(), jumpTablePos - afterLea));
+        masm.leaq(scratch, new Address(tasm.target.wordKind, AMD64.rip.asValue(), jumpTablePos - afterLea));
         buf.setPosition(jumpTablePos);
 
         // Emit jump table entries

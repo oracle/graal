@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 
@@ -119,12 +119,12 @@ public class AMD64Call {
 
     public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Object target, LIRDebugInfo info) {
         int before = masm.codeBuffer.position();
-        if (target instanceof CiRuntimeCall) {
-            long maxOffset = tasm.runtime.getMaxCallTargetOffset((CiRuntimeCall) target);
+        if (target instanceof RuntimeCall) {
+            long maxOffset = tasm.runtime.getMaxCallTargetOffset((RuntimeCall) target);
             if (maxOffset != (int) maxOffset) {
                 // offset might not fit a 32-bit immediate, generate an
                 // indirect call with a 64-bit immediate
-                CiRegister scratch = tasm.frameMap.registerConfig.getScratchRegister();
+                Register scratch = tasm.frameMap.registerConfig.getScratchRegister();
                 // TODO (cwimmer): we want to get rid of a generally reserved scratch register.
                 masm.movq(scratch, 0L);
                 masm.call(scratch);
@@ -148,7 +148,7 @@ public class AMD64Call {
         masm.ensureUniquePC();
     }
 
-    public static void indirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiRegister dst, Object target, LIRDebugInfo info) {
+    public static void indirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Register dst, Object target, LIRDebugInfo info) {
         int before = masm.codeBuffer.position();
         masm.call(dst);
         int after = masm.codeBuffer.position();
@@ -162,7 +162,7 @@ public class AMD64Call {
         assert (assertions = true) == true;
 
         if (assertions) {
-            directCall(tasm, masm, CiRuntimeCall.Debug, null);
+            directCall(tasm, masm, RuntimeCall.Debug, null);
             masm.hlt();
         }
     }

@@ -36,7 +36,7 @@ import com.oracle.max.cri.xir.*;
  *
  */
 public class AMD64XirAssembler extends CiXirAssembler {
-    public AMD64XirAssembler(CiTarget target) {
+    public AMD64XirAssembler(TargetDescription target) {
         super(target);
     }
 

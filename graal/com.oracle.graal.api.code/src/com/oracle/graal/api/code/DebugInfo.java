@@ -29,20 +29,20 @@ import java.util.*;
  * Represents the debugging information for a particular place in the code,
  * which includes the code position, a reference map, and deoptimization information.
  */
-public class CiDebugInfo implements Serializable {
+public class DebugInfo implements Serializable {
 
     private static final long serialVersionUID = -6047206624915812516L;
 
     /**
      * The code position (including all inlined methods) of this debug info.
-     * If this is a {@link CiFrame} instance, then it is also the deoptimization information for each inlined frame.
+     * If this is a {@link BytecodeFrame} instance, then it is also the deoptimization information for each inlined frame.
      */
-    public final CiCodePos codePos;
+    public final BytecodePosition codePos;
 
     /**
      * The reference map for the registers at this point. The reference map is <i>packed</i> in that
      * for bit {@code k} in byte {@code n}, it refers to the register whose
-     * {@linkplain CiRegister#number number} is {@code (k + n * 8)}.
+     * {@linkplain Register#number number} is {@code (k + n * 8)}.
      */
     public final BitSet registerRefMap;
 
@@ -55,11 +55,11 @@ public class CiDebugInfo implements Serializable {
     /**
      * Creates a new {@code CiDebugInfo} from the given values.
      *
-     * @param codePos the {@linkplain CiCodePos code position} or {@linkplain CiFrame frame} info
+     * @param codePos the {@linkplain BytecodePosition code position} or {@linkplain BytecodeFrame frame} info
      * @param registerRefMap the register map
      * @param frameRefMap the reference map for {@code frame}, which may be {@code null}
      */
-    public CiDebugInfo(CiCodePos codePos, BitSet registerRefMap, BitSet frameRefMap) {
+    public DebugInfo(BytecodePosition codePos, BitSet registerRefMap, BitSet frameRefMap) {
         this.codePos = codePos;
         this.registerRefMap = registerRefMap;
         this.frameRefMap = frameRefMap;
@@ -69,7 +69,7 @@ public class CiDebugInfo implements Serializable {
      * @return {@code true} if this debug information has a frame
      */
     public boolean hasFrame() {
-        return codePos instanceof CiFrame;
+        return codePos instanceof BytecodeFrame;
     }
 
     /**
@@ -92,15 +92,15 @@ public class CiDebugInfo implements Serializable {
      *
      * @return {@code null} if no frame de-opt info is {@linkplain #hasDebugFrame available}
      */
-    public CiFrame frame() {
+    public BytecodeFrame frame() {
         if (hasFrame()) {
-            return (CiFrame) codePos;
+            return (BytecodeFrame) codePos;
         }
         return null;
     }
 
     @Override
     public String toString() {
-        return CiUtil.append(new StringBuilder(100), this, null).toString();
+        return CodeUtil.append(new StringBuilder(100), this, null).toString();
     }
 }

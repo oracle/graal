@@ -287,10 +287,10 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
 
     private static String toString(FrameState frameState) {
         StringBuilder sb = new StringBuilder();
-        String nl = CiUtil.NEW_LINE;
+        String nl = CodeUtil.NEW_LINE;
         FrameState fs = frameState;
         while (fs != null) {
-            CiUtil.appendLocation(sb, fs.method, fs.bci).append(nl);
+            CodeUtil.appendLocation(sb, fs.method, fs.bci).append(nl);
             sb.append("locals: [");
             for (int i = 0; i < fs.localsSize(); i++) {
                 sb.append(i == 0 ? "" : ", ").append(fs.localAt(i) == null ? "_" : fs.localAt(i).toString(Verbosity.Id));
@@ -321,7 +321,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
         Map<Object, Object> properties = super.getDebugProperties();
         properties.put("bci", bci);
         if (method != null) {
-            properties.put("method", CiUtil.format("%H.%n(%p):%r", method));
+            properties.put("method", CodeUtil.format("%H.%n(%p):%r", method));
         } else {
             properties.put("method", "None");
         }

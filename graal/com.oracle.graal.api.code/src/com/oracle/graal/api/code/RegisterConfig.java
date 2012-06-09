@@ -24,27 +24,27 @@ package com.oracle.graal.api.code;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.CiCallingConvention.*;
-import com.oracle.graal.api.code.CiRegister.*;
+import com.oracle.graal.api.code.CallingConvention.*;
+import com.oracle.graal.api.code.Register.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * A register configuration binds roles and {@linkplain CiRegisterAttributes attributes}
+ * A register configuration binds roles and {@linkplain RegisterAttributes attributes}
  * to physical registers.
  */
-public interface CiRegisterConfig {
+public interface RegisterConfig {
 
     /**
      * Gets the register to be used for returning a value of a given kind.
      */
-    CiRegister getReturnRegister(Kind kind);
+    Register getReturnRegister(Kind kind);
 
     /**
-     * Gets the register to which {@link CiRegister#Frame} and {@link CiRegister#CallerFrame} are bound.
+     * Gets the register to which {@link Register#Frame} and {@link Register#CallerFrame} are bound.
      */
-    CiRegister getFrameRegister();
+    Register getFrameRegister();
 
-    CiRegister getScratchRegister();
+    Register getScratchRegister();
 
     /**
      * Gets the calling convention describing how arguments are passed.
@@ -54,7 +54,7 @@ public interface CiRegisterConfig {
      * @param target the target platform
      * @param stackOnly ignore registers
      */
-    CiCallingConvention getCallingConvention(Type type, Kind[] parameters, CiTarget target, boolean stackOnly);
+    CallingConvention getCallingConvention(Type type, Kind[] parameters, TargetDescription target, boolean stackOnly);
 
     /**
      * Gets the ordered set of registers that are can be used to pass parameters
@@ -65,43 +65,43 @@ public interface CiRegisterConfig {
      *             {@linkplain} RegisterFlag#FPU floating point} parameters are being requested
      * @return the ordered set of registers that may be used to pass parameters in a call conforming to {@code type}
      */
-    CiRegister[] getCallingConventionRegisters(Type type, RegisterFlag flag);
+    Register[] getCallingConventionRegisters(Type type, RegisterFlag flag);
 
     /**
      * Gets the set of registers that can be used by the register allocator.
      */
-    CiRegister[] getAllocatableRegisters();
+    Register[] getAllocatableRegisters();
 
     /**
      * Gets the set of registers that can be used by the register allocator,
-     * {@linkplain CiRegister#categorize(CiRegister[]) categorized} by register {@linkplain RegisterFlag flags}.
+     * {@linkplain Register#categorize(Register[]) categorized} by register {@linkplain RegisterFlag flags}.
      *
      * @return a map from each {@link RegisterFlag} constant to the list of {@linkplain #getAllocatableRegisters()
      *         allocatable} registers for which the flag is {@linkplain #isSet(RegisterFlag) set}
      *
      */
-    EnumMap<RegisterFlag, CiRegister[]> getCategorizedAllocatableRegisters();
+    EnumMap<RegisterFlag, Register[]> getCategorizedAllocatableRegisters();
 
     /**
      * Gets the registers whose values must be preserved by a method across any call it makes.
      */
-    CiRegister[] getCallerSaveRegisters();
+    Register[] getCallerSaveRegisters();
 
     /**
      * Gets the layout of the callee save area of this register configuration.
      *
      * @return {@code null} if there is no callee save area
      */
-    CiCalleeSaveLayout getCalleeSaveLayout();
+    CalleeSaveLayout getCalleeSaveLayout();
 
     /**
-     * Gets a map from register {@linkplain CiRegister#number numbers} to register
-     * {@linkplain CiRegisterAttributes attributes} for this register configuration.
+     * Gets a map from register {@linkplain Register#number numbers} to register
+     * {@linkplain RegisterAttributes attributes} for this register configuration.
      *
      * @return an array where an element at index i holds the attributes of the register whose number is i
-     * @see CiRegister#categorize(CiRegister[])
+     * @see Register#categorize(Register[])
      */
-    CiRegisterAttributes[] getAttributesMap();
+    RegisterAttributes[] getAttributesMap();
 
     /**
      * Gets the register corresponding to a runtime-defined role.
@@ -109,5 +109,5 @@ public interface CiRegisterConfig {
      * @param id the identifier of a runtime-defined register role
      * @return the register playing the role specified by {@code id}
      */
-    CiRegister getRegisterForRole(int id);
+    Register getRegisterForRole(int id);
 }

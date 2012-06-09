@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.alloc;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 
@@ -277,7 +277,7 @@ final class MoveResolver {
                 // do not allocate a new spill slot for temporary interval, but
                 // use spill slot assigned to fromInterval. Otherwise moves from
                 // one stack slot to another can happen (not allowed by LIRAssembler
-                CiStackSlot spillSlot = fromInterval.spillSlot();
+                StackSlot spillSlot = fromInterval.spillSlot();
                 if (spillSlot == null) {
                     spillSlot = allocator.frameMap.allocateSpillSlot(spillInterval.kind());
                     fromInterval.setSpillSlot(spillSlot);

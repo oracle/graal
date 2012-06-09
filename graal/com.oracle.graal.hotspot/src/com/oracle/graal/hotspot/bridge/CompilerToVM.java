@@ -101,7 +101,7 @@ public interface CompilerToVM {
 
     JavaMethod getRiMethod(Method reflectionMethod);
 
-    long getMaxCallTargetOffset(CiRuntimeCall rtcall);
+    long getMaxCallTargetOffset(RuntimeCall rtcall);
 
     String disassembleNative(byte[] code, long address);
 

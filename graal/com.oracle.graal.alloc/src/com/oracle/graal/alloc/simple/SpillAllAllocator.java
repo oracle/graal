@@ -27,7 +27,7 @@ import java.util.*;
 
 import com.oracle.graal.alloc.util.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CiRegister.*;
+import com.oracle.graal.api.code.Register.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -57,14 +57,14 @@ public class SpillAllAllocator {
 
         @Override
         protected Value scratchRegister(Variable spilled) {
-            EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = frameMap.registerConfig.getCategorizedAllocatableRegisters();
-            CiRegister[] availableRegs = categorizedRegs.get(spilled.flag);
-            for (CiRegister reg : availableRegs) {
+            EnumMap<RegisterFlag, Register[]> categorizedRegs = frameMap.registerConfig.getCategorizedAllocatableRegisters();
+            Register[] availableRegs = categorizedRegs.get(spilled.flag);
+            for (Register reg : availableRegs) {
                 if (curInRegisterState[reg.number] == null && curOutRegisterState[reg.number] == null) {
                     return reg.asValue(spilled.kind);
                 }
             }
-            throw new CiBailout("No register found");
+            throw new BailoutException("No register found");
         }
     }
 
@@ -365,7 +365,7 @@ public class SpillAllAllocator {
                 @Override
                 public Value doValue(Value registerHint) {
                     Debug.log("      registerHint %s", registerHint);
-                    CiRegister hint = null;
+                    Register hint = null;
                     if (isRegister(registerHint)) {
                         hint = asRegister(registerHint);
                     } else if (isLocation(registerHint) && isRegister(asLocation(registerHint).location)) {
@@ -383,23 +383,23 @@ public class SpillAllAllocator {
             }
         }
 
-        EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = frameMap.registerConfig.getCategorizedAllocatableRegisters();
-        CiRegister[] availableRegs = categorizedRegs.get(variable.flag);
+        EnumMap<RegisterFlag, Register[]> categorizedRegs = frameMap.registerConfig.getCategorizedAllocatableRegisters();
+        Register[] availableRegs = categorizedRegs.get(variable.flag);
 
-        for (CiRegister reg : availableRegs) {
+        for (Register reg : availableRegs) {
             if (isFree(reg, inRegisterState, outRegisterState)) {
                 return selectRegister(reg, variable, inRegisterState, outRegisterState);
             }
 
         }
-        throw new CiBailout("No register found");
+        throw new BailoutException("No register found");
     }
 
-    private static boolean isFree(CiRegister reg, Object[] inRegisterState, Object[] outRegisterState) {
+    private static boolean isFree(Register reg, Object[] inRegisterState, Object[] outRegisterState) {
         return (inRegisterState == null || inRegisterState[reg.number] == null) && (outRegisterState == null || outRegisterState[reg.number] == null);
     }
 
-    private Location selectRegister(CiRegister reg, Variable variable, Object[] inRegisterState, Object[] outRegisterState) {
+    private Location selectRegister(Register reg, Variable variable, Object[] inRegisterState, Object[] outRegisterState) {
         Location loc = new Location(variable, reg.asValue(variable.kind));
         if (inRegisterState != null) {
             inRegisterState[reg.number] = loc;
@@ -436,7 +436,7 @@ public class SpillAllAllocator {
     }
 
     private boolean checkNoCallerSavedRegister() {
-        for (CiRegister reg : frameMap.registerConfig.getCallerSaveRegisters()) {
+        for (Register reg : frameMap.registerConfig.getCallerSaveRegisters()) {
             assert curOutRegisterState[reg.number] == null || curOutRegisterState[reg.number] == curInstruction : "caller saved register in use accross call site";
         }
         return true;

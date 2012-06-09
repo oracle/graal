@@ -23,7 +23,7 @@
 package com.oracle.graal.compiler.gen;
 
 import static com.oracle.graal.api.meta.Value.*;
-import static com.oracle.graal.lir.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
 

@@ -33,7 +33,7 @@ import com.oracle.graal.api.meta.JavaTypeProfile.*;
 /**
  * Miscellaneous collection of utility methods used in the {@code CRI} project.
  */
-public class CiUtil {
+public class CodeUtil {
 
     public static final String NEW_LINE = String.format("%n");
 
@@ -348,7 +348,7 @@ public class CiUtil {
      * @param frame
      * @return the values in {@code frame} as a tabulated string
      */
-    public static String tabulateValues(CiFrame frame) {
+    public static String tabulateValues(BytecodeFrame frame) {
         int cols = Math.max(frame.numLocals, Math.max(frame.numStack, frame.numLocks));
         assert cols > 0;
         ArrayList<Object> cells = new ArrayList<>();
@@ -378,7 +378,7 @@ public class CiUtil {
                 cellArray[i] = "|" + cellArray[i];
             }
         }
-        return CiUtil.tabulate(cellArray, cols, 1, 1);
+        return CodeUtil.tabulate(cellArray, cols, 1, 1);
     }
 
     /**
@@ -465,7 +465,7 @@ public class CiUtil {
             if (ste.getFileName() != null && ste.getLineNumber() > 0) {
                 sb.append(ste);
             } else {
-                sb.append(CiUtil.format("%H.%n(%p)", method));
+                sb.append(CodeUtil.format("%H.%n(%p)", method));
             }
         } else {
             sb.append("Null method");
@@ -480,7 +480,7 @@ public class CiUtil {
      * @param pos the code position to format and append to {@code sb}
      * @return the value of {@code sb}
      */
-    public static StringBuilder append(StringBuilder sb, CiCodePos pos) {
+    public static StringBuilder append(StringBuilder sb, BytecodePosition pos) {
         appendLocation(sb.append("at "), pos.method, pos.bci);
         if (pos.caller != null) {
             sb.append(NEW_LINE);
@@ -496,7 +496,7 @@ public class CiUtil {
      * @param frame the frame to format and append to {@code sb}
      * @return the value of {@code sb}
      */
-    public static StringBuilder append(StringBuilder sb, CiFrame frame) {
+    public static StringBuilder append(StringBuilder sb, BytecodeFrame frame) {
         appendLocation(sb.append("at "), frame.method, frame.bci);
         if (frame.values != null && frame.values.length > 0) {
             sb.append(NEW_LINE);
@@ -535,9 +535,9 @@ public class CiUtil {
         /**
          * The register used as the frame pointer.
          */
-        public final CiRegister fp;
+        public final Register fp;
 
-        public final CiArchitecture arch;
+        public final Architecture arch;
 
         /**
          * The offset (in bytes) from the slot pointed to by {@link #fp} to the slot corresponding to bit 0 in the frame
@@ -545,7 +545,7 @@ public class CiUtil {
          */
         public final int refMapToFPOffset;
 
-        public RefMapFormatter(CiArchitecture arch, int slotSize, CiRegister fp, int refMapToFPOffset) {
+        public RefMapFormatter(Architecture arch, int slotSize, Register fp, int refMapToFPOffset) {
             this.arch = arch;
             this.slotSize = slotSize;
             this.fp = fp;
@@ -573,7 +573,7 @@ public class CiUtil {
      * @param info the debug info to format and append to {@code sb}
      * @return the value of {@code sb}
      */
-    public static StringBuilder append(StringBuilder sb, CiDebugInfo info, RefMapFormatter formatter) {
+    public static StringBuilder append(StringBuilder sb, DebugInfo info, RefMapFormatter formatter) {
         String nl = NEW_LINE;
         if (info.hasRegisterRefMap()) {
             sb.append("  reg-ref-map:");
@@ -595,7 +595,7 @@ public class CiUtil {
             }
             sb.append(' ').append(bm).append(nl);
         }
-        CiFrame frame = info.frame();
+        BytecodeFrame frame = info.frame();
         if (frame != null) {
             append(sb, frame);
         } else if (info.codePos != null) {

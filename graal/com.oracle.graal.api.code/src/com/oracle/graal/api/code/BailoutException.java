@@ -29,7 +29,7 @@ import java.util.*;
  * e.g. bytecode wouldn't verify, too big, JSR/ret too complicated, etc. This exception is <i>not</i>
  * meant to indicate problems with the compiler itself.
  */
-public class CiBailout extends RuntimeException {
+public class BailoutException extends RuntimeException {
 
     public static final long serialVersionUID = 8974598793458772L;
 
@@ -37,7 +37,7 @@ public class CiBailout extends RuntimeException {
      * Create a new {@code CiBailout}.
      * @param reason a message indicating the reason
      */
-    public CiBailout(String reason) {
+    public BailoutException(String reason) {
         super(reason);
     }
 
@@ -46,7 +46,7 @@ public class CiBailout extends RuntimeException {
      * @param reason a message indicating the reason with a String.format - syntax
      * @param args parameters to the formatter
      */
-    public CiBailout(String format, Object... args) {
+    public BailoutException(String format, Object... args) {
         this(String.format(Locale.ENGLISH, format, args));
     }
 
@@ -55,7 +55,7 @@ public class CiBailout extends RuntimeException {
      * @param reason a message indicating the reason
      * @param cause the throwable that was the cause of the bailout
      */
-    public CiBailout(String reason, Throwable cause) {
+    public BailoutException(String reason, Throwable cause) {
         super(reason);
         initCause(cause);
     }

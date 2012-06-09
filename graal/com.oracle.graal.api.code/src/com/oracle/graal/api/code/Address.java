@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.meta.*;
 
@@ -31,13 +31,13 @@ import com.oracle.graal.api.meta.*;
  * a displacement and a scale. Note that the base and index registers may be a variable that will get a register assigned
  * later by the register allocator.
  */
-public final class CiAddress extends Value {
+public final class Address extends Value {
     private static final long serialVersionUID = -1003772042519945089L;
 
     /**
      * A sentinel value used as a place holder in an instruction stream for an address that will be patched.
      */
-    public static final CiAddress Placeholder = new CiAddress(Kind.Illegal, Value.IllegalValue);
+    public static final Address Placeholder = new Address(Kind.Illegal, Value.IllegalValue);
 
     /**
      * Base register that defines the start of the address computation.
@@ -66,7 +66,7 @@ public final class CiAddress extends Value {
      * @param kind the kind of the value being addressed
      * @param base the base register
      */
-    public CiAddress(Kind kind, Value base) {
+    public Address(Kind kind, Value base) {
         this(kind, base, IllegalValue, Scale.Times1, 0);
     }
 
@@ -76,7 +76,7 @@ public final class CiAddress extends Value {
      * @param base the base register
      * @param displacement the displacement
      */
-    public CiAddress(Kind kind, Value base, int displacement) {
+    public Address(Kind kind, Value base, int displacement) {
         this(kind, base, IllegalValue, Scale.Times1, displacement);
     }
 
@@ -89,7 +89,7 @@ public final class CiAddress extends Value {
      * @param scale the scaling factor
      * @param displacement the displacement
      */
-    public CiAddress(Kind kind, Value base, Value index, Scale scale, int displacement) {
+    public Address(Kind kind, Value base, Value index, Scale scale, int displacement) {
         super(kind);
         this.base = base;
         this.index = index;
@@ -163,8 +163,8 @@ public final class CiAddress extends Value {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof CiAddress) {
-            CiAddress addr = (CiAddress) obj;
+        if (obj instanceof Address) {
+            Address addr = (Address) obj;
             return kind == addr.kind && displacement == addr.displacement && base.equals(addr.base) && scale == addr.scale && index.equals(addr.index);
         }
         return false;

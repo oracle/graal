@@ -43,7 +43,7 @@ public abstract class IntegerArithmeticNode extends ArithmeticNode {
             case Long:
                 return graph.unique(new IntegerAddNode(Kind.Long, v1, v2));
             default:
-                throw ValueUtil.shouldNotReachHere();
+                throw ValueNodeUtil.shouldNotReachHere();
         }
     }
 
@@ -56,7 +56,7 @@ public abstract class IntegerArithmeticNode extends ArithmeticNode {
             case Long:
                 return graph.unique(new IntegerMulNode(Kind.Long, v1, v2));
             default:
-                throw ValueUtil.shouldNotReachHere();
+                throw ValueNodeUtil.shouldNotReachHere();
         }
     }
 }

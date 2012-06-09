@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static java.lang.Double.*;
 import static java.lang.Float.*;
 
@@ -139,7 +139,7 @@ public class AMD64Move {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            load(tasm, masm, output(0), (CiAddress) input(0), info);
+            load(tasm, masm, output(0), (Address) input(0), info);
         }
 
         @Override
@@ -161,7 +161,7 @@ public class AMD64Move {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            store(tasm, masm, (CiAddress) input(0), input(1), info);
+            store(tasm, masm, (Address) input(0), input(1), info);
         }
 
         @Override
@@ -240,7 +240,7 @@ public class AMD64Move {
 
 
     public static class CompareAndSwapOp extends AMD64LIRInstruction {
-        public CompareAndSwapOp(Value result, CiAddress address, Value cmpValue, Value newValue) {
+        public CompareAndSwapOp(Value result, Address address, Value cmpValue, Value newValue) {
             super("CAS", new Value[] {result}, null, new Value[] {address, cmpValue, newValue}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
@@ -404,7 +404,7 @@ public class AMD64Move {
     }
 
 
-    public static void load(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, CiAddress loadAddr, LIRDebugInfo info) {
+    public static void load(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Address loadAddr, LIRDebugInfo info) {
         if (info != null) {
             tasm.recordImplicitException(masm.codeBuffer.position(), info);
         }
@@ -422,7 +422,7 @@ public class AMD64Move {
         }
     }
 
-    public static void store(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiAddress storeAddr, Value input, LIRDebugInfo info) {
+    public static void store(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Address storeAddr, Value input, LIRDebugInfo info) {
         if (info != null) {
             tasm.recordImplicitException(masm.codeBuffer.position(), info);
         }
@@ -474,7 +474,7 @@ public class AMD64Move {
         }
     }
 
-    protected static void compareAndSwap(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, CiAddress address, Value cmpValue, Value newValue) {
+    protected static void compareAndSwap(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Address address, Value cmpValue, Value newValue) {
         assert asRegister(cmpValue) == AMD64.rax && asRegister(result) == AMD64.rax;
 
         if (tasm.target.isMP) {

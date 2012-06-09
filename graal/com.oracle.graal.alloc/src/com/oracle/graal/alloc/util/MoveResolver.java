@@ -302,7 +302,7 @@ public abstract class MoveResolver {
 
     /**
      * Provides a register that can be used by the move resolver. If the returned value is a
-     * {@link CiRegisterValue}, the register can be overwritten without precautions. If the
+     * {@link RegisterValue}, the register can be overwritten without precautions. If the
      * returned value is a {@link Location}, it needs to be spilled and rescued itself.
      */
     protected abstract Value scratchRegister(Variable spilled);

@@ -30,25 +30,25 @@ import com.oracle.graal.api.meta.*;
 /**
  * Represents a target machine register.
  */
-public final class CiRegister implements Comparable<CiRegister>, Serializable {
+public final class Register implements Comparable<Register>, Serializable {
 
     private static final long serialVersionUID = -7213269157816016300L;
 
     /**
      * Invalid register.
      */
-    public static final CiRegister None = new CiRegister(-1, -1, 0, "noreg");
+    public static final Register None = new Register(-1, -1, 0, "noreg");
 
     /**
      * Frame pointer of the current method. All spill slots and outgoing stack-based arguments
      * are addressed relative to this register.
      */
-    public static final CiRegister Frame = new CiRegister(-2, -2, 0, "framereg", RegisterFlag.CPU);
+    public static final Register Frame = new Register(-2, -2, 0, "framereg", RegisterFlag.CPU);
 
-    public static final CiRegister CallerFrame = new CiRegister(-3, -3, 0, "callerframereg", RegisterFlag.CPU);
+    public static final Register CallerFrame = new Register(-3, -3, 0, "callerframereg", RegisterFlag.CPU);
 
     /**
-     * The identifier for this register that is unique across all the registers in a {@link CiArchitecture}.
+     * The identifier for this register that is unique across all the registers in a {@link Architecture}.
      * A valid register has {@code number > 0}.
      */
     public final int number;
@@ -75,10 +75,10 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
     private final int flags;
 
     /**
-     * An array of {@link CiRegisterValue} objects, for this register, with one entry
+     * An array of {@link RegisterValue} objects, for this register, with one entry
      * per {@link Kind}, indexed by {@link Kind#ordinal}.
      */
-    private final CiRegisterValue[] values;
+    private final RegisterValue[] values;
 
     /**
      * Attributes that characterize a register in a useful way.
@@ -112,16 +112,16 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
      * @param name the mnemonic name for the register
      * @param flags the set of {@link RegisterFlag} values for the register
      */
-    public CiRegister(int number, int encoding, int spillSlotSize, String name, RegisterFlag... flags) {
+    public Register(int number, int encoding, int spillSlotSize, String name, RegisterFlag... flags) {
         this.number = number;
         this.name = name;
         this.spillSlotSize = spillSlotSize;
         this.flags = createMask(flags);
         this.encoding = encoding;
 
-        values = new CiRegisterValue[Kind.VALUES.length];
+        values = new RegisterValue[Kind.VALUES.length];
         for (Kind kind : Kind.VALUES) {
-            values[kind.ordinal()] = new CiRegisterValue(kind, this);
+            values[kind.ordinal()] = new RegisterValue(kind, this);
         }
     }
 
@@ -138,19 +138,19 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
     }
 
     /**
-     * Gets this register as a {@linkplain CiRegisterValue value} with a specified kind.
+     * Gets this register as a {@linkplain RegisterValue value} with a specified kind.
      * @param kind the specified kind
-     * @return the {@link CiRegisterValue}
+     * @return the {@link RegisterValue}
      */
-    public CiRegisterValue asValue(Kind kind) {
+    public RegisterValue asValue(Kind kind) {
         return values[kind.ordinal()];
     }
 
     /**
-     * Gets this register as a {@linkplain CiRegisterValue value} with no particular kind.
-     * @return a {@link CiRegisterValue} with {@link Kind#Illegal} kind.
+     * Gets this register as a {@linkplain RegisterValue value} with no particular kind.
+     * @return a {@link RegisterValue} with {@link Kind#Illegal} kind.
      */
-    public CiRegisterValue asValue() {
+    public RegisterValue asValue() {
         return asValue(Kind.Illegal);
     }
 
@@ -191,16 +191,16 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
      * @return a map from each {@link RegisterFlag} constant to the list of registers for which the flag is
      *         {@linkplain #isSet(RegisterFlag) set}
      */
-    public static EnumMap<RegisterFlag, CiRegister[]> categorize(CiRegister[] registers) {
-        EnumMap<RegisterFlag, CiRegister[]> result = new EnumMap<>(RegisterFlag.class);
+    public static EnumMap<RegisterFlag, Register[]> categorize(Register[] registers) {
+        EnumMap<RegisterFlag, Register[]> result = new EnumMap<>(RegisterFlag.class);
         for (RegisterFlag flag : RegisterFlag.values()) {
-            ArrayList<CiRegister> list = new ArrayList<>();
-            for (CiRegister r : registers) {
+            ArrayList<Register> list = new ArrayList<>();
+            for (Register r : registers) {
                 if (r.isSet(flag)) {
                     list.add(r);
                 }
             }
-            result.put(flag, list.toArray(new CiRegister[list.size()]));
+            result.put(flag, list.toArray(new Register[list.size()]));
         }
         return result;
     }
@@ -211,9 +211,9 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
      * @param registers the set of registers to process
      * @return the maximum register number for any register in {@code registers}
      */
-    public static int maxRegisterNumber(CiRegister[] registers) {
+    public static int maxRegisterNumber(Register[] registers) {
         int max = Integer.MIN_VALUE;
-        for (CiRegister r : registers) {
+        for (Register r : registers) {
             if (r.number > max) {
                 max = r.number;
             }
@@ -227,9 +227,9 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
      * @param registers the set of registers to process
      * @return the maximum register encoding for any register in {@code registers}
      */
-    public static int maxRegisterEncoding(CiRegister[] registers) {
+    public static int maxRegisterEncoding(Register[] registers) {
         int max = Integer.MIN_VALUE;
-        for (CiRegister r : registers) {
+        for (Register r : registers) {
             if (r.encoding > max) {
                 max = r.encoding;
             }
@@ -243,7 +243,7 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
     }
 
     @Override
-    public int compareTo(CiRegister o) {
+    public int compareTo(Register o) {
         if (number < o.number) {
             return -1;
         }

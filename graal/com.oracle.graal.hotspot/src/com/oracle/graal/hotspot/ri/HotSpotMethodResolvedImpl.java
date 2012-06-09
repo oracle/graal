@@ -165,7 +165,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public String toString() {
-        return "HotSpotMethod<" + CiUtil.format("%h.%n", this) + ">";
+        return "HotSpotMethod<" + CodeUtil.format("%h.%n", this) + ">";
     }
 
     public boolean hasCompiledCode() {
@@ -315,7 +315,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     private Method toJava() {
         try {
-            return holder.toJava().getDeclaredMethod(name, CiUtil.signatureToTypes(signature(), holder));
+            return holder.toJava().getDeclaredMethod(name, CodeUtil.signatureToTypes(signature(), holder));
         } catch (NoSuchMethodException e) {
             return null;
         }
@@ -323,7 +323,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     private Constructor toJavaConstructor() {
         try {
-            return holder.toJava().getDeclaredConstructor(CiUtil.signatureToTypes(signature(), holder));
+            return holder.toJava().getDeclaredConstructor(CodeUtil.signatureToTypes(signature(), holder));
         } catch (NoSuchMethodException e) {
             return null;
         }

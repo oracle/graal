@@ -92,7 +92,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> debugProperties = super.getDebugProperties();
         if (callTarget != null && callTarget.targetMethod() != null) {
-            debugProperties.put("targetMethod", CiUtil.format("%h.%n(%p)", callTarget.targetMethod()));
+            debugProperties.put("targetMethod", CodeUtil.format("%h.%n(%p)", callTarget.targetMethod()));
         }
         return debugProperties;
     }

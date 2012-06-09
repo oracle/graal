@@ -31,7 +31,7 @@ import com.oracle.graal.api.meta.*;
  * including {@link Value locations} where to find the local variables,
  * operand stack values and locked objects of the bytecode frame(s).
  */
-public class CiFrame extends CiCodePos implements Serializable {
+public class BytecodeFrame extends BytecodePosition implements Serializable {
     private static final long serialVersionUID = -345025397165977565L;
 
     /**
@@ -87,7 +87,7 @@ public class CiFrame extends CiCodePos implements Serializable {
      * @param numStack the depth of the stack
      * @param numLocks the number of locked objects
      */
-    public CiFrame(CiFrame caller, ResolvedJavaMethod method, int bci, boolean rethrowException, boolean duringCall, Value[] values, int numLocals, int numStack, int numLocks, long leafGraphId) {
+    public BytecodeFrame(BytecodeFrame caller, ResolvedJavaMethod method, int bci, boolean rethrowException, boolean duringCall, Value[] values, int numLocals, int numStack, int numLocks, long leafGraphId) {
         super(caller, method, bci);
         assert values != null;
         this.rethrowException = rethrowException;
@@ -132,12 +132,12 @@ public class CiFrame extends CiCodePos implements Serializable {
      *
      * @return {@code null} if this frame has no caller
      */
-    public CiFrame caller() {
-        return (CiFrame) caller;
+    public BytecodeFrame caller() {
+        return (BytecodeFrame) caller;
     }
 
     @Override
     public String toString() {
-        return CiUtil.append(new StringBuilder(100), this).toString();
+        return CodeUtil.append(new StringBuilder(100), this).toString();
     }
 }

@@ -29,8 +29,8 @@ import com.oracle.graal.api.meta.*;
  * Represents the target machine for a compiler, including the CPU architecture, the size of pointers and references,
  * alignment of stacks, caches, etc.
  */
-public class CiTarget {
-    public final CiArchitecture arch;
+public class TargetDescription {
+    public final Architecture arch;
 
     /**
      * The OS page size.
@@ -81,7 +81,7 @@ public class CiTarget {
 
     /**
      * Specifies how {@code long} and {@code double} constants are to be stored
-     * in {@linkplain CiFrame frames}. This is useful for VMs such as HotSpot
+     * in {@linkplain BytecodeFrame frames}. This is useful for VMs such as HotSpot
      * where convention the interpreter uses is that the second local
      * holds the first raw word of the native long or double representation.
      * This is actually reasonable, since locals and stack arrays
@@ -97,7 +97,7 @@ public class CiTarget {
     // TODO This should go away when XIR goes away, and the logic be part of the VM-specific lowering.
     public final boolean invokeSnippetAfterArguments;
 
-    public CiTarget(CiArchitecture arch,
+    public TargetDescription(Architecture arch,
              boolean isMP,
              int stackAlignment,
              int pageSize,

@@ -64,6 +64,6 @@ public class BaseUnresolvedMethod implements JavaMethod {
 
     @Override
     public String toString() {
-        return CiUtil.format("%H.%n(%p) [unresolved]", this);
+        return CodeUtil.format("%H.%n(%p) [unresolved]", this);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,37 @@
  */
 package com.oracle.graal.api.code;
 
+import static com.oracle.graal.api.meta.Kind.*;
+
 import com.oracle.graal.api.meta.*;
 
 /**
- * Denotes a register that stores a value of a fixed kind. There is exactly one (canonical) instance of {@code
- * CiRegisterValue} for each ({@link CiRegister}, {@link Kind}) pair. Use {@link CiRegister#asValue(Kind)} to
- * retrieve the canonical {@link CiRegisterValue} instance for a given (register,kind) pair.
+ * Enumerates the calls that must be provided by the runtime system. The compiler
+ * may generate code that calls the runtime services for unresolved and slow cases of some
+ * bytecodes.
  */
-public final class CiRegisterValue extends Value {
-    private static final long serialVersionUID = 7999341472196897163L;
+public enum RuntimeCall {
+    UnwindException(Void, Object),
+    Deoptimize(Void),
+    RegisterFinalizer(Void, Object),
+    SetDeoptInfo(Void, Object),
+    CreateNullPointerException(Object),
+    CreateOutOfBoundsException(Object, Int),
+    JavaTimeMillis(Long),
+    JavaTimeNanos(Long),
+    Debug(Void),
+    ArithmeticFrem(Float, Float, Float),
+    ArithmeticDrem(Double, Double, Double),
+    ArithmeticCos(Double, Double),
+    ArithmeticTan(Double, Double),
+    ArithmeticSin(Double, Double),
+    GenericCallback(Object, Object, Object);
 
-    /**
-     * The register.
-     */
-    public final CiRegister reg;
+    public final Kind resultKind;
+    public final Kind[] arguments;
 
-    /**
-     * Should only be called from {@link CiRegister#CiRegister} to ensure canonicalization.
-     */
-    protected CiRegisterValue(Kind kind, CiRegister register) {
-        super(kind);
-        this.reg = register;
-    }
-
-    @Override
-    public int hashCode() {
-        return (reg.number << 4) ^ kind.ordinal();
-    }
-
-    @Override
-    public String toString() {
-        return reg.name + kindSuffix();
+    private RuntimeCall(Kind resultKind, Kind... args) {
+        this.resultKind = resultKind;
+        this.arguments = args;
     }
 }

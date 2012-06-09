@@ -144,7 +144,7 @@ public class HotSpotDebugConfig implements DebugConfig {
 
     @Override
     public RuntimeException interceptException(Throwable e) {
-        if (e instanceof CiBailout) {
+        if (e instanceof BailoutException) {
             return null;
         }
         Debug.setConfig(Debug.fixedConfig(true, true, false, false, dumpHandlers, output));

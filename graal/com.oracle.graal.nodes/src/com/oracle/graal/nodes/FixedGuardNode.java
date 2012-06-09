@@ -33,7 +33,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
 
     @Input private BooleanNode condition;
     private final DeoptimizationReason deoptReason;
-    private final CiDeoptAction action;
+    private final DeoptimizationAction action;
     private boolean negated;
     private final long leafGraphId;
 
@@ -46,11 +46,11 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
         condition = x;
     }
 
-    public FixedGuardNode(BooleanNode condition, DeoptimizationReason deoptReason, CiDeoptAction action, long leafGraphId) {
+    public FixedGuardNode(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, long leafGraphId) {
         this(condition, deoptReason, action, false, leafGraphId);
     }
 
-    public FixedGuardNode(BooleanNode condition, DeoptimizationReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
+    public FixedGuardNode(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated, long leafGraphId) {
         super(StampFactory.forVoid());
         this.action = action;
         this.negated = negated;
@@ -84,7 +84,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
                 if (next != null) {
                     tool.deleteBranch(next);
                 }
-                setNext(graph().add(new DeoptimizeNode(CiDeoptAction.InvalidateRecompile, deoptReason, leafGraphId)));
+                setNext(graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, deoptReason, leafGraphId)));
                 return;
             }
         }

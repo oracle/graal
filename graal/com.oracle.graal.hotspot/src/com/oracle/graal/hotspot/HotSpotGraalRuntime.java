@@ -51,7 +51,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
 
     private HotSpotRuntime runtime;
     private GraalCompiler compiler;
-    private CiTarget target;
+    private TargetDescription target;
     private volatile HotSpotGraphCache cache;
 
     private final HotSpotVMConfig config;
@@ -99,11 +99,11 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
         }
     }
 
-    public CiTarget getTarget() {
+    public TargetDescription getTarget() {
         if (target == null) {
             final int wordSize = 8;
             final int stackFrameAlignment = 16;
-            target = new CiTarget(new AMD64(), true, stackFrameAlignment, config.vmPageSize, wordSize, true, true, true);
+            target = new TargetDescription(new AMD64(), true, stackFrameAlignment, config.vmPageSize, wordSize, true, true, true);
         }
 
         return target;

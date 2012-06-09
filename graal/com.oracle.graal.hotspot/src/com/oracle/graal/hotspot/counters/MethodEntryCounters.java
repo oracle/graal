@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.counters;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 
@@ -53,7 +53,7 @@ public class MethodEntryCounters {
         protected long sortCount;
 
         protected Counter(ResolvedJavaMethod method) {
-            this.method = CiUtil.format("%H.%n", method);
+            this.method = CodeUtil.format("%H.%n", method);
             counters.add(this);
         }
 
@@ -85,12 +85,12 @@ public class MethodEntryCounters {
             int scale = Unsafe.getUnsafe().arrayIndexScale(long[].class);
 
             AMD64Move.move(tasm, masm, counterArr, Constant.forObject(counter.counts));
-            AMD64Move.load(tasm, masm, callerPc, new CiAddress(Kind.Long, AMD64.rbp.asValue(Kind.Long), 8), null);
+            AMD64Move.load(tasm, masm, callerPc, new Address(Kind.Long, AMD64.rbp.asValue(Kind.Long), 8), null);
 
             Label done = new Label();
             for (int i = 0; i < counter.counts.length - 2; i += 2) {
-                CiAddress counterPcAddr = new CiAddress(Kind.Long, counterArr, i * scale + off);
-                CiAddress counterValueAddr = new CiAddress(Kind.Long, counterArr, (i + 1) * scale + off);
+                Address counterPcAddr = new Address(Kind.Long, counterArr, i * scale + off);
+                Address counterValueAddr = new Address(Kind.Long, counterArr, (i + 1) * scale + off);
 
                 Label skipClaim = new Label();
                 masm.cmpq(counterPcAddr, 0);
@@ -106,7 +106,7 @@ public class MethodEntryCounters {
                 masm.bind(skipInc);
             }
 
-            CiAddress counterValueAddr = new CiAddress(Kind.Long, counterArr, (counter.counts.length - 1) * scale + off);
+            Address counterValueAddr = new Address(Kind.Long, counterArr, (counter.counts.length - 1) * scale + off);
             masm.addq(counterValueAddr, 1);
             masm.bind(done);
 

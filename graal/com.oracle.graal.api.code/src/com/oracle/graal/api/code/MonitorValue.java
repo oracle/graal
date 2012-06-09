@@ -20,20 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
+package com.oracle.graal.api.code;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 
-public class ValueUtil extends CiValueUtil {
+public final class MonitorValue extends Value {
+    private static final long serialVersionUID = 8241681800464483691L;
 
-    public static boolean isVariable(Value value) {
-        assert value != null;
-        return value instanceof Variable;
+    public Value owner;
+    public final Value lockData;
+    public final boolean eliminated;
+
+    public MonitorValue(Value owner, Value lockData, boolean eliminated) {
+        super(Kind.Illegal);
+        this.owner = owner;
+        this.lockData = lockData;
+        this.eliminated = eliminated;
     }
 
-    public static Variable asVariable(Value value) {
-        assert value != null;
-        return (Variable) value;
+    @Override
+    public String toString() {
+        return "monitor[" + owner + (lockData != null ? ", " + lockData : "") + (eliminated ? ", eliminated" : "") + "]";
     }
 }

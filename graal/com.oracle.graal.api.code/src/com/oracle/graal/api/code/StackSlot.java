@@ -30,14 +30,14 @@ import com.oracle.graal.api.meta.*;
  * Represents a compiler spill slot or an outgoing stack-based argument in a method's frame
  * or an incoming stack-based argument in a method's {@linkplain #inCallerFrame() caller's frame}.
  */
-public final class CiStackSlot extends Value {
+public final class StackSlot extends Value {
     private static final long serialVersionUID = -7725071921307318433L;
 
     private final int offset;
     private final boolean addFrameSize;
 
     /**
-     * Gets a {@link CiStackSlot} instance representing a stack slot at a given index
+     * Gets a {@link StackSlot} instance representing a stack slot at a given index
      * holding a value of a given kind.
      *
      * @param kind The kind of the value stored in the stack slot.
@@ -45,12 +45,12 @@ public final class CiStackSlot extends Value {
      * @param inCallerFrame Specifies if the offset is relative to the stack pointer,
      *        or the beginning of the frame (stack pointer + total frame size).
      */
-    public static CiStackSlot get(Kind kind, int offset, boolean addFrameSize) {
+    public static StackSlot get(Kind kind, int offset, boolean addFrameSize) {
         assert kind.stackKind() == kind;
         assert addFrameSize || offset >= 0;
 
         if (offset % CACHE_GRANULARITY == 0) {
-            CiStackSlot[][] cache;
+            StackSlot[][] cache;
             int index = offset / CACHE_GRANULARITY;
             if (!addFrameSize) {
                 cache = OUT_CACHE;
@@ -60,20 +60,20 @@ public final class CiStackSlot extends Value {
                 cache = SPILL_CACHE;
                 index = -index;
             }
-            CiStackSlot[] slots = cache[kind.ordinal()];
+            StackSlot[] slots = cache[kind.ordinal()];
             if (index < slots.length) {
-                CiStackSlot slot = slots[index];
+                StackSlot slot = slots[index];
                 assert slot.kind == kind && slot.offset == offset && slot.addFrameSize == addFrameSize;
                 return slot;
             }
         }
-        return new CiStackSlot(kind, offset, addFrameSize);
+        return new StackSlot(kind, offset, addFrameSize);
     }
 
     /**
      * Private constructor to enforce use of {@link #get()} so that a cache can be used.
      */
-    private CiStackSlot(Kind kind, int offset, boolean addFrameSize) {
+    private StackSlot(Kind kind, int offset, boolean addFrameSize) {
         super(kind);
         this.offset = offset;
         this.addFrameSize = addFrameSize;
@@ -112,8 +112,8 @@ public final class CiStackSlot extends Value {
         if (o == this) {
             return true;
         }
-        if (o instanceof CiStackSlot) {
-            CiStackSlot l = (CiStackSlot) o;
+        if (o instanceof StackSlot) {
+            StackSlot l = (StackSlot) o;
             return l.kind == kind && l.offset == offset && l.addFrameSize == addFrameSize;
         }
         return false;
@@ -133,7 +133,7 @@ public final class CiStackSlot extends Value {
     /**
      * Gets this stack slot used to pass an argument from the perspective of a caller.
      */
-    public CiStackSlot asOutArg() {
+    public StackSlot asOutArg() {
         assert offset >= 0;
         if (addFrameSize) {
             return get(kind, offset, false);
@@ -144,7 +144,7 @@ public final class CiStackSlot extends Value {
     /**
      * Gets this stack slot used to pass an argument from the perspective of a callee.
      */
-    public CiStackSlot asInArg() {
+    public StackSlot asInArg() {
         assert offset >= 0;
         if (!addFrameSize) {
             return get(kind, offset, true);
@@ -157,16 +157,16 @@ public final class CiStackSlot extends Value {
     private static final int SPILL_CACHE_PER_KIND_SIZE = 100;
     private static final int PARAM_CACHE_PER_KIND_SIZE = 10;
 
-    private static final CiStackSlot[][] SPILL_CACHE = makeCache(SPILL_CACHE_PER_KIND_SIZE, -1, true);
-    private static final CiStackSlot[][] IN_CACHE = makeCache(PARAM_CACHE_PER_KIND_SIZE, 1, true);
-    private static final CiStackSlot[][] OUT_CACHE = makeCache(PARAM_CACHE_PER_KIND_SIZE, 1, false);
+    private static final StackSlot[][] SPILL_CACHE = makeCache(SPILL_CACHE_PER_KIND_SIZE, -1, true);
+    private static final StackSlot[][] IN_CACHE = makeCache(PARAM_CACHE_PER_KIND_SIZE, 1, true);
+    private static final StackSlot[][] OUT_CACHE = makeCache(PARAM_CACHE_PER_KIND_SIZE, 1, false);
 
-    private static CiStackSlot[][] makeCache(int cachePerKindSize, int sign, boolean addFrameSize) {
-        CiStackSlot[][] cache = new CiStackSlot[Kind.VALUES.length][];
+    private static StackSlot[][] makeCache(int cachePerKindSize, int sign, boolean addFrameSize) {
+        StackSlot[][] cache = new StackSlot[Kind.VALUES.length][];
         for (Kind kind : new Kind[] {Illegal, Int, Long, Float, Double, Object, Jsr}) {
-            CiStackSlot[] slots = new CiStackSlot[cachePerKindSize];
+            StackSlot[] slots = new StackSlot[cachePerKindSize];
             for (int i = 0; i < cachePerKindSize; i++) {
-                slots[i] = new CiStackSlot(kind, sign * i * CACHE_GRANULARITY, addFrameSize);
+                slots[i] = new StackSlot(kind, sign * i * CACHE_GRANULARITY, addFrameSize);
             }
             cache[kind.ordinal()] = slots;
         }

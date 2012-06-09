@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
-import static com.oracle.graal.lir.ValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
 
@@ -135,7 +135,7 @@ public final class LIRVerifier {
 
                 op.forEachInput(useProc);
                 if (op.hasCall()) {
-                    for (CiRegister register : frameMap.registerConfig.getCallerSaveRegisters()) {
+                    for (Register register : frameMap.registerConfig.getCallerSaveRegisters()) {
                         curRegistersLive[register.number] = null;
                     }
                 }

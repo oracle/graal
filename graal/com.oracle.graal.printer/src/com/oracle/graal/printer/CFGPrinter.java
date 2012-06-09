@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.printer;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.io.*;
 import java.util.*;
@@ -49,7 +49,7 @@ import com.oracle.graal.nodes.calc.*;
  */
 class CFGPrinter extends CompilationPrinter {
 
-    protected CiTarget target;
+    protected TargetDescription target;
     protected LIR lir;
     protected LIRGenerator lirGenerator;
     protected ControlFlowGraph cfg;
@@ -382,7 +382,7 @@ class CFGPrinter extends CompilationPrinter {
         StringBuilder buf = new StringBuilder();
         FrameState curState = state;
         do {
-            buf.append(CiUtil.toLocation(curState.method(), curState.bci)).append('\n');
+            buf.append(CodeUtil.toLocation(curState.method(), curState.bci)).append('\n');
 
             if (curState.stackSize() > 0) {
                 buf.append("stack: ");

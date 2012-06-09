@@ -56,9 +56,9 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      *
      * @param method the top level method of a compilation
      */
-    CiRegisterConfig getRegisterConfig(JavaMethod method);
+    RegisterConfig getRegisterConfig(JavaMethod method);
 
-    CiRegisterConfig getGlobalStubRegisterConfig();
+    RegisterConfig getGlobalStubRegisterConfig();
 
     /**
      * Custom area on the stack of each compiled method that the VM can use for its own purposes.
@@ -82,7 +82,7 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      * Returns the maximum absolute offset of a runtime call target from any position in the code cache or -1
      * when not known or not applicable. Intended for determining the required size of address/offset fields.
      */
-    long getMaxCallTargetOffset(CiRuntimeCall rtcall);
+    long getMaxCallTargetOffset(RuntimeCall rtcall);
 
     /**
      * Adds the given machine code as an implementation of the given method without making it the default implementation.
@@ -98,7 +98,7 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      * Encodes a deoptimization action and a deoptimization reason in an integer value.
      * @return the encoded value as an integer
      */
-    int encodeDeoptActionAndReason(CiDeoptAction action, DeoptimizationReason reason);
+    int encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason);
 
     /**
      * Converts a RiDeoptReason into an integer value.
@@ -110,5 +110,5 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      * Converts a RiDeoptAction into an integer value.
      * @return An integer value representing the given RiDeoptAction.
      */
-    int convertDeoptAction(CiDeoptAction action);
+    int convertDeoptAction(DeoptimizationAction action);
 }

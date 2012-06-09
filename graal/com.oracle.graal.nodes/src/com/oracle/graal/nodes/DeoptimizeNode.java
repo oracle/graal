@@ -32,16 +32,16 @@ import com.oracle.graal.nodes.type.*;
 public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
 
     private String message;
-    private final CiDeoptAction action;
+    private final DeoptimizationAction action;
     private final DeoptimizationReason reason;
     private final long leafGraphId;
 
 
-    public DeoptimizeNode(CiDeoptAction action, DeoptimizationReason reason) {
+    public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
         this(action, reason, -1);
     }
 
-    public DeoptimizeNode(CiDeoptAction action, DeoptimizationReason reason, long leafGraphId) {
+    public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason, long leafGraphId) {
         super(StampFactory.forVoid());
         this.action = action;
         this.reason = reason;
@@ -56,7 +56,7 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
         return message;
     }
 
-    public CiDeoptAction action() {
+    public DeoptimizationAction action() {
         return action;
     }
 
@@ -75,7 +75,7 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void deopt(@ConstantNodeParameter CiDeoptAction action, @ConstantNodeParameter DeoptimizationReason reason) {
+    public static void deopt(@ConstantNodeParameter DeoptimizationAction action, @ConstantNodeParameter DeoptimizationReason reason) {
         throw new UnsupportedOperationException();
     }
 }

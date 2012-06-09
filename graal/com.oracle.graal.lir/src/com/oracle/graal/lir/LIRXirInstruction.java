@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 

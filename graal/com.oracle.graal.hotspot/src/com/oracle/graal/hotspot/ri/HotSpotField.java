@@ -112,7 +112,7 @@ public class HotSpotField extends CompilerObject implements ResolvedJavaField {
 
     @Override
     public String toString() {
-        return "HotSpotField<" + CiUtil.format("%h.%n", this) + ":" + offset + ">";
+        return "HotSpotField<" + CodeUtil.format("%h.%n", this) + ":" + offset + ">";
     }
 
     @Override

@@ -27,7 +27,7 @@ import static com.oracle.max.cri.xir.CiXirAssembler.XirOp.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CiAddress.*;
+import com.oracle.graal.api.code.Address.*;
 import com.oracle.graal.api.meta.*;
 
 /**
@@ -58,9 +58,9 @@ public abstract class CiXirAssembler {
      */
     protected boolean finished = true;
 
-    protected final CiTarget target;
+    protected final TargetDescription target;
 
-    public CiXirAssembler(CiTarget target) {
+    public CiXirAssembler(TargetDescription target) {
         this.target = target;
     }
 
@@ -248,7 +248,7 @@ public abstract class CiXirAssembler {
     public static class XirRegister extends XirTemp {
         public final Value register;
 
-        XirRegister(CiXirAssembler asm, String name, CiRegisterValue register, boolean reserve) {
+        XirRegister(CiXirAssembler asm, String name, RegisterValue register, boolean reserve) {
             super(asm, name, register.kind, reserve);
             this.register = register;
         }
@@ -834,15 +834,15 @@ public abstract class CiXirAssembler {
         return temp;
     }
 
-    public XirOperand createRegister(String name, Kind kind, CiRegister register) {
+    public XirOperand createRegister(String name, Kind kind, Register register) {
         return createRegister(name, kind, register, false);
     }
 
-    public XirOperand createRegisterTemp(String name, Kind kind, CiRegister register) {
+    public XirOperand createRegisterTemp(String name, Kind kind, Register register) {
         return createRegister(name, kind, register, true);
     }
 
-    private XirOperand createRegister(String name, Kind kind, CiRegister register, boolean reserve) {
+    private XirOperand createRegister(String name, Kind kind, Register register, boolean reserve) {
         assert !finished;
         XirRegister fixed = new XirRegister(this, name, register.asValue(kind), reserve);
         temps.add(fixed);

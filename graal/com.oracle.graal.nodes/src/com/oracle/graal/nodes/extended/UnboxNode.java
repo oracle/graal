@@ -82,7 +82,7 @@ public final class UnboxNode extends FixedWithNextNode implements Node.IterableN
                     case Double:
                         return ConstantNode.forDouble((Long) o, graph());
                     default:
-                        ValueUtil.shouldNotReachHere();
+                        ValueNodeUtil.shouldNotReachHere();
                 }
             }
         }

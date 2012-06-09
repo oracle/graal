@@ -413,7 +413,7 @@ public final class BciBlockMapping {
     private void addSuccessor(int predBci, Block sux) {
         Block predecessor = blockMap[predBci];
         if (sux.isExceptionEntry) {
-            throw new CiBailout("Exception handler can be reached by both normal and exceptional control flow");
+            throw new BailoutException("Exception handler can be reached by both normal and exceptional control flow");
         }
         predecessor.successors.add(sux);
     }
@@ -522,7 +522,7 @@ public final class BciBlockMapping {
                 // There is a path from a loop end to the method entry that does not pass the loop header.
                 // Therefore, the loop is non reducible (has more than one entry).
                 // We don't want to compile such methods because the IR only supports structured loops.
-                throw new CiBailout("Non-reducible loop");
+                throw new BailoutException("Non-reducible loop");
             }
         } while (loopChanges);
     }
@@ -534,7 +534,7 @@ public final class BciBlockMapping {
             // There is a path from a loop end to the method entry that does not pass the loop header.
             // Therefore, the loop is non reducible (has more than one entry).
             // We don't want to compile such methods because the IR only supports structured loops.
-            throw new CiBailout("Non-reducible loop");
+            throw new BailoutException("Non-reducible loop");
         }
 
         // Convert postorder to the desired reverse postorder.
@@ -615,12 +615,12 @@ public final class BciBlockMapping {
             if (block.isExceptionEntry) {
                 // Loops that are implicitly formed by an exception handler lead to all sorts of corner cases.
                 // Don't compile such methods for now, until we see a concrete case that allows checking for correctness.
-                throw new CiBailout("Loop formed by an exception handler");
+                throw new BailoutException("Loop formed by an exception handler");
             }
             if (nextLoop >= Long.SIZE) {
                 // This restriction can be removed by using a fall-back to a BitSet in case we have more than 64 loops
                 // Don't compile such methods for now, until we see a concrete case that allows checking for correctness.
-                throw new CiBailout("Too many loops in method");
+                throw new BailoutException("Too many loops in method");
             }
 
             assert block.loops == 0;

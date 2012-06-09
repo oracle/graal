@@ -58,7 +58,7 @@ public class TypeCheckHints {
      *            {@code maxHints}) is below this value, then {@link #types} will be null
      * @param maxHints the maximum length of {@link #types}
      */
-    public TypeCheckHints(ResolvedJavaType type, JavaTypeProfile profile, CiAssumptions assumptions, double minHintHitProbability, int maxHints) {
+    public TypeCheckHints(ResolvedJavaType type, JavaTypeProfile profile, Assumptions assumptions, double minHintHitProbability, int maxHints) {
         if (type != null && isFinalClass(type)) {
             types = new ResolvedJavaType[] {type};
             exact = true;

@@ -30,7 +30,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * Represents the output from compiling a method, including the compiled machine code, associated data and references,
  * relocation information, deoptimization information, etc. It is the essential component of a {@link CiResult}, which also includes
- * {@linkplain CiStatistics compilation statistics} and {@linkplain CiBailout failure information}.
+ * {@linkplain CiStatistics compilation statistics} and {@linkplain BailoutException failure information}.
  */
 public class CompilationResult implements Serializable {
 
@@ -56,9 +56,9 @@ public class CompilationResult implements Serializable {
      */
     public static class Safepoint extends Site implements Comparable<Safepoint> {
         private static final long serialVersionUID = 2479806696381720162L;
-        public final CiDebugInfo debugInfo;
+        public final DebugInfo debugInfo;
 
-        Safepoint(int pcOffset, CiDebugInfo debugInfo) {
+        Safepoint(int pcOffset, DebugInfo debugInfo) {
             super(pcOffset);
             this.debugInfo = debugInfo;
         }
@@ -106,7 +106,7 @@ public class CompilationResult implements Serializable {
          */
         public final boolean direct;
 
-        Call(Object target, int pcOffset, int size, boolean direct, CiDebugInfo debugInfo) {
+        Call(Object target, int pcOffset, int size, boolean direct, DebugInfo debugInfo) {
             super(pcOffset, debugInfo);
             this.size = size;
             this.target = target;
@@ -350,7 +350,7 @@ public class CompilationResult implements Serializable {
 
     private ArrayList<CodeAnnotation> annotations;
 
-    private CiAssumptions assumptions;
+    private Assumptions assumptions;
 
     /**
      * Constructs a new target method.
@@ -358,11 +358,11 @@ public class CompilationResult implements Serializable {
     public CompilationResult() {
     }
 
-    public void setAssumptions(CiAssumptions assumptions) {
+    public void setAssumptions(Assumptions assumptions) {
         this.assumptions = assumptions;
     }
 
-    public CiAssumptions assumptions() {
+    public Assumptions assumptions() {
         return assumptions;
     }
 
@@ -408,7 +408,7 @@ public class CompilationResult implements Serializable {
      * @param debugInfo the debug info for the call
      * @param direct specifies if this is a {@linkplain Call#direct direct} call
      */
-    public void recordCall(int codePos, int size, Object target, CiDebugInfo debugInfo, boolean direct) {
+    public void recordCall(int codePos, int size, Object target, DebugInfo debugInfo, boolean direct) {
         final Call call = new Call(target, codePos, size, direct, debugInfo);
         addSafepoint(call);
     }
@@ -430,7 +430,7 @@ public class CompilationResult implements Serializable {
      * @param codePos the position of the safepoint in the code array
      * @param debugInfo the debug info for the safepoint
      */
-    public void recordSafepoint(int codePos, CiDebugInfo debugInfo) {
+    public void recordSafepoint(int codePos, DebugInfo debugInfo) {
         addSafepoint(new Safepoint(codePos, debugInfo));
     }
 
@@ -530,13 +530,13 @@ public class CompilationResult implements Serializable {
         annotations.add(annotation);
     }
 
-    private static void appendDebugInfo(StringBuilder sb, CiDebugInfo info) {
+    private static void appendDebugInfo(StringBuilder sb, DebugInfo info) {
         if (info != null) {
             appendRefMap(sb, "stackMap", info.frameRefMap);
             appendRefMap(sb, "registerMap", info.registerRefMap);
-            CiCodePos codePos = info.codePos;
+            BytecodePosition codePos = info.codePos;
             if (codePos != null) {
-                CiUtil.appendLocation(sb.append(" "), codePos.method, codePos.bci);
+                CodeUtil.appendLocation(sb.append(" "), codePos.method, codePos.bci);
                 if (info.hasFrame()) {
                     sb.append(" #locals=").append(info.frame().numLocals).append(" #expr=").append(info.frame().numStack);
                     if (info.frame().numLocks > 0) {

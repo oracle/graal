@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.target.amd64;
 
-import static com.oracle.graal.api.code.CiCallingConvention.Type.*;
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.CallingConvention.Type.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.ri.HotSpotXirGenerator.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 
@@ -51,12 +51,12 @@ import com.oracle.max.cri.xir.*;
 
 public class HotSpotAMD64Backend extends Backend {
 
-    public HotSpotAMD64Backend(CodeCacheProvider runtime, CiTarget target) {
+    public HotSpotAMD64Backend(CodeCacheProvider runtime, TargetDescription target) {
         super(runtime, target);
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions) {
+    public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, RiXirGenerator xir, Assumptions assumptions) {
         return new AMD64LIRGenerator(graph, runtime, target, frameMap, method, lir, xir, assumptions) {
 
             @Override
@@ -68,9 +68,9 @@ public class HotSpotAMD64Backend extends Backend {
             @Override
             public void visitExceptionObject(ExceptionObjectNode x) {
                 HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
-                CiRegisterValue thread = r15.asValue();
-                CiAddress exceptionAddress = new CiAddress(Kind.Object, thread, config.threadExceptionOopOffset);
-                CiAddress pcAddress = new CiAddress(Kind.Long, thread, config.threadExceptionPcOffset);
+                RegisterValue thread = r15.asValue();
+                Address exceptionAddress = new Address(Kind.Object, thread, config.threadExceptionOopOffset);
+                Address pcAddress = new Address(Kind.Long, thread, config.threadExceptionPcOffset);
                 Value exception = emitLoad(exceptionAddress, false);
                 emitStore(exceptionAddress, Constant.NULL_OBJECT, false);
                 emitStore(pcAddress, Constant.LONG_0, false);
@@ -105,10 +105,10 @@ public class HotSpotAMD64Backend extends Backend {
             if (GraalOptions.ZapStackOnMethodEntry) {
                 final int intSize = 4;
                 for (int i = 0; i < frameSize / intSize; ++i) {
-                    asm.movl(new CiAddress(Kind.Int, rsp.asValue(), i * intSize), 0xC1C1C1C1);
+                    asm.movl(new Address(Kind.Int, rsp.asValue(), i * intSize), 0xC1C1C1C1);
                 }
             }
-            CiCalleeSaveLayout csl = frameMap.registerConfig.getCalleeSaveLayout();
+            CalleeSaveLayout csl = frameMap.registerConfig.getCalleeSaveLayout();
             if (csl != null && csl.size != 0) {
                 int frameToCSA = frameMap.offsetToCalleeSaveArea();
                 assert frameToCSA >= 0;
@@ -120,8 +120,8 @@ public class HotSpotAMD64Backend extends Backend {
         public void leave(TargetMethodAssembler tasm) {
             int frameSize = tasm.frameMap.frameSize();
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
-            CiCalleeSaveLayout csl = tasm.frameMap.registerConfig.getCalleeSaveLayout();
-            CiRegisterConfig regConfig = tasm.frameMap.registerConfig;
+            CalleeSaveLayout csl = tasm.frameMap.registerConfig.getCalleeSaveLayout();
+            RegisterConfig regConfig = tasm.frameMap.registerConfig;
 
             if (csl != null && csl.size != 0) {
                 tasm.targetMethod.setRegisterRestoreEpilogueOffset(asm.codeBuffer.position());
@@ -140,14 +140,14 @@ public class HotSpotAMD64Backend extends Backend {
                 // so deoptimization cannot be performed here. The HotSpot runtime
                 // detects this case - see the definition of frame::should_be_deoptimized()
 
-                CiRegister scratch = regConfig.getScratchRegister();
+                Register scratch = regConfig.getScratchRegister();
                 if (config.isPollingPageFar) {
                     asm.movq(scratch, config.safepointPollingAddress);
                     tasm.recordMark(MARK_POLL_RETURN_FAR);
-                    asm.movq(scratch, new CiAddress(tasm.target.wordKind, scratch.asValue()));
+                    asm.movq(scratch, new Address(tasm.target.wordKind, scratch.asValue()));
                 } else {
                     tasm.recordMark(MARK_POLL_RETURN_NEAR);
-                    asm.movq(scratch, new CiAddress(tasm.target.wordKind, rip.asValue()));
+                    asm.movq(scratch, new Address(tasm.target.wordKind, rip.asValue()));
                 }
             }
         }
@@ -178,7 +178,7 @@ public class HotSpotAMD64Backend extends Backend {
     public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIR lir) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
         FrameMap frameMap = tasm.frameMap;
-        CiRegisterConfig regConfig = frameMap.registerConfig;
+        RegisterConfig regConfig = frameMap.registerConfig;
         HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
         Label unverifiedStub = new Label();
 
@@ -188,10 +188,10 @@ public class HotSpotAMD64Backend extends Backend {
         boolean isStatic = Modifier.isStatic(method.accessFlags());
         if (!isStatic) {
             tasm.recordMark(MARK_UNVERIFIED_ENTRY);
-            CiCallingConvention cc = regConfig.getCallingConvention(JavaCallee, new Kind[] {Kind.Object}, target, false);
-            CiRegister inlineCacheKlass = rax; // see definition of IC_Klass in c1_LIRAssembler_x86.cpp
-            CiRegister receiver = asRegister(cc.locations[0]);
-            CiAddress src = new CiAddress(target.wordKind, receiver.asValue(), config.hubOffset);
+            CallingConvention cc = regConfig.getCallingConvention(JavaCallee, new Kind[] {Kind.Object}, target, false);
+            Register inlineCacheKlass = rax; // see definition of IC_Klass in c1_LIRAssembler_x86.cpp
+            Register receiver = asRegister(cc.locations[0]);
+            Address src = new Address(target.wordKind, receiver.asValue(), config.hubOffset);
 
             asm.cmpq(inlineCacheKlass, src);
             asm.jcc(ConditionFlag.notEqual, unverifiedStub);

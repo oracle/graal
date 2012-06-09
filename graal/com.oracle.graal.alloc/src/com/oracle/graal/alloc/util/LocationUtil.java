@@ -25,7 +25,7 @@ package com.oracle.graal.alloc.util;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 
-public class LocationUtil extends ValueUtil {
+public class LocationUtil extends LIRValueUtil {
 
     public static boolean isLocation(Value value) {
         assert value != null;

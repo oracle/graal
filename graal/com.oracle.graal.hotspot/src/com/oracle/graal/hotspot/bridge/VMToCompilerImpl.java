@@ -29,7 +29,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
@@ -211,14 +210,14 @@ public class VMToCompilerImpl implements VMToCompiler {
                 }
             }
         } while ((System.currentTimeMillis() - startTime) <= GraalOptions.TimedBootstrap);
-        CiCompilationStatistics.clear("bootstrap");
+        CompilationStatistics.clear("bootstrap");
 
         TTY.println(" in %d ms", System.currentTimeMillis() - startTime);
         if (compiler.getCache() != null) {
             compiler.getCache().clear();
         }
         System.gc();
-        CiCompilationStatistics.clear("bootstrap2");
+        CompilationStatistics.clear("bootstrap2");
         MethodEntryCounters.printCounters(compiler);
     }
 
@@ -284,7 +283,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                 }
             }
         }
-        CiCompilationStatistics.clear("final");
+        CompilationStatistics.clear("final");
         MethodEntryCounters.printCounters(compiler);
         HotSpotXirGenerator.printCounters(TTY.out().out());
         CheckCastSnippets.printCounters(TTY.out().out());

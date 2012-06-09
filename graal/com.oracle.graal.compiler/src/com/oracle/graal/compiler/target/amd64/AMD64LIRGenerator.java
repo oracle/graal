@@ -23,7 +23,7 @@
 
 package com.oracle.graal.compiler.target.amd64;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
 import static com.oracle.graal.lir.amd64.AMD64Compare.*;
 
@@ -44,7 +44,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.ValueUtil;
+import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Reg;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Stack;
@@ -79,11 +79,11 @@ import com.oracle.graal.nodes.java.*;
  */
 public abstract class AMD64LIRGenerator extends LIRGenerator {
 
-    private static final CiRegisterValue RAX_I = AMD64.rax.asValue(Kind.Int);
-    private static final CiRegisterValue RAX_L = AMD64.rax.asValue(Kind.Long);
-    private static final CiRegisterValue RDX_I = AMD64.rdx.asValue(Kind.Int);
-    private static final CiRegisterValue RDX_L = AMD64.rdx.asValue(Kind.Long);
-    private static final CiRegisterValue RCX_I = AMD64.rcx.asValue(Kind.Int);
+    private static final RegisterValue RAX_I = AMD64.rax.asValue(Kind.Int);
+    private static final RegisterValue RAX_L = AMD64.rax.asValue(Kind.Long);
+    private static final RegisterValue RDX_I = AMD64.rdx.asValue(Kind.Int);
+    private static final RegisterValue RDX_L = AMD64.rdx.asValue(Kind.Long);
+    private static final RegisterValue RCX_I = AMD64.rcx.asValue(Kind.Int);
 
     public static class AMD64SpillMoveFactory implements LIR.SpillMoveFactory {
         @Override
@@ -98,7 +98,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    public AMD64LIRGenerator(Graph graph, CodeCacheProvider runtime, CiTarget target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions) {
+    public AMD64LIRGenerator(Graph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, RiXirGenerator xir, Assumptions assumptions) {
         super(graph, runtime, target, frameMap, method, lir, xir, assumptions);
         lir.spillMoveFactory = new AMD64SpillMoveFactory();
     }
@@ -133,7 +133,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiAddress makeAddress(LocationNode location, ValueNode object) {
+    public Address makeAddress(LocationNode location, ValueNode object) {
         Value base = operand(object);
         Value index = Value.IllegalValue;
         int scale = 1;
@@ -168,7 +168,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             }
         }
 
-        return new CiAddress(location.getValueKind(), base, index, CiAddress.Scale.fromInt(scale), (int) displacement);
+        return new Address(location.getValueKind(), base, index, Address.Scale.fromInt(scale), (int) displacement);
     }
 
     @Override
@@ -259,7 +259,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable left;
         Value right;
         boolean mirrored;
-        if (ValueUtil.isVariable(b)) {
+        if (LIRValueUtil.isVariable(b)) {
             left = load(b);
             right = loadNonConst(a);
             mirrored = true;
@@ -370,9 +370,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new DivOp(LREM, RDX_L, RAX_L, load(b), state()));
                 return emitMove(RDX_L);
             case Float:
-                return emitCall(CiRuntimeCall.ArithmeticFrem, false, a, b);
+                return emitCall(RuntimeCall.ArithmeticFrem, false, a, b);
             case Double:
-                return emitCall(CiRuntimeCall.ArithmeticDrem, false, a, b);
+                return emitCall(RuntimeCall.ArithmeticDrem, false, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -519,7 +519,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public void emitDeoptimizeOnOverflow(CiDeoptAction action, DeoptimizationReason reason, Object deoptInfo) {
+    public void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo) {
         LIRDebugInfo info = state();
         LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
         append(new BranchOp(ConditionFlag.overflow, stubEntry, info));
@@ -527,7 +527,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public void emitDeoptimize(CiDeoptAction action, DeoptimizationReason reason, Object deoptInfo, long leafGraphId) {
+    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo, long leafGraphId) {
         LIRDebugInfo info = state(leafGraphId);
         LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
         append(new JumpOp(stubEntry, info));
@@ -569,7 +569,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected LabelRef createDeoptStub(CiDeoptAction action, DeoptimizationReason reason, LIRDebugInfo info, Object deoptInfo) {
+    protected LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRDebugInfo info, Object deoptInfo) {
         assert info.topFrame.bci >= 0 : "invalid bci for deopt framestate";
         AMD64DeoptimizationStub stub = new AMD64DeoptimizationStub(action, reason, info, deoptInfo);
         lir.stubs.add(stub);
@@ -591,17 +591,17 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Value expected = loadNonConst(operand(node.expected()));
         Variable newValue = load(operand(node.newValue()));
 
-        CiAddress address;
+        Address address;
         int displacement = node.displacement();
         Value index = operand(node.offset());
         if (isConstant(index) && NumUtil.isInt(asConstant(index).asLong())) {
             displacement += (int) asConstant(index).asLong();
-            address = new CiAddress(kind, load(operand(node.object())), displacement);
+            address = new Address(kind, load(operand(node.object())), displacement);
         } else {
-            address = new CiAddress(kind, load(operand(node.object())), load(index), CiAddress.Scale.Times1, displacement);
+            address = new Address(kind, load(operand(node.object())), load(index), Address.Scale.Times1, displacement);
         }
 
-        CiRegisterValue rax = AMD64.rax.asValue(kind);
+        RegisterValue rax = AMD64.rax.asValue(kind);
         emitMove(expected, rax);
         append(new CompareAndSwapOp(rax, address, rax, newValue));
 

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 
@@ -36,13 +36,13 @@ import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
  * This class represents garbage collection and deoptimization information attached to a LIR instruction.
  */
 public class LIRDebugInfo {
-    public final CiFrame topFrame;
-    private final CiVirtualObject[] virtualObjects;
-    private final List<CiStackSlot> pointerSlots;
+    public final BytecodeFrame topFrame;
+    private final VirtualObject[] virtualObjects;
+    private final List<StackSlot> pointerSlots;
     public final LabelRef exceptionEdge;
-    private CiDebugInfo debugInfo;
+    private DebugInfo debugInfo;
 
-    public LIRDebugInfo(CiFrame topFrame, CiVirtualObject[] virtualObjects, List<CiStackSlot> pointerSlots, LabelRef exceptionEdge) {
+    public LIRDebugInfo(BytecodeFrame topFrame, VirtualObject[] virtualObjects, List<StackSlot> pointerSlots, LabelRef exceptionEdge) {
         this.topFrame = topFrame;
         this.virtualObjects = virtualObjects;
         this.pointerSlots = pointerSlots;
@@ -53,7 +53,7 @@ public class LIRDebugInfo {
         return debugInfo != null;
     }
 
-    public CiDebugInfo debugInfo() {
+    public DebugInfo debugInfo() {
         assert debugInfo != null : "debug info not allocated yet";
         return debugInfo;
     }
@@ -64,11 +64,11 @@ public class LIRDebugInfo {
      * @param proc The procedure called for variables.
      */
     public void forEachState(ValueProcedure proc) {
-        for (CiFrame cur = topFrame; cur != null; cur = cur.caller()) {
+        for (BytecodeFrame cur = topFrame; cur != null; cur = cur.caller()) {
             processValues(cur.values, proc);
         }
         if (virtualObjects != null) {
-            for (CiVirtualObject obj : virtualObjects) {
+            for (VirtualObject obj : virtualObjects) {
                 processValues(obj.values(), proc);
             }
         }
@@ -82,8 +82,8 @@ public class LIRDebugInfo {
     private void processValues(Value[] values, ValueProcedure proc) {
         for (int i = 0; i < values.length; i++) {
             Value value = values[i];
-            if (value instanceof CiMonitorValue) {
-                CiMonitorValue monitor = (CiMonitorValue) value;
+            if (value instanceof MonitorValue) {
+                MonitorValue monitor = (MonitorValue) value;
                 if (processed(monitor.owner)) {
                     monitor.owner = proc.doValue(monitor.owner, OperandMode.Alive, STATE_FLAGS);
                 }
@@ -111,11 +111,11 @@ public class LIRDebugInfo {
 
 
     public void finish(BitSet registerRefMap, BitSet frameRefMap, FrameMap frameMap) {
-        debugInfo = new CiDebugInfo(topFrame, registerRefMap, frameRefMap);
+        debugInfo = new DebugInfo(topFrame, registerRefMap, frameRefMap);
 
         // Add additional stack slots for outgoing method parameters.
         if (pointerSlots != null) {
-            for (CiStackSlot v : pointerSlots) {
+            for (StackSlot v : pointerSlots) {
                 frameMap.setReference(v, registerRefMap, frameRefMap);
             }
         }

@@ -47,13 +47,13 @@ public class InliningPhase extends Phase implements InliningCallback {
      * - honor the result of overrideInliningDecision(0, caller, invoke.bci, method, true);
      */
 
-    private final CiTarget target;
+    private final TargetDescription target;
     private final ExtendedRiRuntime runtime;
 
     private final Collection<? extends Invoke> hints;
 
     private final PriorityQueue<InlineInfo> inlineCandidates = new PriorityQueue<>();
-    private CiAssumptions assumptions;
+    private Assumptions assumptions;
 
     private final PhasePlan plan;
     private final RiGraphCache cache;
@@ -66,7 +66,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
 
-    public InliningPhase(CiTarget target, ExtendedRiRuntime runtime, Collection<? extends Invoke> hints, CiAssumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public InliningPhase(TargetDescription target, ExtendedRiRuntime runtime, Collection<? extends Invoke> hints, Assumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this.target = target;
         this.runtime = runtime;
         this.hints = hints;
@@ -114,7 +114,7 @@ public class InliningPhase extends Phase implements InliningCallback {
 //                        new IntrinsificationPhase(runtime).apply(graph);
 //                    }
                     metricInliningPerformed.increment();
-                } catch (CiBailout bailout) {
+                } catch (BailoutException bailout) {
                     // TODO determine if we should really bail out of the whole compilation.
                     throw bailout;
                 } catch (AssertionError e) {

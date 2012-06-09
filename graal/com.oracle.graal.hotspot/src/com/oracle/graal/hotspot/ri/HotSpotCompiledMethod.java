@@ -70,14 +70,14 @@ public class HotSpotCompiledMethod extends CompilerObject implements InstalledCo
     }
 
     private boolean checkArgs(Object... args) {
-        Kind[] sig = CiUtil.signatureToKinds(method);
-        assert args.length == sig.length : CiUtil.format("%H.%n(%p): expected ", method) + sig.length + " args, got " + args.length;
+        Kind[] sig = CodeUtil.signatureToKinds(method);
+        assert args.length == sig.length : CodeUtil.format("%H.%n(%p): expected ", method) + sig.length + " args, got " + args.length;
         for (int i = 0; i < sig.length; i++) {
             Object arg = args[i];
             if (arg == null) {
-                assert sig[i].isObject() : CiUtil.format("%H.%n(%p): expected arg ", method) + i + " to be Object, not " + sig[i];
+                assert sig[i].isObject() : CodeUtil.format("%H.%n(%p): expected arg ", method) + i + " to be Object, not " + sig[i];
             } else if (!sig[i].isObject()) {
-                assert sig[i].toBoxedJavaClass() == arg.getClass() : CiUtil.format("%H.%n(%p): expected arg ", method) + i + " to be " + sig[i] + ", not " + arg.getClass();
+                assert sig[i].toBoxedJavaClass() == arg.getClass() : CodeUtil.format("%H.%n(%p): expected arg ", method) + i + " to be " + sig[i] + ", not " + arg.getClass();
             }
         }
         return true;

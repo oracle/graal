@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.meta.*;
 
@@ -30,11 +30,11 @@ import com.oracle.graal.api.meta.*;
 /**
  * A calling convention describes the locations in which the arguments for a call are placed.
  */
-public class CiCallingConvention {
+public class CallingConvention {
 
     /**
      * Constants denoting the type of a call for which a calling convention is
-     * {@linkplain CiRegisterConfig#getCallingConvention(Type, CiKind[], CiTarget, boolean) requested}.
+     * {@linkplain RegisterConfig#getCallingConvention(Type, CiKind[], CiTarget, boolean) requested}.
      */
     public enum Type {
         /**
@@ -80,7 +80,7 @@ public class CiCallingConvention {
      */
     public final Value[] locations;
 
-    public CiCallingConvention(Value[] locations, int stackSize) {
+    public CallingConvention(Value[] locations, int stackSize) {
         this.locations = locations;
         this.stackSize = stackSize;
         assert verify();

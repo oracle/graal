@@ -55,9 +55,9 @@ public class InliningUtil {
         if (!Debug.isLogEnabled()) {
             return null;
         } else if (invoke != null && invoke.stateAfter() != null) {
-            return methodName(invoke.stateAfter(), invoke.bci()) + ": " + CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+            return methodName(invoke.stateAfter(), invoke.bci()) + ": " + CodeUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
         } else {
-            return CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+            return CodeUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
         }
     }
 
@@ -77,7 +77,7 @@ public class InliningUtil {
             sb.append(methodName(frameState.outerFrameState(), frameState.outerFrameState().bci));
             sb.append("->");
         }
-        sb.append(CiUtil.format("%h.%n", frameState.method()));
+        sb.append(CodeUtil.format("%h.%n", frameState.method()));
         sb.append("@").append(bci);
         return sb.toString();
     }
@@ -154,7 +154,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "exact " + CiUtil.format("%H.%n(%p):%r", concrete);
+            return "exact " + CodeUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -189,7 +189,7 @@ public class InliningUtil {
             ValueNode receiver = invoke.callTarget().receiver();
             ReadHubNode objectClass = graph.add(new ReadHubNode(receiver));
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClass, type));
-            FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode, DeoptimizationReason.TypeCheckedInliningViolated, CiDeoptAction.InvalidateReprofile, invoke.leafGraphId()));
+            FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, invoke.leafGraphId()));
             AnchorNode anchor = graph.add(new AnchorNode());
             assert invoke.predecessor() != null;
 
@@ -208,7 +208,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "type-checked " + CiUtil.format("%H.%n(%p):%r", concrete);
+            return "type-checked " + CodeUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -315,7 +315,7 @@ public class InliningUtil {
             if (shouldFallbackToInvoke()) {
                 unknownTypeNode = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, 1, notRecordedTypeProbability, false);
             } else {
-                unknownTypeNode = graph.add(new DeoptimizeNode(CiDeoptAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
+                unknownTypeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
             }
 
             // replace the invoke exception edge
@@ -380,7 +380,7 @@ public class InliningUtil {
             ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.callTarget().receiver()));
             graph.addBeforeFixed(invoke.node(), objectClassNode);
 
-            FixedNode unknownTypeNode = graph.add(new DeoptimizeNode(CiDeoptAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
+            FixedNode unknownTypeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
             FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, new BeginNode[] {calleeEntryNode}, unknownTypeNode);
 
             FixedWithNextNode pred = (FixedWithNextNode) invoke.node().predecessor();
@@ -497,7 +497,7 @@ public class InliningUtil {
             StringBuilder builder = new StringBuilder(shouldFallbackToInvoke() ? "megamorphic" : "polymorphic");
             builder.append(String.format(", %d methods with %d type checks:", concretes.size(), ptypes.length));
             for (int i = 0; i < concretes.size(); i++) {
-                builder.append(CiUtil.format("  %H.%n(%p):%r", concretes.get(i)));
+                builder.append(CodeUtil.format("  %H.%n(%p):%r", concretes.get(i)));
             }
             return builder.toString();
         }
@@ -524,8 +524,8 @@ public class InliningUtil {
         @Override
         public void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
             if (Debug.isLogEnabled()) {
-                String targetName = CiUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod());
-                String concreteName = CiUtil.format("%H.%n(%p):%r", concrete);
+                String targetName = CodeUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod());
+                String concreteName = CodeUtil.format("%H.%n(%p):%r", concrete);
                 Debug.log("recording concrete method assumption: %s on receiver type %s -> %s", targetName, context, concreteName);
             }
             callback.recordConcreteMethodAssumption(invoke.callTarget().targetMethod(), context, concrete);
@@ -535,7 +535,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "assumption " + CiUtil.format("%H.%n(%p):%r", concrete);
+            return "assumption " + CodeUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -552,7 +552,7 @@ public class InliningUtil {
      * @param callback a callback that is used to determine the weight of a specific inlining
      * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
      */
-    public static InlineInfo getInlineInfo(Invoke invoke, int level, ExtendedRiRuntime runtime, CiAssumptions assumptions, InliningCallback callback, OptimisticOptimizations optimisticOpts) {
+    public static InlineInfo getInlineInfo(Invoke invoke, int level, ExtendedRiRuntime runtime, Assumptions assumptions, InliningCallback callback, OptimisticOptimizations optimisticOpts) {
         ResolvedJavaMethod parent = invoke.stateAfter().method();
         MethodCallTargetNode callTarget = invoke.callTarget();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
@@ -828,7 +828,7 @@ public class InliningUtil {
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
-                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(CiDeoptAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler, invoke.leafGraphId());
+                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler, invoke.leafGraphId());
                 unwindDuplicate.replaceAndDelete(graph.add(deoptimizeNode));
                 // move the deopt upwards if there is a monitor exit that tries to use the "after exception" frame state
                 // (because there is no "after exception" frame state!)
@@ -908,7 +908,7 @@ public class InliningUtil {
         NodeInputList<ValueNode> parameters = callTarget.arguments();
         ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
         if (!callTarget.isStatic() && firstParam.kind() == Kind.Object && !firstParam.objectStamp().nonNull()) {
-            graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new IsNullNode(firstParam)), DeoptimizationReason.ClassCastException, CiDeoptAction.InvalidateReprofile, true, invoke.leafGraphId())));
+            graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new IsNullNode(firstParam)), DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, true, invoke.leafGraphId())));
         }
     }
 }

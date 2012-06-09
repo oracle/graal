@@ -25,10 +25,10 @@ package com.oracle.graal.api.code;
 import com.oracle.graal.api.meta.*;
 
 /**
- * An instance of this class represents an object whose allocation was removed by escape analysis. The information stored in the {@link CiVirtualObject} is used during
+ * An instance of this class represents an object whose allocation was removed by escape analysis. The information stored in the {@link VirtualObject} is used during
  * deoptimization to recreate the object.
  */
-public final class CiVirtualObject extends Value {
+public final class VirtualObject extends Value {
     private static final long serialVersionUID = -2907197776426346021L;
 
     private final JavaType type;
@@ -43,11 +43,11 @@ public final class CiVirtualObject extends Value {
      * @param id a unique id that identifies the object within the debug information for one position in the compiled code.
      * @return a new CiVirtualObject instance.
      */
-    public static CiVirtualObject get(JavaType type, Value[] values, int id) {
-        return new CiVirtualObject(type, values, id);
+    public static VirtualObject get(JavaType type, Value[] values, int id) {
+        return new VirtualObject(type, values, id);
     }
 
-    private CiVirtualObject(JavaType type, Value[] values, int id) {
+    private VirtualObject(JavaType type, Value[] values, int id) {
         super(Kind.Object);
         this.type = type;
         this.values = values;
@@ -98,8 +98,8 @@ public final class CiVirtualObject extends Value {
         if (o == this) {
             return true;
         }
-        if (o instanceof CiVirtualObject) {
-            CiVirtualObject l = (CiVirtualObject) o;
+        if (o instanceof VirtualObject) {
+            VirtualObject l = (VirtualObject) o;
             if (l.type != type || l.values.length != values.length) {
                 return false;
             }
@@ -124,40 +124,40 @@ public final class CiVirtualObject extends Value {
             this.runtime = runtime;
         }
 
-        public CiVirtualObject constantProxy(Kind kind, Value objectValue, Value primitiveValue) {
+        public VirtualObject constantProxy(Kind kind, Value objectValue, Value primitiveValue) {
             Constant cKind = Constant.forObject(kind);
             // TODO: here the ordering is hard coded... we should query RiType.fields() and act accordingly
-            return new CiVirtualObject(runtime.getResolvedJavaType(Constant.class), new Value[] {cKind, primitiveValue, Value.IllegalValue, objectValue}, nextId++);
+            return new VirtualObject(runtime.getResolvedJavaType(Constant.class), new Value[] {cKind, primitiveValue, Value.IllegalValue, objectValue}, nextId++);
         }
 
         public Value proxy(Value ciValue) {
             switch (ciValue.kind) {
                 case Boolean:
-                    return new CiVirtualObject(runtime.getResolvedJavaType(Boolean.class), new Value[] {ciValue}, nextId++);
+                    return new VirtualObject(runtime.getResolvedJavaType(Boolean.class), new Value[] {ciValue}, nextId++);
                 case Byte:
-                    return new CiVirtualObject(runtime.getResolvedJavaType(Byte.class), new Value[] {ciValue}, nextId++);
+                    return new VirtualObject(runtime.getResolvedJavaType(Byte.class), new Value[] {ciValue}, nextId++);
                 case Char:
-                    return new CiVirtualObject(runtime.getResolvedJavaType(Character.class), new Value[] {ciValue}, nextId++);
+                    return new VirtualObject(runtime.getResolvedJavaType(Character.class), new Value[] {ciValue}, nextId++);
                 case Double:
-                    return new CiVirtualObject(runtime.getResolvedJavaType(Double.class), new Value[] {ciValue, Value.IllegalValue}, nextId++);
+                    return new VirtualObject(runtime.getResolvedJavaType(Double.class), new Value[] {ciValue, Value.IllegalValue}, nextId++);
                 case Float:
-                    return new CiVirtualObject(runtime.getResolvedJavaType(Float.class), new Value[] {ciValue}, nextId++);
+                    return new VirtualObject(runtime.getResolvedJavaType(Float.class), new Value[] {ciValue}, nextId++);
                 case Int:
-                    return new CiVirtualObject(runtime.getResolvedJavaType(Integer.class), new Value[] {ciValue}, nextId++);
+                    return new VirtualObject(runtime.getResolvedJavaType(Integer.class), new Value[] {ciValue}, nextId++);
                 case Long:
-                    return new CiVirtualObject(runtime.getResolvedJavaType(Long.class), new Value[] {ciValue, Value.IllegalValue}, nextId++);
+                    return new VirtualObject(runtime.getResolvedJavaType(Long.class), new Value[] {ciValue, Value.IllegalValue}, nextId++);
                 case Object:
                     return ciValue;
                 case Short:
-                    return new CiVirtualObject(runtime.getResolvedJavaType(Short.class), new Value[] {ciValue}, nextId++);
+                    return new VirtualObject(runtime.getResolvedJavaType(Short.class), new Value[] {ciValue}, nextId++);
                 default:
                     assert false : ciValue.kind;
                     return null;
             }
         }
 
-        public CiVirtualObject arrayProxy(JavaType arrayType, Value[] values) {
-            return new CiVirtualObject(arrayType, values, nextId++);
+        public VirtualObject arrayProxy(JavaType arrayType, Value[] values) {
+            return new VirtualObject(arrayType, values, nextId++);
         }
 
     }

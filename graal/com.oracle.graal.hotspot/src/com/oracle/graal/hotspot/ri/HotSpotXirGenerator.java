@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.ri;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.ri.TemplateFlag.*;
 
 import java.io.*;
@@ -32,8 +32,8 @@ import java.util.concurrent.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CiAddress.*;
-import com.oracle.graal.api.code.CiRegister.*;
+import com.oracle.graal.api.code.Address.*;
+import com.oracle.graal.api.code.Register.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
@@ -73,14 +73,14 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     // @formatter:on
 
     private final HotSpotVMConfig config;
-    private final CiTarget target;
-    private final CiRegisterConfig registerConfig;
+    private final TargetDescription target;
+    private final RegisterConfig registerConfig;
     private final HotSpotGraalRuntime compiler;
 
 
     private CiXirAssembler globalAsm;
 
-    public HotSpotXirGenerator(HotSpotVMConfig config, CiTarget target, CiRegisterConfig registerConfig, HotSpotGraalRuntime compiler) {
+    public HotSpotXirGenerator(HotSpotVMConfig config, TargetDescription target, RegisterConfig registerConfig, HotSpotGraalRuntime compiler) {
         this.config = config;
         this.target = target;
         this.registerConfig = registerConfig;
@@ -259,8 +259,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         }
     };
 
-    private CiRegister getGeneralParameterRegister(int index) {
-        return registerConfig.getCallingConventionRegisters(CiCallingConvention.Type.RuntimeCall, RegisterFlag.CPU)[index];
+    private Register getGeneralParameterRegister(int index) {
+        return registerConfig.getCallingConventionRegisters(CallingConvention.Type.RuntimeCall, RegisterFlag.CPU)[index];
     }
 
     private SimpleTemplates monitorExitTemplates = new SimpleTemplates(NULL_CHECK) {
@@ -383,13 +383,13 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
             // Calculate aligned size
             asm.mov(size, length);
-            int scale = CiUtil.log2(target.sizeInBytes(kind));
+            int scale = CodeUtil.log2(target.sizeInBytes(kind));
             if (scale != 0) {
                 asm.shl(size, size, asm.i(scale));
             }
             asm.add(size, size, asm.i(arrayElementOffset + aligning - 1));
             long mask = 0xFFFFFFFFL;
-            mask <<= CiUtil.log2(aligning);
+            mask <<= CodeUtil.log2(aligning);
             asm.and(size, size, asm.i((int) mask));
 
             // Try tlab allocation
@@ -581,8 +581,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             }
             DeoptimizationReason deoptReason = exact ? DeoptimizationReason.OptimizedTypeCheckViolated : DeoptimizationReason.ClassCastException;
             XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-            asm.mov(scratch, wordConst(asm, compiler.getRuntime().encodeDeoptActionAndReason(CiDeoptAction.InvalidateReprofile, deoptReason)));
-            asm.callRuntime(CiRuntimeCall.Deoptimize, null);
+            asm.mov(scratch, wordConst(asm, compiler.getRuntime().encodeDeoptActionAndReason(DeoptimizationAction.InvalidateReprofile, deoptReason)));
+            asm.callRuntime(RuntimeCall.Deoptimize, null);
             asm.shouldNotReachHere();
 
             return asm.finishTemplate("checkcast");
@@ -903,9 +903,9 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         asm.pop(result);
     }
 
-    private static void useRegisters(CiXirAssembler asm, CiRegister... registers) {
+    private static void useRegisters(CiXirAssembler asm, Register... registers) {
         if (registers != null) {
-            for (CiRegister register : registers) {
+            for (Register register : registers) {
                 asm.createRegisterTemp("reg", Kind.Illegal, register);
             }
         }

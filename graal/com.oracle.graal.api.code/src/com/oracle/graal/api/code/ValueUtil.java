@@ -24,7 +24,7 @@ package com.oracle.graal.api.code;
 
 import com.oracle.graal.api.meta.*;
 
-public class CiValueUtil {
+public class ValueUtil {
     public static boolean isIllegal(Value value) {
         assert value != null;
         return value == Value.IllegalValue;
@@ -36,12 +36,12 @@ public class CiValueUtil {
 
     public static boolean isVirtualObject(Value value) {
         assert value != null;
-        return value instanceof CiVirtualObject;
+        return value instanceof VirtualObject;
     }
 
-    public static CiVirtualObject asVirtualObject(Value value) {
+    public static VirtualObject asVirtualObject(Value value) {
         assert value != null;
-        return (CiVirtualObject) value;
+        return (VirtualObject) value;
     }
 
     public static boolean isConstant(Value value) {
@@ -57,56 +57,56 @@ public class CiValueUtil {
 
     public static boolean isStackSlot(Value value) {
         assert value != null;
-        return value instanceof CiStackSlot;
+        return value instanceof StackSlot;
     }
 
-    public static CiStackSlot asStackSlot(Value value) {
+    public static StackSlot asStackSlot(Value value) {
         assert value != null;
-        return (CiStackSlot) value;
+        return (StackSlot) value;
     }
 
     public static boolean isAddress(Value value) {
         assert value != null;
-        return value instanceof CiAddress;
+        return value instanceof Address;
     }
 
-    public static CiAddress asAddress(Value value) {
+    public static Address asAddress(Value value) {
         assert value != null;
-        return (CiAddress) value;
+        return (Address) value;
     }
 
 
     public static boolean isRegister(Value value) {
         assert value != null;
-        return value instanceof CiRegisterValue;
+        return value instanceof RegisterValue;
     }
 
-    public static CiRegister asRegister(Value value) {
+    public static Register asRegister(Value value) {
         assert value != null;
-        return ((CiRegisterValue) value).reg;
+        return ((RegisterValue) value).reg;
     }
 
-    public static CiRegister asIntReg(Value value) {
+    public static Register asIntReg(Value value) {
         assert value.kind == Kind.Int || value.kind == Kind.Jsr;
         return asRegister(value);
     }
 
-    public static CiRegister asLongReg(Value value) {
+    public static Register asLongReg(Value value) {
         assert value.kind == Kind.Long : value.kind;
         return asRegister(value);
     }
 
-    public static CiRegister asObjectReg(Value value) {
+    public static Register asObjectReg(Value value) {
         assert value.kind == Kind.Object;
         return asRegister(value);
     }
 
-    public static CiRegister asFloatReg(Value value) {
+    public static Register asFloatReg(Value value) {
         assert value.kind == Kind.Float;
         return asRegister(value);
     }
 
-    public static CiRegister asDoubleReg(Value value) {
+    public static Register asDoubleReg(Value value) {
         assert value.kind == Kind.Double;
         return asRegister(value);
     }

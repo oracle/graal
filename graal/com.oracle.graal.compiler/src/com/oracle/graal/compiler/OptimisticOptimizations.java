@@ -71,7 +71,7 @@ public final class OptimisticOptimizations {
         for (Optimization opt: Optimization.values()) {
             if (!enabledOpts.contains(opt)) {
                 if (GraalOptions.PrintDisabledOptimisticOptimizations) {
-                    TTY.println("WARN: deactivated optimistic optimization %s for %s", opt.name(), CiUtil.format("%H.%n(%p)", method));
+                    TTY.println("WARN: deactivated optimistic optimization %s for %s", opt.name(), CodeUtil.format("%H.%n(%p)", method));
                 }
                 disabledOptimisticOptsMetric.increment();
             }

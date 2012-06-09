@@ -23,7 +23,7 @@
 package com.oracle.graal.compiler.alloc;
 
 import static com.oracle.graal.alloc.util.LocationUtil.*;
-import static com.oracle.graal.api.code.CiUtil.*;
+import static com.oracle.graal.api.code.CodeUtil.*;
 import java.util.*;
 
 import com.oracle.max.criutils.*;
@@ -49,13 +49,13 @@ import com.oracle.graal.lir.cfg.*;
  */
 public final class LinearScan {
 
-    final CiTarget target;
+    final TargetDescription target;
     final JavaMethod method;
     final LIR ir;
     final LIRGenerator gen;
     final FrameMap frameMap;
-    final CiRegisterAttributes[] registerAttributes;
-    final CiRegister[] registers;
+    final RegisterAttributes[] registerAttributes;
+    final Register[] registers;
 
     private static final int INITIAL_SPLIT_INTERVALS_CAPACITY = 32;
 
@@ -150,7 +150,7 @@ public final class LinearScan {
     private final int firstVariableNumber;
 
 
-    public LinearScan(CiTarget target, ResolvedJavaMethod method, LIR ir, LIRGenerator gen, FrameMap frameMap) {
+    public LinearScan(TargetDescription target, ResolvedJavaMethod method, LIR ir, LIRGenerator gen, FrameMap frameMap) {
         this.target = target;
         this.method = method;
         this.ir = ir;
@@ -172,7 +172,7 @@ public final class LinearScan {
 
     /**
      * Converts an operand (variable or register) to an index in a flat address space covering all the
-     * {@linkplain Variable variables} and {@linkplain CiRegisterValue registers} being processed by this
+     * {@linkplain Variable variables} and {@linkplain RegisterValue registers} being processed by this
      * allocator.
      */
     private int operandNumber(Value operand) {
@@ -238,7 +238,7 @@ public final class LinearScan {
     /**
      * Gets an object describing the attributes of a given register according to this register configuration.
      */
-    CiRegisterAttributes attributes(CiRegister reg) {
+    RegisterAttributes attributes(Register reg) {
         return registerAttributes[reg.number];
     }
 
@@ -248,7 +248,7 @@ public final class LinearScan {
         if (interval.spillSlot() != null) {
             interval.assignLocation(interval.spillSlot());
         } else {
-            CiStackSlot slot = frameMap.allocateSpillSlot(interval.kind());
+            StackSlot slot = frameMap.allocateSpillSlot(interval.kind());
             interval.setSpillSlot(slot);
             interval.assignLocation(slot);
         }
@@ -417,7 +417,7 @@ public final class LinearScan {
                 break;
 
             default:
-                throw new CiBailout("other states not allowed at this time");
+                throw new BailoutException("other states not allowed at this time");
         }
     }
 
@@ -456,7 +456,7 @@ public final class LinearScan {
                 break;
 
             default:
-                throw new CiBailout("other states not allowed at this time");
+                throw new BailoutException("other states not allowed at this time");
         }
     }
 
@@ -533,7 +533,7 @@ public final class LinearScan {
                         insertionBuffer.append(j + 1, ir.spillMoveFactory.createMove(toLocation, fromLocation));
 
                         if (GraalOptions.TraceLinearScanLevel >= 4) {
-                            CiStackSlot slot = interval.spillSlot();
+                            StackSlot slot = interval.spillSlot();
                             TTY.println("inserting move after definition of interval %d to stack slot %s at opId %d",
                                             interval.operandNumber, slot, opId);
                         }
@@ -826,7 +826,7 @@ public final class LinearScan {
             iterationCount++;
 
             if (changeOccurred && iterationCount > 50) {
-                throw new CiBailout("too many iterations in computeGlobalLiveSets");
+                throw new BailoutException("too many iterations in computeGlobalLiveSets");
             }
         } while (changeOccurred);
 
@@ -1050,7 +1050,7 @@ public final class LinearScan {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
             if (isStackSlot(move.getInput()) && move.getInput().kind != Kind.Object) {
-                CiStackSlot slot = (CiStackSlot) move.getInput();
+                StackSlot slot = (StackSlot) move.getInput();
                 if (GraalOptions.DetailedAsserts) {
                     assert op.id() > 0 : "invalid id";
                     assert blockForId(op.id()).numberOfPreds() == 0 : "move from stack must be in first block";
@@ -1096,7 +1096,7 @@ public final class LinearScan {
         intervals = new Interval[intervalsSize + INITIAL_SPLIT_INTERVALS_CAPACITY];
 
         // create a list with all caller-save registers (cpu, fpu, xmm)
-        CiRegister[] callerSaveRegs = frameMap.registerConfig.getCallerSaveRegisters();
+        Register[] callerSaveRegs = frameMap.registerConfig.getCallerSaveRegisters();
 
         // iterate all blocks in reverse order
         for (int i = blockCount() - 1; i >= 0; i--) {
@@ -1138,7 +1138,7 @@ public final class LinearScan {
 
                 // add a temp range for each register if operation destroys caller-save registers
                 if (op.hasCall()) {
-                    for (CiRegister r : callerSaveRegs) {
+                    for (Register r : callerSaveRegs) {
                         if (attributes(r).isAllocatable) {
                             addTemp(r.asValue(), opId, RegisterPriority.None, Kind.Illegal);
                         }
@@ -1395,7 +1395,7 @@ public final class LinearScan {
             return result;
         }
 
-        throw new CiBailout("LinearScan: interval is null");
+        throw new BailoutException("LinearScan: interval is null");
     }
 
     Interval intervalAtBlockBegin(Block block, Value operand) {
@@ -1558,7 +1558,7 @@ public final class LinearScan {
         assert isRegister(location) || isStackSlot(location);
 
         if (isRegister(location)) {
-            CiRegister reg = asRegister(location);
+            Register reg = asRegister(location);
 
             // register
             switch (kind) {
@@ -1595,7 +1595,7 @@ public final class LinearScan {
         return true;
     }
 
-    static CiStackSlot canonicalSpillOpr(Interval interval) {
+    static StackSlot canonicalSpillOpr(Interval interval) {
         assert interval.spillSlot() != null : "canonical spill slot not set";
         return interval.spillSlot();
     }
@@ -2009,7 +2009,7 @@ public final class LinearScan {
                         TTY.println(i1.logString(this));
                         TTY.println(i2.logString(this));
                     }
-                    throw new CiBailout("");
+                    throw new BailoutException("");
                 }
             }
         }

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 
@@ -280,7 +280,7 @@ public abstract class LIRInstruction {
             Value value = values[i];
             if (isAddress(value)) {
                 assert flagsFor(mode, i).contains(OperandFlag.Address);
-                CiAddress address = asAddress(value);
+                Address address = asAddress(value);
                 address.base = proc.doValue(address.base, mode, ADDRESS_FLAGS);
                 address.index = proc.doValue(address.index, mode, ADDRESS_FLAGS);
             } else {
@@ -431,7 +431,7 @@ public abstract class LIRInstruction {
         if (info != null) {
             buf.append(" [bci:");
             String sep = "";
-            for (CiFrame cur = info.topFrame; cur != null; cur = cur.caller()) {
+            for (BytecodeFrame cur = info.topFrame; cur != null; cur = cur.caller()) {
                 buf.append(sep).append(cur.bci);
                 sep = ",";
             }

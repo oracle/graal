@@ -124,7 +124,7 @@ public class InstructionPrinter {
              fillTo(USE.position + indentation, ' ').
              print("0").
              fillTo(VALUE.position + indentation, ' ').
-             print(ValueUtil.valueString(instruction)).
+             print(ValueNodeUtil.valueString(instruction)).
              fillTo(INSTRUCTION.position + indentation, ' ');
         printInstruction(instruction);
         if (instruction instanceof StateSplit) {

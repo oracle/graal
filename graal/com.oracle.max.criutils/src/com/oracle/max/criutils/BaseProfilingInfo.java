@@ -84,6 +84,6 @@ public final class BaseProfilingInfo implements ProfilingInfo {
 
     @Override
     public String toString() {
-        return "BaseProfilingInfo<" + CiUtil.profileToString(this, null, "; ") + ">";
+        return "BaseProfilingInfo<" + CodeUtil.profileToString(this, null, "; ") + ">";
     }
 }

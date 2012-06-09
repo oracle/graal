@@ -24,19 +24,19 @@ package com.oracle.graal.api.code;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.CiCallingConvention.*;
-import com.oracle.graal.api.code.CiRegister.*;
+import com.oracle.graal.api.code.CallingConvention.*;
+import com.oracle.graal.api.code.Register.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * A default implementation of {@link CiRegisterConfig}.
+ * A default implementation of {@link RegisterConfig}.
  */
-public class CiRegisterConfigImpl implements CiRegisterConfig {
+public class RegisterConfigImpl implements RegisterConfig {
 
     /**
      * The object describing the callee save area of this register configuration.
      */
-    public CiCalleeSaveLayout csl;
+    public CalleeSaveLayout csl;
 
     /**
      * The minimum register role identifier.
@@ -46,93 +46,93 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
     /**
      * The map from register role IDs to registers.
      */
-    public final CiRegister[] registersRoleMap;
+    public final Register[] registersRoleMap;
 
     /**
      * The set of registers that can be used by the register allocator.
      */
-    public final CiRegister[] allocatable;
+    public final Register[] allocatable;
 
     /**
      * The set of registers that can be used by the register allocator,
-     * {@linkplain CiRegister#categorize(CiRegister[]) categorized} by register
+     * {@linkplain Register#categorize(Register[]) categorized} by register
      * {@linkplain RegisterFlag flags}.
      */
-    public final EnumMap<RegisterFlag, CiRegister[]> categorized;
+    public final EnumMap<RegisterFlag, Register[]> categorized;
 
     /**
      * The ordered set of registers used to pass integral arguments.
      */
-    public final CiRegister[] cpuParameters;
+    public final Register[] cpuParameters;
 
     /**
      * The ordered set of registers used to pass floating point arguments.
      */
-    public final CiRegister[] fpuParameters;
+    public final Register[] fpuParameters;
 
     /**
      * The caller saved registers.
      */
-    public final CiRegister[] callerSave;
+    public final Register[] callerSave;
 
     /**
-     * The register to which {@link CiRegister#Frame} and {@link CiRegister#CallerFrame} are bound.
+     * The register to which {@link Register#Frame} and {@link Register#CallerFrame} are bound.
      */
-    public final CiRegister frame;
+    public final Register frame;
 
     /**
      * Register for returning an integral value.
      */
-    public final CiRegister integralReturn;
+    public final Register integralReturn;
 
     /**
      * Register for returning a floating point value.
      */
-    public final CiRegister floatingPointReturn;
+    public final Register floatingPointReturn;
 
     /**
-     * The map from register {@linkplain CiRegister#number numbers} to register
-     * {@linkplain CiRegisterAttributes attributes} for this register configuration.
+     * The map from register {@linkplain Register#number numbers} to register
+     * {@linkplain RegisterAttributes attributes} for this register configuration.
      */
-    public final CiRegisterAttributes[] attributesMap;
+    public final RegisterAttributes[] attributesMap;
 
     /**
      * The scratch register.
      */
-    public final CiRegister scratch;
+    public final Register scratch;
 
     /**
-     * The frame offset of the first stack argument for each calling convention {@link CiCallingConvention.Type}.
+     * The frame offset of the first stack argument for each calling convention {@link CallingConvention.Type}.
      */
-    public final int[] stackArg0Offsets = new int[CiCallingConvention.Type.VALUES.length];
+    public final int[] stackArg0Offsets = new int[CallingConvention.Type.VALUES.length];
 
-    public CiRegisterConfigImpl(
-                    CiRegister frame,
-                    CiRegister integralReturn,
-                    CiRegister floatingPointReturn,
-                    CiRegister scratch,
-                    CiRegister[] allocatable,
-                    CiRegister[] callerSave,
-                    CiRegister[] parameters,
-                    CiCalleeSaveLayout csl,
-                    CiRegister[] allRegisters,
-                    Map<Integer, CiRegister> roles) {
+    public RegisterConfigImpl(
+                    Register frame,
+                    Register integralReturn,
+                    Register floatingPointReturn,
+                    Register scratch,
+                    Register[] allocatable,
+                    Register[] callerSave,
+                    Register[] parameters,
+                    CalleeSaveLayout csl,
+                    Register[] allRegisters,
+                    Map<Integer, Register> roles) {
         this.frame = frame;
         this.csl = csl;
         this.allocatable = allocatable;
         this.callerSave = callerSave;
         assert !Arrays.asList(allocatable).contains(scratch);
         this.scratch = scratch;
-        EnumMap<RegisterFlag, CiRegister[]> categorizedParameters = CiRegister.categorize(parameters);
+        EnumMap<RegisterFlag, Register[]> categorizedParameters = Register.categorize(parameters);
         this.cpuParameters = categorizedParameters.get(RegisterFlag.CPU);
         this.fpuParameters = categorizedParameters.get(RegisterFlag.FPU);
-        categorized = CiRegister.categorize(allocatable);
-        attributesMap = CiRegisterAttributes.createMap(this, allRegisters);
+        categorized = Register.categorize(allocatable);
+        attributesMap = RegisterAttributes.createMap(this, allRegisters);
         this.floatingPointReturn = floatingPointReturn;
         this.integralReturn = integralReturn;
         int minRoleId = Integer.MAX_VALUE;
         int maxRoleId = Integer.MIN_VALUE;
-        for (Map.Entry<Integer, CiRegister> e : roles.entrySet()) {
+        for (Map.Entry<Integer, Register> e : roles.entrySet()) {
             int id = e.getKey();
             assert id >= 0;
             if (minRoleId > id) {
@@ -142,15 +142,15 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
                 maxRoleId = id;
             }
         }
-        registersRoleMap = new CiRegister[(maxRoleId - minRoleId) + 1];
-        for (Map.Entry<Integer, CiRegister> e : roles.entrySet()) {
+        registersRoleMap = new Register[(maxRoleId - minRoleId) + 1];
+        for (Map.Entry<Integer, Register> e : roles.entrySet()) {
             int id = e.getKey();
             registersRoleMap[id] = e.getValue();
         }
         minRole = minRoleId;
     }
 
-    public CiRegisterConfigImpl(CiRegisterConfigImpl src, CiCalleeSaveLayout csl) {
+    public RegisterConfigImpl(RegisterConfigImpl src, CalleeSaveLayout csl) {
         this.frame = src.frame;
         this.csl = csl;
         this.allocatable = src.allocatable;
@@ -167,18 +167,18 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
         System.arraycopy(src.stackArg0Offsets, 0, stackArg0Offsets, 0, stackArg0Offsets.length);
     }
 
-    public CiRegister getReturnRegister(Kind kind) {
+    public Register getReturnRegister(Kind kind) {
         if (kind.isDouble() || kind.isFloat()) {
             return floatingPointReturn;
         }
         return integralReturn;
     }
 
-    public CiRegister getFrameRegister() {
+    public Register getFrameRegister() {
         return frame;
     }
 
-    public CiRegister getScratchRegister() {
+    public Register getScratchRegister() {
         return scratch;
     }
 
@@ -188,7 +188,7 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
      * This implementation assigns all available registers to parameters before assigning
      * any stack slots to parameters.
      */
-    public CiCallingConvention getCallingConvention(Type type, Kind[] parameters, CiTarget target, boolean stackOnly) {
+    public CallingConvention getCallingConvention(Type type, Kind[] parameters, TargetDescription target, boolean stackOnly) {
         Value[] locations = new Value[parameters.length];
 
         int currentGeneral = 0;
@@ -207,7 +207,7 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
                 case Long:
                 case Object:
                     if (!stackOnly && currentGeneral < cpuParameters.length) {
-                        CiRegister register = cpuParameters[currentGeneral++];
+                        Register register = cpuParameters[currentGeneral++];
                         locations[i] = register.asValue(kind);
                     }
                     break;
@@ -215,7 +215,7 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
                 case Float:
                 case Double:
                     if (!stackOnly && currentXMM < fpuParameters.length) {
-                        CiRegister register = fpuParameters[currentXMM++];
+                        Register register = fpuParameters[currentXMM++];
                         locations[i] = register.asValue(kind);
                     }
                     break;
@@ -225,15 +225,15 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
             }
 
             if (locations[i] == null) {
-                locations[i] = CiStackSlot.get(kind.stackKind(), currentStackOffset, !type.out);
+                locations[i] = StackSlot.get(kind.stackKind(), currentStackOffset, !type.out);
                 currentStackOffset += Math.max(target.sizeInBytes(kind), target.wordSize);
             }
         }
 
-        return new CiCallingConvention(locations, currentStackOffset);
+        return new CallingConvention(locations, currentStackOffset);
     }
 
-    public CiRegister[] getCallingConventionRegisters(Type type, RegisterFlag flag) {
+    public Register[] getCallingConventionRegisters(Type type, RegisterFlag flag) {
         if (flag == RegisterFlag.CPU) {
             return cpuParameters;
         }
@@ -241,27 +241,27 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
         return fpuParameters;
     }
 
-    public CiRegister[] getAllocatableRegisters() {
+    public Register[] getAllocatableRegisters() {
         return allocatable;
     }
 
-    public EnumMap<RegisterFlag, CiRegister[]> getCategorizedAllocatableRegisters() {
+    public EnumMap<RegisterFlag, Register[]> getCategorizedAllocatableRegisters() {
         return categorized;
     }
 
-    public CiRegister[] getCallerSaveRegisters() {
+    public Register[] getCallerSaveRegisters() {
         return callerSave;
     }
 
-    public CiCalleeSaveLayout getCalleeSaveLayout() {
+    public CalleeSaveLayout getCalleeSaveLayout() {
         return csl;
     }
 
-    public CiRegisterAttributes[] getAttributesMap() {
+    public RegisterAttributes[] getAttributesMap() {
         return attributesMap;
     }
 
-    public CiRegister getRegisterForRole(int id) {
+    public Register getRegisterForRole(int id) {
         return registersRoleMap[id - minRole];
     }
 
@@ -269,7 +269,7 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
     public String toString() {
         StringBuilder roleMap = new StringBuilder();
         for (int i = 0; i < registersRoleMap.length; ++i) {
-            CiRegister reg = registersRoleMap[i];
+            Register reg = registersRoleMap[i];
             if (reg != null) {
                 if (roleMap.length() != 0) {
                     roleMap.append(", ");

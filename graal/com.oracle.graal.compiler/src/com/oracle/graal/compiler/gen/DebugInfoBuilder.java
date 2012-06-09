@@ -43,13 +43,13 @@ public class DebugInfoBuilder {
     }
 
 
-    private HashMap<VirtualObjectNode, CiVirtualObject> virtualObjects = new HashMap<>();
+    private HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
 
-    public LIRDebugInfo build(FrameState topState, LockScope locks, List<CiStackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
+    public LIRDebugInfo build(FrameState topState, LockScope locks, List<StackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
         assert virtualObjects.size() == 0;
-        CiFrame frame = computeFrameForState(topState, locks, leafGraphId);
+        BytecodeFrame frame = computeFrameForState(topState, locks, leafGraphId);
 
-        CiVirtualObject[] virtualObjectsArray = null;
+        VirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
             // collect all VirtualObjectField instances:
             IdentityHashMap<VirtualObjectNode, VirtualObjectFieldNode> objectStates = new IdentityHashMap<>();
@@ -75,8 +75,8 @@ public class DebugInfoBuilder {
             boolean changed;
             do {
                 changed = false;
-                IdentityHashMap<VirtualObjectNode, CiVirtualObject> virtualObjectsCopy = new IdentityHashMap<>(virtualObjects);
-                for (Entry<VirtualObjectNode, CiVirtualObject> entry : virtualObjectsCopy.entrySet()) {
+                IdentityHashMap<VirtualObjectNode, VirtualObject> virtualObjectsCopy = new IdentityHashMap<>(virtualObjects);
+                for (Entry<VirtualObjectNode, VirtualObject> entry : virtualObjectsCopy.entrySet()) {
                     if (entry.getValue().values() == null) {
                         VirtualObjectNode vobj = entry.getKey();
                         if (vobj instanceof BoxedVirtualObjectNode) {
@@ -107,14 +107,14 @@ public class DebugInfoBuilder {
                 }
             } while (changed);
 
-            virtualObjectsArray = virtualObjects.values().toArray(new CiVirtualObject[virtualObjects.size()]);
+            virtualObjectsArray = virtualObjects.values().toArray(new VirtualObject[virtualObjects.size()]);
             virtualObjects.clear();
         }
 
         return new LIRDebugInfo(frame, virtualObjectsArray, pointerSlots, exceptionEdge);
     }
 
-    private CiFrame computeFrameForState(FrameState state, LockScope locks, long leafGraphId) {
+    private BytecodeFrame computeFrameForState(FrameState state, LockScope locks, long leafGraphId) {
         int numLocals = state.localsSize();
         int numStack = state.stackSize();
         int numLocks = (locks != null && locks.callerState == state.outerFrameState()) ? locks.stateDepth + 1 : 0;
@@ -134,30 +134,30 @@ public class DebugInfoBuilder {
             Value owner = toCiValue(nextLock.monitor.object());
             Value lockData = nextLock.lockData;
             boolean eliminated = nextLock.monitor.eliminated();
-            values[numLocals + numStack + nextLock.stateDepth] = new CiMonitorValue(owner, lockData, eliminated);
+            values[numLocals + numStack + nextLock.stateDepth] = new MonitorValue(owner, lockData, eliminated);
 
             nextLock = nextLock.outer;
         }
 
-        CiFrame caller = null;
+        BytecodeFrame caller = null;
         if (state.outerFrameState() != null) {
             caller = computeFrameForState(state.outerFrameState(), nextLock, -1);
         } else {
             if (nextLock != null) {
-                throw new CiBailout("unbalanced monitors: found monitor for unknown frame");
+                throw new BailoutException("unbalanced monitors: found monitor for unknown frame");
             }
         }
         assert state.bci >= 0 || state.bci == FrameState.BEFORE_BCI;
-        CiFrame frame = new CiFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, state.localsSize(), state.stackSize(), numLocks, leafGraphId);
+        BytecodeFrame frame = new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, state.localsSize(), state.stackSize(), numLocks, leafGraphId);
         return frame;
     }
 
     private Value toCiValue(ValueNode value) {
         if (value instanceof VirtualObjectNode) {
             VirtualObjectNode obj = (VirtualObjectNode) value;
-            CiVirtualObject ciObj = virtualObjects.get(value);
+            VirtualObject ciObj = virtualObjects.get(value);
             if (ciObj == null) {
-                ciObj = CiVirtualObject.get(obj.type(), null, virtualObjects.size());
+                ciObj = VirtualObject.get(obj.type(), null, virtualObjects.size());
                 virtualObjects.put(obj, ciObj);
             }
             Debug.metric("StateVirtualObjects").increment();

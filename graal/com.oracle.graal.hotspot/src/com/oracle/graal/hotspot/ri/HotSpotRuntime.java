@@ -29,7 +29,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.*;
-import com.oracle.graal.api.code.CiUtil.*;
+import com.oracle.graal.api.code.CodeUtil.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaType.*;
 import com.oracle.graal.compiler.*;
@@ -83,23 +83,23 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     @Override
     public String disassemble(CodeInfo info, CompilationResult tm) {
         byte[] code = info.code();
-        CiTarget target = compiler.getTarget();
+        TargetDescription target = compiler.getTarget();
         HexCodeFile hcf = new HexCodeFile(code, info.start(), target.arch.name, target.wordSize * 8);
         if (tm != null) {
             HexCodeFile.addAnnotations(hcf, tm.annotations());
             addExceptionHandlersComment(tm, hcf);
-            CiRegister fp = regConfig.getFrameRegister();
+            Register fp = regConfig.getFrameRegister();
             RefMapFormatter slotFormatter = new RefMapFormatter(target.arch, target.wordSize, fp, 0);
             for (Safepoint safepoint : tm.safepoints) {
                 if (safepoint instanceof Call) {
                     Call call = (Call) safepoint;
                     if (call.debugInfo != null) {
-                        hcf.addComment(call.pcOffset + call.size, CiUtil.append(new StringBuilder(100), call.debugInfo, slotFormatter).toString());
+                        hcf.addComment(call.pcOffset + call.size, CodeUtil.append(new StringBuilder(100), call.debugInfo, slotFormatter).toString());
                     }
                     addOperandComment(hcf, call.pcOffset, "{" + getTargetName(call) + "}");
                 } else {
                     if (safepoint.debugInfo != null) {
-                        hcf.addComment(safepoint.pcOffset, CiUtil.append(new StringBuilder(100), safepoint.debugInfo, slotFormatter).toString());
+                        hcf.addComment(safepoint.pcOffset, CodeUtil.append(new StringBuilder(100), safepoint.debugInfo, slotFormatter).toString());
                     }
                     addOperandComment(hcf, safepoint.pcOffset, "{safepoint}");
                 }
@@ -200,7 +200,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public CiRegisterConfig getRegisterConfig(JavaMethod method) {
+    public RegisterConfig getRegisterConfig(JavaMethod method) {
         return regConfig;
     }
 
@@ -370,7 +370,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
                 return true;
             }
             ResolvedJavaMethod method = graph.method();
-            return method != null && CiUtil.format("%H.%n", method).contains(option);
+            return method != null && CodeUtil.format("%H.%n", method).contains(option);
         }
         return false;
     }
@@ -386,7 +386,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     private static ValueNode createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) n.graph();
         ArrayLengthNode arrayLength = graph.add(new ArrayLengthNode(n.array()));
-        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), DeoptimizationReason.BoundsCheckException, CiDeoptAction.InvalidateReprofile, n.leafGraphId());
+        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateReprofile, n.leafGraphId());
 
         graph.addBeforeFixed(n, arrayLength);
         return guard;
@@ -457,7 +457,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         return target;
     }
 
-    public long getMaxCallTargetOffset(CiRuntimeCall rtcall) {
+    public long getMaxCallTargetOffset(RuntimeCall rtcall) {
         return compiler.getCompilerToVM().getMaxCallTargetOffset(rtcall);
     }
 
@@ -486,7 +486,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public CiRegisterConfig getGlobalStubRegisterConfig() {
+    public RegisterConfig getGlobalStubRegisterConfig() {
         return globalStubRegConfig;
     }
 
@@ -497,7 +497,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public int encodeDeoptActionAndReason(CiDeoptAction action, DeoptimizationReason reason) {
+    public int encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason) {
         final int actionShift = 0;
         final int reasonShift = 3;
 
@@ -507,7 +507,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public int convertDeoptAction(CiDeoptAction action) {
+    public int convertDeoptAction(DeoptimizationAction action) {
         switch(action) {
             case None: return 0;
             case RecompileIfTooManyDeopts: return 1;

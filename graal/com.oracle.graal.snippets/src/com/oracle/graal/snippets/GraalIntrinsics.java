@@ -30,7 +30,7 @@ import com.oracle.graal.cri.*;
  * Definition of the snippets that are VM-independent and can be intrinsified by Graal in any VM.
  */
 public class GraalIntrinsics {
-    public static void installIntrinsics(ExtendedRiRuntime runtime, CiTarget target) {
+    public static void installIntrinsics(ExtendedRiRuntime runtime, TargetDescription target) {
         if (GraalOptions.Intrinsify) {
             Snippets.install(runtime, target, new MathSnippetsX86());
             Snippets.install(runtime, target, new DoubleSnippets());

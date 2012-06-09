@@ -84,7 +84,7 @@ import com.oracle.graal.api.code.CompilationResult.*;
  */
 public class HexCodeFile {
 
-    public static final String NEW_LINE = CiUtil.NEW_LINE;
+    public static final String NEW_LINE = CodeUtil.NEW_LINE;
     public static final String SECTION_DELIM = " <||@";
     public static final Pattern SECTION = Pattern.compile("(\\S+)\\s+(.*)", Pattern.DOTALL);
     public static final Pattern COMMENT = Pattern.compile("(\\d+)\\s+(.*)", Pattern.DOTALL);

@@ -46,7 +46,7 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
     @Input private BooleanNode condition;
     @Input(notDataflow = true) private FixedNode anchor;
     private final DeoptimizationReason reason;
-    private final CiDeoptAction action;
+    private final DeoptimizationAction action;
     private boolean negated;
     private final long leafGraphId;
 
@@ -79,11 +79,11 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         return reason;
     }
 
-    public CiDeoptAction action() {
+    public DeoptimizationAction action() {
         return action;
     }
 
-    public GuardNode(BooleanNode condition, FixedNode anchor, DeoptimizationReason reason, CiDeoptAction action, boolean negated, long leafGraphId) {
+    public GuardNode(BooleanNode condition, FixedNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, long leafGraphId) {
         super(StampFactory.dependency());
         this.condition = condition;
         this.anchor = anchor;

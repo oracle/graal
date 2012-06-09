@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
+package com.oracle.graal.hotspot;
 
 import java.io.*;
 import java.lang.annotation.*;
@@ -28,24 +28,25 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 
 @SuppressWarnings("unused")
-public final class CiCompilationStatistics {
+public final class CompilationStatistics {
 
     private static final long RESOLUTION = 100000000;
     private static final boolean TIMELINE_ENABLED = System.getProperty("stats.timeline.file") != null;
     private static final boolean COMPILATIONSTATS_ENABLED = System.getProperty("stats.compilations.file") != null;
     private static final boolean ENABLED = TIMELINE_ENABLED || COMPILATIONSTATS_ENABLED;
 
-    private static final CiCompilationStatistics DUMMY = new CiCompilationStatistics(null);
+    private static final CompilationStatistics DUMMY = new CompilationStatistics(null);
 
-    private static ConcurrentLinkedDeque<CiCompilationStatistics> list = new ConcurrentLinkedDeque<>();
+    private static ConcurrentLinkedDeque<CompilationStatistics> list = new ConcurrentLinkedDeque<>();
 
-    private static final ThreadLocal<Deque<CiCompilationStatistics>> current = new ThreadLocal<Deque<CiCompilationStatistics>>() {
+    private static final ThreadLocal<Deque<CompilationStatistics>> current = new ThreadLocal<Deque<CompilationStatistics>>() {
 
         @Override
-        protected Deque<CiCompilationStatistics> initialValue() {
+        protected Deque<CompilationStatistics> initialValue() {
             return new ArrayDeque<>();
         }
     };
@@ -75,11 +76,11 @@ public final class CiCompilationStatistics {
     private int codeSize;
     private int deoptCount;
 
-    private CiCompilationStatistics(ResolvedJavaMethod method) {
+    private CompilationStatistics(ResolvedJavaMethod method) {
         if (method != null) {
-            holder = CiUtil.format("%H", method);
+            holder = CodeUtil.format("%H", method);
             name = method.name();
-            signature = CiUtil.format("%p", method);
+            signature = CodeUtil.format("%p", method);
             startTime = System.nanoTime();
             startInvCount = method.invocationCount();
             bytecodeCount = method.codeSize();
@@ -103,13 +104,13 @@ public final class CiCompilationStatistics {
         }
     }
 
-    public static CiCompilationStatistics current() {
+    public static CompilationStatistics current() {
         return current.get().isEmpty() ? null : current.get().getLast();
     }
 
-    public static CiCompilationStatistics create(ResolvedJavaMethod method) {
+    public static CompilationStatistics create(ResolvedJavaMethod method) {
         if (ENABLED) {
-            CiCompilationStatistics stats = new CiCompilationStatistics(method);
+            CompilationStatistics stats = new CompilationStatistics(method);
             list.add(stats);
             current.get().addLast(stats);
             return stats;
@@ -124,7 +125,7 @@ public final class CiCompilationStatistics {
             return;
         }
         try {
-            ConcurrentLinkedDeque<CiCompilationStatistics> snapshot = list;
+            ConcurrentLinkedDeque<CompilationStatistics> snapshot = list;
             long snapshotZeroTime = zeroTime;
 
             list = new ConcurrentLinkedDeque<>();
@@ -135,7 +136,7 @@ public final class CiCompilationStatistics {
             try (PrintStream out = new PrintStream("compilations " + dateString + " " + dumpName + ".csv")) {
                 // output the list of all compilations
 
-                Field[] declaredFields = CiCompilationStatistics.class.getDeclaredFields();
+                Field[] declaredFields = CompilationStatistics.class.getDeclaredFields();
                 ArrayList<Field> fields = new ArrayList<>();
                 for (Field field : declaredFields) {
                     if (!Modifier.isStatic(field.getModifiers())) {
@@ -146,7 +147,7 @@ public final class CiCompilationStatistics {
                     out.print(field.getName() + ";");
                 }
                 out.println();
-                for (CiCompilationStatistics stats : snapshot) {
+                for (CompilationStatistics stats : snapshot) {
                     for (Field field : fields) {
                         if (field.isAnnotationPresent(AbsoluteTimeValue.class)) {
                             double value = (field.getLong(stats) - snapshotZeroTime) / 1000000d;
@@ -170,7 +171,7 @@ public final class CiCompilationStatistics {
 
                 long[] timeSpent = new long[10000];
                 int maxTick = 0;
-                for (CiCompilationStatistics stats : snapshot) {
+                for (CompilationStatistics stats : snapshot) {
                     long start = stats.startTime - snapshotZeroTime;
                     long duration = stats.duration;
                     if (start < 0) {

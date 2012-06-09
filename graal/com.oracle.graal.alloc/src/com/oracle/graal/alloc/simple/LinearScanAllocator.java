@@ -27,7 +27,7 @@ import java.util.*;
 
 import com.oracle.graal.alloc.util.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CiRegister.*;
+import com.oracle.graal.api.code.Register.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -62,14 +62,14 @@ public class LinearScanAllocator {
         protected Value scratchRegister(Variable spilled) {
             GraalInternalError.shouldNotReachHere("needs working implementation");
 
-            EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = frameMap.registerConfig.getCategorizedAllocatableRegisters();
-            CiRegister[] availableRegs = categorizedRegs.get(spilled.flag);
-            for (CiRegister reg : availableRegs) {
+            EnumMap<RegisterFlag, Register[]> categorizedRegs = frameMap.registerConfig.getCategorizedAllocatableRegisters();
+            Register[] availableRegs = categorizedRegs.get(spilled.flag);
+            for (Register reg : availableRegs) {
                 if (curInRegisterState[reg.number] == null && curOutRegisterState[reg.number] == null) {
                     return reg.asValue(spilled.kind);
                 }
             }
-            throw new CiBailout("No register found");
+            throw new BailoutException("No register found");
         }
     }
 
@@ -323,7 +323,7 @@ public class LinearScanAllocator {
 
     private void spillCallerSaveRegisters() {
         Debug.log("    spill caller save registers in curInRegisterState %s", Arrays.toString(curInRegisterState));
-        for (CiRegister reg : frameMap.registerConfig.getCallerSaveRegisters()) {
+        for (Register reg : frameMap.registerConfig.getCallerSaveRegisters()) {
             Value in = curInRegisterState[reg.number];
             if (in != null && isLocation(in)) {
                 spill(asLocation(in));
@@ -431,7 +431,7 @@ public class LinearScanAllocator {
             return null;
         }
         Debug.log("      try registerHint for %s %s: %s", mode, variable, registerHint);
-        CiRegister hint = null;
+        Register hint = null;
         if (isRegister(registerHint)) {
             hint = asRegister(registerHint);
         } else if (isLocation(registerHint) && isRegister(asLocation(registerHint).location)) {
@@ -461,11 +461,11 @@ public class LinearScanAllocator {
             return asLocation(hintResult);
         }
 
-        EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = frameMap.registerConfig.getCategorizedAllocatableRegisters();
-        CiRegister[] availableRegs = categorizedRegs.get(variable.flag);
+        EnumMap<RegisterFlag, Register[]> categorizedRegs = frameMap.registerConfig.getCategorizedAllocatableRegisters();
+        Register[] availableRegs = categorizedRegs.get(variable.flag);
 
         Location bestSpillCandidate = null;
-        for (CiRegister reg : availableRegs) {
+        for (Register reg : availableRegs) {
             if (isFree(reg, mode)) {
                 return selectRegister(reg, variable, mode);
             } else {
@@ -499,7 +499,7 @@ public class LinearScanAllocator {
         }
         curLocations.put(newLoc);
 
-        CiRegister reg = asRegister(value.location);
+        Register reg = asRegister(value.location);
         assert curInRegisterState[reg.number] == value;
         curInRegisterState[reg.number] = null;
         if (curOutRegisterState[reg.number] == value) {
@@ -507,7 +507,7 @@ public class LinearScanAllocator {
         }
     }
 
-    private boolean isFree(CiRegister reg, OperandMode mode) {
+    private boolean isFree(Register reg, OperandMode mode) {
         switch (mode) {
             case Input:  return curInRegisterState[reg.number] == null;
             case Alive:  return curInRegisterState[reg.number] == null && curOutRegisterState[reg.number] == null;
@@ -517,7 +517,7 @@ public class LinearScanAllocator {
         }
     }
 
-    private Location spillCandidate(CiRegister reg) {
+    private Location spillCandidate(Register reg) {
         Value in = curInRegisterState[reg.number];
         Value out = curOutRegisterState[reg.number];
         if (in == out && in != null && isLocation(in) && lastUseFor(asLocation(in).variable) < curOp.id()) {
@@ -548,7 +548,7 @@ public class LinearScanAllocator {
         return result;
     }
 
-    private Location selectRegister(CiRegister reg, Variable variable, OperandMode mode) {
+    private Location selectRegister(Register reg, Variable variable, OperandMode mode) {
         assert isFree(reg, mode);
 
         Location loc = new Location(variable, reg.asValue(variable.kind));

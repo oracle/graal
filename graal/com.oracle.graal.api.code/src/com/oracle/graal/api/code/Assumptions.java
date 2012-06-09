@@ -32,7 +32,7 @@ import com.oracle.graal.api.meta.*;
  * Recorded assumption can be visited for subsequent processing using
  * an implementation of the {@link CiAssumptionProcessor} interface.
  */
-public final class CiAssumptions implements Serializable, Iterable<CiAssumptions.Assumption> {
+public final class Assumptions implements Serializable, Iterable<Assumptions.Assumption> {
 
     private static final long serialVersionUID = 5152062717588239131L;
 
@@ -179,7 +179,7 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
 
     @Override
     public Iterator<Assumption> iterator() {
-        return new Iterator<CiAssumptions.Assumption>() {
+        return new Iterator<Assumptions.Assumption>() {
             int index;
             public void remove() {
                 throw new UnsupportedOperationException();

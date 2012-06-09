@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.compiler.target.amd64;
 
-import static com.oracle.graal.api.code.CiCallingConvention.Type.*;
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.CallingConvention.Type.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.Value.*;
 
 import java.util.*;
@@ -163,9 +163,9 @@ public class AMD64XirOp extends LIRXirInstruction {
                 case PointerLoad: {
                     Value result = operands[inst.result.index];
                     Value pointer = operands[inst.x().index];
-                    CiRegisterValue register = assureInRegister(tasm, masm, pointer);
+                    RegisterValue register = assureInRegister(tasm, masm, pointer);
 
-                    AMD64Move.load(tasm, masm, result, new CiAddress(inst.kind, register), (Boolean) inst.extra ? info : null);
+                    AMD64Move.load(tasm, masm, result, new Address(inst.kind, register), (Boolean) inst.extra ? info : null);
                     break;
                 }
 
@@ -174,7 +174,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     Value pointer = operands[inst.x().index];
                     assert isRegister(pointer);
 
-                    AMD64Move.store(tasm, masm, new CiAddress(inst.kind, pointer), value, (Boolean) inst.extra ? info : null);
+                    AMD64Move.store(tasm, masm, new Address(inst.kind, pointer), value, (Boolean) inst.extra ? info : null);
                     break;
                 }
 
@@ -182,7 +182,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     CiXirAssembler.AddressAccessInformation addressInformation = (CiXirAssembler.AddressAccessInformation) inst.extra;
                     boolean canTrap = addressInformation.canTrap;
 
-                    CiAddress.Scale scale = addressInformation.scale;
+                    Address.Scale scale = addressInformation.scale;
                     int displacement = addressInformation.disp;
 
                     Value result = operands[inst.result.index];
@@ -192,13 +192,13 @@ public class AMD64XirOp extends LIRXirInstruction {
                     pointer = assureInRegister(tasm, masm, pointer);
                     assert isRegister(pointer);
 
-                    CiAddress src;
+                    Address src;
                     if (isConstant(index)) {
                         assert index.kind == Kind.Int;
                         Constant constantIndex = (Constant) index;
-                        src = new CiAddress(inst.kind, pointer, constantIndex.asInt() * scale.value + displacement);
+                        src = new Address(inst.kind, pointer, constantIndex.asInt() * scale.value + displacement);
                     } else {
-                        src = new CiAddress(inst.kind, pointer, index, scale, displacement);
+                        src = new Address(inst.kind, pointer, index, scale, displacement);
                     }
 
                     AMD64Move.load(tasm, masm, result, src, canTrap ? info : null);
@@ -208,7 +208,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                 case LoadEffectiveAddress: {
                     CiXirAssembler.AddressAccessInformation addressInformation = (CiXirAssembler.AddressAccessInformation) inst.extra;
 
-                    CiAddress.Scale scale = addressInformation.scale;
+                    Address.Scale scale = addressInformation.scale;
                     int displacement = addressInformation.disp;
 
                     Value result = operands[inst.result.index];
@@ -217,7 +217,7 @@ public class AMD64XirOp extends LIRXirInstruction {
 
                     pointer = assureInRegister(tasm, masm, pointer);
                     assert isRegister(pointer);
-                    CiAddress src = new CiAddress(Kind.Illegal, pointer, index, scale, displacement);
+                    Address src = new Address(Kind.Illegal, pointer, index, scale, displacement);
                     masm.leaq(asRegister(result), src);
                     break;
                 }
@@ -226,7 +226,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     CiXirAssembler.AddressAccessInformation addressInformation = (CiXirAssembler.AddressAccessInformation) inst.extra;
                     boolean canTrap = addressInformation.canTrap;
 
-                    CiAddress.Scale scale = addressInformation.scale;
+                    Address.Scale scale = addressInformation.scale;
                     int displacement = addressInformation.disp;
 
                     Value value = assureNot64BitConstant(tasm, masm, operands[inst.z().index]);
@@ -236,13 +236,13 @@ public class AMD64XirOp extends LIRXirInstruction {
                     pointer = assureInRegister(tasm, masm, pointer);
                     assert isRegister(pointer);
 
-                    CiAddress dst;
+                    Address dst;
                     if (isConstant(index)) {
                         assert index.kind == Kind.Int;
                         Constant constantIndex = (Constant) index;
-                        dst = new CiAddress(inst.kind, pointer, IllegalValue, scale, constantIndex.asInt() * scale.value + displacement);
+                        dst = new Address(inst.kind, pointer, IllegalValue, scale, constantIndex.asInt() * scale.value + displacement);
                     } else {
-                        dst = new CiAddress(inst.kind, pointer, index, scale, displacement);
+                        dst = new Address(inst.kind, pointer, index, scale, displacement);
                     }
 
                     AMD64Move.store(tasm, masm, dst, value, canTrap ? info : null);
@@ -268,8 +268,8 @@ public class AMD64XirOp extends LIRXirInstruction {
 
                     Value exchangedVal = operands[inst.y().index];
                     Value exchangedAddress = operands[inst.x().index];
-                    CiRegisterValue pointerRegister = assureInRegister(tasm, masm, exchangedAddress);
-                    CiAddress addr = new CiAddress(tasm.target.wordKind, pointerRegister);
+                    RegisterValue pointerRegister = assureInRegister(tasm, masm, exchangedAddress);
+                    Address addr = new Address(tasm.target.wordKind, pointerRegister);
 
                     if ((Boolean) inst.extra && info != null) {
                         tasm.recordImplicitException(masm.codeBuffer.position(), info);
@@ -284,7 +284,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                         signature[i] = inst.arguments[i].kind;
                     }
 
-                    CiCallingConvention cc = tasm.frameMap.registerConfig.getCallingConvention(RuntimeCall, signature, tasm.target, false);
+                    CallingConvention cc = tasm.frameMap.registerConfig.getCallingConvention(RuntimeCall, signature, tasm.target, false);
                     for (int i = 0; i < inst.arguments.length; i++) {
                         Value argumentLocation = cc.locations[i];
                         Value argumentSourceLocation = operands[inst.arguments[i].index];
@@ -297,7 +297,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     AMD64Call.directCall(tasm, masm, runtimeCallInformation.target, (runtimeCallInformation.useInfoAfter) ? infoAfter : info);
 
                     if (inst.result != null && inst.result.kind != Kind.Illegal && inst.result.kind != Kind.Void) {
-                        CiRegister returnRegister = tasm.frameMap.registerConfig.getReturnRegister(inst.result.kind);
+                        Register returnRegister = tasm.frameMap.registerConfig.getReturnRegister(inst.result.kind);
                         Value resultLocation = returnRegister.asValue(inst.result.kind.stackKind());
                         AMD64Move.move(tasm, masm, operands[inst.result.index], resultLocation);
                     }
@@ -373,7 +373,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     assert isConstant(offset) && isConstant(bit);
                     Constant constantOffset = (Constant) offset;
                     Constant constantBit = (Constant) bit;
-                    CiAddress src = new CiAddress(inst.kind, pointer, constantOffset.asInt());
+                    Address src = new Address(inst.kind, pointer, constantOffset.asInt());
                     masm.btli(src, constantBit.asInt());
                     masm.jcc(ConditionFlag.aboveEqual, label);
                     break;
@@ -397,7 +397,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     break;
                 }
                 case Push: {
-                    CiRegisterValue value = assureInRegister(tasm, masm, operands[inst.x().index]);
+                    RegisterValue value = assureInRegister(tasm, masm, operands[inst.x().index]);
                     masm.push(asRegister(value));
                     break;
                 }
@@ -406,7 +406,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     if (isRegister(result)) {
                         masm.pop(asRegister(result));
                     } else {
-                        CiRegister rscratch = tasm.frameMap.registerConfig.getScratchRegister();
+                        Register rscratch = tasm.frameMap.registerConfig.getScratchRegister();
                         masm.pop(rscratch);
                         AMD64Move.move(tasm, masm, result, rscratch.asValue());
                     }
@@ -476,21 +476,21 @@ public class AMD64XirOp extends LIRXirInstruction {
 
     private static Value assureNot64BitConstant(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value value) {
         if (isConstant(value) && (value.kind == Kind.Long || value.kind == Kind.Object)) {
-            CiRegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(value.kind);
+            RegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(value.kind);
             AMD64Move.move(tasm, masm, register, value);
             return register;
         }
         return value;
     }
 
-    private static CiRegisterValue assureInRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value pointer) {
+    private static RegisterValue assureInRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value pointer) {
         if (isConstant(pointer)) {
-            CiRegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(pointer.kind);
+            RegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(pointer.kind);
             AMD64Move.move(tasm, masm, register, pointer);
             return register;
         }
 
         assert isRegister(pointer) : "should be register, but is: " + pointer;
-        return (CiRegisterValue) pointer;
+        return (RegisterValue) pointer;
     }
 }

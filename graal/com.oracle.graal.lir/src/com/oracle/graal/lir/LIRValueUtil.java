@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,13 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
+package com.oracle.graal.lir;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 
-public enum CiDeoptAction {
-    None,                           // just interpret, do not invalidate nmethod
-    RecompileIfTooManyDeopts,       // recompile the nmethod; need not invalidate
-    InvalidateReprofile,            // invalidate the nmethod, reset IC, maybe recompile
-    InvalidateRecompile,            // invalidate the nmethod, recompile (probably)
-    InvalidateStopCompiling;        // invalidate the nmethod and do not compile
+public class LIRValueUtil extends ValueUtil {
+    public static boolean isVariable(Value value) {
+        assert value != null;
+        return value instanceof Variable;
+    }
+
+    public static Variable asVariable(Value value) {
+        assert value != null;
+        return (Variable) value;
+    }
 }

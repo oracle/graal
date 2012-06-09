@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,36 @@
  */
 package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.meta.Kind.*;
-
 import com.oracle.graal.api.meta.*;
 
 /**
- * Enumerates the calls that must be provided by the runtime system. The compiler
- * may generate code that calls the runtime services for unresolved and slow cases of some
- * bytecodes.
+ * Denotes a register that stores a value of a fixed kind. There is exactly one (canonical) instance of {@code
+ * CiRegisterValue} for each ({@link Register}, {@link Kind}) pair. Use {@link Register#asValue(Kind)} to
+ * retrieve the canonical {@link RegisterValue} instance for a given (register,kind) pair.
  */
-public enum CiRuntimeCall {
-    UnwindException(Void, Object),
-    Deoptimize(Void),
-    RegisterFinalizer(Void, Object),
-    SetDeoptInfo(Void, Object),
-    CreateNullPointerException(Object),
-    CreateOutOfBoundsException(Object, Int),
-    JavaTimeMillis(Long),
-    JavaTimeNanos(Long),
-    Debug(Void),
-    ArithmeticFrem(Float, Float, Float),
-    ArithmeticDrem(Double, Double, Double),
-    ArithmeticCos(Double, Double),
-    ArithmeticTan(Double, Double),
-    ArithmeticSin(Double, Double),
-    GenericCallback(Object, Object, Object);
+public final class RegisterValue extends Value {
+    private static final long serialVersionUID = 7999341472196897163L;
 
-    public final Kind resultKind;
-    public final Kind[] arguments;
+    /**
+     * The register.
+     */
+    public final Register reg;
 
-    private CiRuntimeCall(Kind resultKind, Kind... args) {
-        this.resultKind = resultKind;
-        this.arguments = args;
+    /**
+     * Should only be called from {@link Register#CiRegister} to ensure canonicalization.
+     */
+    protected RegisterValue(Kind kind, Register register) {
+        super(kind);
+        this.reg = register;
+    }
+
+    @Override
+    public int hashCode() {
+        return (reg.number << 4) ^ kind.ordinal();
+    }
+
+    @Override
+    public String toString() {
+        return reg.name + kindSuffix();
     }
 }

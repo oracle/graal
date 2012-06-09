@@ -74,7 +74,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
         if (objectHub != exactHub) {
             exactMiss.inc();
-            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
+            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
         }
         exactHit.inc();
         return object;
@@ -96,7 +96,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
         if (UnsafeLoadNode.loadObject(objectHub, 0, superCheckOffset, true) != hub) {
             displayMiss.inc();
-            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
+            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
         }
         displayHit.inc();
         return object;
@@ -122,7 +122,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             }
         }
         if (!checkSecondarySubType(hub, objectHub)) {
-            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
+            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
         }
         return object;
     }
@@ -148,7 +148,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             }
         }
         if (!checkUnknownSubType(hub, objectHub)) {
-            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
+            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
         }
         return object;
     }

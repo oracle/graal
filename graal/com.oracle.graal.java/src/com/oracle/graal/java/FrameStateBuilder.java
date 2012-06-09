@@ -23,7 +23,7 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
-import static com.oracle.graal.nodes.ValueUtil.*;
+import static com.oracle.graal.nodes.ValueNodeUtil.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
@@ -131,7 +131,7 @@ public class FrameStateBuilder {
         for (int i = 0; i < stackSize(); i++) {
             ValueNode x = stackAt(i);
             ValueNode y = other.stackAt(i);
-            if (x != y && ValueUtil.typeMismatch(x, y)) {
+            if (x != y && ValueNodeUtil.typeMismatch(x, y)) {
                 return false;
             }
         }

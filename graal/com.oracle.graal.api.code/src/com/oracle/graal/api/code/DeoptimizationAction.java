@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,11 @@
  */
 package com.oracle.graal.api.code;
 
-import com.oracle.graal.api.meta.*;
 
-public final class CiMonitorValue extends Value {
-    private static final long serialVersionUID = 8241681800464483691L;
-
-    public Value owner;
-    public final Value lockData;
-    public final boolean eliminated;
-
-    public CiMonitorValue(Value owner, Value lockData, boolean eliminated) {
-        super(Kind.Illegal);
-        this.owner = owner;
-        this.lockData = lockData;
-        this.eliminated = eliminated;
-    }
-
-    @Override
-    public String toString() {
-        return "monitor[" + owner + (lockData != null ? ", " + lockData : "") + (eliminated ? ", eliminated" : "") + "]";
-    }
+public enum DeoptimizationAction {
+    None,                           // just interpret, do not invalidate nmethod
+    RecompileIfTooManyDeopts,       // recompile the nmethod; need not invalidate
+    InvalidateReprofile,            // invalidate the nmethod, reset IC, maybe recompile
+    InvalidateRecompile,            // invalidate the nmethod, recompile (probably)
+    InvalidateStopCompiling;        // invalidate the nmethod and do not compile
 }

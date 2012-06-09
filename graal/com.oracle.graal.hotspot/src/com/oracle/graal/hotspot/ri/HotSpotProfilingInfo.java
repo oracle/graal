@@ -149,6 +149,6 @@ public final class HotSpotProfilingInfo extends CompilerObject implements Profil
 
     @Override
     public String toString() {
-        return "HotSpotProfilingInfo<" + CiUtil.profileToString(this, null, "; ") + ">";
+        return "HotSpotProfilingInfo<" + CodeUtil.profileToString(this, null, "; ") + ">";
     }
 }

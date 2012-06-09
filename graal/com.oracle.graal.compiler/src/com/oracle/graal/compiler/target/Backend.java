@@ -40,14 +40,14 @@ public abstract class Backend {
 
     /**
      * The name of the system property whose value (if non-null) specifies the fully qualified
-     * name of the class to be instantiated by {@link #create(CodeCacheProvider, CiTarget)}.
+     * name of the class to be instantiated by {@link #create(CodeCacheProvider, TargetDescription)}.
      */
     public static final String BACKEND_CLASS_PROPERTY = "graal.compiler.backend.class";
 
     public final CodeCacheProvider runtime;
-    public final CiTarget target;
+    public final TargetDescription target;
 
-    protected Backend(CodeCacheProvider runtime, CiTarget target) {
+    protected Backend(CodeCacheProvider runtime, TargetDescription target) {
         this.runtime = runtime;
         this.target = target;
     }
@@ -56,23 +56,23 @@ public abstract class Backend {
      * Creates the architecture and runtime specific back-end object.
      * The class of the object instantiated must be in the {@link #BACKEND_CLASS_PROPERTY} system property.
      */
-    public static Backend create(CodeCacheProvider runtime, CiTarget target) {
+    public static Backend create(CodeCacheProvider runtime, TargetDescription target) {
         String className = System.getProperty(BACKEND_CLASS_PROPERTY);
         assert className != null : "System property must be defined: " + BACKEND_CLASS_PROPERTY;
         try {
             Class<?> c = Class.forName(className);
-            Constructor<?> cons = c.getDeclaredConstructor(CodeCacheProvider.class, CiTarget.class);
+            Constructor<?> cons = c.getDeclaredConstructor(CodeCacheProvider.class, TargetDescription.class);
             return (Backend) cons.newInstance(runtime, target);
         } catch (Exception e) {
             throw new Error("Could not instantiate " + className, e);
         }
     }
 
-    public FrameMap newFrameMap(CiRegisterConfig registerConfig) {
+    public FrameMap newFrameMap(RegisterConfig registerConfig) {
         return new FrameMap(runtime, target, registerConfig);
     }
 
-    public abstract LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions);
+    public abstract LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, RiXirGenerator xir, Assumptions assumptions);
 
     public abstract TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir);
 

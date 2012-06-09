@@ -24,9 +24,6 @@ package com.oracle.graal.api.meta;
 
 
 public class MetaUtil {
-
-
-
     /**
      * Extends the functionality of {@link Class#getSimpleName()} to include a non-empty string for anonymous and local
      * classes.

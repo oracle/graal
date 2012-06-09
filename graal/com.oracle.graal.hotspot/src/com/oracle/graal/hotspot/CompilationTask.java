@@ -101,7 +101,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     }
 
     public void runCompilation() {
-        CiCompilationStatistics stats = CiCompilationStatistics.create(method);
+        CompilationStatistics stats = CompilationStatistics.create(method);
         try {
             final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
             if (printCompilation) {
@@ -128,14 +128,14 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             }
 
             installMethod(result);
-        } catch (CiBailout bailout) {
+        } catch (BailoutException bailout) {
             Debug.metric("Bailouts").increment();
             if (GraalOptions.ExitVMOnBailout) {
-                TTY.cachedOut.println(CiUtil.format("Bailout in %H.%n(%p)", method));
+                TTY.cachedOut.println(CodeUtil.format("Bailout in %H.%n(%p)", method));
                 bailout.printStackTrace(TTY.cachedOut);
                 System.exit(-1);
             } else if (GraalOptions.PrintBailout) {
-                TTY.cachedOut.println(CiUtil.format("Bailout in %H.%n(%p)", method));
+                TTY.cachedOut.println(CodeUtil.format("Bailout in %H.%n(%p)", method));
                 bailout.printStackTrace(TTY.cachedOut);
             }
         } catch (Throwable t) {

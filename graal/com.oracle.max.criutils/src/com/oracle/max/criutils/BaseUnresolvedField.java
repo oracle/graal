@@ -71,6 +71,6 @@ public class BaseUnresolvedField implements JavaField {
      */
     @Override
     public String toString() {
-        return CiUtil.format("%H.%n [unresolved]", this);
+        return CodeUtil.format("%H.%n [unresolved]", this);
     }
 }

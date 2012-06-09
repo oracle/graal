@@ -44,9 +44,9 @@ public final class RegisterVerifier {
     /**
      * Saved information of previous check.
      * <br>
-     * State mapping: mapping from registers and stack slots ({@link CiRegister} and {@link Integer} stack slot offsets) to the
-     * value that is currently contained in there ({@link Location} for operands that were variables; {@link CiRegisterValue} or
-     * {@link CiStackSlot} for operands that used fixed registers or stack slots).
+     * State mapping: mapping from registers and stack slots ({@link Register} and {@link Integer} stack slot offsets) to the
+     * value that is currently contained in there ({@link Location} for operands that were variables; {@link RegisterValue} or
+     * {@link StackSlot} for operands that used fixed registers or stack slots).
      */
     private final Map<Object, Value>[] blockStates;
 
@@ -158,7 +158,7 @@ public final class RegisterVerifier {
         Iterator<Object> iter = curInputState.keySet().iterator();
         while (iter.hasNext()) {
             Object value1 = iter.next();
-            if (value1 instanceof CiRegister && frameMap.registerConfig.getAttributesMap()[((CiRegister) value1).number].isCallerSave) {
+            if (value1 instanceof Register && frameMap.registerConfig.getAttributesMap()[((Register) value1).number].isCallerSave) {
                 Debug.log("    remove caller save register %s", value1);
                 iter.remove();
             }
@@ -222,14 +222,14 @@ public final class RegisterVerifier {
         Collections.sort(keys, new Comparator<Object>() {
             @Override
             public int compare(Object o1, Object o2) {
-                if (o1 instanceof CiRegister) {
-                    if (o2 instanceof CiRegister) {
-                        return ((CiRegister) o1).number - ((CiRegister) o2).number;
+                if (o1 instanceof Register) {
+                    if (o2 instanceof Register) {
+                        return ((Register) o1).number - ((Register) o2).number;
                     } else {
                         return -1;
                     }
                 } else {
-                    if (o2 instanceof CiRegister) {
+                    if (o2 instanceof Register) {
                         return 1;
                     } else {
                         return ((Integer) o1).intValue() - ((Integer) o2).intValue();

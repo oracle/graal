@@ -23,16 +23,16 @@
 package com.oracle.max.asm;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CiArchitecture.*;
+import com.oracle.graal.api.code.Architecture.*;
 
 /**
  * The platform-independent base class for the assembler.
  */
 public abstract class AbstractAssembler {
-    public final CiTarget target;
+    public final TargetDescription target;
     public final Buffer codeBuffer;
 
-    public AbstractAssembler(CiTarget target) {
+    public AbstractAssembler(TargetDescription target) {
         this.target = target;
 
         if (target.arch.byteOrder == ByteOrder.BigEndian) {

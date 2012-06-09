@@ -24,14 +24,14 @@ package com.oracle.graal.api.code;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.CiRegister.*;
+import com.oracle.graal.api.code.Register.*;
 
 
 /**
  * Represents a CPU architecture, including information such as its endianness, CPU
  * registers, word width, etc.
  */
-public abstract class CiArchitecture {
+public abstract class Architecture {
 
     /**
      * The endianness of the architecture.
@@ -43,7 +43,7 @@ public abstract class CiArchitecture {
 
     /**
      * The number of bits required in a bit map covering all the registers that may store references.
-     * The bit position of a register in the map is the register's {@linkplain CiRegister#number number}.
+     * The bit position of a register in the map is the register's {@linkplain Register#number number}.
      */
     public final int registerReferenceMapBitCount;
 
@@ -59,14 +59,14 @@ public abstract class CiArchitecture {
 
     /**
      * Array of all available registers on this architecture. The index of each register in this
-     * array is equal to its {@linkplain CiRegister#number number}.
+     * array is equal to its {@linkplain Register#number number}.
      */
-    public final CiRegister[] registers;
+    public final Register[] registers;
 
     /**
-     * Map of all registers keyed by their {@linkplain CiRegister#name names}.
+     * Map of all registers keyed by their {@linkplain Register#name names}.
      */
-    public final HashMap<String, CiRegister> registersByName;
+    public final HashMap<String, Register> registersByName;
 
     /**
      * The byte ordering can be either little or big endian.
@@ -100,26 +100,26 @@ public abstract class CiArchitecture {
      */
     public final int returnAddressSize;
 
-    private final EnumMap<RegisterFlag, CiRegister[]> registersByTypeAndEncoding;
+    private final EnumMap<RegisterFlag, Register[]> registersByTypeAndEncoding;
 
     /**
-     * Gets the register for a given {@linkplain CiRegister#encoding encoding} and type.
+     * Gets the register for a given {@linkplain Register#encoding encoding} and type.
      *
      * @param encoding a register value as used in a machine instruction
      * @param type the type of the register
      */
-    public CiRegister registerFor(int encoding, RegisterFlag type) {
-        CiRegister[] regs = registersByTypeAndEncoding.get(type);
+    public Register registerFor(int encoding, RegisterFlag type) {
+        Register[] regs = registersByTypeAndEncoding.get(type);
         assert encoding >= 0 && encoding < regs.length;
-        CiRegister reg = regs[encoding];
+        Register reg = regs[encoding];
         assert reg != null;
         return reg;
     }
 
-    protected CiArchitecture(String name,
+    protected Architecture(String name,
                     int wordSize,
                     ByteOrder byteOrder,
-                    CiRegister[] registers,
+                    Register[] registers,
                     int implicitMemoryBarriers,
                     int nativeCallDisplacementOffset,
                     int registerReferenceMapBitCount,
@@ -134,18 +134,18 @@ public abstract class CiArchitecture {
         this.returnAddressSize = returnAddressSize;
 
         registersByName = new HashMap<>(registers.length);
-        for (CiRegister register : registers) {
+        for (Register register : registers) {
             registersByName.put(register.name, register);
             assert registers[register.number] == register;
         }
 
         registersByTypeAndEncoding = new EnumMap<>(RegisterFlag.class);
-        EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = CiRegister.categorize(registers);
+        EnumMap<RegisterFlag, Register[]> categorizedRegs = Register.categorize(registers);
         for (RegisterFlag type : RegisterFlag.values()) {
-            CiRegister[] regs = categorizedRegs.get(type);
-            int max = CiRegister.maxRegisterEncoding(regs);
-            CiRegister[] regsByEnc = new CiRegister[max + 1];
-            for (CiRegister reg : regs) {
+            Register[] regs = categorizedRegs.get(type);
+            int max = Register.maxRegisterEncoding(regs);
+            Register[] regsByEnc = new Register[max + 1];
+            for (Register reg : regs) {
                 regsByEnc[reg.encoding] = reg;
             }
             registersByTypeAndEncoding.put(type, regsByEnc);

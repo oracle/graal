@@ -400,7 +400,7 @@ public final class Interval {
     }
 
     /**
-     * The {@linkplain CiRegisterValue register} or {@linkplain Variable variable} for this interval prior to register allocation.
+     * The {@linkplain RegisterValue register} or {@linkplain Variable variable} for this interval prior to register allocation.
      */
     public final Value operand;
 
@@ -410,14 +410,14 @@ public final class Interval {
     public final int operandNumber;
 
     /**
-     * The {@linkplain CiRegisterValue register}, {@linkplain CiStackSlot spill slot} or {@linkplain CiAddress address} assigned to this interval.
+     * The {@linkplain RegisterValue register}, {@linkplain StackSlot spill slot} or {@linkplain Address address} assigned to this interval.
      */
     private Value location;
 
     /**
      * The stack slot to which all splits of this interval are spilled if necessary.
      */
-    private CiStackSlot spillSlot;
+    private StackSlot spillSlot;
 
     /**
      * The kind of this interval.
@@ -504,7 +504,7 @@ public final class Interval {
     }
 
     /**
-     * Gets the {@linkplain CiRegisterValue register}, {@linkplain CiStackSlot spill slot} or {@linkplain CiAddress address} assigned to this interval.
+     * Gets the {@linkplain RegisterValue register}, {@linkplain StackSlot spill slot} or {@linkplain Address address} assigned to this interval.
      */
     public Value location() {
         return location;
@@ -564,11 +564,11 @@ public final class Interval {
     /**
      * Gets the canonical spill slot for this interval.
      */
-    CiStackSlot spillSlot() {
+    StackSlot spillSlot() {
         return splitParent().spillSlot;
     }
 
-    void setSpillSlot(CiStackSlot slot) {
+    void setSpillSlot(StackSlot slot) {
         assert splitParent().spillSlot == null : "connot overwrite existing spill slot";
         splitParent().spillSlot = slot;
     }
@@ -801,7 +801,7 @@ public final class Interval {
                     TTY.println(String.format("two valid result intervals found for opId %d: %d and %d", opId, result.operandNumber, interval.operandNumber));
                     TTY.println(result.logString(allocator));
                     TTY.println(interval.logString(allocator));
-                    throw new CiBailout("two valid result intervals found");
+                    throw new BailoutException("two valid result intervals found");
                 }
             }
         }

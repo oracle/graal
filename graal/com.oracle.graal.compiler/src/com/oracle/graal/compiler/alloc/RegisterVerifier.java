@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.alloc;
 
-import static com.oracle.graal.api.code.CiValueUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 
@@ -180,7 +180,7 @@ final class RegisterVerifier {
 
     static void statePut(Interval[] inputState, Value location, Interval interval) {
         if (location != null && isRegister(location)) {
-            CiRegister reg = asRegister(location);
+            Register reg = asRegister(location);
             int regNum = reg.number;
             if (interval != null) {
                 if (GraalOptions.TraceLinearScanLevel >= 4) {
@@ -248,7 +248,7 @@ final class RegisterVerifier {
             op.forEachInput(useProc);
             // invalidate all caller save registers at calls
             if (op.hasCall()) {
-                for (CiRegister r : allocator.frameMap.registerConfig.getCallerSaveRegisters()) {
+                for (Register r : allocator.frameMap.registerConfig.getCallerSaveRegisters()) {
                     statePut(inputState, r.asValue(), null);
                 }
             }

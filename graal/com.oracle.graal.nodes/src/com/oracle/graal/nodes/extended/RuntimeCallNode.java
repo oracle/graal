@@ -29,21 +29,21 @@ import com.oracle.graal.nodes.type.*;
 
 public final class RuntimeCallNode extends AbstractCallNode implements LIRLowerable {
 
-    private final CiRuntimeCall call;
+    private final RuntimeCall call;
 
-    public CiRuntimeCall call() {
+    public RuntimeCall call() {
         return call;
     }
 
-    public RuntimeCallNode(CiRuntimeCall call) {
+    public RuntimeCallNode(RuntimeCall call) {
         this(call, new ValueNode[0]);
     }
 
-    public RuntimeCallNode(CiRuntimeCall call, ValueNode arg1) {
+    public RuntimeCallNode(RuntimeCall call, ValueNode arg1) {
         this(call, new ValueNode[] {arg1});
     }
 
-    public RuntimeCallNode(CiRuntimeCall call, ValueNode[] arguments) {
+    public RuntimeCallNode(RuntimeCall call, ValueNode[] arguments) {
         super(StampFactory.forKind(call.resultKind), arguments);
         this.call = call;
     }
@@ -56,13 +56,13 @@ public final class RuntimeCallNode extends AbstractCallNode implements LIRLowera
     // specialized on return type (instead of public static <T> T performCall) until boxing/unboxing is sorted out in intrinsification
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static <S> double performCall(@ConstantNodeParameter CiRuntimeCall call, S arg1) {
+    public static <S> double performCall(@ConstantNodeParameter RuntimeCall call, S arg1) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static long performCall(@ConstantNodeParameter CiRuntimeCall call) {
+    public static long performCall(@ConstantNodeParameter RuntimeCall call) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 }

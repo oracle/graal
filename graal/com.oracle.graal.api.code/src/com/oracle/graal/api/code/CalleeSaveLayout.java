@@ -32,7 +32,7 @@ import java.util.*;
  * {@linkplain #size size}, {@linkplain #slotSize slot size} and
  * the {@linkplain #registers callee save registers} covered by the CSA.
  */
-public class CiCalleeSaveLayout {
+public class CalleeSaveLayout {
 
     /**
      * The size (in bytes) of the CSA.
@@ -45,16 +45,16 @@ public class CiCalleeSaveLayout {
     public final int slotSize;
 
     /**
-     * Map from {@linkplain CiRegister#number register numbers} to slot indexes in the CSA.
+     * Map from {@linkplain Register#number register numbers} to slot indexes in the CSA.
      */
     private final int[] regNumToIndex;
 
-    private final CiRegister[] indexToReg;
+    private final Register[] indexToReg;
 
     /**
-     * The list of registers {@linkplain #contains(CiRegister) contained} by this CSA.
+     * The list of registers {@linkplain #contains(Register) contained} by this CSA.
      */
-    public final CiRegister[] registers;
+    public final Register[] registers;
 
     /**
      * The offset from the frame pointer to the CSA. If this is not known, then this field
@@ -69,15 +69,15 @@ public class CiCalleeSaveLayout {
      * @param slotSize the size (in bytes) of an {@linkplain #registerAtIndex(int) indexable} slot in the CSA
      * @param registers the registers that can be saved in the CSA
      */
-    public CiCalleeSaveLayout(int frameOffsetToCSA, int size, int slotSize, CiRegister... registers) {
+    public CalleeSaveLayout(int frameOffsetToCSA, int size, int slotSize, Register... registers) {
         this.frameOffsetToCSA = frameOffsetToCSA;
-        assert slotSize == 0 || CiUtil.isPowerOf2(slotSize);
+        assert slotSize == 0 || CodeUtil.isPowerOf2(slotSize);
         this.slotSize = slotSize;
         int maxRegNum = -1;
         int maxOffset = 0;
         this.registers = registers;
         int offset = 0;
-        for (CiRegister reg : registers) {
+        for (Register reg : registers) {
             assert offset % slotSize == 0;
             assert reg.number >= 0;
             if (reg.number > maxRegNum) {
@@ -96,10 +96,10 @@ public class CiCalleeSaveLayout {
         }
 
         this.regNumToIndex = new int[maxRegNum + 1];
-        this.indexToReg = offset == 0 ? new CiRegister[0] : new CiRegister[offset / slotSize];
+        this.indexToReg = offset == 0 ? new Register[0] : new Register[offset / slotSize];
         Arrays.fill(regNumToIndex, -1);
         offset = 0;
-        for (CiRegister reg : registers) {
+        for (Register reg : registers) {
             int index = offset / slotSize;
             regNumToIndex[reg.number] = index;
             indexToReg[index] = reg;
@@ -136,7 +136,7 @@ public class CiCalleeSaveLayout {
      * @return the offset (in bytes) of {@code reg} in the CSA
      * @throws IllegalArgumentException if {@code reg} does not have a slot in the CSA
      */
-    public int offsetOf(CiRegister reg) {
+    public int offsetOf(Register reg) {
         return offsetOf(reg.number);
     }
 
@@ -157,7 +157,7 @@ public class CiCalleeSaveLayout {
      * @return the register whose slot in the CSA is at  {@code index} or {@code null} if {@code index} does not denote a
      *         slot in the CSA aligned with a register
      */
-    public CiRegister registerAt(int index) {
+    public Register registerAt(int index) {
         if (index < 0 || index >= indexToReg.length) {
             return null;
         }
@@ -167,7 +167,7 @@ public class CiCalleeSaveLayout {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("[");
-        for (CiRegister reg : registers) {
+        for (Register reg : registers) {
             if (sb.length() != 1) {
                 sb.append(", ");
             }

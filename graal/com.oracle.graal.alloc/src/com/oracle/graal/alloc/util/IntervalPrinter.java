@@ -35,7 +35,7 @@ import com.oracle.graal.lir.cfg.*;
 
 public final class IntervalPrinter {
 
-    public static void printBeforeAllocation(String label, LIR lir, CiRegisterConfig registerConfig, DataFlowAnalysis dataFlow) {
+    public static void printBeforeAllocation(String label, LIR lir, RegisterConfig registerConfig, DataFlowAnalysis dataFlow) {
         if (Debug.isDumpEnabled()) {
             IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, null);
             Debug.dump(lir, label);
@@ -43,7 +43,7 @@ public final class IntervalPrinter {
         }
     }
 
-    public static void printAfterAllocation(String label, LIR lir, CiRegisterConfig registerConfig, DataFlowAnalysis dataFlow, LocationMap[] blockEndLocations) {
+    public static void printAfterAllocation(String label, LIR lir, RegisterConfig registerConfig, DataFlowAnalysis dataFlow, LocationMap[] blockEndLocations) {
         if (Debug.isDumpEnabled()) {
             IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, blockEndLocations);
             Debug.dump(lir, label);
@@ -96,13 +96,13 @@ public final class IntervalPrinter {
 
 
     private final LIR lir;
-    private final CiRegisterConfig registerConfig;
+    private final RegisterConfig registerConfig;
     private final DataFlowAnalysis dataFlow;
     private final LocationMap[] blockEndLocations;
     private final Variable[] variables;
     private final Map<String, Interval> intervals;
 
-    private IntervalPrinter(LIR lir, CiRegisterConfig registerConfig, DataFlowAnalysis dataFlow, LocationMap[] blockEndLocations) {
+    private IntervalPrinter(LIR lir, RegisterConfig registerConfig, DataFlowAnalysis dataFlow, LocationMap[] blockEndLocations) {
         this.lir = lir;
         this.registerConfig = registerConfig;
         this.dataFlow = dataFlow;

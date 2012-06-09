@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 
 public abstract class LIRGeneratorTool {
-    public abstract CiTarget target();
+    public abstract TargetDescription target();
 
     /**
      * Checks whether the supplied constant can be used without loading it into a register
@@ -52,7 +52,7 @@ public abstract class LIRGeneratorTool {
     public abstract Value newVariable(Kind kind);
     public abstract Value setResult(ValueNode x, Value operand);
 
-    public abstract CiAddress makeAddress(LocationNode location, ValueNode object);
+    public abstract Address makeAddress(LocationNode location, ValueNode object);
 
     public abstract Value emitMove(Value input);
     public abstract void emitMove(Value src, Value dst);
@@ -79,16 +79,16 @@ public abstract class LIRGeneratorTool {
 
     public abstract Value emitConvert(ConvertNode.Op opcode, Value inputVal);
     public abstract void emitMembar(int barriers);
-    public abstract void emitDeoptimizeOnOverflow(CiDeoptAction action, DeoptimizationReason reason, Object deoptInfo);
-    public abstract void emitDeoptimize(CiDeoptAction action, DeoptimizationReason reason, Object deoptInfo, long leafGraphId);
+    public abstract void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo);
+    public abstract void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo, long leafGraphId);
     public abstract Value emitCall(Object target, Kind result, Kind[] arguments, boolean canTrap, Value... args);
-    public final Value emitCall(CiRuntimeCall runtimeCall, boolean canTrap, Value... args) {
+    public final Value emitCall(RuntimeCall runtimeCall, boolean canTrap, Value... args) {
         return emitCall(runtimeCall, runtimeCall.resultKind, runtimeCall.arguments, canTrap, args);
     }
 
     public abstract void emitIf(IfNode i);
     public abstract void emitConditional(ConditionalNode i);
-    public abstract void emitGuardCheck(BooleanNode comp, DeoptimizationReason deoptReason, CiDeoptAction deoptAction, boolean negated, long leafGraphId);
+    public abstract void emitGuardCheck(BooleanNode comp, DeoptimizationReason deoptReason, DeoptimizationAction deoptAction, boolean negated, long leafGraphId);
 
     public abstract void emitLookupSwitch(LookupSwitchNode i);
     public abstract void emitTableSwitch(TableSwitchNode i);

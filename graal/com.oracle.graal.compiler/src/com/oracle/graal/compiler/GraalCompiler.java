@@ -49,7 +49,7 @@ public class GraalCompiler {
     /**
      * The target that this compiler has been configured for.
      */
-    public final CiTarget target;
+    public final TargetDescription target;
 
     /**
      * The runtime that this compiler has been configured for.
@@ -66,7 +66,7 @@ public class GraalCompiler {
      */
     public final Backend backend;
 
-    public GraalCompiler(ExtendedRiRuntime runtime, CiTarget target, Backend backend, RiXirGenerator xirGen) {
+    public GraalCompiler(ExtendedRiRuntime runtime, TargetDescription target, Backend backend, RiXirGenerator xirGen) {
         this.runtime = runtime;
         this.target = target;
         this.xir = xirGen;
@@ -77,12 +77,12 @@ public class GraalCompiler {
     public CompilationResult compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, int osrBCI, final RiGraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.accessFlags() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
         if (osrBCI != -1) {
-            throw new CiBailout("No OSR supported");
+            throw new BailoutException("No OSR supported");
         }
 
         return Debug.scope("GraalCompiler", new Object[] {graph, method, this}, new Callable<CompilationResult>() {
             public CompilationResult call() {
-                final CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
+                final Assumptions assumptions = GraalOptions.OptAssumptions ? new Assumptions() : null;
                 final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
                     public LIR call() {
                         return emitHIR(graph, assumptions, cache, plan, optimisticOpts);
@@ -105,7 +105,7 @@ public class GraalCompiler {
     /**
      * Builds the graph, optimizes it.
      */
-    public LIR emitHIR(StructuredGraph graph, CiAssumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public LIR emitHIR(StructuredGraph graph, Assumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
 
         if (graph.start().next() == null) {
             plan.runPhases(PhasePosition.AFTER_PARSING, graph);
@@ -235,7 +235,7 @@ public class GraalCompiler {
         });
     }
 
-    public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method, CiAssumptions assumptions) {
+    public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method, Assumptions assumptions) {
         final FrameMap frameMap = backend.newFrameMap(runtime.getRegisterConfig(method));
         final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir, xir, assumptions);
 
@@ -262,7 +262,7 @@ public class GraalCompiler {
         return frameMap;
     }
 
-    public CompilationResult emitCode(CiAssumptions assumptions, ResolvedJavaMethod method, LIR lir, FrameMap frameMap) {
+    public CompilationResult emitCode(Assumptions assumptions, ResolvedJavaMethod method, LIR lir, FrameMap frameMap) {
         TargetMethodAssembler tasm = backend.newAssembler(frameMap, lir);
         backend.emitCode(tasm, method, lir);
         CompilationResult targetMethod = tasm.finishTargetMethod(method, false);

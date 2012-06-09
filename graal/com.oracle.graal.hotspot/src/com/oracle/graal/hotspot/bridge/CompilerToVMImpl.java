@@ -144,7 +144,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native int RiMethod_getCompiledCodeSize(HotSpotMethodResolved method);
 
     @Override
-    public native long getMaxCallTargetOffset(CiRuntimeCall rtcall);
+    public native long getMaxCallTargetOffset(RuntimeCall rtcall);
 
     @Override
     public native String disassembleNative(byte[] code, long address);

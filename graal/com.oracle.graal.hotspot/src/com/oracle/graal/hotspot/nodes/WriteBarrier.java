@@ -46,6 +46,6 @@ public abstract class WriteBarrier extends FixedWithNextNode {
         } else {
             base = gen.emitAdd(base, Constant.forLong(config.cardtableStartAddress));
         }
-        gen.emitStore(new CiAddress(Kind.Boolean, base, displacement), Constant.FALSE, false);
+        gen.emitStore(new Address(Kind.Boolean, base, displacement), Constant.FALSE, false);
     }
 }

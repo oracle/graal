@@ -72,5 +72,5 @@ public interface XirSite {
      * The object for recording speculations made during compilation.
      * May be null.
      */
-    CiAssumptions assumptions();
+    Assumptions assumptions();
 }

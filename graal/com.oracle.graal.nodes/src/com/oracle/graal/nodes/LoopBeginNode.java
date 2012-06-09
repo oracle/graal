@@ -116,7 +116,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
         } else {
             return super.forwardEndIndex(pred);
         }
-        throw ValueUtil.shouldNotReachHere("unknown pred : " + pred);
+        throw ValueNodeUtil.shouldNotReachHere("unknown pred : " + pred);
     }
 
     @Override
@@ -131,7 +131,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
                 return end;
             }
         }
-        throw ValueUtil.shouldNotReachHere();
+        throw ValueNodeUtil.shouldNotReachHere();
     }
 
     @Override
