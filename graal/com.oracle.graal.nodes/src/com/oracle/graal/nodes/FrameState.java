@@ -82,7 +82,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
      */
     public final int bci;
 
-    private final RiResolvedMethod method;
+    private final ResolvedJavaMethod method;
 
     /**
      * Creates a {@code FrameState} for the given scope and maximum number of stack and local variables.
@@ -93,7 +93,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
      * @param stackSize size of the stack
      * @param rethrowException if true the VM should re-throw the exception on top of the stack when deopt'ing using this framestate
      */
-    public FrameState(RiResolvedMethod method, int bci, int localsSize, int stackSize, boolean rethrowException, boolean duringCall) {
+    public FrameState(ResolvedJavaMethod method, int bci, int localsSize, int stackSize, boolean rethrowException, boolean duringCall) {
         assert stackSize >= 0;
         this.method = method;
         this.bci = bci;
@@ -106,7 +106,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
         assert !rethrowException || stackSize == 1 : "must have exception on top of the stack";
     }
 
-    public FrameState(RiResolvedMethod method, int bci, ValueNode[] locals, ValueNode[] stack, int stackSize, boolean rethrowException, boolean duringCall) {
+    public FrameState(ResolvedJavaMethod method, int bci, ValueNode[] locals, ValueNode[] stack, int stackSize, boolean rethrowException, boolean duringCall) {
         this.method = method;
         this.bci = bci;
         this.localsSize = locals.length;
@@ -156,7 +156,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
         this.duringCall = b;
     }
 
-    public RiResolvedMethod method() {
+    public ResolvedJavaMethod method() {
         return method;
     }
 

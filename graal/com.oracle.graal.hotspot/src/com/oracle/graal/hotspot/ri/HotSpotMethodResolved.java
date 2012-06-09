@@ -25,9 +25,9 @@ package com.oracle.graal.hotspot.ri;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 
-public interface HotSpotMethodResolved extends RiResolvedMethod {
+public interface HotSpotMethodResolved extends ResolvedJavaMethod {
 
-    RiResolvedMethod uniqueConcreteMethod();
+    ResolvedJavaMethod uniqueConcreteMethod();
     int vtableEntryOffset();
 
     void setCurrentTask(CompilationTask task);

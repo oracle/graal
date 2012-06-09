@@ -52,7 +52,7 @@ public class MethodEntryCounters {
 
         protected long sortCount;
 
-        protected Counter(RiResolvedMethod method) {
+        protected Counter(ResolvedJavaMethod method) {
             this.method = CiUtil.format("%H.%n", method);
             counters.add(this);
         }
@@ -127,7 +127,7 @@ public class MethodEntryCounters {
     }
 
 
-    public static void emitCounter(LIRGenerator gen, RiResolvedMethod method) {
+    public static void emitCounter(LIRGenerator gen, ResolvedJavaMethod method) {
         if (!GraalOptions.MethodEntryCounters) {
             return;
         }

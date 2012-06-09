@@ -50,7 +50,7 @@ import com.oracle.graal.lir.cfg.*;
 public final class LinearScan {
 
     final CiTarget target;
-    final RiMethod method;
+    final JavaMethod method;
     final LIR ir;
     final LIRGenerator gen;
     final FrameMap frameMap;
@@ -66,7 +66,7 @@ public final class LinearScan {
          * in this block.
          * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
          */
-        public BitMap liveIn;
+        public BitSet liveIn;
 
         /**
          * Bit map specifying which {@linkplain OperandPool operands} are live upon exit from this block.
@@ -74,20 +74,20 @@ public final class LinearScan {
          * upon entry to this block.
          * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
          */
-        public BitMap liveOut;
+        public BitSet liveOut;
 
         /**
          * Bit map specifying which {@linkplain OperandPool operands} are used (before being defined) in this block.
          * That is, these are the values that are live upon entry to the block.
          * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
          */
-        public BitMap liveGen;
+        public BitSet liveGen;
 
         /**
          * Bit map specifying which {@linkplain OperandPool operands} are defined/overwritten in this block.
          * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
          */
-        public BitMap liveKill;
+        public BitSet liveKill;
     }
 
     public final BlockMap<BlockData> blockData;
@@ -150,7 +150,7 @@ public final class LinearScan {
     private final int firstVariableNumber;
 
 
-    public LinearScan(CiTarget target, RiResolvedMethod method, LIR ir, LIRGenerator gen, FrameMap frameMap) {
+    public LinearScan(CiTarget target, ResolvedJavaMethod method, LIR ir, LIRGenerator gen, FrameMap frameMap) {
         this.target = target;
         this.method = method;
         this.ir = ir;
@@ -651,8 +651,8 @@ public final class LinearScan {
         // iterate all blocks
         for (int i = 0; i < numBlocks; i++) {
             final Block block = blockAt(i);
-            final BitMap liveGen = new BitMap(liveSize);
-            final BitMap liveKill = new BitMap(liveSize);
+            final BitSet liveGen = new BitSet(liveSize);
+            final BitSet liveKill = new BitSet(liveSize);
 
             List<LIRInstruction> instructions = block.lir;
             int numInst = instructions.size();
@@ -728,8 +728,8 @@ public final class LinearScan {
 
             blockData.get(block).liveGen = liveGen;
             blockData.get(block).liveKill = liveKill;
-            blockData.get(block).liveIn = new BitMap(liveSize);
-            blockData.get(block).liveOut = new BitMap(liveSize);
+            blockData.get(block).liveIn = new BitSet(liveSize);
+            blockData.get(block).liveOut = new BitSet(liveSize);
 
             if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("liveGen  B%d %s", block.getId(), blockData.get(block).liveGen);
@@ -738,7 +738,7 @@ public final class LinearScan {
         } // end of block iteration
     }
 
-    private void verifyTemp(BitMap liveKill, Value operand) {
+    private void verifyTemp(BitSet liveKill, Value operand) {
         // fixed intervals are never live at block boundaries, so
         // they need not be processed in live sets
         // process them only in debug mode so that this can be checked
@@ -749,7 +749,7 @@ public final class LinearScan {
         }
     }
 
-    private void verifyInput(Block block, BitMap liveKill, Value operand) {
+    private void verifyInput(Block block, BitSet liveKill, Value operand) {
         // fixed intervals are never live at block boundaries, so
         // they need not be processed in live sets.
         // this is checked by these assertions to be sure about it.
@@ -771,7 +771,7 @@ public final class LinearScan {
         boolean changeOccurred;
         boolean changeOccurredInBlock;
         int iterationCount = 0;
-        BitMap liveOut = new BitMap(liveSetSize()); // scratch set for calculations
+        BitSet liveOut = new BitSet(liveSetSize()); // scratch set for calculations
 
         // Perform a backward dataflow analysis to compute liveOut and liveIn for each block.
         // The loop is executed until a fixpoint is reached (no changes in an iteration)
@@ -789,17 +789,18 @@ public final class LinearScan {
                 if (n > 0) {
                     // block has successors
                     if (n > 0) {
-                        liveOut.setFrom(blockData.get(block.suxAt(0)).liveIn);
+                        liveOut.clear();
+                        liveOut.or(blockData.get(block.suxAt(0)).liveIn);
                         for (int j = 1; j < n; j++) {
-                            liveOut.setUnion(blockData.get(block.suxAt(j)).liveIn);
+                            liveOut.or(blockData.get(block.suxAt(j)).liveIn);
                         }
                     } else {
-                        liveOut.clearAll();
+                        liveOut.clear();
                     }
 
-                    if (!blockData.get(block).liveOut.isSame(liveOut)) {
+                    if (!blockData.get(block).liveOut.equals(liveOut)) {
                         // A change occurred. Swap the old and new live out sets to avoid copying.
-                        BitMap temp = blockData.get(block).liveOut;
+                        BitSet temp = blockData.get(block).liveOut;
                         blockData.get(block).liveOut = liveOut;
                         liveOut = temp;
 
@@ -811,10 +812,11 @@ public final class LinearScan {
                 if (iterationCount == 0 || changeOccurredInBlock) {
                     // liveIn(block) is the union of liveGen(block) with (liveOut(block) & !liveKill(block))
                     // note: liveIn has to be computed only in first iteration or if liveOut has changed!
-                    BitMap liveIn = blockData.get(block).liveIn;
-                    liveIn.setFrom(blockData.get(block).liveOut);
-                    liveIn.setDifference(blockData.get(block).liveKill);
-                    liveIn.setUnion(blockData.get(block).liveGen);
+                    BitSet liveIn = blockData.get(block).liveIn;
+                    liveIn.clear();
+                    liveIn.or(blockData.get(block).liveOut);
+                    liveIn.andNot(blockData.get(block).liveKill);
+                    liveIn.or(blockData.get(block).liveGen);
                 }
 
                 if (GraalOptions.TraceLinearScanLevel >= 4) {
@@ -834,8 +836,8 @@ public final class LinearScan {
 
         // check that the liveIn set of the first block is empty
         Block startBlock = ir.cfg.getStartBlock();
-        BitMap liveInArgs = new BitMap(blockData.get(startBlock).liveIn.size());
-        if (!blockData.get(startBlock).liveIn.isSame(liveInArgs)) {
+        BitSet liveInArgs = new BitSet(blockData.get(startBlock).liveIn.size());
+        if (!blockData.get(startBlock).liveIn.equals(liveInArgs)) {
             if (GraalOptions.DetailedAsserts) {
                 reportFailure(numBlocks);
             }
@@ -1107,7 +1109,7 @@ public final class LinearScan {
             assert blockTo == instructions.get(instructions.size() - 1).id();
 
             // Update intervals for operands live at the end of this block;
-            BitMap live = blockData.get(block).liveOut;
+            BitSet live = blockData.get(block).liveOut;
             for (int operandNum = live.nextSetBit(0); operandNum >= 0; operandNum = live.nextSetBit(operandNum + 1)) {
                 assert live.get(operandNum) : "should not stop here otherwise";
                 Value operand = operandFor(operandNum);
@@ -1421,7 +1423,7 @@ public final class LinearScan {
         assert moveResolver.checkEmpty();
 
         int numOperands = operandSize();
-        BitMap liveAtEdge = blockData.get(toBlock).liveIn;
+        BitSet liveAtEdge = blockData.get(toBlock).liveIn;
 
         // visit all variables for which the liveAtEdge bit is set
         for (int operandNum = liveAtEdge.nextSetBit(0); operandNum >= 0; operandNum = liveAtEdge.nextSetBit(operandNum + 1)) {
@@ -1482,8 +1484,8 @@ public final class LinearScan {
     void resolveDataFlow() {
         int numBlocks = blockCount();
         MoveResolver moveResolver = new MoveResolver(this);
-        BitMap blockCompleted = new BitMap(numBlocks);
-        BitMap alreadyResolved = new BitMap(numBlocks);
+        BitSet blockCompleted = new BitSet(numBlocks);
+        BitSet alreadyResolved = new BitSet(numBlocks);
 
         int i;
         for (i = 0; i < numBlocks; i++) {
@@ -1521,7 +1523,8 @@ public final class LinearScan {
         for (i = 0; i < numBlocks; i++) {
             if (!blockCompleted.get(i)) {
                 Block fromBlock = blockAt(i);
-                alreadyResolved.setFrom(blockCompleted);
+                alreadyResolved.clear();
+                alreadyResolved.or(blockCompleted);
 
                 int numSux = fromBlock.numberOfSux();
                 for (int s = 0; s < numSux; s++) {
@@ -2081,7 +2084,7 @@ public final class LinearScan {
 
         for (int i = 0; i < numBlocks; i++) {
             Block block = blockAt(i);
-            BitMap liveAtEdge = blockData.get(block).liveIn;
+            BitSet liveAtEdge = blockData.get(block).liveIn;
 
             // visit all operands where the liveAtEdge bit is set
             for (int operandNum = liveAtEdge.nextSetBit(0); operandNum >= 0; operandNum = liveAtEdge.nextSetBit(operandNum + 1)) {

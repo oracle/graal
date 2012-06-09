@@ -39,7 +39,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     @Input private ValueNode object;
 
-    protected final RiResolvedField field;
+    protected final ResolvedJavaField field;
     private final long leafGraphId;
 
     public ValueNode object() {
@@ -53,7 +53,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
      * @param field the compiler interface representation of the field
      * @param graph
      */
-    public AccessFieldNode(Stamp stamp, ValueNode object, RiResolvedField field, long leafGraphId) {
+    public AccessFieldNode(Stamp stamp, ValueNode object, ResolvedJavaField field, long leafGraphId) {
         super(stamp);
         this.object = object;
         this.field = field;
@@ -65,7 +65,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
      * Gets the compiler interface field for this field access.
      * @return the compiler interface field for this field access
      */
-    public RiResolvedField field() {
+    public ResolvedJavaField field() {
         return field;
     }
 

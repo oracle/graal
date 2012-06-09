@@ -30,6 +30,6 @@ public interface RiGraphCache {
 
     void put(StructuredGraph graph);
 
-    StructuredGraph get(RiResolvedMethod method);
+    StructuredGraph get(ResolvedJavaMethod method);
 
 }

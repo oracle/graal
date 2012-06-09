@@ -84,7 +84,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         }
 
         @Override
-        public boolean declaredType(final RiResolvedType type) {
+        public boolean declaredType(final ResolvedJavaType type) {
             return store.prove(Info.class, new BooleanPredicate<Info>() {
                 @Override
                 public boolean evaluate(Info element) {
@@ -98,7 +98,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         }
 
         @Override
-        public boolean exactType(final RiResolvedType type) {
+        public boolean exactType(final ResolvedJavaType type) {
             return store.prove(ObjectTypeExact.class, new BooleanPredicate<ObjectTypeExact>() {
                 @Override
                 public boolean evaluate(ObjectTypeExact element) {
@@ -108,12 +108,12 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         }
 
         @Override
-        public boolean notDeclaredType(RiResolvedType type) {
+        public boolean notDeclaredType(ResolvedJavaType type) {
             return false;
         }
 
         @Override
-        public boolean notExactType(final RiResolvedType type) {
+        public boolean notExactType(final ResolvedJavaType type) {
             return store.prove(Info.class, new BooleanPredicate<Info>() {
                 @Override
                 public boolean evaluate(Info element) {
@@ -175,16 +175,16 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     private static class ObjectType extends Info {
-        public final RiResolvedType type;
+        public final ResolvedJavaType type;
 
-        public ObjectType(RiResolvedType type) {
+        public ObjectType(ResolvedJavaType type) {
             this.type = type;
         }
     }
 
     private static final class ObjectTypeDeclared extends ObjectType {
 
-        public ObjectTypeDeclared(RiResolvedType type) {
+        public ObjectTypeDeclared(ResolvedJavaType type) {
             super(type);
         }
 
@@ -196,7 +196,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
 
     private static final class ObjectTypeExact extends ObjectType {
 
-        public ObjectTypeExact(RiResolvedType type) {
+        public ObjectTypeExact(ResolvedJavaType type) {
             super(type);
         }
 
@@ -346,7 +346,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     @Override
-    public void declaredType(RiResolvedType type, boolean nonNull) {
+    public void declaredType(ResolvedJavaType type, boolean nonNull) {
         assert type != null;
 
         for (ListIterator<Info> iter = infos.listIterator(); iter.hasNext();) {
@@ -374,7 +374,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     @Override
-    public void exactType(RiResolvedType type) {
+    public void exactType(ResolvedJavaType type) {
         assert type != null;
 
         for (ListIterator<Info> iter = infos.listIterator(); iter.hasNext();) {
@@ -398,11 +398,11 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     @Override
-    public void notDeclaredType(RiResolvedType type, boolean includesNull) {
+    public void notDeclaredType(ResolvedJavaType type, boolean includesNull) {
     }
 
     @Override
-    public void notExactType(RiResolvedType type) {
+    public void notExactType(ResolvedJavaType type) {
     }
 
     public static ObjectTypeFeedbackStore meet(ObjectTypeFeedbackStore[] others) {

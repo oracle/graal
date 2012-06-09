@@ -27,7 +27,7 @@ import java.lang.reflect.*;
 import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.RiTypeProfile.*;
+import com.oracle.graal.api.meta.JavaTypeProfile.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -35,26 +35,26 @@ import com.oracle.graal.nodes.*;
  */
 public abstract class TypeCheckTest extends GraphTest {
 
-    protected abstract void replaceProfile(StructuredGraph graph, RiTypeProfile profile);
+    protected abstract void replaceProfile(StructuredGraph graph, JavaTypeProfile profile);
 
-    private InstalledCode compile(Method method, RiTypeProfile profile) {
+    private InstalledCode compile(Method method, JavaTypeProfile profile) {
         final StructuredGraph graph = parse(method);
         replaceProfile(graph, profile);
-        return compile(runtime.getRiMethod(method), graph);
+        return compile(runtime.getResolvedJavaMethod(method), graph);
     }
 
-    protected RiTypeProfile profile(Class... types) {
+    protected JavaTypeProfile profile(Class... types) {
         if (types.length == 0) {
             return null;
         }
         ProfiledType[] ptypes = new ProfiledType[types.length];
         for (int i = 0; i < types.length; i++) {
-            ptypes[i] = new ProfiledType(runtime.getType(types[i]), 1.0D / types.length);
+            ptypes[i] = new ProfiledType(runtime.getResolvedJavaType(types[i]), 1.0D / types.length);
         }
-        return new RiTypeProfile(0.0D, ptypes);
+        return new JavaTypeProfile(0.0D, ptypes);
     }
 
-    protected void test(String name, RiTypeProfile profile, Object... args) {
+    protected void test(String name, JavaTypeProfile profile, Object... args) {
         Method method = getMethod(name);
         Object expect = null;
         Throwable exception = null;

@@ -42,14 +42,14 @@ public class CanonicalizerPhase extends Phase {
     private final int newNodesMark;
     private final CiTarget target;
     private final CiAssumptions assumptions;
-    private final RiRuntime runtime;
+    private final CodeCacheProvider runtime;
     private final IsImmutablePredicate immutabilityPredicate;
     private final Iterable<Node> initWorkingSet;
 
     private NodeWorkList workList;
     private Tool tool;
 
-    public CanonicalizerPhase(CiTarget target, RiRuntime runtime, CiAssumptions assumptions) {
+    public CanonicalizerPhase(CiTarget target, CodeCacheProvider runtime, CiAssumptions assumptions) {
         this(target, runtime, assumptions, null, 0, null);
     }
 
@@ -60,7 +60,7 @@ public class CanonicalizerPhase extends Phase {
      * @param workingSet the initial working set of nodes on which the canonicalizer works, should be an auto-grow node bitmap
      * @param immutabilityPredicate
      */
-    public CanonicalizerPhase(CiTarget target, RiRuntime runtime, CiAssumptions assumptions, Iterable<Node> workingSet, IsImmutablePredicate immutabilityPredicate) {
+    public CanonicalizerPhase(CiTarget target, CodeCacheProvider runtime, CiAssumptions assumptions, Iterable<Node> workingSet, IsImmutablePredicate immutabilityPredicate) {
         this(target, runtime, assumptions, workingSet, 0, immutabilityPredicate);
     }
 
@@ -68,11 +68,11 @@ public class CanonicalizerPhase extends Phase {
      * @param newNodesMark only the {@linkplain Graph#getNewNodes(int) new nodes} specified by
      *            this mark are processed otherwise all nodes in the graph are processed
      */
-    public CanonicalizerPhase(CiTarget target, RiRuntime runtime, CiAssumptions assumptions, int newNodesMark, IsImmutablePredicate immutabilityPredicate) {
+    public CanonicalizerPhase(CiTarget target, CodeCacheProvider runtime, CiAssumptions assumptions, int newNodesMark, IsImmutablePredicate immutabilityPredicate) {
         this(target, runtime, assumptions, null, newNodesMark, immutabilityPredicate);
     }
 
-    private CanonicalizerPhase(CiTarget target, RiRuntime runtime, CiAssumptions assumptions, Iterable<Node> workingSet, int newNodesMark, IsImmutablePredicate immutabilityPredicate) {
+    private CanonicalizerPhase(CiTarget target, CodeCacheProvider runtime, CiAssumptions assumptions, Iterable<Node> workingSet, int newNodesMark, IsImmutablePredicate immutabilityPredicate) {
         this.newNodesMark = newNodesMark;
         this.target = target;
         this.assumptions = assumptions;
@@ -223,12 +223,12 @@ public class CanonicalizerPhase extends Phase {
     private static final class Tool implements SimplifierTool {
 
         private final NodeWorkList nodeWorkSet;
-        private final RiRuntime runtime;
+        private final CodeCacheProvider runtime;
         private final CiTarget target;
         private final CiAssumptions assumptions;
         private final IsImmutablePredicate immutabilityPredicate;
 
-        public Tool(NodeWorkList nodeWorkSet, RiRuntime runtime, CiTarget target, CiAssumptions assumptions, IsImmutablePredicate immutabilityPredicate) {
+        public Tool(NodeWorkList nodeWorkSet, CodeCacheProvider runtime, CiTarget target, CiAssumptions assumptions, IsImmutablePredicate immutabilityPredicate) {
             this.nodeWorkSet = nodeWorkSet;
             this.runtime = runtime;
             this.target = target;
@@ -259,7 +259,7 @@ public class CanonicalizerPhase extends Phase {
         }
 
         @Override
-        public RiRuntime runtime() {
+        public CodeCacheProvider runtime() {
             return runtime;
         }
 

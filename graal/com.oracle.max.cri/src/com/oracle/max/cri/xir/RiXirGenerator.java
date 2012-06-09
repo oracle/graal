@@ -23,36 +23,36 @@
 package com.oracle.max.cri.xir;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.RiType.*;
+import com.oracle.graal.api.meta.JavaType.*;
 
 /**
  * Represents the interface through which the compiler requests the XIR for a given bytecode from the runtime system.
  */
 public interface RiXirGenerator {
 
-    XirSnippet genInvokeInterface(XirSite site, XirArgument receiver, RiMethod method);
+    XirSnippet genInvokeInterface(XirSite site, XirArgument receiver, JavaMethod method);
 
-    XirSnippet genInvokeVirtual(XirSite site, XirArgument receiver, RiMethod method, boolean megamorph);
+    XirSnippet genInvokeVirtual(XirSite site, XirArgument receiver, JavaMethod method, boolean megamorph);
 
-    XirSnippet genInvokeSpecial(XirSite site, XirArgument receiver, RiMethod method);
+    XirSnippet genInvokeSpecial(XirSite site, XirArgument receiver, JavaMethod method);
 
-    XirSnippet genInvokeStatic(XirSite site, RiMethod method);
+    XirSnippet genInvokeStatic(XirSite site, JavaMethod method);
 
     XirSnippet genMonitorEnter(XirSite site, XirArgument receiver, XirArgument lockAddress);
 
     XirSnippet genMonitorExit(XirSite site, XirArgument receiver, XirArgument lockAddress);
 
-    XirSnippet genNewInstance(XirSite site, RiType type);
+    XirSnippet genNewInstance(XirSite site, JavaType type);
 
-    XirSnippet genNewArray(XirSite site, XirArgument length, Kind elementKind, RiType componentType, RiType arrayType);
+    XirSnippet genNewArray(XirSite site, XirArgument length, Kind elementKind, JavaType componentType, JavaType arrayType);
 
-    XirSnippet genNewMultiArray(XirSite site, XirArgument[] lengths, RiType type);
+    XirSnippet genNewMultiArray(XirSite site, XirArgument[] lengths, JavaType type);
 
-    XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, RiResolvedType type, RiTypeProfile profile);
+    XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, ResolvedJavaType type, JavaTypeProfile profile);
 
-    XirSnippet genInstanceOf(XirSite site, XirArgument receiver, XirArgument hub, RiResolvedType type, RiTypeProfile profile);
+    XirSnippet genInstanceOf(XirSite site, XirArgument receiver, XirArgument hub, ResolvedJavaType type, JavaTypeProfile profile);
 
-    XirSnippet genMaterializeInstanceOf(XirSite site, XirArgument receiver, XirArgument hub, XirArgument trueValue, XirArgument falseValue, RiResolvedType type, RiTypeProfile profile);
+    XirSnippet genMaterializeInstanceOf(XirSite site, XirArgument receiver, XirArgument hub, XirArgument trueValue, XirArgument falseValue, ResolvedJavaType type, JavaTypeProfile profile);
 
     /**
      * Generates code that checks that the {@linkplain Representation#ObjectHub hub} of
@@ -64,7 +64,7 @@ public interface RiXirGenerator {
      * </pre>
      * This snippet should only be used when the object is guaranteed not to be null.
      */
-    XirSnippet genTypeBranch(XirSite site, XirArgument thisHub, XirArgument otherHub, RiType type);
+    XirSnippet genTypeBranch(XirSite site, XirArgument thisHub, XirArgument otherHub, JavaType type);
 
     /**
      * Initializes the XIR generator for the given XIR assembler.

@@ -148,8 +148,8 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
     private static List<String> getInlineContext() {
         List<String> result = new ArrayList<>();
         for (Object o : Debug.context()) {
-            if (o instanceof RiResolvedMethod) {
-                RiResolvedMethod method = (RiResolvedMethod) o;
+            if (o instanceof ResolvedJavaMethod) {
+                ResolvedJavaMethod method = (ResolvedJavaMethod) o;
                 result.add(CiUtil.format("%H::%n(%p)", method));
             } else if (o instanceof DebugDumpScope) {
                 DebugDumpScope debugDumpScope = (DebugDumpScope) o;
@@ -165,7 +165,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
 
     private void openScope(String name, boolean showThread) {
         String prefix = showThread ? Thread.currentThread().getName() + ":" : "";
-        printer.beginGroup(prefix + name, name, Debug.contextLookup(RiResolvedMethod.class), -1);
+        printer.beginGroup(prefix + name, name, Debug.contextLookup(ResolvedJavaMethod.class), -1);
     }
 
     private void closeScope() {

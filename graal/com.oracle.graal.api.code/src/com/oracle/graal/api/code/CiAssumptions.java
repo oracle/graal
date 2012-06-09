@@ -51,14 +51,14 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
         /**
          * Type the assumption is made about.
          */
-        public final RiResolvedType context;
+        public final ResolvedJavaType context;
 
         /**
          * Assumed unique concrete sub-type of the context type.
          */
-        public final RiResolvedType subtype;
+        public final ResolvedJavaType subtype;
 
-        public ConcreteSubtype(RiResolvedType context, RiResolvedType subtype) {
+        public ConcreteSubtype(ResolvedJavaType context, ResolvedJavaType subtype) {
             this.context = context;
             this.subtype = subtype;
         }
@@ -93,19 +93,19 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
          * A virtual (or interface) method whose unique implementation for the receiver type
          * in {@link #context} is {@link #impl}.
          */
-        public final RiResolvedMethod method;
+        public final ResolvedJavaMethod method;
 
         /**
          * A receiver type.
          */
-        public final RiResolvedType context;
+        public final ResolvedJavaType context;
 
         /**
          * The unique implementation of {@link #method} for {@link #context}.
          */
-        public final RiResolvedMethod impl;
+        public final ResolvedJavaMethod impl;
 
-        public ConcreteMethod(RiResolvedMethod method, RiResolvedType context, RiResolvedMethod impl) {
+        public ConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType context, ResolvedJavaMethod impl) {
             this.method = method;
             this.context = context;
             this.impl = impl;
@@ -138,9 +138,9 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
 
         private static final long serialVersionUID = -4821594103928571659L;
 
-        public final RiResolvedMethod method;
+        public final ResolvedJavaMethod method;
 
-        public MethodContents(RiResolvedMethod method) {
+        public MethodContents(ResolvedJavaMethod method) {
             this.method = method;
         }
 
@@ -203,7 +203,7 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
      * @return {@code true} if the assumption was recorded and can be assumed; {@code false} otherwise
      */
     @SuppressWarnings("static-method")
-    public boolean recordNoFinalizableSubclassAssumption(RiResolvedType receiverType) {
+    public boolean recordNoFinalizableSubclassAssumption(ResolvedJavaType receiverType) {
         // TODO (thomaswue): Record that assumption correctly.
         return false;
     }
@@ -213,7 +213,7 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
      * @param context the root of the subtree of the class hierarchy that this assumptions is about
      * @param subtype the one concrete subtype
      */
-    public void recordConcreteSubtype(RiResolvedType context, RiResolvedType subtype) {
+    public void recordConcreteSubtype(ResolvedJavaType context, ResolvedJavaType subtype) {
         record(new ConcreteSubtype(context, subtype));
     }
 
@@ -225,7 +225,7 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
      * @param context the receiver type of a call to {@code method}
      * @param impl the concrete method that is the only possible target for the virtual call
      */
-    public void recordConcreteMethod(RiResolvedMethod method, RiResolvedType context, RiResolvedMethod impl) {
+    public void recordConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType context, ResolvedJavaMethod impl) {
         record(new ConcreteMethod(method, context, impl));
     }
 
@@ -234,7 +234,7 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
      *
      * @param method a method whose contents were used
      */
-    public void recordMethodContents(RiResolvedMethod method) {
+    public void recordMethodContents(ResolvedJavaMethod method) {
         record(new MethodContents(method));
     }
 

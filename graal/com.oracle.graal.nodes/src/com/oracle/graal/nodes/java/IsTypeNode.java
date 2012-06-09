@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.RiType.*;
+import com.oracle.graal.api.meta.JavaType.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 public final class IsTypeNode extends BooleanNode implements Canonicalizable, LIRLowerable {
 
     @Input private ValueNode objectClass;
-    private final RiResolvedType type;
+    private final ResolvedJavaType type;
 
     public ValueNode objectClass() {
         return objectClass;
@@ -44,14 +44,14 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
      * @param object the instruction producing the object to check against the given type
      * @param type the type for this check
      */
-    public IsTypeNode(ValueNode objectClass, RiResolvedType type) {
+    public IsTypeNode(ValueNode objectClass, ResolvedJavaType type) {
         super(StampFactory.condition());
         assert objectClass == null || objectClass.kind() == Kind.Object;
         this.type = type;
         this.objectClass = objectClass;
     }
 
-    public RiResolvedType type() {
+    public ResolvedJavaType type() {
         return type;
     }
 

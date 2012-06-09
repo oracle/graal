@@ -30,14 +30,13 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.type.*;
 
 public class FrameStateBuilder {
-    private final RiResolvedMethod method;
+    private final ResolvedJavaMethod method;
     private final StructuredGraph graph;
 
     private final ValueNode[] locals;
@@ -45,7 +44,7 @@ public class FrameStateBuilder {
     private int stackSize;
     private boolean rethrowException;
 
-    public FrameStateBuilder(RiResolvedMethod method, StructuredGraph graph, boolean eagerResolve) {
+    public FrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph, boolean eagerResolve) {
         assert graph != null;
         this.method = method;
         this.graph = graph;
@@ -62,18 +61,18 @@ public class FrameStateBuilder {
             javaIndex = 1;
             index = 1;
         }
-        RiSignature sig = method.signature();
+        Signature sig = method.signature();
         int max = sig.argumentCount(false);
-        RiResolvedType accessingClass = method.holder();
+        ResolvedJavaType accessingClass = method.holder();
         for (int i = 0; i < max; i++) {
-            RiType type = sig.argumentTypeAt(i, accessingClass);
+            JavaType type = sig.argumentTypeAt(i, accessingClass);
             if (eagerResolve) {
                 type = type.resolve(accessingClass);
             }
             Kind kind = type.kind().stackKind();
             Stamp stamp;
-            if (kind == Kind.Object && type instanceof RiResolvedType) {
-                stamp = StampFactory.declared((RiResolvedType) type);
+            if (kind == Kind.Object && type instanceof ResolvedJavaType) {
+                stamp = StampFactory.declared((ResolvedJavaType) type);
             } else {
                 stamp = StampFactory.forKind(kind);
             }
@@ -84,7 +83,7 @@ public class FrameStateBuilder {
         }
     }
 
-    private FrameStateBuilder(RiResolvedMethod method, StructuredGraph graph, ValueNode[] locals, ValueNode[] stack, int stackSize, boolean rethrowException) {
+    private FrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph, ValueNode[] locals, ValueNode[] stack, int stackSize, boolean rethrowException) {
         assert locals.length == method.maxLocals();
         assert stack.length == Math.max(1, method.maxStackSize());
 
@@ -269,11 +268,10 @@ public class FrameStateBuilder {
         }
     }
 
-    public void clearNonLiveLocals(BitMap liveness) {
+    public void clearNonLiveLocals(BitSet liveness) {
         if (liveness == null) {
             return;
         }
-        assert liveness.size() == locals.length;
         for (int i = 0; i < locals.length; i++) {
             if (!liveness.get(i)) {
                 locals[i] = null;

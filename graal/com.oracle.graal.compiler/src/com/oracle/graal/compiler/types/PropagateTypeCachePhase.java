@@ -42,7 +42,7 @@ public class PropagateTypeCachePhase extends Phase {
     private static final boolean DUMP = false;
 
     private final CiTarget target;
-    private final RiRuntime runtime;
+    private final CodeCacheProvider runtime;
     private final CiAssumptions assumptions;
 
     private StructuredGraph currentGraph;
@@ -64,7 +64,7 @@ public class PropagateTypeCachePhase extends Phase {
 //        });
 //    }
 
-    public PropagateTypeCachePhase(CiTarget target, RiRuntime runtime, CiAssumptions assumptions) {
+    public PropagateTypeCachePhase(CiTarget target, CodeCacheProvider runtime, CiAssumptions assumptions) {
         this.target = target;
         this.runtime = runtime;
         this.assumptions = assumptions;

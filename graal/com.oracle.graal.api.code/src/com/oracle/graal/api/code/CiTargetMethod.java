@@ -404,7 +404,7 @@ public class CiTargetMethod implements Serializable {
      *
      * @param codePos the position of the call in the code array
      * @param size the size of the call instruction
-     * @param target the {@link RiRuntime#asCallTarget(Object) target} being called
+     * @param target the {@link CodeCacheProvider#asCallTarget(Object) target} being called
      * @param debugInfo the debug info for the call
      * @param direct specifies if this is a {@linkplain Call#direct direct} call
      */

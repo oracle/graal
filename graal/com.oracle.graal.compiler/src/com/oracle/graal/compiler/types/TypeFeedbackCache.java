@@ -35,14 +35,14 @@ public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
     public static final boolean NO_OBJECT_TYPES = false;
     public static final boolean NO_SCALAR_TYPES = false;
 
-    private final RiRuntime runtime;
+    private final CodeCacheProvider runtime;
     private final StructuredGraph graph;
     private final HashMap<ValueNode, ScalarTypeFeedbackStore> scalarTypeFeedback;
     private final HashMap<ValueNode, ObjectTypeFeedbackStore> objectTypeFeedback;
     private final TypeFeedbackChanged changed;
     private final boolean negated;
 
-    public TypeFeedbackCache(RiRuntime runtime, StructuredGraph graph, TypeFeedbackChanged changed) {
+    public TypeFeedbackCache(CodeCacheProvider runtime, StructuredGraph graph, TypeFeedbackChanged changed) {
         this.runtime = runtime;
         this.graph = graph;
         scalarTypeFeedback = new HashMap<>();
@@ -51,7 +51,8 @@ public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
         this.changed = changed;
     }
 
-    public TypeFeedbackCache(RiRuntime runtime, StructuredGraph graph, HashMap<ValueNode, ScalarTypeFeedbackStore> scalarTypeFeedback, HashMap<ValueNode, ObjectTypeFeedbackStore> objectTypeFeedback, boolean negated, TypeFeedbackChanged changed) {
+    public TypeFeedbackCache(CodeCacheProvider runtime, StructuredGraph graph, HashMap<ValueNode, ScalarTypeFeedbackStore> scalarTypeFeedback, HashMap<ValueNode,
+                    ObjectTypeFeedbackStore> objectTypeFeedback, boolean negated, TypeFeedbackChanged changed) {
         this.runtime = runtime;
         this.graph = graph;
         this.scalarTypeFeedback = scalarTypeFeedback;
@@ -96,7 +97,7 @@ public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
     }
 
     @Override
-    public RiRuntime runtime() {
+    public CodeCacheProvider runtime() {
         return runtime;
     }
 

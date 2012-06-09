@@ -26,15 +26,15 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * A implementation of {@link RiMethod} for an unresolved method.
+ * A implementation of {@link JavaMethod} for an unresolved method.
  */
-public class BaseUnresolvedMethod implements RiMethod {
+public class BaseUnresolvedMethod implements JavaMethod {
 
     public final String name;
-    public final RiType holder;
-    public final RiSignature signature;
+    public final JavaType holder;
+    public final Signature signature;
 
-    public BaseUnresolvedMethod(RiType holder, String name, RiSignature signature) {
+    public BaseUnresolvedMethod(JavaType holder, String name, Signature signature) {
         this.name = name;
         this.holder = holder;
         this.signature = signature;
@@ -44,11 +44,11 @@ public class BaseUnresolvedMethod implements RiMethod {
         return name;
     }
 
-    public RiType holder() {
+    public JavaType holder() {
         return holder;
     }
 
-    public RiSignature signature() {
+    public Signature signature() {
         return signature;
     }
 

@@ -47,13 +47,13 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     private boolean isInstanceClass;
     private boolean isInterface;
     private int instanceSize;
-    private HashMap<Long, RiResolvedField> fieldCache;
-    private RiResolvedType superType;
+    private HashMap<Long, ResolvedJavaField> fieldCache;
+    private ResolvedJavaType superType;
     private boolean superTypeSet;
-    private RiResolvedField[] fields;
-    private RiConstantPool constantPool;
+    private ResolvedJavaField[] fields;
+    private ConstantPool constantPool;
     private boolean isInitialized;
-    private RiResolvedType arrayOfType;
+    private ResolvedJavaType arrayOfType;
 
     private HotSpotTypeResolvedImpl() {
     }
@@ -64,48 +64,48 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public RiResolvedType arrayOf() {
+    public ResolvedJavaType arrayOf() {
         if (arrayOfType == null) {
-           arrayOfType = (RiResolvedType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_arrayOf(this);
+           arrayOfType = (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_arrayOf(this);
         }
         return arrayOfType;
     }
 
     @Override
-    public RiResolvedType componentType() {
+    public ResolvedJavaType componentType() {
         assert isArrayClass();
-        return (RiResolvedType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_componentType(this);
+        return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_componentType(this);
     }
 
     @Override
-    public RiResolvedType uniqueConcreteSubtype() {
+    public ResolvedJavaType uniqueConcreteSubtype() {
         if (isArrayClass()) {
             return Modifier.isFinal(componentType().accessFlags()) ? this : null;
         } else {
-            return (RiResolvedType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_uniqueConcreteSubtype(this);
+            return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_uniqueConcreteSubtype(this);
         }
     }
 
     @Override
-    public RiResolvedType superType() {
+    public ResolvedJavaType superType() {
         if (!superTypeSet) {
-            superType = (RiResolvedType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_superType(this);
+            superType = (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_superType(this);
             superTypeSet = true;
         }
         return superType;
     }
 
     @Override
-    public RiResolvedType leastCommonAncestor(RiResolvedType otherType) {
+    public ResolvedJavaType leastCommonAncestor(ResolvedJavaType otherType) {
         if (otherType instanceof HotSpotTypePrimitive) {
             return null;
         } else {
-            return (RiResolvedType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_leastCommonAncestor(this, (HotSpotTypeResolved) otherType);
+            return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_leastCommonAncestor(this, (HotSpotTypeResolved) otherType);
         }
     }
 
     @Override
-    public RiResolvedType exactType() {
+    public ResolvedJavaType exactType() {
         if (Modifier.isFinal(accessFlags)) {
             return this;
         }
@@ -175,7 +175,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public boolean isSubtypeOf(RiResolvedType other) {
+    public boolean isSubtypeOf(ResolvedJavaType other) {
         if (other instanceof HotSpotTypeResolved) {
             return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_isSubtypeOf(this, other);
         }
@@ -189,9 +189,9 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public RiResolvedMethod resolveMethodImpl(RiResolvedMethod method) {
+    public ResolvedJavaMethod resolveMethodImpl(ResolvedJavaMethod method) {
         assert method instanceof HotSpotMethod;
-        return (RiResolvedMethod) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_resolveMethodImpl(this, method.name(), method.signature().asString());
+        return (ResolvedJavaMethod) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_resolveMethodImpl(this, method.name(), method.signature().asString());
     }
 
     @Override
@@ -200,7 +200,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public RiConstantPool constantPool() {
+    public ConstantPool constantPool() {
         if (constantPool == null) {
             constantPool = new HotSpotConstantPool(this);
         }
@@ -213,8 +213,8 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public synchronized RiResolvedField createRiField(String fieldName, RiType type, int offset, int flags) {
-        RiResolvedField result = null;
+    public synchronized ResolvedJavaField createRiField(String fieldName, JavaType type, int offset, int flags) {
+        ResolvedJavaField result = null;
 
         long id = offset + ((long) flags << 32);
 
@@ -237,12 +237,12 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public RiResolvedMethod uniqueConcreteMethod(RiResolvedMethod method) {
+    public ResolvedJavaMethod uniqueConcreteMethod(ResolvedJavaMethod method) {
         return ((HotSpotMethodResolved) method).uniqueConcreteMethod();
     }
 
     @Override
-    public RiResolvedField[] declaredFields() {
+    public ResolvedJavaField[] declaredFields() {
         if (fields == null) {
             fields = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_fields(this);
         }
@@ -260,7 +260,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public RiResolvedType resolve(RiResolvedType accessingClass) {
+    public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
         return this;
     }
 

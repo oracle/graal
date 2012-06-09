@@ -38,8 +38,8 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
     @Input private ValueNode object;
     @Input private ValueNode targetClassInstruction;
-    private final RiResolvedType targetClass;
-    private final RiTypeProfile profile;
+    private final ResolvedJavaType targetClass;
+    private final JavaTypeProfile profile;
 
     /**
      * Creates a new CheckCast instruction.
@@ -47,11 +47,11 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
      * @param targetClass the class being cast to
      * @param object the instruction producing the object
      */
-    public CheckCastNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object) {
+    public CheckCastNode(ValueNode targetClassInstruction, ResolvedJavaType targetClass, ValueNode object) {
         this(targetClassInstruction, targetClass, object, null);
     }
 
-    public CheckCastNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiTypeProfile profile) {
+    public CheckCastNode(ValueNode targetClassInstruction, ResolvedJavaType targetClass, ValueNode object, JavaTypeProfile profile) {
         super(targetClass == null ? StampFactory.forKind(Kind.Object) : StampFactory.declared(targetClass));
         this.targetClassInstruction = targetClassInstruction;
         this.targetClass = targetClass;
@@ -74,7 +74,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         assert object() != null : this;
 
         if (targetClass != null) {
-            RiResolvedType objectType = object().objectStamp().type();
+            ResolvedJavaType objectType = object().objectStamp().type();
             if (objectType != null && objectType.isSubtypeOf(targetClass)) {
                 // we don't have to check for null types here because they will also pass the checkcast.
                 return object();
@@ -126,11 +126,11 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
      *
      * @return the target class or null if not known
      */
-    public RiResolvedType targetClass() {
+    public ResolvedJavaType targetClass() {
         return targetClass;
     }
 
-    public RiTypeProfile profile() {
+    public JavaTypeProfile profile() {
         return profile;
     }
 }

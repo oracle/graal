@@ -35,7 +35,7 @@ public interface TypeFeedbackTool {
 
     ObjectTypeQuery queryObject(ValueNode value);
 
-    RiRuntime runtime();
+    CodeCacheProvider runtime();
 
     TypeFeedbackTool negate();
 

@@ -74,7 +74,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
         if (objectHub != exactHub) {
             exactMiss.inc();
-            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
         }
         exactHit.inc();
         return object;
@@ -96,7 +96,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
         if (UnsafeLoadNode.loadObject(objectHub, 0, superCheckOffset, true) != hub) {
             displayMiss.inc();
-            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
         }
         displayHit.inc();
         return object;
@@ -122,7 +122,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             }
         }
         if (!checkSecondarySubType(hub, objectHub)) {
-            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
         }
         return object;
     }
@@ -148,7 +148,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             }
         }
         if (!checkUnknownSubType(hub, objectHub)) {
-            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
         }
         return object;
     }
@@ -332,20 +332,20 @@ public class CheckCastSnippets implements SnippetsInterface {
     public static class Templates {
 
         private final Cache cache;
-        private final RiResolvedMethod exact;
-        private final RiResolvedMethod primary;
-        private final RiResolvedMethod secondary;
-        private final RiResolvedMethod unknown;
-        private final RiRuntime runtime;
+        private final ResolvedJavaMethod exact;
+        private final ResolvedJavaMethod primary;
+        private final ResolvedJavaMethod secondary;
+        private final ResolvedJavaMethod unknown;
+        private final CodeCacheProvider runtime;
 
-        public Templates(RiRuntime runtime) {
+        public Templates(CodeCacheProvider runtime) {
             this.runtime = runtime;
             this.cache = new Cache(runtime);
             try {
-                exact = runtime.getRiMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastExact", Object.class, Object.class, boolean.class));
-                primary = runtime.getRiMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastPrimary", Object.class, Object.class, boolean.class, int.class));
-                secondary = runtime.getRiMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastSecondary", Object.class, Object.class, Object[].class, boolean.class));
-                unknown = runtime.getRiMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastUnknown", Object.class, Object.class, Object[].class, boolean.class));
+                exact = runtime.getResolvedJavaMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastExact", Object.class, Object.class, boolean.class));
+                primary = runtime.getResolvedJavaMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastPrimary", Object.class, Object.class, boolean.class, int.class));
+                secondary = runtime.getResolvedJavaMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastSecondary", Object.class, Object.class, Object[].class, boolean.class));
+                unknown = runtime.getResolvedJavaMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastUnknown", Object.class, Object.class, Object[].class, boolean.class));
             } catch (NoSuchMethodException e) {
                 throw new GraalInternalError(e);
             }

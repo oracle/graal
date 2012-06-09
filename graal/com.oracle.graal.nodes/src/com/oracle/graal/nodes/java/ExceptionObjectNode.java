@@ -36,8 +36,8 @@ public class ExceptionObjectNode extends AbstractStateSplit implements StateSpli
     /**
      * Constructs a new ExceptionObject instruction.
      */
-    public ExceptionObjectNode(RiRuntime runtime) {
-        super(StampFactory.declared(runtime.getType(Throwable.class)));
+    public ExceptionObjectNode(CodeCacheProvider runtime) {
+        super(StampFactory.declared(runtime.getResolvedJavaType(Throwable.class)));
     }
 
     @Override

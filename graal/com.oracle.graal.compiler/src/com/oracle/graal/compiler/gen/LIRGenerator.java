@@ -32,7 +32,7 @@ import java.util.Map.Entry;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CiTargetMethod.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.RiType.*;
+import com.oracle.graal.api.meta.JavaType.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
@@ -68,9 +68,9 @@ import com.oracle.max.criutils.*;
  */
 public abstract class LIRGenerator extends LIRGeneratorTool {
     protected final Graph graph;
-    protected final RiRuntime runtime;
+    protected final CodeCacheProvider runtime;
     protected final CiTarget target;
-    protected final RiResolvedMethod method;
+    protected final ResolvedJavaMethod method;
     protected final FrameMap frameMap;
     public final NodeMap<Value> nodeOperands;
 
@@ -142,7 +142,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     private LockScope curLocks;
 
 
-    public LIRGenerator(Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions) {
+    public LIRGenerator(Graph graph, CodeCacheProvider runtime, CiTarget target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions) {
         this.graph = graph;
         this.runtime = runtime;
         this.target = target;
@@ -685,7 +685,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void emitGuardCheck(BooleanNode comp, RiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
+    public void emitGuardCheck(BooleanNode comp, DeoptimizationReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
         if (comp instanceof IsNullNode && negated) {
             emitNullCheckGuard(((IsNullNode) comp).object(), leafGraphId);
         } else if (comp instanceof ConstantNode && (comp.asConstant().asBoolean() != negated)) {
@@ -817,7 +817,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return stateAfter.duplicateModified(bci, stateAfter.rethrowException(), call.returnKind(), toJVMArgumentStack(call.targetMethod().signature(), call.isStatic(), call.arguments()));
     }
 
-    private static ValueNode[] toJVMArgumentStack(RiSignature signature, boolean isStatic, NodeInputList<ValueNode> arguments) {
+    private static ValueNode[] toJVMArgumentStack(Signature signature, boolean isStatic, NodeInputList<ValueNode> arguments) {
         int slotCount = signature.argumentSlots(!isStatic);
         ValueNode[] stack = new ValueNode[slotCount];
         int stackIndex = 0;
@@ -849,7 +849,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     @Override
     public void emitInvoke(Invoke x) {
         MethodCallTargetNode callTarget = x.callTarget();
-        RiMethod targetMethod = callTarget.targetMethod();
+        JavaMethod targetMethod = callTarget.targetMethod();
 
         XirSnippet snippet = null;
         XirArgument receiver;
@@ -937,7 +937,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
 
-    protected abstract LabelRef createDeoptStub(CiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo);
+    protected abstract LabelRef createDeoptStub(CiDeoptAction action, DeoptimizationReason reason, LIRDebugInfo info, Object deoptInfo);
 
     @Override
     public Variable emitCall(@SuppressWarnings("hiding") Object target, Kind result, Kind[] arguments, boolean canTrap, Value... args) {

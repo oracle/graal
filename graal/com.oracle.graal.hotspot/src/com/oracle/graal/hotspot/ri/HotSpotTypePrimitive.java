@@ -32,7 +32,7 @@ import com.oracle.graal.hotspot.*;
 /**
  * Implementation of RiType for primitive HotSpot types.
  */
-public final class HotSpotTypePrimitive extends HotSpotType implements RiResolvedType {
+public final class HotSpotTypePrimitive extends HotSpotType implements ResolvedJavaType {
 
     private static final long serialVersionUID = -6208552348908071473L;
     private Kind kind;
@@ -51,27 +51,27 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     }
 
     @Override
-    public RiResolvedType arrayOf() {
-        return (RiResolvedType) HotSpotGraalRuntime.getInstance().getCompilerToVM().getPrimitiveArrayType(kind);
+    public ResolvedJavaType arrayOf() {
+        return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().getPrimitiveArrayType(kind);
     }
 
     @Override
-    public RiResolvedType componentType() {
+    public ResolvedJavaType componentType() {
         return null;
     }
 
     @Override
-    public RiResolvedType exactType() {
+    public ResolvedJavaType exactType() {
         return this;
     }
 
     @Override
-    public RiResolvedType superType() {
+    public ResolvedJavaType superType() {
         return null;
     }
 
     @Override
-    public RiResolvedType leastCommonAncestor(RiResolvedType otherType) {
+    public ResolvedJavaType leastCommonAncestor(ResolvedJavaType otherType) {
         return null;
     }
 
@@ -126,7 +126,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     }
 
     @Override
-    public boolean isSubtypeOf(RiResolvedType other) {
+    public boolean isSubtypeOf(ResolvedJavaType other) {
         return false;
     }
 
@@ -136,7 +136,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     }
 
     @Override
-    public RiResolvedMethod resolveMethodImpl(RiResolvedMethod method) {
+    public ResolvedJavaMethod resolveMethodImpl(ResolvedJavaMethod method) {
         return null;
     }
 
@@ -146,17 +146,17 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     }
 
     @Override
-    public RiResolvedType uniqueConcreteSubtype() {
+    public ResolvedJavaType uniqueConcreteSubtype() {
         return this;
     }
 
     @Override
-    public RiResolvedMethod uniqueConcreteMethod(RiResolvedMethod method) {
+    public ResolvedJavaMethod uniqueConcreteMethod(ResolvedJavaMethod method) {
         return null;
     }
 
     @Override
-    public RiResolvedField[] declaredFields() {
+    public ResolvedJavaField[] declaredFields() {
         return null;
     }
 
@@ -171,7 +171,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     }
 
     @Override
-    public RiResolvedType resolve(RiResolvedType accessingClass) {
+    public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
         return this;
     }
 

@@ -28,24 +28,24 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.RiType.*;
+import com.oracle.graal.api.meta.JavaType.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
 
 /**
  * Represents a field in a HotSpot type.
  */
-public class HotSpotField extends CompilerObject implements RiResolvedField {
+public class HotSpotField extends CompilerObject implements ResolvedJavaField {
 
     private static final long serialVersionUID = 7692985878836955683L;
-    private final RiResolvedType holder;
+    private final ResolvedJavaType holder;
     private final String name;
-    private final RiType type;
+    private final JavaType type;
     private final int offset;
     private final int accessFlags;
     private Constant constant;                // Constant part only valid for static fields.
 
-    public HotSpotField(RiResolvedType holder, String name, RiType type, int offset, int accessFlags) {
+    public HotSpotField(ResolvedJavaType holder, String name, JavaType type, int offset, int accessFlags) {
         this.holder = holder;
         this.name = name;
         this.type = type;
@@ -87,7 +87,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
     }
 
     @Override
-    public RiResolvedType holder() {
+    public ResolvedJavaType holder() {
         return holder;
     }
 
@@ -102,7 +102,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
     }
 
     @Override
-    public RiType type() {
+    public JavaType type() {
         return type;
     }
 

@@ -37,10 +37,10 @@ public class AMD64DeoptimizationStub extends AMD64Code {
     public final Label label = new Label();
     public final LIRDebugInfo info;
     public final CiDeoptAction action;
-    public final RiDeoptReason reason;
+    public final DeoptimizationReason reason;
     public final Object deoptInfo;
 
-    public AMD64DeoptimizationStub(CiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo) {
+    public AMD64DeoptimizationStub(CiDeoptAction action, DeoptimizationReason reason, LIRDebugInfo info, Object deoptInfo) {
         this.action = action;
         this.reason = reason;
         this.info = info;

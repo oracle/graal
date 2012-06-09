@@ -25,5 +25,5 @@ package com.oracle.graal.api.interpreter;
 import com.oracle.graal.api.meta.*;
 
 public interface Interpreter extends VirtualMachineComponent {
-    Object execute(RiResolvedMethod method, Object... arguments);
+    Object execute(ResolvedJavaMethod method, Object... arguments);
 }

@@ -67,7 +67,7 @@ public class BoxingEliminationPhase extends Phase {
             PhiNode result = null;
             ObjectStamp stamp = phiNode.objectStamp();
             if (stamp.nonNull() && stamp.isExactType()) {
-                RiResolvedType type = stamp.type();
+                ResolvedJavaType type = stamp.type();
                 if (type != null && type.toJava() == kind.toBoxedJavaClass()) {
                     StructuredGraph graph = (StructuredGraph) phiNode.graph();
                     result = graph.add(new PhiNode(kind, phiNode.merge()));
@@ -122,7 +122,7 @@ public class BoxingEliminationPhase extends Phase {
         ((StructuredGraph) boxNode.graph()).removeFixed(boxNode);
     }
 
-    private static void virtualizeUsages(ValueNode boxNode, ValueNode replacement, RiResolvedType exactType) {
+    private static void virtualizeUsages(ValueNode boxNode, ValueNode replacement, ResolvedJavaType exactType) {
         ValueNode virtualValueNode = null;
         VirtualObjectNode virtualObjectNode = null;
         for (Node n : boxNode.usages().filter(NodePredicates.isA(FrameState.class).or(VirtualObjectFieldNode.class)).snapshot()) {

@@ -32,12 +32,12 @@ import com.oracle.graal.nodes.*;
 /**
  * Graal-specific extensions for the runtime interface that must be implemented by the VM.
  */
-public interface ExtendedRiRuntime extends RiRuntime {
+public interface ExtendedRiRuntime extends CodeCacheProvider {
 
     void lower(Node n, CiLoweringTool tool);
 
-    StructuredGraph intrinsicGraph(RiResolvedMethod caller, int bci, RiResolvedMethod method, List<? extends Node> parameters);
+    StructuredGraph intrinsicGraph(ResolvedJavaMethod caller, int bci, ResolvedJavaMethod method, List<? extends Node> parameters);
 
-    CiTargetMethod compile(RiResolvedMethod method, StructuredGraph graph);
+    CiTargetMethod compile(ResolvedJavaMethod method, StructuredGraph graph);
 
 }

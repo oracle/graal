@@ -39,7 +39,7 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
         return arguments;
     }
 
-    public abstract RiType returnType();
+    public abstract JavaType returnType();
 
     public abstract Kind returnKind();
 

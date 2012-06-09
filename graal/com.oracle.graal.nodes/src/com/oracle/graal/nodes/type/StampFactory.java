@@ -119,10 +119,10 @@ public class StampFactory {
         }
     }
 
-    public static Stamp forConstant(Constant value, RiRuntime runtime) {
+    public static Stamp forConstant(Constant value, CodeCacheProvider runtime) {
         assert value.kind == Kind.Object;
         if (value.kind == Kind.Object) {
-            RiResolvedType type = value.isNull() ? null : runtime.getTypeOf(value);
+            ResolvedJavaType type = value.isNull() ? null : runtime.getTypeOf(value);
             return new ObjectStamp(type, value.isNonNull(), value.isNonNull());
         } else {
             throw new GraalInternalError("CiKind.Object expected, actual kind: %s", value.kind);
@@ -137,18 +137,18 @@ public class StampFactory {
         return objectNonNullStamp;
     }
 
-    public static Stamp declared(RiResolvedType type) {
+    public static Stamp declared(ResolvedJavaType type) {
         return declared(type, false);
     }
 
-    public static Stamp declaredNonNull(RiResolvedType type) {
+    public static Stamp declaredNonNull(ResolvedJavaType type) {
         return declared(type, true);
     }
 
-    public static Stamp declared(RiResolvedType type, boolean nonNull) {
+    public static Stamp declared(ResolvedJavaType type, boolean nonNull) {
         assert type != null;
         assert type.kind() == Kind.Object;
-        RiResolvedType exact = type.exactType();
+        ResolvedJavaType exact = type.exactType();
         if (exact != null) {
             return new ObjectStamp(exact, true, nonNull);
         } else {
@@ -156,7 +156,7 @@ public class StampFactory {
         }
     }
 
-    public static Stamp exactNonNull(RiResolvedType type) {
+    public static Stamp exactNonNull(ResolvedJavaType type) {
         return new ObjectStamp(type, true, true);
     }
 

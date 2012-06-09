@@ -37,15 +37,15 @@ import com.oracle.graal.nodes.java.*;
 
 public class IntrinsifyArrayCopyPhase extends Phase {
     private final ExtendedRiRuntime runtime;
-    private RiResolvedMethod arrayCopy;
-    private RiResolvedMethod byteArrayCopy;
-    private RiResolvedMethod shortArrayCopy;
-    private RiResolvedMethod charArrayCopy;
-    private RiResolvedMethod intArrayCopy;
-    private RiResolvedMethod longArrayCopy;
-    private RiResolvedMethod floatArrayCopy;
-    private RiResolvedMethod doubleArrayCopy;
-    private RiResolvedMethod objectArrayCopy;
+    private ResolvedJavaMethod arrayCopy;
+    private ResolvedJavaMethod byteArrayCopy;
+    private ResolvedJavaMethod shortArrayCopy;
+    private ResolvedJavaMethod charArrayCopy;
+    private ResolvedJavaMethod intArrayCopy;
+    private ResolvedJavaMethod longArrayCopy;
+    private ResolvedJavaMethod floatArrayCopy;
+    private ResolvedJavaMethod doubleArrayCopy;
+    private ResolvedJavaMethod objectArrayCopy;
 
     public IntrinsifyArrayCopyPhase(ExtendedRiRuntime runtime) {
         this.runtime = runtime;
@@ -58,7 +58,7 @@ public class IntrinsifyArrayCopyPhase extends Phase {
             floatArrayCopy = getArrayCopySnippet(runtime, float.class);
             doubleArrayCopy = getArrayCopySnippet(runtime, double.class);
             objectArrayCopy = getArrayCopySnippet(runtime, Object.class);
-            arrayCopy = runtime.getRiMethod(System.class.getDeclaredMethod("arraycopy", Object.class, int.class, Object.class, int.class, int.class));
+            arrayCopy = runtime.getResolvedJavaMethod(System.class.getDeclaredMethod("arraycopy", Object.class, int.class, Object.class, int.class, int.class));
         } catch (SecurityException e) {
             e.printStackTrace();
         } catch (NoSuchMethodException e) {
@@ -66,23 +66,23 @@ public class IntrinsifyArrayCopyPhase extends Phase {
         }
     }
 
-    private static RiResolvedMethod getArrayCopySnippet(RiRuntime runtime, Class<?> componentClass) throws NoSuchMethodException {
+    private static ResolvedJavaMethod getArrayCopySnippet(CodeCacheProvider runtime, Class<?> componentClass) throws NoSuchMethodException {
         Class<?> arrayClass = Array.newInstance(componentClass, 0).getClass();
-        return runtime.getRiMethod(ArrayCopySnippets.class.getDeclaredMethod("arraycopy", arrayClass, int.class, arrayClass, int.class, int.class));
+        return runtime.getResolvedJavaMethod(ArrayCopySnippets.class.getDeclaredMethod("arraycopy", arrayClass, int.class, arrayClass, int.class, int.class));
     }
 
     @Override
     protected void run(StructuredGraph graph) {
         boolean hits = false;
         for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
-            RiResolvedMethod targetMethod = methodCallTarget.targetMethod();
-            RiResolvedMethod snippetMethod = null;
+            ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
+            ResolvedJavaMethod snippetMethod = null;
             if (targetMethod == arrayCopy) {
                 ValueNode src = methodCallTarget.arguments().get(0);
                 ValueNode dest = methodCallTarget.arguments().get(2);
                 assert src != null && dest != null;
-                RiResolvedType srcType = src.objectStamp().type();
-                RiResolvedType destType = dest.objectStamp().type();
+                ResolvedJavaType srcType = src.objectStamp().type();
+                ResolvedJavaType destType = dest.objectStamp().type();
                 if (srcType != null
                                 && srcType.isArrayClass()
                                 && destType != null

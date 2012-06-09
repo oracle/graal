@@ -61,7 +61,7 @@ public class Snippets {
                 if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
                     throw new RuntimeException("Snippet must not be abstract or native");
                 }
-                RiResolvedMethod snippetRiMethod = runtime.getRiMethod(snippet);
+                ResolvedJavaMethod snippetRiMethod = runtime.getResolvedJavaMethod(snippet);
                 if (snippetRiMethod.compilerStorage().get(Graph.class) == null) {
                     buildSnippetGraph(snippetRiMethod, runtime, target, pool);
                 }
@@ -81,16 +81,16 @@ public class Snippets {
                 if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
                     throw new RuntimeException("Snippet must not be abstract or native");
                 }
-                RiResolvedMethod snippetRiMethod = runtime.getRiMethod(snippet);
+                ResolvedJavaMethod snippetRiMethod = runtime.getResolvedJavaMethod(snippet);
                 StructuredGraph graph = buildSnippetGraph(snippetRiMethod, runtime, target, pool);
-                runtime.getRiMethod(method).compilerStorage().put(Graph.class, graph);
+                runtime.getResolvedJavaMethod(method).compilerStorage().put(Graph.class, graph);
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException("Could not resolve method to substitute with: " + snippet.getName(), e);
             }
         }
     }
 
-    private static StructuredGraph buildSnippetGraph(final RiResolvedMethod snippetRiMethod, final ExtendedRiRuntime runtime, final CiTarget target, final BoxingMethodPool pool) {
+    private static StructuredGraph buildSnippetGraph(final ResolvedJavaMethod snippetRiMethod, final ExtendedRiRuntime runtime, final CiTarget target, final BoxingMethodPool pool) {
         final StructuredGraph graph = new StructuredGraph(snippetRiMethod);
         return Debug.scope("BuildSnippetGraph", new Object[] {snippetRiMethod, graph}, new Callable<StructuredGraph>() {
             @Override
@@ -105,8 +105,8 @@ public class Snippets {
 
                 for (Invoke invoke : graph.getInvokes()) {
                     MethodCallTargetNode callTarget = invoke.callTarget();
-                    RiResolvedMethod targetMethod = callTarget.targetMethod();
-                    RiResolvedType holder = targetMethod.holder();
+                    ResolvedJavaMethod targetMethod = callTarget.targetMethod();
+                    ResolvedJavaType holder = targetMethod.holder();
                     if (enclosedInSnippetsClass(holder)) {
                         StructuredGraph targetGraph = (StructuredGraph) targetMethod.compilerStorage().get(Graph.class);
                         if (targetGraph == null) {
@@ -140,7 +140,7 @@ public class Snippets {
                 return graph;
             }
 
-            private boolean enclosedInSnippetsClass(RiResolvedType holder) {
+            private boolean enclosedInSnippetsClass(ResolvedJavaType holder) {
                 Class enclosingClass = holder.toJava();
                 while (enclosingClass != null) {
                     if (SnippetsInterface.class.isAssignableFrom(enclosingClass)) {

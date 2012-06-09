@@ -27,7 +27,7 @@ import java.util.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.RiTypeProfile.*;
+import com.oracle.graal.api.meta.JavaTypeProfile.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
 
@@ -42,8 +42,8 @@ public final class HotSpotMethodData extends CompilerObject {
 
     // TODO (chaeubl) use same logic as in NodeClass?
     private static final Unsafe unsafe = Unsafe.getUnsafe();
-    private static final HotSpotMethodDataAccessor NO_DATA_NO_EXCEPTION_ACCESSOR = new NoMethodData(RiExceptionSeen.FALSE);
-    private static final HotSpotMethodDataAccessor NO_DATA_EXCEPTION_POSSIBLY_NOT_RECORDED_ACCESSOR = new NoMethodData(RiExceptionSeen.NOT_SUPPORTED);
+    private static final HotSpotMethodDataAccessor NO_DATA_NO_EXCEPTION_ACCESSOR = new NoMethodData(ExceptionSeen.FALSE);
+    private static final HotSpotMethodDataAccessor NO_DATA_EXCEPTION_POSSIBLY_NOT_RECORDED_ACCESSOR = new NoMethodData(ExceptionSeen.NOT_SUPPORTED);
     private static final HotSpotVMConfig config;
     // sorted by tag
     private static final HotSpotMethodDataAccessor[] PROFILE_DATA_ACCESSORS = {
@@ -76,7 +76,7 @@ public final class HotSpotMethodData extends CompilerObject {
         return position >= 0 && position < normalDataSize + extraDataSize;
     }
 
-    public int getDeoptimizationCount(RiDeoptReason reason) {
+    public int getDeoptimizationCount(DeoptimizationReason reason) {
         int reasonIndex = HotSpotGraalRuntime.getInstance().getRuntime().convertDeoptReason(reason);
         return unsafe.getByte(hotspotMirror, (long) config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
     }
@@ -189,12 +189,12 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public RiExceptionSeen getExceptionSeen(HotSpotMethodData data, int position) {
-            return RiExceptionSeen.get((getFlags(data, position) & EXCEPTIONS_MASK) != 0);
+        public ExceptionSeen getExceptionSeen(HotSpotMethodData data, int position) {
+            return ExceptionSeen.get((getFlags(data, position) & EXCEPTIONS_MASK) != 0);
         }
 
         @Override
-        public RiTypeProfile getTypeProfile(HotSpotMethodData data, int position) {
+        public JavaTypeProfile getTypeProfile(HotSpotMethodData data, int position) {
             return null;
         }
 
@@ -226,9 +226,9 @@ public final class HotSpotMethodData extends CompilerObject {
         private static final int NO_DATA_TAG = 0;
         private static final int NO_DATA_SIZE = cellIndexToOffset(0);
 
-        private final RiExceptionSeen exceptionSeen;
+        private final ExceptionSeen exceptionSeen;
 
-        protected NoMethodData(RiExceptionSeen exceptionSeen) {
+        protected NoMethodData(ExceptionSeen exceptionSeen) {
             super(NO_DATA_TAG, NO_DATA_SIZE);
             this.exceptionSeen = exceptionSeen;
         }
@@ -240,7 +240,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
 
         @Override
-        public RiExceptionSeen getExceptionSeen(HotSpotMethodData data, int position) {
+        public ExceptionSeen getExceptionSeen(HotSpotMethodData data, int position) {
             return exceptionSeen;
         }
     }
@@ -328,10 +328,10 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public RiTypeProfile getTypeProfile(HotSpotMethodData data, int position) {
+        public JavaTypeProfile getTypeProfile(HotSpotMethodData data, int position) {
             int typeProfileWidth = config.typeProfileWidth;
 
-            RiResolvedType[] types = new RiResolvedType[typeProfileWidth];
+            ResolvedJavaType[] types = new ResolvedJavaType[typeProfileWidth];
             long[] counts = new long[typeProfileWidth];
             long totalCount = 0;
             int entries = 0;
@@ -347,7 +347,7 @@ public final class HotSpotMethodData extends CompilerObject {
                     }
 
 
-                    types[entries] = (RiResolvedType) graalMirror;
+                    types[entries] = (ResolvedJavaType) graalMirror;
 
                     long count = data.readUnsignedInt(position, getCountOffset(i));
                     totalCount += count;
@@ -367,7 +367,7 @@ public final class HotSpotMethodData extends CompilerObject {
             return getCounterValue(data, position);
         }
 
-        private static RiTypeProfile createRiTypeProfile(RiResolvedType[] types, long[] counts, long totalCount, int entries) {
+        private static JavaTypeProfile createRiTypeProfile(ResolvedJavaType[] types, long[] counts, long totalCount, int entries) {
             if (entries <= 0 || totalCount < GraalOptions.MatureExecutionsTypeProfile) {
                 return null;
             }
@@ -384,7 +384,7 @@ public final class HotSpotMethodData extends CompilerObject {
             Arrays.sort(ptypes);
 
             double notRecordedTypeProbability = entries < config.typeProfileWidth ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
-            return new RiTypeProfile(notRecordedTypeProbability, ptypes);
+            return new JavaTypeProfile(notRecordedTypeProbability, ptypes);
         }
 
         private static int getReceiverOffset(int row) {

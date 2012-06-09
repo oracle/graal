@@ -33,15 +33,15 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
 
     private String message;
     private final CiDeoptAction action;
-    private final RiDeoptReason reason;
+    private final DeoptimizationReason reason;
     private final long leafGraphId;
 
 
-    public DeoptimizeNode(CiDeoptAction action, RiDeoptReason reason) {
+    public DeoptimizeNode(CiDeoptAction action, DeoptimizationReason reason) {
         this(action, reason, -1);
     }
 
-    public DeoptimizeNode(CiDeoptAction action, RiDeoptReason reason, long leafGraphId) {
+    public DeoptimizeNode(CiDeoptAction action, DeoptimizationReason reason, long leafGraphId) {
         super(StampFactory.forVoid());
         this.action = action;
         this.reason = reason;
@@ -60,7 +60,7 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
         return action;
     }
 
-    public RiDeoptReason reason() {
+    public DeoptimizationReason reason() {
         return reason;
     }
 
@@ -75,7 +75,7 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void deopt(@ConstantNodeParameter CiDeoptAction action, @ConstantNodeParameter RiDeoptReason reason) {
+    public static void deopt(@ConstantNodeParameter CiDeoptAction action, @ConstantNodeParameter DeoptimizationReason reason) {
         throw new UnsupportedOperationException();
     }
 }

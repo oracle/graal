@@ -50,11 +50,11 @@ public abstract class Stamp {
         return false;
     }
 
-    public RiResolvedType exactType() {
+    public ResolvedJavaType exactType() {
         return null;
     }
 
-    public RiResolvedType declaredType() {
+    public ResolvedJavaType declaredType() {
         return null;
     }
 

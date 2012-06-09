@@ -28,7 +28,7 @@ package com.oracle.graal.api.meta;
  * If a method is invoked multiple times, it may return significantly different results for every invocation
  * as the profiling information may be changed by other Java threads at any time.
  */
-public interface RiProfilingInfo {
+public interface ProfilingInfo {
 
     /**
      * Gets the length of the code associated with this profile.
@@ -51,17 +51,17 @@ public interface RiProfilingInfo {
 
     /**
      * Returns the TypeProfile for the given BCI.
-     * @return Returns an RiTypeProfile object, or null if not available.
+     * @return Returns an JavaTypeProfile object, or null if not available.
      */
-    RiTypeProfile getTypeProfile(int bci);
+    JavaTypeProfile getTypeProfile(int bci);
 
     /**
      * Returns information if the given BCI did ever throw an exception.
-     * @return {@link RiExceptionSeen#TRUE} if the instruction has thrown an exception at least once,
-     * {@link RiExceptionSeen#FALSE} if it never threw an exception, and {@link RiExceptionSeen#NOT_SUPPORTED}
+     * @return {@link ExceptionSeen#TRUE} if the instruction has thrown an exception at least once,
+     * {@link ExceptionSeen#FALSE} if it never threw an exception, and {@link ExceptionSeen#NOT_SUPPORTED}
      * if this information was not recorded.
      */
-    RiExceptionSeen getExceptionSeen(int bci);
+    ExceptionSeen getExceptionSeen(int bci);
 
     /**
      * Returns an estimate how often the current BCI was executed. Avoid comparing execution counts to each other,
@@ -76,5 +76,5 @@ public interface RiProfilingInfo {
      * @param reason the reason for which the number of deoptimizations should be queried
      * @return the number of times the compiled method deoptimized for the given reason.
      */
-    int getDeoptimizationCount(RiDeoptReason reason);
+    int getDeoptimizationCount(DeoptimizationReason reason);
 }

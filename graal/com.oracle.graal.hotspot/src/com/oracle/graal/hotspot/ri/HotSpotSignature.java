@@ -31,14 +31,14 @@ import com.oracle.graal.java.*;
 /**
  * Represents a method signature.
  */
-public class HotSpotSignature extends CompilerObject implements RiSignature {
+public class HotSpotSignature extends CompilerObject implements Signature {
 
     private static final long serialVersionUID = -2890917956072366116L;
     private final List<String> arguments = new ArrayList<>();
     private final String returnType;
     private final String originalString;
-    private RiType[] argumentTypes;
-    private RiType returnTypeCache;
+    private JavaType[] argumentTypes;
+    private JavaType returnTypeCache;
 
     public HotSpotSignature(String signature) {
         assert signature.length() > 0;
@@ -111,12 +111,12 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     }
 
     @Override
-    public RiType argumentTypeAt(int index, RiResolvedType accessingClass) {
+    public JavaType argumentTypeAt(int index, ResolvedJavaType accessingClass) {
         if (argumentTypes == null) {
-            argumentTypes = new RiType[arguments.size()];
+            argumentTypes = new JavaType[arguments.size()];
         }
-        RiType type = argumentTypes[index];
-        if (type == null || !(type instanceof RiResolvedType)) {
+        JavaType type = argumentTypes[index];
+        if (type == null || !(type instanceof ResolvedJavaType)) {
             type = HotSpotGraalRuntime.getInstance().lookupType(arguments.get(index), (HotSpotTypeResolved) accessingClass, true);
             argumentTypes[index] = type;
         }
@@ -134,7 +134,7 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     }
 
     @Override
-    public RiType returnType(RiType accessingClass) {
+    public JavaType returnType(JavaType accessingClass) {
         if (returnTypeCache == null) {
             returnTypeCache = HotSpotGraalRuntime.getInstance().lookupType(returnType, (HotSpotTypeResolved) accessingClass, false);
         }

@@ -26,13 +26,13 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 
 
-public final class HotSpotExceptionHandler extends CompilerObject implements RiExceptionHandler {
+public final class HotSpotExceptionHandler extends CompilerObject implements ExceptionHandler {
     private static final long serialVersionUID = 7110038548061733686L;
     private int startBci;
     private int endBci;
     private int handlerBci;
     private int catchClassIndex;
-    private RiType catchClass;
+    private JavaType catchClass;
 
     private HotSpotExceptionHandler() {
     }
@@ -63,7 +63,7 @@ public final class HotSpotExceptionHandler extends CompilerObject implements RiE
     }
 
     @Override
-    public RiType catchType() {
+    public JavaType catchType() {
         return catchClass;
     }
 

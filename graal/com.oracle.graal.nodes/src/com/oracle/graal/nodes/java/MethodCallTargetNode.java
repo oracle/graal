@@ -36,14 +36,14 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         Virtual
     }
 
-    private final RiType returnType;
-    private RiResolvedMethod targetMethod;
+    private final JavaType returnType;
+    private ResolvedJavaMethod targetMethod;
     private InvokeKind invokeKind;
 
     /**
      * @param arguments
      */
-    public MethodCallTargetNode(InvokeKind invokeKind, RiResolvedMethod targetMethod, ValueNode[] arguments, RiType returnType) {
+    public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
         super(arguments);
         this.invokeKind = invokeKind;
         this.returnType = returnType;
@@ -51,7 +51,7 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
     }
 
     @Override
-    public RiType returnType() {
+    public JavaType returnType() {
         return returnType;
     }
 
@@ -59,7 +59,7 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
      * Gets the target method for this invocation instruction.
      * @return the target method
      */
-    public RiResolvedMethod targetMethod() {
+    public ResolvedJavaMethod targetMethod() {
         return targetMethod;
     }
 
@@ -71,7 +71,7 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         this.invokeKind = kind;
     }
 
-    public void setTargetMethod(RiResolvedMethod method) {
+    public void setTargetMethod(ResolvedJavaMethod method) {
         targetMethod = method;
     }
 
@@ -126,7 +126,7 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
             ValueNode receiver = receiver();
             if (receiver != null && receiver.objectStamp().isExactType()) {
                 if (invokeKind == InvokeKind.Interface || invokeKind == InvokeKind.Virtual) {
-                    RiResolvedMethod method = receiver.objectStamp().type().resolveMethodImpl(targetMethod);
+                    ResolvedJavaMethod method = receiver.objectStamp().type().resolveMethodImpl(targetMethod);
                     if (method != null) {
                         invokeKind = InvokeKind.Special;
                         targetMethod = method;
@@ -139,8 +139,8 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
 
     public Stamp returnStamp() {
         Kind returnKind = targetMethod.signature().returnKind();
-        if (returnKind == Kind.Object && returnType instanceof RiResolvedType) {
-            return StampFactory.declared((RiResolvedType) returnType);
+        if (returnKind == Kind.Object && returnType instanceof ResolvedJavaType) {
+            return StampFactory.declared((ResolvedJavaType) returnType);
         } else {
             return StampFactory.forKind(returnKind);
         }

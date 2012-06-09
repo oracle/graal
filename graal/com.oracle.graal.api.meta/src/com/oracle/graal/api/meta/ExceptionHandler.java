@@ -25,7 +25,7 @@ package com.oracle.graal.api.meta;
 /**
  * Represents an exception handler within the bytecode.
  */
-public interface RiExceptionHandler {
+public interface ExceptionHandler {
 
     /**
      * Gets the start bytecode index of the protected range of this handler.
@@ -63,5 +63,5 @@ public interface RiExceptionHandler {
      *
      * @return the exception type
      */
-    RiType catchType();
+    JavaType catchType();
 }

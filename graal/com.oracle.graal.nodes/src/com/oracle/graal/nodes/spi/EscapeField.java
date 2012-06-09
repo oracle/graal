@@ -28,9 +28,9 @@ public class EscapeField {
 
     private final String name;
     private final Object representation;
-    private final RiType type;
+    private final JavaType type;
 
-    public EscapeField(String name, Object representation, RiType type) {
+    public EscapeField(String name, Object representation, JavaType type) {
         this.name = name;
         this.representation = representation;
         this.type = type;
@@ -44,7 +44,7 @@ public class EscapeField {
         return representation;
     }
 
-    public RiType type() {
+    public JavaType type() {
         return type;
     }
 

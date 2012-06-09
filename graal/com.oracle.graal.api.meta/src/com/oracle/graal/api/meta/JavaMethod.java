@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,27 @@
  */
 package com.oracle.graal.api.meta;
 
-
 /**
- * Represents the three possibilities that an exception was seen at a specific BCI.
+ * Represents resolved and unresolved Java methods. Methods, like fields and types, are resolved through
+ * {@link ConstantPool constant pools}.
  */
-public enum RiExceptionSeen {
-    TRUE,
-    FALSE,
-    NOT_SUPPORTED;
+public interface JavaMethod {
 
-    public static RiExceptionSeen get(boolean value) {
-        return value ? TRUE : FALSE;
-    }
+    /**
+     * Gets the name of the method as a string.
+     * @return the name of the method
+     */
+    String name();
+
+    /**
+     * Gets the type in which this method is declared.
+     * @return the type in which this method is declared
+     */
+    JavaType holder();
+
+    /**
+     * Gets the signature of the method.
+     * @return the signature of the method
+     */
+    Signature signature();
 }

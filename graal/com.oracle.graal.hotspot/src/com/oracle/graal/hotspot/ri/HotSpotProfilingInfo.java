@@ -28,7 +28,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 
 
-public final class HotSpotProfilingInfo extends CompilerObject implements RiProfilingInfo {
+public final class HotSpotProfilingInfo extends CompilerObject implements ProfilingInfo {
 
     private static final long serialVersionUID = -8307682725047864875L;
     private static final DebugMetric metricInsufficentSpace = Debug.metric("InsufficientSpaceForProfilingData");
@@ -53,7 +53,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
     }
 
     @Override
-    public RiTypeProfile getTypeProfile(int bci) {
+    public JavaTypeProfile getTypeProfile(int bci) {
         findBCI(bci, false);
         return dataAccessor.getTypeProfile(methodData, position);
     }
@@ -71,7 +71,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
     }
 
     @Override
-    public RiExceptionSeen getExceptionSeen(int bci) {
+    public ExceptionSeen getExceptionSeen(int bci) {
         findBCI(bci, true);
         return dataAccessor.getExceptionSeen(methodData, position);
     }
@@ -83,7 +83,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
     }
 
     @Override
-    public int getDeoptimizationCount(RiDeoptReason reason) {
+    public int getDeoptimizationCount(DeoptimizationReason reason) {
         return methodData.getDeoptimizationCount(reason);
     }
 

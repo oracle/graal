@@ -32,11 +32,11 @@ public interface ObjectTypeFeedbackTool {
 
     void valueBound(Condition condition, ValueNode otherValue);
 
-    void declaredType(RiResolvedType type, boolean nonNull);
+    void declaredType(ResolvedJavaType type, boolean nonNull);
 
-    void exactType(RiResolvedType type);
+    void exactType(ResolvedJavaType type);
 
-    void notDeclaredType(RiResolvedType type, boolean includesNull);
+    void notDeclaredType(ResolvedJavaType type, boolean includesNull);
 
-    void notExactType(RiResolvedType type);
+    void notExactType(ResolvedJavaType type);
 }

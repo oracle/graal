@@ -78,9 +78,9 @@ public final class JniMangle {
      * @param splitSuffix determines if {@link #LONG_NAME_DELIMITER} should be used as described above
      * @return the symbol for the C function as described above
      */
-    public static String mangleMethod(RiResolvedType declaringClass, String name, RiSignature signature, boolean splitSuffix) {
+    public static String mangleMethod(ResolvedJavaType declaringClass, String name, Signature signature, boolean splitSuffix) {
         final StringBuilder result = new StringBuilder(100);
-        final String declaringClassName = RiUtil.toJavaName(declaringClass);
+        final String declaringClassName = MetaUtil.toJavaName(declaringClass);
         result.append("Java_").append(mangle(declaringClassName)).append('_').append(mangle(name));
         if (signature != null) {
             if (splitSuffix) {

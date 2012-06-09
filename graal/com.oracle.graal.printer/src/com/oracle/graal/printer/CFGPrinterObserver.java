@@ -46,7 +46,7 @@ import com.oracle.graal.nodes.*;
 public class CFGPrinterObserver implements DebugDumpHandler {
 
     private CFGPrinter cfgPrinter;
-    private RiResolvedMethod curMethod;
+    private ResolvedJavaMethod curMethod;
     private List<String> curDecorators = Collections.emptyList();
 
     @Override
@@ -64,11 +64,11 @@ public class CFGPrinterObserver implements DebugDumpHandler {
      * does not match the current method and decorator pair.
      */
     private void checkMethodScope() {
-        RiResolvedMethod method = null;
+        ResolvedJavaMethod method = null;
         ArrayList<String> decorators = new ArrayList<>();
         for (Object o : Debug.context()) {
-            if (o instanceof RiResolvedMethod) {
-                method = (RiResolvedMethod) o;
+            if (o instanceof ResolvedJavaMethod) {
+                method = (ResolvedJavaMethod) o;
                 decorators.clear();
             } else if (o instanceof StructuredGraph) {
                 StructuredGraph graph = (StructuredGraph) o;
@@ -121,7 +121,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             cfgPrinter.cfg = cfgPrinter.lir.cfg;
         }
 
-        RiRuntime runtime = compiler.runtime;
+        CodeCacheProvider runtime = compiler.runtime;
 
         if (object instanceof BciBlockMapping) {
             BciBlockMapping blockMap = (BciBlockMapping) object;
@@ -141,7 +141,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             final CiTargetMethod tm = (CiTargetMethod) object;
             final byte[] code = Arrays.copyOf(tm.targetCode(), tm.targetCodeSize());
             CodeInfo info = new CodeInfo() {
-                public RiResolvedMethod method() {
+                public ResolvedJavaMethod method() {
                     return null;
                 }
                 public long start() {

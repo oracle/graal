@@ -29,7 +29,7 @@ import com.oracle.graal.api.meta.*;
 public interface CanonicalizerTool {
     CiTarget target();
     CiAssumptions assumptions();
-    RiRuntime runtime();
+    CodeCacheProvider runtime();
 
     /**
      * Determines if a given constant is an object/array whose current

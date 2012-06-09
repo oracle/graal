@@ -52,16 +52,16 @@ public class LoweringPhase extends Phase {
 
         @Override
         public ValueNode createNullCheckGuard(ValueNode object, long leafGraphId) {
-            return createGuard(object.graph().unique(new IsNullNode(object)), RiDeoptReason.NullCheckException, CiDeoptAction.InvalidateReprofile, true, leafGraphId);
+            return createGuard(object.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, CiDeoptAction.InvalidateReprofile, true, leafGraphId);
         }
 
         @Override
-        public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, long leafGraphId) {
+        public ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, CiDeoptAction action, long leafGraphId) {
             return createGuard(condition, deoptReason, action, false, leafGraphId);
         }
 
         @Override
-        public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
+        public ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
             // TODO (thomaswue): Document why this must not be called on floating nodes.
             throw new UnsupportedOperationException();
         }
@@ -150,7 +150,7 @@ public class LoweringPhase extends Phase {
             }
 
             @Override
-            public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
+            public ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
                 FixedNode guardAnchor = (FixedNode) getGuardAnchor();
                 if (GraalOptions.OptEliminateGuards) {
                     for (Node usage : condition.usages()) {

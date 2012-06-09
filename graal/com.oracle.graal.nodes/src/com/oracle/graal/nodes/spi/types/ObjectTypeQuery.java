@@ -32,13 +32,13 @@ public interface ObjectTypeQuery extends TypeQuery {
 
     boolean valueBound(Condition condition, ValueNode otherValue);
 
-    boolean declaredType(RiResolvedType type);
+    boolean declaredType(ResolvedJavaType type);
 
-    boolean exactType(RiResolvedType type);
+    boolean exactType(ResolvedJavaType type);
 
-    boolean notDeclaredType(RiResolvedType type);
+    boolean notDeclaredType(ResolvedJavaType type);
 
-    boolean notExactType(RiResolvedType type);
+    boolean notExactType(ResolvedJavaType type);
 
     ObjectTypeFeedbackStore store();
 }

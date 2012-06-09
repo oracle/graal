@@ -38,7 +38,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     // Checkstyle: stop
 
     @Override
-    public native RiMethod getRiMethod(Method reflectionMethod);
+    public native JavaMethod getRiMethod(Method reflectionMethod);
 
     @Override
     public native byte[] RiMethod_code(HotSpotMethodResolved method);
@@ -47,34 +47,34 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native String RiMethod_signature(HotSpotMethodResolved method);
 
     @Override
-    public native RiExceptionHandler[] RiMethod_exceptionHandlers(HotSpotMethodResolved method);
+    public native ExceptionHandler[] RiMethod_exceptionHandlers(HotSpotMethodResolved method);
 
     @Override
     public native boolean RiMethod_hasBalancedMonitors(HotSpotMethodResolved method);
 
     @Override
-    public native RiMethod RiMethod_uniqueConcreteMethod(HotSpotMethodResolved method);
+    public native JavaMethod RiMethod_uniqueConcreteMethod(HotSpotMethodResolved method);
 
     @Override
     public native int RiMethod_invocationCount(HotSpotMethodResolved method);
 
     @Override
-    public native RiType RiSignature_lookupType(String returnType, HotSpotTypeResolved accessingClass, boolean eagerResolve);
+    public native JavaType RiSignature_lookupType(String returnType, HotSpotTypeResolved accessingClass, boolean eagerResolve);
 
     @Override
     public native Object RiConstantPool_lookupConstant(HotSpotTypeResolved pool, int cpi);
 
     @Override
-    public native RiMethod RiConstantPool_lookupMethod(HotSpotTypeResolved pool, int cpi, byte byteCode);
+    public native JavaMethod RiConstantPool_lookupMethod(HotSpotTypeResolved pool, int cpi, byte byteCode);
 
     @Override
-    public native RiType RiConstantPool_lookupType(HotSpotTypeResolved pool, int cpi);
+    public native JavaType RiConstantPool_lookupType(HotSpotTypeResolved pool, int cpi);
 
     @Override
     public native void RiConstantPool_loadReferencedType(HotSpotTypeResolved pool, int cpi, byte byteCode);
 
     @Override
-    public native RiField RiConstantPool_lookupField(HotSpotTypeResolved pool, int cpi, byte byteCode);
+    public native JavaField RiConstantPool_lookupField(HotSpotTypeResolved pool, int cpi, byte byteCode);
 
     @Override
     public native HotSpotCompiledMethod installMethod(HotSpotTargetMethod targetMethod, boolean makeDefault, HotSpotCodeInfo info);
@@ -83,28 +83,28 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native HotSpotVMConfig getConfiguration();
 
     @Override
-    public native RiMethod RiType_resolveMethodImpl(HotSpotTypeResolved klass, String name, String signature);
+    public native JavaMethod RiType_resolveMethodImpl(HotSpotTypeResolved klass, String name, String signature);
 
     @Override
-    public native boolean RiType_isSubtypeOf(HotSpotTypeResolved klass, RiType other);
+    public native boolean RiType_isSubtypeOf(HotSpotTypeResolved klass, JavaType other);
 
     @Override
-    public native RiType RiType_leastCommonAncestor(HotSpotTypeResolved thisType, HotSpotTypeResolved otherType);
+    public native JavaType RiType_leastCommonAncestor(HotSpotTypeResolved thisType, HotSpotTypeResolved otherType);
 
     @Override
-    public native RiType getPrimitiveArrayType(Kind kind);
+    public native JavaType getPrimitiveArrayType(Kind kind);
 
     @Override
-    public native RiType RiType_arrayOf(HotSpotTypeResolved klass);
+    public native JavaType RiType_arrayOf(HotSpotTypeResolved klass);
 
     @Override
-    public native RiType RiType_componentType(HotSpotTypeResolved klass);
+    public native JavaType RiType_componentType(HotSpotTypeResolved klass);
 
     @Override
-    public native RiType RiType_uniqueConcreteSubtype(HotSpotTypeResolved klass);
+    public native JavaType RiType_uniqueConcreteSubtype(HotSpotTypeResolved klass);
 
     @Override
-    public native RiType RiType_superType(HotSpotTypeResolved klass);
+    public native JavaType RiType_superType(HotSpotTypeResolved klass);
 
     @Override
     public native boolean RiType_isInitialized(HotSpotTypeResolved klass);
@@ -113,7 +113,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native HotSpotMethodData RiMethod_methodData(HotSpotMethodResolved method);
 
     @Override
-    public native RiType getType(Class<?> javaClass);
+    public native JavaType getType(Class<?> javaClass);
 
     @Override
     public int getArrayLength(Constant array) {
@@ -126,7 +126,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     }
 
     @Override
-    public RiType getRiType(Constant constant) {
+    public JavaType getRiType(Constant constant) {
         Object o = constant.asObject();
         if (o == null) {
             return null;
@@ -135,7 +135,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     }
 
     @Override
-    public native RiResolvedField[] RiType_fields(HotSpotTypeResolved klass);
+    public native ResolvedJavaField[] RiType_fields(HotSpotTypeResolved klass);
 
     @Override
     public native boolean RiMethod_hasCompiledCode(HotSpotMethodResolved method);

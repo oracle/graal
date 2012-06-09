@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.compiler.util;
 
-import com.oracle.graal.graph.*;
+import java.util.*;
 
 /**
  * This class implements a two-dimensional bitmap.
  */
 public final class BitMap2D {
 
-    private BitMap map;
+    private BitSet map;
     private final int bitsPerSlot;
 
     private int bitIndex(int slotIndex, int bitWithinSlotIndex)  {
@@ -42,7 +42,7 @@ public final class BitMap2D {
     }
 
     public BitMap2D(int sizeInSlots, int bitsPerSlot) {
-        map = new BitMap(sizeInSlots * bitsPerSlot);
+        map = new BitSet(sizeInSlots * bitsPerSlot);
         this.bitsPerSlot = bitsPerSlot;
     }
 
@@ -81,8 +81,8 @@ public final class BitMap2D {
            while (size <= slotIndex) {
                size *= 2;
            }
-           BitMap newBitMap = new BitMap(size * bitsPerSlot);
-           newBitMap.setUnion(map);
+           BitSet newBitMap = new BitSet(size * bitsPerSlot);
+           newBitMap.or(map);
            map = newBitMap;
        }
 
@@ -94,6 +94,6 @@ public final class BitMap2D {
     }
 
     public void clear() {
-        map.clearAll();
+        map.clear();
     }
 }

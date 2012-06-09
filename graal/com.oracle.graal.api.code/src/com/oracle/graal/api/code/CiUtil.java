@@ -28,7 +28,7 @@ import java.lang.annotation.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.RiTypeProfile.*;
+import com.oracle.graal.api.meta.JavaTypeProfile.*;
 
 /**
  * Miscellaneous collection of utility methods used in the {@code CRI} project.
@@ -46,7 +46,7 @@ public class CiUtil {
      * @return the annotation of type {@code annotationClass} for the formal parameter present, else null
      * @throws IndexOutOfBoundsException if {@code parameterIndex} does not denote a formal parameter
      */
-    public static <T extends Annotation> T getParameterAnnotation(Class<T> annotationClass, int parameterIndex, RiResolvedMethod method) {
+    public static <T extends Annotation> T getParameterAnnotation(Class<T> annotationClass, int parameterIndex, ResolvedJavaMethod method) {
         if (parameterIndex >= 0) {
             Annotation[][] parameterAnnotations = method.getParameterAnnotations();
             for (Annotation a : parameterAnnotations[parameterIndex]) {
@@ -164,10 +164,10 @@ public class CiUtil {
      * @return the result of formatting this method according to {@code format}
      * @throws IllegalFormatException if an illegal specifier is encountered in {@code format}
      */
-    public static String format(String format, RiMethod method) throws IllegalFormatException {
+    public static String format(String format, JavaMethod method) throws IllegalFormatException {
         final StringBuilder sb = new StringBuilder();
         int index = 0;
-        RiSignature sig = null;
+        Signature sig = null;
         while (index < format.length()) {
             final char ch = format.charAt(index++);
             if (ch == '%') {
@@ -184,14 +184,14 @@ public class CiUtil {
                         if (sig == null) {
                             sig = method.signature();
                         }
-                        sb.append(RiUtil.toJavaName(sig.returnType(null), qualified));
+                        sb.append(MetaUtil.toJavaName(sig.returnType(null), qualified));
                         break;
                     }
                     case 'H':
                         qualified = true;
                         // fall through
                     case 'h': {
-                        sb.append(RiUtil.toJavaName(method.holder(), qualified));
+                        sb.append(MetaUtil.toJavaName(method.holder(), qualified));
                         break;
                     }
                     case 'n': {
@@ -209,12 +209,12 @@ public class CiUtil {
                             if (i != 0) {
                                 sb.append(", ");
                             }
-                            sb.append(RiUtil.toJavaName(sig.argumentTypeAt(i, null), qualified));
+                            sb.append(MetaUtil.toJavaName(sig.argumentTypeAt(i, null), qualified));
                         }
                         break;
                     }
                     case 'f': {
-                        sb.append(!(method instanceof RiResolvedMethod) ? "unresolved" : isStatic(((RiResolvedMethod) method).accessFlags()) ? "static" : "virtual");
+                        sb.append(!(method instanceof ResolvedJavaMethod) ? "unresolved" : isStatic(((ResolvedJavaMethod) method).accessFlags()) ? "static" : "virtual");
                         break;
                     }
                     case '%': {
@@ -257,10 +257,10 @@ public class CiUtil {
      * @return the result of formatting this field according to {@code format}
      * @throws IllegalFormatException if an illegal specifier is encountered in {@code format}
      */
-    public static String format(String format, RiField field) throws IllegalFormatException {
+    public static String format(String format, JavaField field) throws IllegalFormatException {
         final StringBuilder sb = new StringBuilder();
         int index = 0;
-        RiType type = field.type();
+        JavaType type = field.type();
         while (index < format.length()) {
             final char ch = format.charAt(index++);
             if (ch == '%') {
@@ -274,14 +274,14 @@ public class CiUtil {
                         qualified = true;
                         // fall through
                     case 't': {
-                        sb.append(RiUtil.toJavaName(type, qualified));
+                        sb.append(MetaUtil.toJavaName(type, qualified));
                         break;
                     }
                     case 'H':
                         qualified = true;
                         // fall through
                     case 'h': {
-                        sb.append(RiUtil.toJavaName(field.holder(), qualified));
+                        sb.append(MetaUtil.toJavaName(field.holder(), qualified));
                         break;
                     }
                     case 'n': {
@@ -289,7 +289,7 @@ public class CiUtil {
                         break;
                     }
                     case 'f': {
-                        sb.append(!(field instanceof RiResolvedField) ? "unresolved" : isStatic(((RiResolvedField) field).accessFlags()) ? "static" : "instance");
+                        sb.append(!(field instanceof ResolvedJavaField) ? "unresolved" : isStatic(((ResolvedJavaField) field).accessFlags()) ? "static" : "instance");
                         break;
                     }
                     case '%': {
@@ -430,17 +430,17 @@ public class CiUtil {
     }
 
     /**
-     * Convenient shortcut for calling {@link #appendLocation(StringBuilder, RiMethod, int)} without having to supply a
+     * Convenient shortcut for calling {@link #appendLocation(StringBuilder, JavaMethod, int)} without having to supply a
      * a {@link StringBuilder} instance and convert the result to a string.
      */
-    public static String toLocation(RiResolvedMethod method, int bci) {
+    public static String toLocation(ResolvedJavaMethod method, int bci) {
         return appendLocation(new StringBuilder(), method, bci).toString();
     }
 
     /**
      * Appends a string representation of a location specified by a given method and bci to a given
      * {@link StringBuilder}. If a stack trace element with a non-null file name and non-negative line number is
-     * {@linkplain RiMethod#toStackTraceElement(int) available} for the given method, then the string returned is the
+     * {@linkplain JavaMethod#toStackTraceElement(int) available} for the given method, then the string returned is the
      * {@link StackTraceElement#toString()} value of the stack trace element, suffixed by the bci location. For example:
      *
      * <pre>
@@ -459,7 +459,7 @@ public class CiUtil {
      * @param bci
      * @return
      */
-    public static StringBuilder appendLocation(StringBuilder sb, RiResolvedMethod method, int bci) {
+    public static StringBuilder appendLocation(StringBuilder sb, ResolvedJavaMethod method, int bci) {
         if (method != null) {
             StackTraceElement ste = method.toStackTraceElement(bci);
             if (ste.getFileName() != null && ste.getLineNumber() > 0) {
@@ -604,12 +604,12 @@ public class CiUtil {
         return sb;
     }
 
-    public static Kind[] signatureToKinds(RiResolvedMethod method) {
+    public static Kind[] signatureToKinds(ResolvedJavaMethod method) {
         Kind receiver = isStatic(method.accessFlags()) ? null : method.holder().kind();
         return signatureToKinds(method.signature(), receiver);
     }
 
-    public static Kind[] signatureToKinds(RiSignature signature, Kind receiverKind) {
+    public static Kind[] signatureToKinds(Signature signature, Kind receiverKind) {
         int args = signature.argumentCount(false);
         Kind[] result;
         int i = 0;
@@ -626,7 +626,7 @@ public class CiUtil {
         return result;
     }
 
-    public static Class< ? >[] signatureToTypes(RiSignature signature, RiResolvedType accessingClass) {
+    public static Class< ? >[] signatureToTypes(Signature signature, ResolvedJavaType accessingClass) {
         int count = signature.argumentCount(false);
         Class< ? >[] result = new Class< ? >[count];
         for (int i = 0; i < result.length; ++i) {
@@ -642,7 +642,7 @@ public class CiUtil {
      * @param method an optional method that augments the profile string returned
      * @param sep the separator to use for each separate profile record
      */
-    public static String profileToString(RiProfilingInfo info, RiResolvedMethod method, String sep) {
+    public static String profileToString(ProfilingInfo info, ResolvedJavaMethod method, String sep) {
         StringBuilder buf = new StringBuilder(100);
         if (method != null) {
             buf.append(String.format("canBeStaticallyBound: %b%s", method.canBeStaticallyBound(), sep)).
@@ -666,11 +666,11 @@ public class CiUtil {
                 buf.append(sep);
             }
 
-            if (info.getExceptionSeen(i) != RiExceptionSeen.FALSE) {
+            if (info.getExceptionSeen(i) != ExceptionSeen.FALSE) {
                 buf.append(String.format("exceptionSeen@%d: %s%s", i, info.getExceptionSeen(i).name(), sep));
             }
 
-            RiTypeProfile typeProfile = info.getTypeProfile(i);
+            JavaTypeProfile typeProfile = info.getTypeProfile(i);
             if (typeProfile != null) {
                 ProfiledType[] ptypes = typeProfile.getTypes();
                 if (ptypes != null) {
@@ -685,7 +685,7 @@ public class CiUtil {
         }
 
         boolean firstDeoptReason = true;
-        for (RiDeoptReason reason: RiDeoptReason.values()) {
+        for (DeoptimizationReason reason: DeoptimizationReason.values()) {
             int count = info.getDeoptimizationCount(reason);
             if (count > 0) {
                 if (firstDeoptReason) {

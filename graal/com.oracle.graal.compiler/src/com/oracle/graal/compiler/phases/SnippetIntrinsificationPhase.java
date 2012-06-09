@@ -38,10 +38,10 @@ import com.oracle.graal.nodes.util.*;
 
 public class SnippetIntrinsificationPhase extends Phase {
 
-    private final RiRuntime runtime;
+    private final CodeCacheProvider runtime;
     private final BoxingMethodPool pool;
 
-    public SnippetIntrinsificationPhase(RiRuntime runtime, BoxingMethodPool pool) {
+    public SnippetIntrinsificationPhase(CodeCacheProvider runtime, BoxingMethodPool pool) {
         this.runtime = runtime;
         this.pool = pool;
     }
@@ -54,7 +54,7 @@ public class SnippetIntrinsificationPhase extends Phase {
     }
 
     private void tryIntrinsify(Invoke invoke) {
-        RiResolvedMethod target = invoke.callTarget().targetMethod();
+        ResolvedJavaMethod target = invoke.callTarget().targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         if (intrinsic != null) {
             assert target.getAnnotation(Node.Fold.class) == null;
@@ -108,7 +108,7 @@ public class SnippetIntrinsificationPhase extends Phase {
      *
      * @param folding specifies if the invocation is for handling a {@link Fold} annotation
      */
-    private Object[] prepareArguments(Invoke invoke, Class< ? >[] parameterTypes, RiResolvedMethod target, boolean folding) {
+    private Object[] prepareArguments(Invoke invoke, Class< ? >[] parameterTypes, ResolvedJavaMethod target, boolean folding) {
         NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
         Object[] reflectionCallArguments = new Object[arguments.size()];
         for (int i = 0; i < reflectionCallArguments.length; ++i) {
@@ -123,8 +123,8 @@ public class SnippetIntrinsificationPhase extends Phase {
                 Constant constant = constantNode.asConstant();
                 Object o = constant.boxedValue();
                 if (o instanceof Class< ? >) {
-                    reflectionCallArguments[i] = runtime.getType((Class< ? >) o);
-                    parameterTypes[i] = RiResolvedType.class;
+                    reflectionCallArguments[i] = runtime.getResolvedJavaType((Class< ? >) o);
+                    parameterTypes[i] = ResolvedJavaType.class;
                 } else {
                     if (parameterTypes[i] == boolean.class) {
                         reflectionCallArguments[i] = Boolean.valueOf(constant.asInt() != 0);
@@ -146,7 +146,7 @@ public class SnippetIntrinsificationPhase extends Phase {
         return reflectionCallArguments;
     }
 
-    private static Class< ? > getNodeClass(RiResolvedMethod target, NodeIntrinsic intrinsic) {
+    private static Class< ? > getNodeClass(ResolvedJavaMethod target, NodeIntrinsic intrinsic) {
         Class< ? > result = intrinsic.value();
         if (result == NodeIntrinsic.class) {
             result = target.holder().toJava();
@@ -155,7 +155,7 @@ public class SnippetIntrinsificationPhase extends Phase {
         return result;
     }
 
-    private ValueNode tryBoxingElimination(int parameterIndex, RiResolvedMethod target, ValueNode node) {
+    private ValueNode tryBoxingElimination(int parameterIndex, ResolvedJavaMethod target, ValueNode node) {
         if (parameterIndex >= 0) {
             Type type = target.getGenericParameterTypes()[parameterIndex];
             if (type instanceof TypeVariable) {

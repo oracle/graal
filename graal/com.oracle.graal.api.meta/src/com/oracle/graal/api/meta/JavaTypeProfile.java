@@ -29,7 +29,7 @@ import java.io.*;
  * but a runtime that provides this information should be aware that it will be used to guide performance-critical
  * decisions like speculative inlining, etc.
  */
-public final class RiTypeProfile implements Serializable {
+public final class JavaTypeProfile implements Serializable {
 
     private static final long serialVersionUID = -6877016333706838441L;
 
@@ -39,10 +39,10 @@ public final class RiTypeProfile implements Serializable {
      */
     public static class ProfiledType implements Comparable<ProfiledType>, Serializable {
         private static final long serialVersionUID = 7838575753661305744L;
-        public final RiResolvedType type;
+        public final ResolvedJavaType type;
         public final double probability;
 
-        public ProfiledType(RiResolvedType type, double probability) {
+        public ProfiledType(ResolvedJavaType type, double probability) {
             assert type != null;
             assert probability >= 0.0D && probability <= 1.0D;
             this.type = type;
@@ -75,7 +75,7 @@ public final class RiTypeProfile implements Serializable {
         return true;
     }
 
-    public RiTypeProfile(double notRecordedProbability, ProfiledType... ptypes) {
+    public JavaTypeProfile(double notRecordedProbability, ProfiledType... ptypes) {
         this.ptypes = ptypes;
         this.notRecordedProbability = notRecordedProbability;
         assert isSorted(ptypes);

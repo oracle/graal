@@ -40,10 +40,10 @@ public class CheckCastTest extends TypeCheckTest {
     boolean unknown;
 
     @Override
-    protected void replaceProfile(StructuredGraph graph, RiTypeProfile profile) {
+    protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
         CheckCastNode ccn = graph.getNodes(CheckCastNode.class).first();
         if (ccn != null) {
-            RiResolvedType targetClass = unknown ? null : ccn.targetClass();
+            ResolvedJavaType targetClass = unknown ? null : ccn.targetClass();
             CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.targetClassInstruction(), targetClass, ccn.object(), profile));
             graph.replaceFixedWithFixed(ccn, ccnNew);
         }
@@ -51,7 +51,7 @@ public class CheckCastTest extends TypeCheckTest {
     }
 
     @Override
-    protected void test(String name, RiTypeProfile profile, Object... args) {
+    protected void test(String name, JavaTypeProfile profile, Object... args) {
         super.test(name, profile, args);
         unknown = true;
         super.test(name, profile, args);

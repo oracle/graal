@@ -26,7 +26,7 @@ import com.oracle.graal.api.meta.*;
 
 /**
  * Interface for accessor objects that encapsulate the logic for accessing the different kinds of data in a HotSpot methodDataOop.
- * This interface is similar to the interface {@link RiProfilingInfo}, but most methods require a MethodDataObject and the
+ * This interface is similar to the interface {@link ProfilingInfo}, but most methods require a MethodDataObject and the
  * exact position within the methodData.
  */
 public interface HotSpotMethodDataAccessor {
@@ -48,9 +48,9 @@ public interface HotSpotMethodDataAccessor {
      */
     int getSize(HotSpotMethodData data, int position);
 
-    RiTypeProfile getTypeProfile(HotSpotMethodData data, int position);
+    JavaTypeProfile getTypeProfile(HotSpotMethodData data, int position);
     double getBranchTakenProbability(HotSpotMethodData data, int position);
     double[] getSwitchProbabilities(HotSpotMethodData data, int position);
-    RiExceptionSeen getExceptionSeen(HotSpotMethodData data, int position);
+    ExceptionSeen getExceptionSeen(HotSpotMethodData data, int position);
     int getExecutionCount(HotSpotMethodData data, int position);
 }

@@ -43,7 +43,7 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        RiRuntime runtime = tool.runtime();
+        CodeCacheProvider runtime = tool.runtime();
         if (runtime != null && object() != null && object().isConstant() && object().kind() == Kind.Object) {
             if (location() == LocationNode.FINAL_LOCATION && location().getClass() == LocationNode.class) {
                 Object value = object().asConstant().asObject();

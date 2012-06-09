@@ -58,11 +58,11 @@ public class SnippetTemplate {
      * @see Cache
      */
     public static class Key implements Iterable<Map.Entry<String, Object>> {
-        public final RiResolvedMethod method;
+        public final ResolvedJavaMethod method;
         private final HashMap<String, Object> map = new HashMap<>();
         private int hash;
 
-        public Key(RiResolvedMethod method) {
+        public Key(ResolvedJavaMethod method) {
             this.method = method;
             this.hash = method.hashCode();
         }
@@ -145,10 +145,10 @@ public class SnippetTemplate {
     public static class Cache {
 
         private final ConcurrentHashMap<SnippetTemplate.Key, SnippetTemplate> templates = new ConcurrentHashMap<>();
-        private final RiRuntime runtime;
+        private final CodeCacheProvider runtime;
 
 
-        public Cache(RiRuntime runtime) {
+        public Cache(CodeCacheProvider runtime) {
             this.runtime = runtime;
         }
 
@@ -175,10 +175,10 @@ public class SnippetTemplate {
     /**
      * Creates a snippet template.
      */
-    public SnippetTemplate(RiRuntime runtime, SnippetTemplate.Key key) {
-        RiResolvedMethod method = key.method;
+    public SnippetTemplate(CodeCacheProvider runtime, SnippetTemplate.Key key) {
+        ResolvedJavaMethod method = key.method;
         assert Modifier.isStatic(method.accessFlags()) : "snippet method must be static: " + method;
-        RiSignature signature = method.signature();
+        Signature signature = method.signature();
 
         // Copy snippet graph, replacing @Constant parameters with given arguments
         StructuredGraph snippetGraph = (StructuredGraph) method.compilerStorage().get(Graph.class);
@@ -231,7 +231,7 @@ public class SnippetTemplate {
                     Object array = ((Multiple) key.get(p.value())).array;
                     int length = Array.getLength(array);
                     LocalNode[] locals = new LocalNode[length];
-                    Stamp stamp = StampFactory.forKind(runtime.getType(array.getClass().getComponentType()).kind());
+                    Stamp stamp = StampFactory.forKind(runtime.getResolvedJavaType(array.getClass().getComponentType()).kind());
                     for (int j = 0; j < length; j++) {
                         assert (parameterCount & 0xFFFF) == parameterCount;
                         int idx = i << 16 | j;
@@ -324,7 +324,7 @@ public class SnippetTemplate {
         return true;
     }
 
-    private static boolean checkConstantArgument(final RiResolvedMethod method, RiSignature signature, int i, String name, Object arg, Kind kind) {
+    private static boolean checkConstantArgument(final ResolvedJavaMethod method, Signature signature, int i, String name, Object arg, Kind kind) {
         if (kind.isObject()) {
             Class<?> type = signature.argumentTypeAt(i, method.holder()).resolve(method.holder()).toJava();
             assert type.isInstance(arg) :
@@ -336,10 +336,10 @@ public class SnippetTemplate {
         return true;
     }
 
-    private static boolean checkMultipleArgument(final RiResolvedMethod method, RiSignature signature, int i, String name, Object multiple) {
+    private static boolean checkMultipleArgument(final ResolvedJavaMethod method, Signature signature, int i, String name, Object multiple) {
         assert multiple instanceof Multiple;
         Object arg = ((Multiple) multiple).array;
-        RiResolvedType type = (RiResolvedType) signature.argumentTypeAt(i, method.holder());
+        ResolvedJavaType type = (ResolvedJavaType) signature.argumentTypeAt(i, method.holder());
         Class< ? > javaType = type.toJava();
         assert javaType.isArray() : "multiple parameter must be an array type";
         assert javaType.isInstance(arg) : "value for " + name + " is not a " + javaType.getName() + " instance: " + arg;
@@ -372,7 +372,7 @@ public class SnippetTemplate {
      *
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
-    private IdentityHashMap<Node, Node> bind(StructuredGraph replaceeGraph, RiRuntime runtime, SnippetTemplate.Arguments args) {
+    private IdentityHashMap<Node, Node> bind(StructuredGraph replaceeGraph, CodeCacheProvider runtime, SnippetTemplate.Arguments args) {
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
 
         for (Map.Entry<String, Object> e : args) {
@@ -415,7 +415,7 @@ public class SnippetTemplate {
      * @param anchor the control flow replacee
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      */
-    public void instantiate(RiRuntime runtime,
+    public void instantiate(CodeCacheProvider runtime,
                     Node replacee,
                     FixedWithNextNode anchor, SnippetTemplate.Arguments args) {
 

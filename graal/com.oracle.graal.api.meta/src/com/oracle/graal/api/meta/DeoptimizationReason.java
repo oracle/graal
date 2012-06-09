@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,19 @@
  */
 package com.oracle.graal.api.meta;
 
-/**
- * Represents resolved and unresolved methods. Methods, like fields and types, are resolved through
- * {@link RiConstantPool constant pools}, and their actual implementation is provided by the {@link RiRuntime runtime}
- * to the compiler.
- */
-public interface RiMethod {
 
-    /**
-     * Gets the name of the method as a string.
-     * @return the name of the method
-     */
-    String name();
-
-    /**
-     * Gets the type in which this method is declared.
-     * @return the type in which this method is declared
-     */
-    RiType holder();
-
-    /**
-     * Gets the signature of the method.
-     * @return the signature of the method
-     */
-    RiSignature signature();
+public enum DeoptimizationReason {
+    None,
+    NullCheckException,
+    BoundsCheckException,
+    ClassCastException,
+    ArrayStoreException,
+    UnreachedCode,
+    TypeCheckedInliningViolated,
+    OptimizedTypeCheckViolated,
+    NotCompiledExceptionHandler,
+    Unresolved,
+    JavaSubroutineMismatch,
+    ArithmeticException,
+    RuntimeConstraint;
 }

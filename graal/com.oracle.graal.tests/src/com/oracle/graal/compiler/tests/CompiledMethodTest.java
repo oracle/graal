@@ -66,7 +66,7 @@ public class CompiledMethodTest extends GraphTest {
             }
         }
 
-        final RiResolvedMethod riMethod = runtime.getRiMethod(method);
+        final ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(method);
         InstalledCode compiledMethod = compile(riMethod, graph);
         try {
             Object result = compiledMethod.execute("1", "2", "3");
@@ -80,7 +80,7 @@ public class CompiledMethodTest extends GraphTest {
     public void test3() {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
-        final RiResolvedMethod riMethod = runtime.getRiMethod(method);
+        final ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(method);
         InstalledCode compiledMethod = compile(riMethod, graph);
         try {
             Object result = compiledMethod.executeVarargs("1", "2", "3");
@@ -94,7 +94,7 @@ public class CompiledMethodTest extends GraphTest {
     public void test4() {
         Method method = getMethod("testMethodVirtual");
         final StructuredGraph graph = parse(method);
-        final RiResolvedMethod riMethod = runtime.getRiMethod(method);
+        final ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(method);
         InstalledCode compiledMethod = compile(riMethod, graph);
         try {
             f1 = "0";
@@ -108,7 +108,7 @@ public class CompiledMethodTest extends GraphTest {
     @Test
     public void test2() throws NoSuchMethodException, SecurityException {
         Method method = CompilableObjectImpl.class.getDeclaredMethod("executeHelper", ObjectCompiler.class, String.class);
-        RiResolvedMethod riMethod = runtime.getRiMethod(method);
+        ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(method);
         StructuredGraph graph = new StructuredGraph(riMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
         new CanonicalizerPhase(null, runtime, null).apply(graph);

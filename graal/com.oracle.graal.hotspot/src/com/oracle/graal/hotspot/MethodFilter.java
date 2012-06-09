@@ -106,22 +106,22 @@ public class MethodFilter {
         }
     }
 
-    public boolean matches(RiMethod o) {
+    public boolean matches(JavaMethod o) {
         // check method name first, since CiUtil.toJavaName is expensive
         if (methodName != null && !methodName.matcher(o.name()).matches()) {
             return false;
         }
-        if (clazz != null && !clazz.matcher(RiUtil.toJavaName(o.holder())).matches()) {
+        if (clazz != null && !clazz.matcher(MetaUtil.toJavaName(o.holder())).matches()) {
             return false;
         }
         if (signature != null) {
-            RiSignature sig = o.signature();
+            Signature sig = o.signature();
             if (sig.argumentCount(false) != signature.length) {
                 return false;
             }
             for (int i = 0; i < signature.length; i++) {
-                RiType type = sig.argumentTypeAt(i, null);
-                String javaName = RiUtil.toJavaName(type);
+                JavaType type = sig.argumentTypeAt(i, null);
+                String javaName = MetaUtil.toJavaName(type);
                 if (signature[i] != null && !signature[i].matcher(javaName).matches()) {
                     return false;
                 }

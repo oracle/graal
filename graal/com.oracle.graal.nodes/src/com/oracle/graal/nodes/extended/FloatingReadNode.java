@@ -60,7 +60,7 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        RiRuntime runtime = tool.runtime();
+        CodeCacheProvider runtime = tool.runtime();
         if (runtime != null && object() != null && object().isConstant() && object().kind() == Kind.Object) {
             if (this.location() == LocationNode.FINAL_LOCATION && location().getClass() == LocationNode.class) {
                 Object value = object().asConstant().asObject();

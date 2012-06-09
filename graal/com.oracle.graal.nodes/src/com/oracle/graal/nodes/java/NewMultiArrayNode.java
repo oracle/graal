@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.type.*;
 public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLowerable, TypeFeedbackProvider {
 
     @Input private final NodeInputList<ValueNode> dimensions;
-    private final RiResolvedType type;
+    private final ResolvedJavaType type;
 
     public ValueNode dimension(int index) {
         return dimensions.get(index);
@@ -54,7 +54,7 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLow
      * @param cpi the constant pool index for resolution
      * @param riConstantPool the constant pool for resolution
      */
-    public NewMultiArrayNode(RiResolvedType type, ValueNode[] dimensions) {
+    public NewMultiArrayNode(ResolvedJavaType type, ValueNode[] dimensions) {
         super(StampFactory.exactNonNull(type));
         this.type = type;
         this.dimensions = new NodeInputList<>(this, dimensions);
@@ -66,7 +66,7 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLow
         gen.visitNewMultiArray(this);
     }
 
-    public RiResolvedType type() {
+    public ResolvedJavaType type() {
         return type;
     }
 

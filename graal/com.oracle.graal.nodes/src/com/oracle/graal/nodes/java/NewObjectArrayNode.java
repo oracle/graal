@@ -33,20 +33,20 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class NewObjectArrayNode extends NewArrayNode implements LIRLowerable, Node.IterableNodeType {
 
-    private final RiResolvedType elementClass;
+    private final ResolvedJavaType elementClass;
 
     /**
      * Constructs a new NewObjectArrayNode.
      * @param elementClass the class of elements in this array
      * @param length the node producing the length of the array
      */
-    public NewObjectArrayNode(RiResolvedType elementClass, ValueNode length) {
+    public NewObjectArrayNode(ResolvedJavaType elementClass, ValueNode length) {
         super(StampFactory.exactNonNull(elementClass.arrayOf()), length);
         this.elementClass = elementClass;
     }
 
     @Override
-    public RiResolvedType elementType() {
+    public ResolvedJavaType elementType() {
         return elementClass;
     }
 

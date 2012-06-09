@@ -44,7 +44,7 @@ import com.oracle.graal.nodes.*;
  * depends upon the reachability of the keys.
  *
  * Therefore the graph cache is implemented in such a way that it stores its cache entries within the RiResolvedMethod.
- * It uses the {@link RiResolvedMethod#compilerStorage()} map with the HotSpotGraphCache instance as key.
+ * It uses the {@link ResolvedJavaMethod#compilerStorage()} map with the HotSpotGraphCache instance as key.
  * The cached graph will be kept alive as long as the RiResolvedMethod is alive, but does not prevent the method, and
  * therefore the class, from being unloaded.
  *
@@ -65,7 +65,7 @@ public class HotSpotGraphCache implements RiGraphCache {
      * An ordered hash map for looking up the methods corresponding to a specific graph id. It enforces the maximum
      * graph cache size by removing the oldest (in insertion-order) element if the cache gets too big.
      */
-    private final class LRUCache extends LinkedHashMap<Long, WeakReference<RiResolvedMethod>> {
+    private final class LRUCache extends LinkedHashMap<Long, WeakReference<ResolvedJavaMethod>> {
 
         private static final long serialVersionUID = -3973307040793397840L;
 
@@ -74,9 +74,9 @@ public class HotSpotGraphCache implements RiGraphCache {
         }
 
         @Override
-        protected boolean removeEldestEntry(Entry<Long, WeakReference<RiResolvedMethod>> eldest) {
+        protected boolean removeEldestEntry(Entry<Long, WeakReference<ResolvedJavaMethod>> eldest) {
             if (size() > GraalOptions.GraphCacheSize) {
-                RiResolvedMethod method = eldest.getValue().get();
+                ResolvedJavaMethod method = eldest.getValue().get();
                 if (method != null) {
                     StructuredGraph cachedGraph = (StructuredGraph) method.compilerStorage().get(HotSpotGraphCache.this);
                     if (cachedGraph != null && cachedGraph.graphId() == eldest.getKey()) {
@@ -90,7 +90,7 @@ public class HotSpotGraphCache implements RiGraphCache {
         }
     }
 
-    private final Map<Long, WeakReference<RiResolvedMethod>> cachedGraphIds = Collections.synchronizedMap(new LRUCache());
+    private final Map<Long, WeakReference<ResolvedJavaMethod>> cachedGraphIds = Collections.synchronizedMap(new LRUCache());
 
     public HotSpotGraphCache() {
         if (GraalOptions.PrintGraphCache) {
@@ -109,7 +109,7 @@ public class HotSpotGraphCache implements RiGraphCache {
     }
 
     @Override
-    public StructuredGraph get(RiResolvedMethod method) {
+    public StructuredGraph get(ResolvedJavaMethod method) {
         StructuredGraph result = (StructuredGraph) method.compilerStorage().get(this);
 
         if (GraalOptions.PrintGraphCache) {
@@ -135,8 +135,8 @@ public class HotSpotGraphCache implements RiGraphCache {
 
     public void clear() {
         synchronized (cachedGraphIds) {
-            for (WeakReference<RiResolvedMethod> ref : cachedGraphIds.values()) {
-                RiResolvedMethod method = ref.get();
+            for (WeakReference<ResolvedJavaMethod> ref : cachedGraphIds.values()) {
+                ResolvedJavaMethod method = ref.get();
                 if (method != null) {
                     method.compilerStorage().remove(this);
                 }
@@ -152,8 +152,8 @@ public class HotSpotGraphCache implements RiGraphCache {
 
     public void removeGraphs(long[] deoptedGraphs) {
         for (long graphId : deoptedGraphs) {
-            WeakReference<RiResolvedMethod> ref = cachedGraphIds.get(graphId);
-            RiResolvedMethod method = ref == null ? null : ref.get();
+            WeakReference<ResolvedJavaMethod> ref = cachedGraphIds.get(graphId);
+            ResolvedJavaMethod method = ref == null ? null : ref.get();
             if (method != null) {
                 StructuredGraph cachedGraph = (StructuredGraph) method.compilerStorage().get(this);
                 if (cachedGraph != null && cachedGraph.graphId() == graphId) {

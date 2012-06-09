@@ -26,7 +26,7 @@ package com.oracle.graal.api.meta;
  * Represents a resolved or unresolved type in the compiler-runtime interface. Types include primitives, objects, {@code void},
  * and arrays thereof.
  */
-public interface RiType {
+public interface JavaType {
 
     /**
      * Represents each of the several different parts of the runtime representation of
@@ -67,13 +67,13 @@ public interface RiType {
      * For array types, gets the type of the components.
      * @return the component type of this array type
      */
-    RiType componentType();
+    JavaType componentType();
 
     /**
      * Gets the type representing an array with elements of this type.
      * @return a new compiler interface type representing an array of this type
      */
-    RiType arrayOf();
+    JavaType arrayOf();
 
     /**
      * Gets the kind of this compiler interface type.
@@ -88,5 +88,5 @@ public interface RiType {
      */
     Kind getRepresentationKind(Representation r);
 
-    RiResolvedType resolve(RiResolvedType accessingClass);
+    ResolvedJavaType resolve(ResolvedJavaType accessingClass);
 }

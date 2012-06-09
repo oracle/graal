@@ -35,13 +35,13 @@ import com.oracle.graal.nodes.type.*;
 public final class UnsafeCastNode extends FloatingNode implements Canonicalizable, Lowerable {
 
     @Input private ValueNode object;
-    private RiResolvedType toType;
+    private ResolvedJavaType toType;
 
     public ValueNode object() {
         return object;
     }
 
-    public UnsafeCastNode(ValueNode object, RiResolvedType toType) {
+    public UnsafeCastNode(ValueNode object, ResolvedJavaType toType) {
         super(StampFactory.declared(toType, object.stamp().nonNull()));
         this.object = object;
         this.toType = toType;

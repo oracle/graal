@@ -29,22 +29,22 @@ import com.oracle.graal.api.meta.*;
  */
 public final class HotSpotMethodUnresolved extends HotSpotMethod {
     private static final long serialVersionUID = 5610263481791970079L;
-    private final RiSignature signature;
-    protected RiType holder;
+    private final Signature signature;
+    protected JavaType holder;
 
-    public HotSpotMethodUnresolved(String name, String signature, RiType holder) {
+    public HotSpotMethodUnresolved(String name, String signature, JavaType holder) {
         this.name = name;
         this.holder = holder;
         this.signature = new HotSpotSignature(signature);
     }
 
     @Override
-    public RiSignature signature() {
+    public Signature signature() {
         return signature;
     }
 
     @Override
-    public RiType holder() {
+    public JavaType holder() {
         return holder;
     }
 

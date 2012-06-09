@@ -36,8 +36,8 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
 
     @Input private ValueNode object;
     @Input private ValueNode targetClassInstruction;
-    private final RiResolvedType targetClass;
-    private final RiTypeProfile profile;
+    private final ResolvedJavaType targetClass;
+    private final JavaTypeProfile profile;
 
     /**
      * Constructs a new InstanceOfNode.
@@ -46,11 +46,11 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
      * @param targetClass the class which is the target of the instanceof check
      * @param object the instruction producing the object input to this instruction
      */
-    public InstanceOfNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object) {
+    public InstanceOfNode(ValueNode targetClassInstruction, ResolvedJavaType targetClass, ValueNode object) {
         this(targetClassInstruction, targetClass, object, null);
     }
 
-    public InstanceOfNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiTypeProfile profile) {
+    public InstanceOfNode(ValueNode targetClassInstruction, ResolvedJavaType targetClass, ValueNode object, JavaTypeProfile profile) {
         super(StampFactory.condition());
         this.targetClassInstruction = targetClassInstruction;
         this.targetClass = targetClass;
@@ -68,7 +68,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
         assert object() != null : this;
 
         ObjectStamp stamp = object().objectStamp();
-        RiResolvedType type = stamp.type();
+        ResolvedJavaType type = stamp.type();
 
         if (stamp.isExactType()) {
             boolean subType = type.isSubtypeOf(targetClass());
@@ -151,11 +151,11 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
      * Gets the target class, i.e. the class being cast to, or the class being tested against.
      * @return the target class
      */
-    public RiResolvedType targetClass() {
+    public ResolvedJavaType targetClass() {
         return targetClass;
     }
 
-    public RiTypeProfile profile() {
+    public JavaTypeProfile profile() {
         return profile;
     }
 }

@@ -24,15 +24,15 @@ package com.oracle.graal.hotspot.ri;
 
 import com.oracle.graal.api.meta.*;
 
-public interface HotSpotTypeResolved extends RiResolvedType {
+public interface HotSpotTypeResolved extends ResolvedJavaType {
 
     String toString();
 
-    RiConstantPool constantPool();
+    ConstantPool constantPool();
 
     int instanceSize();
 
-    RiField createRiField(String name, RiType type, int offset, int flags);
+    JavaField createRiField(String name, JavaType type, int offset, int flags);
 
     HotSpotKlassOop klassOop();
 }

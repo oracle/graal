@@ -579,7 +579,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             if (counters != null) {
                 incCounter(asm, counter, counters, CheckcastCounter.exception);
             }
-            RiDeoptReason deoptReason = exact ? RiDeoptReason.OptimizedTypeCheckViolated : RiDeoptReason.ClassCastException;
+            DeoptimizationReason deoptReason = exact ? DeoptimizationReason.OptimizedTypeCheckViolated : DeoptimizationReason.ClassCastException;
             XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
             asm.mov(scratch, wordConst(asm, compiler.getRuntime().encodeDeoptActionAndReason(CiDeoptAction.InvalidateReprofile, deoptReason)));
             asm.callRuntime(CiRuntimeCall.Deoptimize, null);
@@ -738,12 +738,12 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     };
 
     @Override
-    public XirSnippet genInvokeInterface(XirSite site, XirArgument receiver, RiMethod method) {
+    public XirSnippet genInvokeInterface(XirSite site, XirArgument receiver, JavaMethod method) {
         return new XirSnippet(invokeInterfaceTemplates.get(site), receiver, wordArg(0));
     }
 
     @Override
-    public XirSnippet genInvokeVirtual(XirSite site, XirArgument receiver, RiMethod method, boolean megamorph) {
+    public XirSnippet genInvokeVirtual(XirSite site, XirArgument receiver, JavaMethod method, boolean megamorph) {
         int vtableEntryOffset = 0;
 
         if (GraalOptions.InlineVTableStubs && (GraalOptions.AlwaysInlineVTableStubs || megamorph)) {
@@ -760,12 +760,12 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     }
 
     @Override
-    public XirSnippet genInvokeSpecial(XirSite site, XirArgument receiver, RiMethod method) {
+    public XirSnippet genInvokeSpecial(XirSite site, XirArgument receiver, JavaMethod method) {
         return new XirSnippet(invokeSpecialTemplates.get(site), receiver, wordArg(0));
     }
 
     @Override
-    public XirSnippet genInvokeStatic(XirSite site, RiMethod method) {
+    public XirSnippet genInvokeStatic(XirSite site, JavaMethod method) {
         return new XirSnippet(invokeStaticTemplates.get(site), wordArg(0));
     }
 
@@ -780,33 +780,33 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     }
 
     @Override
-    public XirSnippet genNewInstance(XirSite site, RiType type) {
+    public XirSnippet genNewInstance(XirSite site, JavaType type) {
         HotSpotTypeResolved resolvedType = (HotSpotTypeResolved) type;
         int instanceSize = resolvedType.instanceSize();
         return new XirSnippet(newInstanceTemplates.get(site, instanceSize), XirArgument.forObject(resolvedType.klassOop()));
     }
 
     @Override
-    public XirSnippet genNewArray(XirSite site, XirArgument length, Kind elementKind, RiType componentType, RiType arrayType) {
+    public XirSnippet genNewArray(XirSite site, XirArgument length, Kind elementKind, JavaType componentType, JavaType arrayType) {
         if (elementKind == Kind.Object) {
-            assert arrayType instanceof RiResolvedType;
+            assert arrayType instanceof ResolvedJavaType;
             return new XirSnippet(newObjectArrayTemplates.get(site), length, XirArgument.forObject(((HotSpotType) arrayType).klassOop()));
         } else {
             assert arrayType == null;
-            RiType primitiveArrayType = compiler.getCompilerToVM().getPrimitiveArrayType(elementKind);
+            JavaType primitiveArrayType = compiler.getCompilerToVM().getPrimitiveArrayType(elementKind);
             return new XirSnippet(newTypeArrayTemplates.get(site, elementKind), length, XirArgument.forObject(((HotSpotType) primitiveArrayType).klassOop()));
         }
     }
 
     @Override
-    public XirSnippet genNewMultiArray(XirSite site, XirArgument[] lengths, RiType type) {
+    public XirSnippet genNewMultiArray(XirSite site, XirArgument[] lengths, JavaType type) {
         XirArgument[] params = Arrays.copyOf(lengths, lengths.length + 1);
         params[lengths.length] = XirArgument.forObject(((HotSpotType) type).klassOop());
         return new XirSnippet(multiNewArrayTemplate.get(site, lengths.length), params);
     }
 
     @Override
-    public XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, RiResolvedType type, RiTypeProfile profile) {
+    public XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, ResolvedJavaType type, JavaTypeProfile profile) {
         final boolean useCounters = GraalOptions.CheckcastCounters;
         TypeCheckHints hints = new TypeCheckHints(type, profile, site.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
         int hintsLength = hints.types.length;
@@ -832,7 +832,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             if (!hints.exact) {
                 params[i++] = hub;
             }
-            for (RiResolvedType hint : hints.types) {
+            for (ResolvedJavaType hint : hints.types) {
                 params[i++] = XirArgument.forObject(((HotSpotType) hint).klassOop());
             }
             XirTemplate template = hints.exact ? checkCastTemplates.get(site, hintsLength, EXACT_HINTS) : checkCastTemplates.get(site, hintsLength);
@@ -841,7 +841,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     }
 
     @Override
-    public XirSnippet genInstanceOf(XirSite site, XirArgument object, XirArgument hub, RiResolvedType type, RiTypeProfile profile) {
+    public XirSnippet genInstanceOf(XirSite site, XirArgument object, XirArgument hub, ResolvedJavaType type, JavaTypeProfile profile) {
         TypeCheckHints hints = new TypeCheckHints(type, profile, site.assumptions(), GraalOptions.InstanceOfMinHintHitProbability, GraalOptions.InstanceOfMaxHints);
         int hintsLength = hints.types.length;
         if (hintsLength == 0) {
@@ -853,7 +853,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             if (!hints.exact) {
                 params[i++] = hub;
             }
-            for (RiResolvedType hint : hints.types) {
+            for (ResolvedJavaType hint : hints.types) {
                 params[i++] = XirArgument.forObject(((HotSpotType) hint).klassOop());
             }
             XirTemplate template = hints.exact ? instanceOfTemplates.get(site, hintsLength, EXACT_HINTS) : instanceOfTemplates.get(site, hintsLength);
@@ -862,7 +862,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     }
 
     @Override
-    public XirSnippet genMaterializeInstanceOf(XirSite site, XirArgument object, XirArgument hub, XirArgument trueValue, XirArgument falseValue, RiResolvedType type, RiTypeProfile profile) {
+    public XirSnippet genMaterializeInstanceOf(XirSite site, XirArgument object, XirArgument hub, XirArgument trueValue, XirArgument falseValue, ResolvedJavaType type, JavaTypeProfile profile) {
         TypeCheckHints hints = new TypeCheckHints(type, profile, site.assumptions(), GraalOptions.InstanceOfMinHintHitProbability, GraalOptions.InstanceOfMaxHints);
         int hintsLength = hints.types.length;
         if (hintsLength == 0) {
@@ -876,7 +876,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             }
             params[i++] = trueValue;
             params[i++] = falseValue;
-            for (RiResolvedType hint : hints.types) {
+            for (ResolvedJavaType hint : hints.types) {
                 params[i++] = XirArgument.forObject(((HotSpotType) hint).klassOop());
             }
             XirTemplate template = hints.exact ? materializeInstanceOfTemplates.get(site, hintsLength, EXACT_HINTS) : materializeInstanceOfTemplates.get(site, hintsLength);
@@ -885,8 +885,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     }
 
     @Override
-    public XirSnippet genTypeBranch(XirSite site, XirArgument thisHub, XirArgument otherHub, RiType type) {
-        assert type instanceof RiResolvedType;
+    public XirSnippet genTypeBranch(XirSite site, XirArgument thisHub, XirArgument otherHub, JavaType type) {
+        assert type instanceof ResolvedJavaType;
         return new XirSnippet(typeCheckTemplates.get(site), thisHub, otherHub);
     }
 

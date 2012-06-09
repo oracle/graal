@@ -292,8 +292,8 @@ public enum Kind {
                     } else {
                         return " \"" + s + '"';
                     }
-                } else if (value instanceof RiType) {
-                    return "class " + RiUtil.toJavaName((RiType) value);
+                } else if (value instanceof JavaType) {
+                    return "class " + MetaUtil.toJavaName((JavaType) value);
                 } else if (value instanceof Enum || value instanceof FormatWithToString) {
                     return String.valueOf(value);
                 } else if (value instanceof Class< ? >) {
@@ -301,7 +301,7 @@ public enum Kind {
                 } else if (value.getClass().isArray()) {
                     return formatArray(value);
                 } else {
-                    return RiUtil.getSimpleName(value.getClass(), true) + "@" + System.identityHashCode(value);
+                    return MetaUtil.getSimpleName(value.getClass(), true) + "@" + System.identityHashCode(value);
                 }
             }
         } else {
@@ -315,7 +315,7 @@ public enum Kind {
         Class< ? > componentType = array.getClass().getComponentType();
         assert componentType != null;
         int arrayLength = Array.getLength(array);
-        StringBuilder buf = new StringBuilder(RiUtil.getSimpleName(componentType, true)).
+        StringBuilder buf = new StringBuilder(MetaUtil.getSimpleName(componentType, true)).
                         append('[').
                         append(arrayLength).
                         append("]{");

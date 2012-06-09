@@ -25,9 +25,9 @@ package com.oracle.graal.api.code;
 import com.oracle.graal.api.meta.*;
 
 /**
- * An implementation of the {@link RiExceptionHandler} interface.
+ * An implementation of the {@link ExceptionHandler} interface.
  */
-public class CiExceptionHandler implements RiExceptionHandler {
+public class CiExceptionHandler implements ExceptionHandler {
 
     public static final CiExceptionHandler[] NONE = {};
 
@@ -35,7 +35,7 @@ public class CiExceptionHandler implements RiExceptionHandler {
     public final int endBCI;
     public final int handlerBCI;
     public final int catchTypeCPI;
-    public final RiType catchType;
+    public final JavaType catchType;
 
     /**
      * Creates a new exception handler with the specified ranges.
@@ -45,7 +45,7 @@ public class CiExceptionHandler implements RiExceptionHandler {
      * @param catchTypeCPI the index of the throwable class in the constant pool
      * @param catchType the type caught by this exception handler
      */
-    public CiExceptionHandler(int startBCI, int endBCI, int catchBCI, int catchTypeCPI, RiType catchType) {
+    public CiExceptionHandler(int startBCI, int endBCI, int catchBCI, int catchTypeCPI, JavaType catchType) {
         this.startBCI = startBCI;
         this.endBCI = endBCI;
         this.handlerBCI = catchBCI;
@@ -73,7 +73,7 @@ public class CiExceptionHandler implements RiExceptionHandler {
         return catchTypeCPI == 0;
     }
 
-    public RiType catchType() {
+    public JavaType catchType() {
         return catchType;
     }
 

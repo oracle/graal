@@ -36,7 +36,7 @@ public interface InstalledCode {
      * Returns the method to which the compiled code belongs.
      * @return the method to which the compiled code belongs.
      */
-    RiResolvedMethod method();
+    ResolvedJavaMethod method();
 
     /**
      * @return true if the code represented by this object is still valid, false otherwise (may happen due to deopt, etc.)

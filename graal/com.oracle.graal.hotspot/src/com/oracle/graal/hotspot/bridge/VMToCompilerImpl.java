@@ -223,7 +223,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     private void enqueue(Method m) throws Throwable {
-        RiMethod riMethod = compiler.getRuntime().getRiMethod(m);
+        JavaMethod riMethod = compiler.getRuntime().getResolvedJavaMethod(m);
         assert !Modifier.isAbstract(((HotSpotMethodResolved) riMethod).accessFlags()) && !Modifier.isNative(((HotSpotMethodResolved) riMethod).accessFlags()) : riMethod;
         compileMethod((HotSpotMethodResolved) riMethod, 0, false, 10);
     }
@@ -397,17 +397,17 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public RiMethod createRiMethodUnresolved(String name, String signature, RiType holder) {
+    public JavaMethod createRiMethodUnresolved(String name, String signature, JavaType holder) {
         return new HotSpotMethodUnresolved(name, signature, holder);
     }
 
     @Override
-    public RiSignature createRiSignature(String signature) {
+    public Signature createRiSignature(String signature) {
         return new HotSpotSignature(signature);
     }
 
     @Override
-    public RiField createRiField(RiType holder, String name, RiType type, int offset, int flags) {
+    public JavaField createRiField(JavaType holder, String name, JavaType type, int offset, int flags) {
         if (offset != -1) {
             HotSpotTypeResolved resolved = (HotSpotTypeResolved) holder;
             return resolved.createRiField(name, type, offset, flags);
@@ -416,12 +416,12 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public RiType createRiType(HotSpotConstantPool pool, String name) {
+    public JavaType createRiType(HotSpotConstantPool pool, String name) {
         throw new RuntimeException("not implemented");
     }
 
     @Override
-    public RiType createRiTypePrimitive(int basicType) {
+    public JavaType createRiTypePrimitive(int basicType) {
         switch (basicType) {
             case 4:
                 return typeBoolean;
@@ -447,7 +447,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public RiType createRiTypeUnresolved(String name) {
+    public JavaType createRiTypeUnresolved(String name) {
         return new HotSpotTypeUnresolved(name);
     }
 

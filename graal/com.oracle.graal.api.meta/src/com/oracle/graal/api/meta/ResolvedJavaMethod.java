@@ -27,11 +27,10 @@ import java.lang.reflect.*;
 import java.util.*;
 
 /**
- * Represents resolved methods. Methods, like fields and types, are resolved through
- * {@link RiConstantPool constant pools}, and their actual implementation is provided by the {@link RiRuntime runtime}
- * to the compiler.
+ * Represents resolved Java methods. Methods, like fields and types, are resolved through
+ * {@link ConstantPool constant pools}.
  */
-public interface RiResolvedMethod extends RiMethod {
+public interface ResolvedJavaMethod extends JavaMethod {
 
     /**
      * Gets the bytecode of the method, if the method {@linkplain #isResolved()} and has code.
@@ -67,7 +66,7 @@ public interface RiResolvedMethod extends RiMethod {
      * Gets the type in which this method is declared.
      * @return the type in which this method is declared
      */
-    RiResolvedType holder();
+    ResolvedJavaType holder();
 
     /**
      * Gets the maximum number of locals used in this method's bytecode.
@@ -136,7 +135,7 @@ public interface RiResolvedMethod extends RiMethod {
      * Gets the list of exception handlers for this method.
      * @return the list of exception handlers
      */
-    RiExceptionHandler[] exceptionHandlers();
+    ExceptionHandler[] exceptionHandlers();
 
     /**
      * Gets a stack trace element for this method and a given bytecode index.
@@ -147,7 +146,7 @@ public interface RiResolvedMethod extends RiMethod {
      * Temporary work-around to support the @ACCESSOR Maxine annotation.
      * Non-Maxine VMs should just return {@code null}.
      */
-    RiResolvedType accessor();
+    ResolvedJavaType accessor();
 
     /**
      * Gets the intrinsic id of this method.
@@ -164,7 +163,7 @@ public interface RiResolvedMethod extends RiMethod {
      * Returns an object that provides access to the method's profiling information.
      * @return The profiling information recorded for this method.
      */
-    RiProfilingInfo profilingInfo();
+    ProfilingInfo profilingInfo();
 
     /**
      * Returns a map that the compiler can use to store objects that should survive the current compilation.
@@ -175,7 +174,7 @@ public interface RiResolvedMethod extends RiMethod {
      * Returns a pointer to the method's constant pool.
      * @return the constant pool
      */
-    RiConstantPool getConstantPool();
+    ConstantPool getConstantPool();
 
     /**
      * Returns this method's annotation of a specified type.
@@ -190,7 +189,7 @@ public interface RiResolvedMethod extends RiMethod {
      * parameters, in declaration order, of this method.
      *
      * @see Method#getParameterAnnotations()
-     * @see CiUtil#getParameterAnnotation(int, RiResolvedMethod)
+     * @see CiUtil#getParameterAnnotation(int, JavaResolvedMethod)
      */
     Annotation[][] getParameterAnnotations();
 

@@ -98,7 +98,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    public AMD64LIRGenerator(Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions) {
+    public AMD64LIRGenerator(Graph graph, CodeCacheProvider runtime, CiTarget target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions) {
         super(graph, runtime, target, frameMap, method, lir, xir, assumptions);
         lir.spillMoveFactory = new AMD64SpillMoveFactory();
     }
@@ -519,7 +519,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public void emitDeoptimizeOnOverflow(CiDeoptAction action, RiDeoptReason reason, Object deoptInfo) {
+    public void emitDeoptimizeOnOverflow(CiDeoptAction action, DeoptimizationReason reason, Object deoptInfo) {
         LIRDebugInfo info = state();
         LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
         append(new BranchOp(ConditionFlag.overflow, stubEntry, info));
@@ -527,7 +527,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public void emitDeoptimize(CiDeoptAction action, RiDeoptReason reason, Object deoptInfo, long leafGraphId) {
+    public void emitDeoptimize(CiDeoptAction action, DeoptimizationReason reason, Object deoptInfo, long leafGraphId) {
         LIRDebugInfo info = state(leafGraphId);
         LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
         append(new JumpOp(stubEntry, info));
@@ -570,7 +570,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected LabelRef createDeoptStub(CiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo) {
+    protected LabelRef createDeoptStub(CiDeoptAction action, DeoptimizationReason reason, LIRDebugInfo info, Object deoptInfo) {
         assert info.topFrame.bci >= 0 : "invalid bci for deopt framestate";
         AMD64DeoptimizationStub stub = new AMD64DeoptimizationStub(action, reason, info, deoptInfo);
         lir.stubs.add(stub);

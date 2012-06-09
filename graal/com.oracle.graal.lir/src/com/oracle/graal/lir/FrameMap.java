@@ -71,16 +71,16 @@ import com.oracle.max.asm.*;
  * of such a block may be greater than the size of a normal spill slot or the word size.
  * <br>
  * A runtime has two ways to reserve space in the stack frame for its own use: <ul>
- * <li>A memory block somewhere in the frame of size {@link RiRuntime#getCustomStackAreaSize()}. The offset
+ * <li>A memory block somewhere in the frame of size {@link CodeCacheProvider#getCustomStackAreaSize()}. The offset
  *     to this block is returned in {@link CiTargetMethod#customStackAreaOffset()}.
  * <li>At the beginning of the overflow argument area: The calling convention can specify that the first
  *     overflow stack argument is not at offset 0, but at a specified offset o. Use
- *     {@link RiRuntime#getMinimumOutgoingSize()} to make sure that call-free methods also have this space
+ *     {@link CodeCacheProvider#getMinimumOutgoingSize()} to make sure that call-free methods also have this space
  *     reserved. Then the VM can use memory the memory at offset 0 relative to the stack pointer.
  * </ul>
  */
 public final class FrameMap {
-    public final RiRuntime runtime;
+    public final CodeCacheProvider runtime;
     public final CiTarget target;
     public final CiRegisterConfig registerConfig;
 
@@ -125,7 +125,7 @@ public final class FrameMap {
     /**
      * Creates a new frame map for the specified method.
      */
-    public FrameMap(RiRuntime runtime, CiTarget target, CiRegisterConfig registerConfig) {
+    public FrameMap(CodeCacheProvider runtime, CiTarget target, CiRegisterConfig registerConfig) {
         this.runtime = runtime;
         this.target = target;
         this.registerConfig = registerConfig;

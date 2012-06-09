@@ -41,25 +41,25 @@ public interface CompilerToVM {
 
     String RiMethod_signature(HotSpotMethodResolved method);
 
-    RiExceptionHandler[] RiMethod_exceptionHandlers(HotSpotMethodResolved method);
+    ExceptionHandler[] RiMethod_exceptionHandlers(HotSpotMethodResolved method);
 
     boolean RiMethod_hasBalancedMonitors(HotSpotMethodResolved method);
 
-    RiMethod RiMethod_uniqueConcreteMethod(HotSpotMethodResolved method);
+    JavaMethod RiMethod_uniqueConcreteMethod(HotSpotMethodResolved method);
 
     int RiMethod_invocationCount(HotSpotMethodResolved method);
 
     HotSpotMethodData RiMethod_methodData(HotSpotMethodResolved method);
 
-    RiType RiSignature_lookupType(String returnType, HotSpotTypeResolved accessingClass, boolean eagerResolve);
+    JavaType RiSignature_lookupType(String returnType, HotSpotTypeResolved accessingClass, boolean eagerResolve);
 
     Object RiConstantPool_lookupConstant(HotSpotTypeResolved pool, int cpi);
 
-    RiMethod RiConstantPool_lookupMethod(HotSpotTypeResolved pool, int cpi, byte byteCode);
+    JavaMethod RiConstantPool_lookupMethod(HotSpotTypeResolved pool, int cpi, byte byteCode);
 
-    RiType RiConstantPool_lookupType(HotSpotTypeResolved pool, int cpi);
+    JavaType RiConstantPool_lookupType(HotSpotTypeResolved pool, int cpi);
 
-    RiField RiConstantPool_lookupField(HotSpotTypeResolved pool, int cpi, byte byteCode);
+    JavaField RiConstantPool_lookupField(HotSpotTypeResolved pool, int cpi, byte byteCode);
 
     void RiConstantPool_loadReferencedType(HotSpotTypeResolved pool, int cpi, byte byteCode);
 
@@ -67,39 +67,39 @@ public interface CompilerToVM {
 
     HotSpotVMConfig getConfiguration();
 
-    RiMethod RiType_resolveMethodImpl(HotSpotTypeResolved klass, String name, String signature);
+    JavaMethod RiType_resolveMethodImpl(HotSpotTypeResolved klass, String name, String signature);
 
-    boolean RiType_isSubtypeOf(HotSpotTypeResolved klass, RiType other);
+    boolean RiType_isSubtypeOf(HotSpotTypeResolved klass, JavaType other);
 
-    RiType RiType_leastCommonAncestor(HotSpotTypeResolved thisType, HotSpotTypeResolved otherType);
+    JavaType RiType_leastCommonAncestor(HotSpotTypeResolved thisType, HotSpotTypeResolved otherType);
 
-    RiType getPrimitiveArrayType(Kind kind);
+    JavaType getPrimitiveArrayType(Kind kind);
 
-    RiType RiType_arrayOf(HotSpotTypeResolved klass);
+    JavaType RiType_arrayOf(HotSpotTypeResolved klass);
 
-    RiType RiType_componentType(HotSpotTypeResolved klass);
+    JavaType RiType_componentType(HotSpotTypeResolved klass);
 
     boolean RiType_isInitialized(HotSpotTypeResolved klass);
 
-    RiType getType(Class<?> javaClass);
+    JavaType getType(Class<?> javaClass);
 
-    RiType RiType_uniqueConcreteSubtype(HotSpotTypeResolved klass);
+    JavaType RiType_uniqueConcreteSubtype(HotSpotTypeResolved klass);
 
-    RiType RiType_superType(HotSpotTypeResolved klass);
+    JavaType RiType_superType(HotSpotTypeResolved klass);
 
     int getArrayLength(Constant array);
 
     boolean compareConstantObjects(Constant x, Constant y);
 
-    RiType getRiType(Constant constant);
+    JavaType getRiType(Constant constant);
 
-    RiResolvedField[] RiType_fields(HotSpotTypeResolved klass);
+    ResolvedJavaField[] RiType_fields(HotSpotTypeResolved klass);
 
     boolean RiMethod_hasCompiledCode(HotSpotMethodResolved method);
 
     int RiMethod_getCompiledCodeSize(HotSpotMethodResolved method);
 
-    RiMethod getRiMethod(Method reflectionMethod);
+    JavaMethod getRiMethod(Method reflectionMethod);
 
     long getMaxCallTargetOffset(CiRuntimeCall rtcall);
 

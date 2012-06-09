@@ -26,5 +26,5 @@ import com.oracle.graal.api.meta.*;
 
 
 public interface CompilationQueue {
-    boolean enqueue(final RiResolvedMethod method, final int entryBCI, boolean blocking, int priority) throws Throwable;
+    boolean enqueue(final ResolvedJavaMethod method, final int entryBCI, boolean blocking, int priority) throws Throwable;
 }

@@ -51,12 +51,12 @@ import com.oracle.max.cri.xir.*;
 
 public class HotSpotAMD64Backend extends Backend {
 
-    public HotSpotAMD64Backend(RiRuntime runtime, CiTarget target) {
+    public HotSpotAMD64Backend(CodeCacheProvider runtime, CiTarget target) {
         super(runtime, target);
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions) {
+    public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions) {
         return new AMD64LIRGenerator(graph, runtime, target, frameMap, method, lir, xir, assumptions) {
 
             @Override
@@ -175,7 +175,7 @@ public class HotSpotAMD64Backend extends Backend {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, RiResolvedMethod method, LIR lir) {
+    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIR lir) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
         FrameMap frameMap = tasm.frameMap;
         CiRegisterConfig regConfig = frameMap.registerConfig;

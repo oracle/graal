@@ -79,8 +79,8 @@ public abstract class LIRGeneratorTool {
 
     public abstract Value emitConvert(ConvertNode.Op opcode, Value inputVal);
     public abstract void emitMembar(int barriers);
-    public abstract void emitDeoptimizeOnOverflow(CiDeoptAction action, RiDeoptReason reason, Object deoptInfo);
-    public abstract void emitDeoptimize(CiDeoptAction action, RiDeoptReason reason, Object deoptInfo, long leafGraphId);
+    public abstract void emitDeoptimizeOnOverflow(CiDeoptAction action, DeoptimizationReason reason, Object deoptInfo);
+    public abstract void emitDeoptimize(CiDeoptAction action, DeoptimizationReason reason, Object deoptInfo, long leafGraphId);
     public abstract Value emitCall(Object target, Kind result, Kind[] arguments, boolean canTrap, Value... args);
     public final Value emitCall(CiRuntimeCall runtimeCall, boolean canTrap, Value... args) {
         return emitCall(runtimeCall, runtimeCall.resultKind, runtimeCall.arguments, canTrap, args);
@@ -88,7 +88,7 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitIf(IfNode i);
     public abstract void emitConditional(ConditionalNode i);
-    public abstract void emitGuardCheck(BooleanNode comp, RiDeoptReason deoptReason, CiDeoptAction deoptAction, boolean negated, long leafGraphId);
+    public abstract void emitGuardCheck(BooleanNode comp, DeoptimizationReason deoptReason, CiDeoptAction deoptAction, boolean negated, long leafGraphId);
 
     public abstract void emitLookupSwitch(LookupSwitchNode i);
     public abstract void emitTableSwitch(TableSwitchNode i);

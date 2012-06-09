@@ -171,14 +171,14 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
-    public static final Map<RiMethod, Integer> parsedMethods = new HashMap<>();
+    public static final Map<JavaMethod, Integer> parsedMethods = new HashMap<>();
 
 
 
     private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
 
     @Override
-    public StructuredGraph buildGraph(final RiResolvedMethod method) {
+    public StructuredGraph buildGraph(final ResolvedJavaMethod method) {
         final StructuredGraph newGraph = new StructuredGraph(method);
 
         return Debug.scope("buildInlineGraph", this, new Callable<StructuredGraph>() {
@@ -220,7 +220,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     }
 
     @Override
-    public double inliningWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke) {
+    public double inliningWeight(ResolvedJavaMethod caller, ResolvedJavaMethod method, Invoke invoke) {
         boolean preferred = hints != null && hints.contains(invoke);
         return weightComputationPolicy.computeWeight(caller, method, invoke, preferred);
     }
@@ -245,12 +245,12 @@ public class InliningPhase extends Phase implements InliningCallback {
 
 
     @Override
-    public void recordConcreteMethodAssumption(RiResolvedMethod method, RiResolvedType context, RiResolvedMethod impl) {
+    public void recordConcreteMethodAssumption(ResolvedJavaMethod method, ResolvedJavaType context, ResolvedJavaMethod impl) {
         assumptions.recordConcreteMethod(method, context, impl);
     }
 
     @Override
-    public void recordMethodContentsAssumption(RiResolvedMethod method) {
+    public void recordMethodContentsAssumption(ResolvedJavaMethod method) {
         if (assumptions != null) {
             assumptions.recordMethodContents(method);
         }
@@ -363,7 +363,7 @@ public class InliningPhase extends Phase implements InliningCallback {
 
             double maxSize = GraalOptions.MaximumGreedyInlineSize;
             if (GraalOptions.InliningBonusPerTransferredValue != 0) {
-                RiSignature signature = info.invoke.callTarget().targetMethod().signature();
+                Signature signature = info.invoke.callTarget().targetMethod().signature();
                 int transferredValues = signature.argumentCount(!Modifier.isStatic(info.invoke.callTarget().targetMethod().accessFlags()));
                 if (signature.returnKind() != Kind.Void) {
                     transferredValues++;
@@ -398,12 +398,12 @@ public class InliningPhase extends Phase implements InliningCallback {
 
 
     private interface WeightComputationPolicy {
-        double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke);
+        double computeWeight(ResolvedJavaMethod caller, ResolvedJavaMethod method, Invoke invoke, boolean preferredInvoke);
     }
 
     private static class BytecodeSizeBasedWeightComputationPolicy implements WeightComputationPolicy {
         @Override
-        public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
+        public double computeWeight(ResolvedJavaMethod caller, ResolvedJavaMethod method, Invoke invoke, boolean preferredInvoke) {
             double codeSize = method.codeSize();
             if (preferredInvoke) {
                 codeSize = codeSize / GraalOptions.BoostInliningForEscapeAnalysis;
@@ -414,7 +414,7 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     private static class ComplexityBasedWeightComputationPolicy implements WeightComputationPolicy {
         @Override
-        public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
+        public double computeWeight(ResolvedJavaMethod caller, ResolvedJavaMethod method, Invoke invoke, boolean preferredInvoke) {
             double complexity = method.compilationComplexity();
             if (preferredInvoke) {
                 complexity = complexity / GraalOptions.BoostInliningForEscapeAnalysis;

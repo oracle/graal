@@ -36,7 +36,7 @@ public final class BoxNode extends AbstractStateSplit implements StateSplit, Nod
     private int bci;
     private Kind sourceKind;
 
-    public BoxNode(ValueNode value, RiResolvedType type, Kind sourceKind, int bci) {
+    public BoxNode(ValueNode value, ResolvedJavaType type, Kind sourceKind, int bci) {
         super(StampFactory.exactNonNull(type));
         this.source = value;
         this.bci = bci;
@@ -54,7 +54,7 @@ public final class BoxNode extends AbstractStateSplit implements StateSplit, Nod
     }
 
     public void expand(BoxingMethodPool pool) {
-        RiResolvedMethod boxingMethod = pool.getBoxingMethod(sourceKind);
+        ResolvedJavaMethod boxingMethod = pool.getBoxingMethod(sourceKind);
         MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(InvokeKind.Static, boxingMethod, new ValueNode[]{source}, boxingMethod.signature().returnType(boxingMethod.holder())));
         InvokeNode invokeNode = graph().add(new InvokeNode(callTarget, bci, -1));
         invokeNode.setProbability(this.probability());

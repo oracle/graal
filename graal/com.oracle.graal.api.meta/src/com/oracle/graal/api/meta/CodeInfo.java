@@ -42,5 +42,5 @@ public interface CodeInfo {
     /**
      * Gets the method (if any) from which this installed code was compiled.
      */
-    RiResolvedMethod method();
+    ResolvedJavaMethod method();
 }

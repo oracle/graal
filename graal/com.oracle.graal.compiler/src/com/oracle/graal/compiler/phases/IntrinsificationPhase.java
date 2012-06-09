@@ -47,18 +47,18 @@ public class IntrinsificationPhase extends Phase {
         }
     }
 
-    public static boolean canIntrinsify(Invoke invoke, RiResolvedMethod target, ExtendedRiRuntime runtime) {
+    public static boolean canIntrinsify(Invoke invoke, ResolvedJavaMethod target, ExtendedRiRuntime runtime) {
         return getIntrinsicGraph(invoke, target, runtime) != null;
     }
 
     private static void tryIntrinsify(Invoke invoke, ExtendedRiRuntime runtime) {
-        RiResolvedMethod target = invoke.callTarget().targetMethod();
+        ResolvedJavaMethod target = invoke.callTarget().targetMethod();
         if (target != null) {
             tryIntrinsify(invoke, target, runtime);
         }
     }
 
-    private static void tryIntrinsify(Invoke invoke, RiResolvedMethod target, ExtendedRiRuntime runtime) {
+    private static void tryIntrinsify(Invoke invoke, ResolvedJavaMethod target, ExtendedRiRuntime runtime) {
         StructuredGraph intrinsicGraph = getIntrinsicGraph(invoke, target, runtime);
         if (intrinsicGraph != null) {
             Debug.log(" > Intrinsify %s", target);
@@ -66,7 +66,7 @@ public class IntrinsificationPhase extends Phase {
         }
     }
 
-    private static StructuredGraph getIntrinsicGraph(Invoke invoke, RiResolvedMethod target, ExtendedRiRuntime runtime) {
+    private static StructuredGraph getIntrinsicGraph(Invoke invoke, ResolvedJavaMethod target, ExtendedRiRuntime runtime) {
         StructuredGraph intrinsicGraph = (StructuredGraph) target.compilerStorage().get(Graph.class);
         if (intrinsicGraph == null) {
             // TODO remove once all intrinsics are available via compilerStorage

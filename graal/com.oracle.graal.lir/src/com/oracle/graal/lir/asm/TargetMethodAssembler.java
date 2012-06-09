@@ -49,7 +49,7 @@ public class TargetMethodAssembler {
     public final AbstractAssembler asm;
     public final CiTargetMethod targetMethod;
     public final CiTarget target;
-    public final RiRuntime runtime;
+    public final CodeCacheProvider runtime;
     public final FrameMap frameMap;
 
     /**
@@ -66,7 +66,7 @@ public class TargetMethodAssembler {
     private List<ExceptionInfo> exceptionInfoList;
     private int lastSafepointPos;
 
-    public TargetMethodAssembler(CiTarget target, RiRuntime runtime, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext, List<Code> stubs) {
+    public TargetMethodAssembler(CiTarget target, CodeCacheProvider runtime, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext, List<Code> stubs) {
         this.target = target;
         this.runtime = runtime;
         this.frameMap = frameMap;

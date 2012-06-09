@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, LIRLowerable, Node.IterableNodeType, Negatable {
 
     @Input private BooleanNode condition;
-    private final RiDeoptReason deoptReason;
+    private final DeoptimizationReason deoptReason;
     private final CiDeoptAction action;
     private boolean negated;
     private final long leafGraphId;
@@ -46,11 +46,11 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
         condition = x;
     }
 
-    public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, long leafGraphId) {
+    public FixedGuardNode(BooleanNode condition, DeoptimizationReason deoptReason, CiDeoptAction action, long leafGraphId) {
         this(condition, deoptReason, action, false, leafGraphId);
     }
 
-    public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
+    public FixedGuardNode(BooleanNode condition, DeoptimizationReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
         super(StampFactory.forVoid());
         this.action = action;
         this.negated = negated;

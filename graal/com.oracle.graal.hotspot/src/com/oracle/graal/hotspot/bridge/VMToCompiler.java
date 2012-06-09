@@ -45,17 +45,17 @@ public interface VMToCompiler {
 
     PrintStream log();
 
-    RiMethod createRiMethodUnresolved(String name, String signature, RiType holder);
+    JavaMethod createRiMethodUnresolved(String name, String signature, JavaType holder);
 
-    RiSignature createRiSignature(String signature);
+    Signature createRiSignature(String signature);
 
-    RiField createRiField(RiType holder, String name, RiType type, int offset, int flags);
+    JavaField createRiField(JavaType holder, String name, JavaType type, int offset, int flags);
 
-    RiType createRiType(HotSpotConstantPool pool, String name);
+    JavaType createRiType(HotSpotConstantPool pool, String name);
 
-    RiType createRiTypePrimitive(int basicType);
+    JavaType createRiTypePrimitive(int basicType);
 
-    RiType createRiTypeUnresolved(String name);
+    JavaType createRiTypeUnresolved(String name);
 
     Constant createCiConstant(Kind kind, long value);
 

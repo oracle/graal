@@ -30,8 +30,8 @@ public interface CiLoweringTool {
     ExtendedRiRuntime getRuntime();
     ValueNode getGuardAnchor();
     ValueNode createNullCheckGuard(ValueNode object, long leafGraphId);
-    ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, long leafGraphId);
-    ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId);
+    ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, CiDeoptAction action, long leafGraphId);
+    ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId);
     CiAssumptions assumptions();
 }
 

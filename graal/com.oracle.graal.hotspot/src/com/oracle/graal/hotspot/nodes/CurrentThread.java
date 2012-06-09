@@ -33,8 +33,8 @@ public final class CurrentThread extends FloatingNode implements LIRLowerable {
 
     private int threadObjectOffset;
 
-    public CurrentThread(int threadObjectOffset, RiRuntime runtime) {
-        super(StampFactory.declaredNonNull(runtime.getType(Thread.class)));
+    public CurrentThread(int threadObjectOffset, CodeCacheProvider runtime) {
+        super(StampFactory.declaredNonNull(runtime.getResolvedJavaType(Thread.class)));
         this.threadObjectOffset = threadObjectOffset;
     }
 

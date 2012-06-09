@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,93 @@
  */
 package com.oracle.graal.api.code;
 
+import com.oracle.graal.api.meta.*;
 
-public interface CodeCacheProvider {
+/**
+ * Encapsulates the main functionality of the runtime for the compiler, including access
+ * to constant pools, OSR frames, inlining requirements, and runtime calls such as checkcast.
+s */
+public interface CodeCacheProvider extends MetaAccessProvider {
 
+    /**
+     * Get the size in bytes for locking information on the stack.
+     */
+    int sizeOfLockData();
+
+    /**
+     * Returns a disassembly of the given installed code.
+     *
+     * @param code the code that should be disassembled
+     * @return a disassembly. This will be of length 0 if the runtime does not support disassembling.
+     */
+    String disassemble(CodeInfo code, CiTargetMethod tm);
+
+    /**
+     * Returns the disassembly of the given method in a {@code javap}-like format.
+     *
+     * @param method the method that should be disassembled
+     * @return the disassembly. This will be of length 0 if the runtime does not support disassembling.
+     */
+    String disassemble(ResolvedJavaMethod method);
+
+    /**
+     * Gets the register configuration to use when compiling a given method.
+     *
+     * @param method the top level method of a compilation
+     */
+    CiRegisterConfig getRegisterConfig(JavaMethod method);
+
+    CiRegisterConfig getGlobalStubRegisterConfig();
+
+    /**
+     * Custom area on the stack of each compiled method that the VM can use for its own purposes.
+     * @return the size of the custom area in bytes
+     */
+    int getCustomStackAreaSize();
+
+    /**
+     * Minimum size of the stack area reserved for outgoing parameters. This area is reserved in all cases, even when
+     * the compiled method has no regular call instructions.
+     * @return the minimum size of the outgoing parameter area in bytes
+     */
+    int getMinimumOutgoingSize();
+
+    /**
+     * Performs any runtime-specific conversion on the object used to describe the target of a call.
+     */
+    Object asCallTarget(Object target);
+
+    /**
+     * Returns the maximum absolute offset of a runtime call target from any position in the code cache or -1
+     * when not known or not applicable. Intended for determining the required size of address/offset fields.
+     */
+    long getMaxCallTargetOffset(CiRuntimeCall rtcall);
+
+    /**
+     * Adds the given machine code as an implementation of the given method without making it the default implementation.
+     * @param method a method to which the executable code is begin added
+     * @param code the code to be added
+     * @param info the object into which details of the installed code will be written.
+     *        Ignored if null, otherwise the info is written to index 0 of this array.
+     * @return a reference to the compiled and ready-to-run code
+     */
+    InstalledCode addMethod(ResolvedJavaMethod method, CiTargetMethod code, CodeInfo[] info);
+
+    /**
+     * Encodes a deoptimization action and a deoptimization reason in an integer value.
+     * @return the encoded value as an integer
+     */
+    int encodeDeoptActionAndReason(CiDeoptAction action, DeoptimizationReason reason);
+
+    /**
+     * Converts a RiDeoptReason into an integer value.
+     * @return An integer value representing the given RiDeoptReason.
+     */
+    int convertDeoptReason(DeoptimizationReason reason);
+
+    /**
+     * Converts a RiDeoptAction into an integer value.
+     * @return An integer value representing the given RiDeoptAction.
+     */
+    int convertDeoptAction(CiDeoptAction action);
 }

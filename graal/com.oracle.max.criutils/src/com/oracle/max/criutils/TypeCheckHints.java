@@ -27,7 +27,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.RiTypeProfile.*;
+import com.oracle.graal.api.meta.JavaTypeProfile.*;
 
 /**
  * Utility for deriving hint types for a type check instruction (e.g. checkcast or instanceof)
@@ -35,7 +35,7 @@ import com.oracle.graal.api.meta.RiTypeProfile.*;
  */
 public class TypeCheckHints {
 
-    private static final RiResolvedType[] NO_TYPES = {};
+    private static final ResolvedJavaType[] NO_TYPES = {};
 
     /**
      * If true, then {@link #types} contains the only possible type that could pass the type check
@@ -46,7 +46,7 @@ public class TypeCheckHints {
     /**
      * The most likely types that the type check instruction will see.
      */
-    public final RiResolvedType[] types;
+    public final ResolvedJavaType[] types;
 
     /**
      * Derives hint information for use when generating the code for a type check instruction.
@@ -58,14 +58,14 @@ public class TypeCheckHints {
      *            {@code maxHints}) is below this value, then {@link #types} will be null
      * @param maxHints the maximum length of {@link #types}
      */
-    public TypeCheckHints(RiResolvedType type, RiTypeProfile profile, CiAssumptions assumptions, double minHintHitProbability, int maxHints) {
+    public TypeCheckHints(ResolvedJavaType type, JavaTypeProfile profile, CiAssumptions assumptions, double minHintHitProbability, int maxHints) {
         if (type != null && isFinalClass(type)) {
-            types = new RiResolvedType[] {type};
+            types = new ResolvedJavaType[] {type};
             exact = true;
         } else {
-            RiResolvedType uniqueSubtype = type == null ? null : type.uniqueConcreteSubtype();
+            ResolvedJavaType uniqueSubtype = type == null ? null : type.uniqueConcreteSubtype();
             if (uniqueSubtype != null) {
-                types = new RiResolvedType[] {uniqueSubtype};
+                types = new ResolvedJavaType[] {uniqueSubtype};
                 if (assumptions != null) {
                     assumptions.recordConcreteSubtype(type, uniqueSubtype);
                     exact = true;
@@ -74,17 +74,17 @@ public class TypeCheckHints {
                 }
             } else {
                 exact = false;
-                RiResolvedType[] hintTypes = NO_TYPES;
-                RiTypeProfile typeProfile = profile;
+                ResolvedJavaType[] hintTypes = NO_TYPES;
+                JavaTypeProfile typeProfile = profile;
                 if (typeProfile != null) {
                     double notRecordedTypes = typeProfile.getNotRecordedProbability();
                     ProfiledType[] ptypes = typeProfile.getTypes();
                     if (notRecordedTypes < (1D - minHintHitProbability) && ptypes != null && ptypes.length > 0) {
-                        hintTypes = new RiResolvedType[ptypes.length];
+                        hintTypes = new ResolvedJavaType[ptypes.length];
                         int hintCount = 0;
                         double totalHintProbability = 0.0d;
                         for (ProfiledType ptype : ptypes) {
-                            RiResolvedType hint = ptype.type;
+                            ResolvedJavaType hint = ptype.type;
                             if (type != null && hint.isSubtypeOf(type)) {
                                 hintTypes[hintCount++] = hint;
                                 totalHintProbability += ptype.probability;
@@ -105,7 +105,7 @@ public class TypeCheckHints {
         }
     }
 
-    public static boolean isFinalClass(RiResolvedType type) {
+    public static boolean isFinalClass(ResolvedJavaType type) {
         return Modifier.isFinal(type.accessFlags()) || (type.isArrayClass() && Modifier.isFinal(type.componentType().accessFlags()));
     }
 }

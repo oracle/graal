@@ -40,14 +40,14 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
      * @param object the receiver object
      * @param field the compiler interface field
      */
-    public LoadFieldNode(ValueNode object, RiResolvedField field, long leafGraphId) {
+    public LoadFieldNode(ValueNode object, ResolvedJavaField field, long leafGraphId) {
         super(createStamp(field), object, field, leafGraphId);
     }
 
-    private static Stamp createStamp(RiResolvedField field) {
+    private static Stamp createStamp(ResolvedJavaField field) {
         Kind kind = field.kind();
-        if (kind == Kind.Object && field.type() instanceof RiResolvedType) {
-            return StampFactory.declared((RiResolvedType) field.type());
+        if (kind == Kind.Object && field.type() instanceof ResolvedJavaType) {
+            return StampFactory.declared((ResolvedJavaType) field.type());
         } else {
             return StampFactory.forKind(kind);
         }
@@ -55,7 +55,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        RiRuntime runtime = tool.runtime();
+        CodeCacheProvider runtime = tool.runtime();
         if (runtime != null) {
             Constant constant = null;
             if (isStatic()) {

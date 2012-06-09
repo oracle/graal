@@ -26,11 +26,10 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 /**
- * Represents a reference to a resolved field. Fields, like methods and types, are
- * resolved through {@link RiConstantPool constant pools}, and their actual implementation is provided by the
- * {@link RiRuntime runtime} to the compiler.
+ * Represents a reference to a resolved Java field. Fields, like methods and types, are
+ * resolved through {@link ConstantPool constant pools}.
  */
-public interface RiResolvedField extends RiField {
+public interface ResolvedJavaField extends JavaField {
 
     /**
      * Gets the access flags for this field. Only the flags specified in the JVM specification
@@ -51,7 +50,7 @@ public interface RiResolvedField extends RiField {
      * Gets the holder of this field as a compiler-runtime interface type.
      * @return the holder of this field
      */
-    RiResolvedType holder();
+    ResolvedJavaType holder();
 
     /**
      * Returns this field's annotation of a specified type.

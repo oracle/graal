@@ -30,7 +30,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.java.bytecode.*;
 import com.oracle.graal.nodes.*;
 
@@ -91,10 +90,10 @@ public final class BciBlockMapping {
         public Block retSuccessor;
         public boolean endsWithRet = false;
 
-        public BitMap localsLiveIn;
-        public BitMap localsLiveOut;
-        private BitMap localsLiveGen;
-        private BitMap localsLiveKill;
+        public BitSet localsLiveIn;
+        public BitSet localsLiveOut;
+        private BitSet localsLiveGen;
+        private BitSet localsLiveKill;
 
         public Block exceptionDispatchBlock() {
             if (successors.size() > 0 && successors.get(successors.size() - 1) instanceof ExceptionDispatchBlock) {
@@ -139,9 +138,9 @@ public final class BciBlockMapping {
     }
 
     public static class ExceptionDispatchBlock extends Block {
-        private HashMap<RiExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = new HashMap<>();
+        private HashMap<ExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = new HashMap<>();
 
-        public RiExceptionHandler handler;
+        public ExceptionHandler handler;
         public int deoptBci;
     }
 
@@ -149,12 +148,12 @@ public final class BciBlockMapping {
      * The blocks found in this method, in reverse postorder.
      */
     public final List<Block> blocks;
-    public final RiResolvedMethod method;
+    public final ResolvedJavaMethod method;
     public boolean hasJsrBytecodes;
     public Block startBlock;
 
     private final BytecodeStream stream;
-    private final RiExceptionHandler[] exceptionHandlers;
+    private final ExceptionHandler[] exceptionHandlers;
     private Block[] blockMap;
     public Block[] loopHeaders;
 
@@ -162,7 +161,7 @@ public final class BciBlockMapping {
      * Creates a new BlockMap instance from bytecode of the given method .
      * @param method the compiler interface method containing the code
      */
-    public BciBlockMapping(RiResolvedMethod method) {
+    public BciBlockMapping(ResolvedJavaMethod method) {
         this.method = method;
         exceptionHandlers = method.exceptionHandlers();
         stream = new BytecodeStream(method.code());
@@ -233,7 +232,7 @@ public final class BciBlockMapping {
 
     private void makeExceptionEntries() {
         // start basic blocks at all exception handler blocks and mark them as exception entries
-        for (RiExceptionHandler h : this.exceptionHandlers) {
+        for (ExceptionHandler h : this.exceptionHandlers) {
             Block xhandler = makeBlock(h.handlerBCI());
             xhandler.isExceptionEntry = true;
         }
@@ -475,20 +474,20 @@ public final class BciBlockMapping {
     }
 
 
-    private HashMap<RiExceptionHandler, ExceptionDispatchBlock> initialExceptionDispatch = new HashMap<>();
+    private HashMap<ExceptionHandler, ExceptionDispatchBlock> initialExceptionDispatch = new HashMap<>();
 
     private ExceptionDispatchBlock handleExceptions(int bci) {
         ExceptionDispatchBlock lastHandler = null;
 
         for (int i = exceptionHandlers.length - 1; i >= 0; i--) {
-            RiExceptionHandler h = exceptionHandlers[i];
+            ExceptionHandler h = exceptionHandlers[i];
             if (h.startBCI() <= bci && bci < h.endBCI()) {
                 if (h.isCatchAll()) {
                     // Discard all information about succeeding exception handlers, since they can never be reached.
                     lastHandler = null;
                 }
 
-                HashMap<RiExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = lastHandler != null ? lastHandler.exceptionDispatch : initialExceptionDispatch;
+                HashMap<ExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = lastHandler != null ? lastHandler.exceptionDispatch : initialExceptionDispatch;
                 ExceptionDispatchBlock curHandler = exceptionDispatch.get(h);
                 if (curHandler == null) {
                     curHandler = new ExceptionDispatchBlock();
@@ -722,15 +721,20 @@ public final class BciBlockMapping {
                 Debug.log("  start B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, block.localsLiveIn, block.localsLiveOut, block.localsLiveGen, block.localsLiveKill);
 
                 boolean blockChanged = (iteration == 0);
-                for (Block sux : block.successors) {
-                    Debug.log("    Successor B%d: %s", sux.blockID, sux.localsLiveIn);
-                    blockChanged = block.localsLiveOut.setUnionWithResult(sux.localsLiveIn) || blockChanged;
+                if (block.successors.size() > 0) {
+                    int oldCardinality = block.localsLiveOut.cardinality();
+                    for (Block sux : block.successors) {
+                        Debug.log("    Successor B%d: %s", sux.blockID, sux.localsLiveIn);
+                        block.localsLiveOut.or(sux.localsLiveIn);
+                    }
+                    blockChanged |= (oldCardinality != block.localsLiveOut.cardinality());
                 }
 
                 if (blockChanged) {
-                    block.localsLiveIn.setFrom(block.localsLiveOut);
-                    block.localsLiveIn.setDifference(block.localsLiveKill);
-                    block.localsLiveIn.setUnion(block.localsLiveGen);
+                    block.localsLiveIn.clear();
+                    block.localsLiveIn.or(block.localsLiveOut);
+                    block.localsLiveIn.xor(block.localsLiveKill);
+                    block.localsLiveIn.or(block.localsLiveGen);
                     Debug.log("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, block.localsLiveIn, block.localsLiveOut, block.localsLiveGen, block.localsLiveKill);
                 }
                 changed |= blockChanged;
@@ -740,10 +744,10 @@ public final class BciBlockMapping {
     }
 
     private void computeLocalLiveness(Block block) {
-        block.localsLiveIn = new BitMap(method.maxLocals());
-        block.localsLiveOut = new BitMap(method.maxLocals());
-        block.localsLiveGen = new BitMap(method.maxLocals());
-        block.localsLiveKill = new BitMap(method.maxLocals());
+        block.localsLiveIn = new BitSet(method.maxLocals());
+        block.localsLiveOut = new BitSet(method.maxLocals());
+        block.localsLiveGen = new BitSet(method.maxLocals());
+        block.localsLiveKill = new BitSet(method.maxLocals());
 
         if (block.startBci < 0 || block.endBci < 0) {
             return;

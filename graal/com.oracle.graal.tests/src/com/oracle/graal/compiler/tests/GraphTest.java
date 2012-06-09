@@ -147,7 +147,7 @@ public abstract class GraphTest {
 
     private static int compilationId = 0;
 
-    protected InstalledCode compile(final RiResolvedMethod method, final StructuredGraph graph) {
+    protected InstalledCode compile(final ResolvedJavaMethod method, final StructuredGraph graph) {
         return Debug.scope("Compiling", new DebugDumpScope(String.valueOf(compilationId++), true), new Callable<InstalledCode>() {
             public InstalledCode call() throws Exception {
                 CiTargetMethod targetMethod = runtime.compile(method, graph);
@@ -156,7 +156,7 @@ public abstract class GraphTest {
         });
     }
 
-    protected InstalledCode addMethod(final RiResolvedMethod method, final CiTargetMethod tm) {
+    protected InstalledCode addMethod(final ResolvedJavaMethod method, final CiTargetMethod tm) {
         return Debug.scope("CodeInstall", new Object[] {method}, new Callable<InstalledCode>() {
             @Override
             public InstalledCode call() throws Exception {
@@ -183,7 +183,7 @@ public abstract class GraphTest {
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parse(Method m) {
-        RiResolvedMethod riMethod = runtime.getRiMethod(m);
+        ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(m);
         StructuredGraph graph = new StructuredGraph(riMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;
@@ -193,7 +193,7 @@ public abstract class GraphTest {
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parseProfiled(Method m) {
-        RiResolvedMethod riMethod = runtime.getRiMethod(m);
+        ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(m);
         StructuredGraph graph = new StructuredGraph(riMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;

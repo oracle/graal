@@ -80,7 +80,7 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
     }
 
 
-    private ValueNode optimizeMaterialize(Constant constant, MaterializeNode materializeNode, RiRuntime runtime, Condition cond) {
+    private ValueNode optimizeMaterialize(Constant constant, MaterializeNode materializeNode, CodeCacheProvider runtime, Condition cond) {
         Constant trueConstant = materializeNode.trueValue().asConstant();
         Constant falseConstant = materializeNode.falseValue().asConstant();
 

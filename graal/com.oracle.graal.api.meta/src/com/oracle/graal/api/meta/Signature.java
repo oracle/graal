@@ -27,7 +27,7 @@ package com.oracle.graal.api.meta;
  *
  * @see <a href="http://java.sun.com/docs/books/jvms/second_edition/html/ClassFile.doc.html#7035">Method Descriptors</a>
  */
-public interface RiSignature {
+public interface Signature {
     /**
      * Gets the number of arguments in this signature, adding 1 for a receiver if requested.
      *
@@ -38,7 +38,7 @@ public interface RiSignature {
 
     /**
      * Gets the argument type at the specified position. This method will return a
-     * {@linkplain RiType#isResolved() resolved} type if possible but without
+     * {@linkplain JavaType#isResolved() resolved} type if possible but without
      * triggering any class loading or resolution.
      *
      * @param index the index into the parameters, with {@code 0} indicating the first parameter
@@ -47,7 +47,7 @@ public interface RiSignature {
      *        not care for a resolved type.
      * @return the {@code index}'th argument type
      */
-    RiType argumentTypeAt(int index, RiResolvedType accessingClass);
+    JavaType argumentTypeAt(int index, ResolvedJavaType accessingClass);
 
     /**
      * Gets the argument kind at the specified position.
@@ -58,7 +58,7 @@ public interface RiSignature {
 
     /**
      * Gets the return type of this signature. This method will return a
-     * {@linkplain RiResolvedType resolved} type if possible but without
+     * {@linkplain ResolvedJavaType resolved} type if possible but without
      * triggering any class loading or resolution.
      *
      * @param accessingClass the context of the type lookup. If accessing class is resolved, its class loader
@@ -66,7 +66,7 @@ public interface RiSignature {
      *        not care for a resolved type.
      * @return the compiler interface type representing the return type
      */
-    RiType returnType(RiType accessingClass);
+    JavaType returnType(JavaType accessingClass);
 
     /**
      * Gets the return kind of this signature.

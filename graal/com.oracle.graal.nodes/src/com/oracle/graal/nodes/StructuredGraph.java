@@ -41,7 +41,7 @@ public class StructuredGraph extends Graph {
     public static final long INVALID_GRAPH_ID = -1;
     private static final AtomicLong uniqueGraphIds = new AtomicLong();
     private final StartNode start;
-    private final RiResolvedMethod method;
+    private final ResolvedJavaMethod method;
     private final long graphId;
 
     /**
@@ -58,18 +58,18 @@ public class StructuredGraph extends Graph {
         this(name, null);
     }
 
-    public StructuredGraph(String name, RiResolvedMethod method) {
+    public StructuredGraph(String name, ResolvedJavaMethod method) {
         this(name, method, uniqueGraphIds.incrementAndGet());
     }
 
-    private StructuredGraph(String name, RiResolvedMethod method, long graphId) {
+    private StructuredGraph(String name, ResolvedJavaMethod method, long graphId) {
         super(name);
         this.start = add(new StartNode());
         this.method = method;
         this.graphId = graphId;
     }
 
-    public StructuredGraph(RiResolvedMethod method) {
+    public StructuredGraph(ResolvedJavaMethod method) {
         this(null, method);
     }
 
@@ -98,7 +98,7 @@ public class StructuredGraph extends Graph {
         return start;
     }
 
-    public RiResolvedMethod method() {
+    public ResolvedJavaMethod method() {
         return method;
     }
 

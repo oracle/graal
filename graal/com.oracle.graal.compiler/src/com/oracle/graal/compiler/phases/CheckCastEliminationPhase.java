@@ -56,7 +56,7 @@ public class CheckCastEliminationPhase extends Phase {
 
     public static class State implements MergeableState<State> {
 
-        private IdentityHashMap<ValueNode, RiResolvedType> knownTypes;
+        private IdentityHashMap<ValueNode, ResolvedJavaType> knownTypes;
         private HashSet<ValueNode> knownNotNull;
         private HashSet<ValueNode> knownNull;
         private IdentityHashMap<BooleanNode, ValueNode> trueConditions;
@@ -80,18 +80,18 @@ public class CheckCastEliminationPhase extends Phase {
 
         @Override
         public boolean merge(MergeNode merge, List<State> withStates) {
-            IdentityHashMap<ValueNode, RiResolvedType> newKnownTypes = new IdentityHashMap<>();
+            IdentityHashMap<ValueNode, ResolvedJavaType> newKnownTypes = new IdentityHashMap<>();
             HashSet<ValueNode> newKnownNotNull = new HashSet<>();
             HashSet<ValueNode> newKnownNull = new HashSet<>();
             IdentityHashMap<BooleanNode, ValueNode> newTrueConditions = new IdentityHashMap<>();
             IdentityHashMap<BooleanNode, ValueNode> newFalseConditions = new IdentityHashMap<>();
 
-            for (Map.Entry<ValueNode, RiResolvedType> entry : knownTypes.entrySet()) {
+            for (Map.Entry<ValueNode, ResolvedJavaType> entry : knownTypes.entrySet()) {
                 ValueNode node = entry.getKey();
-                RiResolvedType type = entry.getValue();
+                ResolvedJavaType type = entry.getValue();
 
                 for (State other : withStates) {
-                    RiResolvedType otherType = other.getNodeType(node);
+                    ResolvedJavaType otherType = other.getNodeType(node);
                     type = widen(type, otherType);
                     if (type == null) {
                         break;
@@ -201,8 +201,8 @@ public class CheckCastEliminationPhase extends Phase {
             return true;
         }
 
-        public RiResolvedType getNodeType(ValueNode node) {
-            RiResolvedType result = knownTypes.get(node);
+        public ResolvedJavaType getNodeType(ValueNode node) {
+            ResolvedJavaType result = knownTypes.get(node);
             return result == null ? node.objectStamp().type() : result;
         }
 
@@ -224,7 +224,7 @@ public class CheckCastEliminationPhase extends Phase {
         }
     }
 
-    public static RiResolvedType widen(RiResolvedType a, RiResolvedType b) {
+    public static ResolvedJavaType widen(ResolvedJavaType a, ResolvedJavaType b) {
         if (a == null || b == null) {
             return null;
         } else if (a == b) {
@@ -234,7 +234,7 @@ public class CheckCastEliminationPhase extends Phase {
         }
     }
 
-    public static RiResolvedType tighten(RiResolvedType a, RiResolvedType b) {
+    public static ResolvedJavaType tighten(ResolvedJavaType a, ResolvedJavaType b) {
         if (a == null) {
             return b;
         } else if (b == null) {
@@ -335,7 +335,7 @@ public class CheckCastEliminationPhase extends Phase {
                 }
             } else if (node instanceof CheckCastNode) {
                 CheckCastNode checkCast = (CheckCastNode) node;
-                RiResolvedType type = state.getNodeType(checkCast.object());
+                ResolvedJavaType type = state.getNodeType(checkCast.object());
                 if (checkCast.targetClass() != null && type != null && type.isSubtypeOf(checkCast.targetClass())) {
                     PiNode piNode;
                     boolean nonNull = state.knownNotNull.contains(checkCast.object());
@@ -360,7 +360,7 @@ public class CheckCastEliminationPhase extends Phase {
                         if (state.knownNull.contains(object)) {
                             replaceWith = ConstantNode.forBoolean(false, graph);
                         } else if (state.knownNotNull.contains(object)) {
-                            RiResolvedType type = state.getNodeType(object);
+                            ResolvedJavaType type = state.getNodeType(object);
                             if (type != null && type.isSubtypeOf(instanceOf.targetClass())) {
                                 replaceWith = ConstantNode.forBoolean(true, graph);
                             }

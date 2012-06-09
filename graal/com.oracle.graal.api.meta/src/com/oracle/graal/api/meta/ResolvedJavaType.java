@@ -26,11 +26,10 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 /**
- * Represents a resolved in the compiler-runtime interface. Types include primitives, objects, {@code void},
- * and arrays thereof. Types, like fields and methods, are resolved through {@link RiConstantPool constant pools}, and
- * their actual implementation is provided by the {@link RiRuntime runtime} to the compiler.
+ * Represents a resolved Java types. Types include primitives, objects, {@code void},
+ * and arrays thereof. Types, like fields and methods, are resolved through {@link ConstantPool constant pools}.
  */
-public interface RiResolvedType extends RiType {
+public interface ResolvedJavaType extends JavaType {
 
     /**
      * Gets the encoding of (that is, a constant representing the value of) the specified part of this type.
@@ -98,7 +97,7 @@ public interface RiResolvedType extends RiType {
      * @param other the type to test
      * @return {@code true} if this type a subtype of the specified type
      */
-    boolean isSubtypeOf(RiResolvedType other);
+    boolean isSubtypeOf(ResolvedJavaType other);
 
     /**
      * Checks whether the specified object is an instance of this type.
@@ -112,37 +111,37 @@ public interface RiResolvedType extends RiType {
      * arrays of final classes, and primitive types all have exact types.
      * @return the exact type of this type, if it exists; {@code null} otherwise
      */
-    RiResolvedType exactType();
+    ResolvedJavaType exactType();
 
     /**
      * Gets the super type of this type or {@code null} if no such type exists.
      */
-    RiResolvedType superType();
+    ResolvedJavaType superType();
 
     /**
      * Walks the class hierarchy upwards and returns the least common type that is a super type of both
      * the current and the given type.
      * @return the least common type that is a super type of both the current and the given type, or null if primitive types are involved.
      */
-    RiResolvedType leastCommonAncestor(RiResolvedType otherType);
+    ResolvedJavaType leastCommonAncestor(ResolvedJavaType otherType);
 
     /**
      * Attempts to get the unique concrete subtype of this type.
      * @return the exact type of this type, if it exists; {@code null} otherwise
      */
-    RiResolvedType uniqueConcreteSubtype();
+    ResolvedJavaType uniqueConcreteSubtype();
 
     /**
      * For array types, gets the type of the components.
      * @return the component type of this array type
      */
-    RiResolvedType componentType();
+    ResolvedJavaType componentType();
 
     /**
      * Gets the type representing an array with elements of this type.
      * @return a new compiler interface type representing an array of this type
      */
-    RiResolvedType arrayOf();
+    ResolvedJavaType arrayOf();
 
     /**
      * Resolves the method implementation for virtual dispatches on objects
@@ -150,10 +149,10 @@ public interface RiResolvedType extends RiType {
      * @param method the method to select the implementation of
      * @return the method implementation that would be selected at runtime
      */
-    RiResolvedMethod resolveMethodImpl(RiResolvedMethod method);
+    ResolvedJavaMethod resolveMethodImpl(ResolvedJavaMethod method);
 
     /**
-     * Given an RiMethod a, returns a concrete RiMethod b that is the only possible
+     * Given an JavaMethod a, returns a concrete JavaMethod b that is the only possible
      * unique target for a virtual call on a(). Returns {@code null} if either no
      * such concrete method or more than one such method exists. Returns the method a
      * if a is a concrete method that is not overridden. If the compiler uses the
@@ -164,13 +163,13 @@ public interface RiResolvedType extends RiType {
      * @return the unique concrete target or {@code null} if no such target exists
      *         or assumptions are not supported by this runtime
      */
-    RiResolvedMethod uniqueConcreteMethod(RiResolvedMethod method);
+    ResolvedJavaMethod uniqueConcreteMethod(ResolvedJavaMethod method);
 
     /**
      * Returns the instance fields declared in this class sorted by field offset.
      * @return an array of instance fields
      */
-    RiResolvedField[] declaredFields();
+    ResolvedJavaField[] declaredFields();
 
     /**
      * Returns this type's annotation of a specified type.
@@ -181,7 +180,7 @@ public interface RiResolvedType extends RiType {
     <T extends Annotation> T getAnnotation(Class<T> annotationClass);
 
     /**
-     * Returns the java.lang.Class object representing this RiType instance or {@code null} if none exists.
+     * Returns the java.lang.Class object representing this JavaType instance or {@code null} if none exists.
      * @return the java.lang.Class object
      */
     Class<?> toJava();

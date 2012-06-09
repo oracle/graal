@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.ri;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 
-public abstract class HotSpotMethod extends CompilerObject implements RiMethod {
+public abstract class HotSpotMethod extends CompilerObject implements JavaMethod {
 
     private static final long serialVersionUID = 7167491397941960839L;
     protected String name;

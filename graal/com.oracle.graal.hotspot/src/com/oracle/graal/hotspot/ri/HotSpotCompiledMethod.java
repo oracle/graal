@@ -38,15 +38,15 @@ public class HotSpotCompiledMethod extends CompilerObject implements InstalledCo
 
     private static final long serialVersionUID = 156632908220561612L;
 
-    private final RiResolvedMethod method;
+    private final ResolvedJavaMethod method;
     private long nmethod;
 
-    public HotSpotCompiledMethod(RiResolvedMethod method) {
+    public HotSpotCompiledMethod(ResolvedJavaMethod method) {
         this.method = method;
     }
 
     @Override
-    public RiResolvedMethod method() {
+    public ResolvedJavaMethod method() {
         return method;
     }
 

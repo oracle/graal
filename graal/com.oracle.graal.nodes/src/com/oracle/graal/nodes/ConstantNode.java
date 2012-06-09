@@ -47,7 +47,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * Constructs a new ConstantNode representing the specified constant.
      * @param value the constant
      */
-    protected ConstantNode(Constant value, RiRuntime runtime) {
+    protected ConstantNode(Constant value, CodeCacheProvider runtime) {
         super(StampFactory.forConstant(value, runtime));
         this.value = value;
     }
@@ -65,7 +65,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
         return usages().filter(NodePredicates.isNotA(FrameState.class)).isEmpty();
     }
 
-    public static ConstantNode forCiConstant(Constant constant, RiRuntime runtime, Graph graph) {
+    public static ConstantNode forCiConstant(Constant constant, CodeCacheProvider runtime, Graph graph) {
         if (constant.kind == Kind.Object) {
             return graph.unique(new ConstantNode(constant, runtime));
         } else {
@@ -169,7 +169,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @param graph
      * @return a node representing the object
      */
-    public static ConstantNode forObject(Object o, RiRuntime runtime, Graph graph) {
+    public static ConstantNode forObject(Object o, CodeCacheProvider runtime, Graph graph) {
         return graph.unique(new ConstantNode(Constant.forObject(o), runtime));
     }
 

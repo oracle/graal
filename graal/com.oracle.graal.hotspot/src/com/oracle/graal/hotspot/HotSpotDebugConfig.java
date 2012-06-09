@@ -105,9 +105,9 @@ public class HotSpotDebugConfig implements DebugConfig {
             return true;
         } else {
             for (Object o : Debug.context()) {
-                if (o instanceof RiMethod) {
+                if (o instanceof JavaMethod) {
                     for (MethodFilter filter : methodFilter) {
-                        if (filter.matches((RiMethod) o)) {
+                        if (filter.matches((JavaMethod) o)) {
                             return true;
                         }
                     }

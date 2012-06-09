@@ -87,7 +87,7 @@ public class CiFrame extends CiCodePos implements Serializable {
      * @param numStack the depth of the stack
      * @param numLocks the number of locked objects
      */
-    public CiFrame(CiFrame caller, RiResolvedMethod method, int bci, boolean rethrowException, boolean duringCall, Value[] values, int numLocals, int numStack, int numLocks, long leafGraphId) {
+    public CiFrame(CiFrame caller, ResolvedJavaMethod method, int bci, boolean rethrowException, boolean duringCall, Value[] values, int numLocals, int numStack, int numLocks, long leafGraphId) {
         super(caller, method, bci);
         assert values != null;
         this.rethrowException = rethrowException;

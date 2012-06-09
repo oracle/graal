@@ -74,7 +74,7 @@ public class GraalCompiler {
     }
 
 
-    public CiTargetMethod compileMethod(final RiResolvedMethod method, final StructuredGraph graph, int osrBCI, final RiGraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
+    public CiTargetMethod compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, int osrBCI, final RiGraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.accessFlags() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
@@ -235,7 +235,7 @@ public class GraalCompiler {
         });
     }
 
-    public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final RiResolvedMethod method, CiAssumptions assumptions) {
+    public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method, CiAssumptions assumptions) {
         final FrameMap frameMap = backend.newFrameMap(runtime.getRegisterConfig(method));
         final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir, xir, assumptions);
 
@@ -262,7 +262,7 @@ public class GraalCompiler {
         return frameMap;
     }
 
-    public CiTargetMethod emitCode(CiAssumptions assumptions, RiResolvedMethod method, LIR lir, FrameMap frameMap) {
+    public CiTargetMethod emitCode(CiAssumptions assumptions, ResolvedJavaMethod method, LIR lir, FrameMap frameMap) {
         TargetMethodAssembler tasm = backend.newAssembler(frameMap, lir);
         backend.emitCode(tasm, method, lir);
         CiTargetMethod targetMethod = tasm.finishTargetMethod(method, false);

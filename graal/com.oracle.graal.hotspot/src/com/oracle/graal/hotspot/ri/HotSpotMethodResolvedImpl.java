@@ -53,10 +53,10 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     private final int accessFlags;
     private final int maxLocals;
     private final int maxStackSize;
-    private RiSignature signature;
+    private Signature signature;
     private Boolean hasBalancedMonitors;
     private Map<Object, Object> compilerStorage;
-    private RiResolvedType holder;
+    private ResolvedJavaType holder;
     private HotSpotMethodData methodData;
     private byte[] code;
     private boolean canBeInlined;
@@ -69,7 +69,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     @Override
-    public RiResolvedType holder() {
+    public ResolvedJavaType holder() {
         return holder;
     }
 
@@ -98,7 +98,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     @Override
-    public RiExceptionHandler[] exceptionHandlers() {
+    public ExceptionHandler[] exceptionHandlers() {
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_exceptionHandlers(this);
     }
 
@@ -161,12 +161,12 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     @Override
-    public RiResolvedMethod uniqueConcreteMethod() {
-        return (RiResolvedMethod) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_uniqueConcreteMethod(this);
+    public ResolvedJavaMethod uniqueConcreteMethod() {
+        return (ResolvedJavaMethod) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_uniqueConcreteMethod(this);
     }
 
     @Override
-    public RiSignature signature() {
+    public Signature signature() {
         if (signature == null) {
             signature = new HotSpotSignature(HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_signature(this));
         }
@@ -192,7 +192,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     @Override
-    public RiResolvedType accessor() {
+    public ResolvedJavaType accessor() {
         return null;
     }
 
@@ -231,7 +231,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         return GraalOptions.PICache != null && (profilingInfoFilter == null || profilingInfoFilter.matches(this));
     }
 
-    private RiProfilingInfo loadProfilingInfo() {
+    private ProfilingInfo loadProfilingInfo() {
         if (!useProfilingInfoCache()) {
             return null;
         }
@@ -253,7 +253,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         }
     }
 
-    private void saveProfilingInfo(RiProfilingInfo info) {
+    private void saveProfilingInfo(ProfilingInfo info) {
         if (useProfilingInfoCache()) {
             synchronized (this) {
                 String base = JniMangle.mangleMethod(holder, name, signature(), false);
@@ -270,8 +270,8 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     @Override
-    public RiProfilingInfo profilingInfo() {
-        RiProfilingInfo info = loadProfilingInfo();
+    public ProfilingInfo profilingInfo() {
+        ProfilingInfo info = loadProfilingInfo();
         if (info != null) {
             return info;
         }
@@ -282,7 +282,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
         if (methodData == null || (!methodData.hasNormalData() && !methodData.hasExtraData())) {
             // Be optimistic and return false for exceptionSeen. A methodDataOop is allocated in case of a deoptimization.
-            info = BaseProfilingInfo.get(RiExceptionSeen.FALSE);
+            info = BaseProfilingInfo.get(ExceptionSeen.FALSE);
         } else {
             info = new HotSpotProfilingInfo(methodData, codeSize);
             saveProfilingInfo(info);
@@ -299,7 +299,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     @Override
-    public RiConstantPool getConstantPool() {
+    public ConstantPool getConstantPool() {
         return ((HotSpotTypeResolvedImpl) holder()).constantPool();
     }
 

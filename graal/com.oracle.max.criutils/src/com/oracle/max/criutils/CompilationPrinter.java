@@ -95,7 +95,7 @@ public class CompilationPrinter {
      *
      * @param method the method for which a timestamp will be printed
      */
-    public void printCompilation(RiMethod method) {
+    public void printCompilation(JavaMethod method) {
         begin("compilation");
         out.print("name \" ").print(CiUtil.format("%H::%n", method)).println('"');
         out.print("method \"").print(CiUtil.format("%f %r %H.%n(%p)", method)).println('"');

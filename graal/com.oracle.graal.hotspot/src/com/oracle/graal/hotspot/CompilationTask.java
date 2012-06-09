@@ -67,7 +67,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         this.priority = priority;
     }
 
-    public RiResolvedMethod method() {
+    public ResolvedJavaMethod method() {
         return method;
     }
 

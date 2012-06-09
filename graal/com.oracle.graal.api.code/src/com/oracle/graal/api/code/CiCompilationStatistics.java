@@ -75,7 +75,7 @@ public final class CiCompilationStatistics {
     private int codeSize;
     private int deoptCount;
 
-    private CiCompilationStatistics(RiResolvedMethod method) {
+    private CiCompilationStatistics(ResolvedJavaMethod method) {
         if (method != null) {
             holder = CiUtil.format("%H", method);
             name = method.name();
@@ -91,7 +91,7 @@ public final class CiCompilationStatistics {
         }
     }
 
-    public void finish(RiResolvedMethod method) {
+    public void finish(ResolvedJavaMethod method) {
         if (ENABLED) {
             duration = System.nanoTime() - startTime;
             endInvCount = method.invocationCount();
@@ -107,7 +107,7 @@ public final class CiCompilationStatistics {
         return current.get().isEmpty() ? null : current.get().getLast();
     }
 
-    public static CiCompilationStatistics create(RiResolvedMethod method) {
+    public static CiCompilationStatistics create(ResolvedJavaMethod method) {
         if (ENABLED) {
             CiCompilationStatistics stats = new CiCompilationStatistics(method);
             list.add(stats);

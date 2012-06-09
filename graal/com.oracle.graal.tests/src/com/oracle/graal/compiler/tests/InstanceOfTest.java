@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.java.*;
 public class InstanceOfTest extends TypeCheckTest {
 
     @Override
-    protected void replaceProfile(StructuredGraph graph, RiTypeProfile profile) {
+    protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
         InstanceOfNode ion = graph.getNodes().filter(InstanceOfNode.class).first();
         if (ion != null) {
             InstanceOfNode ionNew = graph.add(new InstanceOfNode(ion.targetClassInstruction(), ion.targetClass(), ion.object(), profile));

@@ -28,7 +28,7 @@ import com.oracle.graal.hotspot.*;
 /**
  * Implementation of RiConstantPool for HotSpot.
  */
-public class HotSpotConstantPool extends CompilerObject implements RiConstantPool {
+public class HotSpotConstantPool extends CompilerObject implements ConstantPool {
 
     private static final long serialVersionUID = -5443206401485234850L;
 
@@ -45,22 +45,22 @@ public class HotSpotConstantPool extends CompilerObject implements RiConstantPoo
     }
 
     @Override
-    public RiSignature lookupSignature(int cpi) {
+    public Signature lookupSignature(int cpi) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public RiMethod lookupMethod(int cpi, int byteCode) {
+    public JavaMethod lookupMethod(int cpi, int byteCode) {
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_lookupMethod(type, cpi, (byte) byteCode);
     }
 
     @Override
-    public RiType lookupType(int cpi, int opcode) {
+    public JavaType lookupType(int cpi, int opcode) {
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_lookupType(type, cpi);
     }
 
     @Override
-    public RiField lookupField(int cpi, int opcode) {
+    public JavaField lookupField(int cpi, int opcode) {
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_lookupField(type, cpi, (byte) opcode);
     }
 

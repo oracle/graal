@@ -29,26 +29,26 @@ import com.oracle.graal.api.meta.*;
 
 /**
  * A profiling info snapshot that can be {@linkplain #save(File, File) saved} to
- * and {@linkplain #load(File, RiRuntime) loaded} from a file.
+ * and {@linkplain #load(File, CodeCacheProvider) loaded} from a file.
  */
-public class SnapshotProfilingInfo implements RiProfilingInfo, Serializable {
+public class SnapshotProfilingInfo implements ProfilingInfo, Serializable {
 
     private static final long serialVersionUID = -5837615128782960391L;
     private final double[] branchTaken;
     private final double[][] switches;
-    private final RiTypeProfile[] typeProfiles;
-    private final RiExceptionSeen[] exceptions;
+    private final JavaTypeProfile[] typeProfiles;
+    private final ExceptionSeen[] exceptions;
     private final int[] executions;
     private final int[] deopts;
 
-    public SnapshotProfilingInfo(RiProfilingInfo other) {
+    public SnapshotProfilingInfo(ProfilingInfo other) {
         int codeSize = other.codeSize();
         branchTaken = new double[codeSize];
         switches = new double[codeSize][];
-        typeProfiles = new RiTypeProfile[codeSize];
-        exceptions = new RiExceptionSeen[codeSize];
+        typeProfiles = new JavaTypeProfile[codeSize];
+        exceptions = new ExceptionSeen[codeSize];
         executions = new int[codeSize];
-        deopts = new int[RiDeoptReason.values().length];
+        deopts = new int[DeoptimizationReason.values().length];
 
         for (int bci = 0; bci < codeSize; bci++) {
             executions[bci] = other.getExecutionCount(bci);
@@ -57,7 +57,7 @@ public class SnapshotProfilingInfo implements RiProfilingInfo, Serializable {
             switches[bci] = other.getSwitchProbabilities(bci);
             typeProfiles[bci] = other.getTypeProfile(bci);
         }
-        for (RiDeoptReason reason: RiDeoptReason.values()) {
+        for (DeoptimizationReason reason: DeoptimizationReason.values()) {
             deopts[reason.ordinal()] = other.getDeoptimizationCount(reason);
         }
     }
@@ -73,16 +73,16 @@ public class SnapshotProfilingInfo implements RiProfilingInfo, Serializable {
     public double[] getSwitchProbabilities(int bci) {
         return bci < switches.length ? switches[bci] : null;
     }
-    public RiTypeProfile getTypeProfile(int bci) {
+    public JavaTypeProfile getTypeProfile(int bci) {
         return bci < typeProfiles.length ? typeProfiles[bci] : null;
     }
-    public RiExceptionSeen getExceptionSeen(int bci) {
-        return bci < exceptions.length ? exceptions[bci] : RiExceptionSeen.NOT_SUPPORTED;
+    public ExceptionSeen getExceptionSeen(int bci) {
+        return bci < exceptions.length ? exceptions[bci] : ExceptionSeen.NOT_SUPPORTED;
     }
     public int getExecutionCount(int bci) {
         return bci < executions.length ? executions[bci] : -1;
     }
-    public int getDeoptimizationCount(RiDeoptReason reason) {
+    public int getDeoptimizationCount(DeoptimizationReason reason) {
         return deopts[reason.ordinal()];
     }
 
@@ -95,12 +95,12 @@ public class SnapshotProfilingInfo implements RiProfilingInfo, Serializable {
      * Deserializes a profile snapshot from a file.
      *
      * @param file a file created by {@link #save(File, File)}
-     * @param runtime the runtime used to resolve {@link RiResolvedType}s during deserialization
+     * @param runtime the runtime used to resolve {@link ResolvedJavaType}s during deserialization
      * @return
      * @throws ClassNotFoundException
      * @throws IOException
      */
-    public static SnapshotProfilingInfo load(File file, RiRuntime runtime) throws ClassNotFoundException, IOException {
+    public static SnapshotProfilingInfo load(File file, CodeCacheProvider runtime) throws ClassNotFoundException, IOException {
         SnapshotProfilingInfo.SnapshotObjectInputStream ois = new SnapshotObjectInputStream(new BufferedInputStream(new FileInputStream(file), (int) file.length()), runtime);
         try {
             return (SnapshotProfilingInfo) ois.readObject();
@@ -149,16 +149,16 @@ public class SnapshotProfilingInfo implements RiProfilingInfo, Serializable {
 
         @Override
         protected Object replaceObject(Object obj) throws IOException {
-            if (obj instanceof RiResolvedType) {
-                return new RiResolvedTypePlaceholder(((RiResolvedType) obj).toJava());
+            if (obj instanceof ResolvedJavaType) {
+                return new RiResolvedTypePlaceholder(((ResolvedJavaType) obj).toJava());
             }
             return obj;
         }
     }
 
     static class SnapshotObjectInputStream extends ObjectInputStream {
-        private final RiRuntime runtime;
-        public SnapshotObjectInputStream(InputStream in, RiRuntime runtime) throws IOException {
+        private final CodeCacheProvider runtime;
+        public SnapshotObjectInputStream(InputStream in, CodeCacheProvider runtime) throws IOException {
             super(in);
             enableResolveObject(true);
             this.runtime = runtime;
@@ -167,7 +167,7 @@ public class SnapshotProfilingInfo implements RiProfilingInfo, Serializable {
         @Override
         protected Object resolveObject(Object obj) throws IOException {
             if (obj instanceof SnapshotProfilingInfo.RiResolvedTypePlaceholder) {
-                RiResolvedType type = runtime.getType(((SnapshotProfilingInfo.RiResolvedTypePlaceholder) obj).javaMirror);
+                ResolvedJavaType type = runtime.getResolvedJavaType(((SnapshotProfilingInfo.RiResolvedTypePlaceholder) obj).javaMirror);
                 return type;
             }
             return obj;

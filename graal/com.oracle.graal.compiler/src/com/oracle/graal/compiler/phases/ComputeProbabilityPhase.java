@@ -58,7 +58,7 @@ public class ComputeProbabilityPhase extends Phase {
 
         if (GraalOptions.LoopFrequencyPropagationPolicy < 0) {
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
-            BitMap visitedBlocks = new BitMap(cfg.getBlocks().length);
+            BitSet visitedBlocks = new BitSet(cfg.getBlocks().length);
             for (Loop loop : cfg.getLoops()) {
                 if (loop.parent == null) {
                     correctLoopFrequencies(loop, 1, visitedBlocks);
@@ -67,7 +67,7 @@ public class ComputeProbabilityPhase extends Phase {
         }
     }
 
-    private void correctLoopFrequencies(Loop loop, double parentFrequency, BitMap visitedBlocks) {
+    private void correctLoopFrequencies(Loop loop, double parentFrequency, BitSet visitedBlocks) {
         LoopBeginNode loopBegin = ((LoopBeginNode) loop.header.getBeginNode());
         double frequency = parentFrequency * loopBegin.loopFrequency();
         for (Loop child : loop.children) {

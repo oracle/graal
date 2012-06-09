@@ -171,7 +171,7 @@ public class SchedulePhase extends Phase {
         if (earliest != null) {
             return earliest;
         }
-        BitMap bits = new BitMap(cfg.getBlocks().length);
+        BitSet bits = new BitSet(cfg.getBlocks().length);
         ArrayList<Node> before = new ArrayList<>();
         if (n.predecessor() != null) {
             before.add(n.predecessor());

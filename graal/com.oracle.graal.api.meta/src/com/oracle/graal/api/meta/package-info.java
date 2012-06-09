@@ -21,17 +21,6 @@
  * questions.
  */
 /**
- * The runtime-provided part of the bi-directional interface between the compiler and the runtime system of a virtual machine for the
- * instruction set defined in {@link com.oracle.graal.compiler.graphbuilder.Bytecodes}.
- * <p>
- * Unlike the {@link com.oracle.max.cri.ci compiler-provided interface}, the runtime-provided interface is specified largely
- * using interfaces, that must be implemented by classes provided by a specific runtime implementation.
- * <p>
- * {@link com.oracle.max.cri.ri.RiRuntime} encapsulates the main functionality of the runtime for the compiler.
- * <p>
- * Types (i.e., primitives, classes and interfaces}, fields and methods are represented by {@link com.oracle.graal.api.meta.RiType},
- * {@link com.oracle.graal.api.meta.RiField} and {@link com.oracle.graal.api.meta.RiMethod}, respectively, with additional support from
- * {@link com.oracle.graal.api.meta.RiSignature} and {@link com.oracle.graal.api.meta.RiExceptionHandler}. Access to the runtime constant pool
- * is through {@link com.oracle.graal.api.meta.RiConstantPool}.
+ * Package for interfaces that allow access to the meta data of the virtual machine.
  */
 package com.oracle.graal.api.meta;

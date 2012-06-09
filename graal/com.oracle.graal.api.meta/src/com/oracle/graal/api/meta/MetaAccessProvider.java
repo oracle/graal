@@ -29,19 +29,19 @@ public interface MetaAccessProvider {
 
 
     /**
-     * Returns the RiType object representing the base type for the given kind.
+     * Returns the JavaType object representing the base type for the given kind.
      */
-    RiResolvedType asRiType(Kind kind);
+    ResolvedJavaType getResolvedJavaType(Kind kind);
 
     /**
      * Returns the type of the given constant object.
      *
      * @return {@code null} if {@code constant.isNull() || !constant.kind.isObject()}
      */
-    RiResolvedType getTypeOf(Constant constant);
+    ResolvedJavaType getTypeOf(Constant constant);
 
 
-    RiResolvedType getType(Class<?> clazz);
+    ResolvedJavaType getResolvedJavaType(Class<?> clazz);
 
     /**
      * Used by the canonicalizer to compare objects, since a given runtime might not want to expose the real objects to the compiler.
@@ -51,9 +51,9 @@ public interface MetaAccessProvider {
     boolean areConstantObjectsEqual(Constant x, Constant y);
 
     /**
-     * Provides the {@link RiMethod} for a {@link Method} obtained via reflection.
+     * Provides the {@link JavaMethod} for a {@link Method} obtained via reflection.
      */
-    RiResolvedMethod getRiMethod(Method reflectionMethod);
+    ResolvedJavaMethod getResolvedJavaMethod(Method reflectionMethod);
 
     /**
      * Gets the length of the array that is wrapped in a CiConstant object.

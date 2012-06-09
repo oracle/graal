@@ -32,7 +32,7 @@ public class BoxedVirtualObjectNode extends VirtualObjectNode implements LIRLowe
 
     @Input ValueNode unboxedValue;
 
-    public BoxedVirtualObjectNode(RiResolvedType type, ValueNode unboxedValue) {
+    public BoxedVirtualObjectNode(ResolvedJavaType type, ValueNode unboxedValue) {
         super(type, 1);
         this.unboxedValue = unboxedValue;
     }

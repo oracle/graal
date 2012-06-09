@@ -31,7 +31,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CiTargetMethod.*;
 import com.oracle.graal.api.code.CiUtil.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.RiType.*;
+import com.oracle.graal.api.meta.JavaType.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.cri.*;
@@ -174,18 +174,18 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public String disassemble(RiResolvedMethod method) {
+    public String disassemble(ResolvedJavaMethod method) {
         return compiler.getCompilerToVM().disassembleJava((HotSpotMethodResolved) method);
     }
 
     @Override
-    public RiResolvedType asRiType(Kind kind) {
-        return (RiResolvedType) compiler.getCompilerToVM().getType(kind.toJavaClass());
+    public ResolvedJavaType getResolvedJavaType(Kind kind) {
+        return (ResolvedJavaType) compiler.getCompilerToVM().getType(kind.toJavaClass());
     }
 
     @Override
-    public RiResolvedType getTypeOf(Constant constant) {
-        return (RiResolvedType) compiler.getCompilerToVM().getRiType(constant);
+    public ResolvedJavaType getTypeOf(Constant constant) {
+        return (ResolvedJavaType) compiler.getCompilerToVM().getRiType(constant);
     }
 
     @Override
@@ -200,7 +200,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public CiRegisterConfig getRegisterConfig(RiMethod method) {
+    public CiRegisterConfig getRegisterConfig(JavaMethod method) {
         return regConfig;
     }
 
@@ -269,7 +269,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
             ValueNode expected = cas.expected();
             if (expected.kind() == Kind.Object && !cas.newValue().isNullConstant()) {
-                RiResolvedType type = cas.object().objectStamp().type();
+                ResolvedJavaType type = cas.object().objectStamp().type();
                 if (type != null && !type.isArrayClass() && type.toJava() != Object.class) {
                     // Use a field write barrier since it's not an array store
                     FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(cas.object()));
@@ -301,9 +301,9 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             ValueNode array = storeIndexed.array();
             if (elementKind == Kind.Object && !value.isNullConstant()) {
                 // Store check!
-                RiResolvedType arrayType = array.objectStamp().type();
+                ResolvedJavaType arrayType = array.objectStamp().type();
                 if (arrayType != null && array.objectStamp().isExactType()) {
-                    RiResolvedType elementType = arrayType.componentType();
+                    ResolvedJavaType elementType = arrayType.componentType();
                     if (elementType.superType() != null) {
                         ConstantNode type = ConstantNode.forCiConstant(elementType.getEncoding(Representation.ObjectHub), this, graph);
                         checkcast = graph.add(new CheckCastNode(type, elementType, value));
@@ -369,7 +369,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             if (option.length() == 0) {
                 return true;
             }
-            RiResolvedMethod method = graph.method();
+            ResolvedJavaMethod method = graph.method();
             return method != null && CiUtil.format("%H.%n", method).contains(option);
         }
         return false;
@@ -386,15 +386,15 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     private static ValueNode createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) n.graph();
         ArrayLengthNode arrayLength = graph.add(new ArrayLengthNode(n.array()));
-        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), RiDeoptReason.BoundsCheckException, CiDeoptAction.InvalidateReprofile, n.leafGraphId());
+        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), DeoptimizationReason.BoundsCheckException, CiDeoptAction.InvalidateReprofile, n.leafGraphId());
 
         graph.addBeforeFixed(n, arrayLength);
         return guard;
     }
 
     @Override
-    public StructuredGraph intrinsicGraph(RiResolvedMethod caller, int bci, RiResolvedMethod method, List<? extends Node> parameters) {
-        RiType holder = method.holder();
+    public StructuredGraph intrinsicGraph(ResolvedJavaMethod caller, int bci, ResolvedJavaMethod method, List<? extends Node> parameters) {
+        JavaType holder = method.holder();
         String fullName = method.name() + method.signature().asString();
         String holderName = holder.name();
         if (holderName.equals("Ljava/lang/Object;")) {
@@ -411,7 +411,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
                 SafeReadNode klassOop = safeReadHub(graph, receiver, StructuredGraph.INVALID_GRAPH_ID);
-                Stamp resultStamp = StampFactory.declaredNonNull(getType(Class.class));
+                Stamp resultStamp = StampFactory.declaredNonNull(getResolvedJavaType(Class.class));
                 FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Object, config.classMirrorOffset, graph), null, resultStamp));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 graph.start().setNext(klassOop);
@@ -449,8 +449,8 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         return graph.add(new SafeReadNode(value, LocationNode.create(LocationNode.FINAL_LOCATION, kind, offset, graph), stamp, leafGraphId));
     }
 
-    public RiResolvedType getType(Class<?> clazz) {
-        return (RiResolvedType) compiler.getCompilerToVM().getType(clazz);
+    public ResolvedJavaType getResolvedJavaType(Class<?> clazz) {
+        return (ResolvedJavaType) compiler.getCompilerToVM().getType(clazz);
     }
 
     public Object asCallTarget(Object target) {
@@ -461,11 +461,11 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         return compiler.getCompilerToVM().getMaxCallTargetOffset(rtcall);
     }
 
-    public RiResolvedMethod getRiMethod(Method reflectionMethod) {
-        return (RiResolvedMethod) compiler.getCompilerToVM().getRiMethod(reflectionMethod);
+    public ResolvedJavaMethod getResolvedJavaMethod(Method reflectionMethod) {
+        return (ResolvedJavaMethod) compiler.getCompilerToVM().getRiMethod(reflectionMethod);
     }
 
-    private static HotSpotCodeInfo makeInfo(RiResolvedMethod method, CiTargetMethod code, CodeInfo[] info) {
+    private static HotSpotCodeInfo makeInfo(ResolvedJavaMethod method, CiTargetMethod code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = null;
         if (info != null && info.length > 0) {
             hsInfo = new HotSpotCodeInfo(code, (HotSpotMethodResolved) method);
@@ -474,13 +474,13 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         return hsInfo;
     }
 
-    public void installMethod(RiResolvedMethod method, CiTargetMethod code, CodeInfo[] info) {
+    public void installMethod(ResolvedJavaMethod method, CiTargetMethod code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
         compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotMethodResolved) method, code), true, hsInfo);
     }
 
     @Override
-    public InstalledCode addMethod(RiResolvedMethod method, CiTargetMethod code, CodeInfo[] info) {
+    public InstalledCode addMethod(ResolvedJavaMethod method, CiTargetMethod code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
         return compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotMethodResolved) method, code), false, hsInfo);
     }
@@ -491,13 +491,13 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public CiTargetMethod compile(RiResolvedMethod method, StructuredGraph graph) {
+    public CiTargetMethod compile(ResolvedJavaMethod method, StructuredGraph graph) {
         OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL;
         return compiler.getCompiler().compileMethod(method, graph, -1, compiler.getCache(), compiler.getVMToCompiler().createPhasePlan(optimisticOpts), optimisticOpts);
     }
 
     @Override
-    public int encodeDeoptActionAndReason(CiDeoptAction action, RiDeoptReason reason) {
+    public int encodeDeoptActionAndReason(CiDeoptAction action, DeoptimizationReason reason) {
         final int actionShift = 0;
         final int reasonShift = 3;
 
@@ -519,7 +519,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public int convertDeoptReason(RiDeoptReason reason) {
+    public int convertDeoptReason(DeoptimizationReason reason) {
         switch(reason) {
             case None: return 0;
             case NullCheckException: return 1;

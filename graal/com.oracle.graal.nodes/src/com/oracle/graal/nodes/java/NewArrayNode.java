@@ -74,7 +74,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAn
      * Gets the element type of the array.
      * @return the element type of the array
      */
-    public abstract RiResolvedType elementType();
+    public abstract ResolvedJavaType elementType();
 
     @Override
     public void typeFeedback(TypeFeedbackTool tool) {

@@ -23,7 +23,7 @@
 package com.oracle.graal.api.meta;
 
 
-public class RiUtil {
+public class MetaUtil {
 
 
 
@@ -83,7 +83,7 @@ public class RiUtil {
      * @param qualified specifies if the package prefix of the type should be included in the returned name
      * @return the Java name corresponding to {@code riType}
      */
-    public static String toJavaName(RiType riType, boolean qualified) {
+    public static String toJavaName(JavaType riType, boolean qualified) {
         Kind kind = riType.kind();
         if (kind.isPrimitive() || kind == Kind.Void) {
             return kind.javaName;
@@ -104,7 +104,7 @@ public class RiUtil {
      * @param riType the type to be converted to a Java name
      * @return the Java name corresponding to {@code riType}
      */
-    public static String toJavaName(RiType riType) {
+    public static String toJavaName(JavaType riType) {
         return (riType == null) ? null : internalNameToJava(riType.name(), true);
     }
 

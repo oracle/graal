@@ -62,7 +62,7 @@ public class HotSpotCodeInfo extends CompilerObject implements CodeInfo {
     }
 
     @Override
-    public RiResolvedMethod method() {
+    public ResolvedJavaMethod method() {
         return method;
     }
 }
