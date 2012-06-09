@@ -38,6 +38,6 @@ public interface ExtendedRiRuntime extends CodeCacheProvider {
 
     StructuredGraph intrinsicGraph(ResolvedJavaMethod caller, int bci, ResolvedJavaMethod method, List<? extends Node> parameters);
 
-    CiTargetMethod compile(ResolvedJavaMethod method, StructuredGraph graph);
+    CompilationResult compile(ResolvedJavaMethod method, StructuredGraph graph);
 
 }

@@ -137,8 +137,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             }
             cfgPrinter.printCFG(message, Arrays.asList(cfgPrinter.cfg.getBlocks()));
 
-        } else if (object instanceof CiTargetMethod) {
-            final CiTargetMethod tm = (CiTargetMethod) object;
+        } else if (object instanceof CompilationResult) {
+            final CompilationResult tm = (CompilationResult) object;
             final byte[] code = Arrays.copyOf(tm.targetCode(), tm.targetCodeSize());
             CodeInfo info = new CodeInfo() {
                 public ResolvedJavaMethod method() {

@@ -150,13 +150,13 @@ public abstract class GraphTest {
     protected InstalledCode compile(final ResolvedJavaMethod method, final StructuredGraph graph) {
         return Debug.scope("Compiling", new DebugDumpScope(String.valueOf(compilationId++), true), new Callable<InstalledCode>() {
             public InstalledCode call() throws Exception {
-                CiTargetMethod targetMethod = runtime.compile(method, graph);
+                CompilationResult targetMethod = runtime.compile(method, graph);
                 return addMethod(method, targetMethod);
             }
         });
     }
 
-    protected InstalledCode addMethod(final ResolvedJavaMethod method, final CiTargetMethod tm) {
+    protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult tm) {
         return Debug.scope("CodeInstall", new Object[] {method}, new Callable<InstalledCode>() {
             @Override
             public InstalledCode call() throws Exception {

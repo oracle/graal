@@ -47,7 +47,7 @@ public class TargetMethodAssembler {
     }
 
     public final AbstractAssembler asm;
-    public final CiTargetMethod targetMethod;
+    public final CompilationResult targetMethod;
     public final CiTarget target;
     public final CodeCacheProvider runtime;
     public final FrameMap frameMap;
@@ -72,7 +72,7 @@ public class TargetMethodAssembler {
         this.frameMap = frameMap;
         this.stubs = stubs;
         this.asm = asm;
-        this.targetMethod = new CiTargetMethod();
+        this.targetMethod = new CompilationResult();
         this.frameContext = frameContext;
         // 0 is a valid pc for safepoints in template methods
         this.lastSafepointPos = -1;
@@ -82,19 +82,19 @@ public class TargetMethodAssembler {
         targetMethod.setFrameSize(frameSize);
     }
 
-    public CiTargetMethod.Mark recordMark(Object id) {
+    public CompilationResult.Mark recordMark(Object id) {
         return targetMethod.recordMark(asm.codeBuffer.position(), id, null);
     }
 
-    public CiTargetMethod.Mark recordMark(Object id, CiTargetMethod.Mark[] references) {
+    public CompilationResult.Mark recordMark(Object id, CompilationResult.Mark[] references) {
         return targetMethod.recordMark(asm.codeBuffer.position(), id, references);
     }
 
     public void blockComment(String s) {
-        targetMethod.addAnnotation(new CiTargetMethod.CodeComment(asm.codeBuffer.position(), s));
+        targetMethod.addAnnotation(new CompilationResult.CodeComment(asm.codeBuffer.position(), s));
     }
 
-    public CiTargetMethod finishTargetMethod(Object name, boolean isStub) {
+    public CompilationResult finishTargetMethod(Object name, boolean isStub) {
         // Install code, data and frame size
         targetMethod.setTargetCode(asm.codeBuffer.close(false), asm.codeBuffer.position());
 

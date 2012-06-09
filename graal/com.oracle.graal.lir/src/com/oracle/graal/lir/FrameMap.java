@@ -72,7 +72,7 @@ import com.oracle.max.asm.*;
  * <br>
  * A runtime has two ways to reserve space in the stack frame for its own use: <ul>
  * <li>A memory block somewhere in the frame of size {@link CodeCacheProvider#getCustomStackAreaSize()}. The offset
- *     to this block is returned in {@link CiTargetMethod#customStackAreaOffset()}.
+ *     to this block is returned in {@link CompilationResult#customStackAreaOffset()}.
  * <li>At the beginning of the overflow argument area: The calling convention can specify that the first
  *     overflow stack argument is not at offset 0, but at a specified offset o. Use
  *     {@link CodeCacheProvider#getMinimumOutgoingSize()} to make sure that call-free methods also have this space

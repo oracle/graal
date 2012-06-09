@@ -28,7 +28,7 @@ import java.util.*;
 import java.util.regex.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CiTargetMethod.*;
+import com.oracle.graal.api.code.CompilationResult.*;
 
 
 /**

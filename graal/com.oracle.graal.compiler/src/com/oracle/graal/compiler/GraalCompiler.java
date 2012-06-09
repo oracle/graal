@@ -74,14 +74,14 @@ public class GraalCompiler {
     }
 
 
-    public CiTargetMethod compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, int osrBCI, final RiGraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
+    public CompilationResult compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, int osrBCI, final RiGraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.accessFlags() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
 
-        return Debug.scope("GraalCompiler", new Object[] {graph, method, this}, new Callable<CiTargetMethod>() {
-            public CiTargetMethod call() {
+        return Debug.scope("GraalCompiler", new Object[] {graph, method, this}, new Callable<CompilationResult>() {
+            public CompilationResult call() {
                 final CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
                 final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
                     public LIR call() {
@@ -93,8 +93,8 @@ public class GraalCompiler {
                         return emitLIR(lir, graph, method, assumptions);
                     }
                 });
-                return Debug.scope("CodeGen", frameMap, new Callable<CiTargetMethod>() {
-                    public CiTargetMethod call() {
+                return Debug.scope("CodeGen", frameMap, new Callable<CompilationResult>() {
+                    public CompilationResult call() {
                         return emitCode(assumptions, method, lir, frameMap);
                     }
                 });
@@ -262,10 +262,10 @@ public class GraalCompiler {
         return frameMap;
     }
 
-    public CiTargetMethod emitCode(CiAssumptions assumptions, ResolvedJavaMethod method, LIR lir, FrameMap frameMap) {
+    public CompilationResult emitCode(CiAssumptions assumptions, ResolvedJavaMethod method, LIR lir, FrameMap frameMap) {
         TargetMethodAssembler tasm = backend.newAssembler(frameMap, lir);
         backend.emitCode(tasm, method, lir);
-        CiTargetMethod targetMethod = tasm.finishTargetMethod(method, false);
+        CompilationResult targetMethod = tasm.finishTargetMethod(method, false);
         if (assumptions != null && !assumptions.isEmpty()) {
             targetMethod.setAssumptions(assumptions);
         }

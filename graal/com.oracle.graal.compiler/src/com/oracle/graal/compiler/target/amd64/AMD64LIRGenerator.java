@@ -35,7 +35,7 @@ import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.cri.xir.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CiTargetMethod.*;
+import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;

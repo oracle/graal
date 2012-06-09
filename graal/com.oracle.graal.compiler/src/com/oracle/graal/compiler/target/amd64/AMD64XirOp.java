@@ -29,7 +29,7 @@ import static com.oracle.graal.api.meta.Value.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CiTargetMethod.*;
+import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;

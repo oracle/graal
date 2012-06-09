@@ -28,7 +28,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CiTargetMethod.*;
+import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.code.CiUtil.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaType.*;
@@ -81,7 +81,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public String disassemble(CodeInfo info, CiTargetMethod tm) {
+    public String disassemble(CodeInfo info, CompilationResult tm) {
         byte[] code = info.code();
         CiTarget target = compiler.getTarget();
         HexCodeFile hcf = new HexCodeFile(code, info.start(), target.arch.name, target.wordSize * 8);
@@ -152,11 +152,11 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         return "MARK:" + mark.id;
     }
 
-    private static void addExceptionHandlersComment(CiTargetMethod tm, HexCodeFile hcf) {
+    private static void addExceptionHandlersComment(CompilationResult tm, HexCodeFile hcf) {
         if (!tm.exceptionHandlers.isEmpty()) {
             String nl = HexCodeFile.NEW_LINE;
             StringBuilder buf = new StringBuilder("------ Exception Handlers ------").append(nl);
-            for (CiTargetMethod.ExceptionHandler e : tm.exceptionHandlers) {
+            for (CompilationResult.ExceptionHandler e : tm.exceptionHandlers) {
                 buf.append("    ").
                     append(e.pcOffset).append(" -> ").
                     append(e.handlerPos).
@@ -465,7 +465,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         return (ResolvedJavaMethod) compiler.getCompilerToVM().getRiMethod(reflectionMethod);
     }
 
-    private static HotSpotCodeInfo makeInfo(ResolvedJavaMethod method, CiTargetMethod code, CodeInfo[] info) {
+    private static HotSpotCodeInfo makeInfo(ResolvedJavaMethod method, CompilationResult code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = null;
         if (info != null && info.length > 0) {
             hsInfo = new HotSpotCodeInfo(code, (HotSpotMethodResolved) method);
@@ -474,13 +474,13 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         return hsInfo;
     }
 
-    public void installMethod(ResolvedJavaMethod method, CiTargetMethod code, CodeInfo[] info) {
+    public void installMethod(ResolvedJavaMethod method, CompilationResult code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
         compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotMethodResolved) method, code), true, hsInfo);
     }
 
     @Override
-    public InstalledCode addMethod(ResolvedJavaMethod method, CiTargetMethod code, CodeInfo[] info) {
+    public InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
         return compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotMethodResolved) method, code), false, hsInfo);
     }
@@ -491,7 +491,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public CiTargetMethod compile(ResolvedJavaMethod method, StructuredGraph graph) {
+    public CompilationResult compile(ResolvedJavaMethod method, StructuredGraph graph) {
         OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL;
         return compiler.getCompiler().compileMethod(method, graph, -1, compiler.getCache(), compiler.getVMToCompiler().createPhasePlan(optimisticOpts), optimisticOpts);
     }

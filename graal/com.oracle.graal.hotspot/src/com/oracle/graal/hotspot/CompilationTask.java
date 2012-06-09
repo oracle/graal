@@ -108,13 +108,13 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                 TTY.println(String.format("%-6d Graal %-70s %-45s %-50s ...", id, method.holder().name(), method.name(), method.signature().asString()));
             }
 
-            CiTargetMethod result = null;
+            CompilationResult result = null;
             TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
             try {
-                result = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true), new Callable<CiTargetMethod>() {
+                result = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true), new Callable<CompilationResult>() {
 
                     @Override
-                    public CiTargetMethod call() throws Exception {
+                    public CompilationResult call() throws Exception {
                         compiler.evictDeoptedGraphs();
                         StructuredGraph graph = new StructuredGraph(method);
                         return compiler.getCompiler().compileMethod(method, graph, -1, compiler.getCache(), plan, optimisticOpts);
@@ -147,7 +147,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         stats.finish(method);
     }
 
-    private void installMethod(final CiTargetMethod tm) {
+    private void installMethod(final CompilationResult tm) {
         Debug.scope("CodeInstall", new Object[] {new DebugDumpScope(String.valueOf(id), true), compiler.getCompiler(), method}, new Runnable() {
             @Override
             public void run() {

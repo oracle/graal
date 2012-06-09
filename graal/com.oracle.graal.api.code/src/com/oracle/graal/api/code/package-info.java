@@ -29,7 +29,7 @@
  * <p>
  * A {@code CiResult} encapsulates
  * {@linkplain com.oracle.max.cri.ci.CiStatistics compilation statistics}, possible {@linkplain com.oracle.graal.api.code.CiBailout error state}
- * and the {@linkplain com.oracle.graal.api.code.CiTargetMethod compiled code and metadata}.
+ * and the {@linkplain com.oracle.graal.api.code.CompilationResult compiled code and metadata}.
  * {@link com.oracle.graal.api.code.CiCodePos} and {@link com.oracle.graal.api.code.CiDebugInfo} provide detailed information to the
  * runtime to support debugging and deoptimization of the compiled code.
  * <p>

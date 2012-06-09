@@ -35,10 +35,10 @@ public class HotSpotCodeInfo extends CompilerObject implements CodeInfo {
 
     private long start;
     private byte[] code;
-    public final CiTargetMethod targetMethod;
+    public final CompilationResult targetMethod;
     private HotSpotMethodResolved method;
 
-    public HotSpotCodeInfo(CiTargetMethod targetMethod, HotSpotMethodResolved method) {
+    public HotSpotCodeInfo(CompilationResult targetMethod, HotSpotMethodResolved method) {
         assert targetMethod != null;
         this.method = method;
         this.targetMethod = targetMethod;

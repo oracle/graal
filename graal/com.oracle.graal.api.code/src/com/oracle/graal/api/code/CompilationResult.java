@@ -32,7 +32,7 @@ import com.oracle.graal.api.meta.*;
  * relocation information, deoptimization information, etc. It is the essential component of a {@link CiResult}, which also includes
  * {@linkplain CiStatistics compilation statistics} and {@linkplain CiBailout failure information}.
  */
-public class CiTargetMethod implements Serializable {
+public class CompilationResult implements Serializable {
 
     private static final long serialVersionUID = -1319947729753702434L;
 
@@ -150,7 +150,7 @@ public class CiTargetMethod implements Serializable {
     }
 
     /**
-     * Provides extra information about instructions or data at specific positions in {@link CiTargetMethod#targetCode()}.
+     * Provides extra information about instructions or data at specific positions in {@link CompilationResult#targetCode()}.
      * This is optional information that can be used to enhance a disassembly of the code.
      */
     public abstract static class CodeAnnotation implements Serializable {
@@ -355,7 +355,7 @@ public class CiTargetMethod implements Serializable {
     /**
      * Constructs a new target method.
      */
-    public CiTargetMethod() {
+    public CompilationResult() {
     }
 
     public void setAssumptions(CiAssumptions assumptions) {

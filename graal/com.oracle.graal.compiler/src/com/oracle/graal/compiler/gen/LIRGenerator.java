@@ -30,7 +30,7 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CiTargetMethod.*;
+import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaType.*;
 import com.oracle.graal.compiler.*;
