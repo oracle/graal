@@ -24,8 +24,8 @@ package com.oracle.graal.api.meta;
 
 /**
  * Represents the runtime representation of the constant pool that is
- * used by the compiler when parsing bytecode. The {@code lookupXXX} methods look up a constant
- * pool entry without performing resolution, and are used during compilation.
+ * used by the compiler when parsing bytecode. Provides methods to look up a constant
+ * pool entry without performing resolution. They are used during compilation.
  */
 public interface ConstantPool {
 

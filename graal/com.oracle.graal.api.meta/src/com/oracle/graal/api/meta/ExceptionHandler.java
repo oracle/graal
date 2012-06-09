@@ -25,43 +25,76 @@ package com.oracle.graal.api.meta;
 /**
  * Represents an exception handler within the bytecode.
  */
-public interface ExceptionHandler {
+public final class ExceptionHandler {
+    private final int startBCI;
+    private final int endBCI;
+    private final int handlerBCI;
+    private final int catchTypeCPI;
+    private final JavaType catchType;
+
+    /**
+     * Creates a new exception handler with the specified ranges.
+     * @param startBCI the start index of the protected range
+     * @param endBCI the end index of the protected range
+     * @param catchBCI the index of the handler
+     * @param catchTypeCPI the index of the throwable class in the constant pool
+     * @param catchType the type caught by this exception handler
+     */
+    public ExceptionHandler(int startBCI, int endBCI, int catchBCI, int catchTypeCPI, JavaType catchType) {
+        this.startBCI = startBCI;
+        this.endBCI = endBCI;
+        this.handlerBCI = catchBCI;
+        this.catchTypeCPI = catchTypeCPI;
+        this.catchType = catchType;
+    }
 
     /**
      * Gets the start bytecode index of the protected range of this handler.
      * @return the start bytecode index
      */
-    int startBCI();
+    public int startBCI() {
+        return startBCI;
+    }
 
     /**
      * Gets the end bytecode index of the protected range of this handler.
      * @return the end bytecode index
      */
-    int endBCI();
+    public int endBCI() {
+        return endBCI;
+    }
 
     /**
      * Gets the bytecode index of the handler block of this handler.
      * @return the handler block bytecode index
      */
-    int handlerBCI();
+    public int handlerBCI() {
+        return handlerBCI;
+    }
 
     /**
      * Gets the index into the constant pool representing the type of exception
      * caught by this handler.
      * @return the constant pool index of the catch type
      */
-    int catchTypeCPI();
+    public int catchTypeCPI() {
+        return catchTypeCPI;
+    }
 
     /**
      * Checks whether this handler catches all exceptions.
      * @return {@code true} if this handler catches all exceptions
      */
-    boolean isCatchAll();
+    public boolean isCatchAll() {
+        return catchTypeCPI == 0;
+    }
 
     /**
      * The type of exception caught by this exception handler.
      *
      * @return the exception type
      */
-    JavaType catchType();
+    public JavaType catchType() {
+        return catchType;
+    }
 }
