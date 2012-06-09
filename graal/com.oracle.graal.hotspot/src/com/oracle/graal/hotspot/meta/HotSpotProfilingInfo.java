@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.ri;
+package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;

@@ -27,7 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.hotspot.logging.*;
-import com.oracle.graal.hotspot.ri.*;
+import com.oracle.graal.hotspot.meta.*;
 
 /**
  * CiTargetMethod augmented with HotSpot-specific information.

@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.ri;
+package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.hotspot.ri.TemplateFlag.*;
+import static com.oracle.graal.hotspot.meta.TemplateFlag.*;
 
 import java.io.*;
 import java.util.*;

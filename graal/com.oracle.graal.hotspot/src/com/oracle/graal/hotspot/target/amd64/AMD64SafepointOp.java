@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.target.amd64;
 
-import static com.oracle.graal.hotspot.ri.HotSpotXirGenerator.*;
+import static com.oracle.graal.hotspot.meta.HotSpotXirGenerator.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 
 import java.util.*;

@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.hotspot.ri.HotSpotXirGenerator.*;
+import static com.oracle.graal.hotspot.meta.HotSpotXirGenerator.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 
 import java.lang.reflect.*;
@@ -38,7 +38,7 @@ import com.oracle.graal.compiler.target.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.counters.*;
-import com.oracle.graal.hotspot.ri.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;

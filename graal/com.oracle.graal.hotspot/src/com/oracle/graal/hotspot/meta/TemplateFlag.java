@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.ri;
+package com.oracle.graal.hotspot.meta;
 
-import com.oracle.graal.hotspot.*;
+enum TemplateFlag {
+    NULL_CHECK,
+    READ_BARRIER,
+    WRITE_BARRIER,
+    STORE_CHECK,
+    BOUNDS_CHECK,
+    GIVEN_LENGTH,
+    INPUTS_DIFFERENT,
+    INPUTS_SAME,
+    STATIC_METHOD,
+    SYNCHRONIZED,
+    INTERFACE_TYPE,
+    NULL_TYPE,
+    EXACT_HINTS;
 
-/**
- * A mechanism for safely conveying a HotSpot klassOop value from the compiler to the C++ code.
- * Such values should not be directly exposed to Java code as they are not real Java
- * objects. For instance, invoking a method on them or using them in an <code>instanceof</code>
- * expression will most likely crash the VM.
- */
-public class HotSpotKlassOop extends CompilerObject {
+    private static final long FIRST_FLAG = 0x0000000100000000L;
+    public static final long FLAGS_MASK = 0x0000FFFF00000000L;
+    public static final long INDEX_MASK = 0x00000000FFFFFFFFL;
 
-    private static final long serialVersionUID = -5445542223575839143L;
-
-    /**
-     * The Java object from which the klassOop value can be derived (by the C++ code).
-     */
-    public final Class javaMirror;
-
-    public HotSpotKlassOop(Class javaMirror) {
-        this.javaMirror = javaMirror;
-    }
-
-    @Override
-    public String toString() {
-        return "HotSpotKlassOop<" + javaMirror.getName() + ">";
+    public long bits() {
+        assert ((FIRST_FLAG << ordinal()) & FLAGS_MASK) != 0;
+        return FIRST_FLAG << ordinal();
     }
 }

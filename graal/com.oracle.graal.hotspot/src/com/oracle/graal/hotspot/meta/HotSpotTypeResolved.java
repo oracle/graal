@@ -20,29 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.ri;
+package com.oracle.graal.hotspot.meta;
 
-enum TemplateFlag {
-    NULL_CHECK,
-    READ_BARRIER,
-    WRITE_BARRIER,
-    STORE_CHECK,
-    BOUNDS_CHECK,
-    GIVEN_LENGTH,
-    INPUTS_DIFFERENT,
-    INPUTS_SAME,
-    STATIC_METHOD,
-    SYNCHRONIZED,
-    INTERFACE_TYPE,
-    NULL_TYPE,
-    EXACT_HINTS;
+import com.oracle.graal.api.meta.*;
 
-    private static final long FIRST_FLAG = 0x0000000100000000L;
-    public static final long FLAGS_MASK = 0x0000FFFF00000000L;
-    public static final long INDEX_MASK = 0x00000000FFFFFFFFL;
+public interface HotSpotTypeResolved extends ResolvedJavaType {
 
-    public long bits() {
-        assert ((FIRST_FLAG << ordinal()) & FLAGS_MASK) != 0;
-        return FIRST_FLAG << ordinal();
-    }
+    String toString();
+
+    ConstantPool constantPool();
+
+    int instanceSize();
+
+    JavaField createRiField(String name, JavaType type, int offset, int flags);
+
+    HotSpotKlassOop klassOop();
 }

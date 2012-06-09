@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.ri;
+package com.oracle.graal.hotspot.meta;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.ri;
+package com.oracle.graal.hotspot.meta;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 
-public interface HotSpotMethodResolved extends ResolvedJavaMethod {
+/**
+ * A mechanism for safely conveying a HotSpot klassOop value from the compiler to the C++ code.
+ * Such values should not be directly exposed to Java code as they are not real Java
+ * objects. For instance, invoking a method on them or using them in an <code>instanceof</code>
+ * expression will most likely crash the VM.
+ */
+public class HotSpotKlassOop extends CompilerObject {
 
-    ResolvedJavaMethod uniqueConcreteMethod();
-    int vtableEntryOffset();
+    private static final long serialVersionUID = -5445542223575839143L;
 
-    void setCurrentTask(CompilationTask task);
-    CompilationTask currentTask();
+    /**
+     * The Java object from which the klassOop value can be derived (by the C++ code).
+     */
+    public final Class javaMirror;
+
+    public HotSpotKlassOop(Class javaMirror) {
+        this.javaMirror = javaMirror;
+    }
+
+    @Override
+    public String toString() {
+        return "HotSpotKlassOop<" + javaMirror.getName() + ">";
+    }
 }
