@@ -21,27 +21,7 @@
  * questions.
  */
 /**
- * The compiler-provided part of the bi-directional interface between the compiler and the runtime system of a virtual machine for the instruction set defined in
- * {@link com.oracle.graal.compiler.graphbuilder.Bytecodes}.
- *
- * The target hardware architecture is represented by {@link com.oracle.graal.api.code.Architecture} and the specific target machine
- * environment for a compiler instance is represented by {@link com.oracle.graal.api.code.TargetDescription}.
- * <p>
- * A {@code CiResult} encapsulates
- * {@linkplain com.oracle.max.cri.ci.CiStatistics compilation statistics}, possible {@linkplain com.oracle.graal.api.code.BailoutException error state}
- * and the {@linkplain com.oracle.graal.api.code.CompilationResult compiled code and metadata}.
- * {@link com.oracle.graal.api.code.BytecodePosition} and {@link com.oracle.graal.api.code.DebugInfo} provide detailed information to the
- * runtime to support debugging and deoptimization of the compiled code.
- * <p>
- * The compiler manipulates {@link com.oracle.graal.api.meta.Value} instances that have a {@link com.oracle.graal.api.meta.Kind}, and are
- * immutable. A concrete {@link com.oracle.graal.api.meta.Value value} is one of the following subclasses:
- * <ul>
- * <li>{@link com.oracle.graal.api.meta.Constant}: a constant value.
- * <li>{@link com.oracle.graal.api.code.RegisterValue}: a value stored in a {@linkplain com.oracle.graal.api.code.Register target machine register}.
- * <li>{@link com.oracle.graal.api.code.StackSlot}: a spill slot or an outgoing stack-based argument in a method's frame.
- * <li>{@link com.oracle.graal.api.code.Address}: an address in target machine memory.
- * <li>{@link com.oracle.graal.compiler.lir.CiVariable}: a value (cf. virtual register) that is yet to be bound to a target machine location (physical register or memory address).
- *</ul>
+ * Package that defines the interface between a Java application that wants to install code and the runtime.
  */
 package com.oracle.graal.api.code;
 

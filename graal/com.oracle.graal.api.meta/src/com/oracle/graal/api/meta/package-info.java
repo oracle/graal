@@ -21,6 +21,6 @@
  * questions.
  */
 /**
- * Package for interfaces that allow access to the meta data of the virtual machine.
+ * Package that defines the interface between a runtime and a Java application that wants to access meta information.
  */
 package com.oracle.graal.api.meta;
