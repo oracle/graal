@@ -32,14 +32,14 @@ import com.oracle.graal.api.meta.*;
 public final class RegisterValue extends Value {
     private static final long serialVersionUID = 7999341472196897163L;
 
-    private final Register register;
+    private final Register reg;
 
     /**
      * Should only be called from {@link Register#CiRegister} to ensure canonicalization.
      */
     protected RegisterValue(Kind kind, Register register) {
         super(kind);
-        this.register = register;
+        this.reg = register;
     }
 
     @Override
@@ -56,6 +56,6 @@ public final class RegisterValue extends Value {
      * @return the register that contains the value
      */
     public Register getRegister() {
-        return register;
+        return reg;
     }
 }
