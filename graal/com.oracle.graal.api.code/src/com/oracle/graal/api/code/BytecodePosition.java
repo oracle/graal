@@ -36,22 +36,9 @@ public abstract class BytecodePosition implements Serializable {
 
     private static final long serialVersionUID = 8633885274526033515L;
 
-    /**
-     * The position where this position has been called, {@code null} if none.
-     */
-    public final BytecodePosition caller;
-
-    /**
-     * The runtime interface method for this position.
-     */
-    public final ResolvedJavaMethod method;
-
-    /**
-     * The location within the method, as a bytecode index. The constant
-     * {@code -1} may be used to indicate the location is unknown, for example
-     * within code synthesized by the compiler.
-     */
-    public final int bci;
+    private final BytecodePosition caller;
+    private final ResolvedJavaMethod method;
+    private final int bci;
 
     /**
      * Constructs a new object representing a given parent/caller, a given method, and a given BCI.
@@ -86,11 +73,11 @@ public abstract class BytecodePosition implements Serializable {
         }
         if (obj instanceof BytecodePosition) {
             BytecodePosition other = (BytecodePosition) obj;
-            if (other.method.equals(method) && other.bci == bci) {
-                if (caller == null) {
-                    return other.caller == null;
+            if (other.getMethod().equals(getMethod()) && other.getBCI() == getBCI()) {
+                if (getCaller() == null) {
+                    return other.getCaller() == null;
                 }
-                return caller.equals(other.caller);
+                return getCaller().equals(other.getCaller());
             }
         }
         return false;
@@ -98,6 +85,29 @@ public abstract class BytecodePosition implements Serializable {
 
     @Override
     public int hashCode() {
+        return getBCI();
+    }
+
+    /**
+     * @return The location within the method, as a bytecode index. The constant
+     * {@code -1} may be used to indicate the location is unknown, for example
+     * within code synthesized by the compiler.
+     */
+    public int getBCI() {
         return bci;
+    }
+
+    /**
+     * @return The runtime interface method for this position.
+     */
+    public ResolvedJavaMethod getMethod() {
+        return method;
+    }
+
+    /**
+     * The position where this position has been called, {@code null} if none.
+     */
+    public BytecodePosition getCaller() {
+        return caller;
     }
 }

@@ -438,7 +438,7 @@ class CFGPrinter extends CompilationPrinter {
                 out.adjustIndentation(-level);
                 String state;
                 if (inst.info.hasDebugInfo()) {
-                    state = debugInfoToString(inst.info.debugInfo().codePos, inst.info.debugInfo().registerRefMap, inst.info.debugInfo().frameRefMap, target.arch);
+                    state = debugInfoToString(inst.info.debugInfo().getBytecodePosition(), inst.info.debugInfo().getRegisterRefMap(), inst.info.debugInfo().getFrameRefMap(), target.arch);
                 } else {
                     state = debugInfoToString(inst.info.topFrame, null, null, target.arch);
                 }

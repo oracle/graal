@@ -570,7 +570,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     protected LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRDebugInfo info, Object deoptInfo) {
-        assert info.topFrame.bci >= 0 : "invalid bci for deopt framestate";
+        assert info.topFrame.getBCI() >= 0 : "invalid bci for deopt framestate";
         AMD64DeoptimizationStub stub = new AMD64DeoptimizationStub(action, reason, info, deoptInfo);
         lir.stubs.add(stub);
         return LabelRef.forLabel(stub.label);

@@ -112,7 +112,7 @@ public final class IntervalPrinter {
     }
 
     private boolean isAllocatableRegister(Value value) {
-        return isRegister(value) && registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
+        return isRegister(value) && registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable();
     }
 
     private int curOpId;

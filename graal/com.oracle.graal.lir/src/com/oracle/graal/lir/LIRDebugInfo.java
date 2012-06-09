@@ -84,8 +84,8 @@ public class LIRDebugInfo {
             Value value = values[i];
             if (value instanceof MonitorValue) {
                 MonitorValue monitor = (MonitorValue) value;
-                if (processed(monitor.owner)) {
-                    monitor.owner = proc.doValue(monitor.owner, OperandMode.Alive, STATE_FLAGS);
+                if (processed(monitor.getOwner())) {
+                    monitor.setOwner(proc.doValue(monitor.getOwner(), OperandMode.Alive, STATE_FLAGS));
                 }
 
             } else if (processed(value)) {

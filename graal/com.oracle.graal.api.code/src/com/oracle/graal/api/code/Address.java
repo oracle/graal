@@ -39,27 +39,10 @@ public final class Address extends Value {
      */
     public static final Address Placeholder = new Address(Kind.Illegal, Value.IllegalValue);
 
-    /**
-     * Base register that defines the start of the address computation.
-     * If not present, is denoted by {@link Value#IllegalValue}.
-     */
-    public Value base;
-
-    /**
-     * Index register, the value of which (possibly scaled by {@link #scale}) is added to {@link #base}.
-     * If not present, is denoted by {@link Value#IllegalValue}.
-     */
-    public Value index;
-
-    /**
-     * Scaling factor for indexing, dependent on target operand size.
-     */
-    public final Scale scale;
-
-    /**
-     * Optional additive displacement.
-     */
-    public final int displacement;
+    private Value base;
+    private Value index;
+    private final Scale scale;
+    private final int displacement;
 
     /**
      * Creates a {@code CiAddress} with given base register, no scaling and no displacement.
@@ -91,8 +74,8 @@ public final class Address extends Value {
      */
     public Address(Kind kind, Value base, Value index, Scale scale, int displacement) {
         super(kind);
-        this.base = base;
-        this.index = index;
+        this.setBase(base);
+        this.setIndex(index);
         this.scale = scale;
         this.displacement = displacement;
 
@@ -144,18 +127,18 @@ public final class Address extends Value {
         StringBuilder s = new StringBuilder();
         s.append(kind.javaName).append("[");
         String sep = "";
-        if (isLegal(base)) {
-            s.append(base);
+        if (isLegal(getBase())) {
+            s.append(getBase());
             sep = " + ";
         }
-        if (isLegal(index)) {
-            s.append(sep).append(index).append(" * ").append(scale.value);
+        if (isLegal(getIndex())) {
+            s.append(sep).append(getIndex()).append(" * ").append(getScale().value);
             sep = " + ";
         }
-        if (displacement < 0) {
-            s.append(" - ").append(-displacement);
-        } else if (displacement > 0) {
-            s.append(sep).append(displacement);
+        if (getDisplacement() < 0) {
+            s.append(" - ").append(-getDisplacement());
+        } else if (getDisplacement() > 0) {
+            s.append(sep).append(getDisplacement());
         }
         s.append("]");
         return s.toString();
@@ -165,13 +148,51 @@ public final class Address extends Value {
     public boolean equals(Object obj) {
         if (obj instanceof Address) {
             Address addr = (Address) obj;
-            return kind == addr.kind && displacement == addr.displacement && base.equals(addr.base) && scale == addr.scale && index.equals(addr.index);
+            return kind == addr.kind && getDisplacement() == addr.getDisplacement() && getBase().equals(addr.getBase()) && getScale() == addr.getScale() && getIndex().equals(addr.getIndex());
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ (scale.value << 8) ^ (kind.ordinal() << 12);
+        return getBase().hashCode() ^ getIndex().hashCode() ^ (getDisplacement() << 4) ^ (getScale().value << 8) ^ (kind.ordinal() << 12);
+    }
+
+    /**
+     * @return Base register that defines the start of the address computation.
+     * If not present, is denoted by {@link Value#IllegalValue}.
+     */
+    public Value getBase() {
+        return base;
+    }
+
+    public void setBase(Value base) {
+        this.base = base;
+    }
+
+    /**
+     * @return Index register, the value of which (possibly scaled by {@link #scale}) is added to {@link #base}.
+     * If not present, is denoted by {@link Value#IllegalValue}.
+     */
+    public Value getIndex() {
+        return index;
+    }
+
+    public void setIndex(Value index) {
+        this.index = index;
+    }
+
+    /**
+     * @return Scaling factor for indexing, dependent on target operand size.
+     */
+    public Scale getScale() {
+        return scale;
+    }
+
+    /**
+     * @return Optional additive displacement.
+     */
+    public int getDisplacement() {
+        return displacement;
     }
 }

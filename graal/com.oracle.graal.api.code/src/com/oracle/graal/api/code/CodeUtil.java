@@ -112,31 +112,6 @@ public class CodeUtil {
         return 63 - Long.numberOfLeadingZeros(val);
     }
 
-    public static int align(int size, int align) {
-        assert isPowerOf2(align);
-        return (size + align - 1) & ~(align - 1);
-    }
-
-    /**
-     * Gets a word with the nth bit set.
-     *
-     * @param n the nth bit to set
-     * @return an integer value with the nth bit set
-     */
-    public static int nthBit(int n) {
-        return n >= Integer.SIZE ? 0 : 1 << n;
-    }
-
-    /**
-     * Gets a word with the right-most n bits set.
-     *
-     * @param n the number of right most bits to set
-     * @return an integer value with the right-most n bits set
-     */
-    public static int rightNBits(int n) {
-        return nthBit(n) - 1;
-    }
-
     /**
      * Gets a string for a given method formatted according to a given format specification. A format specification is
      * composed of characters that are to be copied verbatim to the result and specifiers that denote an attribute of
@@ -318,16 +293,6 @@ public class CodeUtil {
     }
 
     /**
-     * Creates a set that uses reference-equality instead of {@link Object#equals(Object)} when comparing values.
-     *
-     * @param <T> the type of elements in the set
-     * @return a set based on reference-equality
-     */
-    public static <T> Set<T> newIdentityHashSet() {
-        return Collections.newSetFromMap(new IdentityHashMap<T, Boolean>());
-    }
-
-    /**
      * Prepends the String {@code indentation} to every line in String {@code lines}, including a possibly non-empty
      * line following the final newline.
      */
@@ -481,10 +446,10 @@ public class CodeUtil {
      * @return the value of {@code sb}
      */
     public static StringBuilder append(StringBuilder sb, BytecodePosition pos) {
-        appendLocation(sb.append("at "), pos.method, pos.bci);
-        if (pos.caller != null) {
+        appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
+        if (pos.getCaller() != null) {
             sb.append(NEW_LINE);
-            append(sb, pos.caller);
+            append(sb, pos.getCaller());
         }
         return sb;
     }
@@ -497,7 +462,7 @@ public class CodeUtil {
      * @return the value of {@code sb}
      */
     public static StringBuilder append(StringBuilder sb, BytecodeFrame frame) {
-        appendLocation(sb.append("at "), frame.method, frame.bci);
+        appendLocation(sb.append("at "), frame.getMethod(), frame.getBCI());
         if (frame.values != null && frame.values.length > 0) {
             sb.append(NEW_LINE);
             String table = tabulateValues(frame);
@@ -515,9 +480,9 @@ public class CodeUtil {
         if (frame.caller() != null) {
             sb.append(NEW_LINE);
             append(sb, frame.caller());
-        } else if (frame.caller != null) {
+        } else if (frame.getCaller() != null) {
             sb.append(NEW_LINE);
-            append(sb, frame.caller);
+            append(sb, frame.getCaller());
         }
         return sb;
     }
@@ -577,7 +542,7 @@ public class CodeUtil {
         String nl = NEW_LINE;
         if (info.hasRegisterRefMap()) {
             sb.append("  reg-ref-map:");
-            BitSet bm = info.registerRefMap;
+            BitSet bm = info.getRegisterRefMap();
             if (formatter != null) {
                 for (int reg = bm.nextSetBit(0); reg >= 0; reg = bm.nextSetBit(reg + 1)) {
                     sb.append(" " + formatter.formatRegister(reg));
@@ -587,7 +552,7 @@ public class CodeUtil {
         }
         if (info.hasStackRefMap()) {
             sb.append("frame-ref-map:");
-            BitSet bm = info.frameRefMap;
+            BitSet bm = info.getFrameRefMap();
             if (formatter != null) {
                 for (int i = bm.nextSetBit(0); i >= 0; i = bm.nextSetBit(i + 1)) {
                     sb.append(" " + formatter.formatStackSlot(i));
@@ -598,8 +563,8 @@ public class CodeUtil {
         BytecodeFrame frame = info.frame();
         if (frame != null) {
             append(sb, frame);
-        } else if (info.codePos != null) {
-            append(sb, info.codePos);
+        } else if (info.getBytecodePosition() != null) {
+            append(sb, info.getBytecodePosition());
         }
         return sb;
     }

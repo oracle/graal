@@ -315,25 +315,10 @@ public class CompilationResult implements Serializable {
         }
     }
 
-    /**
-     * List of safepoints, sorted by {@link Site#pcOffset}.
-     */
-    public final List<Safepoint> safepoints = new ArrayList<>();
-
-    /**
-     * List of data references.
-     */
-    public final List<DataPatch> dataReferences = new ArrayList<>();
-
-    /**
-     * List of exception handlers.
-     */
-    public final List<ExceptionHandler> exceptionHandlers = new ArrayList<>();
-
-    /**
-     * List of marks.
-     */
-    public final List<Mark> marks = new ArrayList<>();
+    private final List<Safepoint> safepoints = new ArrayList<>();
+    private final List<DataPatch> dataReferences = new ArrayList<>();
+    private final List<ExceptionHandler> exceptionHandlers = new ArrayList<>();
+    private final List<Mark> marks = new ArrayList<>();
 
     private int frameSize = -1;
     private int customStackAreaOffset = -1;
@@ -396,7 +381,7 @@ public class CompilationResult implements Serializable {
      */
     public void recordDataReference(int codePos, Constant data, int alignment) {
         assert codePos >= 0 && data != null;
-        dataReferences.add(new DataPatch(codePos, data, alignment));
+        getDataReferences().add(new DataPatch(codePos, data, alignment));
     }
 
     /**
@@ -421,7 +406,7 @@ public class CompilationResult implements Serializable {
      * @param throwableType the type of exceptions handled by the handler
      */
     public void recordExceptionHandler(int codePos, int handlerPos) {
-        exceptionHandlers.add(new ExceptionHandler(codePos, handlerPos));
+        getExceptionHandlers().add(new ExceptionHandler(codePos, handlerPos));
     }
 
     /**
@@ -436,11 +421,11 @@ public class CompilationResult implements Serializable {
 
     private void addSafepoint(Safepoint safepoint) {
         // The safepoints list must always be sorted
-        if (!safepoints.isEmpty() && safepoints.get(safepoints.size() - 1).pcOffset >= safepoint.pcOffset) {
+        if (!getSafepoints().isEmpty() && getSafepoints().get(getSafepoints().size() - 1).pcOffset >= safepoint.pcOffset) {
             // This re-sorting should be very rare
-            Collections.sort(safepoints);
+            Collections.sort(getSafepoints());
         }
-        safepoints.add(safepoint);
+        getSafepoints().add(safepoint);
     }
 
     /**
@@ -452,7 +437,7 @@ public class CompilationResult implements Serializable {
      */
     public Mark recordMark(int codePos, Object id, Mark[] references) {
         Mark mark = new Mark(codePos, id, references);
-        marks.add(mark);
+        getMarks().add(mark);
         return mark;
     }
 
@@ -532,11 +517,11 @@ public class CompilationResult implements Serializable {
 
     private static void appendDebugInfo(StringBuilder sb, DebugInfo info) {
         if (info != null) {
-            appendRefMap(sb, "stackMap", info.frameRefMap);
-            appendRefMap(sb, "registerMap", info.registerRefMap);
-            BytecodePosition codePos = info.codePos;
+            appendRefMap(sb, "stackMap", info.getFrameRefMap());
+            appendRefMap(sb, "registerMap", info.getRegisterRefMap());
+            BytecodePosition codePos = info.getBytecodePosition();
             if (codePos != null) {
-                CodeUtil.appendLocation(sb.append(" "), codePos.method, codePos.bci);
+                CodeUtil.appendLocation(sb.append(" "), codePos.getMethod(), codePos.getBCI());
                 if (info.hasFrame()) {
                     sb.append(" #locals=").append(info.frame().numLocals).append(" #expr=").append(info.frame().numStack);
                     if (info.frame().numLocks > 0) {
@@ -551,5 +536,33 @@ public class CompilationResult implements Serializable {
         if (map != null) {
             sb.append(' ').append(name).append('[').append(map.toString()).append(']');
         }
+    }
+
+    /**
+     * @return the list of safepoints, sorted by {@link Site#pcOffset}
+     */
+    public List<Safepoint> getSafepoints() {
+        return safepoints;
+    }
+
+    /**
+     * @return the list of data references
+     */
+    public List<DataPatch> getDataReferences() {
+        return dataReferences;
+    }
+
+    /**
+     * @return the list of exception handlers
+     */
+    public List<ExceptionHandler> getExceptionHandlers() {
+        return exceptionHandlers;
+    }
+
+    /**
+     * @return the list of marks
+     */
+    public List<Mark> getMarks() {
+        return marks;
     }
 }

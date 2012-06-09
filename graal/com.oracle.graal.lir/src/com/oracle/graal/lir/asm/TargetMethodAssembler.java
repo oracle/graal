@@ -108,9 +108,9 @@ public class TargetMethodAssembler {
 
         Debug.metric("TargetMethods").increment();
         Debug.metric("CodeBytesEmitted").add(targetMethod.targetCodeSize());
-        Debug.metric("SafepointsEmitted").add(targetMethod.safepoints.size());
-        Debug.metric("DataPatches").add(targetMethod.dataReferences.size());
-        Debug.metric("ExceptionHandlersEmitted").add(targetMethod.exceptionHandlers.size());
+        Debug.metric("SafepointsEmitted").add(targetMethod.getSafepoints().size());
+        Debug.metric("DataPatches").add(targetMethod.getDataReferences().size());
+        Debug.metric("ExceptionHandlersEmitted").add(targetMethod.getExceptionHandlers().size());
 
         Debug.log("Finished target method %s, isStub %b", name, isStub);
 /*

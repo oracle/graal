@@ -133,7 +133,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * @return {@code null} if this frame has no caller
      */
     public BytecodeFrame caller() {
-        return (BytecodeFrame) caller;
+        return (BytecodeFrame) getCaller();
     }
 
     @Override

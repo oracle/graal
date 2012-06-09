@@ -48,15 +48,15 @@ public final class HotSpotTargetMethod extends CompilerObject {
         this.name = null;
 
         sites = getSortedSites(targetMethod);
-        if (targetMethod.exceptionHandlers == null) {
+        if (targetMethod.getExceptionHandlers() == null) {
             exceptionHandlers = null;
         } else {
-            exceptionHandlers = targetMethod.exceptionHandlers.toArray(new ExceptionHandler[targetMethod.exceptionHandlers.size()]);
+            exceptionHandlers = targetMethod.getExceptionHandlers().toArray(new ExceptionHandler[targetMethod.getExceptionHandlers().size()]);
         }
     }
 
     private static Site[] getSortedSites(CompilationResult target) {
-        List<?>[] lists = new List<?>[] {target.safepoints, target.dataReferences, target.marks};
+        List<?>[] lists = new List<?>[] {target.getSafepoints(), target.getDataReferences(), target.getMarks()};
         int count = 0;
         for (List<?> list : lists) {
             count += list.size();

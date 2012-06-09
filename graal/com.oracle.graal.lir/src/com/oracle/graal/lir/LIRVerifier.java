@@ -55,7 +55,7 @@ public final class LIRVerifier {
     }
 
     private boolean isAllocatableRegister(Value value) {
-        return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
+        return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable();
     }
 
     public static boolean verify(final LIRInstruction op) {

@@ -30,32 +30,14 @@ import java.util.*;
  * a compilation will determine which registers are callee saved.
  */
 public class RegisterAttributes {
-
-    /**
-     * Denotes a register whose value preservation (if required) across a call is the responsibility of the caller.
-     */
-    public final boolean isCallerSave;
-
-    /**
-     * Denotes a register whose value preservation (if required) across a call is the responsibility of the callee.
-     */
-    public final boolean isCalleeSave;
-
-    /**
-     * Denotes a register that is available for use by a register allocator.
-     */
-    public final boolean isAllocatable;
-
-    /**
-     * Denotes a register guaranteed to be non-zero if read in compiled Java code.
-     * For example, a register dedicated to holding the current thread.
-     */
-    public boolean isNonZero;
+    private final boolean callerSave;
+    private final boolean calleeSave;
+    private final boolean allocatable;
 
     public RegisterAttributes(boolean isCallerSave, boolean isCalleeSave, boolean isAllocatable) {
-        this.isCallerSave = isCallerSave;
-        this.isCalleeSave = isCalleeSave;
-        this.isAllocatable = isAllocatable;
+        this.callerSave = isCallerSave;
+        this.calleeSave = isCalleeSave;
+        this.allocatable = isAllocatable;
     }
 
     public static final RegisterAttributes NONE = new RegisterAttributes(false, false, false);
@@ -91,5 +73,26 @@ public class RegisterAttributes {
             }
         }
         return map;
+    }
+
+    /**
+     * @return Denotes a register that is available for use by a register allocator.
+     */
+    public boolean isAllocatable() {
+        return allocatable;
+    }
+
+    /**
+     * @return Denotes a register whose value preservation (if required) across a call is the responsibility of the callee.
+     */
+    public boolean isCalleeSave() {
+        return calleeSave;
+    }
+
+    /**
+     * @return Denotes a register whose value preservation (if required) across a call is the responsibility of the caller.
+     */
+    public boolean isCallerSave() {
+        return callerSave;
     }
 }

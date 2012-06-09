@@ -33,24 +33,9 @@ public class DebugInfo implements Serializable {
 
     private static final long serialVersionUID = -6047206624915812516L;
 
-    /**
-     * The code position (including all inlined methods) of this debug info.
-     * If this is a {@link BytecodeFrame} instance, then it is also the deoptimization information for each inlined frame.
-     */
-    public final BytecodePosition codePos;
-
-    /**
-     * The reference map for the registers at this point. The reference map is <i>packed</i> in that
-     * for bit {@code k} in byte {@code n}, it refers to the register whose
-     * {@linkplain Register#number number} is {@code (k + n * 8)}.
-     */
-    public final BitSet registerRefMap;
-
-    /**
-     * The reference map for the stack frame at this point. A set bit at {@code k} in the map
-     * represents stack slot number {@code k}.
-     */
-    public final BitSet frameRefMap;
+    private final BytecodePosition bytecodePosition;
+    private final BitSet registerRefMap;
+    private final BitSet frameRefMap;
 
     /**
      * Creates a new {@code CiDebugInfo} from the given values.
@@ -60,7 +45,7 @@ public class DebugInfo implements Serializable {
      * @param frameRefMap the reference map for {@code frame}, which may be {@code null}
      */
     public DebugInfo(BytecodePosition codePos, BitSet registerRefMap, BitSet frameRefMap) {
-        this.codePos = codePos;
+        this.bytecodePosition = codePos;
         this.registerRefMap = registerRefMap;
         this.frameRefMap = frameRefMap;
     }
@@ -69,21 +54,21 @@ public class DebugInfo implements Serializable {
      * @return {@code true} if this debug information has a frame
      */
     public boolean hasFrame() {
-        return codePos instanceof BytecodeFrame;
+        return getBytecodePosition() instanceof BytecodeFrame;
     }
 
     /**
      * @return {@code true} if this debug info has a reference map for the registers
      */
     public boolean hasRegisterRefMap() {
-        return registerRefMap != null && registerRefMap.size() > 0;
+        return getRegisterRefMap() != null && getRegisterRefMap().size() > 0;
     }
 
     /**
      * @return {@code true} if this debug info has a reference map for the stack
      */
     public boolean hasStackRefMap() {
-        return frameRefMap != null && frameRefMap.size() > 0;
+        return getFrameRefMap() != null && getFrameRefMap().size() > 0;
     }
 
 
@@ -94,7 +79,7 @@ public class DebugInfo implements Serializable {
      */
     public BytecodeFrame frame() {
         if (hasFrame()) {
-            return (BytecodeFrame) codePos;
+            return (BytecodeFrame) getBytecodePosition();
         }
         return null;
     }
@@ -102,5 +87,30 @@ public class DebugInfo implements Serializable {
     @Override
     public String toString() {
         return CodeUtil.append(new StringBuilder(100), this, null).toString();
+    }
+
+    /**
+     * @return The code position (including all inlined methods) of this debug info.
+     * If this is a {@link BytecodeFrame} instance, then it is also the deoptimization information for each inlined frame.
+     */
+    public BytecodePosition getBytecodePosition() {
+        return bytecodePosition;
+    }
+
+    /**
+     * @return The reference map for the registers at this point. The reference map is <i>packed</i> in that
+     * for bit {@code k} in byte {@code n}, it refers to the register whose
+     * {@linkplain Register#number number} is {@code (k + n * 8)}.
+     */
+    public BitSet getRegisterRefMap() {
+        return registerRefMap;
+    }
+
+    /**
+     * @return The reference map for the stack frame at this point. A set bit at {@code k} in the map
+     * represents stack slot number {@code k}.
+     */
+    public BitSet getFrameRefMap() {
+        return frameRefMap;
     }
 }

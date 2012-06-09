@@ -281,8 +281,8 @@ public abstract class LIRInstruction {
             if (isAddress(value)) {
                 assert flagsFor(mode, i).contains(OperandFlag.Address);
                 Address address = asAddress(value);
-                address.base = proc.doValue(address.base, mode, ADDRESS_FLAGS);
-                address.index = proc.doValue(address.index, mode, ADDRESS_FLAGS);
+                address.setBase(proc.doValue(address.getBase(), mode, ADDRESS_FLAGS));
+                address.setIndex(proc.doValue(address.getIndex(), mode, ADDRESS_FLAGS));
             } else {
                 values[i] = proc.doValue(values[i], mode, flagsFor(mode, i));
             }
@@ -432,7 +432,7 @@ public abstract class LIRInstruction {
             buf.append(" [bci:");
             String sep = "";
             for (BytecodeFrame cur = info.topFrame; cur != null; cur = cur.caller()) {
-                buf.append(sep).append(cur.bci);
+                buf.append(sep).append(cur.getBCI());
                 sep = ",";
             }
             buf.append("]");

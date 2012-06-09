@@ -83,7 +83,7 @@ public class ValueUtil {
 
     public static Register asRegister(Value value) {
         assert value != null;
-        return ((RegisterValue) value).reg;
+        return ((RegisterValue) value).getRegister();
     }
 
     public static Register asIntReg(Value value) {

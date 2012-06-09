@@ -58,7 +58,7 @@ public class DataFlowAnalysis {
     }
 
     private boolean isAllocatableRegister(Value value) {
-        return isRegister(value) && registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
+        return isRegister(value) && registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable();
     }
 
 

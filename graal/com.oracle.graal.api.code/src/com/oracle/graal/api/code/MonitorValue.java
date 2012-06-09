@@ -27,15 +27,31 @@ import com.oracle.graal.api.meta.*;
 public final class MonitorValue extends Value {
     private static final long serialVersionUID = 8241681800464483691L;
 
-    public Value owner;
-    public final Value lockData;
-    public final boolean eliminated;
+    private Value owner;
+    private final Value lockData;
+    private final boolean eliminated;
 
     public MonitorValue(Value owner, Value lockData, boolean eliminated) {
         super(Kind.Illegal);
         this.owner = owner;
         this.lockData = lockData;
         this.eliminated = eliminated;
+    }
+
+    public Value getOwner() {
+        return owner;
+    }
+
+    public void setOwner(Value newOwner) {
+        this.owner = newOwner;
+    }
+
+    public Value getLockData() {
+        return lockData;
+    }
+
+    public boolean isEliminated() {
+        return eliminated;
     }
 
     @Override

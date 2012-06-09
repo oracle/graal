@@ -90,7 +90,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             addExceptionHandlersComment(tm, hcf);
             Register fp = regConfig.getFrameRegister();
             RefMapFormatter slotFormatter = new RefMapFormatter(target.arch, target.wordSize, fp, 0);
-            for (Safepoint safepoint : tm.safepoints) {
+            for (Safepoint safepoint : tm.getSafepoints()) {
                 if (safepoint instanceof Call) {
                     Call call = (Call) safepoint;
                     if (call.debugInfo != null) {
@@ -104,10 +104,10 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
                     addOperandComment(hcf, safepoint.pcOffset, "{safepoint}");
                 }
             }
-            for (DataPatch site : tm.dataReferences) {
+            for (DataPatch site : tm.getDataReferences()) {
                 hcf.addOperandComment(site.pcOffset, "{" + site.constant + "}");
             }
-            for (Mark mark : tm.marks) {
+            for (Mark mark : tm.getMarks()) {
                 hcf.addComment(mark.pcOffset, getMarkName(mark));
             }
         }
@@ -153,10 +153,10 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     private static void addExceptionHandlersComment(CompilationResult tm, HexCodeFile hcf) {
-        if (!tm.exceptionHandlers.isEmpty()) {
+        if (!tm.getExceptionHandlers().isEmpty()) {
             String nl = HexCodeFile.NEW_LINE;
             StringBuilder buf = new StringBuilder("------ Exception Handlers ------").append(nl);
-            for (CompilationResult.ExceptionHandler e : tm.exceptionHandlers) {
+            for (CompilationResult.ExceptionHandler e : tm.getExceptionHandlers()) {
                 buf.append("    ").
                     append(e.pcOffset).append(" -> ").
                     append(e.handlerPos).

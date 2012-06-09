@@ -193,11 +193,11 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     private void emitOperandHelper(Register reg, Address addr) {
-        Register base = isLegal(addr.base) ? asRegister(addr.base) : Register.None;
-        Register index = isLegal(addr.index) ? asRegister(addr.index) : Register.None;
+        Register base = isLegal(addr.getBase()) ? asRegister(addr.getBase()) : Register.None;
+        Register index = isLegal(addr.getIndex()) ? asRegister(addr.getIndex()) : Register.None;
 
-        Address.Scale scale = addr.scale;
-        int disp = addr.displacement;
+        Address.Scale scale = addr.getScale();
+        int disp = addr.getDisplacement();
 
         if (base == Register.Frame) {
             assert frameRegister != null : "cannot use register " + Register.Frame + " in assembler with null register configuration";
@@ -2223,28 +2223,28 @@ public class AMD64Assembler extends AbstractAssembler {
 
 
     private void prefix(Address adr) {
-        if (needsRex(adr.base)) {
-            if (needsRex(adr.index)) {
+        if (needsRex(adr.getBase())) {
+            if (needsRex(adr.getIndex())) {
                 emitByte(Prefix.REXXB);
             } else {
                 emitByte(Prefix.REXB);
             }
         } else {
-            if (needsRex(adr.index)) {
+            if (needsRex(adr.getIndex())) {
                 emitByte(Prefix.REXX);
             }
         }
     }
 
     private void prefixq(Address adr) {
-        if (needsRex(adr.base)) {
-            if (needsRex(adr.index)) {
+        if (needsRex(adr.getBase())) {
+            if (needsRex(adr.getIndex())) {
                 emitByte(Prefix.REXWXB);
             } else {
                 emitByte(Prefix.REXWB);
             }
         } else {
-            if (needsRex(adr.index)) {
+            if (needsRex(adr.getIndex())) {
                 emitByte(Prefix.REXWX);
             } else {
                 emitByte(Prefix.REXW);
@@ -2254,28 +2254,28 @@ public class AMD64Assembler extends AbstractAssembler {
 
     private void prefix(Address adr, Register reg) {
         if (reg.encoding < 8) {
-            if (needsRex(adr.base)) {
-                if (needsRex(adr.index)) {
+            if (needsRex(adr.getBase())) {
+                if (needsRex(adr.getIndex())) {
                     emitByte(Prefix.REXXB);
                 } else {
                     emitByte(Prefix.REXB);
                 }
             } else {
-                if (needsRex(adr.index)) {
+                if (needsRex(adr.getIndex())) {
                     emitByte(Prefix.REXX);
                 } else if (reg.encoding >= 4) {
                     emitByte(Prefix.REX);
                 }
             }
         } else {
-            if (needsRex(adr.base)) {
-                if (needsRex(adr.index)) {
+            if (needsRex(adr.getBase())) {
+                if (needsRex(adr.getIndex())) {
                     emitByte(Prefix.REXRXB);
                 } else {
                     emitByte(Prefix.REXRB);
                 }
             } else {
-                if (needsRex(adr.index)) {
+                if (needsRex(adr.getIndex())) {
                     emitByte(Prefix.REXRX);
                 } else {
                     emitByte(Prefix.REXR);
@@ -2286,28 +2286,28 @@ public class AMD64Assembler extends AbstractAssembler {
 
     private void prefixq(Address adr, Register src) {
         if (src.encoding < 8) {
-            if (needsRex(adr.base)) {
-                if (needsRex(adr.index)) {
+            if (needsRex(adr.getBase())) {
+                if (needsRex(adr.getIndex())) {
                     emitByte(Prefix.REXWXB);
                 } else {
                     emitByte(Prefix.REXWB);
                 }
             } else {
-                if (needsRex(adr.index)) {
+                if (needsRex(adr.getIndex())) {
                     emitByte(Prefix.REXWX);
                 } else {
                     emitByte(Prefix.REXW);
                 }
             }
         } else {
-            if (needsRex(adr.base)) {
-                if (needsRex(adr.index)) {
+            if (needsRex(adr.getBase())) {
+                if (needsRex(adr.getIndex())) {
                     emitByte(Prefix.REXWRXB);
                 } else {
                     emitByte(Prefix.REXWRB);
                 }
             } else {
-                if (needsRex(adr.index)) {
+                if (needsRex(adr.getIndex())) {
                     emitByte(Prefix.REXWRX);
                 } else {
                     emitByte(Prefix.REXWR);

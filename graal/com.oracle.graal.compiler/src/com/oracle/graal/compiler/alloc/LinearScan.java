@@ -956,7 +956,7 @@ public final class LinearScan {
     }
 
     boolean isProcessed(Value operand) {
-        return !isRegister(operand) || attributes(asRegister(operand)).isAllocatable;
+        return !isRegister(operand) || attributes(asRegister(operand)).isAllocatable();
     }
 
     void addDef(Value operand, int defPos, RegisterPriority registerPriority, Kind kind) {
@@ -1139,7 +1139,7 @@ public final class LinearScan {
                 // add a temp range for each register if operation destroys caller-save registers
                 if (op.hasCall()) {
                     for (Register r : callerSaveRegs) {
-                        if (attributes(r).isAllocatable) {
+                        if (attributes(r).isAllocatable()) {
                             addTemp(r.asValue(), opId, RegisterPriority.None, Kind.Illegal);
                         }
                     }
@@ -1694,7 +1694,7 @@ public final class LinearScan {
     }
 
     private boolean isCallerSave(Value operand) {
-        return attributes(asRegister(operand)).isCallerSave;
+        return attributes(asRegister(operand)).isCallerSave();
     }
 
 

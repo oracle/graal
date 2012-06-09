@@ -158,7 +158,7 @@ public final class RegisterVerifier {
         Iterator<Object> iter = curInputState.keySet().iterator();
         while (iter.hasNext()) {
             Object value1 = iter.next();
-            if (value1 instanceof Register && frameMap.registerConfig.getAttributesMap()[((Register) value1).number].isCallerSave) {
+            if (value1 instanceof Register && frameMap.registerConfig.getAttributesMap()[((Register) value1).number].isCallerSave()) {
                 Debug.log("    remove caller save register %s", value1);
                 iter.remove();
             }
@@ -183,7 +183,7 @@ public final class RegisterVerifier {
     }
 
     private boolean isIgnoredRegister(Value value) {
-        return isRegister(value) && !frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
+        return isRegister(value) && !frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable();
     }
 
     private Value use(Value value, EnumSet<OperandFlag> flags) {

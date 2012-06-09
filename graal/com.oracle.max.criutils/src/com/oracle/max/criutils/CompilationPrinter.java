@@ -129,7 +129,7 @@ public class CompilationPrinter {
             BytecodePosition curCodePos = codePos;
             List<VirtualObject> virtualObjects = new ArrayList<>();
             do {
-                sb.append(CodeUtil.toLocation(curCodePos.method, curCodePos.bci));
+                sb.append(CodeUtil.toLocation(curCodePos.getMethod(), curCodePos.getBCI()));
                 sb.append('\n');
                 if (curCodePos instanceof BytecodeFrame) {
                     BytecodeFrame frame = (BytecodeFrame) curCodePos;
@@ -154,7 +154,7 @@ public class CompilationPrinter {
                     }
 
                 }
-                curCodePos = curCodePos.caller;
+                curCodePos = curCodePos.getCaller();
             } while (curCodePos != null);
 
             for (int i = 0; i < virtualObjects.size(); i++) {

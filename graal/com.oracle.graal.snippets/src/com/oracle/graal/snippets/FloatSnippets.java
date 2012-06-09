@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.snippets;
 
-import com.oracle.max.cri.util.*;
 import com.oracle.graal.nodes.calc.*;
 
 /**

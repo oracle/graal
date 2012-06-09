@@ -106,7 +106,7 @@ public class LinearScanAllocator {
     }
 
     private boolean isAllocatableRegister(Value value) {
-        return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
+        return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable();
     }
 
 
