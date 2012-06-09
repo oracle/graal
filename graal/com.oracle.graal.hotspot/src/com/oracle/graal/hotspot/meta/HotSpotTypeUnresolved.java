@@ -29,7 +29,7 @@ import com.oracle.graal.hotspot.*;
 /**
  * Implementation of RiType for unresolved HotSpot classes.
  */
-public class HotSpotTypeUnresolved extends HotSpotType {
+public class HotSpotTypeUnresolved extends HotSpotJavaType {
 
     private static final long serialVersionUID = -2320936267633521314L;
     public final String simpleName;
@@ -115,7 +115,7 @@ public class HotSpotTypeUnresolved extends HotSpotType {
 
     @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
-        return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().lookupType(name, (HotSpotTypeResolved) accessingClass, true);
+        return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().lookupType(name, (HotSpotResolvedJavaType) accessingClass, true);
     }
 
     @Override

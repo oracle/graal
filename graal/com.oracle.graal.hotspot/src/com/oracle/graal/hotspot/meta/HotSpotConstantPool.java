@@ -32,15 +32,15 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
 
     private static final long serialVersionUID = -5443206401485234850L;
 
-    private final HotSpotTypeResolvedImpl type;
+    private final HotSpotResolvedJavaType type;
 
-    public HotSpotConstantPool(HotSpotTypeResolvedImpl type) {
+    public HotSpotConstantPool(HotSpotResolvedJavaType type) {
         this.type = type;
     }
 
     @Override
     public Object lookupConstant(int cpi) {
-        Object constant = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_lookupConstant(type, cpi);
+        Object constant = HotSpotGraalRuntime.getInstance().getCompilerToVM().ConstantPool_lookupConstant(type, cpi);
         return constant;
     }
 
@@ -51,21 +51,21 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
 
     @Override
     public JavaMethod lookupMethod(int cpi, int byteCode) {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_lookupMethod(type, cpi, (byte) byteCode);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().ConstantPool_lookupMethod(type, cpi, (byte) byteCode);
     }
 
     @Override
     public JavaType lookupType(int cpi, int opcode) {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_lookupType(type, cpi);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().ConstantPool_lookupType(type, cpi);
     }
 
     @Override
     public JavaField lookupField(int cpi, int opcode) {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_lookupField(type, cpi, (byte) opcode);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().ConstantPool_lookupField(type, cpi, (byte) opcode);
     }
 
     @Override
     public void loadReferencedType(int cpi, int bytecode) {
-        HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_loadReferencedType(type, cpi, (byte) bytecode);
+        HotSpotGraalRuntime.getInstance().getCompilerToVM().ConstantPool_loadReferencedType(type, cpi, (byte) bytecode);
     }
 }

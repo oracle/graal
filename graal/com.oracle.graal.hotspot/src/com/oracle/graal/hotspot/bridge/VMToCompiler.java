@@ -35,7 +35,7 @@ import com.oracle.graal.hotspot.meta.*;
  */
 public interface VMToCompiler {
 
-    boolean compileMethod(HotSpotMethodResolved method, int entryBCI, boolean blocking, int priority) throws Throwable;
+    boolean compileMethod(HotSpotResolvedJavaMethod method, int entryBCI, boolean blocking, int priority) throws Throwable;
 
     void shutdownCompiler() throws Throwable;
 
@@ -45,25 +45,23 @@ public interface VMToCompiler {
 
     PrintStream log();
 
-    JavaMethod createRiMethodUnresolved(String name, String signature, JavaType holder);
+    JavaMethod createJavaMethod(String name, String signature, JavaType holder);
 
-    Signature createRiSignature(String signature);
+    Signature createSignature(String signature);
 
-    JavaField createRiField(JavaType holder, String name, JavaType type, int offset, int flags);
+    JavaField createJavaField(JavaType holder, String name, JavaType type, int offset, int flags);
 
-    JavaType createRiType(HotSpotConstantPool pool, String name);
+    JavaType createPrimitiveJavaType(int basicType);
 
-    JavaType createRiTypePrimitive(int basicType);
+    JavaType createJavaType(String name);
 
-    JavaType createRiTypeUnresolved(String name);
+    Constant createConstant(Kind kind, long value);
 
-    Constant createCiConstant(Kind kind, long value);
+    Constant createConstantFloat(float value);
 
-    Constant createCiConstantFloat(float value);
+    Constant createConstantDouble(double value);
 
-    Constant createCiConstantDouble(double value);
-
-    Constant createCiConstantObject(Object object);
+    Constant createConstantObject(Object object);
 
     PhasePlan createPhasePlan(OptimisticOptimizations optimisticOpts);
 }

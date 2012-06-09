@@ -359,7 +359,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             ValueNode hub = checkcast.targetClassInstruction();
             ValueNode object = checkcast.object();
             TypeCheckHints hintInfo = new TypeCheckHints(checkcast.targetClass(), checkcast.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
-            final HotSpotTypeResolvedImpl target = (HotSpotTypeResolvedImpl) checkcast.targetClass();
+            final HotSpotResolvedJavaType target = (HotSpotResolvedJavaType) checkcast.targetClass();
             boolean checkNull = !object.stamp().nonNull();
             Arguments arguments;
             Key key;
@@ -391,7 +391,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         private static HotSpotKlassOop[] createHints(TypeCheckHints hints) {
             HotSpotKlassOop[] hintHubs = new HotSpotKlassOop[hints.types.length];
             for (int i = 0; i < hintHubs.length; i++) {
-                hintHubs[i] = ((HotSpotType) hints.types[i]).klassOop();
+                hintHubs[i] = ((HotSpotJavaType) hints.types[i]).klassOop();
             }
             return hintHubs;
         }

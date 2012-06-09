@@ -20,9 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
-
-import com.oracle.graal.hotspot.*;
+package com.oracle.graal.hotspot;
 
 /**
  * A mechanism for safely conveying a HotSpot klassOop value from the compiler to the C++ code.

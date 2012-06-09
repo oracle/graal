@@ -747,7 +747,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         int vtableEntryOffset = 0;
 
         if (GraalOptions.InlineVTableStubs && (GraalOptions.AlwaysInlineVTableStubs || megamorph)) {
-            HotSpotMethodResolved hsMethod = (HotSpotMethodResolved) method;
+            HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
             if (!hsMethod.holder().isInterface()) {
                 vtableEntryOffset = hsMethod.vtableEntryOffset();
             }
@@ -781,7 +781,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
     @Override
     public XirSnippet genNewInstance(XirSite site, JavaType type) {
-        HotSpotTypeResolved resolvedType = (HotSpotTypeResolved) type;
+        HotSpotResolvedJavaType resolvedType = (HotSpotResolvedJavaType) type;
         int instanceSize = resolvedType.instanceSize();
         return new XirSnippet(newInstanceTemplates.get(site, instanceSize), XirArgument.forObject(resolvedType.klassOop()));
     }
@@ -790,18 +790,18 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     public XirSnippet genNewArray(XirSite site, XirArgument length, Kind elementKind, JavaType componentType, JavaType arrayType) {
         if (elementKind == Kind.Object) {
             assert arrayType instanceof ResolvedJavaType;
-            return new XirSnippet(newObjectArrayTemplates.get(site), length, XirArgument.forObject(((HotSpotType) arrayType).klassOop()));
+            return new XirSnippet(newObjectArrayTemplates.get(site), length, XirArgument.forObject(((HotSpotJavaType) arrayType).klassOop()));
         } else {
             assert arrayType == null;
             JavaType primitiveArrayType = compiler.getCompilerToVM().getPrimitiveArrayType(elementKind);
-            return new XirSnippet(newTypeArrayTemplates.get(site, elementKind), length, XirArgument.forObject(((HotSpotType) primitiveArrayType).klassOop()));
+            return new XirSnippet(newTypeArrayTemplates.get(site, elementKind), length, XirArgument.forObject(((HotSpotJavaType) primitiveArrayType).klassOop()));
         }
     }
 
     @Override
     public XirSnippet genNewMultiArray(XirSite site, XirArgument[] lengths, JavaType type) {
         XirArgument[] params = Arrays.copyOf(lengths, lengths.length + 1);
-        params[lengths.length] = XirArgument.forObject(((HotSpotType) type).klassOop());
+        params[lengths.length] = XirArgument.forObject(((HotSpotJavaType) type).klassOop());
         return new XirSnippet(multiNewArrayTemplate.get(site, lengths.length), params);
     }
 
@@ -833,7 +833,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 params[i++] = hub;
             }
             for (ResolvedJavaType hint : hints.types) {
-                params[i++] = XirArgument.forObject(((HotSpotType) hint).klassOop());
+                params[i++] = XirArgument.forObject(((HotSpotJavaType) hint).klassOop());
             }
             XirTemplate template = hints.exact ? checkCastTemplates.get(site, hintsLength, EXACT_HINTS) : checkCastTemplates.get(site, hintsLength);
             return new XirSnippet(template, params);
@@ -854,7 +854,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 params[i++] = hub;
             }
             for (ResolvedJavaType hint : hints.types) {
-                params[i++] = XirArgument.forObject(((HotSpotType) hint).klassOop());
+                params[i++] = XirArgument.forObject(((HotSpotJavaType) hint).klassOop());
             }
             XirTemplate template = hints.exact ? instanceOfTemplates.get(site, hintsLength, EXACT_HINTS) : instanceOfTemplates.get(site, hintsLength);
             return new XirSnippet(template, params);
@@ -877,7 +877,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             params[i++] = trueValue;
             params[i++] = falseValue;
             for (ResolvedJavaType hint : hints.types) {
-                params[i++] = XirArgument.forObject(((HotSpotType) hint).klassOop());
+                params[i++] = XirArgument.forObject(((HotSpotJavaType) hint).klassOop());
             }
             XirTemplate template = hints.exact ? materializeInstanceOfTemplates.get(site, hintsLength, EXACT_HINTS) : materializeInstanceOfTemplates.get(site, hintsLength);
             return new XirSnippet(template, params);

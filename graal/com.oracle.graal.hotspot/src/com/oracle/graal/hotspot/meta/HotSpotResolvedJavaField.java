@@ -35,7 +35,7 @@ import com.oracle.graal.hotspot.*;
 /**
  * Represents a field in a HotSpot type.
  */
-public class HotSpotField extends CompilerObject implements ResolvedJavaField {
+public class HotSpotResolvedJavaField extends CompilerObject implements ResolvedJavaField {
 
     private static final long serialVersionUID = 7692985878836955683L;
     private final ResolvedJavaType holder;
@@ -45,7 +45,7 @@ public class HotSpotField extends CompilerObject implements ResolvedJavaField {
     private final int accessFlags;
     private Constant constant;                // Constant part only valid for static fields.
 
-    public HotSpotField(ResolvedJavaType holder, String name, JavaType type, int offset, int accessFlags) {
+    public HotSpotResolvedJavaField(ResolvedJavaType holder, String name, JavaType type, int offset, int accessFlags) {
         this.holder = holder;
         this.name = name;
         this.type = type;

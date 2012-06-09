@@ -39,7 +39,7 @@ import com.oracle.max.criutils.*;
 /**
  * Implementation of RiMethod for resolved HotSpot methods.
  */
-public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements HotSpotMethodResolved {
+public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements ResolvedJavaMethod {
 
     private static final long serialVersionUID = -5486975070147586588L;
 
@@ -64,7 +64,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     private CompilationTask currentTask;
 
-    private HotSpotMethodResolvedImpl() {
+    private HotSpotResolvedJavaMethod() {
         throw new IllegalStateException("this constructor is never actually called, because the objects are allocated from within the VM");
     }
 
@@ -86,7 +86,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     @Override
     public byte[] code() {
         if (code == null) {
-            code = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_code(this);
+            code = HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_code(this);
             assert code.length == codeSize : "expected: " + codeSize + ", actual: " + code.length;
         }
         return code;
@@ -99,13 +99,13 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public ExceptionHandler[] exceptionHandlers() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_exceptionHandlers(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_exceptionHandlers(this);
     }
 
     @Override
     public boolean hasBalancedMonitors() {
         if (hasBalancedMonitors == null) {
-            hasBalancedMonitors = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_hasBalancedMonitors(this);
+            hasBalancedMonitors = HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_hasBalancedMonitors(this);
         }
         return hasBalancedMonitors;
     }
@@ -144,21 +144,20 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     public StackTraceElement toStackTraceElement(int bci) {
         if (bci < 0 || bci >= codeSize) {
             // HotSpot code can only construct stack trace elements for valid bcis
-            StackTraceElement ste = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_toStackTraceElement(this, 0);
+            StackTraceElement ste = HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_toStackTraceElement(this, 0);
             return new StackTraceElement(ste.getClassName(), ste.getMethodName(), ste.getFileName(), -1);
         }
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_toStackTraceElement(this, bci);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_toStackTraceElement(this, bci);
     }
 
-    @Override
     public ResolvedJavaMethod uniqueConcreteMethod() {
-        return (ResolvedJavaMethod) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_uniqueConcreteMethod(this);
+        return (ResolvedJavaMethod) HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_uniqueConcreteMethod(this);
     }
 
     @Override
     public Signature signature() {
         if (signature == null) {
-            signature = new HotSpotSignature(HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_signature(this));
+            signature = new HotSpotSignature(HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_signature(this));
         }
         return signature;
     }
@@ -169,11 +168,11 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     public boolean hasCompiledCode() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_hasCompiledCode(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_hasCompiledCode(this);
     }
 
     public int compiledCodeSize() {
-        int result = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_getCompiledCodeSize(this);
+        int result = HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_getCompiledCodeSize(this);
         if (result > 0) {
             assert result > MethodEntryCounters.getCodeSize();
             result =  result - MethodEntryCounters.getCodeSize();
@@ -183,7 +182,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public int invocationCount() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_invocationCount(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_invocationCount(this);
     }
 
     @Override
@@ -257,7 +256,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         }
 
         if (GraalOptions.UseProfilingInformation && methodData == null) {
-            methodData = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_methodData(this);
+            methodData = HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_methodData(this);
         }
 
         if (methodData == null || (!methodData.hasNormalData() && !methodData.hasExtraData())) {
@@ -280,7 +279,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public ConstantPool getConstantPool() {
-        return ((HotSpotTypeResolvedImpl) holder()).constantPool();
+        return ((HotSpotResolvedJavaType) holder()).constantPool();
     }
 
     @Override
@@ -334,17 +333,14 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         return canBeInlined;
     }
 
-    @Override
     public int vtableEntryOffset() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_vtableEntryOffset(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_vtableEntryOffset(this);
     }
 
-    @Override
     public void setCurrentTask(CompilationTask task) {
         currentTask = task;
     }
 
-    @Override
     public CompilationTask currentTask() {
         return currentTask;
     }

@@ -142,7 +142,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
         return vmToCompiler;
     }
 
-    public JavaType lookupType(String returnType, HotSpotTypeResolved accessingClass, boolean eagerResolve) {
+    public JavaType lookupType(String returnType, HotSpotResolvedJavaType accessingClass, boolean eagerResolve) {
         if (returnType.length() == 1 && vmToCompiler instanceof VMToCompilerImpl) {
             VMToCompilerImpl exitsNative = (VMToCompilerImpl) vmToCompiler;
             Kind kind = Kind.fromPrimitiveOrVoidTypeChar(returnType.charAt(0));
@@ -173,7 +173,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
                     return exitsNative.typeVoid;
             }
         }
-        return compilerToVm.RiSignature_lookupType(returnType, accessingClass, eagerResolve);
+        return compilerToVm.Signature_lookupType(returnType, accessingClass, eagerResolve);
     }
 
     public HotSpotRuntime getRuntime() {

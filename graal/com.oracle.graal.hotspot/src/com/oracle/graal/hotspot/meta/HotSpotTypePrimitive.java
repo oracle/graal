@@ -32,7 +32,7 @@ import com.oracle.graal.hotspot.*;
 /**
  * Implementation of RiType for primitive HotSpot types.
  */
-public final class HotSpotTypePrimitive extends HotSpotType implements ResolvedJavaType {
+public final class HotSpotTypePrimitive extends HotSpotJavaType implements ResolvedJavaType {
 
     private static final long serialVersionUID = -6208552348908071473L;
     private Kind kind;

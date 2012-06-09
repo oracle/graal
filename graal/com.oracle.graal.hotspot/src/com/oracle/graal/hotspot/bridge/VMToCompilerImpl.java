@@ -223,8 +223,8 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     private void enqueue(Method m) throws Throwable {
         JavaMethod riMethod = compiler.getRuntime().getResolvedJavaMethod(m);
-        assert !Modifier.isAbstract(((HotSpotMethodResolved) riMethod).accessFlags()) && !Modifier.isNative(((HotSpotMethodResolved) riMethod).accessFlags()) : riMethod;
-        compileMethod((HotSpotMethodResolved) riMethod, 0, false, 10);
+        assert !Modifier.isAbstract(((HotSpotResolvedJavaMethod) riMethod).accessFlags()) && !Modifier.isNative(((HotSpotResolvedJavaMethod) riMethod).accessFlags()) : riMethod;
+        compileMethod((HotSpotResolvedJavaMethod) riMethod, 0, false, 10);
     }
 
     private static void shutdownCompileQueue(ThreadPoolExecutor queue) throws InterruptedException {
@@ -349,7 +349,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public boolean compileMethod(final HotSpotMethodResolved method, final int entryBCI, boolean blocking, int priority) throws Throwable {
+    public boolean compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, boolean blocking, int priority) throws Throwable {
         if (CompilationTask.withinEnqueue.get()) {
             // This is required to avoid deadlocking a compiler thread. The issue is that a
             // java.util.concurrent.BlockingQueue is used to implement the compilation worker
@@ -396,31 +396,26 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public JavaMethod createRiMethodUnresolved(String name, String signature, JavaType holder) {
+    public JavaMethod createJavaMethod(String name, String signature, JavaType holder) {
         return new HotSpotMethodUnresolved(name, signature, holder);
     }
 
     @Override
-    public Signature createRiSignature(String signature) {
+    public Signature createSignature(String signature) {
         return new HotSpotSignature(signature);
     }
 
     @Override
-    public JavaField createRiField(JavaType holder, String name, JavaType type, int offset, int flags) {
+    public JavaField createJavaField(JavaType holder, String name, JavaType type, int offset, int flags) {
         if (offset != -1) {
-            HotSpotTypeResolved resolved = (HotSpotTypeResolved) holder;
+            HotSpotResolvedJavaType resolved = (HotSpotResolvedJavaType) holder;
             return resolved.createRiField(name, type, offset, flags);
         }
         return new BaseUnresolvedField(holder, name, type);
     }
 
     @Override
-    public JavaType createRiType(HotSpotConstantPool pool, String name) {
-        throw new RuntimeException("not implemented");
-    }
-
-    @Override
-    public JavaType createRiTypePrimitive(int basicType) {
+    public ResolvedJavaType createPrimitiveJavaType(int basicType) {
         switch (basicType) {
             case 4:
                 return typeBoolean;
@@ -446,12 +441,12 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public JavaType createRiTypeUnresolved(String name) {
+    public JavaType createJavaType(String name) {
         return new HotSpotTypeUnresolved(name);
     }
 
     @Override
-    public Constant createCiConstant(Kind kind, long value) {
+    public Constant createConstant(Kind kind, long value) {
         if (kind == Kind.Long) {
             return Constant.forLong(value);
         } else if (kind == Kind.Int) {
@@ -470,17 +465,17 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public Constant createCiConstantFloat(float value) {
+    public Constant createConstantFloat(float value) {
         return Constant.forFloat(value);
     }
 
     @Override
-    public Constant createCiConstantDouble(double value) {
+    public Constant createConstantDouble(double value) {
         return Constant.forDouble(value);
     }
 
     @Override
-    public Constant createCiConstantObject(Object object) {
+    public Constant createConstantObject(Object object) {
         return Constant.forObject(object);
     }
 

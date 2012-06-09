@@ -175,7 +175,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
 
     @Override
     public String disassemble(ResolvedJavaMethod method) {
-        return compiler.getCompilerToVM().disassembleJava((HotSpotMethodResolved) method);
+        return compiler.getCompilerToVM().disassembleJava((HotSpotResolvedJavaMethod) method);
     }
 
     @Override
@@ -185,7 +185,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
 
     @Override
     public ResolvedJavaType getTypeOf(Constant constant) {
-        return (ResolvedJavaType) compiler.getCompilerToVM().getRiType(constant);
+        return (ResolvedJavaType) compiler.getCompilerToVM().getJavaType(constant);
     }
 
     @Override
@@ -233,7 +233,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             graph.replaceFixedWithFixed(arrayLengthNode, safeReadArrayLength);
         } else if (n instanceof LoadFieldNode) {
             LoadFieldNode field = (LoadFieldNode) n;
-            int displacement = ((HotSpotField) field.field()).offset();
+            int displacement = ((HotSpotResolvedJavaField) field.field()).offset();
             assert field.kind() != Kind.Illegal;
             ReadNode memoryRead = graph.add(new ReadNode(field.object(), LocationNode.create(field.field(), field.field().kind(), displacement, graph), field.stamp()));
             memoryRead.dependencies().add(tool.createNullCheckGuard(field.object(), field.leafGraphId()));
@@ -246,7 +246,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             }
         } else if (n instanceof StoreFieldNode) {
             StoreFieldNode storeField = (StoreFieldNode) n;
-            HotSpotField field = (HotSpotField) storeField.field();
+            HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
             WriteNode memoryWrite = graph.add(new WriteNode(storeField.object(), storeField.value(), LocationNode.create(storeField.field(), storeField.field().kind(), field.offset(), graph)));
             memoryWrite.dependencies().add(tool.createNullCheckGuard(storeField.object(), storeField.leafGraphId()));
             memoryWrite.setStateAfter(storeField.stateAfter());
@@ -462,13 +462,13 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     public ResolvedJavaMethod getResolvedJavaMethod(Method reflectionMethod) {
-        return (ResolvedJavaMethod) compiler.getCompilerToVM().getRiMethod(reflectionMethod);
+        return (ResolvedJavaMethod) compiler.getCompilerToVM().getJavaMethod(reflectionMethod);
     }
 
     private static HotSpotCodeInfo makeInfo(ResolvedJavaMethod method, CompilationResult code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = null;
         if (info != null && info.length > 0) {
-            hsInfo = new HotSpotCodeInfo(code, (HotSpotMethodResolved) method);
+            hsInfo = new HotSpotCodeInfo(code, (HotSpotResolvedJavaMethod) method);
             info[0] = hsInfo;
         }
         return hsInfo;
@@ -476,13 +476,13 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
 
     public void installMethod(ResolvedJavaMethod method, CompilationResult code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
-        compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotMethodResolved) method, code), true, hsInfo);
+        compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotResolvedJavaMethod) method, code), true, hsInfo);
     }
 
     @Override
     public InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
-        return compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotMethodResolved) method, code), false, hsInfo);
+        return compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotResolvedJavaMethod) method, code), false, hsInfo);
     }
 
     @Override

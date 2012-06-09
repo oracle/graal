@@ -36,13 +36,13 @@ public final class HotSpotTargetMethod extends CompilerObject {
 
     private static final long serialVersionUID = 7807321392203253218L;
     public final CompilationResult targetMethod;
-    public final HotSpotMethodResolved method; // used only for methods
+    public final HotSpotResolvedJavaMethod method; // used only for methods
     public final String name; // used only for stubs
 
     public final Site[] sites;
     public final ExceptionHandler[] exceptionHandlers;
 
-    public HotSpotTargetMethod(HotSpotMethodResolved method, CompilationResult targetMethod) {
+    public HotSpotTargetMethod(HotSpotResolvedJavaMethod method, CompilationResult targetMethod) {
         this.method = method;
         this.targetMethod = targetMethod;
         this.name = null;
