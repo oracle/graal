@@ -96,11 +96,6 @@ public final class HotSpotTypePrimitive extends HotSpotType implements ResolvedJ
     }
 
     @Override
-    public boolean hasSubclass() {
-        return false;
-    }
-
-    @Override
     public boolean isArrayClass() {
         return false;
     }

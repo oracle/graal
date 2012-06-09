@@ -39,14 +39,6 @@ public interface ResolvedJavaType extends JavaType {
     Constant getEncoding(Representation r);
 
     /**
-     * Checks whether this type has any subclasses so far. Any decisions
-     * based on this information require the registration of a dependency, since
-     * this information may change.
-     * @return {@code true} if this class has subclasses
-     */
-    boolean hasSubclass();
-
-    /**
      * Checks whether this type has a finalizer method.
      * @return {@code true} if this class has a finalizer
      */

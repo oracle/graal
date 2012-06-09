@@ -40,7 +40,6 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     private String simpleName;
     private int accessFlags;
     private boolean hasFinalizer;
-    private boolean hasSubclass;
     private boolean hasFinalizableSubclass;
     private int superCheckOffset;
     private boolean isArrayClass;
@@ -139,11 +138,6 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     @Override
     public boolean hasFinalizer() {
         return hasFinalizer;
-    }
-
-    @Override
-    public boolean hasSubclass() {
-        return hasSubclass;
     }
 
     @Override

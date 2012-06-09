@@ -85,10 +85,10 @@ public class MetaUtil {
      */
     public static String toJavaName(JavaType riType, boolean qualified) {
         Kind kind = riType.kind();
-        if (kind.isPrimitive() || kind == Kind.Void) {
-            return kind.javaName;
+        if (kind.isObject()) {
+            return internalNameToJava(riType.name(), qualified);
         }
-        return internalNameToJava(riType.name(), qualified);
+        return riType.kind().javaName;
     }
 
     /**

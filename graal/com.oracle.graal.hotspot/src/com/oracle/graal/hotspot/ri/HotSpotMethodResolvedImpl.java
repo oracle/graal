@@ -126,16 +126,6 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     @Override
-    public boolean isOverridden() {
-        throw new UnsupportedOperationException("isOverridden");
-    }
-
-    @Override
-    public boolean noSafepointPolls() {
-        return false;
-    }
-
-    @Override
     public String jniSymbol() {
         throw new UnsupportedOperationException("jniSymbol");
     }
@@ -189,16 +179,6 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
             result =  result - MethodEntryCounters.getCodeSize();
         }
         return result;
-    }
-
-    @Override
-    public ResolvedJavaType accessor() {
-        return null;
-    }
-
-    @Override
-    public String intrinsic() {
-        return null;
     }
 
     @Override
@@ -321,15 +301,6 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         }
         Method javaMethod = toJava();
         return javaMethod == null ? null : javaMethod.getAnnotation(annotationClass);
-    }
-
-    @Override
-    public Type getGenericReturnType() {
-        if (isConstructor()) {
-            return void.class;
-        }
-        Method javaMethod = toJava();
-        return javaMethod == null ? null : javaMethod.getGenericReturnType();
     }
 
     @Override

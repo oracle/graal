@@ -88,5 +88,10 @@ public interface JavaType {
      */
     Kind getRepresentationKind(Representation r);
 
+    /**
+     * Resolved this Java type and returns the result.
+     * @param accessingClass the class that requests resolving this type
+     * @return the resolved Java type
+     */
     ResolvedJavaType resolve(ResolvedJavaType accessingClass);
 }

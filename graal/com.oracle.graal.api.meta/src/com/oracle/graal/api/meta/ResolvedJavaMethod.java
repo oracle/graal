@@ -113,19 +113,6 @@ public interface ResolvedJavaMethod extends JavaMethod {
     boolean isConstructor();
 
     /**
-     * Checks whether this method has been overridden. Decisions made based
-     * on a method being overridden must be registered as dependencies.
-     * @return {@code true} if the method has been overridden
-     */
-    boolean isOverridden();
-
-    /**
-     * Checks whether the compiler can insert safepoint polls in this method.
-     * @return {@code true} if the method cannot have safepoint polls inserted
-     */
-    boolean noSafepointPolls();
-
-    /**
      * Checks whether this method can be statically bound (that is, it is final or private or static).
      * @return {@code true} if this method can be statically bound
      */
@@ -141,17 +128,6 @@ public interface ResolvedJavaMethod extends JavaMethod {
      * Gets a stack trace element for this method and a given bytecode index.
      */
     StackTraceElement toStackTraceElement(int bci);
-
-    /**
-     * Temporary work-around to support the @ACCESSOR Maxine annotation.
-     * Non-Maxine VMs should just return {@code null}.
-     */
-    ResolvedJavaType accessor();
-
-    /**
-     * Gets the intrinsic id of this method.
-     */
-    String intrinsic();
 
     /**
      * Provides an estimate of how often this method has been executed.
@@ -200,13 +176,6 @@ public interface ResolvedJavaMethod extends JavaMethod {
      * @see Method#getGenericParameterTypes()
      */
     Type[] getGenericParameterTypes();
-
-    /**
-     * Returns a {@link Type} object that represents the formal return type of this method.
-     *
-     * @see Method#getGenericReturnType()
-     */
-    Type getGenericReturnType();
 
     /**
      * @return {@code true} if this method can be inlined

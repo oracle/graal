@@ -36,16 +36,16 @@ import sun.misc.*;
  * further describing its behavior.
  */
 public enum Kind {
-    Boolean('z', "boolean", FIELD_TYPE | RETURN_TYPE | PRIMITIVE | STACK_INT),
-    Byte   ('b', "byte",    FIELD_TYPE | RETURN_TYPE | PRIMITIVE | STACK_INT),
-    Short  ('s', "short",   FIELD_TYPE | RETURN_TYPE | PRIMITIVE | STACK_INT),
-    Char   ('c', "char",    FIELD_TYPE | RETURN_TYPE | PRIMITIVE | STACK_INT),
-    Int    ('i', "int",     FIELD_TYPE | RETURN_TYPE | PRIMITIVE | STACK_INT),
-    Float  ('f', "float",   FIELD_TYPE | RETURN_TYPE | PRIMITIVE),
-    Long   ('j', "long",    FIELD_TYPE | RETURN_TYPE | PRIMITIVE),
-    Double ('d', "double",  FIELD_TYPE | RETURN_TYPE | PRIMITIVE),
-    Object ('a', "Object",  FIELD_TYPE | RETURN_TYPE),
-    Void   ('v', "void",    RETURN_TYPE),
+    Boolean('z', "boolean", PRIMITIVE | STACK_INT),
+    Byte   ('b', "byte",    PRIMITIVE | STACK_INT),
+    Short  ('s', "short",   PRIMITIVE | STACK_INT),
+    Char   ('c', "char",    PRIMITIVE | STACK_INT),
+    Int    ('i', "int",     PRIMITIVE | STACK_INT),
+    Float  ('f', "float",   PRIMITIVE),
+    Long   ('j', "long",    PRIMITIVE),
+    Double ('d', "double",  PRIMITIVE),
+    Object ('a', "Object",  0),
+    Void   ('v', "void",    0),
     /** Denote a bytecode address in a {@code JSR} bytecode. */
     Jsr    ('r', "jsr",     0),
     /** The non-type. */
@@ -61,14 +61,6 @@ public enum Kind {
     }
 
     static class Flags {
-        /**
-         * Can be an object field type.
-         */
-        public static final int FIELD_TYPE  = 0x0001;
-        /**
-         * Can be result type of a method.
-         */
-        public static final int RETURN_TYPE = 0x0002;
         /**
          * Behaves as an integer when on Java evaluation stack.
          */
@@ -94,22 +86,6 @@ public enum Kind {
      * it is {@linkplain #isPrimitive() primitive} or {@code void}.
      */
     public final String javaName;
-
-    /**
-     * Checks whether this kind is valid as the type of a field.
-     * @return {@code true} if this kind is valid as the type of a Java field
-     */
-    public boolean isValidFieldType() {
-        return (flags & FIELD_TYPE) != 0;
-    }
-
-    /**
-     * Checks whether this kind is valid as the return type of a method.
-     * @return {@code true} if this kind is valid as the return type of a Java method
-     */
-    public boolean isValidReturnType() {
-        return (flags & RETURN_TYPE) != 0;
-    }
 
     /**
      * Checks whether this type is valid as an {@code int} on the Java operand stack.
