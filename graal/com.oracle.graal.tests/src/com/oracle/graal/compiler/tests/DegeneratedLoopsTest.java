@@ -73,15 +73,19 @@ public class DegeneratedLoopsTest extends GraphTest {
 
     }
 
-    private void test(String snippet) {
-        StructuredGraph graph = parse(snippet);
-        Debug.dump(graph, "Graph");
-        for (Invoke invoke : graph.getInvokes()) {
-            invoke.intrinsify(null);
-        }
-        new CanonicalizerPhase(null, runtime(), null).apply(graph);
-        StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
-        Debug.dump(referenceGraph, "Graph");
-        assertEquals(referenceGraph, graph);
+    private void test(final String snippet) {
+        Debug.scope("DegeneratedLoopsTest", new DebugDumpScope(snippet), new Runnable() {
+            public void run() {
+                StructuredGraph graph = parse(snippet);
+                Debug.dump(graph, "Graph");
+                for (Invoke invoke : graph.getInvokes()) {
+                    invoke.intrinsify(null);
+                }
+                new CanonicalizerPhase(null, runtime(), null).apply(graph);
+                StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
+                Debug.dump(referenceGraph, "Graph");
+                assertEquals(referenceGraph, graph);
+            }
+        });
     }
 }

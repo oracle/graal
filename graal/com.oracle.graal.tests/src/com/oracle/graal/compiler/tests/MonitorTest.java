@@ -26,10 +26,7 @@ import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
 import java.util.*;
 
-import junit.framework.*;
-
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.*;
 
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
@@ -56,7 +53,7 @@ public class MonitorTest extends GraphTest {
         return 1;
     }
 
-    @Test(expected = AssertionFailedError.class)
+    @Test(expected = AssertionError.class)
     public void test1() {
         test("test1Snippet");
     }

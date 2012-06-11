@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.tests;
 
-import junit.framework.AssertionFailedError;
-
 import org.junit.*;
 
 import com.oracle.graal.compiler.phases.*;
@@ -43,7 +41,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test(expected = AssertionFailedError.class)
+    @Test(expected = AssertionError.class)
     public void test1() {
         test("test1Snippet", "referenceSnippet1");
     }
@@ -60,7 +58,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test(expected = AssertionFailedError.class)
+    @Test(expected = AssertionError.class)
     public void test2() {
         test("test2Snippet", "referenceSnippet1");
     }
@@ -77,7 +75,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test(expected = AssertionFailedError.class)
+    @Test(expected = AssertionError.class)
     public void test3() {
         test("test3Snippet", "referenceSnippet2");
     }
@@ -144,7 +142,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test(expected = AssertionFailedError.class)
+    @Test(expected = AssertionError.class)
     public void test6() {
         test("test6Snippet", "referenceSnippet3");
     }
@@ -161,14 +159,18 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    private void test(String snippet, String referenceSnippet) {
-        StructuredGraph graph = parse(snippet);
-        Debug.dump(graph, "Graph");
-//        TypeSystemTest.outputGraph(graph);
-        new CanonicalizerPhase(null, runtime(), null).apply(graph);
-        new CheckCastEliminationPhase().apply(graph);
-        new CanonicalizerPhase(null, runtime(), null).apply(graph);
-        StructuredGraph referenceGraph = parse(referenceSnippet);
-        assertEquals(referenceGraph, graph);
+    private void test(final String snippet, final String referenceSnippet) {
+        Debug.scope("ScalarTypeSystemTest", new DebugDumpScope(snippet), new Runnable() {
+            public void run() {
+                StructuredGraph graph = parse(snippet);
+                Debug.dump(graph, "Graph");
+//                TypeSystemTest.outputGraph(graph);
+                new CanonicalizerPhase(null, runtime(), null).apply(graph);
+                new CheckCastEliminationPhase().apply(graph);
+                new CanonicalizerPhase(null, runtime(), null).apply(graph);
+                StructuredGraph referenceGraph = parse(referenceSnippet);
+                assertEquals(referenceGraph, graph);
+            }
+        });
     }
 }

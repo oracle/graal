@@ -116,31 +116,35 @@ public class EscapeAnalysisTest extends GraphTest {
         }
     }
 
-    private void test(String snippet, Constant expectedResult) {
-        StructuredGraph graph = parse(snippet);
-        for (Invoke n : graph.getInvokes()) {
-            n.node().setProbability(100000);
-        }
+    private void test(final String snippet, final Constant expectedResult) {
+        Debug.scope("ScalarTypeSystemTest", new DebugDumpScope(snippet), new Runnable() {
+            public void run() {
+                StructuredGraph graph = parse(snippet);
+                for (Invoke n : graph.getInvokes()) {
+                    n.node().setProbability(100000);
+                }
 
-        new InliningPhase(null, runtime(), null, null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-        new DeadCodeEliminationPhase().apply(graph);
-        Debug.dump(graph, "Graph");
-        new EscapeAnalysisPhase(null, runtime(), null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-        Debug.dump(graph, "Graph");
-        int retCount = 0;
-        for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {
-            Assert.assertTrue(ret.result().isConstant());
-            Assert.assertEquals(ret.result().asConstant(), expectedResult);
-            retCount++;
-        }
-        Assert.assertEquals(1, retCount);
-        int newInstanceCount = 0;
-        for (@SuppressWarnings("unused") NewInstanceNode n : graph.getNodes(NewInstanceNode.class)) {
-            newInstanceCount++;
-        }
-        for (@SuppressWarnings("unused") NewObjectArrayNode n : graph.getNodes(NewObjectArrayNode.class)) {
-            newInstanceCount++;
-        }
-        Assert.assertEquals(0, newInstanceCount);
+                new InliningPhase(null, runtime(), null, null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+                new DeadCodeEliminationPhase().apply(graph);
+                Debug.dump(graph, "Graph");
+                new EscapeAnalysisPhase(null, runtime(), null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+                Debug.dump(graph, "Graph");
+                int retCount = 0;
+                for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {
+                    Assert.assertTrue(ret.result().isConstant());
+                    Assert.assertEquals(ret.result().asConstant(), expectedResult);
+                    retCount++;
+                }
+                Assert.assertEquals(1, retCount);
+                int newInstanceCount = 0;
+                for (@SuppressWarnings("unused") NewInstanceNode n : graph.getNodes(NewInstanceNode.class)) {
+                    newInstanceCount++;
+                }
+                for (@SuppressWarnings("unused") NewObjectArrayNode n : graph.getNodes(NewObjectArrayNode.class)) {
+                    newInstanceCount++;
+                }
+                Assert.assertEquals(0, newInstanceCount);
+            }
+        });
     }
 }

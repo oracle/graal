@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.tests;
 
-import junit.framework.AssertionFailedError;
-
 import org.junit.*;
 
 import com.oracle.graal.compiler.phases.*;
@@ -71,26 +69,30 @@ public class StraighteningTest extends GraphTest {
         return c == 1;
     }
 
-    @Test(expected = AssertionFailedError.class)
+    @Test(expected = AssertionError.class)
     public void test1() {
         test("test1Snippet");
     }
 
-    @Test(expected = AssertionFailedError.class)
+    @Test(expected = AssertionError.class)
     public void test2() {
         test("test2Snippet");
     }
 
-    @Test(expected = AssertionFailedError.class)
+    @Test(expected = AssertionError.class)
     public void test3() {
         test("test3Snippet");
     }
 
-    private void test(String snippet) {
-        StructuredGraph graph = parse(snippet);
-        Debug.dump(graph, "Graph");
-        new CanonicalizerPhase(null, runtime(), null).apply(graph);
-        StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
-        assertEquals(referenceGraph, graph);
+    private void test(final String snippet) {
+        Debug.scope("StraighteningTest", new DebugDumpScope(snippet), new Runnable() {
+            public void run() {
+                StructuredGraph graph = parse(snippet);
+                Debug.dump(graph, "Graph");
+                new CanonicalizerPhase(null, runtime(), null).apply(graph);
+                StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
+                assertEquals(referenceGraph, graph);
+            }
+        });
     }
 }
