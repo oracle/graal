@@ -134,7 +134,8 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
     }
 
     @Override
-    public void negate() {
+    public Negatable negate() {
         negated = !negated;
+        return this;
     }
 }

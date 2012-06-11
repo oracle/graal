@@ -207,6 +207,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
         if (clazz == ExtendedRiRuntime.class) {
             return (T) getRuntime();
         }
+        if (clazz == GraalCompiler.class) {
+            return (T) getCompiler();
+        }
         return null;
     }
 }

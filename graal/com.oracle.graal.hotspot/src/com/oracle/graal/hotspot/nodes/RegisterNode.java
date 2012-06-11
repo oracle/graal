@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,52 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.max.asm.target.amd64.*;
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class CurrentThread extends FloatingNode implements LIRLowerable {
+/**
+ * Access the value of a specific register.
+ */
+public final class RegisterNode extends FloatingNode implements LIRLowerable {
 
-    private int threadObjectOffset;
+    private final Register register;
 
-    public CurrentThread(int threadObjectOffset, CodeCacheProvider runtime) {
-        super(StampFactory.declaredNonNull(runtime.getResolvedJavaType(Thread.class)));
-        this.threadObjectOffset = threadObjectOffset;
+    public RegisterNode(Register register, Kind kind) {
+        super(StampFactory.forKind(kind));
+        this.register = register;
     }
 
     @Override
     public void generate(LIRGeneratorTool generator) {
-        generator.setResult(this, generator.emitLoad(new Address(Kind.Object, AMD64.r15.asValue(generator.target().wordKind), threadObjectOffset), false));
+        Value result = generator.newVariable(kind());
+        generator.emitMove(register.asValue(kind()), result);
+        generator.setResult(this, result);
+    }
+
+    @Override
+    public String toString(Verbosity verbosity) {
+        if (verbosity == Verbosity.Name) {
+            return super.toString(Verbosity.Name) + "%" + register;
+        } else {
+            return super.toString(verbosity);
+        }
+    }
+
+    @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        properties.put("register", register.toString());
+        return properties;
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object get(@ConstantNodeParameter int threadObjectOffset) {
+    public static <T> T register(@ConstantNodeParameter Register register, @ConstantNodeParameter Kind kind) {
         throw new UnsupportedOperationException();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,21 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package com.oracle.graal.compiler.tests;
 
+import java.util.*;
+
+import org.junit.*;
+
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * This interface marks a node as being able to negate its effect, this is intended for nodes that depend on a
- * BooleanNode condition. The canonical representation of has, for example, no way to represent a != b. If such an
- * expression appears during canonicalization the negated expression will be created (a == b) and the usages will be
- * negated, using this interface's {@link #negate()} method.
+ * Tests the implementation of {@code NEW}.
  */
-public interface Negatable {
+public class NewInstanceTest extends TypeCheckTest {
 
-    /**
-     * Tells this node that a condition it depends has been negated, and that it thus needs to invert its own effect.
-     * For example, an {@link IfNode} would switch its true and false successors.
-     */
-    Negatable negate();
+    @Override
+    protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
+    }
+
+    @Test
+    public void test1() {
+        test("newEmptyString");
+        test("newString", "value");
+        test("newHashMap", 31);
+    }
+
+    public static String newEmptyString() {
+        return new String();
+    }
+
+    public static String newString(String value) {
+        return new String(value);
+    }
+
+    public static HashMap newHashMap(int initialCapacity) {
+        return new HashMap(initialCapacity);
+    }
 }

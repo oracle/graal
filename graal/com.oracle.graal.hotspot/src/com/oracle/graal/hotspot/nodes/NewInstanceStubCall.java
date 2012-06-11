@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,43 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.max.asm.target.amd64.*;
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.target.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.asm.target.amd64.*;
 
-public final class CurrentThread extends FloatingNode implements LIRLowerable {
+/**
+ * Node implementing a call to HotSpot's {@code new_instance} stub.
+ *
+ * @see AMD64NewInstanceStubCallOp
+ */
+public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
-    private int threadObjectOffset;
+    @Input private final ValueNode hub;
 
-    public CurrentThread(int threadObjectOffset, CodeCacheProvider runtime) {
-        super(StampFactory.declaredNonNull(runtime.getResolvedJavaType(Thread.class)));
-        this.threadObjectOffset = threadObjectOffset;
+    public NewInstanceStubCall(ValueNode hub) {
+        super(StampFactory.objectNonNull());
+        this.hub = hub;
     }
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
-        generator.setResult(this, generator.emitLoad(new Address(Kind.Object, AMD64.r15.asValue(generator.target().wordKind), threadObjectOffset), false));
+    public void generate(LIRGenerator gen) {
+        Variable result = gen.newVariable(Kind.Object);
+        gen.emitMove(gen.operand(hub), AMD64.rdx.asValue());
+        AMD64NewInstanceStubCallOp op = new AMD64NewInstanceStubCallOp(result, AMD64.rdx.asValue());
+        gen.append(op);
+        gen.setResult(this, result);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object get(@ConstantNodeParameter int threadObjectOffset) {
+    public static Object call(Object hub) {
         throw new UnsupportedOperationException();
     }
+
+
 }

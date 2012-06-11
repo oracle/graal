@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.tests;
 import org.junit.*;
 
 import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -50,28 +51,32 @@ public class FloatingReadTest extends GraphScheduleTest {
         test("test1Snippet");
     }
 
-    private void test(String snippet) {
-        StructuredGraph graph = parse(snippet);
-        new LoweringPhase(runtime(), null).apply(graph);
-        new FloatingReadPhase().apply(graph);
+    private void test(final String snippet) {
+        Debug.scope("FloatingReadTest", new DebugDumpScope(snippet), new Runnable() {
+            public void run() {
+                StructuredGraph graph = parse(snippet);
+                new LoweringPhase(runtime(), null).apply(graph);
+                new FloatingReadPhase().apply(graph);
 
-        ReturnNode returnNode = null;
-        MonitorExitNode monitor = null;
+                ReturnNode returnNode = null;
+                MonitorExitNode monitor = null;
 
-        for (Node n : graph.getNodes()) {
-            if (n instanceof ReturnNode) {
-                returnNode = (ReturnNode) n;
-            } else if (n instanceof MonitorExitNode) {
-                monitor = (MonitorExitNode) n;
+                for (Node n : graph.getNodes()) {
+                    if (n instanceof ReturnNode) {
+                        returnNode = (ReturnNode) n;
+                    } else if (n instanceof MonitorExitNode) {
+                        monitor = (MonitorExitNode) n;
+                    }
+                }
+
+                Assert.assertNotNull(returnNode);
+                Assert.assertNotNull(monitor);
+                Assert.assertTrue(returnNode.result() instanceof FloatingReadNode);
+
+                FloatingReadNode read = (FloatingReadNode) returnNode.result();
+
+                assertOrderedAfterSchedule(graph, read, monitor);
             }
-        }
-
-        Assert.assertNotNull(returnNode);
-        Assert.assertNotNull(monitor);
-        Assert.assertTrue(returnNode.result() instanceof FloatingReadNode);
-
-        FloatingReadNode read = (FloatingReadNode) returnNode.result();
-
-        assertOrderedAfterSchedule(graph, read, monitor);
+        });
     }
 }

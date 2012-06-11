@@ -592,17 +592,17 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private Object lookupConstant(int cpi, int opcode) {
-        eagerResolving(cpi, opcode);
+        eagerResolvingForSnippets(cpi, opcode);
         Object result = constantPool.lookupConstant(cpi);
         assert !graphBuilderConfig.eagerResolving() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType);
         return result;
     }
 
-    private void eagerResolving(int cpi, int bytecode) {
-        if (graphBuilderConfig.eagerResolving()) {
-            constantPool.loadReferencedType(cpi, bytecode);
-        }
-    }
+//    private void eagerResolving(int cpi, int bytecode) {
+//        if (graphBuilderConfig.eagerResolving()) {
+//            constantPool.loadReferencedType(cpi, bytecode);
+//        }
+//    }
 
     private void eagerResolvingForSnippets(int cpi, int bytecode) {
         if (graphBuilderConfig.eagerResolvingForSnippets()) {

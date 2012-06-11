@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.java;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,7 +35,7 @@ import com.oracle.graal.nodes.util.*;
 /**
  * The {@code NewInstanceNode} represents the allocation of an instance class object.
  */
-public final class NewInstanceNode extends FixedWithNextNode implements EscapeAnalyzable, LIRLowerable, Node.IterableNodeType {
+public final class NewInstanceNode extends FixedWithNextNode implements EscapeAnalyzable, Lowerable, LIRLowerable, Node.IterableNodeType {
 
     private final ResolvedJavaType instanceClass;
 
@@ -53,6 +54,11 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
      */
     public ResolvedJavaType instanceClass() {
         return instanceClass;
+    }
+
+    @Override
+    public void lower(CiLoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 
     @Override
