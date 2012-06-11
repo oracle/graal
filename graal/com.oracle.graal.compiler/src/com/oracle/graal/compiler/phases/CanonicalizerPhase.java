@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import java.util.concurrent.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
@@ -158,10 +160,14 @@ public class CanonicalizerPhase extends Phase {
         return false;
     }
 
-    public static void tryCanonicalize(Node node, StructuredGraph graph, SimplifierTool tool) {
+    public static void tryCanonicalize(final Node node, StructuredGraph graph, final SimplifierTool tool) {
         if (node instanceof Canonicalizable) {
             METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
-            ValueNode canonical = ((Canonicalizable) node).canonical(tool);
+            ValueNode canonical = Debug.scope("CanonicalizeNode", node, new Callable<ValueNode>() {
+                public ValueNode call() throws Exception {
+                    return ((Canonicalizable) node).canonical(tool);
+                }
+            });
 //     cases:                                           original node:
 //                                         |Floating|Fixed-unconnected|Fixed-connected|
 //                                         --------------------------------------------
