@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
 /**
  * Base class for checkcast and instanceof test classes.
  */
-public abstract class TypeCheckTest extends GraphTest {
+public abstract class TypeCheckTest extends GraalCompilerTest {
 
     protected abstract void replaceProfile(StructuredGraph graph, JavaTypeProfile profile);
 

@@ -33,7 +33,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
-public class IfBoxingEliminationTest extends GraphTest {
+public class IfBoxingEliminationTest extends GraalCompilerTest {
 
     private static final String REFERENCE_SNIPPET = "referenceSnippet";
 

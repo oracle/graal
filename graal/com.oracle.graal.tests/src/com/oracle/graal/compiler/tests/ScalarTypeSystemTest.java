@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
 /**
  * In the following tests, the scalar type system of the compiler should be complete enough to see the relation between the different conditions.
  */
-public class ScalarTypeSystemTest extends GraphTest {
+public class ScalarTypeSystemTest extends GraalCompilerTest {
 
     public static int referenceSnippet1(int a) {
         if (a > 0) {

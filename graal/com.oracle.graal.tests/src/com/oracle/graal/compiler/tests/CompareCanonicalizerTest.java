@@ -27,7 +27,7 @@ import org.junit.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.nodes.*;
 
-public class CompareCanonicalizerTest extends GraphTest {
+public class CompareCanonicalizerTest extends GraalCompilerTest {
 
     @Test
     public void testCanonicalComparison() {

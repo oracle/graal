@@ -29,7 +29,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 
-public class NestedLoopTest extends GraphTest {
+public class NestedLoopTest extends GraalCompilerTest {
 
     @Test
     public void test1() {

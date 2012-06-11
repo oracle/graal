@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
 /**
  * In the following tests, the correct removal of redundant phis during graph building is tested.
  */
-public class PhiCreationTests extends GraphTest {
+public class PhiCreationTests extends GraalCompilerTest {
 
     /**
      * Dummy method to avoid javac dead code elimination.

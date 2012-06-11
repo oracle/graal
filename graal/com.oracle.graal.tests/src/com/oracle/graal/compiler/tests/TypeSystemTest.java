@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.java.*;
 /**
  * In the following tests, the scalar type system of the compiler should be complete enough to see the relation between the different conditions.
  */
-public class TypeSystemTest extends GraphTest {
+public class TypeSystemTest extends GraalCompilerTest {
 
     @Test
     public void test1() {

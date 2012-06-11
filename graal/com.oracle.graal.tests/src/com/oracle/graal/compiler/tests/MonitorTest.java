@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.java.*;
  * Then canonicalization is applied and it is verified that the resulting graph is equal to the
  * graph of the method that just has a "return 1" statement in it.
  */
-public class MonitorTest extends GraphTest {
+public class MonitorTest extends GraalCompilerTest {
 
     private static final String REFERENCE_SNIPPET = "referenceSnippet";
 

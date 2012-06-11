@@ -58,11 +58,11 @@ import com.oracle.graal.nodes.*;
  * launch configuration found in the top level of this project or by
  * running {@code mx unittest} on the command line.
  */
-public abstract class GraphTest {
+public abstract class GraalCompilerTest {
 
     protected final ExtendedRiRuntime runtime;
 
-    public GraphTest() {
+    public GraalCompilerTest() {
         Debug.enable();
         this.runtime = Graal.getRuntime().getCapability(ExtendedRiRuntime.class);
     }

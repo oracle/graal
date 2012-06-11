@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.*;
  * canonicalization is applied and it is verified that the resulting graph is equal to the graph of the method that just
  * has a "return 1" statement in it.
  */
-public class CompiledMethodTest extends GraphTest {
+public class CompiledMethodTest extends GraalCompilerTest {
 
     public static Object testMethod(Object arg1, Object arg2, Object arg3) {
         return arg1 + " " + arg2 + " " + arg3;

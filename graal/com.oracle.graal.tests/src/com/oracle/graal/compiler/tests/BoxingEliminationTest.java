@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.extended.*;
  * elimination is applied and it is verified that the resulting graph is equal to the graph of the method that just has
  * a "return 1" statement in it.
  */
-public class BoxingEliminationTest extends GraphTest {
+public class BoxingEliminationTest extends GraalCompilerTest {
 
     private static final Short s = 2;
 

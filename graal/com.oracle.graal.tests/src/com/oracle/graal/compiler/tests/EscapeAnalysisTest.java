@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.java.*;
  * In these test cases the probability of all invokes is set to a high value, such that an InliningPhase should inline them all.
  * After that, the EscapeAnalysisPhase is expected to remove all allocations and return the correct values.
  */
-public class EscapeAnalysisTest extends GraphTest {
+public class EscapeAnalysisTest extends GraalCompilerTest {
 
     @Test
     public void test1() {

@@ -30,7 +30,7 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.nodes.*;
 
-public class InvokeExceptionTest extends GraphTest {
+public class InvokeExceptionTest extends GraalCompilerTest {
 
     public static synchronized void throwException(int i) {
         if (i == 1) {

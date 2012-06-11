@@ -30,7 +30,7 @@ import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 
-public class StraighteningTest extends GraphTest {
+public class StraighteningTest extends GraalCompilerTest {
 
     private static final String REFERENCE_SNIPPET = "ref";
 
