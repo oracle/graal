@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java.bytecode;
+package com.oracle.graal.bytecode;
 
 /**
  * A utility for processing {@link Bytecodes#TABLESWITCH} bytecodes.

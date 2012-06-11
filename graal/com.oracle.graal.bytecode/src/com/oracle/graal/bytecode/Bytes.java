@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java.bytecode;
+package com.oracle.graal.bytecode;
 
 /**
  * A collection of utility methods for dealing with bytes, particularly in byte arrays.

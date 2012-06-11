@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.java;
 
-import static com.oracle.graal.java.bytecode.Bytecodes.*;
+import static com.oracle.graal.bytecode.Bytecodes.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.lang.reflect.*;
@@ -32,6 +32,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaType.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.*;
+import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.util.*;
@@ -39,7 +40,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.BciBlockMapping.Block;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
-import com.oracle.graal.java.bytecode.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;

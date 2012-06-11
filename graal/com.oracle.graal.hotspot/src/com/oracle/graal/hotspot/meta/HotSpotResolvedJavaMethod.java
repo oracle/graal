@@ -30,10 +30,10 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.counters.*;
-import com.oracle.graal.java.bytecode.*;
 import com.oracle.max.criutils.*;
 
 /**
