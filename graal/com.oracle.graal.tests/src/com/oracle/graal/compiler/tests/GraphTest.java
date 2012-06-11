@@ -147,6 +147,34 @@ public abstract class GraphTest {
 
     private static int compilationId = 0;
 
+    protected void test(String name, Object... args) {
+        Method method = getMethod(name);
+        Object expect = null;
+        Throwable exception = null;
+        try {
+            // This gives us both the expected return value as well as ensuring that the method to be compiled is fully resolved
+            expect = method.invoke(null, args);
+        } catch (InvocationTargetException e) {
+            exception = e.getTargetException();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        InstalledCode compiledMethod = compile(runtime.getResolvedJavaMethod(method), parse(method));
+        compiledMethod.method();
+
+        if (exception != null) {
+            try {
+                compiledMethod.executeVarargs(args);
+                Assert.fail("expected " + exception);
+            } catch (Throwable e) {
+                Assert.assertEquals(exception.getClass(), e.getClass());
+            }
+        } else {
+            Object actual = compiledMethod.executeVarargs(args);
+            Assert.assertEquals(expect, actual);
+        }
+    }
+
     protected InstalledCode compile(final ResolvedJavaMethod method, final StructuredGraph graph) {
         return Debug.scope("Compiling", new DebugDumpScope(String.valueOf(compilationId++), true), new Callable<InstalledCode>() {
             public InstalledCode call() throws Exception {
@@ -157,13 +185,15 @@ public abstract class GraphTest {
     }
 
     protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult tm) {
-        return Debug.scope("CodeInstall", new Object[] {method}, new Callable<InstalledCode>() {
+        GraalCompiler graalCompiler = Graal.getRuntime().getCapability(GraalCompiler.class);
+        assert graalCompiler != null;
+        return Debug.scope("CodeInstall", new Object[] {graalCompiler, method}, new Callable<InstalledCode>() {
             @Override
             public InstalledCode call() throws Exception {
                 final CodeInfo[] info = Debug.isDumpEnabled() ? new CodeInfo[1] : null;
                 InstalledCode installedMethod = runtime.addMethod(method, tm, info);
                 if (info != null) {
-                    Debug.dump(info[0], "After code installation");
+                    Debug.dump(new Object[] {tm, info[0]}, "After code installation");
                 }
                 return installedMethod;
             }

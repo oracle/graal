@@ -25,7 +25,6 @@ package com.oracle.graal.printer;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.max.criutils.*;
 import com.oracle.graal.alloc.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -38,6 +37,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.max.criutils.*;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the <a
@@ -152,8 +152,9 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 }
             };
             cfgPrinter.printMachineCode(runtime.disassemble(info, tm), message);
-        } else if (object instanceof CodeInfo) {
-            cfgPrinter.printMachineCode(runtime.disassemble((CodeInfo) object, null), message);
+        } else if (isCompilationResultAndCodeInfo(object)) {
+            Object[] tuple = (Object[]) object;
+            cfgPrinter.printMachineCode(runtime.disassemble((CodeInfo) tuple[1], (CompilationResult) tuple[0]), message);
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);
 
@@ -166,5 +167,15 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         cfgPrinter.lirGenerator = null;
         cfgPrinter.cfg = null;
         cfgPrinter.flush();
+    }
+
+    private static boolean isCompilationResultAndCodeInfo(Object object) {
+        if (object instanceof Object[]) {
+            Object[] tuple = (Object[]) object;
+            if (tuple.length == 2 && tuple[0] instanceof CompilationResult && tuple[1] instanceof CodeInfo) {
+                return true;
+            }
+        }
+        return false;
     }
 }

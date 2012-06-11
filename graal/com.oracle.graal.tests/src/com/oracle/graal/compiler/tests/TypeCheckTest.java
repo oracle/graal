@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.compiler.tests;
 
-import java.lang.reflect.*;
-
-import org.junit.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.*;
 import com.oracle.graal.nodes.*;
@@ -37,10 +33,14 @@ public abstract class TypeCheckTest extends GraphTest {
 
     protected abstract void replaceProfile(StructuredGraph graph, JavaTypeProfile profile);
 
-    private InstalledCode compile(Method method, JavaTypeProfile profile) {
-        final StructuredGraph graph = parse(method);
-        replaceProfile(graph, profile);
-        return compile(runtime.getResolvedJavaMethod(method), graph);
+    protected JavaTypeProfile currentProfile;
+
+    @Override
+    protected InstalledCode compile(final ResolvedJavaMethod method, final StructuredGraph graph) {
+        if (currentProfile != null) {
+            replaceProfile(graph, currentProfile);
+        }
+        return super.compile(method, graph);
     }
 
     protected JavaTypeProfile profile(Class... types) {
@@ -55,30 +55,12 @@ public abstract class TypeCheckTest extends GraphTest {
     }
 
     protected void test(String name, JavaTypeProfile profile, Object... args) {
-        Method method = getMethod(name);
-        Object expect = null;
-        Throwable exception = null;
+        assert currentProfile == null;
+        currentProfile = profile;
         try {
-            // This gives us both the expected return value as well as ensuring that the method to be compiled is fully resolved
-            expect = method.invoke(null, args);
-        } catch (InvocationTargetException e) {
-            exception = e.getTargetException();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        InstalledCode compiledMethod = compile(method, profile);
-        compiledMethod.method();
-
-        if (exception != null) {
-            try {
-                compiledMethod.executeVarargs(args);
-                Assert.fail("expected " + exception);
-            } catch (Throwable e) {
-                Assert.assertEquals(exception.getClass(), e.getClass());
-            }
-        } else {
-            Object actual = compiledMethod.executeVarargs(args);
-            Assert.assertEquals(expect, actual);
+            super.test(name, args);
+        } finally {
+            currentProfile = null;
         }
     }
 }
