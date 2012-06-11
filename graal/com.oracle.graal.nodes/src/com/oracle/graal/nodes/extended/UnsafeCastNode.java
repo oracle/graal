@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code UnsafeCastNode} produces the same value as its input, but with a different type.
  */
-public final class UnsafeCastNode extends FloatingNode implements Canonicalizable, Lowerable {
+public final class UnsafeCastNode extends FloatingNode implements Canonicalizable, Lowerable, LIRLowerable {
 
     @Input private ValueNode object;
     private ResolvedJavaType toType;
@@ -49,20 +49,32 @@ public final class UnsafeCastNode extends FloatingNode implements Canonicalizabl
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (object != null && object.objectStamp().type() != null && object.objectStamp().type().isSubtypeOf(toType)) {
+        if (object != null && object.kind().isObject() && object.objectStamp().type() != null && object.objectStamp().type().isSubtypeOf(toType)) {
             return object;
         }
         return this;
     }
 
+
     @Override
     public void lower(CiLoweringTool tool) {
-        ((StructuredGraph) graph()).replaceFloating(this, object);
+        if (object.kind() == kind()) {
+            ((StructuredGraph) graph()).replaceFloating(this, object);
+        } else {
+            // Cannot remove an unsafe cast between two different kinds
+        }
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static <T> T cast(Object object, @ConstantNodeParameter Class<?> toType) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
+    }
+
+    @Override
+    public void generate(LIRGeneratorTool generator) {
+        Value result = generator.newVariable(kind());
+        generator.emitMove(generator.operand(object), result);
+        generator.setResult(this, result);
     }
 }

@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.type.GenericStamp.*;
+import com.oracle.graal.nodes.util.*;
 
 /**
  * This class represents a value within the graph, including local variables, phis, and
@@ -108,15 +109,24 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
         return null;
     }
 
+    public <T extends Stamp> boolean verifyStamp(Class<T> stampClass) {
+        assert stampClass.isInstance(stamp) : this + " (" + GraphUtil.approxSourceLocation(this) + ") has unexpected stamp type: expected " + stampClass.getName() +
+            ", got " + stamp.getClass().getName();
+        return true;
+    }
+
     public final ObjectStamp objectStamp() {
+        assert verifyStamp(ObjectStamp.class);
         return (ObjectStamp) stamp;
     }
 
     public final IntegerStamp integerStamp() {
+        assert verifyStamp(IntegerStamp.class);
         return (IntegerStamp) stamp;
     }
 
     public final FloatStamp floatStamp() {
+        assert verifyStamp(FloatStamp.class);
         return (FloatStamp) stamp;
     }
 

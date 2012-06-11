@@ -188,7 +188,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @Override
-    public void negate() {
+    public Negatable negate() {
         BeginNode trueSucc = trueSuccessor();
         BeginNode falseSucc = falseSuccessor();
         setTrueSuccessor(null);
@@ -198,5 +198,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         double prop = branchProbability[TRUE_EDGE];
         branchProbability[TRUE_EDGE] = branchProbability[FALSE_EDGE];
         branchProbability[FALSE_EDGE] = prop;
+        return this;
     }
 }

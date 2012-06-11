@@ -30,6 +30,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.printer.*;
 import com.oracle.max.criutils.*;
 
@@ -150,13 +151,22 @@ public class HotSpotDebugConfig implements DebugConfig {
         Debug.setConfig(Debug.fixedConfig(true, true, false, false, dumpHandlers, output));
         Debug.log(String.format("Exception occurred in scope: %s", Debug.currentScope()));
         for (Object o : Debug.context()) {
-            Debug.log("Context obj %s", o);
             if (o instanceof Graph) {
+                Debug.log("Context obj %s", o);
                 if (GraalOptions.DumpOnError) {
                     Debug.dump(o, "Exception graph");
                 } else {
                     Debug.log("Use -G:+DumpOnError to enable dumping of graphs on this error");
                 }
+            } else if (o instanceof Node) {
+                String location = GraphUtil.approxSourceLocation((Node) o);
+                if (location != null) {
+                    Debug.log("Context obj %s (approx. location: %s)", o, location);
+                } else {
+                    Debug.log("Context obj %s", o);
+                }
+            } else {
+                Debug.log("Context obj %s", o);
             }
         }
         return null;

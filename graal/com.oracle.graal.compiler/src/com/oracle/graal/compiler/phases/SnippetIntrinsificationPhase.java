@@ -233,6 +233,11 @@ public class SnippetIntrinsificationPhase extends Phase {
         }
     }
 
+    private static String sourceLocation(Node n) {
+        String loc = GraphUtil.approxSourceLocation(n);
+        return loc == null ? "<unknown>" : loc;
+    }
+
     public void cleanUpReturnCheckCast(Node newInstance) {
         if (newInstance instanceof ValueNode && ((ValueNode) newInstance).kind() != Kind.Object) {
             StructuredGraph graph = (StructuredGraph) newInstance.graph();
@@ -246,7 +251,9 @@ public class SnippetIntrinsificationPhase extends Phase {
                         graph.removeFixed(valueAnchorNode);
                     } else if (checkCastUsage instanceof MethodCallTargetNode) {
                         MethodCallTargetNode checkCastCallTarget = (MethodCallTargetNode) checkCastUsage;
-                        assert pool.isUnboxingMethod(checkCastCallTarget.targetMethod());
+                        assert pool.isUnboxingMethod(checkCastCallTarget.targetMethod()) :
+                            "checkcast at " + sourceLocation(checkCastNode) + " not used by an unboxing method but by a call at " +
+                            sourceLocation(checkCastCallTarget.usages().first()) + " to " + checkCastCallTarget.targetMethod();
                         Invoke invokeNode = checkCastCallTarget.invoke();
                         invokeNode.node().replaceAtUsages(newInstance);
                         if (invokeNode instanceof InvokeWithExceptionNode) {
@@ -262,7 +269,7 @@ public class SnippetIntrinsificationPhase extends Phase {
                     } else if (checkCastUsage instanceof FrameState) {
                         checkCastUsage.replaceFirstInput(checkCastNode, null);
                     } else {
-                        assert false : "unexpected checkcast usage: " + checkCastUsage;
+                        assert false : sourceLocation(checkCastUsage) + " has unexpected usage " + checkCastUsage + " of checkcast at " + sourceLocation(checkCastNode);
                     }
                 }
                 FixedNode next = checkCastNode.next();

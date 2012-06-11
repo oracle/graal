@@ -36,5 +36,5 @@ public interface Negatable {
      * Tells this node that a condition it depends has been negated, and that it thus needs to invert its own effect.
      * For example, an {@link IfNode} would switch its true and false successors.
      */
-    void negate();
+    Negatable negate();
 }

@@ -56,7 +56,8 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     final HotSpotRegisterConfig regConfig;
     private final HotSpotRegisterConfig globalStubRegConfig;
     private final HotSpotGraalRuntime compiler;
-    private CheckCastSnippets.Templates checkcasts;
+    private CheckCastSnippets.Templates checkcastSnippets;
+    private NewInstanceSnippets.Templates newInstanceSnippets;
 
     public HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime compiler) {
         this.config = config;
@@ -72,7 +73,9 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         Snippets.install(this, compiler.getTarget(), new UnsafeSnippets());
         Snippets.install(this, compiler.getTarget(), new ArrayCopySnippets());
         Snippets.install(this, compiler.getTarget(), new CheckCastSnippets());
-        checkcasts = new CheckCastSnippets.Templates(this);
+        Snippets.install(this, compiler.getTarget(), new NewInstanceSnippets());
+        checkcastSnippets = new CheckCastSnippets.Templates(this);
+        newInstanceSnippets = new NewInstanceSnippets.Templates(this);
     }
 
 
@@ -336,7 +339,9 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             assert load.kind() != Kind.Illegal;
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.loadKind(), load.displacement(), load.offset(), graph, false);
             ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp()));
-            memoryRead.dependencies().add(tool.createNullCheckGuard(load.object(), StructuredGraph.INVALID_GRAPH_ID));
+            if (load.object().kind().isObject()) {
+                memoryRead.dependencies().add(tool.createNullCheckGuard(load.object(), StructuredGraph.INVALID_GRAPH_ID));
+            }
             graph.replaceFixedWithFixed(load, memoryRead);
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
@@ -355,16 +360,19 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             memoryRead.dependencies().add(tool.createNullCheckGuard(objectClassNode.object(), StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixed(objectClassNode, memoryRead);
         } else if (n instanceof CheckCastNode) {
-            if (shouldLowerCheckcast(graph)) {
-                checkcasts.lower((CheckCastNode) n, tool);
+            if (shouldLower(graph, GraalOptions.HIRLowerCheckcast)) {
+                checkcastSnippets.lower((CheckCastNode) n, tool);
+            }
+        } else if (n instanceof NewInstanceNode) {
+            if (shouldLower(graph, GraalOptions.HIRLowerNewInstance)) {
+                newInstanceSnippets.lower((NewInstanceNode) n, tool);
             }
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
         }
     }
 
-    private static boolean shouldLowerCheckcast(StructuredGraph graph) {
-        String option = GraalOptions.HIRLowerCheckcast;
+    private static boolean shouldLower(StructuredGraph graph, String option) {
         if (option != null) {
             if (option.length() == 0) {
                 return true;

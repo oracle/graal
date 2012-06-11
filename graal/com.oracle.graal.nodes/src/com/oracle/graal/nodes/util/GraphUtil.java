@@ -26,12 +26,14 @@ import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.iterators.NodePredicates.PositiveTypePredicate;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
 
 public class GraphUtil {
@@ -178,6 +180,36 @@ public class GraphUtil {
                 GraphUtil.checkRedundantProxy(vpn);
             }
         }
+    }
+
+    /**
+     * Gets an approximate source code location for a node if possible.
+     *
+     * @return a file name and source line number in stack trace format (e.g. "String.java:32")
+     *          if an approximate source location is found, null otherwise
+     */
+    public static String approxSourceLocation(Node node) {
+        Node n = node;
+        while (n != null) {
+            if (n instanceof MethodCallTargetNode) {
+                n = ((MethodCallTargetNode) n).invoke().node();
+            }
+
+            if (n instanceof StateSplit) {
+                FrameState stateAfter = ((StateSplit) n).stateAfter();
+                if (stateAfter != null) {
+                    ResolvedJavaMethod method = stateAfter.method();
+                    if (method != null) {
+                        StackTraceElement stackTraceElement = method.toStackTraceElement(stateAfter.bci);
+                        if (stackTraceElement.getFileName() != null && stackTraceElement.getLineNumber() >= 0) {
+                            return stackTraceElement.getFileName() + ":" + stackTraceElement.getLineNumber();
+                        }
+                    }
+                }
+            }
+            n = n.predecessor();
+        }
+        return null;
     }
 
     public static ValueNode unProxify(ValueNode proxy) {
