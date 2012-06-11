@@ -322,6 +322,10 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
         properties.put("bci", bci);
         if (method != null) {
             properties.put("method", CodeUtil.format("%H.%n(%p):%r", method));
+            StackTraceElement ste = method.toStackTraceElement(bci);
+            if (ste.getFileName() != null && ste.getLineNumber() >= 0) {
+                properties.put("source", ste.getFileName() + ":" + ste.getLineNumber());
+            }
         } else {
             properties.put("method", "None");
         }
