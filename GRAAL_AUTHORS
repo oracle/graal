@@ -1,20 +1,7 @@
-Doug Simon (doug.simon@oracle.com)
-* Since December 2011
-
-Christian Wimmer (christian.wimmer@oracle.com)
-* Since December 2011
-
-Lukas Stadler (stadler@ssw.jku.at)
-* July - September 2010: Initial feature-complete implementation, remote compilation
-* Since April 2011: New IR design
-
-Gilles Duboscq (gilles.duboscq@oracle.com)
-* Since April 2011: New IR design
-
-Peter Hofer (hofer@ssw.jku.at)
-* Since May 2011: Graphviz visualization
-
-Thomas Wuerthinger (thomas.wuerthinger@oracle.com)
-* June 2011: Initial prototype
-* October 2010 - January 2011: Bug fixes (all DaCapo's pass), better performance on SciMark than C1
-* Since April 2011: New IR design
+Gilles Duboscq (gdub)
+Peter Hofer
+Christian Humer (chumer)
+Christian Wimmer (cwimmer)
+Doug Simon (dnsimon)
+Lukas Stadler (lstadler)
+Thomas Wuerthinger (thomaswue)
