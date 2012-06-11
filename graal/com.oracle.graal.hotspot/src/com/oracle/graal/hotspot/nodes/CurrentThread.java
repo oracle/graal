@@ -45,7 +45,7 @@ public final class CurrentThread extends FloatingNode implements LIRLowerable {
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object get(int threadObjectOffset) {
+    public static Object get(@ConstantNodeParameter int threadObjectOffset) {
         throw new UnsupportedOperationException();
     }
 }
