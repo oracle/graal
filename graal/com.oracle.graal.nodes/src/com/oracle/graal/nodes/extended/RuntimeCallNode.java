@@ -39,11 +39,7 @@ public final class RuntimeCallNode extends AbstractCallNode implements LIRLowera
         this(call, new ValueNode[0]);
     }
 
-    public RuntimeCallNode(RuntimeCall call, ValueNode arg1) {
-        this(call, new ValueNode[] {arg1});
-    }
-
-    public RuntimeCallNode(RuntimeCall call, ValueNode[] arguments) {
+    public RuntimeCallNode(RuntimeCall call, ValueNode... arguments) {
         super(StampFactory.forKind(call.resultKind), arguments);
         this.call = call;
     }
@@ -53,16 +49,24 @@ public final class RuntimeCallNode extends AbstractCallNode implements LIRLowera
         gen.emitRuntimeCall(this);
     }
 
+    @Override
+    public String toString(Verbosity verbosity) {
+        if (verbosity == Verbosity.Name) {
+            return super.toString(verbosity) + "#" + call;
+        }
+        return super.toString(verbosity);
+    }
+
     // specialized on return type (instead of public static <T> T performCall) until boxing/unboxing is sorted out in intrinsification
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static <S> double performCall(@ConstantNodeParameter RuntimeCall call, S arg1) {
+    public static <S> double callDouble(@ConstantNodeParameter RuntimeCall call, S arg1) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static long performCall(@ConstantNodeParameter RuntimeCall call) {
+    public static long callLong(@ConstantNodeParameter RuntimeCall call) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 }
