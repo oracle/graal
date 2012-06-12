@@ -68,10 +68,12 @@ public class SnippetTemplate {
         }
 
         public Key add(String name, Object value) {
-            assert value != null;
             assert !map.containsKey(name);
             map.put(name, value);
-            hash = hash ^ name.hashCode() * (value.hashCode() + 1);
+            hash = hash ^ name.hashCode();
+            if (value != null) {
+                hash *= (value.hashCode() + 1);
+            }
             return this;
         }
 
@@ -194,7 +196,6 @@ public class SnippetTemplate {
             if (c != null) {
                 String name = c.value();
                 Object arg = key.get(name);
-                assert arg != null : method + ": requires a constant named " + name;
                 Kind kind = signature.argumentKindAt(i);
                 assert checkConstantArgument(method, signature, i, name, arg, kind);
                 replacements.put(snippetGraph.getLocal(i), ConstantNode.forConstant(Constant.forBoxed(kind, arg), runtime, snippetCopy));
@@ -327,11 +328,11 @@ public class SnippetTemplate {
     private static boolean checkConstantArgument(final ResolvedJavaMethod method, Signature signature, int i, String name, Object arg, Kind kind) {
         if (kind.isObject()) {
             Class<?> type = signature.argumentTypeAt(i, method.holder()).resolve(method.holder()).toJava();
-            assert type.isInstance(arg) :
+            assert arg == null || type.isInstance(arg) :
                 method + ": wrong value type for " + name + ": expected " + type.getName() + ", got " + arg.getClass().getName();
         } else {
-            assert kind.toBoxedJavaClass() == arg.getClass() :
-                method + ": wrong value kind for " + name + ": expected " + kind + ", got " + arg.getClass().getSimpleName();
+            assert arg != null && kind.toBoxedJavaClass() == arg.getClass() :
+                method + ": wrong value kind for " + name + ": expected " + kind + ", got " + (arg == null ? "null" : arg.getClass().getSimpleName());
         }
         return true;
     }
