@@ -45,6 +45,11 @@ public final class RuntimeCallNode extends AbstractCallNode implements LIRLowera
     }
 
     @Override
+    public boolean hasSideEffect() {
+        return call.hasSideEffect();
+    }
+
+    @Override
     public void generate(LIRGeneratorTool gen) {
         gen.emitRuntimeCall(this);
     }

@@ -229,6 +229,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
         }
         int slot = localsSize + stackSize - popSlots;
         for (int i = 0; i < pushSlots; i++) {
+            assert pushedValues[i] == null || !pushedValues[i].kind().isVoid();
             other.setValueAt(slot++, pushedValues[i]);
         }
         other.virtualObjectMappings.setAll(virtualObjectMappings);

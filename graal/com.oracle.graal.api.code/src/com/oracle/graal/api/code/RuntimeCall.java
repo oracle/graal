@@ -46,7 +46,9 @@ public enum RuntimeCall {
     ArithmeticCos(Double, Double),
     ArithmeticTan(Double, Double),
     ArithmeticSin(Double, Double),
-    GenericCallback(Object, Object, Object);
+    GenericCallback(Object, Object, Object),
+    LogPrimitive(Void, Int, Long, Boolean),
+    LogObject(Void, Object, Boolean, Boolean);
 
     public final Kind resultKind;
     public final Kind[] arguments;
@@ -54,5 +56,14 @@ public enum RuntimeCall {
     private RuntimeCall(Kind resultKind, Kind... args) {
         this.resultKind = resultKind;
         this.arguments = args;
+    }
+
+    public boolean hasSideEffect() {
+        switch (this) {
+            case LogObject:
+            case LogPrimitive:
+                return false;
+        }
+        return true;
     }
 }
