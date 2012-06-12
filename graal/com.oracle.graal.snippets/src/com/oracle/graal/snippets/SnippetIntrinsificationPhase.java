@@ -197,16 +197,86 @@ public class SnippetIntrinsificationPhase extends Phase {
         return node;
     }
 
-    private static Node createNodeInstance(Class< ? > nodeClass, Class< ? >[] parameterTypes, Object[] nodeConstructorArguments) {
-        Constructor< ? > constructor;
-        try {
-            constructor = nodeClass.getDeclaredConstructor(parameterTypes);
-            constructor.setAccessible(true);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+    private static Class asBoxedType(Class type) {
+        if (!type.isPrimitive()) {
+            return type;
         }
+
+        if (Boolean.TYPE == type) {
+            return Boolean.class;
+        }
+        if (Character.TYPE == type) {
+            return Character.class;
+        }
+        if (Byte.TYPE == type) {
+            return Byte.class;
+        }
+        if (Short.TYPE == type) {
+            return Short.class;
+        }
+        if (Integer.TYPE == type) {
+            return Integer.class;
+        }
+        if (Long.TYPE == type) {
+            return Long.class;
+        }
+        if (Float.TYPE == type) {
+            return Float.class;
+        }
+        assert Double.TYPE == type;
+        return Double.class;
+    }
+
+    static final int VARARGS = 0x00000080;
+
+    private static Node createNodeInstance(Class< ? > nodeClass, Class< ? >[] parameterTypes, Object[] nodeConstructorArguments) {
+        Object[] arguments = null;
+        Constructor< ? > constructor = null;
+        nextConstructor:
+        for (Constructor c : nodeClass.getDeclaredConstructors()) {
+            Class[] signature = c.getParameterTypes();
+            if ((c.getModifiers() & VARARGS) != 0) {
+                int fixedArgs = signature.length - 1;
+                if (parameterTypes.length < fixedArgs) {
+                    continue nextConstructor;
+                }
+
+                for (int i = 0; i < fixedArgs; i++) {
+                    if (!parameterTypes[i].equals(signature[i])) {
+                        continue nextConstructor;
+                    }
+                }
+
+                Class componentType = signature[fixedArgs].getComponentType();
+                assert componentType != null : "expected last parameter of varargs constructor " + c + " to be an array type";
+                Class boxedType = asBoxedType(componentType);
+                for (int i = fixedArgs; i < nodeConstructorArguments.length; i++) {
+                    if (!boxedType.isInstance(nodeConstructorArguments[i])) {
+                        continue nextConstructor;
+                    }
+                }
+
+                arguments = Arrays.copyOf(nodeConstructorArguments, fixedArgs + 1);
+                int varargsLength = nodeConstructorArguments.length - fixedArgs;
+                Object varargs = Array.newInstance(componentType, varargsLength);
+                for (int i = fixedArgs; i < nodeConstructorArguments.length; i++) {
+                    Array.set(varargs, i - fixedArgs, nodeConstructorArguments[i]);
+                }
+                arguments[fixedArgs] = varargs;
+                constructor = c;
+                break;
+            } else if (Arrays.equals(parameterTypes, signature)) {
+                arguments = nodeConstructorArguments;
+                constructor = c;
+                break;
+            }
+        }
+        if (constructor == null) {
+            throw new GraalInternalError("Could not find constructor in " + nodeClass + " compatible with signature " + Arrays.toString(parameterTypes));
+        }
+        constructor.setAccessible(true);
         try {
-            return (ValueNode) constructor.newInstance(nodeConstructorArguments);
+            return (ValueNode) constructor.newInstance(arguments);
         } catch (Exception e) {
             throw new RuntimeException(constructor + Arrays.toString(nodeConstructorArguments), e);
         }
