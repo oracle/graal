@@ -37,6 +37,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.snippets.Snippet.InliningPolicy;
 
 /**
  * Utilities for snippet installation and management.
@@ -63,9 +64,25 @@ public class Snippets {
                 }
                 ResolvedJavaMethod snippetRiMethod = runtime.getResolvedJavaMethod(snippet);
                 if (snippetRiMethod.compilerStorage().get(Graph.class) == null) {
-                    buildSnippetGraph(snippetRiMethod, runtime, target, pool);
+                    buildSnippetGraph(snippetRiMethod, runtime, target, pool, inliningPolicy(snippetRiMethod));
                 }
             }
+        }
+    }
+
+    private static InliningPolicy inliningPolicy(ResolvedJavaMethod method) {
+        Class<? extends InliningPolicy> policyClass = InliningPolicy.class;
+        Snippet snippet = method.getAnnotation(Snippet.class);
+        if (snippet != null) {
+            policyClass = snippet.inlining();
+        }
+        if (policyClass == InliningPolicy.class) {
+            return InliningPolicy.Default;
+        }
+        try {
+            return policyClass.getConstructor().newInstance();
+        } catch (Exception e) {
+            throw new GraalInternalError(e);
         }
     }
 
@@ -82,7 +99,7 @@ public class Snippets {
                     throw new RuntimeException("Snippet must not be abstract or native");
                 }
                 ResolvedJavaMethod snippetRiMethod = runtime.getResolvedJavaMethod(snippet);
-                StructuredGraph graph = buildSnippetGraph(snippetRiMethod, runtime, target, pool);
+                StructuredGraph graph = buildSnippetGraph(snippetRiMethod, runtime, target, pool, inliningPolicy(snippetRiMethod));
                 runtime.getResolvedJavaMethod(method).compilerStorage().put(Graph.class, graph);
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException("Could not resolve method to substitute with: " + snippet.getName(), e);
@@ -90,7 +107,7 @@ public class Snippets {
         }
     }
 
-    private static StructuredGraph buildSnippetGraph(final ResolvedJavaMethod snippetRiMethod, final ExtendedRiRuntime runtime, final TargetDescription target, final BoxingMethodPool pool) {
+    private static StructuredGraph buildSnippetGraph(final ResolvedJavaMethod snippetRiMethod, final ExtendedRiRuntime runtime, final TargetDescription target, final BoxingMethodPool pool, final InliningPolicy policy) {
         final StructuredGraph graph = new StructuredGraph(snippetRiMethod);
         return Debug.scope("BuildSnippetGraph", new Object[] {snippetRiMethod, graph}, new Callable<StructuredGraph>() {
             @Override
@@ -105,15 +122,14 @@ public class Snippets {
 
                 for (Invoke invoke : graph.getInvokes()) {
                     MethodCallTargetNode callTarget = invoke.callTarget();
-                    ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-                    ResolvedJavaType holder = targetMethod.holder();
-                    if (enclosedInSnippetsClass(holder)) {
-                        StructuredGraph targetGraph = (StructuredGraph) targetMethod.compilerStorage().get(Graph.class);
+                    ResolvedJavaMethod method = callTarget.targetMethod();
+                    if (policy.shouldInline(method, snippetRiMethod)) {
+                        StructuredGraph targetGraph = (StructuredGraph) method.compilerStorage().get(Graph.class);
                         if (targetGraph == null) {
-                            targetGraph = buildSnippetGraph(targetMethod, runtime, target, pool);
+                            targetGraph = buildSnippetGraph(method, runtime, target, pool, policy);
                         }
                         InliningUtil.inline(invoke, targetGraph, true);
-                        Debug.dump(graph, "after inlining %s", targetMethod);
+                        Debug.dump(graph, "after inlining %s", method);
                         if (GraalOptions.OptCanonicalizer) {
                             new WordTypeRewriterPhase(target).apply(graph);
                             new CanonicalizerPhase(target, runtime, null).apply(graph);
@@ -141,17 +157,6 @@ public class Snippets {
                 snippetRiMethod.compilerStorage().put(Graph.class, graph);
 
                 return graph;
-            }
-
-            private boolean enclosedInSnippetsClass(ResolvedJavaType holder) {
-                Class enclosingClass = holder.toJava();
-                while (enclosingClass != null) {
-                    if (SnippetsInterface.class.isAssignableFrom(enclosingClass)) {
-                        return true;
-                    }
-                    enclosingClass = enclosingClass.getEnclosingClass();
-                }
-                return false;
             }
         });
 
