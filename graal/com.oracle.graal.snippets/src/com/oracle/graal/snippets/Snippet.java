@@ -72,7 +72,6 @@ public @interface Snippet {
         };
     }
 
-
     /**
      * Annotates a method replaced by a compile-time constant.
      * A (resolved) call to the annotated method is replaced

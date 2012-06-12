@@ -20,21 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.snippets;
 
 import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.Fold;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.snippets.Snippet.Fold;
 
 public class SnippetIntrinsificationPhase extends Phase {
 
@@ -57,7 +58,7 @@ public class SnippetIntrinsificationPhase extends Phase {
         ResolvedJavaMethod target = invoke.callTarget().targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         if (intrinsic != null) {
-            assert target.getAnnotation(Node.Fold.class) == null;
+            assert target.getAnnotation(Fold.class) == null;
 
             Class< ? >[] parameterTypes = CodeUtil.signatureToTypes(target.signature(), target.holder());
 
@@ -74,7 +75,7 @@ public class SnippetIntrinsificationPhase extends Phase {
 
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnCheckCast(newInstance);
-        } else if (target.getAnnotation(Node.Fold.class) != null) {
+        } else if (target.getAnnotation(Fold.class) != null) {
             Class< ? >[] parameterTypes = CodeUtil.signatureToTypes(target.signature(), target.holder());
 
             // Prepare the arguments for the reflective method call

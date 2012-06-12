@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot.snippets;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.Node.Fold;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
+import com.oracle.graal.snippets.Snippet.Fold;
 
 
 @SuppressWarnings("unused")
