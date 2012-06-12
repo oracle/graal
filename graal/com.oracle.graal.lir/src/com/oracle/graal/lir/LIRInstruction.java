@@ -106,22 +106,22 @@ public abstract class LIRInstruction {
      */
     public enum OperandFlag {
         /**
-         * The value can be a {@link CiRegisterValue}.
+         * The value can be a {@link RegisterValue}.
          */
         Register,
 
         /**
-         * The value can be a {@link CiStackSlot}.
+         * The value can be a {@link StackSlot}.
          */
         Stack,
 
         /**
-         * The value can be a {@link CiAddress}.
+         * The value can be a {@link Address}.
          */
         Address,
 
         /**
-         * The value can be a {@link CiConstant}.
+         * The value can be a {@link Constant}.
          */
         Constant,
 

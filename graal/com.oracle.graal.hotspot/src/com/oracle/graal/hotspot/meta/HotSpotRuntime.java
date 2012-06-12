@@ -308,7 +308,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
                 if (arrayType != null && array.objectStamp().isExactType()) {
                     ResolvedJavaType elementType = arrayType.componentType();
                     if (elementType.superType() != null) {
-                        ConstantNode type = ConstantNode.forCiConstant(elementType.getEncoding(Representation.ObjectHub), this, graph);
+                        ConstantNode type = ConstantNode.forConstant(elementType.getEncoding(Representation.ObjectHub), this, graph);
                         checkcast = graph.add(new CheckCastNode(type, elementType, value));
                         graph.addBeforeFixed(storeIndexed, checkcast);
                         value = checkcast;

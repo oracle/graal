@@ -87,7 +87,7 @@ public interface ConstantPool {
     /**
      * Looks up a constant at the specified index.
      * @param cpi the constant pool index
-     * @return the {@code CiConstant} instance representing the constant
+     * @return the {@code Constant} or {@code JavaType} instance representing the constant pool entry
      */
     Object lookupConstant(int cpi);
 }

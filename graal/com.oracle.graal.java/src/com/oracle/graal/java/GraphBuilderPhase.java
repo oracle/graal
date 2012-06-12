@@ -284,7 +284,7 @@ public final class GraphBuilderPhase extends Phase {
             // this is a load of class constant which might be unresolved
             JavaType riType = (JavaType) con;
             if (riType instanceof ResolvedJavaType) {
-                frameState.push(Kind.Object, append(ConstantNode.forCiConstant(((ResolvedJavaType) riType).getEncoding(Representation.JavaClass), runtime, currentGraph)));
+                frameState.push(Kind.Object, append(ConstantNode.forConstant(((ResolvedJavaType) riType).getEncoding(Representation.JavaClass), runtime, currentGraph)));
             } else {
                 append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved, graphId)));
                 frameState.push(Kind.Object, append(ConstantNode.forObject(null, runtime, currentGraph)));
@@ -1097,7 +1097,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private ConstantNode appendConstant(Constant constant) {
-        return ConstantNode.forCiConstant(constant, runtime, currentGraph);
+        return ConstantNode.forConstant(constant, runtime, currentGraph);
     }
 
     private ValueNode append(FixedNode fixed) {
@@ -1274,7 +1274,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private ValueNode synchronizedObject(FrameStateBuilder state, ResolvedJavaMethod target) {
         if (isStatic(target.accessFlags())) {
-            return append(ConstantNode.forCiConstant(target.holder().getEncoding(Representation.JavaClass), runtime, currentGraph));
+            return append(ConstantNode.forConstant(target.holder().getEncoding(Representation.JavaClass), runtime, currentGraph));
         } else {
             return state.loadLocal(0);
         }

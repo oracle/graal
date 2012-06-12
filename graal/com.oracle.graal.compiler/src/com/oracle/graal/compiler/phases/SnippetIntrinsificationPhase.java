@@ -90,7 +90,7 @@ public class SnippetIntrinsificationPhase extends Phase {
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
-                ConstantNode node = ConstantNode.forCiConstant(constant, runtime, invoke.node().graph());
+                ConstantNode node = ConstantNode.forConstant(constant, runtime, invoke.node().graph());
                 invoke.intrinsify(node);
 
                 // Clean up checkcast instructions inserted by javac if the return type is generic.
