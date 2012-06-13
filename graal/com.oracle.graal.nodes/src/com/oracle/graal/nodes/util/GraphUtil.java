@@ -61,30 +61,32 @@ public class GraphUtil {
 
     private static void killEnd(EndNode end) {
         MergeNode merge = end.merge();
-        merge.removeEnd(end);
-        StructuredGraph graph = (StructuredGraph) end.graph();
-        if (merge instanceof LoopBeginNode && merge.forwardEndCount() == 0) { //dead loop
-            for (PhiNode phi : merge.phis().snapshot()) {
-                propagateKill(phi);
-            }
-            LoopBeginNode begin = (LoopBeginNode) merge;
-            // disconnect and delete loop ends & loop exits
-            for (LoopEndNode loopend : begin.loopEnds().snapshot()) {
-                loopend.predecessor().replaceFirstSuccessor(loopend, null);
-                loopend.safeDelete();
-            }
-            for (LoopExitNode loopexit : begin.loopExits().snapshot()) {
-                for (ValueProxyNode vpn : loopexit.proxies().snapshot()) {
-                    graph.replaceFloating(vpn, vpn.value());
+        if (merge != null) {
+            merge.removeEnd(end);
+            StructuredGraph graph = (StructuredGraph) end.graph();
+            if (merge instanceof LoopBeginNode && merge.forwardEndCount() == 0) { //dead loop
+                for (PhiNode phi : merge.phis().snapshot()) {
+                    propagateKill(phi);
                 }
-                graph.replaceFixedWithFixed(loopexit, graph.add(new BeginNode()));
+                LoopBeginNode begin = (LoopBeginNode) merge;
+                // disconnect and delete loop ends & loop exits
+                for (LoopEndNode loopend : begin.loopEnds().snapshot()) {
+                    loopend.predecessor().replaceFirstSuccessor(loopend, null);
+                    loopend.safeDelete();
+                }
+                for (LoopExitNode loopexit : begin.loopExits().snapshot()) {
+                    for (ValueProxyNode vpn : loopexit.proxies().snapshot()) {
+                        graph.replaceFloating(vpn, vpn.value());
+                    }
+                    graph.replaceFixedWithFixed(loopexit, graph.add(new BeginNode()));
+                }
+                killCFG(begin.next());
+                begin.safeDelete();
+            } else if (merge instanceof LoopBeginNode && ((LoopBeginNode) merge).loopEnds().isEmpty()) { // not a loop anymore
+                graph.reduceDegenerateLoopBegin((LoopBeginNode) merge);
+            } else if (merge.phiPredecessorCount() == 1) { // not a merge anymore
+                graph.reduceTrivialMerge(merge);
             }
-            killCFG(begin.next());
-            begin.safeDelete();
-        } else if (merge instanceof LoopBeginNode && ((LoopBeginNode) merge).loopEnds().isEmpty()) { // not a loop anymore
-            graph.reduceDegenerateLoopBegin((LoopBeginNode) merge);
-        } else if (merge.phiPredecessorCount() == 1) { // not a merge anymore
-            graph.reduceTrivialMerge(merge);
         }
     }
 
