@@ -32,10 +32,10 @@ import com.oracle.graal.cri.*;
 public class GraalIntrinsics {
     public static void installIntrinsics(ExtendedRiRuntime runtime, TargetDescription target) {
         if (GraalOptions.Intrinsify) {
-            Snippets.install(runtime, target, new MathSnippetsX86());
-            Snippets.install(runtime, target, new DoubleSnippets());
-            Snippets.install(runtime, target, new FloatSnippets());
-            Snippets.install(runtime, target, new NodeClassSnippets());
+            Snippets.install(runtime, target, MathSnippetsX86.class);
+            Snippets.install(runtime, target, DoubleSnippets.class);
+            Snippets.install(runtime, target, FloatSnippets.class);
+            Snippets.install(runtime, target, NodeClassSnippets.class);
         }
     }
 }

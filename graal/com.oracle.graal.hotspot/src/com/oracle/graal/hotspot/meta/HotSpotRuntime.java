@@ -69,11 +69,11 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     public void installSnippets() {
-        Snippets.install(this, compiler.getTarget(), new SystemSnippets());
-        Snippets.install(this, compiler.getTarget(), new UnsafeSnippets());
-        Snippets.install(this, compiler.getTarget(), new ArrayCopySnippets());
-        Snippets.install(this, compiler.getTarget(), new CheckCastSnippets());
-        Snippets.install(this, compiler.getTarget(), new NewInstanceSnippets());
+        Snippets.install(this, compiler.getTarget(), SystemSnippets.class);
+        Snippets.install(this, compiler.getTarget(), UnsafeSnippets.class);
+        Snippets.install(this, compiler.getTarget(), ArrayCopySnippets.class);
+        Snippets.install(this, compiler.getTarget(), CheckCastSnippets.class);
+        Snippets.install(this, compiler.getTarget(), NewInstanceSnippets.class);
         checkcastSnippets = new CheckCastSnippets.Templates(this);
         newInstanceSnippets = new NewInstanceSnippets.Templates(this);
     }

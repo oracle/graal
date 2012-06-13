@@ -44,13 +44,12 @@ import com.oracle.graal.snippets.Snippet.InliningPolicy;
  */
 public class Snippets {
 
-    public static void install(ExtendedRiRuntime runtime, TargetDescription target, SnippetsInterface obj) {
-        Class<? extends SnippetsInterface> clazz = obj.getClass();
+    public static void install(ExtendedRiRuntime runtime, TargetDescription target, Class<? extends SnippetsInterface> snippetsHolder) {
         BoxingMethodPool pool = new BoxingMethodPool(runtime);
-        if (clazz.isAnnotationPresent(ClassSubstitution.class)) {
-            installSubstitution(runtime, target, clazz, pool, clazz.getAnnotation(ClassSubstitution.class).value());
+        if (snippetsHolder.isAnnotationPresent(ClassSubstitution.class)) {
+            installSubstitution(runtime, target, snippetsHolder, pool, snippetsHolder.getAnnotation(ClassSubstitution.class).value());
         } else {
-            installSnippets(runtime, target, clazz, pool);
+            installSnippets(runtime, target, snippetsHolder, pool);
         }
     }
 
