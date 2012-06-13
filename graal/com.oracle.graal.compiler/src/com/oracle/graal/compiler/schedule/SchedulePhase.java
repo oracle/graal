@@ -126,7 +126,7 @@ public class SchedulePhase extends Phase {
         } else if (GraalOptions.ScheduleOutOfLoops && !(n instanceof VirtualObjectFieldNode) && !(n instanceof VirtualObjectNode)) {
             Block earliestBlock = earliestBlock(n);
             block = scheduleOutOfLoops(n, latestBlock, earliestBlock);
-            assert earliestBlock.dominates(block) : "Graph can not be scheduled : inconsistent for " + n;
+            assert earliestBlock.dominates(block) : "Graph can not be scheduled : inconsistent for " + n + " (" + earliestBlock + " needs to dominate " + block + ")";
         } else {
             block = latestBlock;
         }
@@ -216,8 +216,19 @@ public class SchedulePhase extends Phase {
         return result;
     }
 
+    /**
+     * Passes all blocks that a specific usage of a node is in to a given closure.
+     * This is more complex than just taking the usage's block because of of PhiNodes and FrameStates.
+     *
+     * @param node the node that needs to be scheduled
+     * @param usage the usage whose blocks need to be considered
+     * @param closure the closure that will be called for each block
+     */
     private void blocksForUsage(Node node, Node usage, BlockClosure closure) {
+        assert !(node instanceof PhiNode);
         if (usage instanceof PhiNode) {
+            // An input to a PhiNode is used at the end of the predecessor block that corresponds to the PhiNode input.
+            // One PhiNode can use an input multiple times, the closure will be called for each usage.
             PhiNode phi = (PhiNode) usage;
             MergeNode merge = phi.merge();
             Block mergeBlock = cfg.getNodeToBlock().get(merge);
@@ -235,7 +246,10 @@ public class SchedulePhase extends Phase {
                     closure.apply(mergeBlock.getPredecessors().get(i));
                 }
             }
-        } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
+        } else if (usage instanceof FrameState && ((FrameState) usage).block() != null && !(node instanceof FrameState)) {
+            // If a FrameState belongs to a MergeNode then it's inputs will be placed at the common dominator of all EndNodes.
+            // BUT only if the input is neither a PhiNode (this method is never called for PhiNodes) nor a FrameState.
+            // A FrameState input is an outer FrameState. They should be placed into the same block as the usage, which is handled by the else.
             MergeNode merge = ((FrameState) usage).block();
             Block block = null;
             for (Node pred : merge.cfgPredecessors()) {
@@ -243,6 +257,7 @@ public class SchedulePhase extends Phase {
             }
             closure.apply(block);
         } else {
+            // All other types of usages: Just put the input into the same block as the usage.
             assignBlockToNode(usage);
             closure.apply(cfg.getNodeToBlock().get(usage));
         }
