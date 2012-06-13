@@ -68,12 +68,12 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         System.setProperty(Backend.BACKEND_CLASS_PROPERTY, HotSpotAMD64Backend.class.getName());
     }
 
-    public void installSnippets() {
-        Snippets.install(this, compiler.getTarget(), SystemSnippets.class);
-        Snippets.install(this, compiler.getTarget(), UnsafeSnippets.class);
-        Snippets.install(this, compiler.getTarget(), ArrayCopySnippets.class);
-        Snippets.install(this, compiler.getTarget(), CheckCastSnippets.class);
-        Snippets.install(this, compiler.getTarget(), NewInstanceSnippets.class);
+    public void installSnippets(SnippetInstaller installer) {
+        installer.install(SystemSnippets.class);
+        installer.install(UnsafeSnippets.class);
+        installer.install(ArrayCopySnippets.class);
+        installer.install(CheckCastSnippets.class);
+        installer.install(NewInstanceSnippets.class);
         checkcastSnippets = new CheckCastSnippets.Templates(this);
         newInstanceSnippets = new NewInstanceSnippets.Templates(this);
     }
