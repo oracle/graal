@@ -22,20 +22,18 @@
  */
 package com.oracle.graal.snippets;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.cri.*;
 
 /**
  * Definition of the snippets that are VM-independent and can be intrinsified by Graal in any VM.
  */
 public class GraalIntrinsics {
-    public static void installIntrinsics(ExtendedRiRuntime runtime, TargetDescription target) {
+    public static void installIntrinsics(SnippetInstaller installer) {
         if (GraalOptions.Intrinsify) {
-            Snippets.install(runtime, target, new MathSnippetsX86());
-            Snippets.install(runtime, target, new DoubleSnippets());
-            Snippets.install(runtime, target, new FloatSnippets());
-            Snippets.install(runtime, target, new NodeClassSnippets());
+            installer.install(MathSnippetsX86.class);
+            installer.install(DoubleSnippets.class);
+            installer.install(FloatSnippets.class);
+            installer.install(NodeClassSnippets.class);
         }
     }
 }
