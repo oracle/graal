@@ -29,6 +29,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * This class implements the overall container for the LIR graph
@@ -42,7 +43,7 @@ public class LIR {
      * The nodes for the blocks.
      * TODO: This should go away, we want all nodes connected with a next-pointer.
      */
-    private final BlockMap<List<Node>> blockToNodesMap;
+    private final BlockMap<List<ScheduledNode>> blockToNodesMap;
 
     /**
      * The linear-scan ordered list of blocks.
@@ -87,7 +88,7 @@ public class LIR {
      * @param numLoops number of loops
      * @param compilation the compilation
      */
-    public LIR(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodesMap, List<Block> linearScanOrder, List<Block> codeEmittingOrder) {
+    public LIR(ControlFlowGraph cfg, BlockMap<List<ScheduledNode>> blockToNodesMap, List<Block> linearScanOrder, List<Block> codeEmittingOrder) {
         this.cfg = cfg;
         this.blockToNodesMap = blockToNodesMap;
         this.codeEmittingOrder = codeEmittingOrder;
@@ -99,7 +100,7 @@ public class LIR {
     /**
      * Gets the nodes in a given block.
      */
-    public List<Node> nodesFor(Block block) {
+    public List<ScheduledNode> nodesFor(Block block) {
         return blockToNodesMap.get(block);
     }
 
