@@ -24,7 +24,6 @@ package com.oracle.graal.lir.cfg;
 
 import java.util.*;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -33,7 +32,7 @@ public class Block {
     protected int id;
 
     protected BeginNode beginNode;
-    protected Node endNode;
+    protected FixedNode endNode;
     protected Loop loop;
     protected double probability;
 
@@ -62,7 +61,7 @@ public class Block {
         return beginNode;
     }
 
-    public Node getEndNode() {
+    public FixedNode getEndNode() {
         return endNode;
     }
 
@@ -122,8 +121,8 @@ public class Block {
         return postdominator;
     }
 
-    private class NodeIterator implements Iterator<Node> {
-        private Node cur;
+    private class NodeIterator implements Iterator<FixedNode> {
+        private FixedNode cur;
 
         public NodeIterator() {
             cur = getBeginNode();
@@ -135,8 +134,8 @@ public class Block {
         }
 
         @Override
-        public Node next() {
-            Node result = cur;
+        public FixedNode next() {
+            FixedNode result = cur;
             if (cur == getEndNode()) {
                 cur = null;
             } else {
@@ -152,10 +151,10 @@ public class Block {
         }
     }
 
-    public Iterable<Node> getNodes() {
-        return new Iterable<Node>() {
+    public Iterable<FixedNode> getNodes() {
+        return new Iterable<FixedNode>() {
             @Override
-            public Iterator<Node> iterator() {
+            public Iterator<FixedNode> iterator() {
                 return new NodeIterator();
             }
         };

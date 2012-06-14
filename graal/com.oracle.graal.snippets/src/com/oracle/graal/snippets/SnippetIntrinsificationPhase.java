@@ -20,21 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.snippets;
 
 import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.Fold;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.snippets.Snippet.Fold;
 
 public class SnippetIntrinsificationPhase extends Phase {
 
@@ -57,7 +58,7 @@ public class SnippetIntrinsificationPhase extends Phase {
         ResolvedJavaMethod target = invoke.callTarget().targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         if (intrinsic != null) {
-            assert target.getAnnotation(Node.Fold.class) == null;
+            assert target.getAnnotation(Fold.class) == null;
 
             Class< ? >[] parameterTypes = CodeUtil.signatureToTypes(target.signature(), target.holder());
 
@@ -74,7 +75,7 @@ public class SnippetIntrinsificationPhase extends Phase {
 
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnCheckCast(newInstance);
-        } else if (target.getAnnotation(Node.Fold.class) != null) {
+        } else if (target.getAnnotation(Fold.class) != null) {
             Class< ? >[] parameterTypes = CodeUtil.signatureToTypes(target.signature(), target.holder());
 
             // Prepare the arguments for the reflective method call
@@ -90,7 +91,7 @@ public class SnippetIntrinsificationPhase extends Phase {
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
-                ConstantNode node = ConstantNode.forCiConstant(constant, runtime, invoke.node().graph());
+                ConstantNode node = ConstantNode.forConstant(constant, runtime, invoke.node().graph());
                 invoke.intrinsify(node);
 
                 // Clean up checkcast instructions inserted by javac if the return type is generic.
@@ -196,16 +197,86 @@ public class SnippetIntrinsificationPhase extends Phase {
         return node;
     }
 
-    private static Node createNodeInstance(Class< ? > nodeClass, Class< ? >[] parameterTypes, Object[] nodeConstructorArguments) {
-        Constructor< ? > constructor;
-        try {
-            constructor = nodeClass.getDeclaredConstructor(parameterTypes);
-            constructor.setAccessible(true);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+    private static Class asBoxedType(Class type) {
+        if (!type.isPrimitive()) {
+            return type;
         }
+
+        if (Boolean.TYPE == type) {
+            return Boolean.class;
+        }
+        if (Character.TYPE == type) {
+            return Character.class;
+        }
+        if (Byte.TYPE == type) {
+            return Byte.class;
+        }
+        if (Short.TYPE == type) {
+            return Short.class;
+        }
+        if (Integer.TYPE == type) {
+            return Integer.class;
+        }
+        if (Long.TYPE == type) {
+            return Long.class;
+        }
+        if (Float.TYPE == type) {
+            return Float.class;
+        }
+        assert Double.TYPE == type;
+        return Double.class;
+    }
+
+    static final int VARARGS = 0x00000080;
+
+    private static Node createNodeInstance(Class< ? > nodeClass, Class< ? >[] parameterTypes, Object[] nodeConstructorArguments) {
+        Object[] arguments = null;
+        Constructor< ? > constructor = null;
+        nextConstructor:
+        for (Constructor c : nodeClass.getDeclaredConstructors()) {
+            Class[] signature = c.getParameterTypes();
+            if ((c.getModifiers() & VARARGS) != 0) {
+                int fixedArgs = signature.length - 1;
+                if (parameterTypes.length < fixedArgs) {
+                    continue nextConstructor;
+                }
+
+                for (int i = 0; i < fixedArgs; i++) {
+                    if (!parameterTypes[i].equals(signature[i])) {
+                        continue nextConstructor;
+                    }
+                }
+
+                Class componentType = signature[fixedArgs].getComponentType();
+                assert componentType != null : "expected last parameter of varargs constructor " + c + " to be an array type";
+                Class boxedType = asBoxedType(componentType);
+                for (int i = fixedArgs; i < nodeConstructorArguments.length; i++) {
+                    if (!boxedType.isInstance(nodeConstructorArguments[i])) {
+                        continue nextConstructor;
+                    }
+                }
+
+                arguments = Arrays.copyOf(nodeConstructorArguments, fixedArgs + 1);
+                int varargsLength = nodeConstructorArguments.length - fixedArgs;
+                Object varargs = Array.newInstance(componentType, varargsLength);
+                for (int i = fixedArgs; i < nodeConstructorArguments.length; i++) {
+                    Array.set(varargs, i - fixedArgs, nodeConstructorArguments[i]);
+                }
+                arguments[fixedArgs] = varargs;
+                constructor = c;
+                break;
+            } else if (Arrays.equals(parameterTypes, signature)) {
+                arguments = nodeConstructorArguments;
+                constructor = c;
+                break;
+            }
+        }
+        if (constructor == null) {
+            throw new GraalInternalError("Could not find constructor in " + nodeClass + " compatible with signature " + Arrays.toString(parameterTypes));
+        }
+        constructor.setAccessible(true);
         try {
-            return (ValueNode) constructor.newInstance(nodeConstructorArguments);
+            return (ValueNode) constructor.newInstance(arguments);
         } catch (Exception e) {
             throw new RuntimeException(constructor + Arrays.toString(nodeConstructorArguments), e);
         }

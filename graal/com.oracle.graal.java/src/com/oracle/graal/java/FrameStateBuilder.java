@@ -33,6 +33,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
 
 public class FrameStateBuilder {
@@ -155,7 +156,7 @@ public class FrameStateBuilder {
 
         } else if (block.isPhiAtMerge(currentValue)) {
             if (otherValue == null || currentValue.kind() != otherValue.kind()) {
-                deletePhi((PhiNode) currentValue);
+                propagateDelete((PhiNode) currentValue);
                 return null;
             }
             ((PhiNode) currentValue).addInput(otherValue);
@@ -180,45 +181,21 @@ public class FrameStateBuilder {
         }
     }
 
-    private void deletePhi(PhiNode phi) {
-        if (phi.isDeleted()) {
+    private void propagateDelete(FloatingNode node) {
+        assert node instanceof PhiNode || node instanceof ValueProxyNode;
+        if (node.isDeleted()) {
             return;
         }
         // Collect all phi functions that use this phi so that we can delete them recursively (after we delete ourselfs to avoid circles).
-        List<PhiNode> phiUsages = phi.usages().filter(PhiNode.class).snapshot();
-        List<ValueProxyNode> vpnUsages = phi.usages().filter(ValueProxyNode.class).snapshot();
+        List<FloatingNode> propagateUsages = node.usages().filter(FloatingNode.class).filter(isA(PhiNode.class).or(ValueProxyNode.class)).snapshot();
 
         // Remove the phi function from all FrameStates where it is used and then delete it.
-        assert phi.usages().filter(isNotA(FrameState.class).nor(PhiNode.class).nor(ValueProxyNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
-        phi.replaceAtUsages(null);
-        phi.safeDelete();
+        assert node.usages().filter(isNotA(FrameState.class).nor(PhiNode.class).nor(ValueProxyNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
+        node.replaceAtUsages(null);
+        node.safeDelete();
 
-        for (PhiNode phiUsage : phiUsages) {
-            deletePhi(phiUsage);
-        }
-        for (ValueProxyNode proxyUsage : vpnUsages) {
-            deleteProxy(proxyUsage);
-        }
-    }
-
-    private void deleteProxy(ValueProxyNode proxy) {
-        if (proxy.isDeleted()) {
-            return;
-        }
-        // Collect all phi functions that use this phi so that we can delete them recursively (after we delete ourselfs to avoid circles).
-        List<PhiNode> phiUsages = proxy.usages().filter(PhiNode.class).snapshot();
-        List<ValueProxyNode> vpnUsages = proxy.usages().filter(ValueProxyNode.class).snapshot();
-
-        // Remove the proxy function from all FrameStates where it is used and then delete it.
-        assert proxy.usages().filter(isNotA(FrameState.class).nor(PhiNode.class).nor(ValueProxyNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
-        proxy.replaceAtUsages(null);
-        proxy.safeDelete();
-
-        for (PhiNode phiUsage : phiUsages) {
-            deletePhi(phiUsage);
-        }
-        for (ValueProxyNode proxyUsage : vpnUsages) {
-            deleteProxy(proxyUsage);
+        for (FloatingNode phiUsage : propagateUsages) {
+            propagateDelete(phiUsage);
         }
     }
 
@@ -262,7 +239,7 @@ public class FrameStateBuilder {
     public void cleanupDeletedPhis() {
         for (int i = 0; i < localsSize(); i++) {
             if (localAt(i) != null && localAt(i).isDeleted()) {
-                assert localAt(i) instanceof PhiNode : "Only phi functions can be deleted during parsing";
+                assert localAt(i) instanceof PhiNode || localAt(i) instanceof ValueProxyNode : "Only phi and value proxies can be deleted during parsing: " + localAt(i);
                 storeLocal(i, null);
             }
         }

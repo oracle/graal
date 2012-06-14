@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and
  * operand stack) at a particular point in the abstract interpretation.
  */
-public final class FrameState extends Node implements Node.IterableNodeType, LIRLowerable {
+public final class FrameState extends VirtualState implements Node.IterableNodeType, LIRLowerable {
 
     protected final int localsSize;
 
@@ -74,11 +74,10 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
 
     @Input private final NodeInputList<ValueNode> values;
 
-    @Input private final NodeInputList<Node> virtualObjectMappings;
+    @Input private final NodeInputList<VirtualObjectState> virtualObjectMappings;
 
     /**
-     * The bytecode index to which this frame state applies. This will be {@code -1}
-     * iff this state is mutable.
+     * The bytecode index to which this frame state applies.
      */
     public final int bci;
 
@@ -93,17 +92,26 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
      * @param stackSize size of the stack
      * @param rethrowException if true the VM should re-throw the exception on top of the stack when deopt'ing using this framestate
      */
-    public FrameState(ResolvedJavaMethod method, int bci, int localsSize, int stackSize, boolean rethrowException, boolean duringCall) {
+    public FrameState(ResolvedJavaMethod method, int bci, List<ValueNode> values, int stackSize, boolean rethrowException, boolean duringCall, List<VirtualObjectState> virtualObjectMappings) {
         assert stackSize >= 0;
+        assert (bci >= 0 && method != null) || (bci < 0 && method == null && values.isEmpty());
         this.method = method;
         this.bci = bci;
-        this.localsSize = localsSize;
+        this.localsSize = values.size() - stackSize;
         this.stackSize = stackSize;
-        this.values = new NodeInputList<>(this, localsSize + stackSize);
-        this.virtualObjectMappings = new NodeInputList<>(this);
+        this.values = new NodeInputList<>(this, values);
+        this.virtualObjectMappings = new NodeInputList<>(this, virtualObjectMappings);
         this.rethrowException = rethrowException;
         this.duringCall = duringCall;
         assert !rethrowException || stackSize == 1 : "must have exception on top of the stack";
+    }
+
+    /**
+     * Simple constructor used to create marker FrameStates.
+     * @param bci marker bci, needs to be < 0
+     */
+    public FrameState(int bci) {
+        this(null, bci, Collections.<ValueNode>emptyList(), 0, false, false, Collections.<VirtualObjectState>emptyList());
     }
 
     public FrameState(ResolvedJavaMethod method, int bci, ValueNode[] locals, ValueNode[] stack, int stackSize, boolean rethrowException, boolean duringCall) {
@@ -140,10 +148,6 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
         this.outerFrameState = x;
     }
 
-    private void setValueAt(int i, ValueNode x) {
-        values.set(i, x);
-    }
-
     public boolean rethrowException() {
         return rethrowException;
     }
@@ -160,8 +164,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
         return method;
     }
 
-    public void addVirtualObjectMapping(Node virtualObject) {
-        assert virtualObject instanceof VirtualObjectFieldNode || virtualObject instanceof PhiNode || virtualObject instanceof ValueProxyNode : virtualObject;
+    public void addVirtualObjectMapping(VirtualObjectState virtualObject) {
         virtualObjectMappings.add(virtualObject);
     }
 
@@ -173,7 +176,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
         return virtualObjectMappings.get(i);
     }
 
-    public Iterable<Node> virtualObjectMappings() {
+    public Iterable<VirtualObjectState> virtualObjectMappings() {
         return virtualObjectMappings;
     }
 
@@ -192,9 +195,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
     }
 
     public FrameState duplicate(int newBci, boolean duplicateOuter) {
-        FrameState other = graph().add(new FrameState(method, newBci, localsSize, stackSize, rethrowException, duringCall));
-        other.values.setAll(values);
-        other.virtualObjectMappings.setAll(virtualObjectMappings);
+        FrameState other = graph().add(new FrameState(method, newBci, values, stackSize, rethrowException, duringCall, virtualObjectMappings));
         FrameState newOuterFrameState = outerFrameState();
         if (duplicateOuter && newOuterFrameState != null) {
             newOuterFrameState = newOuterFrameState.duplicate(newOuterFrameState.bci, duplicateOuter);
@@ -209,29 +210,18 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
      * or double is followed by a null slot.
      */
     public FrameState duplicateModified(int newBci, boolean newRethrowException, Kind popKind, ValueNode... pushedValues) {
-        int popSlots = 0;
+        ArrayList<ValueNode> copy = new ArrayList<>(values);
         if (popKind != Kind.Void) {
             if (stackAt(stackSize() - 1) == null) {
-                popSlots = 2;
-            } else {
-                popSlots = 1;
+                copy.remove(copy.size() - 1);
             }
-            assert stackAt(stackSize() - popSlots).kind().stackKind() == popKind.stackKind() || (stackAt(stackSize() - popSlots) instanceof BoxedVirtualObjectNode && popKind.isObject());
+            ValueNode lastSlot = copy.get(copy.size() - 1);
+            assert lastSlot.kind().stackKind() == popKind.stackKind() || (lastSlot instanceof BoxedVirtualObjectNode && popKind.isObject());
+            copy.remove(copy.size() - 1);
         }
+        Collections.addAll(copy, pushedValues);
 
-        int pushSlots = pushedValues.length;
-        FrameState other = graph().add(new FrameState(method, newBci, localsSize, stackSize - popSlots + pushSlots, newRethrowException, false));
-        for (int i = 0; i < localsSize; i++) {
-            other.setValueAt(i, localAt(i));
-        }
-        for (int i = 0; i < stackSize - popSlots; i++) {
-            other.setValueAt(localsSize + i, stackAt(i));
-        }
-        int slot = localsSize + stackSize - popSlots;
-        for (int i = 0; i < pushSlots; i++) {
-            other.setValueAt(slot++, pushedValues[i]);
-        }
-        other.virtualObjectMappings.setAll(virtualObjectMappings);
+        FrameState other = graph().add(new FrameState(method, newBci, copy, copy.size() - localsSize, newRethrowException, false, virtualObjectMappings));
         other.setOuterFrameState(outerFrameState());
         return other;
     }

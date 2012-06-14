@@ -67,7 +67,7 @@ public final class ReadHubNode extends FixedWithNextNode implements Lowerable, C
             }
 
             if (exactType != null) {
-                return ConstantNode.forCiConstant(exactType.getEncoding(Representation.ObjectHub), runtime, graph());
+                return ConstantNode.forConstant(exactType.getEncoding(Representation.ObjectHub), runtime, graph());
             }
         }
         return this;

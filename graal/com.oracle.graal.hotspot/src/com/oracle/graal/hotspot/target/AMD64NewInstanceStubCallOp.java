@@ -29,6 +29,7 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.target.amd64.*;
@@ -38,8 +39,8 @@ import com.oracle.max.asm.target.amd64.*;
  * and implemented in Runtime1::generate_code_for() which is located in c1_Runtime1_x86.cpp.
  */
 public class AMD64NewInstanceStubCallOp extends AMD64LIRInstruction {
-    public AMD64NewInstanceStubCallOp(Value result, Value hub) {
-        super("NEW_INSTANCE", new Value[] {result}, null, new Value[] {hub}, NO_OPERANDS, NO_OPERANDS);
+    public AMD64NewInstanceStubCallOp(Value result, Value hub, LIRDebugInfo info) {
+        super("NEW_INSTANCE", new Value[] {result}, info, new Value[] {hub}, NO_OPERANDS, NO_OPERANDS);
     }
 
     @Override
@@ -50,7 +51,7 @@ public class AMD64NewInstanceStubCallOp extends AMD64LIRInstruction {
         // rdx: (in) hub
         // rax: (out) result
         assert asRegister(hub) == AMD64.rdx;
-        AMD64Call.directCall(tasm, masm, HotSpotGraalRuntime.getInstance().getConfig().newInstanceStub, null);
+        AMD64Call.directCall(tasm, masm, HotSpotGraalRuntime.getInstance().getConfig().newInstanceStub, info);
         if (asRegister(result) != AMD64.rax) {
             masm.movq(asRegister(result), AMD64.rax);
         }

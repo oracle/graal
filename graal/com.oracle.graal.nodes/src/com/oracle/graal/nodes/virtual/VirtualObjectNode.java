@@ -23,12 +23,11 @@
 package com.oracle.graal.nodes.virtual;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-
-public class VirtualObjectNode extends ValueNode implements LIRLowerable {
+public class VirtualObjectNode extends FloatingNode implements LIRLowerable {
 
     private ResolvedJavaType type;
     private EscapeField[] fields;

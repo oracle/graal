@@ -29,8 +29,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.virtual.*;
-
 
 public abstract class EscapeOp {
 
@@ -43,7 +41,7 @@ public abstract class EscapeOp {
         } else if (usage instanceof IsTypeNode) {
             assert ((IsTypeNode) usage).objectClass() == node;
             return false;
-        } else if (usage instanceof FrameState) {
+        } else if (usage instanceof VirtualState) {
             assert usage.inputs().contains(node);
             return true;
         } else if (usage instanceof AccessMonitorNode) {
@@ -73,8 +71,6 @@ public abstract class EscapeOp {
                 // in order to not escape the access needs to have a valid constant index and either a store into node or self-referencing
                 return !isValidConstantIndex(x) || x.value() == node && x.array() != node;
             }
-        } else if (usage instanceof VirtualObjectFieldNode) {
-            return false;
         } else if (usage instanceof RegisterFinalizerNode) {
             assert ((RegisterFinalizerNode) usage).object() == node;
             return false;
@@ -112,8 +108,8 @@ public abstract class EscapeOp {
             ((StructuredGraph) x.graph()).replaceFloating(x, ConstantNode.forBoolean(false, node.graph()));
         } else if (usage instanceof IsTypeNode) {
             IsTypeNode x = (IsTypeNode) usage;
-            assert x.type() == ((ValueNode) node).objectStamp().type();
-            ((StructuredGraph) x.graph()).replaceFloating(x, ConstantNode.forBoolean(true, node.graph()));
+            boolean result = ((ValueNode) node).objectStamp().type() == x.type();
+            ((StructuredGraph) x.graph()).replaceFloating(x, ConstantNode.forBoolean(result, node.graph()));
         } else if (usage instanceof AccessMonitorNode) {
             ((AccessMonitorNode) usage).eliminate();
         }

@@ -68,14 +68,14 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         System.setProperty(Backend.BACKEND_CLASS_PROPERTY, HotSpotAMD64Backend.class.getName());
     }
 
-    public void installSnippets() {
-        Snippets.install(this, compiler.getTarget(), new SystemSnippets());
-        Snippets.install(this, compiler.getTarget(), new UnsafeSnippets());
-        Snippets.install(this, compiler.getTarget(), new ArrayCopySnippets());
-        Snippets.install(this, compiler.getTarget(), new CheckCastSnippets());
-        Snippets.install(this, compiler.getTarget(), new NewInstanceSnippets());
+    public void installSnippets(SnippetInstaller installer) {
+        installer.install(SystemSnippets.class);
+        installer.install(UnsafeSnippets.class);
+        installer.install(ArrayCopySnippets.class);
+        installer.install(CheckCastSnippets.class);
+        installer.install(NewInstanceSnippets.class);
         checkcastSnippets = new CheckCastSnippets.Templates(this);
-        newInstanceSnippets = new NewInstanceSnippets.Templates(this);
+        newInstanceSnippets = new NewInstanceSnippets.Templates(this, config.useTLAB);
     }
 
 
@@ -308,7 +308,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
                 if (arrayType != null && array.objectStamp().isExactType()) {
                     ResolvedJavaType elementType = arrayType.componentType();
                     if (elementType.superType() != null) {
-                        ConstantNode type = ConstantNode.forCiConstant(elementType.getEncoding(Representation.ObjectHub), this, graph);
+                        ConstantNode type = ConstantNode.forConstant(elementType.getEncoding(Representation.ObjectHub), this, graph);
                         checkcast = graph.add(new CheckCastNode(type, elementType, value));
                         graph.addBeforeFixed(storeIndexed, checkcast);
                         value = checkcast;

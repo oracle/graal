@@ -65,7 +65,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
         return usages().filter(NodePredicates.isNotA(FrameState.class)).isEmpty();
     }
 
-    public static ConstantNode forCiConstant(Constant constant, CodeCacheProvider runtime, Graph graph) {
+    public static ConstantNode forConstant(Constant constant, CodeCacheProvider runtime, Graph graph) {
         if (constant.kind == Kind.Object) {
             return graph.unique(new ConstantNode(constant, runtime));
         } else {

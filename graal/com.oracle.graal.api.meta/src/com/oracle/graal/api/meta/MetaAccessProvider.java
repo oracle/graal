@@ -56,7 +56,7 @@ public interface MetaAccessProvider {
     ResolvedJavaMethod getResolvedJavaMethod(Method reflectionMethod);
 
     /**
-     * Gets the length of the array that is wrapped in a CiConstant object.
+     * Gets the length of the array that is wrapped in a Constant object.
      */
     int getArrayLength(Constant array);
 }

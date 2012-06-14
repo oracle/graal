@@ -25,6 +25,7 @@ package com.oracle.graal.snippets;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.snippets.nodes.*;
 
@@ -39,6 +40,50 @@ import com.oracle.graal.snippets.nodes.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface Snippet {
+
+    /**
+     * Specifies the class defining the inlining policy for this snippet.
+     * A {@linkplain InliningPolicy#Default default} policy is used if none is supplied.
+     */
+    Class<? extends InliningPolicy> inlining() default InliningPolicy.class;
+
+    /**
+     * Guides inlining decisions used when installing a snippet.
+     */
+    public interface InliningPolicy {
+        /**
+         * Determines if {@code method} should be inlined into {@code caller}.
+         */
+        boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller);
+
+        /**
+         * The default inlining policy which inlines everything except for
+         * constructors of {@link Throwable} classes.
+         */
+        InliningPolicy Default = new InliningPolicy() {
+            public boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller) {
+                if (Throwable.class.isAssignableFrom(method.holder().toJava())) {
+                    if (method.name().equals("<init>")) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        };
+    }
+
+    /**
+     * Annotates a method replaced by a compile-time constant.
+     * A (resolved) call to the annotated method is replaced
+     * with a constant obtained by calling the annotated method via reflection.
+     *
+     * All arguments to such a method (including the receiver if applicable)
+     * must be compile-time constants.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public static @interface Fold {
+    }
 
     /**
      * Denotes a snippet parameter that will be bound during snippet

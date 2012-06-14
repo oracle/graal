@@ -90,27 +90,6 @@ public abstract class Node implements Cloneable, Formattable {
         Class value() default NodeIntrinsic.class;
     }
 
-
-    /**
-     * Annotates a method replaced by a compile-time constant.
-     * A (resolved) call to the annotated method is replaced
-     * with a constant obtained by calling the annotated method via reflection.
-     *
-     * All arguments to such a method (including the receiver if applicable)
-     * must be compile-time constants.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.METHOD)
-    public static @interface Fold {
-    }
-
-
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.METHOD)
-    public static @interface NodePhase {
-        Class value() default NodePhase.class;
-    }
-
     public interface ValueNumberable {}
 
     public interface IterableNodeType {}

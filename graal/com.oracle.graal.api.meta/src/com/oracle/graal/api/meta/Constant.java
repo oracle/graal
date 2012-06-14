@@ -24,7 +24,7 @@ package com.oracle.graal.api.meta;
 
 /**
  * Represents a constant (boxed) value, such as an integer, floating point number, or object reference,
- * within the compiler and across the compiler/runtime interface. Exports a set of {@code CiConstant}
+ * within the compiler and across the compiler/runtime interface. Exports a set of {@code Constant}
  * instances that represent frequently used constant values, such as {@link #ZERO}.
  */
 public final class Constant extends Value {
@@ -436,7 +436,7 @@ public final class Constant extends Value {
             case Object:
                 return forObject(value);
             default:
-                throw new RuntimeException("cannot create CiConstant for boxed " + kind + " value");
+                throw new RuntimeException("cannot create Constant for boxed " + kind + " value");
         }
     }
 }

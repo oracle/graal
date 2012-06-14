@@ -135,6 +135,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
 
     @Override
     public void intrinsify(Node node) {
+        assert !(node instanceof ValueNode) || ((ValueNode) node).kind().isVoid() == kind().isVoid();
         MethodCallTargetNode call = callTarget;
         FrameState stateAfter = stateAfter();
         if (node instanceof StateSplit) {

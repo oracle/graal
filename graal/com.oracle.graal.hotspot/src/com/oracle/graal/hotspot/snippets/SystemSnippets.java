@@ -33,11 +33,11 @@ import com.oracle.graal.snippets.*;
 public class SystemSnippets implements SnippetsInterface {
 
     public static long currentTimeMillis() {
-        return RuntimeCallNode.performCall(RuntimeCall.JavaTimeMillis);
+        return RuntimeCallNode.callLong(RuntimeCall.JavaTimeMillis);
     }
 
     public static long nanoTime() {
-        return RuntimeCallNode.performCall(RuntimeCall.JavaTimeNanos);
+        return RuntimeCallNode.callLong(RuntimeCall.JavaTimeNanos);
     }
 
 }
