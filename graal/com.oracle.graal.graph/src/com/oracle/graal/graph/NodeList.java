@@ -55,6 +55,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
             this.nodes = new Node[elements.length];
             for (int i = 0; i < elements.length; i++) {
                 this.nodes[i] = elements[i];
+                assert this.nodes[i] == null || !this.nodes[i].isDeleted();
             }
         }
     }
@@ -70,6 +71,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
             this.nodes = new Node[elements.size()];
             for (int i = 0; i < elements.size(); i++) {
                 this.nodes[i] = elements.get(i);
+                assert this.nodes[i] == null || !this.nodes[i].isDeleted();
             }
         }
     }

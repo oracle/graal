@@ -381,7 +381,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             lastState = fs;
         }
 
-        List<Node> nodes = lir.nodesFor(block);
+        List<ScheduledNode> nodes = lir.nodesFor(block);
         for (int i = 0; i < nodes.size(); i++) {
             Node instr = nodes.get(i);
 

@@ -28,6 +28,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
+
     @Input protected final NodeInputList<ValueNode> arguments;
 
     public CallTargetNode(ValueNode[] arguments) {
@@ -45,6 +46,6 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        //nop
+        // nop
     }
 }

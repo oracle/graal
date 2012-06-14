@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,20 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.snippets;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.compiler.*;
+import com.oracle.graal.graph.*;
 
 /**
- * Definition of the snippets that are VM-independent and can be intrinsified by Graal in any VM.
+ * Base class for nodes that contain "virtual" state, like FrameState and VirtualObjectState.
+ * Subclasses of this class will be treated in a special way by the scheduler.
  */
-public class GraalIntrinsics {
-    public static void installIntrinsics(SnippetInstaller installer) {
-        if (GraalOptions.Intrinsify) {
-            installer.install(MathSnippetsX86.class);
-            installer.install(DoubleSnippets.class);
-            installer.install(FloatSnippets.class);
-            installer.install(NodeClassSnippets.class);
-        }
-    }
+public abstract class VirtualState extends Node {
+
 }

@@ -160,17 +160,14 @@ public class ScalarTypeSystemTest extends GraalCompilerTest {
     }
 
     private void test(final String snippet, final String referenceSnippet) {
-        Debug.scope("ScalarTypeSystemTest", new DebugDumpScope(snippet), new Runnable() {
-            public void run() {
-                StructuredGraph graph = parse(snippet);
-                Debug.dump(graph, "Graph");
-//                TypeSystemTest.outputGraph(graph);
-                new CanonicalizerPhase(null, runtime(), null).apply(graph);
-                new CheckCastEliminationPhase().apply(graph);
-                new CanonicalizerPhase(null, runtime(), null).apply(graph);
-                StructuredGraph referenceGraph = parse(referenceSnippet);
-                assertEquals(referenceGraph, graph);
-            }
-        });
+        // No debug scope to reduce console noise for @Test(expected = ...) tests
+        StructuredGraph graph = parse(snippet);
+        Debug.dump(graph, "Graph");
+//        TypeSystemTest.outputGraph(graph);
+        new CanonicalizerPhase(null, runtime(), null).apply(graph);
+        new CheckCastEliminationPhase().apply(graph);
+        new CanonicalizerPhase(null, runtime(), null).apply(graph);
+        StructuredGraph referenceGraph = parse(referenceSnippet);
+        assertEquals(referenceGraph, graph);
     }
 }

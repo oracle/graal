@@ -118,9 +118,9 @@ public class ControlFlowGraph {
 
                 block.beginNode = (BeginNode) node;
                 Node cur = node;
+                Node last;
                 do {
                     assert !cur.isDeleted();
-                    block.endNode = cur;
 
                     assert nodeToBlock.get(cur) == null;
                     nodeToBlock.set(cur, block);
@@ -137,15 +137,11 @@ public class ControlFlowGraph {
                         }
                     }
 
-                    Node next = null;
-                    for (Node sux : cur.successors()) {
-                        if (sux != null && !(sux instanceof BeginNode)) {
-                            assert next == null;
-                            next = sux;
-                        }
-                    }
-                    cur = next;
-                } while (cur != null);
+                    last = cur;
+                    cur = cur.successors().first();
+                } while (cur != null && !(cur instanceof BeginNode));
+
+                block.endNode = (FixedNode) last;
             }
         }
 

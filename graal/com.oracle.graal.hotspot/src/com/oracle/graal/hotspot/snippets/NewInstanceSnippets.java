@@ -55,16 +55,18 @@ import com.oracle.graal.snippets.SnippetTemplate.Key;
  */
 public class NewInstanceSnippets implements SnippetsInterface {
 
+    private static final boolean LOG_ALLOCATION = Boolean.getBoolean("graal.traceAllocation");
+
     /**
      * Type test used when the type being tested against is a final type.
      */
     @Snippet
-    public static Object newInstance(@Parameter("hub") Object hub, @ConstantParameter("size") int size, @ConstantParameter("checkInit") boolean checkInit) {
+    public static Object newInstance(@Parameter("hub") Object hub, @ConstantParameter("size") int size, @ConstantParameter("checkInit") boolean checkInit, @ConstantParameter("logType") String logType) {
         if (checkInit) {
             int klassState = load(hub, 0, klassStateOffset(), Kind.Int);
             if (klassState != klassStateFullyInitialized()) {
                 Object instance = NewInstanceStubCall.call(hub);
-                return formatInstance(hub, size, instance);
+                return formatInstance(hub, size, instance, logType);
             }
         }
 
@@ -80,7 +82,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
             instance = NewInstanceStubCall.call(hub);
         }
 
-        return formatInstance(hub, size, instance);
+        return formatInstance(hub, size, instance, logType);
     }
 
     private static Word asWord(Object object) {
@@ -94,13 +96,19 @@ public class NewInstanceSnippets implements SnippetsInterface {
     /**
      * Formats the header of a created instance and zeroes out its body.
      */
-    private static Object formatInstance(Object hub, int size, Object instance) {
+    private static Object formatInstance(Object hub, int size, Object instance, String logType) {
         Word headerPrototype = cast(load(hub, 0, instanceHeaderPrototypeOffset(), wordKind()), Word.class);
         store(instance, 0, 0, headerPrototype);
         store(instance, 0, hubOffset(), hub);
         explodeLoop();
         for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
             store(instance, 0, offset, 0);
+        }
+        if (logType != null) {
+            Log.print("allocated instance of ");
+            Log.print(logType);
+            Log.print(" at ");
+            Log.printlnAddress(instance);
         }
         return instance;
     }
@@ -155,7 +163,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
             this.runtime = runtime;
             this.cache = new Cache(runtime);
             try {
-                newInstance = runtime.getResolvedJavaMethod(NewInstanceSnippets.class.getDeclaredMethod("newInstance", Object.class, int.class, boolean.class));
+                newInstance = runtime.getResolvedJavaMethod(NewInstanceSnippets.class.getDeclaredMethod("newInstance", Object.class, int.class, boolean.class, String.class));
             } catch (NoSuchMethodException e) {
                 throw new GraalInternalError(e);
             }
@@ -170,7 +178,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) newInstanceNode.instanceClass();
             HotSpotKlassOop hub = type.klassOop();
             int instanceSize = type.instanceSize();
-            Key key = new Key(newInstance).add("size", instanceSize).add("checkInit", !type.isInitialized());
+            Key key = new Key(newInstance).add("size", instanceSize).add("checkInit", !type.isInitialized()).add("logType", LOG_ALLOCATION ? type.name() : null);
             Arguments arguments = arguments("hub", hub);
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering newInstance in %s: node=%s, template=%s, arguments=%s", graph, newInstanceNode, template, arguments);

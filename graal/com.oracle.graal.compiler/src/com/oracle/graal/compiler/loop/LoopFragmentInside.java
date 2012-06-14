@@ -246,9 +246,6 @@ public class LoopFragmentInside extends LoopFragment {
                 if (duplicateState != null) {
                     duplicateState.replaceFirstInput(phi, firstPhi); // fix the merge's state after
                 }
-                if (phi.type() == PhiType.Virtual) {
-                    initializer = GraphUtil.mergeVirtualChain(graph, firstPhi, newExitMerge);
-                }
                 mergedInitializers.put(phi, initializer);
             }
         }

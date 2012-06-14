@@ -36,8 +36,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
 
     public static enum PhiType {
         Value(null), // normal value phis
-        Memory(StampFactory.dependency()), // memory phis
-        Virtual(StampFactory.virtual()); // phis used for VirtualObjectField merges
+        Memory(StampFactory.dependency());
 
         public final Stamp stamp;
 
