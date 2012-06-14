@@ -85,14 +85,11 @@ public class StraighteningTest extends GraalCompilerTest {
     }
 
     private void test(final String snippet) {
-        Debug.scope("StraighteningTest", new DebugDumpScope(snippet), new Runnable() {
-            public void run() {
-                StructuredGraph graph = parse(snippet);
-                Debug.dump(graph, "Graph");
-                new CanonicalizerPhase(null, runtime(), null).apply(graph);
-                StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
-                assertEquals(referenceGraph, graph);
-            }
-        });
+        // No debug scope to reduce console noise for @Test(expected = ...) tests
+        StructuredGraph graph = parse(snippet);
+        Debug.dump(graph, "Graph");
+        new CanonicalizerPhase(null, runtime(), null).apply(graph);
+        StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
+        assertEquals(referenceGraph, graph);
     }
 }
