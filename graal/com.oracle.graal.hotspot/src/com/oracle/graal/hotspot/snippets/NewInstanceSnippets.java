@@ -55,7 +55,7 @@ import com.oracle.graal.snippets.SnippetTemplate.Key;
  */
 public class NewInstanceSnippets implements SnippetsInterface {
 
-    private static final boolean LOG_ALLOCATION = false;
+    private static final boolean LOG_ALLOCATION = Boolean.getBoolean("graal.traceAllocation");
 
     /**
      * Type test used when the type being tested against is a final type.
