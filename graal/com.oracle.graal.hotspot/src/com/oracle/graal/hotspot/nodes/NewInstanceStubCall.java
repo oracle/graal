@@ -49,7 +49,8 @@ public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowe
     public void generate(LIRGenerator gen) {
         Variable result = gen.newVariable(Kind.Object);
         gen.emitMove(gen.operand(hub), AMD64.rdx.asValue());
-        AMD64NewInstanceStubCallOp op = new AMD64NewInstanceStubCallOp(result, AMD64.rdx.asValue());
+        LIRDebugInfo info = gen.state();
+        AMD64NewInstanceStubCallOp op = new AMD64NewInstanceStubCallOp(result, AMD64.rdx.asValue(), info);
         gen.append(op);
         gen.setResult(this, result);
     }
