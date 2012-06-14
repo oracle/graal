@@ -26,23 +26,33 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-
 /**
  * Tests the implementation of {@code NEW}.
  */
-public class NewInstanceTest extends TypeCheckTest {
+public class NewInstanceTest extends GraalCompilerTest {
 
     @Override
-    protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
+    protected void assertEquals(Object expected, Object actual) {
+        Assert.assertTrue(expected != null);
+        Assert.assertTrue(actual != null);
+        super.assertEquals(expected.getClass(), actual.getClass());
     }
 
     @Test
     public void test1() {
+        test("newObject");
+        test("newBigObject");
         test("newEmptyString");
         test("newString", "value");
         test("newHashMap", 31);
+    }
+
+    public static Object newObject() {
+        return new Object();
+    }
+
+    public static BigObject newBigObject() {
+        return new BigObject();
     }
 
     public static String newEmptyString() {
@@ -55,5 +65,52 @@ public class NewInstanceTest extends TypeCheckTest {
 
     public static HashMap newHashMap(int initialCapacity) {
         return new HashMap(initialCapacity);
+    }
+
+    static class BigObject {
+        Object f01;
+        Object f02;
+        Object f03;
+        Object f04;
+        Object f05;
+        Object f06;
+        Object f07;
+        Object f08;
+        Object f09;
+        Object f10;
+        Object f12;
+        Object f13;
+        Object f14;
+        Object f15;
+        Object f16;
+        Object f17;
+        Object f18;
+        Object f19;
+        Object f20;
+        Object f21;
+        Object f22;
+        Object f23;
+        Object f24;
+        Object f25;
+        Object f26;
+        Object f27;
+        Object f28;
+        Object f29;
+        Object f30;
+        Object f31;
+        Object f32;
+        Object f33;
+        Object f34;
+        Object f35;
+        Object f36;
+        Object f37;
+        Object f38;
+        Object f39;
+        Object f40;
+        Object f41;
+        Object f42;
+        Object f43;
+        Object f44;
+        Object f45;
     }
 }
