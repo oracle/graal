@@ -32,7 +32,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.virtual.*;
 
 public class DebugInfoBuilder {
@@ -52,20 +51,13 @@ public class DebugInfoBuilder {
         VirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
             // collect all VirtualObjectField instances:
-            IdentityHashMap<VirtualObjectNode, VirtualObjectFieldNode> objectStates = new IdentityHashMap<>();
+            IdentityHashMap<VirtualObjectNode, VirtualObjectState> objectStates = new IdentityHashMap<>();
             FrameState current = topState;
             do {
-                for (Node n : current.virtualObjectMappings()) {
-                    Node p = n;
-                    while (p instanceof PhiNode) {
-                        PhiNode phi = (PhiNode) p;
-                        assert phi.type() == PhiType.Virtual;
-                        p = phi.valueAt(0);
-                    }
-                    VirtualObjectFieldNode field = (VirtualObjectFieldNode) p;
+                for (VirtualObjectState state : current.virtualObjectMappings()) {
                     // null states occur for objects with 0 fields
-                    if (field != null && !objectStates.containsKey(field.object())) {
-                        objectStates.put(field.object(), field);
+                    if (!objectStates.containsKey(state.object())) {
+                        objectStates.put(state.object(), state);
                     }
                 }
                 current = current.outerFrameState();
@@ -87,20 +79,11 @@ public class DebugInfoBuilder {
                             entry.getValue().setValues(values);
                             if (values.length > 0) {
                                 changed = true;
-                                ValueNode currentField = objectStates.get(vobj);
+                                VirtualObjectState currentField = objectStates.get(vobj);
                                 assert currentField != null;
-                                do {
-                                    if (currentField instanceof VirtualObjectFieldNode) {
-                                        int index = ((VirtualObjectFieldNode) currentField).index();
-                                        if (values[index] == null) {
-                                            values[index] = toCiValue(((VirtualObjectFieldNode) currentField).input());
-                                        }
-                                        currentField = ((VirtualObjectFieldNode) currentField).lastState();
-                                    } else {
-                                        assert currentField instanceof PhiNode : currentField;
-                                        currentField = ((PhiNode) currentField).valueAt(0);
-                                    }
-                                } while (currentField != null);
+                                for (int i = 0; i < vobj.fieldsCount(); i++) {
+                                    values[i] = toCiValue(currentField.fields().get(i));
+                                }
                             }
                         }
                     }

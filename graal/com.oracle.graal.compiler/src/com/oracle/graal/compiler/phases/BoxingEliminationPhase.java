@@ -110,7 +110,7 @@ public class BoxingEliminationPhase extends Phase {
         assert boxNode.objectStamp().isExactType();
         virtualizeUsages(boxNode, boxNode.source(), boxNode.objectStamp().type());
 
-        if (boxNode.usages().filter(isNotA(FrameState.class).nor(VirtualObjectFieldNode.class)).isNotEmpty()) {
+        if (boxNode.usages().filter(isNotA(VirtualState.class)).isNotEmpty()) {
             // Elimination failed, because boxing object escapes.
             return;
         }
@@ -125,7 +125,7 @@ public class BoxingEliminationPhase extends Phase {
     private static void virtualizeUsages(ValueNode boxNode, ValueNode replacement, ResolvedJavaType exactType) {
         ValueNode virtualValueNode = null;
         VirtualObjectNode virtualObjectNode = null;
-        for (Node n : boxNode.usages().filter(NodePredicates.isA(FrameState.class).or(VirtualObjectFieldNode.class)).snapshot()) {
+        for (Node n : boxNode.usages().filter(NodePredicates.isA(VirtualState.class)).snapshot()) {
             if (virtualValueNode == null) {
                 virtualObjectNode = n.graph().unique(new BoxedVirtualObjectNode(exactType, replacement));
             }

@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 
-public class ScheduledNode extends Node {
+public abstract class ScheduledNode extends Node {
 
     @Successor private ScheduledNode scheduledNext; // the immediate successor of the current node
 

@@ -31,14 +31,12 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.iterators.NodePredicates.PositiveTypePredicate;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.virtual.*;
 
 public class GraphUtil {
 
-    private static final PositiveTypePredicate FLOATING = isA(FloatingNode.class).or(CallTargetNode.class).or(FrameState.class).or(VirtualObjectFieldNode.class).or(VirtualObjectNode.class);
+    private static final PositiveTypePredicate FLOATING = isA(FloatingNode.class).or(VirtualState.class).or(CallTargetNode.class);
 
     public static void killCFG(FixedNode node) {
         assert node.isAlive();
@@ -220,145 +218,5 @@ public class GraphUtil {
             v = ((ValueProxyNode) v).value();
         }
         return v;
-    }
-
-    private static ValueProxyNode findProxy(ValueNode value, BeginNode proxyPoint) {
-        for (ValueProxyNode vpn : proxyPoint.proxies()) {
-            ValueNode v = vpn;
-            while (v instanceof ValueProxyNode) {
-                v = ((ValueProxyNode) v).value();
-                if (v == value) {
-                    return vpn;
-                }
-            }
-        }
-        return null;
-    }
-
-    public static ValueNode mergeVirtualChain(
-                    StructuredGraph graph,
-                    ValueNode vof,
-                    ValueNode newVof,
-                    PhiNode vPhi,
-                    BeginNode earlyExit,
-                    BeginNode newEarlyExit,
-                    MergeNode merge) {
-        VirtualObjectNode vObject = virtualObject(vof);
-        assert virtualObject(newVof) == vObject;
-        ValueNode[] virtualState = virtualState(vof);
-        ValueNode[] newVirtualState = virtualState(newVof);
-        ValueNode chain = vPhi;
-        for (int i = 0; i < virtualState.length; i++) {
-            ValueNode value = virtualState[i];
-            ValueNode newValue = newVirtualState[i];
-            assert value.kind() == newValue.kind();
-            if (value != newValue) {
-                PhiNode valuePhi = graph.add(new PhiNode(value.kind(), merge));
-                ValueProxyNode inputProxy = findProxy(value, earlyExit);
-                if (inputProxy != null) {
-                    ValueProxyNode newInputProxy = findProxy(newValue, newEarlyExit);
-                    assert newInputProxy != null : "no proxy for " + newValue + " at " + newEarlyExit;
-                    valuePhi.addInput(inputProxy);
-                    valuePhi.addInput(newInputProxy);
-                } else {
-                    valuePhi.addInput(graph.unique(new ValueProxyNode(value, earlyExit, PhiType.Value)));
-                    valuePhi.addInput(newValue);
-                }
-                chain = graph.add(new VirtualObjectFieldNode(vObject, chain, valuePhi, i));
-            }
-        }
-        return chain;
-    }
-
-    public static ValueNode mergeVirtualChain(
-                    StructuredGraph graph,
-                    PhiNode vPhi,
-                    MergeNode merge) {
-        NodeInputList<ValueNode> virtuals = vPhi.values();
-        VirtualObjectNode vObject = virtualObject(unProxify(virtuals.first()));
-        List<ValueNode[]> virtualStates = new ArrayList<>(virtuals.size());
-        for (ValueNode virtual : virtuals) {
-            virtualStates.add(virtualState(unProxify(virtual)));
-        }
-        ValueNode chain = vPhi;
-        int stateLength = virtualStates.get(0).length;
-        for (int i = 0; i < stateLength; i++) {
-            ValueNode v = null;
-            boolean reconcile = false;
-            for (ValueNode[] state : virtualStates) {
-                if (v == null) {
-                    v = state[i];
-                } else if (v != state[i]) {
-                    reconcile = true;
-                    break;
-                }
-                assert v.kind() == state[i].kind();
-            }
-            if (reconcile) {
-                PhiNode valuePhi = graph.add(new PhiNode(v.kind(), merge));
-                for (ValueNode[] state : virtualStates) {
-                    valuePhi.addInput(state[i]);
-                }
-                chain = graph.add(new VirtualObjectFieldNode(vObject, chain, valuePhi, i));
-            }
-        }
-        return chain;
-    }
-
-    /**
-     * Returns the VirtualObjectNode associated with the virtual chain of the provided virtual node.
-     * @param vof a virtual ValueNode (a VirtualObjectFieldNode or a Virtual Phi)
-     * @return the VirtualObjectNode associated with the virtual chain of the provided virtual node.
-     */
-    public static VirtualObjectNode virtualObject(ValueNode vof) {
-        assert vof instanceof VirtualObjectFieldNode || (vof instanceof PhiNode && ((PhiNode) vof).type() == PhiType.Virtual) : vof;
-        ValueNode currentField = vof;
-        do {
-            if (currentField instanceof VirtualObjectFieldNode) {
-               return ((VirtualObjectFieldNode) currentField).object();
-            } else {
-                assert currentField instanceof PhiNode && ((PhiNode) currentField).type() == PhiType.Virtual : currentField;
-                currentField = ((PhiNode) currentField).valueAt(0);
-            }
-        } while (currentField != null);
-        throw new GraalInternalError("Invalid virtual chain : cound not find virtual object from %s", vof);
-    }
-
-    /**
-     * Builds the state of the virtual object at the provided point into a virtual chain.
-     * @param vof a virtual ValueNode (a VirtualObjectFieldNode or a Virtual Phi)
-     * @return the state of the virtual object at the provided point into a virtual chain.
-     */
-    public static ValueNode[] virtualState(ValueNode vof) {
-        return virtualState(vof, virtualObject(vof));
-    }
-
-    /**
-     * Builds the state of the virtual object at the provided point into a virtual chain.
-     * @param vof a virtual ValueNode (a VirtualObjectFieldNode or a Virtual Phi)
-     * @param vObj the virtual object
-     * @return the state of the virtual object at the provided point into a virtual chain.
-     */
-    public static ValueNode[] virtualState(ValueNode vof, VirtualObjectNode vObj) {
-        int fieldsCount = vObj.fieldsCount();
-        int dicovered = 0;
-        ValueNode[] state = new ValueNode[fieldsCount];
-        ValueNode currentField = vof;
-        do {
-            if (currentField instanceof VirtualObjectFieldNode) {
-                int index = ((VirtualObjectFieldNode) currentField).index();
-                if (state[index] == null) {
-                    dicovered++;
-                    state[index] = ((VirtualObjectFieldNode) currentField).input();
-                }
-                currentField = ((VirtualObjectFieldNode) currentField).lastState();
-            } else if (currentField instanceof ValueProxyNode) {
-                currentField = ((ValueProxyNode) currentField).value();
-            } else {
-                assert currentField instanceof PhiNode && ((PhiNode) currentField).type() == PhiType.Virtual : currentField;
-                currentField = ((PhiNode) currentField).valueAt(0);
-            }
-        } while (currentField != null && dicovered < fieldsCount);
-        return state;
     }
 }
