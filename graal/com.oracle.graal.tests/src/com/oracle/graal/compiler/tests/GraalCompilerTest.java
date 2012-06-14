@@ -147,6 +147,10 @@ public abstract class GraalCompilerTest {
 
     private static int compilationId = 0;
 
+    protected void assertEquals(Object expected, Object actual) {
+        Assert.assertEquals(expected, actual);
+    }
+
     protected void test(String name, Object... args) {
         Method method = getMethod(name);
         Object expect = null;
@@ -171,7 +175,7 @@ public abstract class GraalCompilerTest {
             }
         } else {
             Object actual = compiledMethod.executeVarargs(args);
-            Assert.assertEquals(expect, actual);
+            assertEquals(expect, actual);
         }
     }
 
