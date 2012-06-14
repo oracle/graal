@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,12 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
+/**
+ * Base class for nodes that contain "virtual" state, like FrameState and VirtualObjectState.
+ * Subclasses of this class will be treated in a special way by the scheduler.
+ */
+public abstract class VirtualState extends Node {
 
-    @Input protected final NodeInputList<ValueNode> arguments;
-
-    public CallTargetNode(ValueNode[] arguments) {
-        super(StampFactory.extension());
-        this.arguments = new NodeInputList<>(this, arguments);
-    }
-
-    public NodeInputList<ValueNode> arguments() {
-        return arguments;
-    }
-
-    public abstract JavaType returnType();
-
-    public abstract Kind returnKind();
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        // nop
-    }
 }

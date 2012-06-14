@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,38 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.nodes.virtual;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-public class InsertStateAfterPlaceholderPhase extends Phase {
+/**
+ * This class encapsulated the virtual state of an escape analyzed object.
+ */
+public final class VirtualObjectState extends VirtualState implements Node.IterableNodeType, LIRLowerable {
 
-    private static class PlaceholderNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, LIRLowerable {
-        public PlaceholderNode() {
-            super(StampFactory.forVoid());
-        }
+    @Input private VirtualObjectNode object;
+    @Input private NodeInputList<ValueNode> fields;
 
-        @Override
-        public void generate(LIRGeneratorTool gen) {
-            // nothing to do
-        }
+    public VirtualObjectNode object() {
+        return object;
+    }
 
-        @Override
-        public boolean hasSideEffect() {
-            return false;
-        }
+    public NodeInputList<ValueNode> fields() {
+        return fields;
+    }
+
+    public VirtualObjectState(VirtualObjectNode object, ValueNode[] fields) {
+        this.object = object;
+        assert object.fields().length == fields.length;
+        this.fields = new NodeInputList<>(this, fields);
     }
 
     @Override
-    protected void run(StructuredGraph graph) {
-        for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {
-            PlaceholderNode p = graph.add(new PlaceholderNode());
-            p.setStateAfter(graph.add(new FrameState(FrameState.AFTER_BCI)));
-            graph.addBeforeFixed(ret, p);
-        }
+    public void generate(LIRGeneratorTool generator) {
+        // Nothing to do, virtual object states are processed as part of the handling of StateSplit nodes.
     }
-
 }
