@@ -41,6 +41,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public boolean useFastLocking;
     public boolean useFastNewObjectArray;
     public boolean useFastNewTypeArray;
+    public boolean useTLAB;
 
     // offsets, ...
     public int vmPageSize;

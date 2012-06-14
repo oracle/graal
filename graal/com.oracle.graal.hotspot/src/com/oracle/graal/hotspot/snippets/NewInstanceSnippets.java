@@ -61,28 +61,43 @@ public class NewInstanceSnippets implements SnippetsInterface {
      * Type test used when the type being tested against is a final type.
      */
     @Snippet
-    public static Object newInstance(@Parameter("hub") Object hub, @ConstantParameter("size") int size, @ConstantParameter("checkInit") boolean checkInit, @ConstantParameter("logType") String logType) {
+    public static Object newInstance(
+                    @Parameter("hub") Object hub,
+                    @ConstantParameter("size") int size,
+                    @ConstantParameter("checkInit") boolean checkInit,
+                    @ConstantParameter("useTLAB") boolean useTLAB,
+                    @ConstantParameter("logType") String logType) {
+
         if (checkInit) {
             int klassState = load(hub, 0, klassStateOffset(), Kind.Int);
             if (klassState != klassStateFullyInitialized()) {
-                Object instance = NewInstanceStubCall.call(hub);
-                return formatInstance(hub, size, instance, logType);
+                if (logType != null) {
+                    Log.print(logType);
+                    Log.println(" - uninitialized");
+                }
+                return NewInstanceStubCall.call(hub);
             }
         }
 
-        Word thread = asWord(register(r15, wordKind()));
-        Word top = loadWord(thread, threadTlabTopOffset());
-        Word end = loadWord(thread, threadTlabEndOffset());
-        Word newTop = top.plus(size);
-        Object instance;
-        if (newTop.cmp(BE, end)) {
-            instance = cast(top, Object.class);
-            store(thread, 0, threadTlabTopOffset(), newTop);
+        if (useTLAB) {
+            Word thread = asWord(register(r15, wordKind()));
+            Word top = loadWord(thread, threadTlabTopOffset());
+            Word end = loadWord(thread, threadTlabEndOffset());
+            Word newTop = top.plus(size);
+            if (newTop.cmp(BE, end)) {
+                Object instance = cast(top, Object.class);
+                store(thread, 0, threadTlabTopOffset(), newTop);
+                return formatInstance(hub, size, instance, logType);
+            } else {
+                if (logType != null) {
+                    Log.print(logType);
+                    Log.println(" - stub allocate");
+                }
+                return NewInstanceStubCall.call(hub);
+            }
         } else {
-            instance = NewInstanceStubCall.call(hub);
+            return NewInstanceStubCall.call(hub);
         }
-
-        return formatInstance(hub, size, instance, logType);
     }
 
     private static Word asWord(Object object) {
@@ -158,12 +173,14 @@ public class NewInstanceSnippets implements SnippetsInterface {
         private final Cache cache;
         private final ResolvedJavaMethod newInstance;
         private final CodeCacheProvider runtime;
+        private final boolean useTLAB;
 
-        public Templates(CodeCacheProvider runtime) {
+        public Templates(CodeCacheProvider runtime, boolean useTLAB) {
             this.runtime = runtime;
             this.cache = new Cache(runtime);
+            this.useTLAB = useTLAB;
             try {
-                newInstance = runtime.getResolvedJavaMethod(NewInstanceSnippets.class.getDeclaredMethod("newInstance", Object.class, int.class, boolean.class, String.class));
+                newInstance = runtime.getResolvedJavaMethod(NewInstanceSnippets.class.getDeclaredMethod("newInstance", Object.class, int.class, boolean.class, boolean.class, String.class));
             } catch (NoSuchMethodException e) {
                 throw new GraalInternalError(e);
             }
@@ -178,10 +195,11 @@ public class NewInstanceSnippets implements SnippetsInterface {
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) newInstanceNode.instanceClass();
             HotSpotKlassOop hub = type.klassOop();
             int instanceSize = type.instanceSize();
-            Key key = new Key(newInstance).add("size", instanceSize).add("checkInit", !type.isInitialized()).add("logType", LOG_ALLOCATION ? type.name() : null);
+            Key key = new Key(newInstance).add("size", instanceSize).add("checkInit", !type.isInitialized()).add("useTLAB", useTLAB).add("logType", LOG_ALLOCATION ? type.name() : null);
             Arguments arguments = arguments("hub", hub);
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering newInstance in %s: node=%s, template=%s, arguments=%s", graph, newInstanceNode, template, arguments);
+            //System.out.printf("Lowering newInstance in %s: node=%s, template=%s, arguments=%s%n", graph, newInstanceNode, template, arguments);
             template.instantiate(runtime, newInstanceNode, newInstanceNode, arguments);
             new DeadCodeEliminationPhase().apply(graph);
         }
