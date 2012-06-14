@@ -155,4 +155,8 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     public void simplify(SimplifierTool tool) {
         // nothing yet
     }
+
+    public boolean isLoopExit(BeginNode begin) {
+        return begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == this;
+    }
 }
