@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.type.GenericStamp.*;
 import com.oracle.graal.nodes.util.*;
@@ -87,6 +88,17 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
      */
     public final boolean isConstant() {
         return this instanceof ConstantNode;
+    }
+
+    private static final NodePredicate IS_CONSTANT = new NodePredicate() {
+        @Override
+        public boolean apply(Node n) {
+            return n instanceof ValueNode && ((ValueNode) n).isConstant();
+        }
+    };
+
+    public static NodePredicate isConstantPredicate() {
+        return IS_CONSTANT;
     }
 
     /**
