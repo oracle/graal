@@ -37,7 +37,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     // os information, register layout, code generation, ...
     public boolean windowsOs;
     public int codeEntryAlignment;
-    public boolean verifyPointers;
+    public boolean verifyOops;
     public boolean useFastLocking;
     public boolean useFastNewObjectArray;
     public boolean useFastNewTypeArray;
@@ -103,7 +103,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long monitorExitStub;
     public long fastMonitorEnterStub;
     public long fastMonitorExitStub;
-    public long verifyPointerStub;
+    public long verifyOopStub;
 
     public void check() {
         assert vmPageSize >= 16;

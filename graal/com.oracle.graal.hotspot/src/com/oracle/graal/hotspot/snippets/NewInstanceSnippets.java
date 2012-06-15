@@ -72,7 +72,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
                     Log.print(logType);
                     Log.println(" - uninit alloc");
                 }
-                return NewInstanceStubCall.call(hub);
+                return verifyOop(NewInstanceStubCall.call(hub));
             }
         }
 
@@ -90,7 +90,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
                     Log.print(" - fast alloc at ");
                     Log.printlnAddress(instance);
                 }
-                return instance;
+                return verifyOop(instance);
             }
         }
 
@@ -98,7 +98,14 @@ public class NewInstanceSnippets implements SnippetsInterface {
             Log.print(logType);
             Log.println(" - slow alloc");
         }
-        return NewInstanceStubCall.call(hub);
+        return verifyOop(NewInstanceStubCall.call(hub));
+    }
+
+    private static Object verifyOop(Object object) {
+        if (verifyOops()) {
+            VerifyOopStubCall.call(object);
+        }
+        return object;
     }
 
     private static Word asWord(Object object) {
@@ -120,6 +127,11 @@ public class NewInstanceSnippets implements SnippetsInterface {
         for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
             store(instance, 0, offset, 0);
         }
+    }
+
+    @Fold
+    private static boolean verifyOops() {
+        return HotSpotGraalRuntime.getInstance().getConfig().verifyOops;
     }
 
     @Fold
@@ -196,6 +208,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering newInstance in %s: node=%s, template=%s, arguments=%s", graph, newInstanceNode, template, arguments);
             //System.out.printf("Lowering newInstance in %s: node=%s, template=%s, arguments=%s%n", graph, newInstanceNode, template, arguments);
+            //DebugScope.getConfig().addToContext(graph.method());
             template.instantiate(runtime, newInstanceNode, newInstanceNode, arguments);
             new DeadCodeEliminationPhase().apply(graph);
         }
