@@ -75,7 +75,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         installer.install(CheckCastSnippets.class);
         installer.install(NewInstanceSnippets.class);
         checkcastSnippets = new CheckCastSnippets.Templates(this);
-        newInstanceSnippets = new NewInstanceSnippets.Templates(this);
+        newInstanceSnippets = new NewInstanceSnippets.Templates(this, config.useTLAB);
     }
 
 

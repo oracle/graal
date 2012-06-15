@@ -974,8 +974,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void emitRuntimeCall(RuntimeCallNode x) {
-        // TODO Merge with emitCallToRuntime() method above.
-
         Value resultOperand = resultOperandFor(x.kind());
         CallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, x.call().arguments, target(), false);
         frameMap.callsMethod(cc, RuntimeCall);
@@ -996,6 +994,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
             // TODO is it correct here that the pointerSlots are not passed to the oop map generation?
             info = stateFor(stateBeforeReturn, -1);
+        } else {
+            // Every runtime call needs an info
+            // TODO This is conservative. It's not needed for RuntimeCalls that are implemented purely in a stub
+            //       that does not trash any registers and does not call into the runtime.
+            info = state();
         }
 
         emitCall(x.call(), resultOperand, argList, Constant.forLong(0), info, null);

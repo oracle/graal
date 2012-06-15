@@ -154,7 +154,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                 final CodeInfo[] info = Debug.isDumpEnabled() ? new CodeInfo[1] : null;
                 compiler.getRuntime().installMethod(method, tm, info);
                 if (info != null) {
-                    Debug.dump(info[0], "After code installation");
+                    Debug.dump(new Object[] {tm, info[0]}, "After code installation");
                 }
             }
 
