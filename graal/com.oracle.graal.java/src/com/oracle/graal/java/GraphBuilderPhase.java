@@ -1396,10 +1396,16 @@ public final class GraphBuilderPhase extends Phase {
         ConstantNode typeInstruction = genTypeOrDeopt(JavaType.Representation.ObjectHub, catchType, initialized);
         if (typeInstruction != null) {
             Block nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
-            FixedNode catchSuccessor = createTarget(block.successors.get(0), frameState);
-            FixedNode nextDispatch = createTarget(nextBlock, frameState);
             ValueNode exception = frameState.stackAt(0);
-            IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new InstanceOfNode(typeInstruction, (ResolvedJavaType) catchType, exception)), catchSuccessor, nextDispatch, 0.5));
+            CheckCastNode checkCast = currentGraph.add(new CheckCastNode(typeInstruction, (ResolvedJavaType) catchType, exception));
+            frameState.apop();
+            frameState.push(Kind.Object, checkCast);
+            FixedNode catchSuccessor = createTarget(block.successors.get(0), frameState);
+            frameState.apop();
+            frameState.push(Kind.Object, exception);
+            FixedNode nextDispatch = createTarget(nextBlock, frameState);
+            checkCast.setNext(catchSuccessor);
+            IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new InstanceOfNode(typeInstruction, (ResolvedJavaType) catchType, exception)), checkCast, nextDispatch, 0.5));
             append(ifNode);
         }
     }
