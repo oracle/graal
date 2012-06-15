@@ -156,8 +156,9 @@ public abstract class LoopFragment {
         }
         for (BeginNode earlyExit : earlyExits) {
             FrameState stateAfter = earlyExit.stateAfter();
-            assert stateAfter != null;
-            nodes.mark(stateAfter);
+            if (stateAfter != null) {
+                nodes.mark(stateAfter);
+            }
             nodes.mark(earlyExit);
             for (ValueProxyNode proxy : earlyExit.proxies()) {
                 nodes.mark(proxy);

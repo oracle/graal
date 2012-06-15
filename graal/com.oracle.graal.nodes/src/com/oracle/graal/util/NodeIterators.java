@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
 public class NodeIterators {
 
     public static NodeIterable<FixedNode> dominators(final FixedNode n) {
-        return new NodeIterable<FixedNode>() {
+        return new AbstractNodeIterable<FixedNode>() {
             @Override
             public Iterator<FixedNode> iterator() {
                 return new NodeIterator<FixedNode>(){

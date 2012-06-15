@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.graph.iterators.*;
 
-public final class NodeUsagesList extends NodeIterable<Node> {
+public final class NodeUsagesList extends AbstractNodeIterable<Node> {
 
     protected static final Node[] EMPTY_NODE_ARRAY = new Node[0];
 

@@ -25,7 +25,7 @@ package com.oracle.graal.graph;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.iterators.*;
 
-public abstract class NodeInputsIterable extends NodeIterable<Node> {
+public abstract class NodeInputsIterable extends AbstractNodeIterable<Node> {
     @Override
     public abstract NodeClassIterator iterator();
 }
