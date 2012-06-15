@@ -186,6 +186,11 @@ public class SnippetInstaller {
 
                 new InsertStateAfterPlaceholderPhase().apply(graph);
 
+                if (GraalOptions.ProbabilityAnalysis) {
+                    new DeadCodeEliminationPhase().apply(graph);
+                    new ComputeProbabilityPhase().apply(graph);
+                }
+
                 Debug.dump(graph, "%s: Final", method.name());
 
                 return graph;
