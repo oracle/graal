@@ -66,8 +66,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             if (constant == null) {
                 if (holder.isInitialized() && holder.toJava() != System.class) {
                     if (Modifier.isFinal(accessFlags()) || assumeStaticFieldsFinal(holder.toJava())) {
-                        Constant encoding = holder.getEncoding(Representation.StaticFields);
-                        constant = this.kind().readUnsafeConstant(encoding.asObject(), offset);
+                        constant = getValue(receiver);
                     }
                 }
             }
@@ -76,10 +75,25 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             assert !Modifier.isStatic(accessFlags);
             // TODO (chaeubl) HotSpot does not trust final non-static fields (see ciField.cpp)
             if (Modifier.isFinal(accessFlags())) {
-                return this.kind().readUnsafeConstant(receiver.asObject(), offset);
+                return getValue(receiver);
             }
         }
         return null;
+    }
+
+    @Override
+    public Constant getValue(Constant receiver) {
+        if (receiver == null) {
+            assert Modifier.isStatic(accessFlags);
+            if (holder.isInitialized()) {
+                Constant encoding = holder.getEncoding(Representation.StaticFields);
+                return this.kind().readUnsafeConstant(encoding.asObject(), offset);
+            }
+            return null;
+        } else {
+            assert !Modifier.isStatic(accessFlags);
+            return this.kind().readUnsafeConstant(receiver.asObject(), offset);
+        }
     }
 
     private static boolean assumeStaticFieldsFinal(Class< ? > clazz) {

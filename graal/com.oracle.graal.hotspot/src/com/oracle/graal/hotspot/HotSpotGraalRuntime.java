@@ -204,7 +204,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getCapability(Class<T> clazz) {
-        if (clazz == ExtendedRiRuntime.class) {
+        if (clazz == ExtendedRiRuntime.class || clazz == MetaAccessProvider.class) {
             return (T) getRuntime();
         }
         if (clazz == GraalCompiler.class) {

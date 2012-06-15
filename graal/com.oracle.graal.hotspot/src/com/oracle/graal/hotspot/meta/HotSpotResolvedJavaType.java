@@ -121,6 +121,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
             case StaticFields:
                 return Constant.forObject(javaMirror);
             default:
+                assert false : "Should not reach here.";
                 return null;
         }
     }

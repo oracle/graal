@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -36,7 +36,7 @@ public class ExceptionObjectNode extends AbstractStateSplit implements StateSpli
     /**
      * Constructs a new ExceptionObject instruction.
      */
-    public ExceptionObjectNode(CodeCacheProvider runtime) {
+    public ExceptionObjectNode(MetaAccessProvider runtime) {
         super(StampFactory.declared(runtime.getResolvedJavaType(Throwable.class)));
     }
 

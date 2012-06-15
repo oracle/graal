@@ -68,7 +68,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private StructuredGraph currentGraph;
 
-    private final CodeCacheProvider runtime;
+    private final MetaAccessProvider runtime;
     private ConstantPool constantPool;
     private ResolvedJavaMethod method;
     private ProfilingInfo profilingInfo;
@@ -104,11 +104,12 @@ public final class GraphBuilderPhase extends Phase {
 
     private Block[] loopHeaders;
 
-    public GraphBuilderPhase(CodeCacheProvider runtime, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+    public GraphBuilderPhase(MetaAccessProvider runtime, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
         this.runtime = runtime;
         this.log = GraalOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
+        assert runtime != null;
     }
 
     @Override
@@ -1097,6 +1098,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private ConstantNode appendConstant(Constant constant) {
+        assert constant != null;
         return ConstantNode.forConstant(constant, runtime, currentGraph);
     }
 
