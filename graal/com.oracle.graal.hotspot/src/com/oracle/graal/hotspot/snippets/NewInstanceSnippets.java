@@ -189,6 +189,8 @@ public class NewInstanceSnippets implements SnippetsInterface {
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) newInstanceNode.instanceClass();
             HotSpotKlassOop hub = type.klassOop();
             int instanceSize = type.instanceSize();
+            assert (instanceSize % wordSize()) == 0;
+            assert instanceSize >= 0;
             Key key = new Key(newInstance).add("size", instanceSize).add("checkInit", !type.isInitialized()).add("useTLAB", useTLAB).add("logType", LOG_ALLOCATION ? type.name() : null);
             Arguments arguments = arguments("hub", hub);
             SnippetTemplate template = cache.get(key);

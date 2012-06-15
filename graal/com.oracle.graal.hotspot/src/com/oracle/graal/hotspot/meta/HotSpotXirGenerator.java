@@ -783,6 +783,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     public XirSnippet genNewInstance(XirSite site, JavaType type) {
         HotSpotResolvedJavaType resolvedType = (HotSpotResolvedJavaType) type;
         int instanceSize = resolvedType.instanceSize();
+        assert instanceSize >= 0;
         return new XirSnippet(newInstanceTemplates.get(site, instanceSize), XirArgument.forObject(resolvedType.klassOop()));
     }
 
