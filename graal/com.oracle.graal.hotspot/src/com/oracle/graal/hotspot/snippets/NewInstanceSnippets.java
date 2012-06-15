@@ -70,7 +70,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
             if (klassState != klassStateFullyInitialized()) {
                 if (logType != null) {
                     Log.print(logType);
-                    Log.println(" - uninitialized");
+                    Log.println(" - uninit alloc");
                 }
                 return NewInstanceStubCall.call(hub);
             }
@@ -84,17 +84,21 @@ public class NewInstanceSnippets implements SnippetsInterface {
             if (newTop.cmp(BE, end)) {
                 Object instance = cast(top, Object.class);
                 store(thread, 0, threadTlabTopOffset(), newTop);
-                return formatInstance(hub, size, instance, logType);
-            } else {
+                formatInstance(hub, size, instance);
                 if (logType != null) {
                     Log.print(logType);
-                    Log.println(" - stub allocate");
+                    Log.print(" - fast alloc at ");
+                    Log.printlnAddress(instance);
                 }
-                return NewInstanceStubCall.call(hub);
+                return instance;
             }
-        } else {
-            return NewInstanceStubCall.call(hub);
         }
+
+        if (logType != null) {
+            Log.print(logType);
+            Log.println(" - slow alloc");
+        }
+        return NewInstanceStubCall.call(hub);
     }
 
     private static Word asWord(Object object) {
@@ -108,7 +112,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
     /**
      * Formats the header of a created instance and zeroes out its body.
      */
-    private static Object formatInstance(Object hub, int size, Object instance, String logType) {
+    private static void formatInstance(Object hub, int size, Object instance) {
         Word headerPrototype = cast(load(hub, 0, instanceHeaderPrototypeOffset(), wordKind()), Word.class);
         store(instance, 0, 0, headerPrototype);
         store(instance, 0, hubOffset(), hub);
@@ -116,13 +120,6 @@ public class NewInstanceSnippets implements SnippetsInterface {
         for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
             store(instance, 0, offset, 0);
         }
-        if (logType != null) {
-            Log.print("allocated instance of ");
-            Log.print(logType);
-            Log.print(" at ");
-            Log.printlnAddress(instance);
-        }
-        return instance;
     }
 
     @Fold
@@ -192,6 +189,8 @@ public class NewInstanceSnippets implements SnippetsInterface {
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) newInstanceNode.instanceClass();
             HotSpotKlassOop hub = type.klassOop();
             int instanceSize = type.instanceSize();
+            assert (instanceSize % wordSize()) == 0;
+            assert instanceSize >= 0;
             Key key = new Key(newInstance).add("size", instanceSize).add("checkInit", !type.isInitialized()).add("useTLAB", useTLAB).add("logType", LOG_ALLOCATION ? type.name() : null);
             Arguments arguments = arguments("hub", hub);
             SnippetTemplate template = cache.get(key);

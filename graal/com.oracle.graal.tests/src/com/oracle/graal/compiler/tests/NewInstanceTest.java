@@ -36,12 +36,20 @@ public class NewInstanceTest extends GraalCompilerTest {
         Assert.assertTrue(expected != null);
         Assert.assertTrue(actual != null);
         super.assertEquals(expected.getClass(), actual.getClass());
+        if (expected.getClass() != Object.class) {
+            try {
+                expected.getClass().getDeclaredMethod("equals", Object.class);
+                super.assertEquals(expected, actual);
+            } catch (Exception e) {
+            }
+        }
     }
 
     @Test
     public void test1() {
         test("newObject");
         test("newBigObject");
+        test("newSomeObject");
         test("newEmptyString");
         test("newString", "value");
         test("newHashMap", 31);
@@ -55,6 +63,10 @@ public class NewInstanceTest extends GraalCompilerTest {
         return new BigObject();
     }
 
+    public static SomeObject newSomeObject() {
+        return new SomeObject();
+    }
+
     public static String newEmptyString() {
         return new String();
     }
@@ -65,6 +77,30 @@ public class NewInstanceTest extends GraalCompilerTest {
 
     public static HashMap newHashMap(int initialCapacity) {
         return new HashMap(initialCapacity);
+    }
+
+    static class SomeObject {
+        String name = "o1";
+        HashMap<String, Object> map = new HashMap<>();
+
+
+        public SomeObject() {
+            map.put(name, this.getClass());
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof SomeObject) {
+                SomeObject so = (SomeObject) obj;
+                return so.name.equals(name) && so.map.equals(map);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return name.hashCode();
+        }
     }
 
     static class BigObject {
