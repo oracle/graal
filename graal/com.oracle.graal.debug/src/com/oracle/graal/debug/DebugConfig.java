@@ -28,19 +28,37 @@ import java.util.*;
 
 public interface DebugConfig {
     /**
+     * Determines if logging is enabled in the {@linkplain Debug#currentScope() current debug scope}.
+     *
      * @see Debug#log(String, Object...)
      */
     boolean isLogEnabled();
 
     /**
+     * Determines if metering is enabled in the {@linkplain Debug#currentScope() current debug scope}.
+     *
      * @see Debug#metric(String)
      */
     boolean isMeterEnabled();
 
     /**
+     * Determines if dumping is enabled in the {@linkplain Debug#currentScope() current debug scope}.
+     *
      * @see Debug#dump(Object, String, Object...)
      */
     boolean isDumpEnabled();
+
+    /**
+     * Adds an object the context used by this configuration to do filtering.
+     */
+    void addToContext(Object o);
+
+    /**
+     * Removes an object the context used by this configuration to do filtering.
+     *
+     * This should only removes extra context added by {@link #addToContext(Object)}.
+     */
+    void removeFromContext(Object o);
 
     /**
      * @see Debug#timer(String)
