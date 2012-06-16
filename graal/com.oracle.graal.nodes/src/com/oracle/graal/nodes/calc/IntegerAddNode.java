@@ -48,32 +48,26 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
                 return ConstantNode.forLong(x().asConstant().asLong() + y().asConstant().asLong(), graph());
             }
         } else if (y().isConstant()) {
-            if (kind() == Kind.Int) {
-                int c = y().asConstant().asInt();
-                if (c == 0) {
-                    return x();
-                }
-            } else {
-                assert kind() == Kind.Long;
-                long c = y().asConstant().asLong();
-                if (c == 0) {
-                    return x();
-                }
+            long c = y().asConstant().asLong();
+            if (c == 0) {
+                return x();
             }
             // canonicalize expressions like "(a + 1) + 2"
-            if (x() instanceof IntegerAddNode) {
-                IntegerAddNode other = (IntegerAddNode) x();
-                if (other.y().isConstant()) {
-                    ConstantNode sum;
-                    if (kind() == Kind.Int) {
-                        sum = ConstantNode.forInt(y().asConstant().asInt() + other.y().asConstant().asInt(), graph());
-                    } else {
-                        assert kind() == Kind.Long;
-                        sum = ConstantNode.forLong(y().asConstant().asLong() + other.y().asConstant().asLong(), graph());
-                    }
-                    return graph().unique(new IntegerAddNode(kind(), other.x(), sum));
+            BinaryNode reassociated = BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
+            if (reassociated != this) {
+                return reassociated;
+            }
+            if (c < 0) {
+                if (kind() == Kind.Int) {
+                    return IntegerArithmeticNode.sub(x(), ConstantNode.forInt((int) -c, graph()));
+                } else {
+                    assert kind() == Kind.Long;
+                    return IntegerArithmeticNode.sub(x(), ConstantNode.forLong(-c, graph()));
                 }
             }
+        }
+        if (x() instanceof NegateNode) {
+            return IntegerArithmeticNode.sub(y(), ((NegateNode) x()).x());
         }
         return this;
     }

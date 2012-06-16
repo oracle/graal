@@ -143,7 +143,7 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
     }
 
     public NodeIterable<FixedNode> getBlockNodes() {
-        return new NodeIterable<FixedNode>() {
+        return new AbstractNodeIterable<FixedNode>() {
             @Override
             public Iterator<FixedNode> iterator() {
                 return new BlockNodeIterator(BeginNode.this);

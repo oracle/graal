@@ -201,6 +201,11 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
         return constantPool;
     }
 
+    /**
+     * Gets the instance size of this type. If an instance of this type cannot
+     * be fast path allocated, then the returned value is negative (its absolute
+     * value gives the size).
+     */
     public int instanceSize() {
         return instanceSize;
     }

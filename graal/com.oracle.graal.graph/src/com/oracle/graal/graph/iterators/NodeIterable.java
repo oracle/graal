@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,59 +26,32 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 
-public abstract class NodeIterable<T extends Node> implements Iterable<T> {
-    public NodeIterable<T> until(final T u) {
-        return new FilteredNodeIterable<>(this).until(u);
-    }
-    public NodeIterable<T> until(final Class<? extends T> clazz) {
-        return new FilteredNodeIterable<>(this).until(clazz);
-    }
-    @SuppressWarnings("unchecked")
-    public <F extends T> NodeIterable<F> filter(Class<F> clazz) {
-        return (NodeIterable<F>) new FilteredNodeIterable<>(this).and(NodePredicates.isA(clazz));
-    }
-    public NodeIterable<T> filterInterface(Class<?> iface) {
-        return new FilteredNodeIterable<>(this).and(NodePredicates.isAInterface(iface));
-    }
-    public FilteredNodeIterable<T> filter(NodePredicate predicate) {
-        return new FilteredNodeIterable<>(this).and(predicate);
-    }
-    public FilteredNodeIterable<T> nonNull() {
-        return new FilteredNodeIterable<>(this).and(NodePredicates.isNotNull());
-    }
-    public NodeIterable<T> distinct() {
-        return new FilteredNodeIterable<>(this).distinct();
-    }
-    public List<T> snapshot() {
-        ArrayList<T> list = new ArrayList<>();
-        for (T n : this) {
-            list.add(n);
-        }
-        return list;
-    }
-    public T first() {
-        Iterator<T> iterator = iterator();
-        if (iterator.hasNext()) {
-            return iterator.next();
-        }
-        return null;
-    }
-    public int count() {
-        int count = 0;
-        Iterator<T> iterator = iterator();
-        while (iterator.hasNext()) {
-            iterator.next();
-            count++;
-        }
-        return count;
-    }
-    public boolean isEmpty() {
-        return !iterator().hasNext();
-    }
-    public boolean isNotEmpty() {
-        return iterator().hasNext();
-    }
-    public boolean contains(T node) {
-        return this.filter(NodePredicates.equals(node)).isNotEmpty();
-    }
+public interface NodeIterable<T extends Node> extends Iterable<T> {
+
+    NodeIterable<T> until(T u);
+
+    NodeIterable<T> until(Class< ? extends T> clazz);
+
+    <F extends T> NodeIterable<F> filter(Class<F> clazz);
+
+    NodeIterable<T> filterInterface(Class< ? > iface);
+
+    FilteredNodeIterable<T> filter(NodePredicate predicate);
+
+    FilteredNodeIterable<T> nonNull();
+
+    NodeIterable<T> distinct();
+
+    List<T> snapshot();
+
+    T first();
+
+    int count();
+
+    boolean isEmpty();
+
+    boolean isNotEmpty();
+
+    boolean contains(T node);
+
 }

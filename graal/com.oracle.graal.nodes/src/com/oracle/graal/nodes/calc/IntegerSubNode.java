@@ -51,17 +51,24 @@ public final class IntegerSubNode extends IntegerArithmeticNode implements Canon
             if (c == 0) {
                 return x();
             }
-            if (kind() == Kind.Int) {
-                return graph().unique(new IntegerAddNode(kind(), x(), ConstantNode.forInt((int) -c, graph())));
-            } else {
-                assert kind() == Kind.Long;
-                return graph().unique(new IntegerAddNode(kind(), x(), ConstantNode.forLong(-c, graph())));
+            BinaryNode reassociated = BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
+            if (reassociated != this) {
+                return reassociated;
+            }
+            if (c < 0) {
+                if (kind() == Kind.Int) {
+                    return IntegerArithmeticNode.add(x(), ConstantNode.forInt((int) -c, graph()));
+                } else {
+                    assert kind() == Kind.Long;
+                    return IntegerArithmeticNode.add(x(), ConstantNode.forLong(-c, graph()));
+                }
             }
         } else if (x().isConstant()) {
             long c = x().asConstant().asLong();
             if (c == 0) {
                 return graph().unique(new NegateNode(y()));
             }
+           return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
         }
         return this;
     }

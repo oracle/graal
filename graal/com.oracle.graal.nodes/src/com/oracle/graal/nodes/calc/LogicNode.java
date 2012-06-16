@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -37,5 +38,44 @@ public abstract class LogicNode extends BinaryNode {
      */
     public LogicNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
+    }
+
+    public static LogicNode and(ValueNode v1, ValueNode v2) {
+        assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
+        Graph graph = v1.graph();
+        switch(v1.kind()) {
+            case Int:
+                return graph.unique(new AndNode(Kind.Int, v1, v2));
+            case Long:
+                return graph.unique(new AndNode(Kind.Long, v1, v2));
+            default:
+                throw ValueNodeUtil.shouldNotReachHere();
+        }
+    }
+
+    public static LogicNode or(ValueNode v1, ValueNode v2) {
+        assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
+        Graph graph = v1.graph();
+        switch(v1.kind()) {
+            case Int:
+                return graph.unique(new OrNode(Kind.Int, v1, v2));
+            case Long:
+                return graph.unique(new OrNode(Kind.Long, v1, v2));
+            default:
+                throw ValueNodeUtil.shouldNotReachHere();
+        }
+    }
+
+    public static LogicNode xor(ValueNode v1, ValueNode v2) {
+        assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
+        Graph graph = v1.graph();
+        switch(v1.kind()) {
+            case Int:
+                return graph.unique(new XorNode(Kind.Int, v1, v2));
+            case Long:
+                return graph.unique(new XorNode(Kind.Long, v1, v2));
+            default:
+                throw ValueNodeUtil.shouldNotReachHere();
+        }
     }
 }

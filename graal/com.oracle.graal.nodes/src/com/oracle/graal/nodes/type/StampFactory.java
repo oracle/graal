@@ -128,6 +128,14 @@ public class StampFactory {
         }
     }
 
+    public static Stamp negate(IntegerStamp stamp) {
+        Kind kind = stamp.kind();
+        if (stamp.lowerBound() != kind.minValue()) {
+            return new IntegerStamp(kind, -stamp.upperBound(), -stamp.lowerBound());
+        }
+        return forKind(kind);
+    }
+
     public static Stamp object() {
         return objectStamp;
     }

@@ -24,8 +24,12 @@ package com.oracle.graal.compiler.loop;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.loop.InductionVariable.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 
 public class LoopsData {
     private Map<Loop, LoopEx> lirLoopToEx = new IdentityHashMap<>();
@@ -71,5 +75,73 @@ public class LoopsData {
             }
         }
         return counted;
+    }
+
+    public void detectedCountedLoops() {
+        for (LoopEx loop : loops()) {
+            InductionVariables ivs = new InductionVariables(loop);
+            LoopBeginNode loopBegin = loop.loopBegin();
+            FixedNode next = loopBegin.next();
+            if (next instanceof IfNode) {
+                IfNode ifNode = (IfNode) next;
+                boolean negated = false;
+                if (!loopBegin.isLoopExit(ifNode.falseSuccessor())) {
+                    if (!loopBegin.isLoopExit(ifNode.trueSuccessor())) {
+                        continue;
+                    }
+                    negated = true;
+                }
+                BooleanNode ifTest = ifNode.compare();
+                if (!(ifTest instanceof IntegerLessThanNode)) {
+                    if (ifTest instanceof IntegerBelowThanNode) {
+                        Debug.log("Ignored potential Counted loop at %s with |<|", loopBegin);
+                    }
+                    continue;
+                }
+                IntegerLessThanNode lessThan = (IntegerLessThanNode) ifTest;
+                Condition condition = null;
+                InductionVariable iv = null;
+                ValueNode limit = null;
+                if (loop.isOutsideLoop(lessThan.x())) {
+                    iv = ivs.get(lessThan.y());
+                    if (iv != null) {
+                        condition = lessThan.condition().mirror();
+                        limit = lessThan.x();
+                    }
+                } else if (loop.isOutsideLoop(lessThan.y())) {
+                    iv = ivs.get(lessThan.x());
+                    if (iv != null) {
+                        condition = lessThan.condition();
+                        limit = lessThan.y();
+                    }
+                }
+                if (condition == null) {
+                    continue;
+                }
+                if (negated) {
+                    condition = condition.negate();
+                }
+                boolean oneOff = false;
+                switch (condition) {
+                    case LE:
+                        oneOff = true; // fall through
+                    case LT:
+                        if (iv.direction() != Direction.Up) {
+                            continue;
+                        }
+                        break;
+                    case GE:
+                        oneOff = true; // fall through
+                    case GT:
+                        if (iv.direction() != Direction.Down) {
+                            continue;
+                        }
+                        break;
+                    default: throw GraalInternalError.shouldNotReachHere();
+                }
+                // TODO (gd)
+                Debug.log("absorb %b %s", oneOff, limit);
+            }
+        }
     }
 }

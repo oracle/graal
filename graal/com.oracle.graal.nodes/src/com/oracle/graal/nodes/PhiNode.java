@@ -191,6 +191,19 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
         return differentValue;
     }
 
+    public ValueNode singleBackValue() {
+        assert merge() instanceof LoopBeginNode;
+        ValueNode differentValue = null;
+        for (ValueNode n : values().subList(merge().forwardEndCount(), values().size())) {
+            if (differentValue == null) {
+                differentValue = n;
+            } else if (differentValue != n) {
+                return null;
+            }
+        }
+        return differentValue;
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         ValueNode singleValue = singleValue();

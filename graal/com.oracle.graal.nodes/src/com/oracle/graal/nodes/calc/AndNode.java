@@ -68,6 +68,7 @@ public final class AndNode extends LogicNode implements Canonicalizable, LIRLowe
                     return ConstantNode.forLong(0, graph());
                 }
             }
+            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
         }
         return this;
     }
