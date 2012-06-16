@@ -190,7 +190,7 @@ public class InliningUtil {
             ReadHubNode objectClass = graph.add(new ReadHubNode(receiver));
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClass, type));
             FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, invoke.leafGraphId()));
-            AnchorNode anchor = graph.add(new AnchorNode());
+            ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
             assert invoke.predecessor() != null;
 
             ValueNode anchoredReceiver = createAnchoredReceiver(graph, anchor, type, receiver);
