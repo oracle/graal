@@ -26,14 +26,14 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * Access the value of a specific register.
  */
-public final class RegisterNode extends FloatingNode implements LIRLowerable {
+public final class RegisterNode extends FixedWithNextNode implements LIRLowerable {
 
     private final Register register;
 
