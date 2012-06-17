@@ -138,6 +138,9 @@ public class FloatingReadPhase extends Phase {
         }
 
         public void processWrite(WriteNode writeNode) {
+            if (writeNode.location().locationIdentity() == LocationNode.ANY_LOCATION) {
+                map.clear();
+            }
             map.put(writeNode.location().locationIdentity(), writeNode);
         }
 
