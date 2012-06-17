@@ -40,7 +40,7 @@ import com.oracle.max.asm.target.amd64.*;
  */
 public class AMD64NewInstanceStubCallOp extends AMD64LIRInstruction {
     public AMD64NewInstanceStubCallOp(Value result, Value hub, LIRDebugInfo info) {
-        super("NEW_INSTANCE", new Value[] {result}, info, new Value[] {hub}, NO_OPERANDS, NO_OPERANDS);
+        super("NEW_INSTANCE", new Value[] {result}, info, new Value[] {hub}, NO_OPERANDS, new Value[]{AMD64.rax.asValue(Kind.Object)});
     }
 
     @Override
@@ -62,6 +62,8 @@ public class AMD64NewInstanceStubCallOp extends AMD64LIRInstruction {
         if (mode == OperandMode.Input) {
             return EnumSet.of(OperandFlag.Register);
         } else if (mode == OperandMode.Output) {
+            return EnumSet.of(OperandFlag.Register);
+        } else if (mode == OperandMode.Temp) {
             return EnumSet.of(OperandFlag.Register);
         }
         throw GraalInternalError.shouldNotReachHere();
