@@ -323,6 +323,7 @@ public class StructuredGraph extends Graph {
             reduceTrivialMerge(begin);
         } else { // convert to merge
             MergeNode merge = this.add(new MergeNode());
+            merge.setProbability(begin.probability());
             this.replaceFixedWithFixed(begin, merge);
         }
     }

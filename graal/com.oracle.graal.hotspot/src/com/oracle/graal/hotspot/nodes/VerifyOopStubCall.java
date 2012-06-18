@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,34 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.java;
+package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.target.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code ExceptionObject} instruction represents the incoming exception object to an exception handler.
+ * Node implementing a call to HotSpot's object pointer verification stub.
+ *
+ * @see AMD64VerifyOopStubCallOp
  */
-public class ExceptionObjectNode extends AbstractStateSplit implements StateSplit, LIRLowerable, MemoryCheckpoint {
+public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
-    /**
-     * Constructs a new ExceptionObject instruction.
-     */
-    public ExceptionObjectNode(MetaAccessProvider runtime) {
-        super(StampFactory.declared(runtime.getResolvedJavaType(Throwable.class)));
+    @Input private final ValueNode object;
+
+    public VerifyOopStubCall(ValueNode object) {
+        super(StampFactory.objectNonNull());
+        this.object = object;
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitExceptionObject(this);
+    public void generate(LIRGenerator gen) {
+        LIRDebugInfo info = gen.state();
+        AMD64VerifyOopStubCallOp op = new AMD64VerifyOopStubCallOp(gen.operand(object), info);
+        gen.append(op);
     }
 
-    @Override
-    public boolean verify() {
-        assertTrue(stateAfter() != null, "an exception handler needs a frame state");
-        return super.verify();
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    public static Object call(Object object) {
+        throw new UnsupportedOperationException();
     }
 }

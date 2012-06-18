@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api;
 
-
 public class Graal {
 
     private static GraalRuntime runtime;
@@ -48,5 +47,13 @@ public class Graal {
                 }
             };
         }
+    }
+
+    public static <T> T getRequiredCapability(Class<T> clazz) {
+        T t = getRuntime().getCapability(clazz);
+        if (t == null) {
+            throw new IllegalAccessError("Runtime does not expose required capability " + clazz.getName());
+        }
+        return t;
     }
 }
