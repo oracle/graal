@@ -52,20 +52,16 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
     }
 
     @Override
-    public boolean verify() {
-        assertTrue(usages().isEmpty(), "upwards dependencies should target BeginNodes only");
-        return super.verify();
-    }
-
-    @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (this.predecessor() instanceof ValueAnchorNode) {
-            // transfer values and remove
             ValueAnchorNode previousAnchor = (ValueAnchorNode) this.predecessor();
-            for (ValueNode node : dependencies().nonNull().distinct()) {
-                previousAnchor.addAnchoredNode(node);
+            if (previousAnchor.usages().isEmpty()) { // avoid creating cycles
+                // transfer values and remove
+                for (ValueNode node : dependencies().nonNull().distinct()) {
+                    previousAnchor.addAnchoredNode(node);
+                }
+                return previousAnchor;
             }
-            return null;
         }
         for (Node node : dependencies().nonNull().and(isNotA(BeginNode.class))) {
             if (node instanceof ConstantNode) {
@@ -83,6 +79,9 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
             }
             return this; // still necessary
         }
-        return null; // no node which require an anchor found
+        if (usages().isEmpty()) {
+            return null; // no node which require an anchor found
+        }
+        return this;
     }
 }
