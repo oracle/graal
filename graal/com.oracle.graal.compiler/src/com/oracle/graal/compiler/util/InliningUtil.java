@@ -35,6 +35,7 @@ import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.FrameState.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -771,6 +772,7 @@ public class InliningUtil {
      * @param receiverNullCheck true if a null check needs to be generated for non-static inlinings, false if no such check is required
      */
     public static void inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck) {
+        InliningIdentifier identifier = new InliningIdentifier(inlineGraph.method(), invoke.toString());
         NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
         StructuredGraph graph = (StructuredGraph) invoke.node().graph();
 
@@ -874,6 +876,7 @@ public class InliningUtil {
                         outerFrameState.setDuringCall(true);
                     }
                     frameState.setOuterFrameState(outerFrameState);
+                    frameState.setInliningIdentifier(identifier);
                 }
             }
         }
