@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
@@ -47,7 +46,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * Constructs a new ConstantNode representing the specified constant.
      * @param value the constant
      */
-    protected ConstantNode(Constant value, CodeCacheProvider runtime) {
+    protected ConstantNode(Constant value, MetaAccessProvider runtime) {
         super(StampFactory.forConstant(value, runtime));
         this.value = value;
     }
@@ -65,7 +64,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
         return usages().filter(NodePredicates.isNotA(FrameState.class)).isEmpty();
     }
 
-    public static ConstantNode forConstant(Constant constant, CodeCacheProvider runtime, Graph graph) {
+    public static ConstantNode forConstant(Constant constant, MetaAccessProvider runtime, Graph graph) {
         if (constant.kind == Kind.Object) {
             return graph.unique(new ConstantNode(constant, runtime));
         } else {
@@ -169,7 +168,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @param graph
      * @return a node representing the object
      */
-    public static ConstantNode forObject(Object o, CodeCacheProvider runtime, Graph graph) {
+    public static ConstantNode forObject(Object o, MetaAccessProvider runtime, Graph graph) {
         return graph.unique(new ConstantNode(Constant.forObject(o), runtime));
     }
 

@@ -68,7 +68,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private StructuredGraph currentGraph;
 
-    private final CodeCacheProvider runtime;
+    private final MetaAccessProvider runtime;
     private ConstantPool constantPool;
     private ResolvedJavaMethod method;
     private ProfilingInfo profilingInfo;
@@ -104,11 +104,12 @@ public final class GraphBuilderPhase extends Phase {
 
     private Block[] loopHeaders;
 
-    public GraphBuilderPhase(CodeCacheProvider runtime, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+    public GraphBuilderPhase(MetaAccessProvider runtime, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
         this.runtime = runtime;
         this.log = GraalOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
+        assert runtime != null;
     }
 
     @Override
@@ -1097,6 +1098,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private ConstantNode appendConstant(Constant constant) {
+        assert constant != null;
         return ConstantNode.forConstant(constant, runtime, currentGraph);
     }
 
@@ -1394,10 +1396,16 @@ public final class GraphBuilderPhase extends Phase {
         ConstantNode typeInstruction = genTypeOrDeopt(JavaType.Representation.ObjectHub, catchType, initialized);
         if (typeInstruction != null) {
             Block nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
-            FixedNode catchSuccessor = createTarget(block.successors.get(0), frameState);
-            FixedNode nextDispatch = createTarget(nextBlock, frameState);
             ValueNode exception = frameState.stackAt(0);
-            IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new InstanceOfNode(typeInstruction, (ResolvedJavaType) catchType, exception)), catchSuccessor, nextDispatch, 0.5));
+            CheckCastNode checkCast = currentGraph.add(new CheckCastNode(typeInstruction, (ResolvedJavaType) catchType, exception));
+            frameState.apop();
+            frameState.push(Kind.Object, checkCast);
+            FixedNode catchSuccessor = createTarget(block.successors.get(0), frameState);
+            frameState.apop();
+            frameState.push(Kind.Object, exception);
+            FixedNode nextDispatch = createTarget(nextBlock, frameState);
+            checkCast.setNext(catchSuccessor);
+            IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new InstanceOfNode(typeInstruction, (ResolvedJavaType) catchType, exception)), checkCast, nextDispatch, 0.5));
             append(ifNode);
         }
     }

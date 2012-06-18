@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.type;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.GenericStamp.GenericStampType;
@@ -119,7 +118,7 @@ public class StampFactory {
         }
     }
 
-    public static Stamp forConstant(Constant value, CodeCacheProvider runtime) {
+    public static Stamp forConstant(Constant value, MetaAccessProvider runtime) {
         assert value.kind == Kind.Object;
         if (value.kind == Kind.Object) {
             ResolvedJavaType type = value.isNull() ? null : runtime.getTypeOf(value);

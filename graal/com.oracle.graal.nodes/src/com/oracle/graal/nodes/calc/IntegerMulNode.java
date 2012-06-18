@@ -59,19 +59,7 @@ public final class IntegerMulNode extends IntegerArithmeticNode implements Canon
                 return graph().unique(new LeftShiftNode(kind(), x(), ConstantNode.forInt(CodeUtil.log2(c), graph())));
             }
             // canonicalize expressions like "(a * 1) * 2"
-            if (x() instanceof IntegerMulNode) {
-                IntegerMulNode other = (IntegerMulNode) x();
-                if (other.y().isConstant()) {
-                    ConstantNode sum;
-                    if (kind() == Kind.Int) {
-                        sum = ConstantNode.forInt(y().asConstant().asInt() * other.y().asConstant().asInt(), graph());
-                    } else {
-                        assert kind() == Kind.Long;
-                        sum = ConstantNode.forLong(y().asConstant().asLong() * other.y().asConstant().asLong(), graph());
-                    }
-                    return graph().unique(new IntegerMulNode(kind(), other.x(), sum));
-                }
-            }
+            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
         }
         return this;
     }

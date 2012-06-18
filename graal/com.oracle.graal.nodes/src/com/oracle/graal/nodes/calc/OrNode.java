@@ -68,6 +68,7 @@ public final class OrNode extends LogicNode implements Canonicalizable, LIRLower
                     return x();
                 }
             }
+            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
         }
         return this;
     }

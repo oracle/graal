@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -35,35 +36,30 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 
 /**
- * LIR instruction for calling HotSpot's {@code new_instance} stub. This stub is declared in c1_Runtime1.hpp
- * and implemented in Runtime1::generate_code_for() which is located in c1_Runtime1_x86.cpp.
+ * A call to HotSpot's object pointer verification stub.
  */
-public class AMD64NewInstanceStubCallOp extends AMD64LIRInstruction {
-    public AMD64NewInstanceStubCallOp(Value result, Value hub, LIRDebugInfo info) {
-        super("NEW_INSTANCE", new Value[] {result}, info, new Value[] {hub}, NO_OPERANDS, new Value[]{AMD64.rax.asValue(Kind.Object)});
+public class AMD64VerifyOopStubCallOp extends AMD64LIRInstruction {
+    public AMD64VerifyOopStubCallOp(Value object, LIRDebugInfo info) {
+        super("VERIFY_OOP", LIRInstruction.NO_OPERANDS, info, new Value[] {object}, NO_OPERANDS, NO_OPERANDS);
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        Value result = output(0);
-        Value hub = input(0);
-
-        // rdx: (in) hub
-        // rax: (out) result
-        assert asRegister(hub) == AMD64.rdx;
-        AMD64Call.directCall(tasm, masm, HotSpotGraalRuntime.getInstance().getConfig().newInstanceStub, info);
-        if (asRegister(result) != AMD64.rax) {
-            masm.movq(asRegister(result), AMD64.rax);
+        Register object = asRegister(input(0));
+        // r13: (in) object
+        if (object != AMD64.r13) {
+            masm.push(AMD64.r13);
+            masm.movl(AMD64.r13, object);
+        }
+        AMD64Call.directCall(tasm, masm, HotSpotGraalRuntime.getInstance().getConfig().verifyOopStub, info);
+        if (object != AMD64.r13) {
+            masm.pop(AMD64.r13);
         }
     }
 
     @Override
     protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
         if (mode == OperandMode.Input) {
-            return EnumSet.of(OperandFlag.Register);
-        } else if (mode == OperandMode.Output) {
-            return EnumSet.of(OperandFlag.Register);
-        } else if (mode == OperandMode.Temp) {
             return EnumSet.of(OperandFlag.Register);
         }
         throw GraalInternalError.shouldNotReachHere();

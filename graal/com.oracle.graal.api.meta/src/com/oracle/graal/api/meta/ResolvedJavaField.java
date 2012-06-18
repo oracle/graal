@@ -47,6 +47,13 @@ public interface ResolvedJavaField extends JavaField {
     Constant constantValue(Constant receiver);
 
     /**
+     * Gets the current value of the field if available.
+     * @param receiver object from which this field's value is to be read. This value is ignored if this field is static.
+     * @return the value of this field or {@code null} if the value is not available (e.g., because the field holder is not yet initialized).
+     */
+    Constant getValue(Constant receiver);
+
+    /**
      * Gets the holder of this field as a compiler-runtime interface type.
      * @return the holder of this field
      */

@@ -62,6 +62,7 @@ public final class XorNode extends LogicNode implements Canonicalizable, LIRLowe
                     return x();
                 }
             }
+            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
         }
         return this;
     }

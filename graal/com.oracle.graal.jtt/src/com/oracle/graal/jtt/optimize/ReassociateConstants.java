@@ -20,40 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api;
+package com.oracle.graal.jtt.optimize;
 
-public class Graal {
+import org.junit.*;
 
-    private static GraalRuntime runtime;
 
-    private static native GraalRuntime initializeRuntime();
+public class ReassociateConstants {
+    public static int rnd = (int) (Math.random() * 100);
+    @Test
+    public void run0() throws Throwable {
+        Assert.assertEquals(rnd + 3, 1 + (rnd + 2));
+        Assert.assertEquals(rnd + 3, (rnd + 2) + 1);
+        Assert.assertEquals(rnd + 3, 1 + (2 + rnd));
+        Assert.assertEquals(rnd + 3, (2 + rnd) + 1);
 
-    public static GraalRuntime getRuntime() {
-        return runtime;
-    }
+        Assert.assertEquals(-1 - rnd, 1 - (rnd + 2));
+        Assert.assertEquals(rnd + 1, (rnd + 2) - 1);
+        Assert.assertEquals(-1 - rnd, 1 - (2 + rnd));
+        Assert.assertEquals(rnd + 1, (2 + rnd) - 1);
 
-    static {
-        try {
-            runtime = initializeRuntime();
-        } catch (UnsatisfiedLinkError e) {
-            runtime = new GraalRuntime() {
-                @Override
-                public String getName() {
-                    return "";
-                }
-                @Override
-                public <T> T getCapability(Class<T> clazz) {
-                    return null;
-                }
-            };
-        }
-    }
+        Assert.assertEquals(rnd - 1, 1 + (rnd - 2));
+        Assert.assertEquals(rnd - 1, (rnd - 2) + 1);
+        Assert.assertEquals(-rnd + 3, 1 + (2 - rnd));
+        Assert.assertEquals(-rnd + 3, (2 - rnd) + 1);
 
-    public static <T> T getRequiredCapability(Class<T> clazz) {
-        T t = getRuntime().getCapability(clazz);
-        if (t == null) {
-            throw new IllegalAccessError("Runtime does not expose required capability " + clazz.getName());
-        }
-        return t;
+        Assert.assertEquals(-rnd + 3, 1 - (rnd - 2));
+        Assert.assertEquals(rnd - 3, (rnd - 2) - 1);
+        Assert.assertEquals(rnd + -1, 1 - (2 - rnd));
+        Assert.assertEquals(-rnd + 1, (2 - rnd) - 1);
     }
 }
