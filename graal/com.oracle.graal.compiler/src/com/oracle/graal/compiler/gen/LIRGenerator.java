@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.gen;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
@@ -206,9 +207,15 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public Value setResult(ValueNode x, Value operand) {
-        assert (isVariable(operand) && x.kind() == operand.kind) || (isConstant(operand) && x.kind() == operand.kind.stackKind()) : operand.kind + " for node " + x;
+    public RegisterAttributes attributes(Register register) {
+        return frameMap.registerConfig.getAttributesMap()[register.number];
+    }
 
+    @Override
+    public Value setResult(ValueNode x, Value operand) {
+        assert (isVariable(operand) && x.kind() == operand.kind) ||
+               (isRegister(operand) && !attributes(asRegister(operand)).isAllocatable()) ||
+               (isConstant(operand) && x.kind() == operand.kind.stackKind()) : operand.kind + " for node " + x;
         assert operand(x) == null : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
         assert operand.kind.stackKind() == x.kind();

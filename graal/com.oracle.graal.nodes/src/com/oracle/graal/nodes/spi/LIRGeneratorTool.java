@@ -48,6 +48,8 @@ public abstract class LIRGeneratorTool {
      */
     public abstract boolean canStoreConstant(Constant c);
 
+    public abstract RegisterAttributes attributes(Register register);
+
     public abstract Value operand(ValueNode object);
     public abstract Value newVariable(Kind kind);
     public abstract Value setResult(ValueNode x, Value operand);
