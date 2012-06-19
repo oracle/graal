@@ -53,6 +53,7 @@ public class NewInstanceTest extends GraalCompilerTest {
         test("newEmptyString");
         test("newString", "value");
         test("newHashMap", 31);
+        test("newRegression", true);
     }
 
     public static Object newObject() {
@@ -148,5 +149,40 @@ public class NewInstanceTest extends GraalCompilerTest {
         Object f43;
         Object f44;
         Object f45;
+    }
+
+    /**
+     * Tests that an earlier bug does not occur. The issue was that the loading of the TLAB
+     * 'top' and 'end' values was being GVN'ed from each branch of the 'if' statement.
+     * This meant that the allocated B object in the true branch overwrote the allocated
+     * array. The cause is that RegisterNode was a floating node and the reads from it
+     * were UnsafeLoads which are also floating. The fix was to make RegisterNode a fixed
+     * node (which it should have been in the first place).
+     */
+    public static Object newRegression(boolean condition) {
+        Object result;
+        if (condition) {
+            Object[] arr = {0, 1, 2, 3, 4, 5};
+            result = new B();
+            for (int i = 0; i < arr.length; ++i) {
+                // If the bug exists, the values of arr will now be deadbeef values
+                // and the virtual dispatch will cause a segfault. This can result in
+                // either a VM crash or a spurious NullPointerException.
+                if (arr[i].equals(Integer.valueOf(i))) {
+                    return false;
+                }
+            }
+        } else {
+            result = new B();
+        }
+        return result;
+    }
+
+    static class B {
+        long f1 = 0xdeadbeefdeadbe01L;
+        long f2 = 0xdeadbeefdeadbe02L;
+        long f3 = 0xdeadbeefdeadbe03L;
+        long f4 = 0xdeadbeefdeadbe04L;
+        long f5 = 0xdeadbeefdeadbe05L;
     }
 }
