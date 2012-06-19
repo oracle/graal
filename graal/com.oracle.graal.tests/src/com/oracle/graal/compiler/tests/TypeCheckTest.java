@@ -36,11 +36,13 @@ public abstract class TypeCheckTest extends GraalCompilerTest {
     protected JavaTypeProfile currentProfile;
 
     @Override
-    protected InstalledCode compile(final ResolvedJavaMethod method, final StructuredGraph graph) {
+    protected InstalledCode getCode(final ResolvedJavaMethod method, final StructuredGraph graph) {
+        boolean forceCompile = false;
         if (currentProfile != null) {
             replaceProfile(graph, currentProfile);
+            forceCompile = true;
         }
-        return super.compile(method, graph);
+        return super.getCode(method, graph, forceCompile);
     }
 
     protected JavaTypeProfile profile(Class... types) {

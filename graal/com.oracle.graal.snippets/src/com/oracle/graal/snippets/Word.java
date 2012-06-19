@@ -26,6 +26,7 @@ import static com.oracle.graal.snippets.Word.Opcode.*;
 
 import java.lang.annotation.*;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 
 /**
@@ -46,32 +47,83 @@ public final class Word {
      * The canonical {@link Operation} represented by a method in the {@link Word} class.
      */
     public enum Opcode {
+        L2W,
+        I2W,
+        W2L,
+        W2I,
         PLUS,
         MINUS,
         COMPARE;
     }
 
-    private Word() {
+    private Word(long value) {
+        this.value = value;
+    }
+
+    private final long value;
+
+    @Operation(L2W)
+    public static Word fromLong(long value) {
+        return new Word(value);
+    }
+
+    @Operation(I2W)
+    public static Word fromInt(int value) {
+        return new Word(value);
+    }
+
+    @Operation(W2I)
+    public int toInt() {
+        return (int) value;
+    }
+
+    @Operation(W2L)
+    public long toLong() {
+        return value;
     }
 
     @Operation(COMPARE)
-    public native boolean cmp(Condition condition, Word other);
+    public boolean cmp(Condition condition, Word other) {
+        long a = value;
+        long b = other.value;
+        switch (condition) {
+            case AE: return (a >= b) ^ ((a < 0) != (b < 0));
+            case AT: return (a > b) ^ ((a < 0) != (b < 0));
+            case BE: return (a <= b) ^ ((a < 0) != (b < 0));
+            case BT: return (a < b) ^ ((a < 0) != (b < 0));
+            case EQ: return a == b;
+            case NE: return a != b;
+            default: throw new GraalInternalError("Unexpected operation on word: " + condition);
+        }
+    }
 
     @Operation(PLUS)
-    public native Word plus(int addend);
+    public Word plus(int addend) {
+        return new Word(value + addend);
+    }
 
     @Operation(PLUS)
-    public native Word plus(long addend);
+    public Word plus(long addend) {
+        return new Word(value + addend);
+    }
 
     @Operation(PLUS)
-    public native Word plus(Word addend);
+    public Word plus(Word addend) {
+        return new Word(value + addend.value);
+    }
 
     @Operation(MINUS)
-    public native Word minus(int addend);
+    public Word minus(int addend) {
+        return new Word(value - addend);
+    }
 
     @Operation(MINUS)
-    public native Word minus(long addend);
+    public Word minus(long addend) {
+        return new Word(value - addend);
+    }
 
     @Operation(MINUS)
-    public native Word minus(Word addend);
+    public Word minus(Word addend) {
+        return new Word(value - addend.value);
+    }
 }

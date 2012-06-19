@@ -67,7 +67,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         }
 
         final ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(method);
-        InstalledCode compiledMethod = compile(riMethod, graph);
+        InstalledCode compiledMethod = getCode(riMethod, graph);
         try {
             Object result = compiledMethod.execute("1", "2", "3");
             Assert.assertEquals("1-2-3", result);
@@ -81,7 +81,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
         final ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(method);
-        InstalledCode compiledMethod = compile(riMethod, graph);
+        InstalledCode compiledMethod = getCode(riMethod, graph);
         try {
             Object result = compiledMethod.executeVarargs("1", "2", "3");
             Assert.assertEquals("1 2 3", result);
@@ -95,7 +95,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         Method method = getMethod("testMethodVirtual");
         final StructuredGraph graph = parse(method);
         final ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(method);
-        InstalledCode compiledMethod = compile(riMethod, graph);
+        InstalledCode compiledMethod = getCode(riMethod, graph);
         try {
             f1 = "0";
             Object result = compiledMethod.executeVarargs(this, "1", "2", "3");
@@ -123,7 +123,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
             }
         }
 
-        InstalledCode compiledMethod = compile(riMethod, graph);
+        InstalledCode compiledMethod = getCode(riMethod, graph);
         final CompilableObject compilableObject = new CompilableObjectImpl(0);
 
         Object result;

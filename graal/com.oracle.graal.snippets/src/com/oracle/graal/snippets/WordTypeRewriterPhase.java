@@ -27,7 +27,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.*;
+import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.extended.*;
@@ -81,7 +81,7 @@ public class WordTypeRewriterPhase extends Phase {
             if (operation != null) {
                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
                 Invoke invoke = (Invoke) callTargetNode.usages().first();
-                assert invoke != null;
+                assert invoke != null : callTargetNode.targetMethod();
 
                 Opcode opcode = operation.value();
                 switch (opcode) {
@@ -99,6 +99,40 @@ public class WordTypeRewriterPhase extends Phase {
                         invoke.intrinsify(op);
                         break;
                     }
+
+                    case W2I: {
+                        assert arguments.size() == 1;
+                        ValueNode value = arguments.last();
+                        ValueNode intValue = fromWordKindTo(graph, value, Kind.Int);
+                        invoke.intrinsify(intValue);
+                        break;
+                    }
+
+                    case W2L: {
+                        assert arguments.size() == 1;
+                        ValueNode value = arguments.last();
+                        ValueNode longValue = fromWordKindTo(graph, value, Kind.Long);
+                        invoke.intrinsify(longValue);
+                        break;
+                    }
+
+                    case L2W: {
+                        assert arguments.size() == 1;
+                        ValueNode value = arguments.last();
+                        assert value.kind() == Kind.Long;
+                        ValueNode wordValue = asWordKind(graph, value);
+                        invoke.intrinsify(wordValue);
+                        break;
+                    }
+
+                    case I2W: {
+                        assert arguments.size() == 1;
+                        ValueNode value = arguments.last();
+                        assert value.kind() == Kind.Int;
+                        invoke.intrinsify(asWordKind(graph, value));
+                        break;
+                    }
+
                     default: {
                         throw new GraalInternalError("Unknown opcode: %s", opcode);
                     }
@@ -111,7 +145,7 @@ public class WordTypeRewriterPhase extends Phase {
      * Creates comparison node for a given condition and two input values.
      */
     private ValueNode compare(Condition condition, StructuredGraph graph, ValueNode left, ValueNode right) {
-        assert condition.isUnsigned();
+        assert condition.isUnsigned() || condition == Condition.EQ || condition == Condition.NE : condition;
         assert left.kind() == wordKind;
         assert right.kind() == wordKind;
 
@@ -152,6 +186,21 @@ public class WordTypeRewriterPhase extends Phase {
                 assert wordKind.isInt();
                 assert value.kind().isLong();
                 op = Op.L2I;
+            }
+            return graph.unique(new ConvertNode(op, value));
+        }
+        return value;
+    }
+
+    private static ValueNode fromWordKindTo(StructuredGraph graph, ValueNode value, Kind to) {
+        Kind from = value.kind();
+        if (from != to) {
+            Op op;
+            if (from.isLong()) {
+                op = Op.L2I;
+            } else {
+                assert from.isInt();
+                op = Op.I2L;
             }
             return graph.unique(new ConvertNode(op, value));
         }

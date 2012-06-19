@@ -27,6 +27,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.snippets.Word.Operation;
 import com.oracle.graal.snippets.nodes.*;
 
 /**
@@ -66,6 +67,9 @@ public @interface Snippet {
                     if (method.name().equals("<init>")) {
                         return false;
                     }
+                }
+                if (method.getAnnotation(Operation.class) != null) {
+                    return false;
                 }
                 return true;
             }
