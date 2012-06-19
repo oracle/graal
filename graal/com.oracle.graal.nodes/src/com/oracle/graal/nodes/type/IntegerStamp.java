@@ -23,30 +23,54 @@
 package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
 
-
+/**
+ * Describes the possible values of a {@link ValueNode} that produces an int or long result.
+ *
+ * The description consists of (inclusive) lower and upper bounds and a bit-mask.
+ */
 public class IntegerStamp extends Stamp {
 
     private final long lowerBound;
     private final long upperBound;
+    private final long mask;
 
     public IntegerStamp(Kind kind) {
-        this(kind, kind.minValue(), kind.maxValue());
+        this(kind, kind.minValue(), kind.maxValue(), defaultMask(kind));
     }
 
-    public IntegerStamp(Kind kind, long lowerBound, long upperBound) {
+    public IntegerStamp(Kind kind, long lowerBound, long upperBound, long mask) {
         super(kind);
         assert lowerBound <= upperBound;
+        assert lowerBound >= kind.minValue();
+        assert upperBound <= kind.maxValue();
+        assert (mask & defaultMask(kind)) == mask;
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
+        this.mask = mask;
     }
 
+    /**
+     * The (inclusive) lower bound on the value described by this stamp.
+     */
     public long lowerBound() {
         return lowerBound;
     }
 
+    /**
+     * The (inclusive) upper bound on the value described by this stamp.
+     */
     public long upperBound() {
         return upperBound;
+    }
+
+    /**
+     * This bit-mask describes the bits that can be set in the value described by this stamp. It is primarily used to
+     * represent values that are multiples of a known power of two.
+     */
+    public long mask() {
+        return mask;
     }
 
     @Override
@@ -57,6 +81,9 @@ public class IntegerStamp extends Stamp {
             str.append(" [").append(lowerBound).append(']');
         } else if (lowerBound != kind().minValue() || upperBound != kind().maxValue()) {
             str.append(" [").append(lowerBound).append(" - ").append(upperBound).append(']');
+        }
+        if (mask != defaultMask(kind())) {
+            str.append(" #").append(Long.toHexString(mask));
         }
         return str.toString();
     }
@@ -73,10 +100,11 @@ public class IntegerStamp extends Stamp {
         assert kind() == other.kind();
         long meetUpperBound = Math.max(upperBound, other.upperBound);
         long meetLowerBound = Math.min(lowerBound, other.lowerBound);
-        if (meetLowerBound == lowerBound && meetUpperBound == upperBound) {
+        long meetMask = mask | other.mask;
+        if (meetLowerBound == lowerBound && meetUpperBound == upperBound && meetMask == mask) {
             return this;
         } else {
-            return new IntegerStamp(kind(), meetLowerBound, meetUpperBound);
+            return new IntegerStamp(kind(), meetLowerBound, meetUpperBound, meetMask);
         }
     }
 
@@ -98,12 +126,27 @@ public class IntegerStamp extends Stamp {
             return false;
         }
         IntegerStamp other = (IntegerStamp) obj;
-        if (lowerBound != other.lowerBound || upperBound != other.upperBound) {
+        if (lowerBound != other.lowerBound || upperBound != other.upperBound || mask != other.mask) {
             return false;
         }
         return true;
     }
 
+    public static long defaultMask(Kind kind) {
+        if (kind == Kind.Int) {
+            return 0xFFFFFFFFL;
+        } else {
+            return 0xFFFFFFFFFFFFFFFFL;
+        }
+    }
+
+    public static long maskFor(Kind kind, long lowerBound, long upperBound) {
+        long mask = lowerBound | upperBound;
+        if (mask == 0) {
+            return 0;
+        } else {
+            return ((-1L) >>> Long.numberOfLeadingZeros(mask)) & defaultMask(kind);
+        }
+    }
 
 }
-

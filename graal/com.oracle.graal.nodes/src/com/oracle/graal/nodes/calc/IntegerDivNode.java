@@ -22,16 +22,23 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "/")
 public final class IntegerDivNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
 
     public IntegerDivNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
+    }
+
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(StampTool.div(x().integerStamp(), y().integerStamp()));
     }
 
     @Override
@@ -51,6 +58,8 @@ public final class IntegerDivNode extends IntegerArithmeticNode implements Canon
             long c = y().asConstant().asLong();
             if (c == 1) {
                 return x();
+            } else if (c > 0 && CodeUtil.isPowerOf2(c) && x().integerStamp().lowerBound() >= 0) {
+                return graph().unique(new UnsignedRightShiftNode(kind(), x(), ConstantNode.forInt(CodeUtil.log2(c), graph())));
             }
         }
         return this;

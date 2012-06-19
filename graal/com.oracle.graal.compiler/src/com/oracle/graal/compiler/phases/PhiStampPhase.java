@@ -43,7 +43,7 @@ public class PhiStampPhase extends Phase {
     }
 
     private void iterativeInferPhi(PhiNode phi) {
-        if (phi.inferStamp()) {
+        if (phi.inferPhiStamp()) {
             for (PhiNode phiUsage : phi.usages().filter(PhiNode.class)) {
                 iterativeInferPhi(phiUsage);
             }
@@ -56,6 +56,6 @@ public class PhiStampPhase extends Phase {
                 inferPhi(phiInput);
             }
         }
-        phi.inferStamp();
+        phi.inferPhiStamp();
     }
 }

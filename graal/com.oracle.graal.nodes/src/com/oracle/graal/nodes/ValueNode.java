@@ -78,12 +78,39 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
         this.stamp = stamp;
     }
 
+    /**
+     * Checks if the given stamp is different than the current one ({@code newStamp.equals(oldStamp) == false}). If it
+     * is different then the new stamp will become the current stamp for this node.
+     *
+     * @return true if the stamp has changed, false otherwise.
+     */
+    protected final boolean updateStamp(Stamp newStamp) {
+        if (newStamp.equals(stamp)) {
+            return false;
+        } else {
+            stamp = newStamp;
+            return true;
+        }
+    }
+
+    /**
+     * This method can be overridden by subclasses of {@link ValueNode} if they need to recompute their stamp if their
+     * inputs change. A typical implementation will compute the stamp and pass it to {@link #updateStamp(Stamp)}, whose
+     * return value can be used as the result of this method.
+     *
+     * @return true if the stamp has changed, false otherwise.
+     */
+    public boolean inferStamp() {
+        return false;
+    }
+
     public Kind kind() {
         return stamp.kind();
     }
 
     /**
      * Checks whether this value is a constant (i.e. it is of type {@link ConstantNode}.
+     *
      * @return {@code true} if this value is a constant
      */
     public final boolean isConstant() {
@@ -103,6 +130,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
 
     /**
      * Checks whether this value represents the null constant.
+     *
      * @return {@code true} if this value represents the null constant
      */
     public final boolean isNullConstant() {
@@ -111,8 +139,8 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
 
     /**
      * Convert this value to a constant if it is a constant, otherwise return null.
-     * @return the {@link Constant} represented by this value if it is a constant; {@code null}
-     * otherwise
+     *
+     * @return the {@link Constant} represented by this value if it is a constant; {@code null} otherwise
      */
     public final Constant asConstant() {
         if (this instanceof ConstantNode) {
