@@ -49,7 +49,7 @@ public class AMD64VerifyOopStubCallOp extends AMD64LIRInstruction {
         // r13: (in) object
         if (object != AMD64.r13) {
             masm.push(AMD64.r13);
-            masm.movl(AMD64.r13, object);
+            masm.movq(AMD64.r13, object);
         }
         AMD64Call.directCall(tasm, masm, HotSpotGraalRuntime.getInstance().getConfig().verifyOopStub, info);
         if (object != AMD64.r13) {
