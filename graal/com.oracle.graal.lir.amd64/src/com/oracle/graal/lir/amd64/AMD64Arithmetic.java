@@ -397,7 +397,7 @@ public enum AMD64Arithmetic {
                         masm.movq(AMD64.rdx, java.lang.Long.MIN_VALUE);
                         masm.cmpq(AMD64.rax, AMD64.rdx);
                         masm.jcc(ConditionFlag.notEqual, normalCase);
-                        masm.cmpl(asRegister(src), -1);
+                        masm.cmpq(asRegister(src), -1);
                         masm.jcc(ConditionFlag.equal, continuation);
                         masm.bind(normalCase);
                     }
