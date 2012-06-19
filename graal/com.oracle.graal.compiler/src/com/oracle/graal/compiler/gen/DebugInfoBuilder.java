@@ -82,7 +82,7 @@ public class DebugInfoBuilder {
                                 VirtualObjectState currentField = objectStates.get(vobj);
                                 assert currentField != null;
                                 for (int i = 0; i < vobj.fieldsCount(); i++) {
-                                    values[i] = toCiValue(currentField.fields().get(i));
+                                    values[i] = toCiValue(currentField.fieldValues().get(i));
                                 }
                             }
                         }
@@ -100,7 +100,7 @@ public class DebugInfoBuilder {
     private BytecodeFrame computeFrameForState(FrameState state, LockScope locks, long leafGraphId) {
         int numLocals = state.localsSize();
         int numStack = state.stackSize();
-        int numLocks = (locks != null && locks.callerState == state.outerFrameState()) ? locks.stateDepth + 1 : 0;
+        int numLocks = (locks != null && locks.inliningIdentifier == state.inliningIdentifier()) ? locks.stateDepth + 1 : 0;
 
         Value[] values = new Value[numLocals + numStack + numLocks];
         for (int i = 0; i < numLocals; i++) {
@@ -112,7 +112,7 @@ public class DebugInfoBuilder {
 
         LockScope nextLock = locks;
         for (int i = numLocks - 1; i >= 0; i--) {
-            assert locks != null && nextLock.callerState == state.outerFrameState() && nextLock.stateDepth == i;
+            assert locks != null && nextLock.inliningIdentifier == state.inliningIdentifier() && nextLock.stateDepth == i;
 
             Value owner = toCiValue(nextLock.monitor.object());
             Value lockData = nextLock.lockData;
@@ -153,7 +153,7 @@ public class DebugInfoBuilder {
         } else if (value != null) {
             Debug.metric("StateVariables").increment();
             Value operand = nodeOperands.get(value);
-            assert operand != null && (operand instanceof Variable || operand instanceof Constant);
+            assert operand != null && (operand instanceof Variable || operand instanceof Constant) : operand;
             return operand;
 
         } else {

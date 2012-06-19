@@ -61,20 +61,8 @@ public class NewInstanceSnippets implements SnippetsInterface {
     public static Object newInstance(
                     @Parameter("hub") Object hub,
                     @ConstantParameter("size") int size,
-                    @ConstantParameter("checkInit") boolean checkInit,
                     @ConstantParameter("useTLAB") boolean useTLAB,
                     @ConstantParameter("logType") String logType) {
-
-        if (checkInit) {
-            int klassState = load(hub, 0, klassStateOffset(), Kind.Int);
-            if (klassState != klassStateFullyInitialized()) {
-                if (logType != null) {
-                    Log.print(logType);
-                    Log.println(" - uninit alloc");
-                }
-                return verifyOop(NewInstanceStubCall.call(hub));
-            }
-        }
 
         if (useTLAB) {
             Word thread = asWord(register(r15, wordKind()));
@@ -135,16 +123,6 @@ public class NewInstanceSnippets implements SnippetsInterface {
     }
 
     @Fold
-    private static int klassStateOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().klassStateOffset;
-    }
-
-    @Fold
-    private static int klassStateFullyInitialized() {
-        return HotSpotGraalRuntime.getInstance().getConfig().klassStateFullyInitialized;
-    }
-
-    @Fold
     private static int threadTlabTopOffset() {
         return HotSpotGraalRuntime.getInstance().getConfig().threadTlabTopOffset;
     }
@@ -186,7 +164,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
             this.cache = new Cache(runtime);
             this.useTLAB = useTLAB;
             try {
-                newInstance = runtime.getResolvedJavaMethod(NewInstanceSnippets.class.getDeclaredMethod("newInstance", Object.class, int.class, boolean.class, boolean.class, String.class));
+                newInstance = runtime.getResolvedJavaMethod(NewInstanceSnippets.class.getDeclaredMethod("newInstance", Object.class, int.class, boolean.class, String.class));
             } catch (NoSuchMethodException e) {
                 throw new GraalInternalError(e);
             }
@@ -203,7 +181,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
             int instanceSize = type.instanceSize();
             assert (instanceSize % wordSize()) == 0;
             assert instanceSize >= 0;
-            Key key = new Key(newInstance).add("size", instanceSize).add("checkInit", !type.isInitialized()).add("useTLAB", useTLAB).add("logType", LOG_ALLOCATION ? type.name() : null);
+            Key key = new Key(newInstance).add("size", instanceSize).add("useTLAB", useTLAB).add("logType", LOG_ALLOCATION ? type.name() : null);
             Arguments arguments = arguments("hub", hub);
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering newInstance in %s: node=%s, template=%s, arguments=%s", graph, newInstanceNode, template, arguments);

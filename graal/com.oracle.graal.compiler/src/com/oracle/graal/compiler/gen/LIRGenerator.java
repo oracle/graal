@@ -45,6 +45,7 @@ import com.oracle.graal.lir.StandardOp.PhiJumpOp;
 import com.oracle.graal.lir.StandardOp.PhiLabelOp;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.FrameState.InliningIdentifier;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -94,12 +95,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         public final LockScope outer;
 
         /**
-         * The frame state of the caller of the method performing the lock, or null if the outermost method
+         * The identifier of the actual inlined method instance performing the lock, or null if the outermost method
          * performs the lock. This information is used to compute the {@link BytecodeFrame} that this lock belongs to.
-         * We cannot use the actual frame state of the locking method, because it is not unique for a method. The
-         * caller frame states are unique, i.e., all frame states of inlined methods refer to the same caller frame state.
          */
-        public final FrameState callerState;
+        public final InliningIdentifier inliningIdentifier;
 
         /**
          * The number of locks already found for this frame state.
@@ -116,12 +115,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
          */
         public final StackSlot lockData;
 
-        public LockScope(LockScope outer, FrameState callerState, MonitorEnterNode monitor, StackSlot lockData) {
+        public LockScope(LockScope outer, InliningIdentifier inliningIdentifier, MonitorEnterNode monitor, StackSlot lockData) {
             this.outer = outer;
-            this.callerState = callerState;
+            this.inliningIdentifier = inliningIdentifier;
             this.monitor = monitor;
             this.lockData = lockData;
-            if (outer != null && outer.callerState == callerState) {
+            if (outer != null && outer.inliningIdentifier == inliningIdentifier) {
                 this.stateDepth = outer.stateDepth + 1;
             } else {
                 this.stateDepth = 0;
@@ -539,7 +538,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (x.eliminated()) {
             // No code is emitted for eliminated locks, but for proper debug information generation we need to
             // register the monitor and its lock data.
-            curLocks = new LockScope(curLocks, x.stateAfter().outerFrameState(), x, lockData);
+            curLocks = new LockScope(curLocks, x.stateAfter().inliningIdentifier(), x, lockData);
             return;
         }
 
@@ -548,7 +547,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         LIRDebugInfo stateBefore = state();
         // The state before the monitor enter is used for null checks, so it must not contain the newly locked object.
-        curLocks = new LockScope(curLocks, x.stateAfter().outerFrameState(), x, lockData);
+        curLocks = new LockScope(curLocks, x.stateAfter().inliningIdentifier(), x, lockData);
         // The state after the monitor enter is used for deoptimization, after the monitor has blocked, so it must contain the newly locked object.
         LIRDebugInfo stateAfter = stateFor(x.stateAfter(), -1);
 
