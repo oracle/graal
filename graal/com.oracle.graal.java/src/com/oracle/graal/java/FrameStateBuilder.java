@@ -116,7 +116,7 @@ public class FrameStateBuilder {
     }
 
     public FrameState create(int bci) {
-        return graph.add(new FrameState(method, bci, locals, stack, stackSize, rethrowException, false));
+        return graph.add(new FrameState(method, bci, locals, stack, stackSize, rethrowException, false, null));
     }
 
     public FrameStateBuilder copy() {
