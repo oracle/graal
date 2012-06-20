@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * A value proxy that is inserted in the frame state of a loop exit for any value that is
@@ -52,6 +53,11 @@ public class ValueProxyNode extends FloatingNode implements Node.IterableNodeTyp
     @Override
     public boolean inferStamp() {
         return updateStamp(value.stamp());
+    }
+
+    @Override
+    public Stamp stamp() {
+        return value().stamp();
     }
 
     public BeginNode proxyPoint() {
