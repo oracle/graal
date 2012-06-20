@@ -173,7 +173,7 @@ public class StructuredGraph extends Graph {
     }
 
     public boolean hasLoops() {
-        return getNodes(LoopBeginNode.class).iterator().hasNext();
+        return getNodes(LoopBeginNode.class).isNotEmpty();
     }
 
     public void removeFloating(FloatingNode node) {
