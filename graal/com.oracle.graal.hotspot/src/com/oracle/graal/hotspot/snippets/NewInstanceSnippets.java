@@ -188,7 +188,6 @@ public class NewInstanceSnippets implements SnippetsInterface {
             //System.out.printf("Lowering newInstance in %s: node=%s, template=%s, arguments=%s%n", graph, newInstanceNode, template, arguments);
             //DebugScope.getConfig().addToContext(graph.method());
             template.instantiate(runtime, newInstanceNode, newInstanceNode, arguments);
-            new DeadCodeEliminationPhase().apply(graph);
         }
     }
 }

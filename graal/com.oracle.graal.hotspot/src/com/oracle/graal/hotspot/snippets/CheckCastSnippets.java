@@ -385,7 +385,6 @@ public class CheckCastSnippets implements SnippetsInterface {
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, arguments);
             template.instantiate(runtime, checkcast, checkcast, arguments);
-            new DeadCodeEliminationPhase().apply(graph);
         }
 
         private static HotSpotKlassOop[] createHints(TypeCheckHints hints) {

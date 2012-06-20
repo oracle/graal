@@ -458,7 +458,10 @@ public class SnippetTemplate {
         if (replacee instanceof FixedNode) {
             GraphUtil.killCFG((FixedNode) replacee);
         } else {
-            replacee.safeDelete();
+            GraphUtil.killWithUnusedFloatingInputs(replacee);
+        }
+        if (anchor != replacee) {
+            GraphUtil.killCFG(anchor);
         }
 
         Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
