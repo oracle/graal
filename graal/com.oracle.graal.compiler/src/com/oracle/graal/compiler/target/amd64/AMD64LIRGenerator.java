@@ -137,13 +137,18 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Value base = operand(object);
         Value index = Value.IllegalValue;
         int scale = 1;
-        long displacement = location.displacement();
+        int displacement = location.displacement();
 
         if (isConstant(base)) {
-            if (!asConstant(base).isNull()) {
-                displacement += asConstant(base).asLong();
+            if (asConstant(base).isNull()) {
+                base = Value.IllegalValue;
+            } else if (asConstant(base).kind != Kind.Object) {
+                long newDisplacement = displacement + asConstant(base).asLong();
+                if (NumUtil.isInt(newDisplacement)) {
+                    displacement = (int) newDisplacement;
+                    base = Value.IllegalValue;
+                }
             }
-            base = Value.IllegalValue;
         }
 
         if (location instanceof IndexedLocationNode) {
@@ -157,7 +162,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 long newDisplacement = displacement + asConstant(index).asLong() * scale;
                 // only use the constant index if the resulting displacement fits into a 32 bit offset
                 if (NumUtil.isInt(newDisplacement)) {
-                    displacement = newDisplacement;
+                    displacement = (int) newDisplacement;
                     index = Value.IllegalValue;
                 } else {
                     // create a temporary variable for the index, the pointer load cannot handle a constant index
@@ -168,7 +173,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             }
         }
 
-        return new Address(location.getValueKind(), base, index, Address.Scale.fromInt(scale), (int) displacement);
+        return new Address(location.getValueKind(), base, index, Address.Scale.fromInt(scale), displacement);
     }
 
     @Override
