@@ -398,41 +398,28 @@ public class InliningUtil {
         private FixedNode createDispatchOnType(StructuredGraph graph, ReadHubNode objectClassNode, BeginNode[] calleeEntryNodes, FixedNode unknownTypeSux) {
             assert ptypes.length > 1;
 
-            int lastIndex = ptypes.length - 1;
-            double[] branchProbabilities = convertTypeToBranchProbabilities(ptypes, notRecordedTypeProbability);
-            double nodeProbability = ptypes[lastIndex].probability;
-            IfNode nextNode = createTypeCheck(graph, objectClassNode, ptypes[lastIndex].type, calleeEntryNodes[typesToConcretes[lastIndex]], unknownTypeSux, branchProbabilities[lastIndex], invoke.probability() * nodeProbability);
-            for (int i = lastIndex - 1; i >= 0; i--) {
-                nodeProbability += ptypes[i].probability;
-                nextNode = createTypeCheck(graph, objectClassNode, ptypes[i].type, calleeEntryNodes[typesToConcretes[i]], nextNode, branchProbabilities[i], invoke.probability() * nodeProbability);
-            }
+            ResolvedJavaType[] types = new ResolvedJavaType[ptypes.length];
+            double[] probabilities = new double[ptypes.length + 1];
+            BeginNode[] successors = new BeginNode[ptypes.length + 1];
 
-            return nextNode;
-        }
-
-        private static IfNode createTypeCheck(StructuredGraph graph, ReadHubNode objectClassNode, ResolvedJavaType type, BeginNode tsux, FixedNode nextNode, double tsuxProbability, double probability) {
-            IfNode result;
-            IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClassNode, type));
-            if (tsux instanceof MergeNode) {
-                EndNode endNode = graph.add(new EndNode());
-                result = graph.add(new IfNode(isTypeNode, endNode, nextNode, tsuxProbability));
-                ((MergeNode) tsux).addForwardEnd(endNode);
-            } else {
-                result = graph.add(new IfNode(isTypeNode, tsux, nextNode, tsuxProbability));
+            for (int i = 0; i < ptypes.length; i++) {
+                types[i] = ptypes[i].type;
+                probabilities[i] = ptypes[i].probability;
+                FixedNode entry = calleeEntryNodes[typesToConcretes[i]];
+                if (entry instanceof MergeNode) {
+                    EndNode endNode = graph.add(new EndNode());
+                    ((MergeNode) entry).addForwardEnd(endNode);
+                    entry = endNode;
+                }
+                successors[i] = BeginNode.begin(entry);
             }
-            result.setProbability(probability);
-            return result;
-        }
+            assert !(unknownTypeSux instanceof MergeNode);
+            successors[successors.length - 1] = BeginNode.begin(unknownTypeSux);
+            probabilities[successors.length - 1] = notRecordedTypeProbability;
 
-        private static double[] convertTypeToBranchProbabilities(ProfiledType[] ptypes, double notRecordedTypeProbability) {
-            double[] result = new double[ptypes.length];
-            double total = notRecordedTypeProbability;
-            for (int i = ptypes.length - 1; i >= 0; i--) {
-                total += ptypes[i].probability;
-                result[i] = ptypes[i].probability / total;
-            }
-            assert total > 0.99 && total < 1.01;
-            return result;
+            TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(objectClassNode, successors, types, probabilities));
+
+            return typeSwitch;
         }
 
         private static BeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, MergeNode returnMerge, PhiNode returnValuePhi,

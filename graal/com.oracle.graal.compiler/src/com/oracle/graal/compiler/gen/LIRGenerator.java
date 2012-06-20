@@ -1029,6 +1029,17 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
+    public void emitTypeSwitch(TypeSwitchNode x) {
+        Variable tag = load(operand(x.value()));
+        int len = x.numberOfCases();
+        for (int i = 0; i < len; i++) {
+            ResolvedJavaType type = x.keyAt(i);
+            emitBranch(tag, type.getEncoding(Representation.ObjectHub), Condition.EQ, false, getLIRBlock(x.blockSuccessor(i)), null);
+        }
+        emitJump(getLIRBlock(x.defaultSuccessor()), null);
+    }
+
+    @Override
     public void emitTableSwitch(TableSwitchNode x) {
         Variable value = load(operand(x.value()));
         // TODO: tune the defaults for the controls used to determine what kind of translation to use
