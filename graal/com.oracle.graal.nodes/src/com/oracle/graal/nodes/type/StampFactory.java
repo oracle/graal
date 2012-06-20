@@ -61,6 +61,10 @@ public class StampFactory {
         setCache(Kind.Void, voidStamp);
     }
 
+    public static Stamp forWord(Kind wordKind, boolean nonNull) {
+        return new WordStamp(wordKind, nonNull);
+    }
+
     public static Stamp forKind(Kind kind) {
         assert stampCache[kind.stackKind().ordinal()] != null : "unexpected forKind(" + kind + ")";
         return stampCache[kind.stackKind().ordinal()];

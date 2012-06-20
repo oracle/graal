@@ -229,7 +229,6 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     @Override
     public void lower(Node n, CiLoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) n.graph();
-
         if (n instanceof ArrayLengthNode) {
             ArrayLengthNode arrayLengthNode = (ArrayLengthNode) n;
             SafeReadNode safeReadArrayLength = safeReadArrayLength(arrayLengthNode.array(), StructuredGraph.INVALID_GRAPH_ID);
@@ -367,6 +366,10 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             if (shouldLower(graph, GraalOptions.HIRLowerNewInstance)) {
                 newInstanceSnippets.lower((NewInstanceNode) n, tool);
             }
+        } else if (n instanceof TLABAllocateNode) {
+            newInstanceSnippets.lower((TLABAllocateNode) n, tool);
+        } else if (n instanceof InitializeNode) {
+            newInstanceSnippets.lower((InitializeNode) n, tool);
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
         }
