@@ -213,7 +213,7 @@ public abstract class LoopFragment {
         StructuredGraph graph = graph();
         for (BeginNode earlyExit : toHirBlocks(original().loop().lirLoop().exits)) {
             FixedNode next = earlyExit.next();
-            if (!this.contains(earlyExit)) {
+            if (earlyExit.isDeleted() || !this.contains(earlyExit)) {
                 continue;
             }
             BeginNode newEarlyExit = getDuplicatedNode(earlyExit);

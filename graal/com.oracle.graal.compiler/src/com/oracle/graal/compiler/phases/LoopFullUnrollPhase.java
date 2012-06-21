@@ -32,7 +32,9 @@ public class LoopFullUnrollPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         if (graph.hasLoops()) {
-            while (true) {
+            boolean peeled;
+            do {
+                peeled = false;
                 final LoopsData dataCounted = new LoopsData(graph);
                 dataCounted.detectedCountedLoops();
                 for (final LoopEx loop : dataCounted.countedLoops()) {
@@ -40,11 +42,11 @@ public class LoopFullUnrollPhase extends Phase {
                         Debug.log("FullUnroll %s", loop);
                         LoopTransformations.fullUnroll(loop);
                         Debug.dump(graph, "After fullUnroll %s", loop);
-                        continue;
+                        peeled = true;
+                        break;
                     }
                 }
-                break;
-            }
+            } while(peeled);
         }
     }
 
