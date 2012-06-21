@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.gen;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
@@ -206,9 +207,15 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public Value setResult(ValueNode x, Value operand) {
-        assert (isVariable(operand) && x.kind() == operand.kind) || (isConstant(operand) && x.kind() == operand.kind.stackKind()) : operand.kind + " for node " + x;
+    public RegisterAttributes attributes(Register register) {
+        return frameMap.registerConfig.getAttributesMap()[register.number];
+    }
 
+    @Override
+    public Value setResult(ValueNode x, Value operand) {
+        assert (isVariable(operand) && x.kind() == operand.kind) ||
+               (isRegister(operand) && !attributes(asRegister(operand)).isAllocatable()) ||
+               (isConstant(operand) && x.kind() == operand.kind.stackKind()) : operand.kind + " for node " + x;
         assert operand(x) == null : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
         assert operand.kind.stackKind() == x.kind();
@@ -1019,6 +1026,17 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         } else {
             visitSwitchRanges(createSwitchRanges(x, null), tag, getLIRBlock(x.defaultSuccessor()));
         }
+    }
+
+    @Override
+    public void emitTypeSwitch(TypeSwitchNode x) {
+        Variable tag = load(operand(x.value()));
+        int len = x.numberOfCases();
+        for (int i = 0; i < len; i++) {
+            ResolvedJavaType type = x.keyAt(i);
+            emitBranch(tag, type.getEncoding(Representation.ObjectHub), Condition.EQ, false, getLIRBlock(x.blockSuccessor(i)), null);
+        }
+        emitJump(getLIRBlock(x.defaultSuccessor()), null);
     }
 
     @Override

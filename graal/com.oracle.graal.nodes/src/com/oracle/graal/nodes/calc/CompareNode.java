@@ -80,9 +80,9 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
     }
 
 
-    private ValueNode optimizeMaterialize(Constant constant, MaterializeNode materializeNode, CodeCacheProvider runtime, Condition cond) {
-        Constant trueConstant = materializeNode.trueValue().asConstant();
-        Constant falseConstant = materializeNode.falseValue().asConstant();
+    private ValueNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, CodeCacheProvider runtime, Condition cond) {
+        Constant trueConstant = conditionalNode.trueValue().asConstant();
+        Constant falseConstant = conditionalNode.falseValue().asConstant();
 
         if (falseConstant != null && trueConstant != null) {
             Boolean trueResult = cond.foldCondition(trueConstant, constant, runtime, unorderedIsTrue());
@@ -96,11 +96,11 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
                 } else {
                     if (trueUnboxedResult) {
                         assert falseUnboxedResult == false;
-                        return materializeNode.condition();
+                        return conditionalNode.condition();
                     } else {
                         assert falseUnboxedResult == true;
                         negateUsages();
-                        return materializeNode.condition();
+                        return conditionalNode.condition();
 
                     }
                 }
@@ -118,14 +118,14 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
             return ConstantNode.forBoolean(condition().foldCondition(x().asConstant(), y().asConstant(), tool.runtime(), unorderedIsTrue()), graph());
         }
         if (x().isConstant()) {
-            if (y() instanceof MaterializeNode) {
-                return optimizeMaterialize(x().asConstant(), (MaterializeNode) y(), tool.runtime(), condition().mirror());
+            if (y() instanceof ConditionalNode) {
+                return optimizeConditional(x().asConstant(), (ConditionalNode) y(), tool.runtime(), condition().mirror());
             } else if (y() instanceof NormalizeCompareNode) {
                 return optimizeNormalizeCmp(x().asConstant(), (NormalizeCompareNode) y(), true);
             }
         } else if (y().isConstant()) {
-            if (x() instanceof MaterializeNode) {
-                return optimizeMaterialize(y().asConstant(), (MaterializeNode) x(), tool.runtime(), condition());
+            if (x() instanceof ConditionalNode) {
+                return optimizeConditional(y().asConstant(), (ConditionalNode) x(), tool.runtime(), condition());
             } else if (x() instanceof NormalizeCompareNode) {
                 return optimizeNormalizeCmp(y().asConstant(), (NormalizeCompareNode) x(), false);
             }

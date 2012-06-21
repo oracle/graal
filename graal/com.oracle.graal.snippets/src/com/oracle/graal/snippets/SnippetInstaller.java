@@ -135,6 +135,14 @@ public class SnippetInstaller {
     }
 
     public StructuredGraph makeGraph(final ResolvedJavaMethod method, final InliningPolicy policy) {
+        StructuredGraph graph = parseGraph(method, policy);
+
+        Debug.dump(graph, "%s: Final", method.name());
+
+        return graph;
+    }
+
+    private StructuredGraph parseGraph(final ResolvedJavaMethod method, final InliningPolicy policy) {
         StructuredGraph graph = graphCache.get(method);
         if (graph == null) {
             graph = buildGraph(method, policy == null ? inliningPolicy(method) : policy);
@@ -161,7 +169,7 @@ public class SnippetInstaller {
                     MethodCallTargetNode callTarget = invoke.callTarget();
                     ResolvedJavaMethod callee = callTarget.targetMethod();
                     if (policy.shouldInline(callee, method)) {
-                        StructuredGraph targetGraph = makeGraph(callee, policy);
+                        StructuredGraph targetGraph = parseGraph(callee, policy);
                         InliningUtil.inline(invoke, targetGraph, true);
                         Debug.dump(graph, "after inlining %s", callee);
                         if (GraalOptions.OptCanonicalizer) {
@@ -190,9 +198,6 @@ public class SnippetInstaller {
                     new DeadCodeEliminationPhase().apply(graph);
                     new ComputeProbabilityPhase().apply(graph);
                 }
-
-                Debug.dump(graph, "%s: Final", method.name());
-
                 return graph;
             }
         });

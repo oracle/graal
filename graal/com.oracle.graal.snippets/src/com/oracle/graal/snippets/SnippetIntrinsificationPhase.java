@@ -119,7 +119,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             }
             ValueNode argument = tryBoxingElimination(parameterIndex, target, arguments.get(i));
             if (folding || CodeUtil.getParameterAnnotation(ConstantNodeParameter.class, parameterIndex, target) != null) {
-                assert argument instanceof ConstantNode : "parameter " + parameterIndex + " must be a compile time constant for calling " + invoke.callTarget().targetMethod() + ": " + argument;
+                assert argument instanceof ConstantNode : "parameter " + parameterIndex + " must be a compile time constant for calling " + invoke.callTarget().targetMethod() + " at " + sourceLocation(invoke.node()) + ": " + argument;
                 ConstantNode constantNode = (ConstantNode) argument;
                 Constant constant = constantNode.asConstant();
                 Object o = constant.boxedValue();

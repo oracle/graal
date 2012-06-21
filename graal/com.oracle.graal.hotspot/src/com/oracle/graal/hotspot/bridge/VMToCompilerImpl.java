@@ -232,8 +232,8 @@ public class VMToCompilerImpl implements VMToCompiler {
         if (queue != null) {
             queue.shutdown();
             if (Debug.isEnabled() && GraalOptions.Dump != null) {
-                // Wait 5 seconds to try and flush out all graph dumps
-                queue.awaitTermination(5, TimeUnit.SECONDS);
+                // Wait 2 seconds to flush out all graph dumps that may be of interest
+                queue.awaitTermination(2, TimeUnit.SECONDS);
             }
         }
     }
