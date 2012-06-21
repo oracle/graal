@@ -95,7 +95,7 @@ public class LoweringPhase extends Phase {
             if (graph.getNewNodes(mark).filter(FixedNode.class).isEmpty()) {
                 break;
             }
-            graph.verify();
+            assert graph.verify();
             processed.grow();
         }
 
