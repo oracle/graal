@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.snippets;
 
 import static com.oracle.graal.hotspot.nodes.RegisterNode.*;
 import static com.oracle.graal.hotspot.snippets.DirectObjectStoreNode.*;
-import static com.oracle.graal.nodes.calc.Condition.*;
-import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 import static com.oracle.graal.nodes.extended.UnsafeLoadNode.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.snippets.nodes.ExplodeLoopNode.*;
@@ -56,29 +54,28 @@ import com.oracle.graal.snippets.SnippetTemplate.Key;
 public class NewInstanceSnippets implements SnippetsInterface {
 
     @Snippet
-    public static Object allocate(@ConstantParameter("size") int size) {
+    public static Word allocate(@ConstantParameter("size") int size) {
         Word thread = asWord(register(r15, wordKind()));
         Word top = loadWord(thread, threadTlabTopOffset());
         Word end = loadWord(thread, threadTlabEndOffset());
         Word newTop = top.plus(size);
-        if (newTop.cmp(BE, end)) {
-            Object memory = cast(top, Object.class);
+        if (newTop.belowOrEqual(end)) {
             store(thread, 0, threadTlabTopOffset(), newTop);
-            return memory;
+            return top;
         }
-        return null;
+        return Word.zero();
     }
 
     @Snippet
     public static Object initialize(
-                    @Parameter("memory") Object memory,
+                    @Parameter("memory") Word memory,
                     @Parameter("hub") Object hub,
                     @ConstantParameter("size") int size) {
 
-        if (memory == null) {
+        if (memory == Word.zero()) {
             return NewInstanceStubCall.call(hub);
         }
-        Object instance = cast(memory, Object.class);
+        Object instance = memory.toObject();
         formatInstance(hub, size, instance);
         return verifyOop(instance);
     }
@@ -91,18 +88,24 @@ public class NewInstanceSnippets implements SnippetsInterface {
     }
 
     private static Word asWord(Object object) {
-        return cast(object, Word.class);
+        return Word.fromObject(object);
     }
 
     private static Word loadWord(Object object, int offset) {
-        return cast(load(object, 0, offset, wordKind()), Word.class);
+        Object value = loadObject(object, 0, offset, true);
+        return asWord(value);
+    }
+
+    private static Word loadWord(Word address, int offset) {
+        Object value = loadObject(address, 0, offset, true);
+        return asWord(value);
     }
 
     /**
      * Formats the header of a created instance and zeroes out its body.
      */
     private static void formatInstance(Object hub, int size, Object instance) {
-        Word headerPrototype = cast(load(hub, 0, instanceHeaderPrototypeOffset(), wordKind()), Word.class);
+        Word headerPrototype = loadWord(hub, instanceHeaderPrototypeOffset());
         store(instance, 0, 0, headerPrototype);
         store(instance, 0, hubOffset(), hub);
         explodeLoop();
@@ -160,7 +163,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
             this.useTLAB = useTLAB;
             try {
                 allocate = runtime.getResolvedJavaMethod(NewInstanceSnippets.class.getDeclaredMethod("allocate", int.class));
-                initialize = runtime.getResolvedJavaMethod(NewInstanceSnippets.class.getDeclaredMethod("initialize", Object.class, Object.class, int.class));
+                initialize = runtime.getResolvedJavaMethod(NewInstanceSnippets.class.getDeclaredMethod("initialize", Word.class, Object.class, int.class));
             } catch (NoSuchMethodException e) {
                 throw new GraalInternalError(e);
             }
