@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.type.*;
 
 public class InsertStateAfterPlaceholderPhase extends Phase {
 
-    private static class PlaceholderNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, LIRLowerable {
+    private static class PlaceholderNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, LIRLowerable, Canonicalizable {
         public PlaceholderNode() {
             super(StampFactory.forVoid());
         }
@@ -42,6 +42,14 @@ public class InsertStateAfterPlaceholderPhase extends Phase {
         @Override
         public boolean hasSideEffect() {
             return false;
+        }
+
+        @Override
+        public ValueNode canonical(CanonicalizerTool tool) {
+            if (stateAfter() == null) {
+                return null;
+            }
+            return this;
         }
     }
 
