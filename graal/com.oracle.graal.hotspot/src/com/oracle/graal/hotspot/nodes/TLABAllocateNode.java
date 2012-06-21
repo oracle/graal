@@ -27,6 +27,7 @@ import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.snippets.*;
 
 /**
  * Allocates some uninitialized area. This is used for TLAB allocation
@@ -37,7 +38,7 @@ public final class TLABAllocateNode extends FixedWithNextNode implements Lowerab
     private final int size;
 
     public TLABAllocateNode(int size, Kind wordKind) {
-        super(StampFactory.forKind(wordKind));
+        super(StampFactory.forWord(wordKind, true));
         this.size = size;
     }
 
@@ -55,7 +56,7 @@ public final class TLABAllocateNode extends FixedWithNextNode implements Lowerab
      */
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object allocate(@ConstantNodeParameter int size, @ConstantNodeParameter Kind wordKind) {
+    public static Word allocate(@ConstantNodeParameter int size, @ConstantNodeParameter Kind wordKind) {
         throw new UnsupportedOperationException();
     }
 }

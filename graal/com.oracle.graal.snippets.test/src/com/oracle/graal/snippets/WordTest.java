@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.snippets;
 
-import static com.oracle.graal.nodes.calc.Condition.*;
-
 import java.lang.reflect.*;
 
 import org.junit.*;
@@ -34,7 +32,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.tests.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 
 /**
  * Tests for the {@link Word} type.
@@ -78,9 +75,9 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
         long[] words = new long[] {Long.MIN_VALUE, Long.MIN_VALUE + 1, -1L, 0L, 1L, Long.MAX_VALUE - 1, Long.MAX_VALUE};
         for (long word1 : words) {
             for (long word2 : words) {
-                for (Condition cond : new Condition[] {AE, AT, EQ, NE, BE, BT}) {
-                    test("compare" + cond.name(), word1, word2);
-                    test("compare" + cond.name(), word2, word1);
+                for (String method : new String[] {"aboveOrEqual", "above", "belowOrEqual", "below"}) {
+                    test(method, word1, word2);
+                    test(method, word2, word1);
                 }
             }
         }
@@ -97,28 +94,23 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
     }
 
     @Snippet
-    public static boolean compareAE(long word1, long word2) {
-        return Word.fromLong(word1).cmp(Condition.AE, Word.fromLong(word2));
+    public static boolean aboveOrEqual(long word1, long word2) {
+        return Word.fromLong(word1).aboveOrEqual(Word.fromLong(word2));
     }
+
     @Snippet
-    public static boolean compareAT(long word1, long word2) {
-        return Word.fromLong(word1).cmp(Condition.AT, Word.fromLong(word2));
+    public static boolean above(long word1, long word2) {
+        return Word.fromLong(word1).above(Word.fromLong(word2));
     }
+
     @Snippet
-    public static boolean compareEQ(long word1, long word2) {
-        return Word.fromLong(word1).cmp(Condition.EQ, Word.fromLong(word2));
+    public static boolean belowOrEqual(long word1, long word2) {
+        return Word.fromLong(word1).belowOrEqual(Word.fromLong(word2));
     }
+
     @Snippet
-    public static boolean compareNE(long word1, long word2) {
-        return Word.fromLong(word1).cmp(Condition.NE, Word.fromLong(word2));
-    }
-    @Snippet
-    public static boolean compareBE(long word1, long word2) {
-        return Word.fromLong(word1).cmp(Condition.BE, Word.fromLong(word2));
-    }
-    @Snippet
-    public static boolean compareBT(long word1, long word2) {
-        return Word.fromLong(word1).cmp(Condition.BT, Word.fromLong(word2));
+    public static boolean below(long word1, long word2) {
+        return Word.fromLong(word1).below(Word.fromLong(word2));
     }
 
 }
