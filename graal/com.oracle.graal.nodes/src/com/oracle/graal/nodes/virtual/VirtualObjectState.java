@@ -69,7 +69,7 @@ public final class VirtualObjectState extends VirtualState implements Node.Itera
     @Override
     public void applyToNonVirtual(NodeClosure< ? super ValueNode> closure) {
         for (ValueNode value : fieldValues) {
-            closure.apply(value);
+            closure.apply(this, value);
         }
     }
 }

@@ -31,7 +31,7 @@ import com.oracle.graal.graph.*;
 public abstract class VirtualState extends Node {
 
     public interface NodeClosure<T extends Node> {
-        void apply(T node);
+        void apply(Node usage, T node);
     }
 
     public abstract VirtualState duplicateWithVirtualState();

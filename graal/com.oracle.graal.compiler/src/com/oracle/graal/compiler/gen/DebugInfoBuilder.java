@@ -153,7 +153,7 @@ public class DebugInfoBuilder {
         } else if (value != null) {
             Debug.metric("StateVariables").increment();
             Value operand = nodeOperands.get(value);
-            assert operand != null && (operand instanceof Variable || operand instanceof Constant) : operand;
+            assert operand != null && (operand instanceof Variable || operand instanceof Constant) : operand + " for " + value;
             return operand;
 
         } else {
