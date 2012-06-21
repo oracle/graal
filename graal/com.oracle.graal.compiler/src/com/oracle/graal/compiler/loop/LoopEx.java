@@ -22,9 +22,14 @@
  */
 package com.oracle.graal.compiler.loop;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 
 public class LoopEx {
     private final Loop lirLoop;
@@ -105,6 +110,32 @@ public class LoopEx {
 
     @Override
     public String toString() {
-        return isCounted() ? "Counted" : "" + "Loop (depth=" + lirLoop().depth + ") " + loopBegin();
+        return (isCounted() ? "CountedLoop [" + counted() + "] " : "Loop ") + "(depth=" + lirLoop().depth + ") " + loopBegin();
+    }
+
+    private class InvariantPredicate extends NodePredicate {
+        @Override
+        public boolean apply(Node n) {
+            return isOutsideLoop(n);
+        }
+    }
+
+    public void reassociateInvariants() {
+        InvariantPredicate invariant = new InvariantPredicate();
+        StructuredGraph graph = (StructuredGraph) loopBegin().graph();
+        for (BinaryNode binary : whole().nodes().filter(BinaryNode.class)) {
+            if (!BinaryNode.canTryReassociate(binary)) {
+                continue;
+            }
+            BinaryNode result = BinaryNode.reassociate(binary, invariant);
+            if (result != binary) {
+                Debug.log(CodeUtil.format("%H::%n", Debug.contextLookup(ResolvedJavaMethod.class)) + " : Reassociated %s into %s", binary, result);
+                graph.replaceFloating(binary, result);
+            }
+        }
+    }
+
+    public void setCounted(CountedLoopInfo countedLoopInfo) {
+        counted = countedLoopInfo;
     }
 }

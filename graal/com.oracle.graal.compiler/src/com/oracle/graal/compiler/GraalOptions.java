@@ -200,7 +200,6 @@ public final class GraalOptions {
     public static boolean OptReadElimination                 = true;
     public static boolean OptGVN                             = true;
     public static boolean OptCanonicalizer                   = true;
-    public static boolean OptLoops                           = true;
     public static boolean ScheduleOutOfLoops                 = true;
     public static boolean OptReorderLoops                    = true;
     public static boolean OptEliminateGuards                 = true;
@@ -208,6 +207,11 @@ public final class GraalOptions {
     public static boolean OptLivenessAnalysis                = true;
     public static boolean OptLoopTransform                   = true;
     public static boolean OptSafepointElimination            = true;
+
+    // Loops
+    public static boolean ReassociateInvariants              = true;
+    public static boolean FullUnroll                         = true;
+    public static int FullUnrollMaxNodes                     = 250; // TODO (gd) tune
 
     /**
      * Insert a counter in the method prologue to track the most frequently called methods that were compiled by Graal.

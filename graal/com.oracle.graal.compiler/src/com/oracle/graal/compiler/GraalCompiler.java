@@ -134,7 +134,6 @@ public class GraalCompiler {
 
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
             new InliningPhase(target, runtime, null, assumptions, cache, plan, optimisticOpts).apply(graph);
-            new DeadCodeEliminationPhase().apply(graph);
             new PhiStampPhase().apply(graph);
 
             if (GraalOptions.PropagateTypes) {
@@ -153,19 +152,17 @@ public class GraalCompiler {
 
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
 
+        if (GraalOptions.FullUnroll) {
+            new LoopFullUnrollPhase().apply(graph);
+        }
+
         if (GraalOptions.EscapeAnalysis && !plan.isPhaseDisabled(EscapeAnalysisPhase.class)) {
             new EscapeAnalysisPhase(target, runtime, assumptions, cache, plan, optimisticOpts).apply(graph);
             new PhiStampPhase().apply(graph);
-            if (GraalOptions.OptCanonicalizer) {
-                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-            }
         }
-        if (GraalOptions.OptLoops) {
-            if (GraalOptions.OptLoopTransform) {
-                new LoopTransformPhase().apply(graph);
-            }
+        if (GraalOptions.OptLoopTransform) {
+            new LoopTransformHighPhase().apply(graph);
         }
-        new RemoveValueProxyPhase().apply(graph);
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
         }
@@ -191,15 +188,26 @@ public class GraalCompiler {
             new CheckCastEliminationPhase().apply(graph);
         }
 
+        if (GraalOptions.OptLoopTransform) {
+            new LoopTransformLowPhase().apply(graph);
+        }
+        new RemoveValueProxyPhase().apply(graph);
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
         }
-        new DeadCodeEliminationPhase().apply(graph);
+        if (GraalOptions.CheckCastElimination) {
+            new CheckCastEliminationPhase().apply(graph);
+        }
+
 
         plan.runPhases(PhasePosition.MID_LEVEL, graph);
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
+        new DeadCodeEliminationPhase().apply(graph);
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+        }
         // Add safepoints to loops
         if (GraalOptions.GenLoopSafepoints) {
             new LoopSafepointInsertionPhase().apply(graph);
