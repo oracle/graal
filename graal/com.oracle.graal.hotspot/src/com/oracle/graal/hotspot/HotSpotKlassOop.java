@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
+import com.oracle.graal.api.meta.*;
+
 /**
  * A mechanism for safely conveying a HotSpot klassOop value from the compiler to the C++ code.
  * Such values should not be directly exposed to Java code as they are not real Java
@@ -32,17 +34,14 @@ public class HotSpotKlassOop extends CompilerObject {
 
     private static final long serialVersionUID = -5445542223575839143L;
 
-    /**
-     * The Java object from which the klassOop value can be derived (by the C++ code).
-     */
-    public final Class javaMirror;
+    public final ResolvedJavaType type;
 
-    public HotSpotKlassOop(Class javaMirror) {
-        this.javaMirror = javaMirror;
+    public HotSpotKlassOop(ResolvedJavaType type) {
+        this.type = type;
     }
 
     @Override
     public String toString() {
-        return "HotSpotKlassOop<" + javaMirror.getName() + ">";
+        return "HotSpotKlassOop<" + type.toJava().getName() + ">";
     }
 }
