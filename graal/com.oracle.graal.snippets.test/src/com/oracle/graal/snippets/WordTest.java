@@ -32,6 +32,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.tests.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.snippets.Snippet.InliningPolicy;
 
 /**
  * Tests for the {@link Word} type.
@@ -45,10 +46,12 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
         installer = new SnippetInstaller(runtime, target);
     }
 
+    private static final ThreadLocal<InliningPolicy> inliningPolicy = new ThreadLocal<>();
+
     @Override
     protected StructuredGraph parse(Method m) {
         ResolvedJavaMethod resolvedMethod = runtime.getResolvedJavaMethod(m);
-        return installer.makeGraph(resolvedMethod, null);
+        return installer.makeGraph(resolvedMethod, inliningPolicy.get());
     }
 
     @Test
@@ -83,6 +86,21 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
         }
     }
 
+    @Test
+    public void test_fromObject() {
+        inliningPolicy.set(new InliningPolicy() {
+            public boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller) {
+                return InliningPolicy.Default.shouldInline(method, caller) && !method.name().equals("hashCode");
+            }
+        });
+        test("fromToObject", "object1", "object2");
+        test("fromToObject", "object1", "object1");
+        test("fromToObject", "object", null);
+        test("fromToObject", null, "object");
+        test("fromToObject", null, null);
+        inliningPolicy.set(null);
+    }
+
     @Snippet
     public static long plus_int(long word, int addend) {
         return Word.fromLong(word).plus(addend).toLong();
@@ -113,4 +131,9 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
         return Word.fromLong(word1).below(Word.fromLong(word2));
     }
 
+    @Snippet
+    public static int fromToObject(Object o1, Object o2) {
+        return Word.fromObject(o1).toObject().hashCode() + Word.fromObject(o2).toObject().hashCode();
+    }
 }
+
