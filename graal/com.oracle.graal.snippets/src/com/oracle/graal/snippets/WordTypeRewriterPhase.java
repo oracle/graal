@@ -236,7 +236,10 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     public static boolean isWord(ValueNode node) {
-        return isWord(node.stamp().declaredType());
+        if (node.kind().isObject()) {
+            return isWord(node.objectStamp().type());
+        }
+        return false;
     }
 
     public static boolean isWord(ResolvedJavaType type) {

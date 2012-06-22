@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
+import static com.oracle.graal.hotspot.nodes.CastFromHub.*;
 import static com.oracle.graal.hotspot.nodes.RegisterNode.*;
 import static com.oracle.graal.hotspot.snippets.DirectObjectStoreNode.*;
 import static com.oracle.graal.nodes.extended.UnsafeLoadNode.*;
@@ -74,9 +75,9 @@ public class NewInstanceSnippets implements SnippetsInterface {
         if (memory == Word.zero()) {
             return NewInstanceStubCall.call(hub);
         }
+        formatObject(hub, size, memory);
         Object instance = memory.toObject();
-        formatInstance(hub, size, instance);
-        return verifyOop(instance);
+        return castFromHub(verifyOop(instance), hub);
     }
 
     private static Object verifyOop(Object object) {
@@ -101,15 +102,15 @@ public class NewInstanceSnippets implements SnippetsInterface {
     }
 
     /**
-     * Formats the header of a created instance and zeroes out its body.
+     * Formats some allocated memory with an object header zeroes out the rest.
      */
-    private static void formatInstance(Object hub, int size, Object instance) {
+    private static void formatObject(Object hub, int size, Word memory) {
         Word headerPrototype = loadWord(hub, instanceHeaderPrototypeOffset());
-        store(instance, 0, 0, headerPrototype);
-        store(instance, 0, hubOffset(), hub);
+        store(memory, 0, 0, headerPrototype);
+        store(memory, 0, hubOffset(), hub);
         explodeLoop();
         for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
-            store(instance, 0, offset, 0);
+            store(memory, 0, offset, 0);
         }
     }
 

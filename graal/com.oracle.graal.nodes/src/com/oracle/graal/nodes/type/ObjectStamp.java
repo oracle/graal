@@ -53,16 +53,6 @@ public class ObjectStamp extends Stamp {
     }
 
     @Override
-    public ResolvedJavaType exactType() {
-        return exactType ? type : null;
-    }
-
-    @Override
-    public ResolvedJavaType declaredType() {
-        return type;
-    }
-
-    @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
         str.append(kind().typeChar);
