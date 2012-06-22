@@ -98,14 +98,27 @@ public class NewInstanceSnippets implements SnippetsInterface {
     }
 
     /**
+     * Maximum size of an object whose body is initialized by a sequence of
+     * zero-stores to its fields. Larger objects have their bodies initialized
+     * in a loop.
+     */
+    private static final int MAX_UNROLLED_OBJECT_INITIALIZATION_SIZE = 10 * wordSize();
+
+    /**
      * Formats some allocated memory with an object header zeroes out the rest.
      */
     private static void formatObject(Object hub, int size, Word memory, Word headerPrototype) {
         store(memory, 0, 0, headerPrototype);
         store(memory, 0, hubOffset(), hub);
-        explodeLoop();
-        for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
-            store(memory, 0, offset, 0);
+        if (size <= MAX_UNROLLED_OBJECT_INITIALIZATION_SIZE) {
+            explodeLoop();
+            for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
+                store(memory, 0, offset, 0);
+            }
+        } else {
+            for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
+                store(memory, 0, offset, 0);
+            }
         }
     }
 
