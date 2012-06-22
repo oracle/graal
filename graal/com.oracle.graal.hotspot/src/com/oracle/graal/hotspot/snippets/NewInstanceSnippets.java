@@ -70,12 +70,13 @@ public class NewInstanceSnippets implements SnippetsInterface {
     public static Object initialize(
                     @Parameter("memory") Word memory,
                     @Parameter("hub") Object hub,
+                    @Parameter("prototypeHeader") Word headerPrototype,
                     @ConstantParameter("size") int size) {
 
         if (memory == Word.zero()) {
             return NewInstanceStubCall.call(hub);
         }
-        formatObject(hub, size, memory);
+        formatObject(hub, size, memory, headerPrototype);
         Object instance = memory.toObject();
         return castFromHub(verifyOop(instance), hub);
     }
@@ -91,11 +92,6 @@ public class NewInstanceSnippets implements SnippetsInterface {
         return Word.fromObject(object);
     }
 
-    private static Word loadWord(Object object, int offset) {
-        Object value = loadObject(object, 0, offset, true);
-        return asWord(value);
-    }
-
     private static Word loadWord(Word address, int offset) {
         Object value = loadObject(address, 0, offset, true);
         return asWord(value);
@@ -104,8 +100,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
     /**
      * Formats some allocated memory with an object header zeroes out the rest.
      */
-    private static void formatObject(Object hub, int size, Word memory) {
-        Word headerPrototype = loadWord(hub, instanceHeaderPrototypeOffset());
+    private static void formatObject(Object hub, int size, Word memory, Word headerPrototype) {
         store(memory, 0, 0, headerPrototype);
         store(memory, 0, hubOffset(), hub);
         explodeLoop();
@@ -140,11 +135,6 @@ public class NewInstanceSnippets implements SnippetsInterface {
     }
 
     @Fold
-    private static int instanceHeaderPrototypeOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().instanceHeaderPrototypeOffset;
-    }
-
-    @Fold
     private static int hubOffset() {
         return HotSpotGraalRuntime.getInstance().getConfig().hubOffset;
     }
@@ -163,7 +153,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
             this.useTLAB = useTLAB;
             try {
                 allocate = runtime.getResolvedJavaMethod(NewInstanceSnippets.class.getDeclaredMethod("allocate", int.class));
-                initialize = runtime.getResolvedJavaMethod(NewInstanceSnippets.class.getDeclaredMethod("initialize", Word.class, Object.class, int.class));
+                initialize = runtime.getResolvedJavaMethod(NewInstanceSnippets.class.getDeclaredMethod("initialize", Word.class, Object.class, Word.class, int.class));
             } catch (NoSuchMethodException e) {
                 throw new GraalInternalError(e);
             }
@@ -217,7 +207,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
             Key key = new Key(initialize).add("size", size);
             ValueNode memory = initializeNode.memory();
             //assert memory instanceof AllocateNode || memory instanceof ConstantNode : memory;
-            Arguments arguments = arguments("memory", memory).add("hub", hub);
+            Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeHeader", type.prototypeHeader());
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering initialize in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, arguments);
             template.instantiate(runtime, initializeNode, initializeNode, arguments);
