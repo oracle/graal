@@ -153,7 +153,7 @@ public class GraalCompiler {
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
 
         if (GraalOptions.FullUnroll) {
-            new LoopFullUnrollPhase().apply(graph);
+            new LoopFullUnrollPhase(runtime).apply(graph);
         }
 
         if (GraalOptions.EscapeAnalysis && !plan.isPhaseDisabled(EscapeAnalysisPhase.class)) {

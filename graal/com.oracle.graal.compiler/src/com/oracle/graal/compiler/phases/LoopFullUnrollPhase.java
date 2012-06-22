@@ -23,11 +23,17 @@
 package com.oracle.graal.compiler.phases;
 
 import com.oracle.graal.compiler.loop.*;
+import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 
 
 public class LoopFullUnrollPhase extends Phase {
+    private final ExtendedRiRuntime runtime;
+
+    public LoopFullUnrollPhase(ExtendedRiRuntime runtime) {
+        this.runtime = runtime;
+    }
 
     @Override
     protected void run(StructuredGraph graph) {
@@ -40,7 +46,7 @@ public class LoopFullUnrollPhase extends Phase {
                 for (final LoopEx loop : dataCounted.countedLoops()) {
                     if (LoopPolicies.shouldFullUnroll(loop)) {
                         Debug.log("FullUnroll %s", loop);
-                        LoopTransformations.fullUnroll(loop);
+                        LoopTransformations.fullUnroll(loop, runtime);
                         Debug.dump(graph, "After fullUnroll %s", loop);
                         peeled = true;
                         break;

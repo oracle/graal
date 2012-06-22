@@ -84,7 +84,7 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
         Constant trueConstant = conditionalNode.trueValue().asConstant();
         Constant falseConstant = conditionalNode.falseValue().asConstant();
 
-        if (falseConstant != null && trueConstant != null) {
+        if (falseConstant != null && trueConstant != null && runtime != null) {
             Boolean trueResult = cond.foldCondition(trueConstant, constant, runtime, unorderedIsTrue());
             Boolean falseResult = cond.foldCondition(falseConstant, constant, runtime, unorderedIsTrue());
 
@@ -114,7 +114,7 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
     }
 
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant()) {
+        if (x().isConstant() && y().isConstant() && tool.runtime() != null) {
             return ConstantNode.forBoolean(condition().foldCondition(x().asConstant(), y().asConstant(), tool.runtime(), unorderedIsTrue()), graph());
         }
         if (x().isConstant()) {
