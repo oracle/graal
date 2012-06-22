@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.loop;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.nodes.*;
 
@@ -43,14 +44,14 @@ public abstract class LoopTransformations {
         loop.inside().duplicate().insertBefore(loop);
     }
 
-    public static void fullUnroll(LoopEx loop) {
+    public static void fullUnroll(LoopEx loop, CodeCacheProvider runtime) {
         //assert loop.isCounted(); //TODO (gd) strenghten : counted with known trip count
         LoopBeginNode loopBegin = loop.loopBegin();
         StructuredGraph graph = (StructuredGraph) loopBegin.graph();
         while (!loopBegin.isDeleted()) {
             int mark = graph.getMark();
             peel(loop);
-            new CanonicalizerPhase(null, null, null, mark, null).apply(graph);
+            new CanonicalizerPhase(null, runtime, null, mark, null).apply(graph);
         }
     }
 

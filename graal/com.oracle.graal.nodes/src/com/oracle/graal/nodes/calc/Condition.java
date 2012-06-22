@@ -259,7 +259,7 @@ public enum Condition {
      * @param unorderedIsTrue true if an undecided float comparison should result in "true"
      * @return true if the comparison is known to be true, false if the comparison is known to be false
      */
-    public boolean foldCondition(Constant lt, Constant rt, CodeCacheProvider runtime, boolean unorderedIsTrue) {
+    public boolean foldCondition(Constant lt, Constant rt, MetaAccessProvider runtime, boolean unorderedIsTrue) {
         switch (lt.kind) {
             case Boolean:
             case Byte:
