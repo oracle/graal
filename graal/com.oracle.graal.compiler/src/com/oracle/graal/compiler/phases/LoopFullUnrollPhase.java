@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.*;
 
 
 public class LoopFullUnrollPhase extends Phase {
+    private static final DebugMetric FULLY_UNROLLED_LOOPS = Debug.metric("FullUnrolls");
     private final ExtendedRiRuntime runtime;
 
     public LoopFullUnrollPhase(ExtendedRiRuntime runtime) {
@@ -47,6 +48,7 @@ public class LoopFullUnrollPhase extends Phase {
                     if (LoopPolicies.shouldFullUnroll(loop)) {
                         Debug.log("FullUnroll %s", loop);
                         LoopTransformations.fullUnroll(loop, runtime);
+                        FULLY_UNROLLED_LOOPS.increment();
                         Debug.dump(graph, "After fullUnroll %s", loop);
                         peeled = true;
                         break;
