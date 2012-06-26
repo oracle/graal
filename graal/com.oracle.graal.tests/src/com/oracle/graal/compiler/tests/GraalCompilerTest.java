@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.tests;
 
 import java.lang.reflect.*;
+import java.util.*;
 import java.util.concurrent.*;
 
 import junit.framework.*;
@@ -84,7 +85,16 @@ public abstract class GraalCompilerTest {
         }
     }
 
-    private static String getCanonicalGraphString(StructuredGraph graph) {
+    protected void assertConstantReturn(StructuredGraph graph, int value) {
+        String graphString = getCanonicalGraphString(graph);
+        Assert.assertEquals("unexpected number of ReturnNodes: " + graphString, graph.getNodes(ReturnNode.class).count(), 1);
+        ValueNode result = graph.getNodes(ReturnNode.class).first().result();
+        Assert.assertTrue("unexpected ReturnNode result node: " + graphString, result.isConstant());
+        Assert.assertEquals("unexpected ReturnNode result kind: " + graphString, result.asConstant().kind, Kind.Int);
+        Assert.assertEquals("unexpected ReturnNode result: " + graphString, result.asConstant().asInt(), value);
+    }
+
+    protected static String getCanonicalGraphString(StructuredGraph graph) {
         SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
 
@@ -163,8 +173,7 @@ public abstract class GraalCompilerTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        InstalledCode compiledMethod = compile(runtime.getResolvedJavaMethod(method), parse(method));
-        compiledMethod.method();
+        InstalledCode compiledMethod = getCode(runtime.getResolvedJavaMethod(method), parse(method));
 
         if (exception != null) {
             try {
@@ -179,13 +188,35 @@ public abstract class GraalCompilerTest {
         }
     }
 
-    protected InstalledCode compile(final ResolvedJavaMethod method, final StructuredGraph graph) {
-        return Debug.scope("Compiling", new DebugDumpScope(String.valueOf(compilationId++), true), new Callable<InstalledCode>() {
+    private Map<ResolvedJavaMethod, InstalledCode> cache = new HashMap<>();
+
+    /**
+     * Gets installed code for a given method and graph, compiling it first if necessary.
+     */
+    protected InstalledCode getCode(final ResolvedJavaMethod method, final StructuredGraph graph) {
+        return getCode(method, graph, false);
+    }
+
+    /**
+     * Gets installed code for a given method and graph, compiling it first if necessary.
+     *
+     * @param forceCompile specifies whether to ignore any previous code cached for the (method, key) pair
+     */
+    protected InstalledCode getCode(final ResolvedJavaMethod method, final StructuredGraph graph, boolean forceCompile) {
+        if (!forceCompile) {
+            InstalledCode cached = cache.get(method);
+            if (cached != null && cached.isValid()) {
+                return cached;
+            }
+        }
+        InstalledCode installedCode = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(compilationId++), true), new Callable<InstalledCode>() {
             public InstalledCode call() throws Exception {
                 CompilationResult targetMethod = runtime.compile(method, graph);
                 return addMethod(method, targetMethod);
             }
         });
+        cache.put(method, installedCode);
+        return installedCode;
     }
 
     protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult tm) {

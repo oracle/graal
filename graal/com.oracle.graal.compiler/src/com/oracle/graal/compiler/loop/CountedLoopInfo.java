@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.loop;
 
+import com.oracle.graal.compiler.loop.InductionVariable.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
@@ -29,14 +30,17 @@ public class CountedLoopInfo {
     private final LoopEx loop;
     private InductionVariable iv;
     private ValueNode end;
+    private boolean oneOff;
 
-    CountedLoopInfo(LoopEx loop, InductionVariable iv, ValueNode end) {
+    CountedLoopInfo(LoopEx loop, InductionVariable iv, ValueNode end, boolean oneOff) {
         this.loop = loop;
         this.iv = iv;
         this.end = end;
+        this.oneOff = oneOff;
     }
 
     public ValueNode maxTripCountNode() {
+        //TODO (gd) stuarte and respect oneOff
         return IntegerArithmeticNode.div(IntegerArithmeticNode.sub(end, iv.initNode()), iv.strideNode());
     }
 
@@ -45,7 +49,9 @@ public class CountedLoopInfo {
     }
 
     public long constantMaxTripCount() {
-        return (((ConstantNode) end).asConstant().asLong() - iv.constantInit()) / iv.constantStride();
+        long off = oneOff ? iv.direction() == Direction.Up ? 1 : -1 : 0;
+        long max = (((ConstantNode) end).asConstant().asLong() + off - iv.constantInit()) / iv.constantStride();
+        return Math.max(0, max);
     }
 
     public boolean isExactTripCount() {
@@ -65,5 +71,10 @@ public class CountedLoopInfo {
     public long constantExactTripCount() {
         assert isExactTripCount();
         return constantMaxTripCount();
+    }
+
+    @Override
+    public String toString() {
+        return "iv=" + iv + " until " + end + (oneOff ? iv.direction() == Direction.Up ? "+1" : "-1" : "");
     }
 }

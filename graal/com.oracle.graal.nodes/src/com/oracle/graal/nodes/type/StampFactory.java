@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.type;
 
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.GenericStamp.GenericStampType;
@@ -40,7 +38,7 @@ public class StampFactory {
     private static final Stamp conditionStamp = new GenericStamp(GenericStampType.Condition);
     private static final Stamp voidStamp = new GenericStamp(GenericStampType.Void);
 
-    private static final Stamp positiveInt = forInt(0, Integer.MAX_VALUE);
+    private static final Stamp positiveInt = forInteger(Kind.Int, 0, Integer.MAX_VALUE, Integer.MAX_VALUE);
 
     private static void setCache(Kind kind, Stamp stamp) {
         stampCache[kind.ordinal()] = stamp;
@@ -61,6 +59,10 @@ public class StampFactory {
 
         setCache(Kind.Object, objectStamp);
         setCache(Kind.Void, voidStamp);
+    }
+
+    public static Stamp forWord(Kind wordKind, boolean nonNull) {
+        return new WordStamp(wordKind, nonNull);
     }
 
     public static Stamp forKind(Kind kind) {
@@ -96,12 +98,8 @@ public class StampFactory {
         return positiveInt;
     }
 
-    public static Stamp forInt(int lowerBound, int upperBound) {
-        return new IntegerStamp(Kind.Int, lowerBound, upperBound);
-    }
-
-    public static Stamp forLong(long lowerBound, long upperBound) {
-        return new IntegerStamp(Kind.Long, lowerBound, upperBound);
+    public static Stamp forInteger(Kind kind, long lowerBound, long upperBound, long mask) {
+        return new IntegerStamp(kind, lowerBound, upperBound, mask);
     }
 
     public static Stamp forConstant(Constant value) {
@@ -109,10 +107,8 @@ public class StampFactory {
         if (value.kind == Kind.Object) {
             throw new GraalInternalError("unexpected kind: %s", value.kind);
         } else {
-            if (value.kind == Kind.Int) {
-                return forInt(value.asInt(), value.asInt());
-            } else if (value.kind == Kind.Long) {
-                return forLong(value.asLong(), value.asLong());
+            if (value.kind == Kind.Int || value.kind == Kind.Long) {
+                return forInteger(value.kind, value.asLong(), value.asLong(), value.asLong() & IntegerStamp.defaultMask(value.kind));
             }
             return forKind(value.kind.stackKind());
         }
@@ -126,14 +122,6 @@ public class StampFactory {
         } else {
             throw new GraalInternalError("CiKind.Object expected, actual kind: %s", value.kind);
         }
-    }
-
-    public static Stamp negate(IntegerStamp stamp) {
-        Kind kind = stamp.kind();
-        if (stamp.lowerBound() != kind.minValue()) {
-            return new IntegerStamp(kind, -stamp.upperBound(), -stamp.lowerBound());
-        }
-        return forKind(kind);
     }
 
     public static Stamp object() {
@@ -165,23 +153,5 @@ public class StampFactory {
 
     public static Stamp exactNonNull(ResolvedJavaType type) {
         return new ObjectStamp(type, true, true);
-    }
-
-    public static Stamp or(Collection<? extends StampProvider> values) {
-        return meet(values);
-    }
-
-    public static Stamp meet(Collection<? extends StampProvider> values) {
-        if (values.size() == 0) {
-            return forVoid();
-        } else {
-            Iterator< ? extends StampProvider> iterator = values.iterator();
-            Stamp stamp = iterator.next().stamp();
-
-            while (iterator.hasNext()) {
-                stamp = stamp.meet(iterator.next().stamp());
-            }
-            return stamp;
-        }
     }
 }

@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.loop;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 import com.oracle.graal.compiler.loop.InductionVariable.*;
 import com.oracle.graal.debug.*;
@@ -35,8 +36,14 @@ public class LoopsData {
     private Map<Loop, LoopEx> lirLoopToEx = new IdentityHashMap<>();
     private Map<LoopBeginNode, LoopEx> loopBeginToEx = new IdentityHashMap<>();
 
-    public LoopsData(StructuredGraph graph) {
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+    public LoopsData(final StructuredGraph graph) {
+
+        ControlFlowGraph cfg = Debug.scope("ControlFlowGraph", new Callable<ControlFlowGraph>() {
+            @Override
+            public ControlFlowGraph call() throws Exception {
+                return ControlFlowGraph.compute(graph, true, true, true, false);
+            }
+        });
         for (Loop lirLoop : cfg.getLoops()) {
             LoopEx ex = new LoopEx(lirLoop, this);
             lirLoopToEx.put(lirLoop, ex);
@@ -139,8 +146,7 @@ public class LoopsData {
                         break;
                     default: throw GraalInternalError.shouldNotReachHere();
                 }
-                // TODO (gd)
-                Debug.log("absorb %b %s", oneOff, limit);
+                loop.setCounted(new CountedLoopInfo(loop, iv, limit, oneOff));
             }
         }
     }

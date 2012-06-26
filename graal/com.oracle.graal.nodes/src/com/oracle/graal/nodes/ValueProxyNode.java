@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
@@ -51,8 +51,13 @@ public class ValueProxyNode extends FloatingNode implements Node.IterableNodeTyp
     }
 
     @Override
+    public boolean inferStamp() {
+        return updateStamp(value.stamp());
+    }
+
+    @Override
     public Stamp stamp() {
-        return value.stamp();
+        return value().stamp();
     }
 
     public BeginNode proxyPoint() {

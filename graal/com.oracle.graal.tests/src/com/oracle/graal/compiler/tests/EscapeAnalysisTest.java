@@ -117,7 +117,7 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
     }
 
     private void test(final String snippet, final Constant expectedResult) {
-        Debug.scope("ScalarTypeSystemTest", new DebugDumpScope(snippet), new Runnable() {
+        Debug.scope("EscapeAnalysisTest", new DebugDumpScope(snippet), new Runnable() {
             public void run() {
                 StructuredGraph graph = parse(snippet);
                 for (Invoke n : graph.getInvokes()) {

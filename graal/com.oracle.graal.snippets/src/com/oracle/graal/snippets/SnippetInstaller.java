@@ -134,10 +134,18 @@ public class SnippetInstaller {
         }
     }
 
-    private StructuredGraph makeGraph(final ResolvedJavaMethod method, final InliningPolicy policy) {
+    public StructuredGraph makeGraph(final ResolvedJavaMethod method, final InliningPolicy policy) {
+        StructuredGraph graph = parseGraph(method, policy);
+
+        Debug.dump(graph, "%s: Final", method.name());
+
+        return graph;
+    }
+
+    private StructuredGraph parseGraph(final ResolvedJavaMethod method, final InliningPolicy policy) {
         StructuredGraph graph = graphCache.get(method);
         if (graph == null) {
-            graph = buildGraph(method, policy);
+            graph = buildGraph(method, policy == null ? inliningPolicy(method) : policy);
             //System.out.println("built " + graph);
             graphCache.put(method, graph);
         }
@@ -155,17 +163,19 @@ public class SnippetInstaller {
 
                 Debug.dump(graph, "%s: %s", method.name(), GraphBuilderPhase.class.getSimpleName());
 
+                new SnippetVerificationPhase().apply(graph);
+
                 new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
 
                 for (Invoke invoke : graph.getInvokes()) {
                     MethodCallTargetNode callTarget = invoke.callTarget();
                     ResolvedJavaMethod callee = callTarget.targetMethod();
                     if (policy.shouldInline(callee, method)) {
-                        StructuredGraph targetGraph = makeGraph(callee, policy);
+                        StructuredGraph targetGraph = parseGraph(callee, policy);
                         InliningUtil.inline(invoke, targetGraph, true);
                         Debug.dump(graph, "after inlining %s", callee);
                         if (GraalOptions.OptCanonicalizer) {
-                            new WordTypeRewriterPhase(target).apply(graph);
+                            new WordTypeRewriterPhase(target.wordKind, runtime.getResolvedJavaType(target.wordKind)).apply(graph);
                             new CanonicalizerPhase(target, runtime, null).apply(graph);
                         }
                     }
@@ -173,7 +183,7 @@ public class SnippetInstaller {
 
                 new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
 
-                new WordTypeRewriterPhase(target).apply(graph);
+                new WordTypeRewriterPhase(target.wordKind, runtime.getResolvedJavaType(target.wordKind)).apply(graph);
 
                 new DeadCodeEliminationPhase().apply(graph);
                 if (GraalOptions.OptCanonicalizer) {
@@ -186,8 +196,10 @@ public class SnippetInstaller {
 
                 new InsertStateAfterPlaceholderPhase().apply(graph);
 
-                Debug.dump(graph, "%s: Final", method.name());
-
+                if (GraalOptions.ProbabilityAnalysis) {
+                    new DeadCodeEliminationPhase().apply(graph);
+                    new ComputeProbabilityPhase().apply(graph);
+                }
                 return graph;
             }
         });

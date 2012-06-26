@@ -38,6 +38,7 @@ public abstract class LogicNode extends BinaryNode {
      */
     public LogicNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
+        assert kind == Kind.Int || kind == Kind.Long;
     }
 
     public static LogicNode and(ValueNode v1, ValueNode v2) {

@@ -41,7 +41,7 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
     public HotSpotTypePrimitive(Kind kind) {
         this.kind = kind;
         this.name = String.valueOf(Character.toUpperCase(kind.typeChar));
-        this.klassOop = new HotSpotKlassOop(kind.toJavaClass());
+        this.klassOop = new HotSpotKlassOop(this);
     }
 
     @Override

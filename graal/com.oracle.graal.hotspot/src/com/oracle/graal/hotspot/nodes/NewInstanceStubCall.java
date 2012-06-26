@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.target.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
@@ -38,11 +39,23 @@ import com.oracle.max.asm.target.amd64.*;
  */
 public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
+    private static final Stamp defaultStamp = StampFactory.objectNonNull();
+
     @Input private final ValueNode hub;
 
     public NewInstanceStubCall(ValueNode hub) {
-        super(StampFactory.objectNonNull());
+        super(defaultStamp);
         this.hub = hub;
+    }
+
+    @Override
+    public boolean inferStamp() {
+        if (stamp() == defaultStamp && hub.isConstant()) {
+            HotSpotKlassOop klassOop = (HotSpotKlassOop) this.hub.asConstant().asObject();
+            updateStamp(StampFactory.exactNonNull(klassOop.type));
+            return true;
+        }
+        return false;
     }
 
     @Override

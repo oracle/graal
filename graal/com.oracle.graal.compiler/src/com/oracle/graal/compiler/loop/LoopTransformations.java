@@ -22,11 +22,19 @@
  */
 package com.oracle.graal.compiler.loop;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.nodes.*;
 
 
 public abstract class LoopTransformations {
+    private static final int UNROLL_LIMIT = GraalOptions.FullUnrollMaxNodes * 2;
+
+    private LoopTransformations() {
+        // does not need to be instantiated
+    }
+
     public static void invert(LoopEx loop, FixedNode point) {
         LoopFragmentInsideBefore head = loop.insideBefore(point);
         LoopFragmentInsideBefore duplicate = head.duplicate();
@@ -39,14 +47,18 @@ public abstract class LoopTransformations {
         loop.inside().duplicate().insertBefore(loop);
     }
 
-    public static void fullUnroll(LoopEx loop) {
+    public static void fullUnroll(LoopEx loop, CodeCacheProvider runtime) {
         //assert loop.isCounted(); //TODO (gd) strenghten : counted with known trip count
+        int iterations = 0;
         LoopBeginNode loopBegin = loop.loopBegin();
         StructuredGraph graph = (StructuredGraph) loopBegin.graph();
         while (!loopBegin.isDeleted()) {
             int mark = graph.getMark();
             peel(loop);
-            new CanonicalizerPhase(null, null, null, mark, null).apply(graph);
+            new CanonicalizerPhase(null, runtime, null, mark, null).apply(graph);
+            if (iterations++ > UNROLL_LIMIT || graph.getNodeCount() > GraalOptions.MaximumDesiredSize * 3) {
+                throw new BailoutException("FullUnroll : Graph seems to grow out of proportion");
+            }
         }
     }
 

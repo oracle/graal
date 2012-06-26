@@ -26,12 +26,18 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "&")
 public final class AndNode extends LogicNode implements Canonicalizable, LIRLowerable {
 
     public AndNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
+    }
+
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(StampTool.and(x().integerStamp(), y().integerStamp()));
     }
 
     @Override

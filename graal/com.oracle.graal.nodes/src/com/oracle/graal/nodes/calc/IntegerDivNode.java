@@ -22,16 +22,23 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "/")
 public final class IntegerDivNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
 
     public IntegerDivNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
+    }
+
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(StampTool.div(x().integerStamp(), y().integerStamp()));
     }
 
     @Override
@@ -51,6 +58,33 @@ public final class IntegerDivNode extends IntegerArithmeticNode implements Canon
             long c = y().asConstant().asLong();
             if (c == 1) {
                 return x();
+            }
+            if (c == -1) {
+                return graph().unique(new NegateNode(x()));
+            }
+            long abs = Math.abs(c);
+            if (CodeUtil.isPowerOf2(abs)) {
+                ValueNode dividend = x();
+                IntegerStamp stampX = x().integerStamp();
+                int log2 = CodeUtil.log2(abs);
+                // no rounding if dividend is negative or if its low bits are always 0
+                if (stampX.lowerBound() < 0 || (stampX.mask() & (abs - 1)) != 0) {
+                    int bits;
+                    if (kind().isInt()) {
+                        bits = 32;
+                    } else {
+                        assert kind().isLong();
+                        bits = 64;
+                    }
+                    RightShiftNode sign = graph().unique(new RightShiftNode(kind(), x(), ConstantNode.forInt(bits - 1, graph())));
+                    UnsignedRightShiftNode round = graph().unique(new UnsignedRightShiftNode(kind(), sign, ConstantNode.forInt(bits - log2, graph())));
+                    dividend = IntegerArithmeticNode.add(dividend, round);
+                }
+                RightShiftNode shift = graph().unique(new RightShiftNode(kind(), dividend, ConstantNode.forInt(log2, graph())));
+                if (c < 0) {
+                    return graph().unique(new NegateNode(shift));
+                }
+                return shift;
             }
         }
         return this;

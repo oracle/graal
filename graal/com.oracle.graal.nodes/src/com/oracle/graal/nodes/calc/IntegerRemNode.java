@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -51,6 +52,8 @@ public final class IntegerRemNode extends IntegerArithmeticNode implements Canon
             long c = y().asConstant().asLong();
             if (c == 1 || c == -1) {
                 return ConstantNode.forIntegerKind(kind(), 0, graph());
+            } else if (c > 0 && CodeUtil.isPowerOf2(c) && x().integerStamp().lowerBound() >= 0) {
+                return graph().unique(new AndNode(kind(), x(), ConstantNode.forIntegerKind(kind(), c - 1, graph())));
             }
         }
         return this;

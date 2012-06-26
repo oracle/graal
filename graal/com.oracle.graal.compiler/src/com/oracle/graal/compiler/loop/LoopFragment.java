@@ -212,20 +212,22 @@ public abstract class LoopFragment {
         assert isDuplicate();
         StructuredGraph graph = graph();
         for (BeginNode earlyExit : toHirBlocks(original().loop().lirLoop().exits)) {
-            if (!this.contains(earlyExit)) {
+            FixedNode next = earlyExit.next();
+            if (earlyExit.isDeleted() || !this.contains(earlyExit)) {
                 continue;
             }
             BeginNode newEarlyExit = getDuplicatedNode(earlyExit);
             assert newEarlyExit != null;
             MergeNode merge = graph.add(new MergeNode());
+            merge.setProbability(next.probability());
             EndNode originalEnd = graph.add(new EndNode());
             EndNode newEnd = graph.add(new EndNode());
             merge.addForwardEnd(originalEnd);
             merge.addForwardEnd(newEnd);
-            FixedNode next = earlyExit.next();
             earlyExit.setNext(originalEnd);
             newEarlyExit.setNext(newEnd);
             merge.setNext(next);
+
             FrameState exitState = earlyExit.stateAfter();
             FrameState state = null;
             if (exitState != null) {
@@ -244,7 +246,6 @@ public abstract class LoopFragment {
                     PhiNode phi = graph.add(vpn.type() == PhiType.Value ? new PhiNode(vpn.kind(), merge) : new PhiNode(vpn.type(), merge));
                     phi.addInput(vpn);
                     phi.addInput(newVpn);
-                    assert vpn.type() == PhiType.Value;
                     replaceWith = phi;
                 } else {
                     replaceWith = vpn.value();

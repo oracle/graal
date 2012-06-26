@@ -36,6 +36,9 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable, 
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
+        if (x().integerStamp().lowerBound() >= 0) {
+            return graph().unique(new UnsignedRightShiftNode(kind(), x(), y()));
+        }
         if (y().isConstant()) {
             int amount = y().asConstant().asInt();
             int originalAmout = amount;

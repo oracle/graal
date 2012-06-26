@@ -91,12 +91,17 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
 
         while (!inlineCandidates.isEmpty() && graph.getNodeCount() < GraalOptions.MaximumDesiredSize) {
-            final InlineInfo info = inlineCandidates.remove();
+            InlineInfo candidate = inlineCandidates.remove();
+            if (!candidate.invoke.node().isAlive()) {
+                continue;
+            }
+            // refresh infos
+            final InlineInfo info = InliningUtil.getInlineInfo(candidate.invoke, candidate.level, runtime, assumptions, this, optimisticOpts);
 
             boolean inline = Debug.scope("InliningDecisions", new Callable<Boolean>() {
                 @Override
                 public Boolean call() throws Exception {
-                    return info.invoke.node().isAlive() && inliningPolicy.isWorthInlining(graph, info);
+                    return info != null && inliningPolicy.isWorthInlining(graph, info);
                 }
             });
 

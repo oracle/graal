@@ -102,7 +102,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAn
             EscapeField[] fields = new EscapeField[length];
             for (int i = 0; i < length; i++) {
                 Integer representation = i;
-                fields[i] = new EscapeField("[" + i + "]", representation, ((NewArrayNode) node).elementType());
+                fields[i] = new EscapeField(Integer.toString(i), representation, ((NewArrayNode) node).elementType());
             }
             return fields;
         }

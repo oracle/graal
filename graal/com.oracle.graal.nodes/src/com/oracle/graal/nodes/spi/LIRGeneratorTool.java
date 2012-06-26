@@ -48,6 +48,8 @@ public abstract class LIRGeneratorTool {
      */
     public abstract boolean canStoreConstant(Constant c);
 
+    public abstract RegisterAttributes attributes(Register register);
+
     public abstract Value operand(ValueNode object);
     public abstract Value newVariable(Kind kind);
     public abstract Value setResult(ValueNode x, Value operand);
@@ -92,6 +94,7 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitLookupSwitch(LookupSwitchNode i);
     public abstract void emitTableSwitch(TableSwitchNode i);
+    public abstract void emitTypeSwitch(TypeSwitchNode i);
 
     public abstract void emitInvoke(Invoke i);
     public abstract void emitRuntimeCall(RuntimeCallNode i);

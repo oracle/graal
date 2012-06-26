@@ -173,7 +173,7 @@ public class StructuredGraph extends Graph {
     }
 
     public boolean hasLoops() {
-        return getNodes(LoopBeginNode.class).iterator().hasNext();
+        return getNodes(LoopBeginNode.class).isNotEmpty();
     }
 
     public void removeFloating(FloatingNode node) {
@@ -323,6 +323,7 @@ public class StructuredGraph extends Graph {
             reduceTrivialMerge(begin);
         } else { // convert to merge
             MergeNode merge = this.add(new MergeNode());
+            merge.setProbability(begin.probability());
             this.replaceFixedWithFixed(begin, merge);
         }
     }

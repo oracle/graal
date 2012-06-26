@@ -77,6 +77,9 @@ public final class IntegerLessThanNode extends CompareNode {
         } else if (x().integerStamp().lowerBound() >= y().integerStamp().upperBound()) {
             return ConstantNode.forBoolean(false, graph());
         }
+        if (x().integerStamp().lowerBound() >= 0 && y().integerStamp().lowerBound() >= 0) {
+            return graph().unique(new IntegerBelowThanNode(x(), y()));
+        }
         return super.canonical(tool);
     }
 }

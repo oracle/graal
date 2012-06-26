@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.graph.iterators;
 
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import java.util.*;
 
-/**
- * The {@code AnchorNode} can be used a lower bound for a guard. It can also be used as an upper bound if no other FixedNode can be used for that purpose.
- * The guards that should be kept above this node need to be added to the {@link #dependencies()} collection.
- */
-public final class AnchorNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable {
+import com.oracle.graal.graph.*;
 
-    public AnchorNode() {
-        super(StampFactory.dependency());
+
+public class DistinctFilteredNodeIterable<T extends Node> extends FilteredNodeIterable<T> {
+
+    public DistinctFilteredNodeIterable(NodeIterable<T> nodeIterable) {
+        super(nodeIterable);
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
-        if (this.usages().size() == 0 && dependencies().isEmpty()) {
-            return null;
-        }
+    public DistinctFilteredNodeIterable<T> distinct() {
         return this;
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        // Currently, there is nothing to emit since anchors are only a structural element with no execution semantics.
+    public Iterator<T> iterator() {
+        return new DistinctPredicatedProxyNodeIterator<>(until, nodeIterable.iterator(), predicate);
     }
 }

@@ -26,8 +26,6 @@ import static com.oracle.graal.snippets.Word.Opcode.*;
 
 import java.lang.annotation.*;
 
-import com.oracle.graal.nodes.calc.*;
-
 /**
  * Special type for use in snippets to represent machine word sized data.
  */
@@ -46,32 +44,137 @@ public final class Word {
      * The canonical {@link Operation} represented by a method in the {@link Word} class.
      */
     public enum Opcode {
+        ZERO,
+        W2A,
+        A2W,
+        L2W,
+        I2W,
+        W2L,
+        W2I,
         PLUS,
         MINUS,
-        COMPARE;
+        BELOW,
+        BELOW_EQUAL,
+        ABOVE,
+        ABOVE_EQUAL;
     }
 
-    private Word() {
+    private Word(long value, Object object) {
+        assert object == null || value == 0L;
+        this.value = value;
+        this.object = object;
     }
 
-    @Operation(COMPARE)
-    public native boolean cmp(Condition condition, Word other);
+    private final long value;
+    private final Object object;
+
+    @Operation(ZERO)
+    public static Word zero() {
+        return new Word(0L, null);
+    }
+
+    @Operation(W2A)
+    public Object toObject() {
+        assert value == 0L;
+        return object;
+    }
+
+    @Operation(A2W)
+    public static Word fromObject(Object value) {
+        return new Word(0L, value);
+    }
+
+    @Operation(L2W)
+    public static Word fromLong(long value) {
+        return new Word(value, null);
+    }
+
+    @Operation(I2W)
+    public static Word fromInt(int value) {
+        return new Word(value, null);
+    }
+
+    @Operation(W2I)
+    public int toInt() {
+        assert object == null;
+        return (int) value;
+    }
+
+    @Operation(W2L)
+    public long toLong() {
+        assert object == null;
+        return value;
+    }
+
+    @Operation(ABOVE)
+    public boolean above(Word other) {
+        assert object == null;
+        assert other.object == null;
+        long a = value;
+        long b = other.value;
+        return (a > b) ^ ((a < 0) != (b < 0));
+    }
+
+    @Operation(ABOVE_EQUAL)
+    public boolean aboveOrEqual(Word other) {
+        assert object == null;
+        assert other.object == null;
+        long a = value;
+        long b = other.value;
+        return (a >= b) ^ ((a < 0) != (b < 0));
+    }
+
+    @Operation(BELOW)
+    public boolean below(Word other) {
+        assert object == null;
+        assert other.object == null;
+        long a = value;
+        long b = other.value;
+        return (a < b) ^ ((a < 0) != (b < 0));
+    }
+
+    @Operation(BELOW_EQUAL)
+    public boolean belowOrEqual(Word other) {
+        assert object == null;
+        assert other.object == null;
+        long a = value;
+        long b = other.value;
+        return (a <= b) ^ ((a < 0) != (b < 0));
+    }
 
     @Operation(PLUS)
-    public native Word plus(int addend);
+    public Word plus(int addend) {
+        assert object == null;
+        return new Word(value + addend, null);
+    }
 
     @Operation(PLUS)
-    public native Word plus(long addend);
+    public Word plus(long addend) {
+        assert object == null;
+        return new Word(value + addend, null);
+    }
 
     @Operation(PLUS)
-    public native Word plus(Word addend);
+    public Word plus(Word addend) {
+        assert object == null;
+        return new Word(value + addend.value, null);
+    }
 
     @Operation(MINUS)
-    public native Word minus(int addend);
+    public Word minus(int addend) {
+        assert object == null;
+        return new Word(value - addend, null);
+    }
 
     @Operation(MINUS)
-    public native Word minus(long addend);
+    public Word minus(long addend) {
+        assert object == null;
+        return new Word(value - addend, null);
+    }
 
     @Operation(MINUS)
-    public native Word minus(Word addend);
+    public Word minus(Word addend) {
+        assert object == null;
+        return new Word(value - addend.value, null);
+    }
 }

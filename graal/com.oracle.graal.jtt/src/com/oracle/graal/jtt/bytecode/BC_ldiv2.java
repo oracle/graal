@@ -27,6 +27,8 @@ import org.junit.*;
 /*
  */
 public class BC_ldiv2 {
+    public static long MIN = Long.MIN_VALUE;
+    public static long MAX = Long.MAX_VALUE;
 
     public static long test(long a, long b) {
         return a / b;
@@ -34,12 +36,16 @@ public class BC_ldiv2 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(-9223372036854775808L, test(-9223372036854775808L, -1));
+        Assert.assertEquals(MIN, test(MIN, -1));
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-9223372036854775808L, test(-9223372036854775808L, 1));
+        Assert.assertEquals(MIN, test(MIN, 1));
     }
 
+    @Test
+    public void run2() throws Throwable {
+        Assert.assertEquals(-1, test(MIN, MAX));
+    }
 }

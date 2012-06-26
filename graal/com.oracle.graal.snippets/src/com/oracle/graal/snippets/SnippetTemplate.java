@@ -270,7 +270,7 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     int mark = snippetCopy.getMark();
-                    LoopTransformations.fullUnroll(loop);
+                    LoopTransformations.fullUnroll(loop, runtime);
                     new CanonicalizerPhase(null, runtime, null, mark, null).apply(snippetCopy);
                 }
                 FixedNode explodeLoopNext = explodeLoop.next();
@@ -458,7 +458,10 @@ public class SnippetTemplate {
         if (replacee instanceof FixedNode) {
             GraphUtil.killCFG((FixedNode) replacee);
         } else {
-            replacee.safeDelete();
+            GraphUtil.killWithUnusedFloatingInputs(replacee);
+        }
+        if (anchor != replacee) {
+            GraphUtil.killCFG(anchor);
         }
 
         Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);

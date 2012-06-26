@@ -25,7 +25,9 @@ package com.oracle.graal.nodes.type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.types.*;
 
-
+/**
+ * A stamp is the basis for a type system over the nodes in a graph.
+ */
 public abstract class Stamp {
 
     private final Kind kind;
@@ -48,14 +50,6 @@ public abstract class Stamp {
 
     public boolean nonNull() {
         return false;
-    }
-
-    public ResolvedJavaType exactType() {
-        return null;
-    }
-
-    public ResolvedJavaType declaredType() {
-        return null;
     }
 
     public abstract boolean alwaysDistinct(Stamp other);
