@@ -47,4 +47,9 @@ public abstract class LoopPolicies {
         int size = Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count());
         return size * exactTrips <= maxNodes;
     }
+
+    public static boolean shouldTryUnswitch(@SuppressWarnings("unused") LoopEx loop) {
+        // TODO (gd) maybe there should be a may number of unswitching per loop
+        return true;
+    }
 }

@@ -104,6 +104,7 @@ public final class GraalOptions {
     public static boolean ReassociateInvariants              = true;
     public static boolean FullUnroll                         = true;
     public static int     FullUnrollMaxNodes                 = 150; // TODO (gd) tune
+    public static boolean LoopUnswitch                       = ____;
 
     // debugging settings
     public static int     MethodEndBreakpointGuards          = 0;
