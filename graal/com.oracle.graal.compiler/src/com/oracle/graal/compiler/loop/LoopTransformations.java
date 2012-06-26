@@ -69,7 +69,7 @@ public abstract class LoopTransformations {
         BeginNode tempBegin = graph.add(new BeginNode());
         loop.entryPoint().replaceAtPredecessor(tempBegin);
         double takenProbability = ifNode.probability(ifNode.blockSuccessorIndex(ifNode.trueSuccessor()));
-        IfNode newIf = graph.add(new IfNode(ifNode.compare(), duplicateLoop.loop().entryPoint(), loop.entryPoint(), takenProbability));
+        IfNode newIf = graph.add(new IfNode(ifNode.compare(), duplicateLoop.loop().entryPoint(), loop.entryPoint(), takenProbability, ifNode.leafGraphId()));
         tempBegin.setNext(newIf);
         ifNode.setCompare(graph.unique(ConstantNode.forBoolean(false, graph)));
         IfNode duplicateIf = duplicateLoop.getDuplicatedNode(ifNode);
@@ -96,5 +96,14 @@ public abstract class LoopTransformations {
         for (int i = 0; i < factor; i++) {
             inside.duplicate().appendInside(loop);
         }
+    }
+
+    public static IfNode findUnswitchableIf(LoopEx loop) {
+        for (IfNode ifNode : loop.whole().nodes().filter(IfNode.class)) {
+            if (loop.isOutsideLoop(ifNode.compare())) {
+                return ifNode;
+            }
+        }
+        return null;
     }
 }
