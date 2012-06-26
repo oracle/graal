@@ -81,15 +81,13 @@ public final class TableSwitchNode extends SwitchNode implements LIRLowerable, S
                 remainingSuxIndex = blockSuccessorCount() - 1;
             }
 
-            BeginNode remainingSux = blockSuccessor(remainingSuxIndex);
             for (int i = 0; i < blockSuccessorCount(); i++) {
-                BeginNode sux = blockSuccessor(i);
-                if (sux != remainingSux) {
-                    tool.deleteBranch(sux);
+                if (i != remainingSuxIndex) {
+                    tool.deleteBranch(blockSuccessor(i));
                 }
             }
 
-            tool.addToWorkList(remainingSux);
+            tool.addToWorkList(blockSuccessor(remainingSuxIndex));
             ((StructuredGraph) graph()).removeSplit(this, remainingSuxIndex);
         }
     }

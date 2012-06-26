@@ -350,8 +350,8 @@ public class StructuredGraph extends Graph {
         // evacuateGuards
         merge.prepareDelete((FixedNode) singleEnd.predecessor());
         merge.safeDelete();
-        if (stateAfter != null && stateAfter.usages().isEmpty()) {
-            stateAfter.safeDelete();
+        if (stateAfter != null && stateAfter.isAlive() && stateAfter.usages().isEmpty()) {
+            GraphUtil.killWithUnusedFloatingInputs(stateAfter);
         }
         if (sux == null) {
             singleEnd.replaceAtPredecessor(null);

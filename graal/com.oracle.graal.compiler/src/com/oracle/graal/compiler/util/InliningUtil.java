@@ -780,12 +780,15 @@ public class InliningUtil {
             } else {
                 nodes.add(node);
                 if (node instanceof ReturnNode) {
+                    assert returnNode == null;
                     returnNode = (ReturnNode) node;
                 } else if (node instanceof UnwindNode) {
+                    assert unwindNode == null;
                     unwindNode = (UnwindNode) node;
                 }
             }
         }
+        replacements.put(entryPointNode, BeginNode.prevBegin(invoke.node())); // ensure proper anchoring of things that where anchored to the StartNode
 
         assert invoke.node().successors().first() != null : invoke;
         assert invoke.node().predecessor() != null;

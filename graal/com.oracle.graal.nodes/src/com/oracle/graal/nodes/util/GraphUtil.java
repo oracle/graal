@@ -47,7 +47,7 @@ public class GraphUtil {
         } else {
             // Normal control flow node.
             /* We do not take a successor snapshot because this iterator supports concurrent modifications
-             * as long as they do not change the size of the successor list. Not tasking a snapshot allows
+             * as long as they do not change the size of the successor list. Not taking a snapshot allows
              * us to see modifications to other branches that may happen while processing one branch.
              */
             for (Node successor : node.successors()) {

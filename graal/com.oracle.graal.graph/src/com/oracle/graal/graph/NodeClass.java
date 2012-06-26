@@ -952,7 +952,7 @@ public class NodeClass {
                             replacementsMap.put(input, replacement);
                             assert replacement == null || node.getNodeClass().inputTypes[pos.index] == null || node.getNodeClass().inputTypes[pos.index].isAssignableFrom(replacement.getClass());
                             target = replacement;
-                        } else { // patch to the outer world
+                        } else if (input.graph() == graph) { // patch to the outer world
                             target = input;
                         }
                     }
