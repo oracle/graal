@@ -31,8 +31,8 @@ import com.oracle.graal.nodes.type.*;
  * The {@code ControlSplitNode} is a base class for all instructions that split the control flow (ie. have more than one successor).
  */
 public abstract class ControlSplitNode extends FixedNode {
-
     @Successor private final NodeSuccessorList<BeginNode> blockSuccessors;
+    protected double[] branchProbability;
 
     public BeginNode blockSuccessor(int index) {
         return blockSuccessors.get(index);
@@ -45,8 +45,6 @@ public abstract class ControlSplitNode extends FixedNode {
     public int blockSuccessorCount() {
         return blockSuccessors.size();
     }
-
-    protected final double[] branchProbability;
 
     public ControlSplitNode(Stamp stamp, BeginNode[] blockSuccessors, double[] branchProbability) {
         super(stamp);
@@ -112,5 +110,12 @@ public abstract class ControlSplitNode extends FixedNode {
             throw new IllegalArgumentException();
         }
         return idx;
+    }
+
+    @Override
+    public ControlSplitNode clone(Graph into) {
+        ControlSplitNode csn = (ControlSplitNode) super.clone(into);
+        csn.branchProbability = Arrays.copyOf(branchProbability, branchProbability.length);
+        return csn;
     }
 }
