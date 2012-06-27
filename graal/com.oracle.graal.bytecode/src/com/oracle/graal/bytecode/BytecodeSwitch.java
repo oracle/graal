@@ -80,7 +80,9 @@ public abstract class BytecodeSwitch {
      * Gets the offset from the start of the switch instruction to the default switch target.
      * @return the offset to the default switch target
      */
-    public abstract int defaultOffset();
+    public int defaultOffset() {
+        return stream.readInt(alignedBci);
+    }
 
     /**
      * Gets the key at {@code i}'th switch target index.
@@ -107,4 +109,5 @@ public abstract class BytecodeSwitch {
      * @return the total size in bytes of the switch instruction
      */
     public abstract int size();
+
 }

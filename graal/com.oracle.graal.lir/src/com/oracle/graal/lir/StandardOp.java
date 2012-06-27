@@ -38,6 +38,15 @@ public class StandardOp {
     private static Value[] EMPTY = new Value[0];
 
     /**
+     * Marker interface for LIR ops that can fall through to the next operation, like a switch statement.
+     * setFallThroughTarget(null) can be used to make the operation fall through to the next one.
+     */
+    public interface FallThroughOp {
+        LabelRef fallThroughTarget();
+        void setFallThroughTarget(LabelRef target);
+    }
+
+    /**
      * LIR operation that defines the position of a label.
      * The first operation of every block must implement this interface.
      */

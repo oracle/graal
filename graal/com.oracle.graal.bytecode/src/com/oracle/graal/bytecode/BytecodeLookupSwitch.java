@@ -41,11 +41,6 @@ public class BytecodeLookupSwitch extends BytecodeSwitch {
     }
 
     @Override
-    public int defaultOffset() {
-        return stream.readInt(alignedBci);
-    }
-
-    @Override
     public int offsetAt(int i) {
         return stream.readInt(alignedBci + OFFSET_TO_FIRST_PAIR_OFFSET + PAIR_SIZE * i);
     }

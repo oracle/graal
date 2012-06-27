@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.FallThroughOp;
 import com.oracle.graal.lir.cfg.*;
 
 /**
@@ -178,6 +179,16 @@ final class ControlFlowOptimizer {
                     }
                 }
             }
+            // TODO(ls) enable this optimization
+//            lastOp = instructions.get(instructions.size() - 1);
+//            if (lastOp instanceof FallThroughOp) {
+//                FallThroughOp fallThrough = (FallThroughOp) lastOp;
+//                if (fallThrough.fallThroughTarget() != null && lastOp.info == null) {
+//                    if (fallThrough.fallThroughTarget().label() == ((StandardOp.LabelOp) code.get(i + 1).lir.get(0)).getLabel()) {
+//                        fallThrough.setFallThroughTarget(null);
+//                    }
+//                }
+//            }
         }
 
         assert verify(code);

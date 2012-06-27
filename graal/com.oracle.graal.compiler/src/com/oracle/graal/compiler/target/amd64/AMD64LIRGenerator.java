@@ -54,12 +54,7 @@ import com.oracle.graal.lir.amd64.AMD64Arithmetic.ShiftOp;
 import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
 import com.oracle.graal.lir.amd64.AMD64Call.IndirectCallOp;
 import com.oracle.graal.lir.amd64.AMD64Compare.CompareOp;
-import com.oracle.graal.lir.amd64.AMD64ControlFlow.BranchOp;
-import com.oracle.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
-import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatBranchOp;
-import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
-import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
-import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.*;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
@@ -567,9 +562,25 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value index) {
+    protected void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
         // Making a copy of the switch value is necessary because jump table destroys the input value
-        Variable tmp = emitMove(index);
+        if (key.kind == Kind.Int) {
+            append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key));
+        } else {
+            assert key.kind == Kind.Object;
+            append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, newVariable(Kind.Object)));
+        }
+    }
+
+    @Override
+    protected void emitSwitchRanges(int[] lowKeys, int[] highKeys, LabelRef[] targets, LabelRef defaultTarget, Value key) {
+        append(new SwitchRangesOp(lowKeys, highKeys, targets, defaultTarget, key));
+    }
+
+    @Override
+    protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
+        // Making a copy of the switch value is necessary because jump table destroys the input value
+        Variable tmp = emitMove(key);
         append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(target.wordKind)));
     }
 

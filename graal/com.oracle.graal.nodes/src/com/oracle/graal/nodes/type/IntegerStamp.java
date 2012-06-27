@@ -73,6 +73,14 @@ public class IntegerStamp extends Stamp {
         return mask;
     }
 
+    public boolean isUnrestricted() {
+        return lowerBound == kind().minValue() && upperBound == kind().maxValue() && mask == defaultMask(kind());
+    }
+
+    public boolean contains(long value) {
+        return value >= lowerBound && value <= upperBound && (value & mask) == (value & defaultMask(kind()));
+    }
+
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();

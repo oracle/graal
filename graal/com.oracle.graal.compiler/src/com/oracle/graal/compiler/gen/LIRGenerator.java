@@ -686,7 +686,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void emitIf(IfNode x) {
-        assert x.defaultSuccessor() == x.falseSuccessor() : "wrong destination";
         emitBranch(x.compare(), getLIRBlock(x.trueSuccessor()),  getLIRBlock(x.falseSuccessor()), null);
     }
 
@@ -1014,127 +1013,137 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
+    /**
+     * This method tries to create a switch implementation that is optimal for the given switch.
+     * It will either generate a sequential if/then/else cascade, a set of range tests or a table switch.
+     *
+     * If the given switch does not contain int keys, it will always create a sequential implementation.
+     */
     @Override
-    public void emitLookupSwitch(LookupSwitchNode x) {
-        Variable tag = load(operand(x.value()));
-        if (x.numberOfCases() == 0 || x.numberOfCases() < GraalOptions.SequentialSwitchLimit) {
-            int len = x.numberOfCases();
-            for (int i = 0; i < len; i++) {
-                emitBranch(tag, Constant.forInt(x.keyAt(i)), Condition.EQ, false, getLIRBlock(x.blockSuccessor(i)), null);
-            }
+    public void emitSwitch(SwitchNode x) {
+        int keyCount = x.keyCount();
+        if (keyCount == 0) {
             emitJump(getLIRBlock(x.defaultSuccessor()), null);
         } else {
-            visitSwitchRanges(createSwitchRanges(x, null), tag, getLIRBlock(x.defaultSuccessor()));
-        }
-    }
-
-    @Override
-    public void emitTypeSwitch(TypeSwitchNode x) {
-        Variable tag = load(operand(x.value()));
-        int len = x.numberOfCases();
-        for (int i = 0; i < len; i++) {
-            ResolvedJavaType type = x.keyAt(i);
-            emitBranch(tag, type.getEncoding(Representation.ObjectHub), Condition.EQ, false, getLIRBlock(x.blockSuccessor(i)), null);
-        }
-        emitJump(getLIRBlock(x.defaultSuccessor()), null);
-    }
-
-    @Override
-    public void emitTableSwitch(TableSwitchNode x) {
-        Variable value = load(operand(x.value()));
-        // TODO: tune the defaults for the controls used to determine what kind of translation to use
-        if (x.numberOfCases() == 0 || x.numberOfCases() <= GraalOptions.SequentialSwitchLimit) {
-            int loKey = x.lowKey();
-            int len = x.numberOfCases();
-            for (int i = 0; i < len; i++) {
-                emitBranch(value, Constant.forInt(i + loKey), Condition.EQ, false, getLIRBlock(x.blockSuccessor(i)), null);
-            }
-            emitJump(getLIRBlock(x.defaultSuccessor()), null);
-        } else {
-            SwitchRange[] switchRanges = createSwitchRanges(null, x);
-            int rangeDensity = x.numberOfCases() / switchRanges.length;
-            if (rangeDensity >= GraalOptions.RangeTestsSwitchDensity) {
-                visitSwitchRanges(switchRanges, value, getLIRBlock(x.defaultSuccessor()));
+            Variable value = load(operand(x.value()));
+            LabelRef defaultTarget = x.defaultSuccessor() == null ? null : getLIRBlock(x.defaultSuccessor());
+            if (value.kind == Kind.Object || keyCount < GraalOptions.SequentialSwitchLimit) {
+                // only a few entries
+                emitSequentialSwitch(x, value, defaultTarget);
             } else {
-                LabelRef[] targets = new LabelRef[x.numberOfCases()];
-                for (int i = 0; i < x.numberOfCases(); ++i) {
-                    targets[i] = getLIRBlock(x.blockSuccessor(i));
-                }
-                emitTableSwitch(x.lowKey(), getLIRBlock(x.defaultSuccessor()), targets, value);
-            }
-        }
-    }
-
-    protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value index);
-
-    // the range of values in a lookupswitch or tableswitch statement
-    private static final class SwitchRange {
-        protected final int lowKey;
-        protected int highKey;
-        protected final LabelRef sux;
-
-        SwitchRange(int lowKey, LabelRef sux) {
-            this.lowKey = lowKey;
-            this.highKey = lowKey;
-            this.sux = sux;
-        }
-    }
-
-    private SwitchRange[] createSwitchRanges(LookupSwitchNode ls, TableSwitchNode ts) {
-        // Only one of the parameters is used, but code is shared because it is mostly the same.
-        SwitchNode x = ls != null ? ls : ts;
-        // we expect the keys to be sorted by increasing value
-        List<SwitchRange> res = new ArrayList<>(x.numberOfCases());
-        int len = x.numberOfCases();
-        if (len > 0) {
-            LabelRef defaultSux = getLIRBlock(x.defaultSuccessor());
-            int key = ls != null ? ls.keyAt(0) : ts.lowKey();
-            LabelRef sux = getLIRBlock(x.blockSuccessor(0));
-            SwitchRange range = new SwitchRange(key, sux);
-            for (int i = 1; i < len; i++) {
-                int newKey = ls != null ? ls.keyAt(i) : key + 1;
-                LabelRef newSux = getLIRBlock(x.blockSuccessor(i));
-                if (key + 1 == newKey && sux == newSux) {
-                    // still in same range
-                    range.highKey = newKey;
-                } else {
-                    // skip tests which explicitly dispatch to the default
-                    if (range.sux != defaultSux) {
-                        res.add(range);
+                long valueRange = x.keyAt(keyCount - 1).asLong() - x.keyAt(0).asLong() + 1;
+                int switchRangeCount = switchRangeCount(x);
+                int rangeDensity = keyCount / switchRangeCount;
+                if (rangeDensity >= GraalOptions.RangeTestsSwitchDensity) {
+                    emitSwitchRanges(x, switchRangeCount, value, defaultTarget);
+                } else if (keyCount / (double) valueRange >= GraalOptions.MinTableSwitchDensity) {
+                    int minValue = x.keyAt(0).asInt();
+                    assert valueRange < Integer.MAX_VALUE;
+                    LabelRef[] targets = new LabelRef[(int) valueRange];
+                    for (int i = 0; i < valueRange; i++) {
+                        targets[i] = defaultTarget;
                     }
-                    range = new SwitchRange(newKey, newSux);
+                    for (int i = 0; i < keyCount; i++) {
+                        targets[x.keyAt(i).asInt() - minValue] = getLIRBlock(x.keySuccessor(i));
+                    }
+                    emitTableSwitch(minValue, defaultTarget, targets, value);
+                } else {
+                    emitSequentialSwitch(x, value, defaultTarget);
                 }
-                key = newKey;
-                sux = newSux;
-            }
-            if (res.size() == 0 || res.get(res.size() - 1) != range) {
-                res.add(range);
             }
         }
-        return res.toArray(new SwitchRange[res.size()]);
     }
 
-    private void visitSwitchRanges(SwitchRange[] x, Variable value, LabelRef defaultSux) {
-        for (int i = 0; i < x.length; i++) {
-            SwitchRange oneRange = x[i];
-            int lowKey = oneRange.lowKey;
-            int highKey = oneRange.highKey;
-            LabelRef dest = oneRange.sux;
-            if (lowKey == highKey) {
-                emitBranch(value, Constant.forInt(lowKey), Condition.EQ, false, dest, null);
-            } else if (highKey - lowKey == 1) {
-                emitBranch(value, Constant.forInt(lowKey), Condition.EQ, false, dest, null);
-                emitBranch(value, Constant.forInt(highKey), Condition.EQ, false, dest, null);
-            } else {
-                Label l = new Label();
-                emitBranch(value, Constant.forInt(lowKey), Condition.LT, false, LabelRef.forLabel(l), null);
-                emitBranch(value, Constant.forInt(highKey), Condition.LE, false, dest, null);
-                emitLabel(l, false);
-            }
+    private void emitSequentialSwitch(final SwitchNode x, Variable key, LabelRef defaultTarget) {
+        int keyCount = x.keyCount();
+        Integer[] indexes = new Integer[keyCount];
+        for (int i = 0; i < keyCount; i++) {
+            indexes[i] = i;
         }
-        emitJump(defaultSux, null);
+        Arrays.sort(indexes, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer o1, Integer o2) {
+                return x.keyProbability(o1) < x.keyProbability(o2) ? 1 : x.keyProbability(o1) > x.keyProbability(o2) ? -1 : 0;
+            }
+        });
+        LabelRef[] keyTargets = new LabelRef[keyCount];
+        Constant[] keyConstants = new Constant[keyCount];
+        for (int i = 0; i < keyCount; i++) {
+            keyTargets[i] = getLIRBlock(x.keySuccessor(indexes[i]));
+            keyConstants[i] = x.keyAt(indexes[i]);
+        }
+        emitSequentialSwitch(keyConstants, keyTargets, defaultTarget, key);
     }
 
+    protected abstract void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key);
+    protected abstract void emitSwitchRanges(int[] lowKeys, int[] highKeys, LabelRef[] targets, LabelRef defaultTarget, Value key);
+    protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
+
+    private static int switchRangeCount(SwitchNode x) {
+        int keyCount = x.keyCount();
+        int i = 0;
+        while (i < keyCount && x.keySuccessorIndex(i) == x.defaultSuccessorIndex()) {
+            i++;
+        }
+        if (i == keyCount) {
+            return 0;
+        } else {
+            int switchRangeCount = 1;
+            i++;
+            for (; i < keyCount; i++) {
+                if (x.keySuccessorIndex(i) != x.defaultSuccessorIndex()) {
+                    if (x.keyAt(i).asInt() != x.keyAt(i - 1).asInt() + 1 || x.keySuccessorIndex(i) != x.keySuccessorIndex(i - 1)) {
+                        switchRangeCount++;
+                    }
+                }
+            }
+            return switchRangeCount;
+        }
+    }
+
+    private void emitSwitchRanges(SwitchNode x, int switchRangeCount, Variable keyValue, LabelRef defaultTarget) {
+        int[] lowKeys = new int[switchRangeCount];
+        int[] highKeys = new int[switchRangeCount];
+        LabelRef[] targets = new LabelRef[switchRangeCount];
+
+        int keyCount = x.keyCount();
+        int defaultSuccessor = x.defaultSuccessorIndex();
+
+        int current = 0;
+        int i = 0;
+        while (i < keyCount && x.keySuccessorIndex(i) == x.defaultSuccessorIndex()) {
+            i++;
+        }
+        if (i == keyCount) {
+            emitJump(defaultTarget, null);
+        } else {
+            int key = x.keyAt(i).asInt();
+            int successor = x.keySuccessorIndex(i);
+            lowKeys[current] = key;
+            highKeys[current] = key;
+            targets[current] = getLIRBlock(x.blockSuccessor(successor));
+            i++;
+            for (; i < keyCount; i++) {
+                int newSuccessor = x.keySuccessorIndex(i);
+                if (newSuccessor != defaultSuccessor) {
+                    int newKey = x.keyAt(i).asInt();
+                    if (key + 1 == newKey && successor == newSuccessor) {
+                        // still in same range
+                        highKeys[current] = newKey;
+                    } else {
+                        current++;
+                        lowKeys[current] = newKey;
+                        highKeys[current] = newKey;
+                        targets[current] = getLIRBlock(x.blockSuccessor(newSuccessor));
+                    }
+                    key = newKey;
+                }
+                successor = newSuccessor;
+            }
+            assert current == switchRangeCount - 1;
+            emitSwitchRanges(lowKeys, highKeys, targets, defaultTarget, keyValue);
+        }
+    }
 
     protected XirArgument toXirArgument(Value v) {
         if (v == null) {
@@ -1330,68 +1339,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected final Variable callRuntimeWithResult(RuntimeCall runtimeCall, LIRDebugInfo info, Value... args) {
         Value location = callRuntime(runtimeCall, info, args);
         return emitMove(location);
-    }
-
-    SwitchRange[] createLookupRanges(LookupSwitchNode x) {
-        // we expect the keys to be sorted by increasing value
-        List<SwitchRange> res = new ArrayList<>(x.numberOfCases());
-        int len = x.numberOfCases();
-        if (len > 0) {
-            LabelRef defaultSux = getLIRBlock(x.defaultSuccessor());
-            int key = x.keyAt(0);
-            LabelRef sux = getLIRBlock(x.blockSuccessor(0));
-            SwitchRange range = new SwitchRange(key, sux);
-            for (int i = 1; i < len; i++) {
-                int newKey = x.keyAt(i);
-                LabelRef newSux = getLIRBlock(x.blockSuccessor(i));
-                if (key + 1 == newKey && sux == newSux) {
-                    // still in same range
-                    range.highKey = newKey;
-                } else {
-                    // skip tests which explicitly dispatch to the default
-                    if (range.sux != defaultSux) {
-                        res.add(range);
-                    }
-                    range = new SwitchRange(newKey, newSux);
-                }
-                key = newKey;
-                sux = newSux;
-            }
-            if (res.size() == 0 || res.get(res.size() - 1) != range) {
-                res.add(range);
-            }
-        }
-        return res.toArray(new SwitchRange[res.size()]);
-    }
-
-    SwitchRange[] createLookupRanges(TableSwitchNode x) {
-        // TODO: try to merge this with the code for LookupSwitch
-        List<SwitchRange> res = new ArrayList<>(x.numberOfCases());
-        int len = x.numberOfCases();
-        if (len > 0) {
-            LabelRef sux = getLIRBlock(x.blockSuccessor(0));
-            int key = x.lowKey();
-            LabelRef defaultSux = getLIRBlock(x.defaultSuccessor());
-            SwitchRange range = new SwitchRange(key, sux);
-            for (int i = 0; i < len; i++, key++) {
-                LabelRef newSux = getLIRBlock(x.blockSuccessor(i));
-                if (sux == newSux) {
-                    // still in same range
-                    range.highKey = key;
-                } else {
-                    // skip tests which explicitly dispatch to the default
-                    if (sux != defaultSux) {
-                        res.add(range);
-                    }
-                    range = new SwitchRange(key, newSux);
-                }
-                sux = newSux;
-            }
-            if (res.size() == 0 || res.get(res.size() - 1) != range) {
-                res.add(range);
-            }
-        }
-        return res.toArray(new SwitchRange[res.size()]);
     }
 
     protected XirSupport site(ValueNode x) {
