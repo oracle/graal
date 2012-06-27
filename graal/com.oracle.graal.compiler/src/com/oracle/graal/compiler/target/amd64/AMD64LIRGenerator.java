@@ -610,7 +610,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Address address;
         int displacement = node.displacement();
         Value index = operand(node.offset());
-        if (isConstant(index) && NumUtil.isInt(asConstant(index).asLong())) {
+        if (isConstant(index) && NumUtil.isInt(asConstant(index).asLong() + displacement)) {
             displacement += (int) asConstant(index).asLong();
             address = new Address(kind, load(operand(node.object())), displacement);
         } else {

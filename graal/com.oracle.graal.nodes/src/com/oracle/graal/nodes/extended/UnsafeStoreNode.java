@@ -85,6 +85,13 @@ public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lo
     }
 
     @Override
+    public boolean verify() {
+        assertTrue(storeKind != null, "UnsafeStoreNode must have a store kind");
+        assertTrue(object != null, "UnsafeStoreNode should have an object");
+        return super.verify();
+    }
+
+    @Override
     public void lower(CiLoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }

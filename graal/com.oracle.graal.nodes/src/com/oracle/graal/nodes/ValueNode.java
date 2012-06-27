@@ -150,6 +150,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
     }
 
     public <T extends Stamp> boolean verifyStamp(Class<T> stampClass) {
+        assert stamp != null;
         assert stampClass.isInstance(stamp) : this + " (" + GraphUtil.approxSourceLocation(this) + ") has unexpected stamp type: expected " + stampClass.getName() +
             ", got " + stamp.getClass().getName();
         return true;

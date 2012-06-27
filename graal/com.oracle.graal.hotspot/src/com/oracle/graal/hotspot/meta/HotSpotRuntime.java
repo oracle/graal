@@ -345,12 +345,21 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, store.storeKind(), store.displacement(), store.offset(), graph, false);
-            WriteNode write = graph.add(new WriteNode(store.object(), store.value(), location));
+            ValueNode object = store.object();
+            WriteNode write = graph.add(new WriteNode(object, store.value(), location));
             write.setStateAfter(store.stateAfter());
             graph.replaceFixedWithFixed(store, write);
             if (write.value().kind() == Kind.Object && !write.value().isNullConstant()) {
-                FieldWriteBarrier barrier = graph.add(new FieldWriteBarrier(write.object()));
-                graph.addBeforeFixed(write, barrier);
+                ResolvedJavaType type = object.objectStamp().type();
+                WriteBarrier writeBarrier;
+                if (type != null && !type.isArrayClass() && type.toJava() != Object.class) {
+                    // Use a field write barrier since it's not an array store
+                    writeBarrier = graph.add(new FieldWriteBarrier(object));
+                } else {
+                    // This may be an array store so use an array write barrier
+                    writeBarrier = graph.add(new ArrayWriteBarrier(object, location));
+                }
+                graph.addAfterFixed(write, writeBarrier);
             }
         } else if (n instanceof ReadHubNode) {
             ReadHubNode objectClassNode = (ReadHubNode) n;

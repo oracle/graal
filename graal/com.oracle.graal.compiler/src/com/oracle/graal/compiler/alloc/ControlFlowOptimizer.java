@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.FallThroughOp;
 import com.oracle.graal.lir.cfg.*;
 
 /**
