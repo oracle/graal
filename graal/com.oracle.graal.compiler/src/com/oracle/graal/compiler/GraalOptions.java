@@ -187,6 +187,7 @@ public final class GraalOptions {
     // Translating tableswitch instructions
     public static int     SequentialSwitchLimit              = 4;
     public static int     RangeTestsSwitchDensity            = 5;
+    public static double  MinTableSwitchDensity              = 0.5;
 
     public static boolean DetailedAsserts                    = ____;
 

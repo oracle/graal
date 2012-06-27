@@ -35,6 +35,7 @@ import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.FallThroughOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 
@@ -171,6 +172,155 @@ public class AMD64ControlFlow {
         }
     }
 
+    public static class SequentialSwitchOp extends AMD64LIRInstruction implements FallThroughOp {
+        private final Constant[] keyConstants;
+        private final LabelRef[] keyTargets;
+        private LabelRef defaultTarget;
+
+        public SequentialSwitchOp(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value... temp) {
+            super("SEQUENTIAL_SWITCH", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, new Value[] {key}, temp);
+            assert keyConstants.length == keyTargets.length;
+            this.keyConstants = keyConstants;
+            this.keyTargets = keyTargets;
+            this.defaultTarget = defaultTarget;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            Value key = alive(0);
+            if (key.kind == Kind.Int) {
+                Register intKey = asIntReg(key);
+                for (int i = 0; i < keyConstants.length; i++) {
+                    masm.cmpl(intKey, tasm.asIntConst(keyConstants[i]));
+                    masm.jcc(ConditionFlag.equal, keyTargets[i].label());
+                }
+            } else if (key.kind == Kind.Object) {
+                Register intKey = asObjectReg(key);
+                Register temp = asObjectReg(temp(0));
+                for (int i = 0; i < keyConstants.length; i++) {
+                    AMD64Move.move(tasm, masm, temp.asValue(Kind.Object), keyConstants[i]);
+                    masm.cmpptr(intKey, temp);
+                    masm.jcc(ConditionFlag.equal, keyTargets[i].label());
+                }
+            } else {
+                throw new GraalInternalError("sequential switch only supported for int and object");
+            }
+            if (defaultTarget != null) {
+                masm.jmp(defaultTarget.label());
+            } else {
+                masm.hlt();
+            }
+        }
+
+        @Override
+        public String operationString() {
+            StringBuilder buf = new StringBuilder(super.operationString());
+            buf.append("\ndefault: [").append(defaultTarget).append(']');
+            for (int i = 0; i < keyConstants.length; i++) {
+                buf.append("\ncase ").append(keyConstants[i]).append(": [").append(keyTargets[i]).append("]");
+            }
+            return buf.toString();
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            if (mode == OperandMode.Alive && index == 0) {
+                return EnumSet.of(OperandFlag.Register);
+            } else if (mode == OperandMode.Temp && index == 0) {
+                return EnumSet.of(OperandFlag.Register);
+            }
+            throw GraalInternalError.shouldNotReachHere();
+        }
+
+        @Override
+        public LabelRef fallThroughTarget() {
+            return defaultTarget;
+        }
+
+        @Override
+        public void setFallThroughTarget(LabelRef target) {
+            defaultTarget = target;
+        }
+    }
+
+    public static class SwitchRangesOp extends AMD64LIRInstruction implements FallThroughOp {
+        private final LabelRef[] keyTargets;
+        private LabelRef defaultTarget;
+        private final int[] lowKeys;
+        private final int[] highKeys;
+
+        public SwitchRangesOp(int[] lowKeys, int[] highKeys, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
+            super("SWITCH_RANGES", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, new Value[] {key}, LIRInstruction.NO_OPERANDS);
+            assert lowKeys.length == keyTargets.length;
+            assert highKeys.length == keyTargets.length;
+            assert key.kind == Kind.Int;
+            this.lowKeys = lowKeys;
+            this.highKeys = highKeys;
+            this.keyTargets = keyTargets;
+            this.defaultTarget = defaultTarget;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            Register key = asIntReg(alive(0));
+            for (int i = 0; i < lowKeys.length; i++) {
+                int lowKey = lowKeys[i];
+                int highKey = highKeys[i];
+                if (lowKey == highKey) {
+                    masm.cmpl(key, lowKey);
+                    masm.jcc(ConditionFlag.equal, keyTargets[i].label());
+                } else if (lowKey + 1 == highKey) {
+                    masm.cmpl(key, lowKey);
+                    masm.jcc(ConditionFlag.equal, keyTargets[i].label());
+                    masm.cmpl(key, highKey);
+                    masm.jcc(ConditionFlag.equal, keyTargets[i].label());
+                } else {
+                    Label skip = new Label();
+                    masm.cmpl(key, lowKey);
+                    masm.jcc(ConditionFlag.less, skip);
+                    masm.cmpl(key, highKey);
+                    masm.jcc(ConditionFlag.lessEqual, keyTargets[i].label());
+                    masm.bind(skip);
+                }
+            }
+            if (defaultTarget != null) {
+                masm.jmp(defaultTarget.label());
+            } else {
+                masm.hlt();
+            }
+        }
+
+        @Override
+        public String operationString() {
+            StringBuilder buf = new StringBuilder(super.operationString());
+            buf.append("\ndefault: [").append(defaultTarget).append(']');
+            for (int i = 0; i < lowKeys.length; i++) {
+                buf.append("\ncase ").append(lowKeys[i]).append(" - ").append(highKeys[i]).append(": [").append(keyTargets[i]).append("]");
+            }
+            return buf.toString();
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            if (mode == OperandMode.Alive && index == 0) {
+                return EnumSet.of(OperandFlag.Register);
+            } else if (mode == OperandMode.Temp && index == 0) {
+                return EnumSet.of(OperandFlag.Register);
+            }
+            throw GraalInternalError.shouldNotReachHere();
+        }
+
+        @Override
+        public LabelRef fallThroughTarget() {
+            return defaultTarget;
+        }
+
+        @Override
+        public void setFallThroughTarget(LabelRef target) {
+            defaultTarget = target;
+        }
+    }
+
 
     public static class CondMoveOp extends AMD64LIRInstruction {
         private final ConditionFlag condition;
@@ -237,7 +387,6 @@ public class AMD64ControlFlow {
         }
     }
 
-
     private static void tableswitch(TargetMethodAssembler tasm, AMD64MacroAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Register value, Register scratch) {
         Buffer buf = masm.codeBuffer;
         // Compare index against jump table bounds
@@ -251,7 +400,9 @@ public class AMD64ControlFlow {
         }
 
         // Jump to default target if index is not within the jump table
-        masm.jcc(ConditionFlag.above, defaultTarget.label());
+        if (defaultTarget != null) {
+            masm.jcc(ConditionFlag.above, defaultTarget.label());
+        }
 
         // Set scratch to address of jump table
         int leaPos = buf.position();
@@ -284,7 +435,7 @@ public class AMD64ControlFlow {
             } else {
                 label.addPatchAt(buf.position());
 
-                buf.emitByte(0); // psuedo-opcode for jump table entry
+                buf.emitByte(0); // pseudo-opcode for jump table entry
                 buf.emitShort(offsetToJumpTableBase);
                 buf.emitByte(0); // padding to make jump table entry 4 bytes wide
             }

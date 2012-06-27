@@ -62,11 +62,6 @@ public class BytecodeTableSwitch extends BytecodeSwitch {
     }
 
     @Override
-    public int defaultOffset() {
-        return stream.readInt(alignedBci);
-    }
-
-    @Override
     public int offsetAt(int i) {
         return stream.readInt(alignedBci + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * i);
     }

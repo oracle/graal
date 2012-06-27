@@ -253,7 +253,7 @@ public class StructuredGraph extends Graph {
         for (int i = 0; i < node.blockSuccessorCount(); i++) {
             BeginNode successor = node.blockSuccessor(i);
             node.setBlockSuccessor(i, null);
-            if (successor != begin && successor.isAlive()) {
+            if (successor != null && successor != begin && successor.isAlive()) {
                 GraphUtil.killCFG(successor);
             }
         }
@@ -261,7 +261,7 @@ public class StructuredGraph extends Graph {
             node.replaceAtPredecessor(begin);
             node.safeDelete();
         } else {
-            assert node.isDeleted();
+            assert node.isDeleted() : node + " " + begin;
         }
     }
 
