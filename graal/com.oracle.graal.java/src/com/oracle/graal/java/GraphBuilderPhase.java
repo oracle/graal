@@ -653,7 +653,7 @@ public final class GraphBuilderPhase extends Phase {
         } else {
             BlockPlaceholderNode successor = currentGraph.add(new BlockPlaceholderNode());
             DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved, graphId));
-            IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new IsNullNode(object)), successor, deopt, 0, graphId));
+            IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new IsNullNode(object)), successor, deopt, 1, graphId));
             append(ifNode);
             lastInstr = successor;
             frameState.ipush(appendConstant(Constant.INT_0));
@@ -757,7 +757,7 @@ public final class GraphBuilderPhase extends Phase {
     private void emitNullCheck(ValueNode receiver) {
         BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
         BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode());
-        IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new IsNullNode(receiver)), trueSucc, falseSucc, 1, graphId));
+        IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new IsNullNode(receiver)), trueSucc, falseSucc, 0.5, graphId));
 
         append(ifNode);
         lastInstr = falseSucc;
@@ -776,7 +776,7 @@ public final class GraphBuilderPhase extends Phase {
     private void emitBoundsCheck(ValueNode index, ValueNode length) {
         BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
         BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode());
-        IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new IntegerBelowThanNode(index, length)), trueSucc, falseSucc, 1, graphId));
+        IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new IntegerBelowThanNode(index, length)), trueSucc, falseSucc, 0.5, graphId));
 
         append(ifNode);
         lastInstr = trueSucc;
