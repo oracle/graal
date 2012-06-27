@@ -20,51 +20,68 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.java;
+package com.oracle.graal.nodes.extended;
 
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaType.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
- * The {@code TypeSwitchNode} performs a lookup based on the type of the input value.
- * The type comparison is an exact type comparison, not an instanceof.
+ * The {@code IntegerSwitchNode} represents a switch on integer keys, with a sorted array of key values.
+ * The actual implementation of the switch will be decided by the backend.
  */
-public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
+public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
-    private final ResolvedJavaType[] keys;
+    private final int[] keys;
 
     /**
-     * Constructs a type switch instruction. The keyProbabilities and keySuccessors array contain key.length + 1
+     * Constructs a integer switch instruction. The keyProbabilities and keySuccessors array contain key.length + 1
      * entries, the last entry describes the default (fall through) case.
      *
      * @param value the instruction producing the value being switched on
      * @param successors the list of successors
-     * @param keys the list of types
+     * @param keys the sorted list of keys
      * @param keyProbabilities the probabilities of the keys
      * @param keySuccessor the successor index for each key
      */
-    public TypeSwitchNode(ValueNode value, BeginNode[] successors, double[] successorProbabilities, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
-        super(value, successors, successorProbabilities, keySuccessors, keyProbabilities);
-        assert successors.length == keys.length + 1;
-        assert successors.length == keyProbabilities.length;
+    public IntegerSwitchNode(ValueNode value, BeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
+        super(value, successors, successorProbabilites(successors.length, keySuccessors, keyProbabilities), keySuccessors, keyProbabilities);
+        assert keySuccessors.length == keys.length + 1;
+        assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
+    }
+
+    /**
+     * Constructs a integer switch instruction. The keyProbabilities and keySuccessors array contain key.length + 1
+     * entries, the last entry describes the default (fall through) case.
+     *
+     * @param value the instruction producing the value being switched on
+     * @param successorCount the number of successors
+     * @param keys the sorted list of keys
+     * @param keyProbabilities the probabilities of the keys
+     * @param keySuccessor the successor index for each key
+     */
+    public IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
+        this(value, new BeginNode[successorCount], keys, keyProbabilities, keySuccessors);
+    }
+
+    /**
+     * Gets the key at the specified index.
+     * @param i the index
+     * @return the key at that index
+     */
+    @Override
+    public Constant keyAt(int i) {
+        return Constant.forInt(keys[i]);
     }
 
     @Override
     public int keyCount() {
         return keys.length;
-    }
-
-    @Override
-    public Constant keyAt(int i) {
-        return keys[i].getEncoding(Representation.ObjectHub);
     }
 
     @Override
@@ -75,13 +92,11 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     @Override
     public void simplify(SimplifierTool tool) {
         if (value() instanceof ConstantNode) {
-            Constant constant = value().asConstant();
+            int constant = value().asConstant().asInt();
 
             int survivingEdge = keySuccessorIndex(keyCount());
             for (int i = 0; i < keyCount(); i++) {
-                Constant typeHub = keyAt(i);
-                assert constant.kind == typeHub.kind;
-                if (tool.runtime().areConstantObjectsEqual(value().asConstant(), typeHub)) {
+                if (keys[i] == constant) {
                     survivingEdge = keySuccessorIndex(i);
                 }
             }
@@ -93,12 +108,12 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
             tool.addToWorkList(blockSuccessor(survivingEdge));
             ((StructuredGraph) graph()).removeSplitPropagate(this, survivingEdge);
         }
-        if (value() instanceof ReadHubNode) {
-            ObjectStamp stamp = ((ReadHubNode) value()).object().objectStamp();
-            if (stamp.type() != null) {
+        if (value() != null) {
+            IntegerStamp stamp = value().integerStamp();
+            if (!stamp.isUnrestricted()) {
                 int validKeys = 0;
                 for (int i = 0; i < keyCount(); i++) {
-                    if (keys[i].isSubtypeOf(stamp.type())) {
+                    if (stamp.contains(keys[i])) {
                         validKeys++;
                     }
                 }
@@ -107,13 +122,13 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                     ((StructuredGraph) graph()).removeSplitPropagate(this, defaultSuccessorIndex());
                 } else if (validKeys != keys.length) {
                     ArrayList<BeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
-                    ResolvedJavaType[] newKeys = new ResolvedJavaType[validKeys];
+                    int[] newKeys = new int[validKeys];
                     int[] newKeySuccessors = new int [validKeys + 1];
                     double[] newKeyProbabilities = new double[validKeys + 1];
                     double totalProbability = 0;
                     int current = 0;
                     for (int i = 0; i < keyCount() + 1; i++) {
-                        if (i == keyCount() || keys[i].isSubtypeOf(stamp.type())) {
+                        if (i == keyCount() || stamp.contains(keys[i])) {
                             int index = newSuccessors.indexOf(keySuccessor(i));
                             if (index == -1) {
                                 index = newSuccessors.size();
@@ -134,8 +149,6 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                         }
                     }
 
-                    double[] newSuccessorProbabilities = successorProbabilites(newSuccessors.size(), newKeySuccessors, newKeyProbabilities);
-
                     for (int i = 0; i < blockSuccessorCount(); i++) {
                         BeginNode successor = blockSuccessor(i);
                         if (!newSuccessors.contains(successor)) {
@@ -145,7 +158,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                     }
 
                     BeginNode[] successorsArray = newSuccessors.toArray(new BeginNode[newSuccessors.size()]);
-                    TypeSwitchNode newSwitch = graph().add(new TypeSwitchNode(value(), successorsArray, newSuccessorProbabilities, newKeys, newKeyProbabilities, newKeySuccessors));
+                    IntegerSwitchNode newSwitch = graph().add(new IntegerSwitchNode(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors));
                     ((FixedWithNextNode) predecessor()).setNext(newSwitch);
                     GraphUtil.killWithUnusedFloatingInputs(this);
                 }

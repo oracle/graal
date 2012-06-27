@@ -401,7 +401,7 @@ public class InliningUtil {
             ResolvedJavaType[] types = new ResolvedJavaType[ptypes.length];
             double[] probabilities = new double[ptypes.length + 1];
             BeginNode[] successors = new BeginNode[ptypes.length + 1];
-
+            int[] keySuccessors = new int[ptypes.length + 1];
             for (int i = 0; i < ptypes.length; i++) {
                 types[i] = ptypes[i].type;
                 probabilities[i] = ptypes[i].probability;
@@ -412,12 +412,14 @@ public class InliningUtil {
                     entry = endNode;
                 }
                 successors[i] = BeginNode.begin(entry);
+                keySuccessors[i] = i;
             }
             assert !(unknownTypeSux instanceof MergeNode);
             successors[successors.length - 1] = BeginNode.begin(unknownTypeSux);
             probabilities[successors.length - 1] = notRecordedTypeProbability;
+            keySuccessors[successors.length - 1] = successors.length - 1;
 
-            TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(objectClassNode, successors, types, probabilities));
+            TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(objectClassNode, successors, probabilities, types, probabilities, keySuccessors));
 
             return typeSwitch;
         }
