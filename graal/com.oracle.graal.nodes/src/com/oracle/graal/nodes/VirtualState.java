@@ -34,8 +34,16 @@ public abstract class VirtualState extends Node {
         void apply(Node usage, T node);
     }
 
+    public interface VirtualClosure {
+        void apply(VirtualState node);
+    }
+
     public abstract VirtualState duplicateWithVirtualState();
 
     public abstract void applyToNonVirtual(NodeClosure<? super ValueNode> closure);
+
+    public abstract void applyToVirtual(VirtualClosure closure);
+
+    public abstract boolean isPartOfThisState(VirtualState state);
 
 }
