@@ -60,7 +60,7 @@ public final class JniMangle {
     }
 
     /**
-     * The delimiter in the string returned by {@link #mangleMethod(TypeDescriptor, String, SignatureDescriptor, boolean)} separating
+     * The delimiter in the string returned by {@link #mangleMethod(ResolvedJavaType, String, Signature, boolean)} separating
      * the short mangled form from the suffix to be added to obtain the long mangled form.
      */
     public static final char LONG_NAME_DELIMITER = ' ';

@@ -44,7 +44,6 @@ public abstract class SwitchNode extends ControlSplitNode {
      * Constructs a new Switch.
      * @param value the instruction that provides the value to be switched over
      * @param successors the list of successors of this switch
-     * @param stateAfter the state after the switch
      */
     public SwitchNode(ValueNode value, BeginNode[] successors, double[] successorProbabilities, int[] keySuccessors, double[] keyProbabilities) {
         super(StampFactory.forVoid(), successors, successorProbabilities);

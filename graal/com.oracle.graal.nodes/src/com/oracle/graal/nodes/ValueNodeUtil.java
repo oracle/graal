@@ -97,7 +97,7 @@ public class ValueNodeUtil {
     /**
      * Converts a given instruction to a value string. The representation of an node as
      * a value is formed by concatenating the {@linkplain com.oracle.graal.api.meta.Kind#typeChar character} denoting its
-     * {@linkplain ValueNode#kind kind} and its {@linkplain Node#id()}. For example, {@code "i13"}.
+     * {@linkplain ValueNode#kind kind} and its id. For example, {@code "i13"}.
      *
      * @param value the instruction to convert to a value string. If {@code value == null}, then "-" is returned.
      * @return the instruction representation as a string

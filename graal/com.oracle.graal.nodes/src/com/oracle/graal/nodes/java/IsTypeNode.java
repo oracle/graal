@@ -41,7 +41,7 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
     /**
      * Constructs a new IsTypeNode.
      *
-     * @param object the instruction producing the object to check against the given type
+     * @param objectClass the instruction producing the object to check against the given type
      * @param type the type for this check
      */
     public IsTypeNode(ValueNode objectClass, ResolvedJavaType type) {

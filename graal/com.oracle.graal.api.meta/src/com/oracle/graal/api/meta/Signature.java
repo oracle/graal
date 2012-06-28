@@ -38,7 +38,7 @@ public interface Signature {
 
     /**
      * Gets the argument type at the specified position. This method will return a
-     * {@linkplain JavaType#isResolved() resolved} type if possible but without
+     * {@linkplain ResolvedJavaType resolved} type if possible but without
      * triggering any class loading or resolution.
      *
      * @param index the index into the parameters, with {@code 0} indicating the first parameter

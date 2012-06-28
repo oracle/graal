@@ -104,7 +104,7 @@ public class CompilationPrinter {
     }
 
     /**
-     * Formats a given {@linkplain FrameState JVM frame state} as a multi line string.
+     * Formats given debug info as a multi line string.
      */
     protected String debugInfoToString(BytecodePosition codePos, BitSet registerRefMap, BitSet frameRefMap, Architecture arch) {
         StringBuilder sb = new StringBuilder();

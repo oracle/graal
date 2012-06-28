@@ -75,7 +75,7 @@ public class DebugInfo implements Serializable {
     /**
      * Gets the deoptimization information for each inlined frame (if available).
      *
-     * @return {@code null} if no frame de-opt info is {@linkplain #hasDebugFrame available}
+     * @return {@code null} if no frame de-opt info is {@linkplain #hasFrame() available}
      */
     public BytecodeFrame frame() {
         if (hasFrame()) {

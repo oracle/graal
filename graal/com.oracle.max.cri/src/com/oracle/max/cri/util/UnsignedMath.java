@@ -23,7 +23,7 @@
 package com.oracle.max.cri.util;
 
 /**
- * {@link INTRINSIC} method definitions for unsigned comparisons.
+ * Utilities for unsigned comparisons.
  * All methods have correct, but slow, standard Java implementations so that
  * they can be used with compilers not supporting the intrinsics.
  */

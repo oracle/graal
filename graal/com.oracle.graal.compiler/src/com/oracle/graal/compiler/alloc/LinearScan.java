@@ -61,31 +61,31 @@ public final class LinearScan {
 
     public static class BlockData {
         /**
-         * Bit map specifying which {@linkplain OperandPool operands} are live upon entry to this block.
+         * Bit map specifying which operands are live upon entry to this block.
          * These are values used in this block or any of its successors where such value are not defined
          * in this block.
-         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
+         * The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
         public BitSet liveIn;
 
         /**
-         * Bit map specifying which {@linkplain OperandPool operands} are live upon exit from this block.
+         * Bit map specifying which operands are live upon exit from this block.
          * These are values used in a successor block that are either defined in this block or were live
          * upon entry to this block.
-         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
+         * The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
         public BitSet liveOut;
 
         /**
-         * Bit map specifying which {@linkplain OperandPool operands} are used (before being defined) in this block.
+         * Bit map specifying which operands are used (before being defined) in this block.
          * That is, these are the values that are live upon entry to the block.
-         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
+         * The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
         public BitSet liveGen;
 
         /**
-         * Bit map specifying which {@linkplain OperandPool operands} are defined/overwritten in this block.
-         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
+         * Bit map specifying which operands are defined/overwritten in this block.
+         * The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
         public BitSet liveKill;
     }
@@ -144,8 +144,7 @@ public final class LinearScan {
     private final ArrayList<Variable> variables;
 
     /**
-     * The {@linkplain #operandNumber(Value) number} of the first variable operand
-     * {@linkplain #newVariable(Kind) allocated} from this pool.
+     * The {@linkplain #operandNumber(Value) number} of the first variable operand allocated.
      */
     private final int firstVariableNumber;
 
@@ -306,7 +305,7 @@ public final class LinearScan {
     }
 
     /**
-     * Gets the size of the {@link Block#liveIn} and {@link Block#liveOut} sets for a basic block. These sets do
+     * Gets the size of the {@link BlockData#liveIn} and {@link BlockData#liveOut} sets for a basic block. These sets do
      * not include any operands allocated as a result of creating {@linkplain #createDerivedInterval(Interval) derived
      * intervals}.
      */
@@ -640,7 +639,7 @@ public final class LinearScan {
     }
 
     /**
-     * Computes local live sets (i.e. {@link Block#liveGen} and {@link Block#liveKill}) separately for each block.
+     * Computes local live sets (i.e. {@link BlockData#liveGen} and {@link BlockData#liveKill}) separately for each block.
      */
     void computeLocalLiveSets() {
         int numBlocks = blockCount();
@@ -763,8 +762,8 @@ public final class LinearScan {
     }
 
     /**
-     * Performs a backward dataflow analysis to compute global live sets (i.e. {@link Block#liveIn} and
-     * {@link Block#liveOut}) for each block.
+     * Performs a backward dataflow analysis to compute global live sets (i.e. {@link BlockData#liveIn} and
+     * {@link BlockData#liveOut}) for each block.
      */
     void computeGlobalLiveSets() {
         int numBlocks = blockCount();

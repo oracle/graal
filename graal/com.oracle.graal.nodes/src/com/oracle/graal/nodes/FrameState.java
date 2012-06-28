@@ -113,7 +113,6 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
      *
      * @param method the method for this frame state
      * @param bci the bytecode index of the frame state
-     * @param localsSize number of locals
      * @param stackSize size of the stack
      * @param rethrowException if true the VM should re-throw the exception on top of the stack when deopt'ing using this framestate
      */

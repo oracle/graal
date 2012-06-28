@@ -126,7 +126,7 @@ public abstract class LIRInstruction {
         Constant,
 
         /**
-         * The value can be {@link CiValue#IllegalValue}.
+         * The value can be {@link Value#IllegalValue}.
          */
         Illegal,
 

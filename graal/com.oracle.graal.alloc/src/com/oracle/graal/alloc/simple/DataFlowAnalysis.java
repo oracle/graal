@@ -112,7 +112,7 @@ public class DataFlowAnalysis {
     }
 
     /**
-     * Numbers all instructions in all blocks. The numbering follows the {@linkplain ComputeLinearScanOrder linear scan order}.
+     * Numbers all instructions in all blocks. The numbering follows the linear scan order.
      */
     private void numberInstructions() {
         ValueProcedure defProc = new ValueProcedure() { @Override public Value doValue(Value value) { return setDef(value); } };

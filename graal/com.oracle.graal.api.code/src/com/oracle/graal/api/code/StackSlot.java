@@ -42,7 +42,7 @@ public final class StackSlot extends Value {
      *
      * @param kind The kind of the value stored in the stack slot.
      * @param offset The offset of the stack slot (in bytes)
-     * @param inCallerFrame Specifies if the offset is relative to the stack pointer,
+     * @param addFrameSize Specifies if the offset is relative to the stack pointer,
      *        or the beginning of the frame (stack pointer + total frame size).
      */
     public static StackSlot get(Kind kind, int offset, boolean addFrameSize) {
@@ -71,7 +71,7 @@ public final class StackSlot extends Value {
     }
 
     /**
-     * Private constructor to enforce use of {@link #get()} so that a cache can be used.
+     * Private constructor to enforce use of {@link #get(Kind, int, boolean)} so that a cache can be used.
      */
     private StackSlot(Kind kind, int offset, boolean addFrameSize) {
         super(kind);

@@ -47,9 +47,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
      * Constructs a new Invoke instruction.
      *
      * @param bci the bytecode index of the original invoke (used for debug infos)
-     * @param opcode the opcode of the invoke
-     * @param target the target method being called
-     * @param args the list of instructions producing arguments to the invocation, including the receiver object
+     * @param callTarget the target method being called
      */
     public InvokeNode(MethodCallTargetNode callTarget, int bci, long leafGraphId) {
         super(callTarget.returnStamp());

@@ -70,7 +70,7 @@ public class TargetDescription {
     public final int stackAlignment;
 
     /**
-     * @see http://docs.sun.com/app/docs/doc/806-0477/6j9r2e2b9?a=view
+     * @see "http://docs.oracle.com/cd/E19455-01/806-0477/overview-4/index.html"
      */
     public final int stackBias;
 

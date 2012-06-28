@@ -134,8 +134,6 @@ public class CodeUtil {
      *
      * @param format a format specification
      * @param method the method to be formatted
-     * @param kinds if {@code true} then the types in {@code method}'s signature are printed in the
-     *            {@linkplain Kind#jniName JNI} form of their {@linkplain Kind kind}
      * @return the result of formatting this method according to {@code format}
      * @throws IllegalFormatException if an illegal specifier is encountered in {@code format}
      */
@@ -227,8 +225,6 @@ public class CodeUtil {
      *
      * @param format a format specification
      * @param field the field to be formatted
-     * @param kinds if {@code true} then {@code field}'s type is printed in the {@linkplain Kind#jniName JNI} form of
-     *            its {@linkplain Kind kind}
      * @return the result of formatting this field according to {@code format}
      * @throws IllegalFormatException if an illegal specifier is encountered in {@code format}
      */
@@ -395,7 +391,7 @@ public class CodeUtil {
     }
 
     /**
-     * Convenient shortcut for calling {@link #appendLocation(StringBuilder, JavaMethod, int)} without having to supply a
+     * Convenient shortcut for calling {@link #appendLocation(StringBuilder, ResolvedJavaMethod, int)} without having to supply a
      * a {@link StringBuilder} instance and convert the result to a string.
      */
     public static String toLocation(ResolvedJavaMethod method, int bci) {
@@ -405,7 +401,7 @@ public class CodeUtil {
     /**
      * Appends a string representation of a location specified by a given method and bci to a given
      * {@link StringBuilder}. If a stack trace element with a non-null file name and non-negative line number is
-     * {@linkplain JavaMethod#toStackTraceElement(int) available} for the given method, then the string returned is the
+     * {@linkplain ResolvedJavaMethod#toStackTraceElement(int) available} for the given method, then the string returned is the
      * {@link StackTraceElement#toString()} value of the stack trace element, suffixed by the bci location. For example:
      *
      * <pre>
@@ -422,7 +418,6 @@ public class CodeUtil {
      * @param sb
      * @param method
      * @param bci
-     * @return
      */
     public static StringBuilder appendLocation(StringBuilder sb, ResolvedJavaMethod method, int bci) {
         if (method != null) {

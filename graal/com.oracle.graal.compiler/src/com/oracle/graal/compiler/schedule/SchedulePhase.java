@@ -111,9 +111,7 @@ public class SchedulePhase extends Phase {
     }
 
     /**
-     * Assigns a block to the given node. This method expects that PhiNodes and FixedNodes are already assigned to a
-     * block, since they should already have been placed by {@link ControlFlowGraph#identifyBlocks()}.
-     * This method will also try to
+     * Assigns a block to the given node. This method expects that PhiNodes and FixedNodes are already assigned to a block.
      */
     private void assignBlockToNode(ScheduledNode node) {
         assert !node.isDeleted();

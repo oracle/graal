@@ -96,7 +96,6 @@ public class SnapshotProfilingInfo implements ProfilingInfo, Serializable {
      *
      * @param file a file created by {@link #save(File, File)}
      * @param runtime the runtime used to resolve {@link ResolvedJavaType}s during deserialization
-     * @return
      * @throws ClassNotFoundException
      * @throws IOException
      */

@@ -812,7 +812,6 @@ public class Bytecodes {
      *
      * @param name instruction name (should be lower case)
      * @param format encodes the length of the instruction
-     * @param flagsArray the set of {@link Flags} associated with the instruction
      */
     private static void def(int opcode, String name, String format, int compilationComplexity) {
         def(opcode, name, format, compilationComplexity, 0);

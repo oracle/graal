@@ -74,7 +74,7 @@ public abstract class Architecture {
     public final ByteOrder byteOrder;
 
     /**
-     * Mask of the barrier constants defined in {@link MemoryBarriers} denoting the barriers that
+     * Mask of the barrier constants denoting the barriers that
      * are not required to be explicitly inserted under this architecture.
      */
     public final int implicitMemoryBarriers;
@@ -82,7 +82,7 @@ public abstract class Architecture {
     /**
      * Determines the barriers in a given barrier mask that are explicitly required on this architecture.
      *
-     * @param barriers a mask of the barrier constants defined in {@link MemoryBarriers}
+     * @param barriers a mask of the barrier constants
      * @return the value of {@code barriers} minus the barriers unnecessary on this architecture
      */
     public final int requiredBarriers(int barriers) {

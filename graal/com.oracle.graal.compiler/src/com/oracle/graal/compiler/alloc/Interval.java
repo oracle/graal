@@ -89,7 +89,7 @@ public final class Interval {
          * Sets the list for a specified binding.
          *
          * @param binding specifies the list to be replaced
-         * @param a list of intervals whose binding is {@code binding}
+         * @param list a list of intervals whose binding is {@code binding}
          */
         public void set(RegisterBinding binding, Interval list) {
             assert list != null;
@@ -155,7 +155,7 @@ public final class Interval {
          * Removes an interval from a list.
          *
          * @param binding specifies the list to be updated
-         * @param interval the interval to remove
+         * @param i the interval to remove
          */
         public void remove(RegisterBinding binding, Interval i) {
             Interval list = get(binding);
@@ -405,7 +405,7 @@ public final class Interval {
     public final Value operand;
 
     /**
-     * The {@linkplain OperandPool#operandNumber(Value) operand number} for this interval's {@linkplain #operand operand}.
+     * The operand number for this interval's {@linkplain #operand operand}.
      */
     public final int operandNumber;
 
@@ -421,7 +421,6 @@ public final class Interval {
 
     /**
      * The kind of this interval.
-     * Only valid if this is a {@linkplain #xxisVariable() variable}.
      */
     private Kind kind;
 

@@ -182,7 +182,7 @@ public class LoopFragmentInside extends LoopFragment {
 
     /**
      * Gets the corresponding value in this fragment.
-     * @param peel the peel to look into
+     *
      * @param b original value
      * @return corresponding value in the peel
      */

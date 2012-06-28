@@ -43,7 +43,6 @@ public class BailoutException extends RuntimeException {
 
     /**
      * Create a new {@code CiBailout}.
-     * @param reason a message indicating the reason with a String.format - syntax
      * @param args parameters to the formatter
      */
     public BailoutException(String format, Object... args) {

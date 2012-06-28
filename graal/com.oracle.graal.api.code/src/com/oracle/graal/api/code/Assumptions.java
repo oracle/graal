@@ -29,8 +29,6 @@ import com.oracle.graal.api.meta.*;
 
 /**
  * Class for recording optimistic assumptions made during compilation.
- * Recorded assumption can be visited for subsequent processing using
- * an implementation of the {@link CiAssumptionProcessor} interface.
  */
 public final class Assumptions implements Serializable, Iterable<Assumptions.Assumption> {
 

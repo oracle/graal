@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
@@ -37,9 +38,9 @@ import com.oracle.graal.nodes.type.*;
  * locking hierarchy.
  * <br>
  * The Java bytecode specification allows non-balanced locking. Graal does not handle such cases and throws a
- * {@link CiBailout} instead. Detecting non-balanced monitors during bytecode parsing is difficult, since the
+ * {@link BailoutException} instead. Detecting non-balanced monitors during bytecode parsing is difficult, since the
  * node flowing into the {@link MonitorExitNode} can be a phi function hiding the node that was flowing into the
- * {@link MonitorEnterNode}. Optimization phases are free to throw {@link CiBailout} if they detect such cases.
+ * {@link MonitorEnterNode}. Optimization phases are free to throw {@link BailoutException} if they detect such cases.
  * Otherwise, they are detected during LIR construction.
  */
 public abstract class AccessMonitorNode extends AbstractStateSplit implements StateSplit, MemoryCheckpoint {

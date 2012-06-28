@@ -29,11 +29,6 @@ import com.oracle.graal.nodes.*;
  * operate either as a stack (i.e. first-in / last-out), or as a sorted list,
  * where blocks can be sorted by a supplied number. The latter usage lends itself
  * naturally to iterative dataflow analysis problems.
- *
- * This implementation is not able to tell if a block is in the worklist already.
- * Note that this implementation is slightly less efficient than the dedicated
- * work list in {@link com.oracle.graal.compiler.graph.ScopeData}, because this worklist uses
- * an externally supplied number.
  */
 public class BlockWorkList {
     MergeNode[] workList;

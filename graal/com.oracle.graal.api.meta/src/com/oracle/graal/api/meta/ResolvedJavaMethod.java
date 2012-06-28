@@ -33,14 +33,14 @@ import java.util.*;
 public interface ResolvedJavaMethod extends JavaMethod {
 
     /**
-     * Gets the bytecode of the method, if the method {@linkplain #isResolved()} and has code.
+     * Gets the bytecode of the method, if the method has code.
      * The returned byte array does not contain breakpoints or non-Java bytecodes.
      * @return the bytecode of the method or {@code null} if none is available
      */
     byte[] code();
 
     /**
-     * Gets the size of the bytecode of the method, if the method {@linkplain #isResolved()} and has code.
+     * Gets the size of the bytecode of the method, if the method has code.
      * @return the size of the bytecode in bytes, or 0 if no bytecode is available
      */
     int codeSize();
@@ -165,7 +165,6 @@ public interface ResolvedJavaMethod extends JavaMethod {
      * parameters, in declaration order, of this method.
      *
      * @see Method#getParameterAnnotations()
-     * @see CiUtil#getParameterAnnotation(int, JavaResolvedMethod)
      */
     Annotation[][] getParameterAnnotations();
 
