@@ -24,7 +24,6 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
@@ -90,7 +89,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> debugProperties = super.getDebugProperties();
         if (callTarget != null && callTarget.targetMethod() != null) {
-            debugProperties.put("targetMethod", CodeUtil.format("%h.%n(%p)", callTarget.targetMethod()));
+            debugProperties.put("targetMethod", MetaUtil.format("%h.%n(%p)", callTarget.targetMethod()));
         }
         return debugProperties;
     }

@@ -53,7 +53,7 @@ public class MethodEntryCounters {
         protected long sortCount;
 
         protected Counter(ResolvedJavaMethod method) {
-            this.method = CodeUtil.format("%H.%n", method);
+            this.method = MetaUtil.format("%H.%n", method);
             counters.add(this);
         }
 

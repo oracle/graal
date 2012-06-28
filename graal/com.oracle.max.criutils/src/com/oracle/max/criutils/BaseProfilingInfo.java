@@ -22,7 +22,6 @@
  */
 package com.oracle.max.criutils;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 
 
@@ -84,6 +83,6 @@ public final class BaseProfilingInfo implements ProfilingInfo {
 
     @Override
     public String toString() {
-        return "BaseProfilingInfo<" + CodeUtil.profileToString(this, null, "; ") + ">";
+        return "BaseProfilingInfo<" + MetaUtil.profileToString(this, null, "; ") + ">";
     }
 }

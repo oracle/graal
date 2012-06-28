@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.loop;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -129,7 +128,7 @@ public class LoopEx {
             }
             BinaryNode result = BinaryNode.reassociate(binary, invariant);
             if (result != binary) {
-                Debug.log(CodeUtil.format("%H::%n", Debug.contextLookup(ResolvedJavaMethod.class)) + " : Reassociated %s into %s", binary, result);
+                Debug.log(MetaUtil.format("%H::%n", Debug.contextLookup(ResolvedJavaMethod.class)) + " : Reassociated %s into %s", binary, result);
                 graph.replaceFloating(binary, result);
             }
         }

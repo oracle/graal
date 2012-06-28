@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.meta;
 
 import java.lang.reflect.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 
@@ -70,14 +69,14 @@ public class HotSpotCompiledMethod extends CompilerObject implements InstalledCo
     }
 
     private boolean checkArgs(Object... args) {
-        Kind[] sig = CodeUtil.signatureToKinds(method);
-        assert args.length == sig.length : CodeUtil.format("%H.%n(%p): expected ", method) + sig.length + " args, got " + args.length;
+        Kind[] sig = MetaUtil.signatureToKinds(method);
+        assert args.length == sig.length : MetaUtil.format("%H.%n(%p): expected ", method) + sig.length + " args, got " + args.length;
         for (int i = 0; i < sig.length; i++) {
             Object arg = args[i];
             if (arg == null) {
-                assert sig[i].isObject() : CodeUtil.format("%H.%n(%p): expected arg ", method) + i + " to be Object, not " + sig[i];
+                assert sig[i].isObject() : MetaUtil.format("%H.%n(%p): expected arg ", method) + i + " to be Object, not " + sig[i];
             } else if (!sig[i].isObject()) {
-                assert sig[i].toBoxedJavaClass() == arg.getClass() : CodeUtil.format("%H.%n(%p): expected arg ", method) + i + " to be " + sig[i] + ", not " + arg.getClass();
+                assert sig[i].toBoxedJavaClass() == arg.getClass() : MetaUtil.format("%H.%n(%p): expected arg ", method) + i + " to be " + sig[i] + ", not " + arg.getClass();
             }
         }
         return true;

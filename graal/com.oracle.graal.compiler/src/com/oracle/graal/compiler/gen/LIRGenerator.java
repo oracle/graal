@@ -509,7 +509,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     protected void emitPrologue() {
-        CallingConvention incomingArguments = frameMap.registerConfig.getCallingConvention(JavaCallee, CodeUtil.signatureToKinds(method), target, false);
+        CallingConvention incomingArguments = frameMap.registerConfig.getCallingConvention(JavaCallee, MetaUtil.signatureToKinds(method), target, false);
 
         Value[] params = new Value[incomingArguments.locations.length];
         for (int i = 0; i < params.length; i++) {
@@ -888,7 +888,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         Value resultOperand = resultOperandFor(x.node().kind());
 
-        Kind[] signature = CodeUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind());
+        Kind[] signature = MetaUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind());
         CallingConvention cc = frameMap.registerConfig.getCallingConvention(JavaCall, signature, target(), false);
         frameMap.callsMethod(cc, JavaCall);
         List<Value> argList = visitInvokeArguments(cc, callTarget.arguments());

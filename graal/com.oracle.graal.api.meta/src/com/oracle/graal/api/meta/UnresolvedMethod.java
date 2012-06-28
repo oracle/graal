@@ -20,21 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.criutils;
+package com.oracle.graal.api.meta;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 
 /**
  * A implementation of {@link JavaMethod} for an unresolved method.
  */
-public class BaseUnresolvedMethod implements JavaMethod {
+public class UnresolvedMethod implements JavaMethod {
 
     public final String name;
     public final JavaType holder;
     public final Signature signature;
 
-    public BaseUnresolvedMethod(JavaType holder, String name, Signature signature) {
+    public UnresolvedMethod(JavaType holder, String name, Signature signature) {
         this.name = name;
         this.holder = holder;
         this.signature = signature;
@@ -64,6 +62,6 @@ public class BaseUnresolvedMethod implements JavaMethod {
 
     @Override
     public String toString() {
-        return CodeUtil.format("%H.%n(%p) [unresolved]", this);
+        return MetaUtil.format("%H.%n(%p) [unresolved]", this);
     }
 }

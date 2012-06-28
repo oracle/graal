@@ -223,9 +223,9 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     private void enqueue(Method m) throws Throwable {
-        JavaMethod riMethod = compiler.getRuntime().getResolvedJavaMethod(m);
-        assert !Modifier.isAbstract(((HotSpotResolvedJavaMethod) riMethod).accessFlags()) && !Modifier.isNative(((HotSpotResolvedJavaMethod) riMethod).accessFlags()) : riMethod;
-        compileMethod((HotSpotResolvedJavaMethod) riMethod, 0, false, 10);
+        JavaMethod javaMethod = compiler.getRuntime().getResolvedJavaMethod(m);
+        assert !Modifier.isAbstract(((HotSpotResolvedJavaMethod) javaMethod).accessFlags()) && !Modifier.isNative(((HotSpotResolvedJavaMethod) javaMethod).accessFlags()) : javaMethod;
+        compileMethod((HotSpotResolvedJavaMethod) javaMethod, 0, false, 10);
     }
 
     private static void shutdownCompileQueue(ThreadPoolExecutor queue) throws InterruptedException {
@@ -412,7 +412,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             HotSpotResolvedJavaType resolved = (HotSpotResolvedJavaType) holder;
             return resolved.createRiField(name, type, offset, flags);
         }
-        return new BaseUnresolvedField(holder, name, type);
+        return new UnresolvedField(holder, name, type);
     }
 
     @Override

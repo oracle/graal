@@ -97,8 +97,8 @@ public class CompilationPrinter {
      */
     public void printCompilation(JavaMethod method) {
         begin("compilation");
-        out.print("name \" ").print(CodeUtil.format("%H::%n", method)).println('"');
-        out.print("method \"").print(CodeUtil.format("%f %r %H.%n(%p)", method)).println('"');
+        out.print("name \" ").print(MetaUtil.format("%H::%n", method)).println('"');
+        out.print("method \"").print(MetaUtil.format("%f %r %H.%n(%p)", method)).println('"');
         out.print("date ").println(System.currentTimeMillis());
         end("compilation");
     }
@@ -129,7 +129,7 @@ public class CompilationPrinter {
             BytecodePosition curCodePos = codePos;
             List<VirtualObject> virtualObjects = new ArrayList<>();
             do {
-                sb.append(CodeUtil.toLocation(curCodePos.getMethod(), curCodePos.getBCI()));
+                sb.append(MetaUtil.toLocation(curCodePos.getMethod(), curCodePos.getBCI()));
                 sb.append('\n');
                 if (curCodePos instanceof BytecodeFrame) {
                     BytecodeFrame frame = (BytecodeFrame) curCodePos;

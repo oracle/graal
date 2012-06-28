@@ -390,7 +390,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
                 return true;
             }
             ResolvedJavaMethod method = graph.method();
-            return method != null && CodeUtil.format("%H.%n", method).contains(option);
+            return method != null && MetaUtil.format("%H.%n", method).contains(option);
         }
         return false;
     }

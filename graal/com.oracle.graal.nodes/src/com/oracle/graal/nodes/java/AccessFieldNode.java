@@ -25,7 +25,6 @@ package com.oracle.graal.nodes.java;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
@@ -95,7 +94,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
     @Override
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> debugProperties = super.getDebugProperties();
-        debugProperties.put("field", CodeUtil.format("%h.%n", field));
+        debugProperties.put("field", MetaUtil.format("%h.%n", field));
         return debugProperties;
     }
 

@@ -325,7 +325,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         String nl = CodeUtil.NEW_LINE;
         FrameState fs = frameState;
         while (fs != null) {
-            CodeUtil.appendLocation(sb, fs.method, fs.bci).append(nl);
+            MetaUtil.appendLocation(sb, fs.method, fs.bci).append(nl);
             sb.append("locals: [");
             for (int i = 0; i < fs.localsSize(); i++) {
                 sb.append(i == 0 ? "" : ", ").append(fs.localAt(i) == null ? "_" : fs.localAt(i).toString(Verbosity.Id));
@@ -356,7 +356,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         Map<Object, Object> properties = super.getDebugProperties();
         properties.put("bci", bci);
         if (method != null) {
-            properties.put("method", CodeUtil.format("%H.%n(%p):%r", method));
+            properties.put("method", MetaUtil.format("%H.%n(%p):%r", method));
             StackTraceElement ste = method.toStackTraceElement(bci);
             if (ste.getFileName() != null && ste.getLineNumber() >= 0) {
                 properties.put("source", ste.getFileName() + ":" + ste.getLineNumber());

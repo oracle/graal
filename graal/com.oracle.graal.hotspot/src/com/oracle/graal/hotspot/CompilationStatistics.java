@@ -78,9 +78,9 @@ public final class CompilationStatistics {
 
     private CompilationStatistics(ResolvedJavaMethod method) {
         if (method != null) {
-            holder = CodeUtil.format("%H", method);
+            holder = MetaUtil.format("%H", method);
             name = method.name();
-            signature = CodeUtil.format("%p", method);
+            signature = MetaUtil.format("%p", method);
             startTime = System.nanoTime();
             startInvCount = method.invocationCount();
             bytecodeCount = method.codeSize();

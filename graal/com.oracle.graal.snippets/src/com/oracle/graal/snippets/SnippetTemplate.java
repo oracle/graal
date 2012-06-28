@@ -106,7 +106,7 @@ public class SnippetTemplate {
 
         @Override
         public String toString() {
-            return CodeUtil.format("%h.%n", method) + map.toString();
+            return MetaUtil.format("%h.%n", method) + map.toString();
         }
     }
 
@@ -192,7 +192,7 @@ public class SnippetTemplate {
         Parameter[] parameterAnnotations = new Parameter[parameterCount];
         ConstantNode[] placeholders = new ConstantNode[parameterCount];
         for (int i = 0; i < parameterCount; i++) {
-            ConstantParameter c = CodeUtil.getParameterAnnotation(ConstantParameter.class, i, method);
+            ConstantParameter c = MetaUtil.getParameterAnnotation(ConstantParameter.class, i, method);
             if (c != null) {
                 String name = c.value();
                 Object arg = key.get(name);
@@ -200,7 +200,7 @@ public class SnippetTemplate {
                 assert checkConstantArgument(method, signature, i, name, arg, kind);
                 replacements.put(snippetGraph.getLocal(i), ConstantNode.forConstant(Constant.forBoxed(kind, arg), runtime, snippetCopy));
             } else {
-                Parameter p = CodeUtil.getParameterAnnotation(Parameter.class, i, method);
+                Parameter p = MetaUtil.getParameterAnnotation(Parameter.class, i, method);
                 assert p != null : method + ": parameter " + i + " must be annotated with either @Constant or @Parameter";
                 String name = p.value();
                 if (p.multiple()) {

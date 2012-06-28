@@ -56,9 +56,9 @@ public class InliningUtil {
         if (!Debug.isLogEnabled()) {
             return null;
         } else if (invoke != null && invoke.stateAfter() != null) {
-            return methodName(invoke.stateAfter(), invoke.bci()) + ": " + CodeUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+            return methodName(invoke.stateAfter(), invoke.bci()) + ": " + MetaUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
         } else {
-            return CodeUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+            return MetaUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
         }
     }
 
@@ -78,7 +78,7 @@ public class InliningUtil {
             sb.append(methodName(frameState.outerFrameState(), frameState.outerFrameState().bci));
             sb.append("->");
         }
-        sb.append(CodeUtil.format("%h.%n", frameState.method()));
+        sb.append(MetaUtil.format("%h.%n", frameState.method()));
         sb.append("@").append(bci);
         return sb.toString();
     }
@@ -155,7 +155,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "exact " + CodeUtil.format("%H.%n(%p):%r", concrete);
+            return "exact " + MetaUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -209,7 +209,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "type-checked " + CodeUtil.format("%H.%n(%p):%r", concrete);
+            return "type-checked " + MetaUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -487,7 +487,7 @@ public class InliningUtil {
             StringBuilder builder = new StringBuilder(shouldFallbackToInvoke() ? "megamorphic" : "polymorphic");
             builder.append(String.format(", %d methods with %d type checks:", concretes.size(), ptypes.length));
             for (int i = 0; i < concretes.size(); i++) {
-                builder.append(CodeUtil.format("  %H.%n(%p):%r", concretes.get(i)));
+                builder.append(MetaUtil.format("  %H.%n(%p):%r", concretes.get(i)));
             }
             return builder.toString();
         }
@@ -514,8 +514,8 @@ public class InliningUtil {
         @Override
         public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback) {
             if (Debug.isLogEnabled()) {
-                String targetName = CodeUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod());
-                String concreteName = CodeUtil.format("%H.%n(%p):%r", concrete);
+                String targetName = MetaUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod());
+                String concreteName = MetaUtil.format("%H.%n(%p):%r", concrete);
                 Debug.log("recording concrete method assumption: %s on receiver type %s -> %s", targetName, context, concreteName);
             }
             callback.recordConcreteMethodAssumption(invoke.callTarget().targetMethod(), context, concrete);
@@ -525,7 +525,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "assumption " + CodeUtil.format("%H.%n(%p):%r", concrete);
+            return "assumption " + MetaUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override

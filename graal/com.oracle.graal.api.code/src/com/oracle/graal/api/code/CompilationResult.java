@@ -519,7 +519,7 @@ public class CompilationResult implements Serializable {
             appendRefMap(sb, "registerMap", info.getRegisterRefMap());
             BytecodePosition codePos = info.getBytecodePosition();
             if (codePos != null) {
-                CodeUtil.appendLocation(sb.append(" "), codePos.getMethod(), codePos.getBCI());
+                MetaUtil.appendLocation(sb.append(" "), codePos.getMethod(), codePos.getBCI());
                 if (info.hasFrame()) {
                     sb.append(" #locals=").append(info.frame().numLocals).append(" #expr=").append(info.frame().numStack);
                     if (info.frame().numLocks > 0) {

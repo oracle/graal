@@ -28,7 +28,6 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
@@ -164,7 +163,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public String toString() {
-        return "HotSpotMethod<" + CodeUtil.format("%h.%n", this) + ">";
+        return "HotSpotMethod<" + MetaUtil.format("%h.%n", this) + ">";
     }
 
     public boolean hasCompiledCode() {
@@ -314,7 +313,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     private Method toJava() {
         try {
-            return holder.toJava().getDeclaredMethod(name, CodeUtil.signatureToTypes(signature(), holder));
+            return holder.toJava().getDeclaredMethod(name, MetaUtil.signatureToTypes(signature(), holder));
         } catch (NoSuchMethodException e) {
             return null;
         }
@@ -322,7 +321,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     private Constructor toJavaConstructor() {
         try {
-            return holder.toJava().getDeclaredConstructor(CodeUtil.signatureToTypes(signature(), holder));
+            return holder.toJava().getDeclaredConstructor(MetaUtil.signatureToTypes(signature(), holder));
         } catch (NoSuchMethodException e) {
             return null;
         }

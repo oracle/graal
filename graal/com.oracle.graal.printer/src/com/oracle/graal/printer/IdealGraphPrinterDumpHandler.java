@@ -27,7 +27,6 @@ import java.net.*;
 import java.util.*;
 
 import com.oracle.max.criutils.*;
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -150,7 +149,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
         for (Object o : Debug.context()) {
             if (o instanceof ResolvedJavaMethod) {
                 ResolvedJavaMethod method = (ResolvedJavaMethod) o;
-                result.add(CodeUtil.format("%H::%n(%p)", method));
+                result.add(MetaUtil.format("%H::%n(%p)", method));
             } else if (o instanceof DebugDumpScope) {
                 DebugDumpScope debugDumpScope = (DebugDumpScope) o;
                 if (debugDumpScope.decorator && !result.isEmpty()) {

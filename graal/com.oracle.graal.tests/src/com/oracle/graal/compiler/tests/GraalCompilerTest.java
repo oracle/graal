@@ -248,8 +248,8 @@ public abstract class GraalCompilerTest {
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parse(Method m) {
-        ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(m);
-        StructuredGraph graph = new StructuredGraph(riMethod);
+        ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(m);
+        StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;
     }
@@ -258,8 +258,8 @@ public abstract class GraalCompilerTest {
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parseProfiled(Method m) {
-        ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(m);
-        StructuredGraph graph = new StructuredGraph(riMethod);
+        ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(m);
+        StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;
     }

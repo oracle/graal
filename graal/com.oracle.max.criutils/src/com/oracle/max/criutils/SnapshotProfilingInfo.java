@@ -88,7 +88,7 @@ public class SnapshotProfilingInfo implements ProfilingInfo, Serializable {
 
     @Override
     public String toString() {
-        return CodeUtil.profileToString(this, null, "; ");
+        return MetaUtil.profileToString(this, null, "; ");
     }
 
     /**
@@ -125,7 +125,7 @@ public class SnapshotProfilingInfo implements ProfilingInfo, Serializable {
         if (txtFile != null) {
             PrintStream out = new PrintStream(txtFile);
             try {
-                out.println(CodeUtil.profileToString(this, null, CodeUtil.NEW_LINE));
+                out.println(MetaUtil.profileToString(this, null, CodeUtil.NEW_LINE));
             } finally {
                 out.close();
             }

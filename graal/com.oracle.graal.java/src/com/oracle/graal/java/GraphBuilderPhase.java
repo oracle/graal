@@ -130,13 +130,13 @@ public final class GraphBuilderPhase extends Phase {
 
     @Override
     protected String getDetailedName() {
-        return getName() + " " + CodeUtil.format("%H.%n(%p):%r", method);
+        return getName() + " " + MetaUtil.format("%H.%n(%p):%r", method);
     }
 
     private BciBlockMapping createBlockMap() {
         BciBlockMapping map = new BciBlockMapping(method);
         map.build();
-        Debug.dump(map, CodeUtil.format("After block building %f %R %H.%n(%P)", method));
+        Debug.dump(map, MetaUtil.format("After block building %f %R %H.%n(%P)", method));
 
         return map;
     }
@@ -149,7 +149,7 @@ public final class GraphBuilderPhase extends Phase {
 
         if (GraalOptions.PrintProfilingInformation) {
             TTY.println("Profiling info for " + method);
-            TTY.println(CodeUtil.indent(CodeUtil.profileToString(profilingInfo, method, CodeUtil.NEW_LINE), "  "));
+            TTY.println(MetaUtil.indent(MetaUtil.profileToString(profilingInfo, method, CodeUtil.NEW_LINE), "  "));
         }
 
         // compute the block map, setup exception handlers and get the entrypoint(s)
@@ -283,9 +283,9 @@ public final class GraphBuilderPhase extends Phase {
 
         if (con instanceof JavaType) {
             // this is a load of class constant which might be unresolved
-            JavaType riType = (JavaType) con;
-            if (riType instanceof ResolvedJavaType) {
-                frameState.push(Kind.Object, append(ConstantNode.forConstant(((ResolvedJavaType) riType).getEncoding(Representation.JavaClass), runtime, currentGraph)));
+            JavaType type = (JavaType) con;
+            if (type instanceof ResolvedJavaType) {
+                frameState.push(Kind.Object, append(ConstantNode.forConstant(((ResolvedJavaType) type).getEncoding(Representation.JavaClass), runtime, currentGraph)));
             } else {
                 append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved, graphId)));
                 frameState.push(Kind.Object, append(ConstantNode.forObject(null, runtime, currentGraph)));
