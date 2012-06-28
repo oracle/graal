@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import java.io.*;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
@@ -33,7 +32,6 @@ import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.counters.*;
-import com.oracle.max.criutils.*;
 
 /**
  * Implementation of RiMethod for resolved HotSpot methods.
@@ -200,59 +198,9 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return compilationComplexity;
     }
 
-    private static final MethodFilter profilingInfoFilter = GraalOptions.PIFilter == null ? null : new MethodFilter(GraalOptions.PIFilter);
-
-    /**
-     * Determines if the profiling info cache should be used for this method.
-     */
-    private boolean useProfilingInfoCache() {
-        return GraalOptions.PICache != null && (profilingInfoFilter == null || profilingInfoFilter.matches(this));
-    }
-
-    private ProfilingInfo loadProfilingInfo() {
-        if (!useProfilingInfoCache()) {
-            return null;
-        }
-        synchronized (this) {
-            File file = new File(GraalOptions.PICache, JniMangle.mangleMethod(holder, name, signature(), false));
-            if (file.exists()) {
-                try {
-                    SnapshotProfilingInfo snapshot = SnapshotProfilingInfo.load(file, HotSpotGraalRuntime.getInstance().getRuntime());
-                    if (snapshot.codeSize() != codeSize) {
-                        // The class file was probably changed - ignore the saved profile
-                        return null;
-                    }
-                    return snapshot;
-                } catch (Exception e) {
-                    // ignore
-                }
-            }
-            return null;
-        }
-    }
-
-    private void saveProfilingInfo(ProfilingInfo info) {
-        if (useProfilingInfoCache()) {
-            synchronized (this) {
-                String base = JniMangle.mangleMethod(holder, name, signature(), false);
-                File file = new File(GraalOptions.PICache, base);
-                File txtFile = new File(GraalOptions.PICache, base + ".txt");
-                SnapshotProfilingInfo snapshot = info instanceof SnapshotProfilingInfo ? (SnapshotProfilingInfo) info : new SnapshotProfilingInfo(info);
-                try {
-                    snapshot.save(file, txtFile);
-                } catch (IOException e) {
-                    // ignore
-                }
-            }
-        }
-    }
-
     @Override
     public ProfilingInfo profilingInfo() {
-        ProfilingInfo info = loadProfilingInfo();
-        if (info != null) {
-            return info;
-        }
+        ProfilingInfo info;
 
         if (GraalOptions.UseProfilingInformation && methodData == null) {
             methodData = HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_methodData(this);
@@ -263,7 +211,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             info = DefaultProfilingInfo.get(ExceptionSeen.FALSE);
         } else {
             info = new HotSpotProfilingInfo(methodData, codeSize);
-            saveProfilingInfo(info);
         }
         return info;
     }

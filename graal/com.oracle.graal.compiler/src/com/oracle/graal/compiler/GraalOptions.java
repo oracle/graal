@@ -262,16 +262,6 @@ public final class GraalOptions {
     public static String HIRLowerCheckcast = "";
     public static String HIRLowerNewInstance = "";
 
-    /**
-     * The profiling info cache directory.
-     */
-    public static String PICache = null;
-
-    /**
-     * Filters the methods for which profiling info is loaded from/saved to the {@link #PICache}.
-     */
-    public static String PIFilter = null;
-
     static {
         // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
         assert (DetailedAsserts = true) == true;
