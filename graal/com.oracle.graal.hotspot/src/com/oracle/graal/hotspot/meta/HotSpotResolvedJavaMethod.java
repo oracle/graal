@@ -260,7 +260,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
         if (methodData == null || (!methodData.hasNormalData() && !methodData.hasExtraData())) {
             // Be optimistic and return false for exceptionSeen. A methodDataOop is allocated in case of a deoptimization.
-            info = BaseProfilingInfo.get(ExceptionSeen.FALSE);
+            info = DefaultProfilingInfo.get(ExceptionSeen.FALSE);
         } else {
             info = new HotSpotProfilingInfo(methodData, codeSize);
             saveProfilingInfo(info);

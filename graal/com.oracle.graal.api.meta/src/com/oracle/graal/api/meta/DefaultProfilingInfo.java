@@ -20,25 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.criutils;
-
-import com.oracle.graal.api.meta.*;
+package com.oracle.graal.api.meta;
 
 
 /**
- * Dummy profiling information in case that a method was not executed frequently enough so that
- * no profiling information does exist yet, or in case that the profiling information should not be used.
+ * An implementation of {@link ProfilingInfo} that can used in the absence of real profile information.
  */
-public final class BaseProfilingInfo implements ProfilingInfo {
+public final class DefaultProfilingInfo implements ProfilingInfo {
     private static final ProfilingInfo[] NO_PROFILING_INFO = new ProfilingInfo[] {
-        new BaseProfilingInfo(ExceptionSeen.TRUE),
-        new BaseProfilingInfo(ExceptionSeen.FALSE),
-        new BaseProfilingInfo(ExceptionSeen.NOT_SUPPORTED)
+        new DefaultProfilingInfo(ExceptionSeen.TRUE),
+        new DefaultProfilingInfo(ExceptionSeen.FALSE),
+        new DefaultProfilingInfo(ExceptionSeen.NOT_SUPPORTED)
     };
 
     private final ExceptionSeen exceptionSeen;
 
-    BaseProfilingInfo(ExceptionSeen exceptionSeen) {
+    DefaultProfilingInfo(ExceptionSeen exceptionSeen) {
         this.exceptionSeen = exceptionSeen;
     }
 
