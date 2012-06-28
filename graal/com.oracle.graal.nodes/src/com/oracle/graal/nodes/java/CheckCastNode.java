@@ -60,7 +60,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 

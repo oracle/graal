@@ -56,7 +56,7 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 

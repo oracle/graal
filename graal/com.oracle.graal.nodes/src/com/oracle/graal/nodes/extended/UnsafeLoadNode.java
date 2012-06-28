@@ -71,7 +71,7 @@ public class UnsafeLoadNode extends FixedWithNextNode implements Lowerable {
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 

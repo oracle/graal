@@ -57,7 +57,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 

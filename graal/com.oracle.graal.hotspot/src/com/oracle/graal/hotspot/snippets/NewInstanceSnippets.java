@@ -176,7 +176,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
          * Lowers a {@link NewInstanceNode}.
          */
         @SuppressWarnings("unused")
-        public void lower(NewInstanceNode newInstanceNode, CiLoweringTool tool) {
+        public void lower(NewInstanceNode newInstanceNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) newInstanceNode.graph();
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) newInstanceNode.instanceClass();
             HotSpotKlassOop hub = type.klassOop();
@@ -197,7 +197,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
         }
 
         @SuppressWarnings("unused")
-        public void lower(TLABAllocateNode tlabAllocateNode, CiLoweringTool tool) {
+        public void lower(TLABAllocateNode tlabAllocateNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) tlabAllocateNode.graph();
             int size = tlabAllocateNode.size();
             assert (size % wordSize()) == 0;
@@ -210,7 +210,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
         }
 
         @SuppressWarnings("unused")
-        public void lower(InitializeNode initializeNode, CiLoweringTool tool) {
+        public void lower(InitializeNode initializeNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) initializeNode.graph();
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) initializeNode.type();
             HotSpotKlassOop hub = type.klassOop();

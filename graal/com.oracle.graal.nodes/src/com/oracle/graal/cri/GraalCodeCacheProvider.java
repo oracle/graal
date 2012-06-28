@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,22 @@
  */
 package com.oracle.graal.cri;
 
+import java.util.*;
+
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
+/**
+ * Graal-specific extensions for the code cache provider interface.
+ */
+public interface GraalCodeCacheProvider extends CodeCacheProvider {
 
-public interface RiGraphCache {
+    void lower(Node n, LoweringTool tool);
 
-    void put(StructuredGraph graph);
+    StructuredGraph intrinsicGraph(ResolvedJavaMethod caller, int bci, ResolvedJavaMethod method, List<? extends Node> parameters);
 
-    StructuredGraph get(ResolvedJavaMethod method);
+    CompilationResult compile(ResolvedJavaMethod method, StructuredGraph graph);
 
 }

@@ -67,7 +67,7 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 }

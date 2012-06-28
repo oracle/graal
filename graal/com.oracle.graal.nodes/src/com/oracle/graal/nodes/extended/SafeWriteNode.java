@@ -56,7 +56,7 @@ public class SafeWriteNode extends SafeAccessNode implements StateSplit, Lowerab
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public void lower(LoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) graph();
         ValueNode guard = tool.createNullCheckGuard(object(), leafGraphId());
         WriteNode write = graph.add(new WriteNode(object(), value(), location()));

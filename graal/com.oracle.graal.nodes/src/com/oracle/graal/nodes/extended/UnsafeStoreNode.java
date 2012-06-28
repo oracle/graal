@@ -92,7 +92,7 @@ public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lo
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 

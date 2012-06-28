@@ -61,11 +61,11 @@ import com.oracle.graal.nodes.*;
  */
 public abstract class GraalCompilerTest {
 
-    protected final ExtendedRiRuntime runtime;
+    protected final GraalCodeCacheProvider runtime;
 
     public GraalCompilerTest() {
         Debug.enable();
-        this.runtime = Graal.getRuntime().getCapability(ExtendedRiRuntime.class);
+        this.runtime = Graal.getRuntime().getCapability(GraalCodeCacheProvider.class);
     }
 
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph) {
@@ -127,7 +127,7 @@ public abstract class GraalCompilerTest {
         return result.toString();
     }
 
-    protected ExtendedRiRuntime runtime() {
+    protected GraalCodeCacheProvider runtime() {
         return runtime;
     }
 

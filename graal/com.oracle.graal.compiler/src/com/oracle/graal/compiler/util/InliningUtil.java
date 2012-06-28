@@ -125,7 +125,7 @@ public class InliningUtil {
          * @param runtime
          * @param callback
          */
-        public abstract void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback);
+        public abstract void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback);
     }
 
     /**
@@ -141,7 +141,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph compilerGraph, ExtendedRiRuntime runtime, final InliningCallback callback) {
+        public void inline(StructuredGraph compilerGraph, GraalCodeCacheProvider runtime, final InliningCallback callback) {
             StructuredGraph graph = getGraph(concrete, callback);
             assert !IntrinsificationPhase.canIntrinsify(invoke, concrete, runtime);
             callback.recordMethodContentsAssumption(concrete);
@@ -184,7 +184,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
+        public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback) {
             // receiver null check must be before the type check
             InliningUtil.receiverNullCheck(invoke);
             ValueNode receiver = invoke.callTarget().receiver();
@@ -250,7 +250,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
+        public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback) {
             int numberOfMethods = concretes.size();
             boolean hasReturnValue = invoke.node().kind() != Kind.Void;
 
@@ -267,7 +267,7 @@ public class InliningUtil {
             return notRecordedTypeProbability > 0;
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
+        private void inlineMultipleMethods(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
             FixedNode continuation = invoke.next();
 
             // setup merge and phi nodes for results and exceptions
@@ -373,7 +373,7 @@ public class InliningUtil {
             return commonType;
         }
 
-        private void inlineSingleMethod(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
+        private void inlineSingleMethod(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback) {
             assert concretes.size() == 1 && ptypes.length > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
             MergeNode calleeEntryNode = graph.add(new MergeNode());
@@ -512,7 +512,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
+        public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback) {
             if (Debug.isLogEnabled()) {
                 String targetName = CodeUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod());
                 String concreteName = CodeUtil.format("%H.%n(%p):%r", concrete);
@@ -542,7 +542,7 @@ public class InliningUtil {
      * @param callback a callback that is used to determine the weight of a specific inlining
      * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
      */
-    public static InlineInfo getInlineInfo(Invoke invoke, int level, ExtendedRiRuntime runtime, Assumptions assumptions, InliningCallback callback, OptimisticOptimizations optimisticOpts) {
+    public static InlineInfo getInlineInfo(Invoke invoke, int level, GraalCodeCacheProvider runtime, Assumptions assumptions, InliningCallback callback, OptimisticOptimizations optimisticOpts) {
         ResolvedJavaMethod parent = invoke.stateAfter().method();
         MethodCallTargetNode callTarget = invoke.callTarget();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();

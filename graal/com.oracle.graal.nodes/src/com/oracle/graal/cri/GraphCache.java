@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,14 @@
  */
 package com.oracle.graal.cri;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
-public interface CiLoweringTool {
-    ExtendedRiRuntime getRuntime();
-    ValueNode getGuardAnchor();
-    ValueNode createNullCheckGuard(ValueNode object, long leafGraphId);
-    ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, long leafGraphId);
-    ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated, long leafGraphId);
-    Assumptions assumptions();
-}
 
+public interface GraphCache {
+
+    void put(StructuredGraph graph);
+
+    StructuredGraph get(ResolvedJavaMethod method);
+
+}

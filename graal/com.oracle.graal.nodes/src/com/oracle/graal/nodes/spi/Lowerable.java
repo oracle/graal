@@ -26,5 +26,5 @@ import com.oracle.graal.cri.*;
 
 public interface Lowerable {
 
-    void lower(CiLoweringTool tool);
+    void lower(LoweringTool tool);
 }

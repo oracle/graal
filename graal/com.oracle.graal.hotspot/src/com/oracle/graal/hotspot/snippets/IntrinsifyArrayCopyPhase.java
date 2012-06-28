@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 
 public class IntrinsifyArrayCopyPhase extends Phase {
-    private final ExtendedRiRuntime runtime;
+    private final GraalCodeCacheProvider runtime;
     private ResolvedJavaMethod arrayCopy;
     private ResolvedJavaMethod byteArrayCopy;
     private ResolvedJavaMethod shortArrayCopy;
@@ -47,7 +47,7 @@ public class IntrinsifyArrayCopyPhase extends Phase {
     private ResolvedJavaMethod doubleArrayCopy;
     private ResolvedJavaMethod objectArrayCopy;
 
-    public IntrinsifyArrayCopyPhase(ExtendedRiRuntime runtime) {
+    public IntrinsifyArrayCopyPhase(GraalCodeCacheProvider runtime) {
         this.runtime = runtime;
         try {
             byteArrayCopy = getArrayCopySnippet(runtime, byte.class);

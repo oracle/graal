@@ -44,7 +44,7 @@ public final class ReadHubNode extends FixedWithNextNode implements Lowerable, C
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 

@@ -54,7 +54,7 @@ public class GraalCompiler {
     /**
      * The runtime that this compiler has been configured for.
      */
-    public final ExtendedRiRuntime runtime;
+    public final GraalCodeCacheProvider runtime;
 
     /**
      * The XIR generator that lowers Java operations to machine operations.
@@ -66,7 +66,7 @@ public class GraalCompiler {
      */
     public final Backend backend;
 
-    public GraalCompiler(ExtendedRiRuntime runtime, TargetDescription target, Backend backend, RiXirGenerator xirGen) {
+    public GraalCompiler(GraalCodeCacheProvider runtime, TargetDescription target, Backend backend, RiXirGenerator xirGen) {
         this.runtime = runtime;
         this.target = target;
         this.xir = xirGen;
@@ -74,7 +74,7 @@ public class GraalCompiler {
     }
 
 
-    public CompilationResult compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, int osrBCI, final RiGraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
+    public CompilationResult compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, int osrBCI, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.accessFlags() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
         if (osrBCI != -1) {
             throw new BailoutException("No OSR supported");
@@ -105,7 +105,7 @@ public class GraalCompiler {
     /**
      * Builds the graph, optimizes it.
      */
-    public LIR emitHIR(StructuredGraph graph, Assumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public LIR emitHIR(StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
 
         if (graph.start().next() == null) {
             plan.runPhases(PhasePosition.AFTER_PARSING, graph);

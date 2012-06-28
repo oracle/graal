@@ -353,7 +353,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         /**
          * Lowers a checkcast node.
          */
-        public void lower(CheckCastNode checkcast, CiLoweringTool tool) {
+        public void lower(CheckCastNode checkcast, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) checkcast.graph();
             ValueNode hub = checkcast.targetClassInstruction();
             ValueNode object = checkcast.object();

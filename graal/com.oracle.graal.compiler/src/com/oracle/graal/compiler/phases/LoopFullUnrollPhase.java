@@ -30,9 +30,9 @@ import com.oracle.graal.nodes.*;
 
 public class LoopFullUnrollPhase extends Phase {
     private static final DebugMetric FULLY_UNROLLED_LOOPS = Debug.metric("FullUnrolls");
-    private final ExtendedRiRuntime runtime;
+    private final GraalCodeCacheProvider runtime;
 
-    public LoopFullUnrollPhase(ExtendedRiRuntime runtime) {
+    public LoopFullUnrollPhase(GraalCodeCacheProvider runtime) {
         this.runtime = runtime;
     }
 
