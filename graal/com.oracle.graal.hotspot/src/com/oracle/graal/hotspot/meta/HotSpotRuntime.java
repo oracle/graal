@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.max.cri.util.MemoryBarriers.*;
+import static com.oracle.max.criutils.MemoryBarriers.*;
 
 import java.lang.reflect.*;
 import java.util.*;
