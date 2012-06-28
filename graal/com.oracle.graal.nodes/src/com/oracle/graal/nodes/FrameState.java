@@ -400,4 +400,31 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
             outerFrameState().applyToNonVirtual(closure);
         }
     }
+
+    @Override
+    public void applyToVirtual(VirtualClosure closure) {
+        closure.apply(this);
+        for (VirtualObjectState state : virtualObjectMappings) {
+            state.applyToVirtual(closure);
+        }
+        if (outerFrameState() != null) {
+            outerFrameState().applyToVirtual(closure);
+        }
+    }
+
+    @Override
+    public boolean isPartOfThisState(VirtualState state) {
+        if (state == this) {
+            return true;
+        }
+        if (outerFrameState() != null && outerFrameState().isPartOfThisState(state)) {
+            return true;
+        }
+        for (VirtualObjectState objectState : virtualObjectMappings) {
+            if (objectState.isPartOfThisState(state)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

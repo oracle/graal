@@ -184,7 +184,6 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     @Override
     public StructuredGraph buildGraph(final ResolvedJavaMethod method) {
-        final StructuredGraph newGraph = new StructuredGraph(method);
 
         return Debug.scope("buildInlineGraph", this, new Callable<StructuredGraph>() {
 
@@ -196,8 +195,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                         return cachedGraph;
                     }
                 }
-
-
+                StructuredGraph newGraph = new StructuredGraph(method);
                 if (plan != null) {
                     plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
                 }

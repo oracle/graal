@@ -318,8 +318,8 @@ public class ArrayCopySnippets implements SnippetsInterface{
             int cardShift = cardTableShift();
             long cardStart = cardTableStart();
             long dstAddr = GetObjectAddressNode.get(dest);
-            long start = (dstAddr + header + destPos * scale) >>> cardShift;
-            long end = (dstAddr + header + (destPos + length - 1) * scale) >>> cardShift;
+            long start = (dstAddr + header + (long) destPos * scale) >>> cardShift;
+            long end = (dstAddr + header + ((long) destPos + length - 1) * scale) >>> cardShift;
             long count = end - start + 1;
             while (count-- > 0) {
                 DirectStoreNode.store((start + cardStart) + count, false);
