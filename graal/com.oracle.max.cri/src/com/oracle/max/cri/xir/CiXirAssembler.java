@@ -294,7 +294,7 @@ public abstract class CiXirAssembler {
     /**
      * Represents an XIR instruction, characterized by an {@link XirOp operation}, a {@link Kind kind}, an optional {@link XirOperand result}, a variable number of {@link XirOperand arguments},
      * and some optional instruction-specific state. The {@link #x}, {@link #y} and {@link #z} methods are convenient ways to access the first, second and third
-     * arguments, respectively. Only the {@link XirOp#CallStub} and {@link XirOp#CallRuntime} instructions can have more than three arguments.
+     * arguments, respectively. Only {@link XirOp#CallRuntime} instructions can have more than three arguments.
      *
      */
     public static final class XirInstruction {
@@ -499,7 +499,7 @@ public abstract class CiXirAssembler {
          */
         PointerCAS,
         /**
-         * Call the {@link RiMethod} defined by {@code extra}  with {@code args} and put the result in {@code r}.
+         * Call the {@link JavaMethod} defined by {@code extra}  with {@code args} and put the result in {@code r}.
          */
         CallRuntime,
         /**
@@ -786,7 +786,7 @@ public abstract class CiXirAssembler {
     }
 
     /**
-     * Terminates the assembly, checking invariants, in particular that {@link resultOperand} is set, and setting {@link #finished} to {@code true}.
+     * Terminates the assembly, checking invariants, in particular that {@link #resultOperand} is set, and setting {@link #finished} to {@code true}.
      */
     private void end() {
         assert !finished : "template may only be finished once!";

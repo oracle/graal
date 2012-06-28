@@ -46,7 +46,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
      * @param successors the list of successors
      * @param keys the sorted list of keys
      * @param keyProbabilities the probabilities of the keys
-     * @param keySuccessor the successor index for each key
+     * @param keySuccessors the successor index for each key
      */
     public IntegerSwitchNode(ValueNode value, BeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
         super(value, successors, successorProbabilites(successors.length, keySuccessors, keyProbabilities), keySuccessors, keyProbabilities);
@@ -63,7 +63,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
      * @param successorCount the number of successors
      * @param keys the sorted list of keys
      * @param keyProbabilities the probabilities of the keys
-     * @param keySuccessor the successor index for each key
+     * @param keySuccessors the successor index for each key
      */
     public IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
         this(value, new BeginNode[successorCount], keys, keyProbabilities, keySuccessors);

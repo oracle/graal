@@ -41,8 +41,7 @@ public interface ConstantPool {
     /**
      * Looks up a reference to a field. If {@code opcode} is non-negative, then resolution checks
      * specific to the JVM instruction it denotes are performed if the field is already resolved.
-     * Should any of these checks fail, an {@linkplain JavaField#isResolved() unresolved}
-     * field reference is returned.
+     * Should any of these checks fail, an unresolved field reference is returned.
      *
      * @param cpi the constant pool index
      * @param opcode the opcode of the instruction for which the lookup is being performed or {@code -1}
@@ -54,8 +53,7 @@ public interface ConstantPool {
     /**
      * Looks up a reference to a method. If {@code opcode} is non-negative, then resolution checks
      * specific to the JVM instruction it denotes are performed if the method is already resolved.
-     * Should any of these checks fail, an {@linkplain JavaMethod#isResolved() unresolved}
-     * method reference is returned.
+     * Should any of these checks fail, an unresolved method reference is returned.
      *
      * @param cpi the constant pool index
      * @param opcode the opcode of the instruction for which the lookup is being performed or {@code -1}
@@ -67,8 +65,7 @@ public interface ConstantPool {
     /**
      * Looks up a reference to a type. If {@code opcode} is non-negative, then resolution checks
      * specific to the JVM instruction it denotes are performed if the type is already resolved.
-     * Should any of these checks fail, an {@linkplain JavaType#isResolved() unresolved}
-     * type reference is returned.
+     * Should any of these checks fail, an unresolved type reference is returned.
      *
      * @param cpi the constant pool index
      * @param opcode the opcode of the instruction for which the lookup is being performed or {@code -1}

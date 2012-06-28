@@ -29,8 +29,7 @@ import com.oracle.graal.api.meta.*;
 
 /**
  * Represents the output from compiling a method, including the compiled machine code, associated data and references,
- * relocation information, deoptimization information, etc. It is the essential component of a {@link CiResult}, which also includes
- * {@linkplain CiStatistics compilation statistics} and {@linkplain BailoutException failure information}.
+ * relocation information, deoptimization information, etc.
  */
 public class CompilationResult implements Serializable {
 
@@ -403,7 +402,6 @@ public class CompilationResult implements Serializable {
      *
      * @param codePos  the position in the code that is covered by the handler
      * @param handlerPos    the position of the handler
-     * @param throwableType the type of exceptions handled by the handler
      */
     public void recordExceptionHandler(int codePos, int handlerPos) {
         getExceptionHandlers().add(new ExceptionHandler(codePos, handlerPos));

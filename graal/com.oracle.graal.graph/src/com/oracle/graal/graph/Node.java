@@ -35,8 +35,6 @@ import com.oracle.graal.graph.NodeClass.*;
  * with annotated fields. There are two kind of edges : {@link Input} and {@link Successor}. If a field, of a type
  * compatible with {@link Node}, annotated with either {@link Input} and {@link Successor} is not null, then there is an
  * edge from this node to the node this field points to.<br>
- * Fields in a node subclass can also be annotated with {@link Data} : such fields will be used when comparing 2 nodes
- * with {@link #equals(Object)}, for value numbering and for debugging purposes.<br>
  * Nodes which are be value numberable should implement the {@link ValueNumberable} interface.
  *
  * <h1>Assertions and Verification</h1>
@@ -45,8 +43,6 @@ import com.oracle.graal.graph.NodeClass.*;
  * {@link #assertFalse(boolean, String, Object...)} methods, which will check the supplied boolean and throw a
  * VerificationError if it has the wrong value. Both methods will always either throw an exception or return true.
  * They can thus be used within an assert statement, so that the check is only performed if assertions are enabled.
- *
- *
  */
 public abstract class Node implements Cloneable, Formattable {
 

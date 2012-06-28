@@ -49,10 +49,8 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLow
 
     /**
      * Constructs a new NewMultiArrayNode.
-     * @param elementType the element type of the array
+     * @param type the element type of the array
      * @param dimensions the node which produce the dimensions for this array
-     * @param cpi the constant pool index for resolution
-     * @param riConstantPool the constant pool for resolution
      */
     public NewMultiArrayNode(ResolvedJavaType type, ValueNode[] dimensions) {
         super(StampFactory.exactNonNull(type));

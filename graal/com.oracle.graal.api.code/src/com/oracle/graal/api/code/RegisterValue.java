@@ -35,7 +35,7 @@ public final class RegisterValue extends Value {
     private final Register reg;
 
     /**
-     * Should only be called from {@link Register#CiRegister} to ensure canonicalization.
+     * Should only be called from {@link Register#Register} to ensure canonicalization.
      */
     protected RegisterValue(Kind kind, Register register) {
         super(kind);

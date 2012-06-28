@@ -317,7 +317,7 @@ public class FrameStateBuilder {
     }
 
     /**
-     * Stores a given local variable at the specified index. If the value is a {@linkplain Kind#isDoubleWord() double word},
+     * Stores a given local variable at the specified index. If the value occupies {@linkplain FrameStateBuilder#isTwoSlot(Kind) two slots},
      * then the next local variable index is also overwritten.
      *
      * @param i the index at which to store
@@ -498,7 +498,6 @@ public class FrameStateBuilder {
 
     /**
      * Pop the specified number of slots off of this stack and return them as an array of instructions.
-     * @param size the number of arguments off of the stack
      * @return an array containing the arguments off of the stack
      */
     public ValueNode[] popArguments(int slotSize, int argSize) {

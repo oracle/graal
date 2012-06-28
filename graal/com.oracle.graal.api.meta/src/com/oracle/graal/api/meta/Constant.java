@@ -25,7 +25,7 @@ package com.oracle.graal.api.meta;
 /**
  * Represents a constant (boxed) value, such as an integer, floating point number, or object reference,
  * within the compiler and across the compiler/runtime interface. Exports a set of {@code Constant}
- * instances that represent frequently used constant values, such as {@link #ZERO}.
+ * instances that represent frequently used constant values, such as {@link #NULL_OBJECT}.
  */
 public final class Constant extends Value {
     private static final long serialVersionUID = -6355452536852663986L;
@@ -262,7 +262,6 @@ public final class Constant extends Value {
 
     /**
      * Unchecked access to a primitive value.
-     * @return
      */
     public long asPrimitive() {
         if (kind.isObject()) {

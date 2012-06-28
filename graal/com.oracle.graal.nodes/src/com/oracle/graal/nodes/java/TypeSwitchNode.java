@@ -48,7 +48,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
      * @param successors the list of successors
      * @param keys the list of types
      * @param keyProbabilities the probabilities of the keys
-     * @param keySuccessor the successor index for each key
+     * @param keySuccessors the successor index for each key
      */
     public TypeSwitchNode(ValueNode value, BeginNode[] successors, double[] successorProbabilities, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
         super(value, successors, successorProbabilities, keySuccessors, keyProbabilities);

@@ -26,11 +26,11 @@ package com.oracle.graal.jtt.hotspot;
  * @test
  * @bug 7005594
  * @summary Array overflow not handled correctly with loop optimzations
- * 
+ *
  * @run shell Test7005594.sh
  * @##Disabled huge heap##Runs: 0 = 95
  */
-
+@SuppressWarnings("javadoc")
 public class Test7005594 {
 
     private static int test0(byte[] a) {

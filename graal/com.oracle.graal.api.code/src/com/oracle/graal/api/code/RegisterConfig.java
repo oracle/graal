@@ -62,7 +62,7 @@ public interface RegisterConfig {
      *
      * @param type the type of calling convention
      * @param flag specifies whether registers for {@linkplain RegisterFlag#CPU integral} or
-     *             {@linkplain} RegisterFlag#FPU floating point} parameters are being requested
+     *             {@linkplain RegisterFlag#FPU floating point} parameters are being requested
      * @return the ordered set of registers that may be used to pass parameters in a call conforming to {@code type}
      */
     Register[] getCallingConventionRegisters(Type type, RegisterFlag flag);
@@ -77,7 +77,7 @@ public interface RegisterConfig {
      * {@linkplain Register#categorize(Register[]) categorized} by register {@linkplain RegisterFlag flags}.
      *
      * @return a map from each {@link RegisterFlag} constant to the list of {@linkplain #getAllocatableRegisters()
-     *         allocatable} registers for which the flag is {@linkplain #isSet(RegisterFlag) set}
+     *         allocatable} registers for which the flag is set
      *
      */
     EnumMap<RegisterFlag, Register[]> getCategorizedAllocatableRegisters();

@@ -33,7 +33,7 @@ import com.oracle.graal.lir.cfg.*;
  *
  * When a block has more than one predecessor, and all predecessors end with
  * the {@linkplain #same(LIRInstruction, LIRInstruction) same} sequence of
- * {@linkplain LIROpcode#Move move} instructions, then these sequences
+ * {@linkplain MoveOp move} instructions, then these sequences
  * can be replaced with a single copy of the sequence at the beginning of the block.
  *
  * Similarly, when a block has more than one successor, then same sequences of
@@ -78,8 +78,8 @@ final class EdgeMoveOptimizer {
     }
 
     /**
-     * Determines if two operations are both {@linkplain LIROpcode#Move moves}
-     * that have the same {@linkplain LIRInstruction#operand() source} and {@linkplain LIRInstruction#result() destination}
+     * Determines if two operations are both {@linkplain MoveOp moves}
+     * that have the same {@linkplain MoveOp#getInput() source} and {@linkplain MoveOp#getResult() destination}
      * operands and they have the same {@linkplain LIRInstruction#info debug info}.
      *
      * @param op1 the first instruction to compare

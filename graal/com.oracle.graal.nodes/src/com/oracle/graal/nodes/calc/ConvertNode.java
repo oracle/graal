@@ -74,10 +74,8 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
 
     /**
      * Constructs a new Convert instance.
-     * @param kind the result type of this instruction
      * @param opcode the operation
      * @param value the instruction producing the input value
-     * @param graph
      */
     public ConvertNode(Op opcode, ValueNode value) {
         super(StampFactory.forKind(opcode.to.stackKind()));

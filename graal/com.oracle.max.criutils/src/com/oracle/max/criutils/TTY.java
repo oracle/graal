@@ -42,7 +42,7 @@ public class TTY {
 
         /**
          * Creates an object that will suppress {@link TTY} for the current thread if the given filter does not
-         * {@linkplain #matches(String, Object) match} the given object. To revert the suppression state to how it was
+         * match the given object. To revert the suppression state to how it was
          * before this call, the {@link #remove()} method must be called on the suppression object.
          *
          * @param filter the pattern for matching. If {@code null}, then the match is successful. If it starts with "~",

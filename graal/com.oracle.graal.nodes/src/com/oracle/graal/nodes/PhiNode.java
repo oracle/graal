@@ -61,7 +61,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
     }
 
     /**
-     * Create a non-value phi ({@link PhiType#Memory} or {@link PhiType#Virtual}) with the specified kind.
+     * Create a non-value phi ({@link PhiType#Memory} with the specified kind.
      * @param type the type of the new phi
      * @param merge the merge that the new phi belongs to
      */

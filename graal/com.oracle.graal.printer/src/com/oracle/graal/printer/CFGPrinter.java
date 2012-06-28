@@ -57,7 +57,7 @@ class CFGPrinter extends CompilationPrinter {
     /**
      * Creates a control flow graph printer.
      *
-     * @param buffer where the output generated via this printer shown be written
+     * @param out where the output generated via this printer shown be written
      */
     public CFGPrinter(OutputStream out) {
         super(out);

@@ -31,7 +31,7 @@ import java.util.*;
  * <br>
  * The buffer uses internal data structures to store the enqueued updates. To avoid allocations, a buffer can be re-used.
  * Call the methods in the following order:
- * {@link #init()}, {@link #append()}, {@link #append()}, ..., {@link #finish()}, {@link #init()}, ...
+ * {@link #init}, {@link #append}, {@link #append}, ..., {@link #finish()}, {@link #init}, ...
  * <br>
  * Note: This class does not depend on LIRInstruction, so we could make it a generic utility class.
  */
@@ -61,7 +61,7 @@ public final class LIRInsertionBuffer {
     }
 
     /**
-     * Initialize this buffer. This method must be called before using {@link #append()}.
+     * Initialize this buffer. This method must be called before using {@link #append}.
      */
     public void init(List<LIRInstruction> newLir) {
         assert !initialized() : "already initialized";
@@ -98,7 +98,7 @@ public final class LIRInsertionBuffer {
     }
 
     /**
-     * Append all enqueued instructions to the instruction list. After that, {@link init()} can be called again to re-use this buffer.
+     * Append all enqueued instructions to the instruction list. After that, {@link #init(List)} can be called again to re-use this buffer.
      */
     public void finish() {
         if (ops.size() > 0) {

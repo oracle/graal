@@ -2185,8 +2185,8 @@ public class AMD64Assembler extends AbstractAssembler {
      * Creates prefix and the encoding of the lower 6 bits of the ModRM-Byte. It emits an operand prefix. If the given
      * operands exceed 3 bits, the 4th bit is encoded in the prefix.
      *
-     * @param regEnc the encoding of the register part of the ModRM-Byte
-     * @param rmEnc the encoding of the r/m part of the ModRM-Byte
+     * @param regEncoding the encoding of the register part of the ModRM-Byte
+     * @param rmEncoding the encoding of the r/m part of the ModRM-Byte
      * @return the lower 6 bits of the ModRM-Byte that should be emitted
      */
     private int prefixqAndEncode(int regEncoding, int rmEncoding) {

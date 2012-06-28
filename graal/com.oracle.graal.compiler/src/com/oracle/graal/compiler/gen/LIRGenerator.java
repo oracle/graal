@@ -163,7 +163,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     /**
-     * Returns the operand that has been previously initialized by {@link #setResult()}
+     * Returns the operand that has been previously initialized by {@link #setResult(ValueNode, Value)}
      * with the result of an instruction.
      * @param node A node that produces a result value.
      */

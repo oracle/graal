@@ -40,7 +40,7 @@ public class CalleeSaveLayout {
     public final int size;
 
     /**
-     * The size (in bytes) of an {@linkplain #registerAtIndex(int) indexable} slot in the CSA.
+     * The size (in bytes) of an {@linkplain #registerAt(int) indexable} slot in the CSA.
      */
     public final int slotSize;
 
@@ -52,7 +52,7 @@ public class CalleeSaveLayout {
     private final Register[] indexToReg;
 
     /**
-     * The list of registers {@linkplain #contains(Register) contained} by this CSA.
+     * The list of registers {@linkplain #contains(int) contained} by this CSA.
      */
     public final Register[] registers;
 
@@ -66,7 +66,7 @@ public class CalleeSaveLayout {
      * Creates a CSA layout.
      *
      * @param size size (in bytes) of the CSA. If this is {@code -1}, then the CSA size will be computed from {@code registers}.
-     * @param slotSize the size (in bytes) of an {@linkplain #registerAtIndex(int) indexable} slot in the CSA
+     * @param slotSize the size (in bytes) of an {@linkplain #registerAt(int) indexable} slot in the CSA
      * @param registers the registers that can be saved in the CSA
      */
     public CalleeSaveLayout(int frameOffsetToCSA, int size, int slotSize, Register... registers) {

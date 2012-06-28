@@ -48,10 +48,8 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     /**
      * Constructs a new access field object.
-     * @param kind the result kind of the access
      * @param object the instruction producing the receiver object
      * @param field the compiler interface representation of the field
-     * @param graph
      */
     public AccessFieldNode(Stamp stamp, ValueNode object, ResolvedJavaField field, long leafGraphId) {
         super(stamp);
