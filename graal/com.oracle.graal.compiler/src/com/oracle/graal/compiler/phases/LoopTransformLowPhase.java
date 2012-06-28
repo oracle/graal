@@ -54,7 +54,7 @@ public class LoopTransformLowPhase extends Phase {
                     for (LoopEx loop : dataUnswitch.loops()) {
                         if (LoopPolicies.shouldTryUnswitch(loop)) {
                             IfNode ifNode = LoopTransformations.findUnswitchableIf(loop);
-                            if (ifNode != null && !unswitchedDebug.isMarked(ifNode)) {
+                            if (ifNode != null && !unswitchedDebug.isMarked(ifNode) && LoopPolicies.shouldUnswitch(loop, ifNode)) {
                                 unswitchedDebug.mark(ifNode);
                                 Debug.log("Unswitching %s at %s [%f - %f]", loop, ifNode, ifNode.probability(0), ifNode.probability(1));
                                 //LoopTransformations.unswitch(loop, ifNode);

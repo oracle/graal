@@ -103,6 +103,8 @@ public final class GraalOptions {
     public static boolean FullUnroll                         = true;
     public static int     FullUnrollMaxNodes                 = 150; // TODO (gd) tune
     public static boolean LoopUnswitch                       = ____;
+    public static int     LoopUnswitchMaxIncrease            = 50;
+    public static int     LoopUnswitchUncertaintyBoost       = 5;
 
     // debugging settings
     public static int     MethodEndBreakpointGuards          = 0;

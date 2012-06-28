@@ -30,7 +30,8 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
-import com.oracle.graal.nodes.VirtualState.*;
+import com.oracle.graal.nodes.VirtualState.NodeClosure;
+import com.oracle.graal.nodes.VirtualState.VirtualClosure;
 
 
 public abstract class LoopFragment {
@@ -127,14 +128,6 @@ public abstract class LoopFragment {
         }
     }
 
-    public static Collection<BeginNode> toHirBlocks(Collection<Block> blocks) {
-        List<BeginNode> hir = new ArrayList<>(blocks.size());
-        for (Block b : blocks) {
-            hir.add(b.getBeginNode());
-        }
-        return hir;
-    }
-
     protected static NodeBitMap computeNodes(Graph graph, Collection<BeginNode> blocks) {
         return computeNodes(graph, blocks, Collections.<BeginNode>emptyList());
     }
@@ -212,13 +205,21 @@ public abstract class LoopFragment {
         return false;
     }
 
+    public static Collection<BeginNode> toHirBlocks(Collection<Block> blocks) {
+        List<BeginNode> hir = new ArrayList<>(blocks.size());
+        for (Block b : blocks) {
+            hir.add(b.getBeginNode());
+        }
+        return hir;
+    }
+
     /**
      * Merges the early exits (i.e. loop exits) that were duplicated as part of this fragment, with the original fragment's exits.
      */
     protected void mergeEarlyExits() {
         assert isDuplicate();
         StructuredGraph graph = graph();
-        for (BeginNode earlyExit : toHirBlocks(original().loop().lirLoop().exits)) {
+        for (BeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().lirLoop().exits)) {
             FixedNode next = earlyExit.next();
             if (earlyExit.isDeleted() || !this.contains(earlyExit)) {
                 continue;
