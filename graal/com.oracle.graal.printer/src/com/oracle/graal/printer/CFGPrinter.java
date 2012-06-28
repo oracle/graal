@@ -27,7 +27,6 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.max.criutils.*;
 import com.oracle.graal.alloc.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;

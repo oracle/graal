@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.criutils;
+package com.oracle.graal.printer;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
@@ -29,6 +29,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.max.criutils.*;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases.
