@@ -50,7 +50,6 @@ import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Cache;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 import com.oracle.graal.snippets.nodes.*;
-import com.oracle.max.criutils.*;
 
 /**
  * Snippets used for implementing the type test of a checkcast instruction.
