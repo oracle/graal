@@ -24,10 +24,10 @@ package com.oracle.graal.compiler.phases;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.util.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 public class IntrinsificationPhase extends Phase {
 

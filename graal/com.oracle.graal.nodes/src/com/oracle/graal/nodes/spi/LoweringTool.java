@@ -20,24 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.cri;
-
-import java.util.*;
+package com.oracle.graal.nodes.spi;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
-/**
- * Graal-specific extensions for the code cache provider interface.
- */
-public interface GraalCodeCacheProvider extends CodeCacheProvider {
-
-    void lower(Node n, LoweringTool tool);
-
-    StructuredGraph intrinsicGraph(ResolvedJavaMethod caller, int bci, ResolvedJavaMethod method, List<? extends Node> parameters);
-
-    CompilationResult compile(ResolvedJavaMethod method, StructuredGraph graph);
-
+public interface LoweringTool {
+    GraalCodeCacheProvider getRuntime();
+    ValueNode getGuardAnchor();
+    ValueNode createNullCheckGuard(ValueNode object, long leafGraphId);
+    ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, long leafGraphId);
+    ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated, long leafGraphId);
+    Assumptions assumptions();
 }
+

@@ -33,11 +33,11 @@ import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.compiler.util.InliningUtil.InlineInfo;
 import com.oracle.graal.compiler.util.InliningUtil.InliningCallback;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 
 public class InliningPhase extends Phase implements InliningCallback {

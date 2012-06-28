@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
-import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;

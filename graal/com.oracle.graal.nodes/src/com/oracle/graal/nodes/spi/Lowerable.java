@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.cri.*;
-
 public interface Lowerable {
 
     void lower(LoweringTool tool);
