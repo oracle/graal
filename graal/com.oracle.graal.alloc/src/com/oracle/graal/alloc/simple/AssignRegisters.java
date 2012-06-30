@@ -49,6 +49,7 @@ public abstract class AssignRegisters {
         ValueProcedure useProc =          new ValueProcedure() { @Override public Value doValue(Value value) { return use(value); } };
         ValueProcedure defProc =          new ValueProcedure() { @Override public Value doValue(Value value) { return def(value); } };
         ValueProcedure setReferenceProc = new ValueProcedure() { @Override public Value doValue(Value value) { return setReference(value); } };
+        StateProcedure finishProc =       new StateProcedure() { @Override public void doState(LIRFrameState state) { state.finish((BitSet) (curRegisterRefMap.clone()), (BitSet) (curFrameRefMap.clone()), frameMap); } };
 
         Debug.log("==== start assign registers ====");
         for (int i = lir.linearScanOrder().size() - 1; i >= 0; i--) {
@@ -70,17 +71,8 @@ public abstract class AssignRegisters {
                 op.forEachState(useProc);
                 op.forEachAlive(useProc);
 
-                if (op.info != null) {
-                    Debug.log("    registerRefMap: %s  frameRefMap: %s", curRegisterRefMap, curFrameRefMap);
-                    op.info.finish((BitSet) (curRegisterRefMap.clone()), (BitSet) (curFrameRefMap.clone()), frameMap);
-
-                    if (op instanceof LIRXirInstruction) {
-                        LIRXirInstruction xir = (LIRXirInstruction) op;
-                        if (xir.infoAfter != null) {
-                            xir.infoAfter.finish((BitSet) (curRegisterRefMap.clone()), (BitSet) (curFrameRefMap.clone()), frameMap);
-                        }
-                    }
-                }
+                // Build the reference map for the GC.
+                op.forEachState(finishProc);
 
                 // Process input operands after assigning the reference map, so that input operands that are used
                 // for the last time at this instruction are not part of the reference map.

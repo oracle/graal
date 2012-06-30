@@ -159,7 +159,7 @@ public class TargetMethodAssembler {
         return targetMethod;
     }
 
-    public void recordExceptionHandlers(int pcOffset, LIRDebugInfo info) {
+    public void recordExceptionHandlers(int pcOffset, LIRFrameState info) {
         if (info != null) {
             if (info.exceptionEdge != null) {
                 if (exceptionInfoList == null) {
@@ -170,7 +170,7 @@ public class TargetMethodAssembler {
         }
     }
 
-    public void recordImplicitException(int pcOffset, LIRDebugInfo info) {
+    public void recordImplicitException(int pcOffset, LIRFrameState info) {
         // record an implicit exception point
         if (info != null) {
             assert lastSafepointPos < pcOffset : lastSafepointPos + "<" + pcOffset;
@@ -180,21 +180,21 @@ public class TargetMethodAssembler {
         }
     }
 
-    public void recordDirectCall(int posBefore, int posAfter, Object callTarget, LIRDebugInfo info) {
+    public void recordDirectCall(int posBefore, int posAfter, Object callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
         assert lastSafepointPos < posAfter;
         lastSafepointPos = posAfter;
         targetMethod.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
     }
 
-    public void recordIndirectCall(int posBefore, int posAfter, Object callTarget, LIRDebugInfo info) {
+    public void recordIndirectCall(int posBefore, int posAfter, Object callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
         assert lastSafepointPos < posAfter;
         lastSafepointPos = posAfter;
         targetMethod.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
     }
 
-    public void recordSafepoint(int pos, LIRDebugInfo info) {
+    public void recordSafepoint(int pos, LIRFrameState info) {
         // safepoints always need debug info
         DebugInfo debugInfo = info.debugInfo();
         assert lastSafepointPos < pos;

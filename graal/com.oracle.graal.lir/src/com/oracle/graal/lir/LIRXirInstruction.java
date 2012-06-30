@@ -23,39 +23,47 @@
 package com.oracle.graal.lir;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import java.util.*;
-
-import com.oracle.max.cri.xir.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+import com.oracle.max.cri.xir.*;
 
 public abstract class LIRXirInstruction extends LIRInstruction {
+    @Opcode protected final String opcode;
+    @Def({REG, ILLEGAL}) protected Value outputOperand;
+    @Alive({REG, CONST, ILLEGAL}) protected Value[] inputs;
+    @Temp({REG, CONST, ILLEGAL}) protected Value[] temps;
+    @State protected LIRFrameState state;
+    @State protected LIRFrameState stateAfter;
 
-    public final Value[] originalOperands;
+    // Defined as Object[] so that the magic processing of Value[] does not complain this field is not annotated.
+    public final Object[] originalOperands;
+
     public final int outputOperandIndex;
     public final int[] inputOperandIndices;
     public final int[] tempOperandIndices;
     public final XirSnippet snippet;
-    public final LIRDebugInfo infoAfter;
     public final LabelRef trueSuccessor;
     public final LabelRef falseSuccessor;
 
-    public LIRXirInstruction(Object opcode,
-                             XirSnippet snippet,
+    public LIRXirInstruction(XirSnippet snippet,
                              Value[] originalOperands,
                              Value outputOperand,
                              Value[] inputs, Value[] temps,
                              int[] inputOperandIndices, int[] tempOperandIndices,
                              int outputOperandIndex,
-                             LIRDebugInfo info,
-                             LIRDebugInfo infoAfter,
+                             LIRFrameState state,
+                             LIRFrameState stateAfter,
                              LabelRef trueSuccessor,
                              LabelRef falseSuccessor) {
         // Note that we register the XIR input operands as Alive, because the XIR specification allows that input operands
         // are used at any time, even when the temp operands and the actual output operands have already be assigned.
-        super(opcode, isLegal(outputOperand) ? new Value[] {outputOperand} : LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, inputs, temps);
-        this.infoAfter = infoAfter;
+        this.opcode = "XIR: " + snippet.template;
+        this.outputOperand = outputOperand;
+        this.inputs = inputs;
+        this.temps = temps;
+        this.state = state;
+        this.stateAfter = stateAfter;
         this.snippet = snippet;
         this.inputOperandIndices = inputOperandIndices;
         this.tempOperandIndices = tempOperandIndices;
@@ -66,31 +74,16 @@ public abstract class LIRXirInstruction extends LIRInstruction {
         assert isLegal(outputOperand) || outputOperandIndex == -1;
     }
 
-    @Override
-    protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-        if (mode == OperandMode.Alive || mode == OperandMode.Temp) {
-            return EnumSet.of(OperandFlag.Register, OperandFlag.Constant, OperandFlag.Illegal);
-        } else if (mode == OperandMode.Output && index == 0) {
-            return EnumSet.of(OperandFlag.Register);
-        }
-        throw GraalInternalError.shouldNotReachHere();
-    }
-
     public Value[] getOperands() {
         for (int i = 0; i < inputOperandIndices.length; i++) {
-            originalOperands[inputOperandIndices[i]] = alive(i);
+            originalOperands[inputOperandIndices[i]] = inputs[i];
         }
         for (int i = 0; i < tempOperandIndices.length; i++) {
-            originalOperands[tempOperandIndices[i]] = temp(i);
+            originalOperands[tempOperandIndices[i]] = temps[i];
         }
         if (outputOperandIndex != -1) {
-            originalOperands[outputOperandIndex] = output(0);
+            originalOperands[outputOperandIndex] = outputOperand;
         }
-        return originalOperands;
-    }
-
-    @Override
-    public String name() {
-        return "XIR: " + snippet.template;
+        return (Value[]) originalOperands;
     }
 }

@@ -66,12 +66,12 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
         Variable result = gen.newVariable(kind());
         switch (operation()) {
             case ABS:   gen.append(new Op2Reg(DAND, result, input, Constant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL)))); break;
-            case SQRT:  gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.SQRT, result, input)); break;
-            case LOG:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.LOG, result, input)); break;
-            case LOG10: gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.LOG10, result, input)); break;
-            case SIN:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.SIN, result, input)); break;
-            case COS:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.COS, result, input)); break;
-            case TAN:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.TAN, result, input)); break;
+            case SQRT:  gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.SQRT, result, input)); break;
+            case LOG:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.LOG, result, input)); break;
+            case LOG10: gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.LOG10, result, input)); break;
+            case SIN:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.SIN, result, input)); break;
+            case COS:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.COS, result, input)); break;
+            case TAN:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.TAN, result, input)); break;
             default:    throw GraalInternalError.shouldNotReachHere();
         }
         gen.setResult(this, result);

@@ -341,20 +341,20 @@ public class LinearScanAllocator {
     }
 
     private Value use(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        assert mode == OperandMode.Input || mode == OperandMode.Alive;
+        assert mode == OperandMode.USE || mode == OperandMode.ALIVE;
         if (isVariable(value)) {
             // State values are not recorded beforehand because it does not matter if they are spilled. Still, it is necessary to record them as used now.
             recordUse(value);
 
             Location curLoc = curLocations.get(asVariable(value));
-            if (isStackSlot(curLoc.location) && flags.contains(OperandFlag.Stack)) {
+            if (isStackSlot(curLoc.location) && flags.contains(OperandFlag.STACK)) {
                 Debug.log("    use %s %s: use current stack slot %s", mode, value, curLoc.location);
                 return curLoc;
             }
             if (isRegister(curLoc.location)) {
                 int regNum = asRegister(curLoc.location).number;
                 assert curInRegisterState[regNum] == curLoc;
-                if (mode == OperandMode.Input || curOutRegisterState[regNum] == curLoc) {
+                if (mode == OperandMode.USE || curOutRegisterState[regNum] == curLoc) {
                     Debug.log("    use %s %s: use current register %s", mode, value, curLoc.location);
                     return curLoc;
                 }
@@ -373,10 +373,10 @@ public class LinearScanAllocator {
         return value;
     }
 
-    private static final EnumSet<OperandFlag> SPILL_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
+    private static final EnumSet<OperandFlag> SPILL_FLAGS = EnumSet.of(OperandFlag.REG, OperandFlag.STACK);
 
     private Value def(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        assert mode == OperandMode.Temp || mode == OperandMode.Output;
+        assert mode == OperandMode.TEMP || mode == OperandMode.DEF;
         if (isVariable(value)) {
             Debug.log("    def %s %s", mode, value);
             assert curLocations.get(asVariable(value)) == null;
@@ -396,7 +396,7 @@ public class LinearScanAllocator {
             if (in != null && in != out && isLocation(in) && curLocations.get(asLocation(in).variable) == in) {
                 Debug.log("    %s was evicted by %s, need to allocate new location", in, out);
                 Location oldLoc = asLocation(in);
-                Location newLoc = allocateRegister(oldLoc.variable, OperandMode.Alive, SPILL_FLAGS);
+                Location newLoc = allocateRegister(oldLoc.variable, OperandMode.ALIVE, SPILL_FLAGS);
                 assert oldLoc != newLoc;
                 moveResolver.add(oldLoc, newLoc);
             }
@@ -417,7 +417,7 @@ public class LinearScanAllocator {
                 Value phiInput = phiInputs[i];
 
                 if (isVariable(phiDefinition)) {
-                    Location hintResult = processRegisterHint(asVariable(phiDefinition), OperandMode.Output, phiInput);
+                    Location hintResult = processRegisterHint(asVariable(phiDefinition), OperandMode.DEF, phiInput);
                     if (hintResult != null) {
                         phiDefinitions[i] = hintResult;
                     }
@@ -444,7 +444,7 @@ public class LinearScanAllocator {
     }
 
     private Location allocateRegister(final Variable variable, final OperandMode mode, EnumSet<OperandFlag> flags) {
-        if (flags.contains(OperandFlag.RegisterHint)) {
+        if (flags.contains(OperandFlag.HINT)) {
             Value hintResult = curOp.forEachRegisterHint(variable, mode, new ValueProcedure() {
                 @Override
                 public Value doValue(Value registerHint) {
@@ -476,7 +476,7 @@ public class LinearScanAllocator {
             }
         }
 
-        if (flags.contains(OperandFlag.Stack) && betterSpillCandidate(curLocations.get(variable), bestSpillCandidate)) {
+        if (flags.contains(OperandFlag.STACK) && betterSpillCandidate(curLocations.get(variable), bestSpillCandidate)) {
             return selectSpillSlot(variable);
         }
 
@@ -509,11 +509,11 @@ public class LinearScanAllocator {
 
     private boolean isFree(Register reg, OperandMode mode) {
         switch (mode) {
-            case Input:  return curInRegisterState[reg.number] == null;
-            case Alive:  return curInRegisterState[reg.number] == null && curOutRegisterState[reg.number] == null;
-            case Temp:   return curOutRegisterState[reg.number] == null;
-            case Output: return curOutRegisterState[reg.number] == null;
-            default:     throw GraalInternalError.shouldNotReachHere();
+            case USE: return curInRegisterState[reg.number] == null;
+            case ALIVE: return curInRegisterState[reg.number] == null && curOutRegisterState[reg.number] == null;
+            case TEMP: return curOutRegisterState[reg.number] == null;
+            case DEF: return curOutRegisterState[reg.number] == null;
+            default: throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -552,7 +552,7 @@ public class LinearScanAllocator {
         assert isFree(reg, mode);
 
         Location loc = new Location(variable, reg.asValue(variable.kind));
-        if (mode == OperandMode.Input || mode == OperandMode.Alive) {
+        if (mode == OperandMode.USE || mode == OperandMode.ALIVE) {
             curInRegisterState[reg.number] = loc;
         }
         curOutRegisterState[reg.number] = loc;

@@ -35,14 +35,14 @@ import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 /**
  * This class represents garbage collection and deoptimization information attached to a LIR instruction.
  */
-public class LIRDebugInfo {
+public class LIRFrameState {
     public final BytecodeFrame topFrame;
     private final VirtualObject[] virtualObjects;
     private final List<StackSlot> pointerSlots;
     public final LabelRef exceptionEdge;
     private DebugInfo debugInfo;
 
-    public LIRDebugInfo(BytecodeFrame topFrame, VirtualObject[] virtualObjects, List<StackSlot> pointerSlots, LabelRef exceptionEdge) {
+    public LIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, List<StackSlot> pointerSlots, LabelRef exceptionEdge) {
         this.topFrame = topFrame;
         this.virtualObjects = virtualObjects;
         this.pointerSlots = pointerSlots;
@@ -75,9 +75,9 @@ public class LIRDebugInfo {
     }
 
     /**
-     * We filter out constant and illegal values ourself before calling the procedure, so {@link OperandFlag#Constant} and {@link OperandFlag#Illegal} need not be set.
+     * We filter out constant and illegal values ourself before calling the procedure, so {@link OperandFlag#CONST} and {@link OperandFlag#ILLEGAL} need not be set.
      */
-    private static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
+    private static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.REG, OperandFlag.STACK);
 
     private void processValues(Value[] values, ValueProcedure proc) {
         for (int i = 0; i < values.length; i++) {
@@ -85,11 +85,11 @@ public class LIRDebugInfo {
             if (value instanceof MonitorValue) {
                 MonitorValue monitor = (MonitorValue) value;
                 if (processed(monitor.getOwner())) {
-                    monitor.setOwner(proc.doValue(monitor.getOwner(), OperandMode.Alive, STATE_FLAGS));
+                    monitor.setOwner(proc.doValue(monitor.getOwner(), OperandMode.ALIVE, STATE_FLAGS));
                 }
 
             } else if (processed(value)) {
-                values[i] = proc.doValue(value, OperandMode.Alive, STATE_FLAGS);
+                values[i] = proc.doValue(value, OperandMode.ALIVE, STATE_FLAGS);
             }
         }
     }

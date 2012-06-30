@@ -171,7 +171,7 @@ public final class LIRVerifier {
 
         } else if (isAllocatableRegister(value)) {
             int regNum = asRegister(value).number;
-            if (mode == OperandMode.Alive) {
+            if (mode == OperandMode.ALIVE) {
                 curRegistersDefined.set(regNum);
             }
 
@@ -202,7 +202,7 @@ public final class LIRVerifier {
             assert curInstruction != null;
             variableDefinitions[variableIdx] = curInstruction;
             assert !curVariablesLive.get(variableIdx);
-            if (mode == OperandMode.Output) {
+            if (mode == OperandMode.DEF) {
                 curVariablesLive.set(variableIdx);
             }
 
@@ -216,7 +216,7 @@ public final class LIRVerifier {
             curRegistersDefined.set(regNum);
 
             if (beforeRegisterAllocation) {
-                if (mode == OperandMode.Output) {
+                if (mode == OperandMode.DEF) {
                     curRegistersLive[regNum] = value;
                 } else {
                     curRegistersLive[regNum] = null;
@@ -227,11 +227,11 @@ public final class LIRVerifier {
     }
 
     private static Value allowed(Object op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        if ((isVariable(value)  && flags.contains(OperandFlag.Register)) ||
-            (isRegister(value)  && flags.contains(OperandFlag.Register)) ||
-            (isStackSlot(value) && flags.contains(OperandFlag.Stack)) ||
-            (isConstant(value)  && flags.contains(OperandFlag.Constant) && mode != OperandMode.Output) ||
-            (isIllegal(value)   && flags.contains(OperandFlag.Illegal))) {
+        if ((isVariable(value)  && flags.contains(OperandFlag.REG)) ||
+            (isRegister(value)  && flags.contains(OperandFlag.REG)) ||
+            (isStackSlot(value) && flags.contains(OperandFlag.STACK)) ||
+            (isConstant(value)  && flags.contains(OperandFlag.CONST) && mode != OperandMode.DEF) ||
+            (isIllegal(value)   && flags.contains(OperandFlag.ILLEGAL))) {
             return value;
         }
         TTY.println("instruction %s", op);

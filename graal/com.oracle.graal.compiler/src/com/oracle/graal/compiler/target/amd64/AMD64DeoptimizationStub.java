@@ -35,12 +35,12 @@ import com.oracle.max.asm.target.amd64.*;
 
 public class AMD64DeoptimizationStub extends AMD64Code {
     public final Label label = new Label();
-    public final LIRDebugInfo info;
+    public final LIRFrameState info;
     public final DeoptimizationAction action;
     public final DeoptimizationReason reason;
     public final Object deoptInfo;
 
-    public AMD64DeoptimizationStub(DeoptimizationAction action, DeoptimizationReason reason, LIRDebugInfo info, Object deoptInfo) {
+    public AMD64DeoptimizationStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info, Object deoptInfo) {
         this.action = action;
         this.reason = reason;
         this.info = info;

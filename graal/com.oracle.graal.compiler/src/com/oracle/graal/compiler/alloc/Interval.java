@@ -759,7 +759,7 @@ public final class Interval {
             int len = splitChildren.size();
 
             // in outputMode, the end of the interval (opId == cur.to()) is not valid
-            int toOffset = (mode == LIRInstruction.OperandMode.Output ? 0 : 1);
+            int toOffset = (mode == LIRInstruction.OperandMode.DEF ? 0 : 1);
 
             int i;
             for (i = 0; i < len; i++) {
@@ -905,7 +905,7 @@ public final class Interval {
     }
 
     void addUsePos(int pos, RegisterPriority registerPriority) {
-        assert covers(pos, LIRInstruction.OperandMode.Input) : "use position not covered by live range";
+        assert covers(pos, LIRInstruction.OperandMode.USE) : "use position not covered by live range";
 
         // do not add use positions for precolored intervals because they are never used
         if (registerPriority != RegisterPriority.None && isVariable(operand)) {
@@ -1063,7 +1063,7 @@ public final class Interval {
         if (cur != Range.EndMarker) {
             assert cur.to != cur.next.from : "ranges not separated";
 
-            if (mode == LIRInstruction.OperandMode.Output) {
+            if (mode == LIRInstruction.OperandMode.DEF) {
                 return cur.from <= opId && opId < cur.to;
             } else {
                 return cur.from <= opId && opId <= cur.to;
