@@ -25,7 +25,6 @@ package com.oracle.graal.compiler.phases;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.loop.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 public class LoopTransformLowPhase extends Phase {
@@ -46,7 +45,6 @@ public class LoopTransformLowPhase extends Phase {
                 });
             }
             if (GraalOptions.LoopUnswitch) {
-                NodeBitMap unswitchedDebug = graph.createNodeBitMap();
                 boolean unswitched;
                 do {
                     unswitched = false;
@@ -54,12 +52,11 @@ public class LoopTransformLowPhase extends Phase {
                     for (LoopEx loop : dataUnswitch.loops()) {
                         if (LoopPolicies.shouldTryUnswitch(loop)) {
                             IfNode ifNode = LoopTransformations.findUnswitchableIf(loop);
-                            if (ifNode != null && !unswitchedDebug.isMarked(ifNode) && LoopPolicies.shouldUnswitch(loop, ifNode)) {
-                                unswitchedDebug.mark(ifNode);
+                            if (ifNode != null && LoopPolicies.shouldUnswitch(loop, ifNode)) {
                                 Debug.log("Unswitching %s at %s [%f - %f]", loop, ifNode, ifNode.probability(0), ifNode.probability(1));
-                                //LoopTransformations.unswitch(loop, ifNode);
+                                LoopTransformations.unswitch(loop, ifNode);
                                 UNSWITCHED.increment();
-                                //Debug.dump(graph, "After unswitch %s", loop);
+                                Debug.dump(graph, "After unswitch %s", loop);
                                 unswitched = true;
                                 break;
                             }

@@ -89,7 +89,13 @@ public abstract class LoopFragment {
     public abstract NodeIterable<Node> nodes();
 
     public StructuredGraph graph() {
-        return (StructuredGraph) loop.loopBegin().graph();
+        LoopEx l;
+        if (isDuplicate()) {
+            l = original().loop();
+        } else {
+            l = loop();
+        }
+        return (StructuredGraph) l.loopBegin().graph();
     }
 
     protected abstract DuplicationReplacement getDuplicationReplacement();
@@ -99,11 +105,13 @@ public abstract class LoopFragment {
     protected void patchNodes(final DuplicationReplacement dataFix) {
         if (isDuplicate() && !nodesReady) {
             assert !original.isDuplicate();
-            final DuplicationReplacement cfgFix = getDuplicationReplacement();
+            final DuplicationReplacement cfgFix = original().getDuplicationReplacement();
             DuplicationReplacement dr;
-            if (cfgFix == null) {
+            if (cfgFix == null && dataFix != null) {
                 dr = dataFix;
-            } else {
+            } else if (cfgFix != null && dataFix == null) {
+                dr = cfgFix;
+            } else if (cfgFix != null && dataFix != null) {
                 dr = new DuplicationReplacement() {
                     @Override
                     public Node replacement(Node o) {
@@ -119,8 +127,15 @@ public abstract class LoopFragment {
                         return o;
                     }
                 };
+            } else {
+                dr = new DuplicationReplacement() {
+                    @Override
+                    public Node replacement(Node o) {
+                        return o;
+                    }
+                };
             }
-            duplicationMap = graph().addDuplicates(nodes(), dr);
+            duplicationMap = graph().addDuplicates(original().nodes(), dr);
             finishDuplication();
             nodesReady = true;
         } else {
@@ -221,11 +236,13 @@ public abstract class LoopFragment {
         StructuredGraph graph = graph();
         for (BeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().lirLoop().exits)) {
             FixedNode next = earlyExit.next();
-            if (earlyExit.isDeleted() || !this.contains(earlyExit)) {
+            if (earlyExit.isDeleted() || !this.original().contains(earlyExit)) {
                 continue;
             }
             BeginNode newEarlyExit = getDuplicatedNode(earlyExit);
-            assert newEarlyExit != null;
+            if (newEarlyExit == null) {
+                continue;
+            }
             MergeNode merge = graph.add(new MergeNode());
             merge.setProbability(next.probability());
             EndNode originalEnd = graph.add(new EndNode());

@@ -26,6 +26,7 @@ import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.*;
 
 
 public class LoopFragmentWhole extends LoopFragment {
@@ -34,10 +35,23 @@ public class LoopFragmentWhole extends LoopFragment {
         super(loop);
     }
 
+    public LoopFragmentWhole(LoopFragmentWhole original) {
+        super(null, original);
+    }
+
     @Override
     public LoopFragmentWhole duplicate() {
-        // TODO (gd) do not forget to make a FULL loop : do not forget the forward end which is not part of the original loop stricto sensus
-        return null;
+        LoopFragmentWhole loopFragmentWhole = new LoopFragmentWhole(this);
+        loopFragmentWhole.reify();
+        return loopFragmentWhole;
+    }
+
+    private void reify() {
+        assert this.isDuplicate();
+
+        patchNodes(null);
+
+        mergeEarlyExits();
     }
 
     @Override
@@ -51,13 +65,29 @@ public class LoopFragmentWhole extends LoopFragment {
 
     @Override
     protected DuplicationReplacement getDuplicationReplacement() {
-        return null;
+        final FixedNode entry = loop().entryPoint();
+        final Graph graph = this.graph();
+        return new DuplicationReplacement() {
+            @Override
+            public Node replacement(Node o) {
+                if (o == entry) {
+                    return graph.add(new EndNode());
+                }
+                return o;
+            }
+        };
+    }
+
+    public FixedNode entryPoint() {
+        if (isDuplicate()) {
+            return getDuplicatedNode(original().loop().loopBegin()).forwardEnd();
+        }
+        return loop().entryPoint();
     }
 
     @Override
     protected void finishDuplication() {
-        // TODO Auto-generated method stub
-
+        // TODO (gd) ?
     }
 
     @Override
