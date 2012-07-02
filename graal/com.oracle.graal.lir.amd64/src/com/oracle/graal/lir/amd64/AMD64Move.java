@@ -23,25 +23,30 @@
 package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static java.lang.Double.*;
 import static java.lang.Float.*;
 
-import java.util.*;
-
-import com.oracle.max.asm.*;
-import com.oracle.max.asm.target.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
+import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.max.asm.*;
+import com.oracle.max.asm.target.amd64.*;
 
 public class AMD64Move {
 
+    @Opcode("MOVE")
     public static class SpillMoveOp extends AMD64LIRInstruction implements MoveOp {
+        @Def({REG, STACK}) protected Value result;
+        @Use({REG, STACK, CONST}) protected Value input;
+
         public SpillMoveOp(Value result, Value input) {
-            super("MOVE", new Value[] {result}, null, new Value[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+            this.result = result;
+            this.input = input;
         }
 
         @Override
@@ -51,28 +56,23 @@ public class AMD64Move {
 
         @Override
         public Value getInput() {
-            return input(0);
+            return input;
         }
         @Override
         public Value getResult() {
-            return output(0);
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input && index == 0) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
-            } else if (mode == OperandMode.Output && index == 0) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            return result;
         }
     }
 
 
+    @Opcode("MOVE")
     public static class MoveToRegOp extends AMD64LIRInstruction implements MoveOp {
+        @Def({REG, HINT}) protected Value result;
+        @Use({REG, STACK, CONST}) protected Value input;
+
         public MoveToRegOp(Value result, Value input) {
-            super("MOVE", new Value[] {result}, null, new Value[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+            this.result = result;
+            this.input = input;
         }
 
         @Override
@@ -82,28 +82,23 @@ public class AMD64Move {
 
         @Override
         public Value getInput() {
-            return input(0);
+            return input;
         }
         @Override
         public Value getResult() {
-            return output(0);
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input && index == 0) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
-            } else if (mode == OperandMode.Output && index == 0) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            return result;
         }
     }
 
 
+    @Opcode("MOVE")
     public static class MoveFromRegOp extends AMD64LIRInstruction implements MoveOp {
+        @Def({REG, STACK}) protected Value result;
+        @Use({REG, CONST, HINT}) protected Value input;
+
         public MoveFromRegOp(Value result, Value input) {
-            super("MOVE", new Value[] {result}, null, new Value[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+            this.result = result;
+            this.input = input;
         }
 
         @Override
@@ -113,87 +108,63 @@ public class AMD64Move {
 
         @Override
         public Value getInput() {
-            return input(0);
+            return input;
         }
         @Override
         public Value getResult() {
-            return output(0);
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input && index == 0) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Constant, OperandFlag.RegisterHint);
-            } else if (mode == OperandMode.Output && index == 0) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            return result;
         }
     }
 
 
     public static class LoadOp extends AMD64LIRInstruction {
-        public LoadOp(Value result, Value address, LIRDebugInfo info) {
-            super("LOAD", new Value[] {result}, info, new Value[] {address}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        @Def({REG}) protected Value result;
+        @Use({ADDR}) protected Value address;
+        @State protected LIRFrameState state;
+
+        public LoadOp(Value result, Value address, LIRFrameState state) {
+            this.result = result;
+            this.address = address;
+            this.state = state;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            load(tasm, masm, output(0), (Address) input(0), info);
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input && index == 0) {
-                return EnumSet.of(OperandFlag.Address);
-            } else if (mode == OperandMode.Output && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            load(tasm, masm, result, (Address) address, state);
         }
     }
 
 
     public static class StoreOp extends AMD64LIRInstruction {
-        public StoreOp(Value address, Value input, LIRDebugInfo info) {
-            super("STORE", LIRInstruction.NO_OPERANDS, info, new Value[] {address, input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        @Use({ADDR}) protected Value address;
+        @Use({REG, CONST}) protected Value input;
+        @State protected LIRFrameState state;
+
+        public StoreOp(Value address, Value input, LIRFrameState state) {
+            this.address = address;
+            this.input = input;
+            this.state = state;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            store(tasm, masm, (Address) input(0), input(1), info);
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input && index == 0) {
-                return EnumSet.of(OperandFlag.Address);
-            } else if (mode == OperandMode.Input && index == 1) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Constant);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            store(tasm, masm, (Address) address, input, state);
         }
     }
 
 
     public static class LeaOp extends AMD64LIRInstruction {
+        @Def({REG}) protected Value result;
+        @Use({ADDR, STACK, UNINITIALIZED}) protected Value address;
+
         public LeaOp(Value result, Value address) {
-            super("LEA", new Value[] {result}, null, new Value[] {address}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+            this.result = result;
+            this.address = address;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            masm.leaq(asLongReg(output(0)), tasm.asAddress(input(0)));
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input && index == 0) {
-                return EnumSet.of(OperandFlag.Address, OperandFlag.Stack, OperandFlag.Uninitialized);
-            } else if (mode == OperandMode.Output && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            masm.leaq(asLongReg(result), tasm.asAddress(address));
         }
     }
 
@@ -202,7 +173,6 @@ public class AMD64Move {
         private final int barriers;
 
         public MembarOp(final int barriers) {
-            super("MEMBAR", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
             this.barriers = barriers;
         }
 
@@ -210,57 +180,43 @@ public class AMD64Move {
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             masm.membar(barriers);
         }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            throw GraalInternalError.shouldNotReachHere();
-        }
     }
 
 
     public static class NullCheckOp extends AMD64LIRInstruction {
-        public NullCheckOp(Variable input, LIRDebugInfo info) {
-            super("NULL_CHECK", LIRInstruction.NO_OPERANDS, info, new Value[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        @Use protected Value input;
+        @State protected LIRFrameState state;
+
+        public NullCheckOp(Variable input, LIRFrameState state) {
+            this.input = input;
+            this.state = state;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            tasm.recordImplicitException(masm.codeBuffer.position(), info);
-            masm.nullCheck(asRegister(input(0)));
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            tasm.recordImplicitException(masm.codeBuffer.position(), state);
+            masm.nullCheck(asRegister(input));
         }
     }
 
 
+    @Opcode("CAS")
     public static class CompareAndSwapOp extends AMD64LIRInstruction {
+        @Def protected Value result;
+        @Use({ADDR}) protected Value address;
+        @Use protected Value cmpValue;
+        @Use protected Value newValue;
+
         public CompareAndSwapOp(Value result, Address address, Value cmpValue, Value newValue) {
-            super("CAS", new Value[] {result}, null, new Value[] {address, cmpValue, newValue}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+            this.result = result;
+            this.address = address;
+            this.cmpValue = cmpValue;
+            this.newValue = newValue;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            compareAndSwap(tasm, masm, output(0), asAddress(input(0)), input(1), input(2));
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input && index == 0) {
-                return EnumSet.of(OperandFlag.Address);
-            } else if (mode == OperandMode.Input && index == 1) {
-                return EnumSet.of(OperandFlag.Register);
-            } else if (mode == OperandMode.Input && index == 2) {
-                return EnumSet.of(OperandFlag.Register);
-            } else if (mode == OperandMode.Output && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            compareAndSwap(tasm, masm, result, (Address) address, cmpValue, newValue);
         }
     }
 
@@ -404,7 +360,7 @@ public class AMD64Move {
     }
 
 
-    public static void load(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Address loadAddr, LIRDebugInfo info) {
+    public static void load(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Address loadAddr, LIRFrameState info) {
         if (info != null) {
             tasm.recordImplicitException(masm.codeBuffer.position(), info);
         }
@@ -422,7 +378,7 @@ public class AMD64Move {
         }
     }
 
-    public static void store(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Address storeAddr, Value input, LIRDebugInfo info) {
+    public static void store(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Address storeAddr, Value input, LIRFrameState info) {
         if (info != null) {
             tasm.recordImplicitException(masm.codeBuffer.position(), info);
         }

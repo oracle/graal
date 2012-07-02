@@ -167,7 +167,7 @@ public final class IntervalPrinter {
                 if (op.hasCall()) {
                     intervals.get("call").ranges.add(new Range(curOpId, curOpId + 1));
                 }
-                if (op.info != null) {
+                if (op.hasState()) {
                     intervals.get("st").ranges.add(new Range(curOpId, curOpId + 1));
                 }
             }
@@ -228,7 +228,7 @@ public final class IntervalPrinter {
     private String useKind(EnumSet<OperandFlag> flags) {
         if (curUseKind != null) {
             return curUseKind;
-        } else if (flags.contains(OperandFlag.Stack)) {
+        } else if (flags.contains(OperandFlag.STACK)) {
             return "S";
         } else {
             return "M";
@@ -242,7 +242,7 @@ public final class IntervalPrinter {
                 interval.uses.add(new UsePosition(curOpId, useKind(flags)));
             }
             if (interval.lastTo == 0) {
-                interval.lastTo = curOpId + (mode == OperandMode.Alive ? 1 : 0);
+                interval.lastTo = curOpId + (mode == OperandMode.ALIVE ? 1 : 0);
             }
         }
         return value;

@@ -108,7 +108,7 @@ public class LIR {
     public boolean hasDebugInfo() {
         for (Block b : linearScanOrder()) {
             for (LIRInstruction op : b.lir) {
-                if (op.info != null) {
+                if (op.hasState()) {
                     return true;
                 }
             }

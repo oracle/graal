@@ -261,21 +261,21 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return LabelRef.forSuccessor(currentBlock, suxIndex);
     }
 
-    public LIRDebugInfo state() {
+    public LIRFrameState state() {
         assert lastState != null : "must have state before instruction";
         return stateFor(lastState, -1);
     }
 
-    public LIRDebugInfo state(long leafGraphId) {
+    public LIRFrameState state(long leafGraphId) {
         assert lastState != null : "must have state before instruction";
         return stateFor(lastState, leafGraphId);
     }
 
-    public LIRDebugInfo stateFor(FrameState state, long leafGraphId) {
+    public LIRFrameState stateFor(FrameState state, long leafGraphId) {
         return stateFor(state, null, null, leafGraphId);
     }
 
-    public LIRDebugInfo stateFor(FrameState state, List<StackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
+    public LIRFrameState stateFor(FrameState state, List<StackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
         return debugInfoBuilder.build(state, curLocks, pointerSlots, exceptionEdge, leafGraphId);
     }
 
@@ -552,11 +552,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         XirArgument obj = toXirArgument(x.object());
         XirArgument lockAddress = lockData == null ? null : toXirArgument(emitLea(lockData));
 
-        LIRDebugInfo stateBefore = state();
+        LIRFrameState stateBefore = state();
         // The state before the monitor enter is used for null checks, so it must not contain the newly locked object.
         curLocks = new LockScope(curLocks, x.stateAfter().inliningIdentifier(), x, lockData);
         // The state after the monitor enter is used for deoptimization, after the monitor has blocked, so it must contain the newly locked object.
-        LIRDebugInfo stateAfter = stateFor(x.stateAfter(), -1);
+        LIRFrameState stateAfter = stateFor(x.stateAfter(), -1);
 
         XirSnippet snippet = xir.genMonitorEnter(site(x, x.object()), obj, lockAddress);
         emitXir(snippet, x, stateBefore, stateAfter, true, null, null);
@@ -576,7 +576,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         XirArgument obj = toXirArgument(x.object());
         XirArgument lockAddress = lockData == null ? null : toXirArgument(emitLea(lockData));
 
-        LIRDebugInfo stateBefore = state();
+        LIRFrameState stateBefore = state();
         curLocks = curLocks.outer;
 
         XirSnippet snippet = xir.genMonitorExit(site(x, x.object()), obj, lockAddress);
@@ -698,7 +698,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             // False constants are handled within emitBranch.
         } else {
             // Fall back to a normal branch.
-            LIRDebugInfo info = state(leafGraphId);
+            LIRFrameState info = state(leafGraphId);
             LabelRef stubEntry = createDeoptStub(action, deoptReason, info, comp);
             if (negated) {
                 emitBranch(comp, stubEntry, null, info);
@@ -710,7 +710,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected abstract void emitNullCheckGuard(ValueNode object, long leafGraphId);
 
-    public void emitBranch(BooleanNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
+    public void emitBranch(BooleanNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
         if (node instanceof IsNullNode) {
             emitNullCheckBranch((IsNullNode) node, trueSuccessor, falseSuccessor, info);
         } else if (node instanceof CompareNode) {
@@ -726,7 +726,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
+    private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
         if (falseSuccessor != null) {
             emitBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.NE, false, falseSuccessor, info);
             if (trueSuccessor != null) {
@@ -737,7 +737,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRDebugInfo info) {
+    public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRFrameState info) {
         if (falseSuccessorBlock != null) {
             emitBranch(operand(compare.x()), operand(compare.y()), compare.condition().negate(), !compare.unorderedIsTrue(), falseSuccessorBlock, info);
             if (trueSuccessorBlock != null) {
@@ -748,20 +748,20 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    private void emitInstanceOfBranch(InstanceOfNode x, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
+    private void emitInstanceOfBranch(InstanceOfNode x, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
         XirArgument obj = toXirArgument(x.object());
         XirSnippet snippet = xir.genInstanceOf(site(x, x.object()), obj, toXirArgument(x.targetClassInstruction()), x.targetClass(), x.profile());
         emitXir(snippet, x, info, null, false, trueSuccessor, falseSuccessor);
     }
 
-    public void emitConstantBranch(boolean value, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRDebugInfo info) {
+    public void emitConstantBranch(boolean value, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRFrameState info) {
         LabelRef block = value ? trueSuccessorBlock : falseSuccessorBlock;
         if (block != null) {
             emitJump(block, info);
         }
     }
 
-    public void emitTypeBranch(IsTypeNode x, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
+    public void emitTypeBranch(IsTypeNode x, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
         XirArgument thisClass = toXirArgument(x.objectClass());
         XirArgument otherClass = toXirArgument(x.type().getEncoding(Representation.ObjectHub));
         XirSnippet snippet = xir.genTypeBranch(site(x), thisClass, otherClass, x.type());
@@ -814,8 +814,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
 
     public abstract void emitLabel(Label label, boolean align);
-    public abstract void emitJump(LabelRef label, LIRDebugInfo info);
-    public abstract void emitBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRDebugInfo info);
+    public abstract void emitJump(LabelRef label, LIRFrameState info);
+    public abstract void emitBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info);
     public abstract Variable emitCMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
 
     protected FrameState stateBeforeCallWithArguments(FrameState stateAfter, MethodCallTargetNode call, int bci) {
@@ -882,7 +882,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (!target().invokeSnippetAfterArguments) {
             // This is the version currently necessary for Maxine: since the invokeinterface-snippet uses a division, it
             // destroys rdx, which is also used to pass a parameter.  Therefore, the snippet must be before the parameters are assigned to their locations.
-            LIRDebugInfo addrInfo = stateFor(stateBeforeCallWithArguments(x.stateAfter(), callTarget, x.bci()), x.leafGraphId());
+            LIRFrameState addrInfo = stateFor(stateBeforeCallWithArguments(x.stateAfter(), callTarget, x.bci()), x.leafGraphId());
             destinationAddress = emitXir(snippet, x.node(), addrInfo, false);
         }
 
@@ -895,11 +895,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         if (target().invokeSnippetAfterArguments) {
             // This is the version currently active for HotSpot.
-            LIRDebugInfo addrInfo = stateFor(stateBeforeCallWithArguments(x.stateAfter(), callTarget, x.bci()), null, null, x.leafGraphId());
+            LIRFrameState addrInfo = stateFor(stateBeforeCallWithArguments(x.stateAfter(), callTarget, x.bci()), null, null, x.leafGraphId());
             destinationAddress = emitXir(snippet, x.node(), addrInfo, false);
         }
 
-        LIRDebugInfo callInfo = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
+        LIRFrameState callInfo = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
         emitCall(targetMethod, resultOperand, argList, destinationAddress, callInfo, snippet.marks);
 
         if (isLegal(resultOperand)) {
@@ -907,7 +907,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    protected abstract void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks);
+    protected abstract void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRFrameState info, Map<XirMark, Mark> marks);
 
 
     private static Value toStackKind(Value value) {
@@ -942,11 +942,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
 
-    protected abstract LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRDebugInfo info, Object deoptInfo);
+    protected abstract LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info, Object deoptInfo);
 
     @Override
     public Variable emitCall(@SuppressWarnings("hiding") Object target, Kind result, Kind[] arguments, boolean canTrap, Value... args) {
-        LIRDebugInfo info = canTrap ? state() : null;
+        LIRFrameState info = canTrap ? state() : null;
 
         Value physReg = resultOperandFor(result);
 
@@ -984,7 +984,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         frameMap.callsMethod(cc, RuntimeCall);
         List<Value> argList = visitInvokeArguments(cc, x.arguments());
 
-        LIRDebugInfo info = null;
+        LIRFrameState info = null;
         FrameState stateAfter = x.stateAfter();
         if (stateAfter != null) {
             // (cwimmer) I made the code that modifies the operand stack conditional. My scenario: runtime calls to, e.g.,
@@ -1192,11 +1192,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return variable;
     }
 
-    protected Value emitXir(XirSnippet snippet, ValueNode x, LIRDebugInfo info, boolean setInstructionResult) {
+    protected Value emitXir(XirSnippet snippet, ValueNode x, LIRFrameState info, boolean setInstructionResult) {
         return emitXir(snippet, x, info, null, setInstructionResult, null, null);
     }
 
-    protected Value emitXir(XirSnippet snippet, ValueNode instruction, LIRDebugInfo info, LIRDebugInfo infoAfter, boolean setInstructionResult, LabelRef trueSuccessor, LabelRef falseSuccessor) {
+    protected Value emitXir(XirSnippet snippet, ValueNode instruction, LIRFrameState info, LIRFrameState infoAfter, boolean setInstructionResult, LabelRef trueSuccessor, LabelRef falseSuccessor) {
         if (GraalOptions.PrintXirTemplates) {
             TTY.println("Emit XIR template " + snippet.template.name);
         }
@@ -1304,9 +1304,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     protected abstract void emitXir(XirSnippet snippet, Value[] operands, Value outputOperand, Value[] inputs, Value[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
-                    LIRDebugInfo info, LIRDebugInfo infoAfter, LabelRef trueSuccessor, LabelRef falseSuccessor);
+                    LIRFrameState info, LIRFrameState infoAfter, LabelRef trueSuccessor, LabelRef falseSuccessor);
 
-    protected final Value callRuntime(RuntimeCall runtimeCall, LIRDebugInfo info, Value... args) {
+    protected final Value callRuntime(RuntimeCall runtimeCall, LIRFrameState info, Value... args) {
         // get a result register
         Kind result = runtimeCall.resultKind;
         Kind[] arguments = runtimeCall.arguments;
@@ -1336,7 +1336,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return physReg;
     }
 
-    protected final Variable callRuntimeWithResult(RuntimeCall runtimeCall, LIRDebugInfo info, Value... args) {
+    protected final Variable callRuntimeWithResult(RuntimeCall runtimeCall, LIRFrameState info, Value... args) {
         Value location = callRuntime(runtimeCall, info, args);
         return emitMove(location);
     }

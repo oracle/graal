@@ -189,7 +189,7 @@ public final class RegisterVerifier {
     private Value use(Value value, EnumSet<OperandFlag> flags) {
         if (!isConstant(value) && value != Value.IllegalValue && !isIgnoredRegister(value)) {
             Value actual = curInputState.get(key(value));
-            if (actual == null && flags.contains(OperandFlag.Uninitialized)) {
+            if (actual == null && flags.contains(OperandFlag.UNINITIALIZED)) {
                 // OK, since uninitialized values are allowed explicitly.
             } else if (value != actual) {
                 Debug.log("Error in register allocation: %s != %s for key %s", value, actual, key(value));

@@ -46,8 +46,8 @@ import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 
 public class AMD64XirOp extends LIRXirInstruction {
     public AMD64XirOp(XirSnippet snippet, Value[] operands, Value outputOperand, Value[] inputs, Value[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
-                        LIRDebugInfo info, LIRDebugInfo infoAfter, LabelRef trueSuccessor, LabelRef falseSuccessor) {
-        super("XIR", snippet, operands, outputOperand, inputs, temps, inputOperandIndices, tempOperandIndices, outputOperandIndex, info, infoAfter, trueSuccessor, falseSuccessor);
+                        LIRFrameState info, LIRFrameState infoAfter, LabelRef trueSuccessor, LabelRef falseSuccessor) {
+        super(snippet, operands, outputOperand, inputs, temps, inputOperandIndices, tempOperandIndices, outputOperandIndex, info, infoAfter, trueSuccessor, falseSuccessor);
     }
 
     @Override
@@ -165,7 +165,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     Value pointer = operands[inst.x().index];
                     RegisterValue register = assureInRegister(tasm, masm, pointer);
 
-                    AMD64Move.load(tasm, masm, result, new Address(inst.kind, register), (Boolean) inst.extra ? info : null);
+                    AMD64Move.load(tasm, masm, result, new Address(inst.kind, register), (Boolean) inst.extra ? state : null);
                     break;
                 }
 
@@ -174,7 +174,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     Value pointer = operands[inst.x().index];
                     assert isRegister(pointer);
 
-                    AMD64Move.store(tasm, masm, new Address(inst.kind, pointer), value, (Boolean) inst.extra ? info : null);
+                    AMD64Move.store(tasm, masm, new Address(inst.kind, pointer), value, (Boolean) inst.extra ? state : null);
                     break;
                 }
 
@@ -201,7 +201,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                         src = new Address(inst.kind, pointer, index, scale, displacement);
                     }
 
-                    AMD64Move.load(tasm, masm, result, src, canTrap ? info : null);
+                    AMD64Move.load(tasm, masm, result, src, canTrap ? state : null);
                     break;
                 }
 
@@ -245,7 +245,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                         dst = new Address(inst.kind, pointer, index, scale, displacement);
                     }
 
-                    AMD64Move.store(tasm, masm, dst, value, canTrap ? info : null);
+                    AMD64Move.store(tasm, masm, dst, value, canTrap ? state : null);
                     break;
                 }
 
@@ -271,8 +271,8 @@ public class AMD64XirOp extends LIRXirInstruction {
                     RegisterValue pointerRegister = assureInRegister(tasm, masm, exchangedAddress);
                     Address addr = new Address(tasm.target.wordKind, pointerRegister);
 
-                    if ((Boolean) inst.extra && info != null) {
-                        tasm.recordImplicitException(masm.codeBuffer.position(), info);
+                    if ((Boolean) inst.extra && state != null) {
+                        tasm.recordImplicitException(masm.codeBuffer.position(), state);
                     }
                     masm.cmpxchgq(asRegister(exchangedVal), addr);
 
@@ -294,7 +294,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     }
 
                     RuntimeCallInformation runtimeCallInformation = (RuntimeCallInformation) inst.extra;
-                    AMD64Call.directCall(tasm, masm, runtimeCallInformation.target, (runtimeCallInformation.useInfoAfter) ? infoAfter : info);
+                    AMD64Call.directCall(tasm, masm, runtimeCallInformation.target, (runtimeCallInformation.useInfoAfter) ? stateAfter : state);
 
                     if (inst.result != null && inst.result.kind != Kind.Illegal && inst.result.kind != Kind.Void) {
                         Register returnRegister = tasm.frameMap.registerConfig.getReturnRegister(inst.result.kind);
@@ -386,12 +386,12 @@ public class AMD64XirOp extends LIRXirInstruction {
                     break;
                 }
                 case Safepoint: {
-                    assert info != null : "Must have debug info in order to create a safepoint.";
-                    tasm.recordSafepoint(masm.codeBuffer.position(), info);
+                    assert state != null : "Must have debug info in order to create a safepoint.";
+                    tasm.recordSafepoint(masm.codeBuffer.position(), state);
                     break;
                 }
                 case NullCheck: {
-                    tasm.recordImplicitException(masm.codeBuffer.position(), info);
+                    tasm.recordImplicitException(masm.codeBuffer.position(), state);
                     Value pointer = operands[inst.x().index];
                     masm.nullCheck(asRegister(pointer));
                     break;

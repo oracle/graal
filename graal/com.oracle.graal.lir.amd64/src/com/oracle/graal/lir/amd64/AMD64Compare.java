@@ -23,45 +23,34 @@
 package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import java.util.*;
-
-import com.oracle.max.asm.target.amd64.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.max.asm.target.amd64.*;
 
 public enum AMD64Compare {
     ICMP, LCMP, ACMP, FCMP, DCMP;
 
     public static class CompareOp extends AMD64LIRInstruction {
+        @Opcode private final AMD64Compare opcode;
+        @Use({REG}) protected Value x;
+        @Use({REG, STACK, CONST}) protected Value y;
+
         public CompareOp(AMD64Compare opcode, Value x, Value y) {
-            super(opcode, LIRInstruction.NO_OPERANDS, null, new Value[] {x, y}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+            this.opcode = opcode;
+            this.x = x;
+            this.y = y;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            Value x = input(0);
-            Value y = input(1);
-            emit(tasm, masm, (AMD64Compare) code, x, y);
-        }
-
-        @Override
-        public EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            } else if (mode == OperandMode.Input && index == 1) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            emit(tasm, masm, opcode, x, y);
         }
 
         @Override
         protected void verify() {
-            Value x = input(0);
-            Value y = input(1);
-
             super.verify();
             assert (name().startsWith("I") && x.kind == Kind.Int && y.kind.stackKind() == Kind.Int)
                 || (name().startsWith("I") && x.kind == Kind.Jsr && y.kind == Kind.Jsr)

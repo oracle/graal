@@ -24,13 +24,10 @@ package com.oracle.graal.hotspot.target;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
-import java.util.*;
-
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.target.amd64.*;
@@ -38,30 +35,26 @@ import com.oracle.max.asm.target.amd64.*;
 /**
  * A call to HotSpot's object pointer verification stub.
  */
+@Opcode("VERIFY_OOP")
 public class AMD64VerifyOopStubCallOp extends AMD64LIRInstruction {
-    public AMD64VerifyOopStubCallOp(Value object, LIRDebugInfo info) {
-        super("VERIFY_OOP", LIRInstruction.NO_OPERANDS, info, new Value[] {object}, NO_OPERANDS, NO_OPERANDS);
+    @Use protected Value object;
+    @State protected LIRFrameState state;
+
+    public AMD64VerifyOopStubCallOp(Value object, LIRFrameState state) {
+        this.object = object;
+        this.state = state;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        Register object = asRegister(input(0));
         // r13: (in) object
-        if (object != AMD64.r13) {
+        if (asRegister(object) != AMD64.r13) {
             masm.push(AMD64.r13);
-            masm.movq(AMD64.r13, object);
+            masm.movq(AMD64.r13, asRegister(object));
         }
-        AMD64Call.directCall(tasm, masm, HotSpotGraalRuntime.getInstance().getConfig().verifyOopStub, info);
-        if (object != AMD64.r13) {
+        AMD64Call.directCall(tasm, masm, HotSpotGraalRuntime.getInstance().getConfig().verifyOopStub, state);
+        if (asRegister(object) != AMD64.r13) {
             masm.pop(AMD64.r13);
         }
-    }
-
-    @Override
-    protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-        if (mode == OperandMode.Input) {
-            return EnumSet.of(OperandFlag.Register);
-        }
-        throw GraalInternalError.shouldNotReachHere();
     }
 }

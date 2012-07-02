@@ -213,12 +213,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitJump(LabelRef label, LIRDebugInfo info) {
+    public void emitJump(LabelRef label, LIRFrameState info) {
         append(new JumpOp(label, info));
     }
 
     @Override
-    public void emitBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRDebugInfo info) {
+    public void emitBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info) {
         boolean mirrored = emitCompare(left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         switch (left.kind.stackKind()) {
@@ -520,7 +520,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo) {
-        LIRDebugInfo info = state();
+        LIRFrameState info = state();
         LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
         append(new BranchOp(ConditionFlag.overflow, stubEntry, info));
     }
@@ -528,7 +528,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo, long leafGraphId) {
-        LIRDebugInfo info = state(leafGraphId);
+        LIRFrameState info = state(leafGraphId);
         LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
         append(new JumpOp(stubEntry, info));
     }
@@ -542,7 +542,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks) {
+    protected void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRFrameState info, Map<XirMark, Mark> marks) {
         if (isConstant(targetAddress)) {
             append(new DirectCallOp(targetMethod, result, arguments.toArray(new Value[arguments.size()]), info, marks));
         } else {
@@ -557,7 +557,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitXir(XirSnippet snippet, Value[] operands, Value outputOperand, Value[] inputs, Value[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
-                    LIRDebugInfo info, LIRDebugInfo infoAfter, LabelRef trueSuccessor, LabelRef falseSuccessor) {
+                    LIRFrameState info, LIRFrameState infoAfter, LabelRef trueSuccessor, LabelRef falseSuccessor) {
         append(new AMD64XirOp(snippet, operands, outputOperand, inputs, temps, inputOperandIndices, tempOperandIndices, outputOperandIndex, info, infoAfter, trueSuccessor, falseSuccessor));
     }
 
@@ -565,7 +565,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     protected void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
         // Making a copy of the switch value is necessary because jump table destroys the input value
         if (key.kind == Kind.Int) {
-            append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key));
+            append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, Value.IllegalValue));
         } else {
             assert key.kind == Kind.Object;
             append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, newVariable(Kind.Object)));
@@ -585,7 +585,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRDebugInfo info, Object deoptInfo) {
+    protected LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info, Object deoptInfo) {
         assert info.topFrame.getBCI() >= 0 : "invalid bci for deopt framestate";
         AMD64DeoptimizationStub stub = new AMD64DeoptimizationStub(action, reason, info, deoptInfo);
         lir.stubs.add(stub);
@@ -595,7 +595,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     protected void emitNullCheckGuard(ValueNode object, long leafGraphId) {
         Variable value = load(operand(object));
-        LIRDebugInfo info = state(leafGraphId);
+        LIRFrameState info = state(leafGraphId);
         append(new NullCheckOp(value, info));
     }
 

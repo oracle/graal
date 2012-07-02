@@ -23,27 +23,29 @@
 package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import java.util.*;
-
-import com.oracle.max.asm.*;
-import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Address.*;
-import com.oracle.graal.api.code.CompilationResult.*;
+import com.oracle.graal.api.code.Address.Scale;
+import com.oracle.graal.api.code.CompilationResult.JumpTable;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.StandardOp.FallThroughOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.max.asm.*;
+import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 
 public class AMD64ControlFlow {
 
     public static class ReturnOp extends AMD64LIRInstruction {
-        public ReturnOp(Value input) {
-            super("RETURN", LIRInstruction.NO_OPERANDS, null, new Value[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        @Use({REG, ILLEGAL}) protected Value x;
+
+        public ReturnOp(Value x) {
+            this.x = x;
         }
 
         @Override
@@ -53,29 +55,22 @@ public class AMD64ControlFlow {
             }
             masm.ret(0);
         }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input && index == 0) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
-            }
-            throw GraalInternalError.shouldNotReachHere();
-        }
     }
 
 
     public static class BranchOp extends AMD64LIRInstruction implements StandardOp.BranchOp {
         protected ConditionFlag condition;
         protected LabelRef destination;
+        @State protected LIRFrameState state;
 
-        public BranchOp(Condition condition, LabelRef destination, LIRDebugInfo info) {
+        public BranchOp(Condition condition, LabelRef destination, LIRFrameState info) {
             this(intCond(condition), destination, info);
         }
 
-        public BranchOp(ConditionFlag condition, LabelRef destination, LIRDebugInfo info) {
-            super("BRANCH", LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public BranchOp(ConditionFlag condition, LabelRef destination, LIRFrameState state) {
             this.condition = condition;
             this.destination = destination;
+            this.state = state;
         }
 
         @Override
@@ -93,23 +88,13 @@ public class AMD64ControlFlow {
             destination = newDestination;
             condition = condition.negate();
         }
-
-        @Override
-        public String operationString() {
-            return condition.operator + " [" + destination + "]";
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            throw GraalInternalError.shouldNotReachHere();
-        }
     }
 
 
     public static class FloatBranchOp extends BranchOp {
         protected boolean unorderedIsTrue;
 
-        public FloatBranchOp(Condition condition, boolean unorderedIsTrue, LabelRef destination, LIRDebugInfo info) {
+        public FloatBranchOp(Condition condition, boolean unorderedIsTrue, LabelRef destination, LIRFrameState info) {
             super(floatCond(condition), destination, info);
             this.unorderedIsTrue = unorderedIsTrue;
         }
@@ -124,11 +109,6 @@ public class AMD64ControlFlow {
             super.negate(newDestination);
             unorderedIsTrue = !unorderedIsTrue;
         }
-
-        @Override
-        public String operationString() {
-            return condition.operator + " [" + destination + "]" + (unorderedIsTrue ? " unorderedIsTrue" : " unorderedIsFalse");
-        }
     }
 
 
@@ -136,58 +116,41 @@ public class AMD64ControlFlow {
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
+        @Alive protected Value index;
+        @Temp protected Value scratch;
 
         public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Variable index, Variable scratch) {
-            super("TABLE_SWITCH", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, new Value[] {index}, new Value[] {scratch});
             this.lowKey = lowKey;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
+            this.index = index;
+            this.scratch = scratch;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            tableswitch(tasm, masm, lowKey, defaultTarget, targets, asIntReg(alive(0)), asLongReg(temp(0)));
-        }
-
-        @Override
-        public String operationString() {
-            StringBuilder buf = new StringBuilder(super.operationString());
-            buf.append("\ndefault: [").append(defaultTarget).append(']');
-            int key = lowKey;
-            for (LabelRef l : targets) {
-                buf.append("\ncase ").append(key).append(": [").append(l).append(']');
-                key++;
-            }
-            return buf.toString();
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Alive && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            } else if (mode == OperandMode.Temp && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            tableswitch(tasm, masm, lowKey, defaultTarget, targets, asIntReg(index), asLongReg(scratch));
         }
     }
 
     public static class SequentialSwitchOp extends AMD64LIRInstruction implements FallThroughOp {
-        private final Constant[] keyConstants;
+        @Use({CONST}) protected Constant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
+        @Alive({REG}) protected Value key;
+        @Temp({REG, ILLEGAL}) protected Value scratch;
 
-        public SequentialSwitchOp(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value... temp) {
-            super("SEQUENTIAL_SWITCH", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, new Value[] {key}, temp);
+        public SequentialSwitchOp(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
             assert keyConstants.length == keyTargets.length;
             this.keyConstants = keyConstants;
             this.keyTargets = keyTargets;
             this.defaultTarget = defaultTarget;
+            this.key = key;
+            this.scratch = scratch;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            Value key = alive(0);
             if (key.kind == Kind.Int) {
                 Register intKey = asIntReg(key);
                 for (int i = 0; i < keyConstants.length; i++) {
@@ -196,7 +159,7 @@ public class AMD64ControlFlow {
                 }
             } else if (key.kind == Kind.Object) {
                 Register intKey = asObjectReg(key);
-                Register temp = asObjectReg(temp(0));
+                Register temp = asObjectReg(scratch);
                 for (int i = 0; i < keyConstants.length; i++) {
                     AMD64Move.move(tasm, masm, temp.asValue(Kind.Object), keyConstants[i]);
                     masm.cmpptr(intKey, temp);
@@ -210,26 +173,6 @@ public class AMD64ControlFlow {
             } else {
                 masm.hlt();
             }
-        }
-
-        @Override
-        public String operationString() {
-            StringBuilder buf = new StringBuilder(super.operationString());
-            buf.append("\ndefault: [").append(defaultTarget).append(']');
-            for (int i = 0; i < keyConstants.length; i++) {
-                buf.append("\ncase ").append(keyConstants[i]).append(": [").append(keyTargets[i]).append("]");
-            }
-            return buf.toString();
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Alive && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            } else if (mode == OperandMode.Temp && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            }
-            throw GraalInternalError.shouldNotReachHere();
         }
 
         @Override
@@ -248,37 +191,34 @@ public class AMD64ControlFlow {
         private LabelRef defaultTarget;
         private final int[] lowKeys;
         private final int[] highKeys;
+        @Alive protected Value key;
 
         public SwitchRangesOp(int[] lowKeys, int[] highKeys, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
-            super("SWITCH_RANGES", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, new Value[] {key}, LIRInstruction.NO_OPERANDS);
-            assert lowKeys.length == keyTargets.length;
-            assert highKeys.length == keyTargets.length;
-            assert key.kind == Kind.Int;
             this.lowKeys = lowKeys;
             this.highKeys = highKeys;
             this.keyTargets = keyTargets;
             this.defaultTarget = defaultTarget;
+            this.key = key;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            Register key = asIntReg(alive(0));
             for (int i = 0; i < lowKeys.length; i++) {
                 int lowKey = lowKeys[i];
                 int highKey = highKeys[i];
                 if (lowKey == highKey) {
-                    masm.cmpl(key, lowKey);
+                    masm.cmpl(asIntReg(key), lowKey);
                     masm.jcc(ConditionFlag.equal, keyTargets[i].label());
                 } else if (lowKey + 1 == highKey) {
-                    masm.cmpl(key, lowKey);
+                    masm.cmpl(asIntReg(key), lowKey);
                     masm.jcc(ConditionFlag.equal, keyTargets[i].label());
-                    masm.cmpl(key, highKey);
+                    masm.cmpl(asIntReg(key), highKey);
                     masm.jcc(ConditionFlag.equal, keyTargets[i].label());
                 } else {
                     Label skip = new Label();
-                    masm.cmpl(key, lowKey);
+                    masm.cmpl(asIntReg(key), lowKey);
                     masm.jcc(ConditionFlag.less, skip);
-                    masm.cmpl(key, highKey);
+                    masm.cmpl(asIntReg(key), highKey);
                     masm.jcc(ConditionFlag.lessEqual, keyTargets[i].label());
                     masm.bind(skip);
                 }
@@ -291,23 +231,11 @@ public class AMD64ControlFlow {
         }
 
         @Override
-        public String operationString() {
-            StringBuilder buf = new StringBuilder(super.operationString());
-            buf.append("\ndefault: [").append(defaultTarget).append(']');
-            for (int i = 0; i < lowKeys.length; i++) {
-                buf.append("\ncase ").append(lowKeys[i]).append(" - ").append(highKeys[i]).append(": [").append(keyTargets[i]).append("]");
-            }
-            return buf.toString();
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Alive && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            } else if (mode == OperandMode.Temp && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+        protected void verify() {
+            super.verify();
+            assert lowKeys.length == keyTargets.length;
+            assert highKeys.length == keyTargets.length;
+            assert key.kind == Kind.Int;
         }
 
         @Override
@@ -322,68 +250,46 @@ public class AMD64ControlFlow {
     }
 
 
+    @Opcode("CMOVE")
     public static class CondMoveOp extends AMD64LIRInstruction {
+        @Def({REG, HINT}) protected Value result;
+        @Alive({REG}) protected Value trueValue;
+        @Use({REG, STACK, CONST}) protected Value falseValue;
         private final ConditionFlag condition;
 
         public CondMoveOp(Variable result, Condition condition, Variable trueValue, Value falseValue) {
-            super("CMOVE", new Value[] {result}, null, new Value[] {falseValue}, new Value[] {trueValue}, LIRInstruction.NO_OPERANDS);
+            this.result = result;
             this.condition = intCond(condition);
+            this.trueValue = trueValue;
+            this.falseValue = falseValue;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            cmove(tasm, masm, output(0), false, condition, false, alive(0), input(0));
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input && index == 0) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
-            } else if (mode == OperandMode.Alive && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            } else if (mode == OperandMode.Output && index == 0) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
-            }
-            throw GraalInternalError.shouldNotReachHere();
-        }
-
-        @Override
-        public String operationString() {
-            return condition.toString() + " " + super.operationString();
+            cmove(tasm, masm, result, false, condition, false, trueValue, falseValue);
         }
     }
 
 
+    @Opcode("CMOVE")
     public static class FloatCondMoveOp extends AMD64LIRInstruction {
+        @Def({REG}) protected Value result;
+        @Alive({REG}) protected Value trueValue;
+        @Alive({REG}) protected Value falseValue;
         private final ConditionFlag condition;
         private final boolean unorderedIsTrue;
 
         public FloatCondMoveOp(Variable result, Condition condition, boolean unorderedIsTrue, Variable trueValue, Variable falseValue) {
-            super("FLOAT_CMOVE", new Value[] {result}, null, LIRInstruction.NO_OPERANDS, new Value[] {trueValue, falseValue}, LIRInstruction.NO_OPERANDS);
+            this.result = result;
             this.condition = floatCond(condition);
             this.unorderedIsTrue = unorderedIsTrue;
+            this.trueValue = trueValue;
+            this.falseValue = falseValue;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            cmove(tasm, masm, output(0), true, condition, unorderedIsTrue, alive(0), alive(1));
-        }
-
-        @Override
-        public String operationString() {
-            return condition.toString() + " unordered=" + unorderedIsTrue + " " + super.operationString();
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Alive && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            } else if (mode == OperandMode.Alive && index == 1) {
-                return EnumSet.of(OperandFlag.Register);
-            } else if (mode == OperandMode.Output && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            cmove(tasm, masm, result, true, condition, unorderedIsTrue, trueValue, falseValue);
         }
     }
 

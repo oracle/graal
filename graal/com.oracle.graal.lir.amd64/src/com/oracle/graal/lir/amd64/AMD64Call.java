@@ -23,27 +23,35 @@
 package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.CompilationResult.Mark;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
 
 public class AMD64Call {
 
+    @Opcode("CALL_DIRECT")
     public static class DirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
-        private final Object targetMethod;
-        private final Map<XirMark, Mark> marks;
+        @Def({REG, ILLEGAL}) protected Value result;
+        @Use({REG, STACK}) protected Value[] parameters;
+        @State protected LIRFrameState state;
 
-        public DirectCallOp(Object targetMethod, Value result, Value[] parameters, LIRDebugInfo info, Map<XirMark, Mark> marks) {
-            super("CALL_DIRECT", new Value[] {result}, info, parameters, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        protected final Object targetMethod;
+        protected final Map<XirMark, Mark> marks;
+
+        public DirectCallOp(Object targetMethod, Value result, Value[] parameters, LIRFrameState state, Map<XirMark, Mark> marks) {
             this.targetMethod = targetMethod;
+            this.result = result;
+            this.parameters = parameters;
+            this.state = state;
             this.marks = marks;
         }
 
@@ -53,38 +61,27 @@ public class AMD64Call {
             if (marks != null) {
                 marks.put(XirMark.CALLSITE, tasm.recordMark(null, new Mark[0]));
             }
-            directCall(tasm, masm, targetMethod, info);
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
-            } else if (mode == OperandMode.Output) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            directCall(tasm, masm, targetMethod, state);
         }
     }
 
+    @Opcode("CALL_INDIRECT")
     public static class IndirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+        @Def({REG, ILLEGAL}) protected Value result;
+        @Use({REG, STACK}) protected Value[] parameters;
+        @Use({REG}) protected Value targetAddress;
+        @State protected LIRFrameState state;
+
         private final Object targetMethod;
         private final Map<XirMark, Mark> marks;
 
-        private static Value[] concat(Value[] parameters, Value targetAddress) {
-            Value[] result = Arrays.copyOf(parameters, parameters.length + 1);
-            result[result.length - 1] = targetAddress;
-            return result;
-        }
-
-        public IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks) {
-            super("CALL_INDIRECT", new Value[] {result}, info, concat(parameters, targetAddress), LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value targetAddress, LIRFrameState state, Map<XirMark, Mark> marks) {
             this.targetMethod = targetMethod;
+            this.result = result;
+            this.parameters = parameters;
+            this.targetAddress = targetAddress;
+            this.state = state;
             this.marks = marks;
-        }
-
-        private Value targetAddress() {
-            return input(inputs.length - 1);
         }
 
         @Override
@@ -93,17 +90,7 @@ public class AMD64Call {
             if (marks != null) {
                 marks.put(XirMark.CALLSITE, tasm.recordMark(null, new Mark[0]));
             }
-            indirectCall(tasm, masm, asRegister(targetAddress()), targetMethod, info);
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Input) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
-            } else if (mode == OperandMode.Output) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+            indirectCall(tasm, masm, asRegister(targetAddress), targetMethod, state);
         }
     }
 
@@ -117,7 +104,7 @@ public class AMD64Call {
         }
     }
 
-    public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Object target, LIRDebugInfo info) {
+    public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Object target, LIRFrameState info) {
         int before = masm.codeBuffer.position();
         if (target instanceof RuntimeCall) {
             long maxOffset = tasm.runtime.getMaxCallTargetOffset((RuntimeCall) target);
@@ -148,7 +135,7 @@ public class AMD64Call {
         masm.ensureUniquePC();
     }
 
-    public static void indirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Register dst, Object target, LIRDebugInfo info) {
+    public static void indirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Register dst, Object target, LIRFrameState info) {
         int before = masm.codeBuffer.position();
         masm.call(dst);
         int after = masm.codeBuffer.position();
