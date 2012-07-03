@@ -26,6 +26,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.snippets.*;
 
 /**
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that
@@ -47,13 +48,25 @@ class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object obj, @ConstantNodeParameter int displacement, long offset, Object value) {
+    public static void storeObject(Object obj, @ConstantNodeParameter int displacement, long offset, Object value) {
         throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object obj, @ConstantNodeParameter int displacement, long offset, long value) {
+    public static void storeLong(Object obj, @ConstantNodeParameter int displacement, long offset, long value) {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    public static void storeWord(Object obj, @ConstantNodeParameter int displacement, long offset, Word value) {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    public static void storeInt(Object obj, @ConstantNodeParameter int displacement, long offset, int value) {
         throw new UnsupportedOperationException();
     }
 

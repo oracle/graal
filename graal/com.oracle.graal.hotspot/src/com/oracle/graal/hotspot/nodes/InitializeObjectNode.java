@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.java;
+package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
@@ -28,24 +28,32 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code NewTypeArrayNode} class definition.
+ * Initializes the header and body of an uninitialized object cell.
+ * This node calls out to a stub to do both the allocation and formatting
+ * if the memory address it is given is zero/null (e.g. due to
+ * {@linkplain TLABAllocateNode TLAB allocation} failing).
  */
-public final class NewTypeArrayNode extends NewArrayNode implements LIRLowerable {
+public final class InitializeObjectNode extends FixedWithNextNode implements Lowerable {
 
-    private final ResolvedJavaType elementType;
+    @Input private final ValueNode memory;
+    private final ResolvedJavaType type;
 
-    public NewTypeArrayNode(ValueNode length, ResolvedJavaType elementType) {
-        super(StampFactory.exactNonNull(elementType.arrayOf()), length);
-        this.elementType = elementType;
+    public InitializeObjectNode(ValueNode memory, ResolvedJavaType type) {
+        super(StampFactory.exactNonNull(type));
+        this.memory = memory;
+        this.type = type;
+    }
+
+    public ValueNode memory() {
+        return memory;
+    }
+
+    public ResolvedJavaType type() {
+        return type;
     }
 
     @Override
-    public ResolvedJavaType elementType() {
-        return elementType;
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitNewTypeArray(this);
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 }

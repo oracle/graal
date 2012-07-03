@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.api.meta.*;
-
 /**
  * Used to communicate configuration details, runtime offsets, etc. to graal upon compileMethod.
  */
@@ -46,19 +44,66 @@ public final class HotSpotVMConfig extends CompilerObject {
     // offsets, ...
     public int vmPageSize;
     public int stackShadowPages;
+
+    /**
+     * The offset of the mark word in an object's header.
+     */
+    public int markOffset;
+
+    /**
+     * The offset of the hub/klassOop word in an object's header.
+     */
     public int hubOffset;
-    public int superCheckOffsetOffset;
-    public int secondarySuperCacheOffset;
-    public int secondarySupersOffset;
+
+    /**
+     * The offset of an the array length in an array's header.
+     */
     public int arrayLengthOffset;
+
+    /**
+     * The offset of the _super_check_offset field in a Klass.
+     */
+    public int superCheckOffsetOffset;
+
+    /**
+     * The offset of the _secondary_super_cache field in a Klass.
+     */
+    public int secondarySuperCacheOffset;
+
+    /**
+     * The offset of the _secondary_supers field in a Klass.
+     */
+    public int secondarySupersOffset;
+
+    /**
+     * The offset of the _init_state field in an instanceKlass.
+     */
     public int klassStateOffset;
+
+    /**
+     * The value of instanceKlass::fully_initialized.
+     */
     public int klassStateFullyInitialized;
-    public int[] arrayOffsets;
+
+    /**
+     * The value of objArrayKlass::element_klass_offset().
+     */
     public int arrayClassElementOffset;
+
+    /**
+     * The value of JavaThread::tlab_top_offset().
+     */
     public int threadTlabTopOffset;
+
+    /**
+     * The value of JavaThread::tlab_end_offset().
+     */
     public int threadTlabEndOffset;
+
     public int threadObjectOffset;
+
     public int instanceHeaderPrototypeOffset;
+
     public int threadExceptionOopOffset;
     public int threadExceptionPcOffset;
     public int threadMultiNewArrayStorageOffset;
@@ -109,9 +154,5 @@ public final class HotSpotVMConfig extends CompilerObject {
         assert vmPageSize >= 16;
         assert codeEntryAlignment > 0;
         assert stackShadowPages > 0;
-    }
-
-    public int getArrayOffset(Kind kind) {
-        return arrayOffsets[kind.ordinal()];
     }
 }

@@ -28,24 +28,36 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Initializes the header and body of an uninitialized object cell.
+ * Initializes the header and body of an uninitialized array cell.
  * This node calls out to a stub to do both the allocation and formatting
  * if the memory address it is given is zero/null (e.g. due to
  * {@linkplain TLABAllocateNode TLAB allocation} failing).
  */
-public final class InitializeNode extends FixedWithNextNode implements Lowerable {
+public final class InitializeArrayNode extends FixedWithNextNode implements Lowerable {
 
     @Input private final ValueNode memory;
+    @Input private final ValueNode length;
+    @Input private final ValueNode size;
     private final ResolvedJavaType type;
 
-    public InitializeNode(ValueNode memory, ResolvedJavaType type) {
+    public InitializeArrayNode(ValueNode memory, ValueNode length, ValueNode size, ResolvedJavaType type) {
         super(StampFactory.exactNonNull(type));
         this.memory = memory;
         this.type = type;
+        this.length = length;
+        this.size = size;
     }
 
     public ValueNode memory() {
         return memory;
+    }
+
+    public ValueNode length() {
+        return length;
+    }
+
+    public ValueNode size() {
+        return size;
     }
 
     public ResolvedJavaType type() {
@@ -59,7 +71,7 @@ public final class InitializeNode extends FixedWithNextNode implements Lowerable
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object initialize(Object memory, @ConstantNodeParameter ResolvedJavaType type) {
+    public static Object initialize(Object memory, int length, int size, @ConstantNodeParameter ResolvedJavaType type) {
         throw new UnsupportedOperationException();
     }
 }

@@ -264,6 +264,7 @@ public final class GraalOptions {
      */
     public static String HIRLowerCheckcast = "";
     public static String HIRLowerNewInstance = "";
+    public static String HIRLowerNewArray = "";
 
     static {
         // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)

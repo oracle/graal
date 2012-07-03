@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.util.*;
 /**
  * The {@code NewArrayNode} class is the base of all instructions that allocate arrays.
  */
-public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAnalyzable, TypeFeedbackProvider {
+public abstract class NewArrayNode extends FixedWithNextNode implements Lowerable, EscapeAnalyzable, TypeFeedbackProvider {
 
     @Input private ValueNode length;
 
@@ -84,6 +84,11 @@ public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAn
 
     public EscapeOp getEscapeOp() {
         return ESCAPE;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 
     private static final EscapeOp ESCAPE = new EscapeOp() {

@@ -58,11 +58,26 @@ public @interface Snippet {
         boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller);
 
         /**
-         * The default inlining policy which inlines everything except for
-         * constructors of {@link Throwable} classes.
+         * The default inlining policy which inlines everything except for methods
+         * in any of the following categories.
+         * <ul>
+         * <li>{@linkplain Fold foldable} methods</li>
+         * <li>{@linkplain NodeIntrinsic node intrinsics}</li>
+         * <li>native methods</li>
+         * <li>constructors of {@link Throwable} classes</li>
+         * </ul>
          */
         InliningPolicy Default = new InliningPolicy() {
             public boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller) {
+                if (Modifier.isNative(method.accessFlags())) {
+                    return false;
+                }
+                if (method.getAnnotation(Fold.class) != null) {
+                    return false;
+                }
+                if (method.getAnnotation(NodeIntrinsic.class) != null) {
+                    return false;
+                }
                 if (Throwable.class.isAssignableFrom(method.holder().toJava())) {
                     if (method.name().equals("<init>")) {
                         return false;

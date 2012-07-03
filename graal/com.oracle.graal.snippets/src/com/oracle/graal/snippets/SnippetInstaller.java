@@ -137,6 +137,8 @@ public class SnippetInstaller {
     public StructuredGraph makeGraph(final ResolvedJavaMethod method, final InliningPolicy policy) {
         StructuredGraph graph = parseGraph(method, policy);
 
+        new SnippetIntrinsificationPhase(runtime, pool, SnippetTemplate.hasConstantParameter(method)).apply(graph);
+
         Debug.dump(graph, "%s: Final", method.name());
 
         return graph;
@@ -165,7 +167,7 @@ public class SnippetInstaller {
 
                 new SnippetVerificationPhase().apply(graph);
 
-                new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+                new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
 
                 for (Invoke invoke : graph.getInvokes()) {
                     MethodCallTargetNode callTarget = invoke.callTarget();
@@ -181,7 +183,7 @@ public class SnippetInstaller {
                     }
                 }
 
-                new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+                new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
 
                 new WordTypeRewriterPhase(target.wordKind, runtime.getResolvedJavaType(target.wordKind)).apply(graph);
 

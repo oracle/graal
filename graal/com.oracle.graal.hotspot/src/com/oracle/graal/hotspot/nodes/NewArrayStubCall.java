@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.target.amd64.AMD64NewInstanceStubCallOp.*;
+import static com.oracle.graal.hotspot.target.amd64.AMD64NewArrayStubCallOp.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -35,19 +35,23 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Node implementing a call to HotSpot's {@code new_instance} stub.
+ * Node implementing a call to HotSpot's {@code new_[object|type]_array} stub.
  *
- * @see AMD64NewInstanceStubCallOp
+ * @see AMD64NewArrayStubCallOp
  */
-public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowerable {
+public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
     @Input private final ValueNode hub;
+    @Input private final ValueNode length;
+    private final boolean isObjectArray;
 
-    public NewInstanceStubCall(ValueNode hub) {
+    public NewArrayStubCall(boolean isObjectArray, ValueNode hub, ValueNode length) {
         super(defaultStamp);
+        this.isObjectArray = isObjectArray;
         this.hub = hub;
+        this.length = length;
     }
 
     @Override
@@ -63,19 +67,19 @@ public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowe
     @Override
     public void generate(LIRGenerator gen) {
         RegisterValue hubFixed = HUB.asValue(Kind.Object);
+        RegisterValue lengthFixed = LENGTH.asValue(Kind.Int);
         RegisterValue resultFixed = RESULT.asValue(Kind.Object);
+        gen.emitMove(gen.operand(length), lengthFixed);
         gen.emitMove(gen.operand(hub), hubFixed);
         LIRFrameState info = gen.state();
-        gen.append(new AMD64NewInstanceStubCallOp(resultFixed, hubFixed, info));
+        gen.append(new AMD64NewArrayStubCallOp(isObjectArray, resultFixed, hubFixed, lengthFixed, info));
         Variable result = gen.emitMove(resultFixed);
         gen.setResult(this, result);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object call(Object hub) {
+    public static Object call(@ConstantNodeParameter boolean isObjectArray, Object hub, int length) {
         throw new UnsupportedOperationException();
     }
-
-
 }

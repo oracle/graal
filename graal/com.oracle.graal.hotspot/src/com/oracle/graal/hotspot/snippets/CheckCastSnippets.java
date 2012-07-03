@@ -174,7 +174,7 @@ public class CheckCastSnippets implements SnippetsInterface {
 
         for (int i = 0; i < secondarySupers.length; i++) {
             if (t == loadNonNullObjectElement(secondarySupers, i)) {
-                DirectObjectStoreNode.store(s, secondarySuperCacheOffset(), 0, t);
+                DirectObjectStoreNode.storeObject(s, secondarySuperCacheOffset(), 0, t);
                 secondariesHit.inc();
                 return true;
             }
@@ -214,7 +214,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         Object[] secondarySupers = UnsafeCastNode.cast(UnsafeLoadNode.loadObject(s, 0, secondarySupersOffset(), true), Object[].class);
         for (int i = 0; i < secondarySupers.length; i++) {
             if (t == loadNonNullObjectElement(secondarySupers, i)) {
-                DirectObjectStoreNode.store(s, secondarySuperCacheOffset(), 0, t);
+                DirectObjectStoreNode.storeObject(s, secondarySuperCacheOffset(), 0, t);
                 secondariesHit.inc();
                 return true;
             }
@@ -264,7 +264,7 @@ public class CheckCastSnippets implements SnippetsInterface {
          */
         void inc() {
             if (ENABLED) {
-                DirectObjectStoreNode.store(this, countOffset(), 0, count + 1);
+                DirectObjectStoreNode.storeLong(this, countOffset(), 0, count + 1);
             }
         }
 

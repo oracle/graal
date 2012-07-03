@@ -30,8 +30,8 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaType.*;
-import com.oracle.graal.api.meta.JavaTypeProfile.*;
+import com.oracle.graal.api.meta.JavaType.Representation;
+import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
@@ -693,10 +693,10 @@ public final class GraphBuilderPhase extends Phase {
         // Checkstyle: resume
     }
 
-    private void genNewTypeArray(int typeCode) {
+    private void genNewPrimitiveArray(int typeCode) {
         Kind kind = arrayTypeCodeToKind(typeCode);
         ResolvedJavaType elementType = runtime.getResolvedJavaType(kind);
-        NewTypeArrayNode nta = currentGraph.add(new NewTypeArrayNode(frameState.ipop(), elementType));
+        NewPrimitiveArrayNode nta = currentGraph.add(new NewPrimitiveArrayNode(frameState.ipop(), elementType));
         frameState.apush(append(nta));
     }
 
@@ -1705,7 +1705,7 @@ public final class GraphBuilderPhase extends Phase {
             case INVOKESTATIC   : cpi = stream.readCPI(); genInvokeStatic(lookupMethod(cpi, opcode)); break;
             case INVOKEINTERFACE: cpi = stream.readCPI(); genInvokeInterface(lookupMethod(cpi, opcode)); break;
             case NEW            : genNewInstance(stream.readCPI()); break;
-            case NEWARRAY       : genNewTypeArray(stream.readLocalIndex()); break;
+            case NEWARRAY       : genNewPrimitiveArray(stream.readLocalIndex()); break;
             case ANEWARRAY      : genNewObjectArray(stream.readCPI()); break;
             case ARRAYLENGTH    : genArrayLength(); break;
             case ATHROW         : genThrow(); break;

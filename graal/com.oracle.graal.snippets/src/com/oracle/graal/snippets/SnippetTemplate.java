@@ -35,6 +35,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
@@ -175,6 +176,18 @@ public class SnippetTemplate {
     }
 
     /**
+     * Determines if any parameter of a given method is annotated with {@link ConstantParameter}.
+     */
+    public static boolean hasConstantParameter(ResolvedJavaMethod method) {
+        for (ConstantParameter p : MetaUtil.getParameterAnnotations(ConstantParameter.class, method)) {
+            if (p != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Creates a snippet template.
      */
     public SnippetTemplate(CodeCacheProvider runtime, SnippetTemplate.Key key) {
@@ -182,7 +195,7 @@ public class SnippetTemplate {
         assert Modifier.isStatic(method.accessFlags()) : "snippet method must be static: " + method;
         Signature signature = method.signature();
 
-        // Copy snippet graph, replacing @Constant parameters with given arguments
+        // Copy snippet graph, replacing constant parameters with given arguments
         StructuredGraph snippetGraph = (StructuredGraph) method.compilerStorage().get(Graph.class);
         StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
@@ -201,7 +214,8 @@ public class SnippetTemplate {
                 replacements.put(snippetGraph.getLocal(i), ConstantNode.forConstant(Constant.forBoxed(kind, arg), runtime, snippetCopy));
             } else {
                 Parameter p = MetaUtil.getParameterAnnotation(Parameter.class, i, method);
-                assert p != null : method + ": parameter " + i + " must be annotated with either @Constant or @Parameter";
+                assert p != null : method + ": parameter " + i + " must be annotated with either @" + ConstantParameter.class.getSimpleName() +
+                                " or @" + Parameter.class.getSimpleName();
                 String name = p.value();
                 if (p.multiple()) {
                     Object multiple = key.get(name);
@@ -219,6 +233,9 @@ public class SnippetTemplate {
 
         Debug.dump(snippetCopy, "Before specialization");
         if (!replacements.isEmpty()) {
+            // Do deferred intrinsification of node intrinsics
+            new SnippetIntrinsificationPhase(runtime, new BoxingMethodPool(runtime), false).apply(snippetCopy);
+
             new CanonicalizerPhase(null, runtime, null, 0, null).apply(snippetCopy);
         }
 
@@ -386,6 +403,7 @@ public class SnippetTemplate {
                     replacements.put((LocalNode) parameter, (ValueNode) argument);
                 } else {
                     Kind kind = ((LocalNode) parameter).kind();
+                    assert argument != null || kind.isObject() : this + " cannot accept null for non-object parameter named " + name;
                     Constant constant = Constant.forBoxed(kind, argument);
                     replacements.put((LocalNode) parameter, ConstantNode.forConstant(constant, runtime, replaceeGraph));
                 }
@@ -478,10 +496,10 @@ public class SnippetTemplate {
             sep = ", ";
             if (value instanceof LocalNode) {
                 LocalNode local = (LocalNode) value;
-                buf.append(local.kind().name()).append(' ').append(name);
+                buf.append(local.kind().javaName).append(' ').append(name);
             } else {
                 LocalNode[] locals = (LocalNode[]) value;
-                String kind = locals.length == 0 ? "?" : locals[0].kind().name();
+                String kind = locals.length == 0 ? "?" : locals[0].kind().javaName;
                 buf.append(kind).append('[').append(locals.length).append("] ").append(name);
             }
         }

@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * This node is used by the {@link NewInstanceSnippets} to give a formatted new instance its exact type.
+ * This node is used by the {@link NewObjectSnippets} to give a formatted new instance or object its exact type.
  */
 public final class CastFromHub extends FloatingNode implements Canonicalizable {
 
