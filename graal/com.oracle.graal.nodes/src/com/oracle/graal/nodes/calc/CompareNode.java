@@ -80,7 +80,7 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
     }
 
 
-    private ValueNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, CodeCacheProvider runtime, Condition cond) {
+    private ValueNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, MetaAccessProvider runtime, Condition cond) {
         Constant trueConstant = conditionalNode.trueValue().asConstant();
         Constant falseConstant = conditionalNode.falseValue().asConstant();
 

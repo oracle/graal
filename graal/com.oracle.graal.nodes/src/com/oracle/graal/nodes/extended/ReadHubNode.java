@@ -49,7 +49,7 @@ public final class ReadHubNode extends FixedWithNextNode implements Lowerable, C
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        CodeCacheProvider runtime = tool.runtime();
+        MetaAccessProvider runtime = tool.runtime();
         if (runtime != null) {
             ObjectStamp stamp = object.objectStamp();
 

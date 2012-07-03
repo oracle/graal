@@ -45,7 +45,7 @@ import com.oracle.graal.snippets.Snippet.InliningPolicy;
  */
 public class SnippetInstaller {
 
-    private final GraalCodeCacheProvider runtime;
+    private final MetaAccessProvider runtime;
     private final TargetDescription target;
     private final BoxingMethodPool pool;
 
@@ -57,7 +57,7 @@ public class SnippetInstaller {
      */
     private final Map<ResolvedJavaMethod, StructuredGraph> graphCache;
 
-    public SnippetInstaller(GraalCodeCacheProvider runtime, TargetDescription target) {
+    public SnippetInstaller(MetaAccessProvider runtime, TargetDescription target) {
         this.runtime = runtime;
         this.target = target;
         this.pool = new BoxingMethodPool(runtime);

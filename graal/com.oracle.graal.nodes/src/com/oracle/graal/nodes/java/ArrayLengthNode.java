@@ -51,7 +51,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
             assert length != null;
             return length;
         }
-        CodeCacheProvider runtime = tool.runtime();
+        MetaAccessProvider runtime = tool.runtime();
         if (runtime != null && array().isConstant() && !array().isNullConstant()) {
             Constant constantValue = array().asConstant();
             if (constantValue != null && constantValue.isNonNull()) {

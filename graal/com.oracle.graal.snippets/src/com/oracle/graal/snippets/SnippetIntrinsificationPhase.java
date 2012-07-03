@@ -39,10 +39,10 @@ import com.oracle.graal.snippets.Snippet.Fold;
 
 public class SnippetIntrinsificationPhase extends Phase {
 
-    private final CodeCacheProvider runtime;
+    private final MetaAccessProvider runtime;
     private final BoxingMethodPool pool;
 
-    public SnippetIntrinsificationPhase(CodeCacheProvider runtime, BoxingMethodPool pool) {
+    public SnippetIntrinsificationPhase(MetaAccessProvider runtime, BoxingMethodPool pool) {
         this.runtime = runtime;
         this.pool = pool;
     }

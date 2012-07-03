@@ -55,7 +55,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        CodeCacheProvider runtime = tool.runtime();
+        MetaAccessProvider runtime = tool.runtime();
         if (runtime != null) {
             Constant constant = null;
             if (isStatic()) {
