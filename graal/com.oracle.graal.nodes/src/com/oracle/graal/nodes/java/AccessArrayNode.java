@@ -38,7 +38,6 @@ public abstract class AccessArrayNode extends FixedWithNextNode {
 
     /**
      * Creates a new AccessArrayNode.
-     * @param kind the type of the result of this instruction
      * @param array the instruction that produces the array object value
      */
     public AccessArrayNode(Stamp stamp, ValueNode array) {

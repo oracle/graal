@@ -23,6 +23,8 @@
 package com.oracle.graal.compiler.loop;
 
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 
 
@@ -47,4 +49,24 @@ public abstract class LoopPolicies {
         int size = Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count());
         return size * exactTrips <= maxNodes;
     }
+
+    public static boolean shouldTryUnswitch(@SuppressWarnings("unused") LoopEx loop) {
+        // TODO (gd) maybe there should be a may number of unswitching per loop
+        return true;
+    }
+
+    public static boolean shouldUnswitch(LoopEx loop, IfNode ifNode) {
+        Block postDomBlock = loop.loopsData().controlFlowGraph().blockFor(ifNode).getPostdominator();
+        BeginNode postDom = postDomBlock != null ? postDomBlock.getBeginNode() : null;
+        int inTrueBranch = loop.nodesInLoopFrom(ifNode.trueSuccessor(), postDom).cardinality();
+        int inFalseBranch = loop.nodesInLoopFrom(ifNode.falseSuccessor(), postDom).cardinality();
+        int loopTotal = loop.size();
+        int netDiff = loopTotal - (inTrueBranch + inFalseBranch);
+        double uncertainty = (0.5 - Math.abs(ifNode.probability(IfNode.TRUE_EDGE) - 0.5)) * 2;
+        int maxDiff = GraalOptions.LoopUnswitchMaxIncrease + (int) (GraalOptions.LoopUnswitchUncertaintyBoost * loop.loopBegin().loopFrequency() * uncertainty);
+        Debug.log("shouldUnswitch(%s, %s) : delta=%d, max=%d, %.2f%% inside of if", loop, ifNode, netDiff, maxDiff, (double) (inTrueBranch + inFalseBranch) / loopTotal * 100);
+        return netDiff <= maxDiff;
+    }
+
+
 }

@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -67,7 +66,7 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 }

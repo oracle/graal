@@ -28,12 +28,11 @@ import org.junit.*;
  * @test
  * @bug 6959129
  * @summary COMPARISON WITH INTEGER.MAX_INT DOES NOT WORK CORRECTLY IN THE CLIENT VM.
- * 
+ *
  *          This test will not run properly without assertions
- * 
+ *
  * @run main/othervm -ea Test6959129
  */
-
 public class Test6959129 {
 
     public static int test() {
@@ -71,7 +70,7 @@ public class Test6959129 {
 
     /**
      * Returns the maximum length of the hailstone sequence for numbers between min to max.
-     * 
+     *
      * For rec1 - Assume that min is bigger than max.
      */
     public static long maxMoves(int min, int max) {

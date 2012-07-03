@@ -29,8 +29,8 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
  * This class implements the graph caching system for the HotSpot platform.
@@ -51,7 +51,7 @@ import com.oracle.graal.nodes.*;
  * The {@link #cachedGraphIds} map is used to find the graphs that should be removed because of deoptimization, and to
  * enforce the graph cache size restriction.
  */
-public class HotSpotGraphCache implements RiGraphCache {
+public class HotSpotGraphCache implements GraphCache {
 
     private static final PrintStream out = System.out;
 

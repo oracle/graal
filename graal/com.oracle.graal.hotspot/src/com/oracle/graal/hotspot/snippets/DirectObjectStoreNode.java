@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
-import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -59,7 +58,7 @@ class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public void lower(LoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) this.graph();
         IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, value.kind(), displacement, offset, graph, false);
         WriteNode write = graph.add(new WriteNode(object, value, location));

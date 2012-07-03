@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.compiler.alloc;
 
-import static com.oracle.graal.alloc.util.LocationUtil.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
+
 import java.util.*;
 
-import com.oracle.max.criutils.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
@@ -38,9 +39,13 @@ import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.LIRInstruction.StateProcedure;
+import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
+import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.cfg.*;
+import com.oracle.max.criutils.*;
 
 /**
  * An implementation of the linear scan register allocator algorithm described
@@ -61,31 +66,31 @@ public final class LinearScan {
 
     public static class BlockData {
         /**
-         * Bit map specifying which {@linkplain OperandPool operands} are live upon entry to this block.
+         * Bit map specifying which operands are live upon entry to this block.
          * These are values used in this block or any of its successors where such value are not defined
          * in this block.
-         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
+         * The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
         public BitSet liveIn;
 
         /**
-         * Bit map specifying which {@linkplain OperandPool operands} are live upon exit from this block.
+         * Bit map specifying which operands are live upon exit from this block.
          * These are values used in a successor block that are either defined in this block or were live
          * upon entry to this block.
-         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
+         * The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
         public BitSet liveOut;
 
         /**
-         * Bit map specifying which {@linkplain OperandPool operands} are used (before being defined) in this block.
+         * Bit map specifying which operands are used (before being defined) in this block.
          * That is, these are the values that are live upon entry to the block.
-         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
+         * The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
         public BitSet liveGen;
 
         /**
-         * Bit map specifying which {@linkplain OperandPool operands} are defined/overwritten in this block.
-         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
+         * Bit map specifying which operands are defined/overwritten in this block.
+         * The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
         public BitSet liveKill;
     }
@@ -144,8 +149,7 @@ public final class LinearScan {
     private final ArrayList<Variable> variables;
 
     /**
-     * The {@linkplain #operandNumber(Value) number} of the first variable operand
-     * {@linkplain #newVariable(Kind) allocated} from this pool.
+     * The {@linkplain #operandNumber(Value) number} of the first variable operand allocated.
      */
     private final int firstVariableNumber;
 
@@ -306,7 +310,7 @@ public final class LinearScan {
     }
 
     /**
-     * Gets the size of the {@link Block#liveIn} and {@link Block#liveOut} sets for a basic block. These sets do
+     * Gets the size of the {@link BlockData#liveIn} and {@link BlockData#liveOut} sets for a basic block. These sets do
      * not include any operands allocated as a result of creating {@linkplain #createDerivedInterval(Interval) derived
      * intervals}.
      */
@@ -640,7 +644,7 @@ public final class LinearScan {
     }
 
     /**
-     * Computes local live sets (i.e. {@link Block#liveGen} and {@link Block#liveKill}) separately for each block.
+     * Computes local live sets (i.e. {@link BlockData#liveGen} and {@link BlockData#liveKill}) separately for each block.
      */
     void computeLocalLiveSets() {
         int numBlocks = blockCount();
@@ -763,8 +767,8 @@ public final class LinearScan {
     }
 
     /**
-     * Performs a backward dataflow analysis to compute global live sets (i.e. {@link Block#liveIn} and
-     * {@link Block#liveOut}) for each block.
+     * Performs a backward dataflow analysis to compute global live sets (i.e. {@link BlockData#liveIn} and
+     * {@link BlockData#liveOut}) for each block.
      */
     void computeGlobalLiveSets() {
         int numBlocks = blockCount();
@@ -868,16 +872,13 @@ public final class LinearScan {
                         TTY.println("  used in block B%d", block.getId());
                         for (LIRInstruction ins : block.lir) {
                             TTY.println(ins.id() + ": " + ins.toString());
-                            LIRDebugInfo info = ins.info;
-                            if (info != null) {
-                                info.forEachState(new ValueProcedure() {
-                                    @Override
-                                    public Value doValue(Value liveStateOperand) {
-                                        TTY.println("   operand=" + liveStateOperand);
-                                        return liveStateOperand;
-                                    }
-                                });
-                            }
+                            ins.forEachState(new ValueProcedure() {
+                                @Override
+                                public Value doValue(Value liveStateOperand) {
+                                    TTY.println("   operand=" + liveStateOperand);
+                                    return liveStateOperand;
+                                }
+                            });
                         }
                     }
                     if (blockData.get(block).liveKill.get(operandNum)) {
@@ -1033,7 +1034,7 @@ public final class LinearScan {
      * Determines the priority which with an instruction's input operand will be allocated a register.
      */
     static RegisterPriority registerPriorityOfInputOperand(EnumSet<OperandFlag> flags) {
-        if (flags.contains(OperandFlag.Stack)) {
+        if (flags.contains(OperandFlag.STACK)) {
             return RegisterPriority.ShouldHaveRegister;
         }
         // all other operands require a register
@@ -1069,7 +1070,7 @@ public final class LinearScan {
     }
 
     void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags) {
-        if (flags.contains(OperandFlag.RegisterHint) && isVariableOrRegister(targetValue)) {
+        if (flags.contains(OperandFlag.HINT) && isVariableOrRegister(targetValue)) {
 
             op.forEachRegisterHint(targetValue, mode, new ValueProcedure() {
                 @Override
@@ -1402,21 +1403,21 @@ public final class LinearScan {
         assert isVariable(operand) : "register number out of bounds";
         assert intervalFor(operand) != null : "no interval found";
 
-        return splitChildAtOpId(intervalFor(operand), block.getFirstLirInstructionId(), LIRInstruction.OperandMode.Output);
+        return splitChildAtOpId(intervalFor(operand), block.getFirstLirInstructionId(), LIRInstruction.OperandMode.DEF);
     }
 
     Interval intervalAtBlockEnd(Block block, Value operand) {
         assert isVariable(operand) : "register number out of bounds";
         assert intervalFor(operand) != null : "no interval found";
 
-        return splitChildAtOpId(intervalFor(operand), block.getLastLirInstructionId() + 1, LIRInstruction.OperandMode.Output);
+        return splitChildAtOpId(intervalFor(operand), block.getLastLirInstructionId() + 1, LIRInstruction.OperandMode.DEF);
     }
 
     Interval intervalAtOpId(Value operand, int opId) {
         assert isVariable(operand) : "register number out of bounds";
         assert intervalFor(operand) != null : "no interval found";
 
-        return splitChildAtOpId(intervalFor(operand), opId, LIRInstruction.OperandMode.Input);
+        return splitChildAtOpId(intervalFor(operand), opId, LIRInstruction.OperandMode.USE);
     }
 
     void resolveCollectMappings(Block fromBlock, Block toBlock, MoveResolver moveResolver) {
@@ -1698,20 +1699,7 @@ public final class LinearScan {
     }
 
 
-    private void computeDebugInfo(IntervalWalker iw, LIRInstruction op) {
-        assert iw != null : "interval walker needed for debug information";
-        computeDebugInfo(iw, op, op.info);
-
-        if (op instanceof LIRXirInstruction) {
-            LIRXirInstruction xir = (LIRXirInstruction) op;
-            if (xir.infoAfter != null) {
-                computeDebugInfo(iw, op, xir.infoAfter);
-            }
-        }
-    }
-
-
-    private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRDebugInfo info) {
+    private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRFrameState info) {
         BitSet registerRefMap = op.hasCall() ? null : frameMap.initRegisterRefMap();
         BitSet frameRefMap = frameMap.initFrameRefMap();
         computeOopMap(iw, op, registerRefMap, frameRefMap);
@@ -1720,7 +1708,7 @@ public final class LinearScan {
             @Override
             public Value doValue(Value operand) {
                 int tempOpId = op.id();
-                OperandMode mode = OperandMode.Input;
+                OperandMode mode = OperandMode.USE;
                 Block block = blockForId(tempOpId);
                 if (block.numberOfSux() == 1 && tempOpId == block.getLastLirInstructionId()) {
                     // generating debug information for the last instruction of a block.
@@ -1732,7 +1720,7 @@ public final class LinearScan {
                     if (instr instanceof StandardOp.JumpOp) {
                         if (blockData.get(block).liveOut.get(operandNumber(operand))) {
                             tempOpId = block.suxAt(0).getFirstLirInstructionId();
-                            mode = OperandMode.Output;
+                            mode = OperandMode.DEF;
                         }
                     }
                 }
@@ -1749,7 +1737,7 @@ public final class LinearScan {
         info.finish(registerRefMap, frameRefMap, frameMap);
     }
 
-    private void assignLocations(List<LIRInstruction> instructions, IntervalWalker iw) {
+    private void assignLocations(List<LIRInstruction> instructions, final IntervalWalker iw) {
         int numInst = instructions.size();
         boolean hasDead = false;
 
@@ -1775,10 +1763,13 @@ public final class LinearScan {
             op.forEachTemp(assignProc);
             op.forEachOutput(assignProc);
 
-            if (op.info != null) {
-                // compute reference map and debug information
-                computeDebugInfo(iw, op);
-            }
+            // compute reference map and debug information
+            op.forEachState(new StateProcedure() {
+                @Override
+                protected void doState(LIRFrameState state) {
+                    computeDebugInfo(iw, op, state);
+                }
+            });
 
             // remove useless moves
             if (op instanceof MoveOp) {
@@ -2050,7 +2041,7 @@ public final class LinearScan {
             for (int j = 0; j < instructions.size(); j++) {
                 LIRInstruction op = instructions.get(j);
 
-                if (op.info != null) {
+                if (op.hasState()) {
                     iw.walkBefore(op.id());
                     boolean checkLive = true;
 

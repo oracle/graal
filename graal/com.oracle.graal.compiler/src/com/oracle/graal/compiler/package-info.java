@@ -25,30 +25,6 @@
  * The top-level package in Graal containing options, metrics, timers and the main compiler class
  * {@link com.oracle.graal.compiler.GraalCompiler}.
  *
- * <H2>{@code GraalCompiler} Overview</H2>
- *
- * Graal is intended to be used with multiple JVM's so makes no use of or reference to classes for a specific JVM, for
- * example Maxine.
- *
- * The compiler is represented by the class {@code GraalCompiler}. {@code GraalCompiler} binds a specific target
- * architecture and JVM interface to produce a usable compiler object.
- * {@code RiMethod} is Graal's representation of a Java method and {@code RiXirGenerator} represents the interface through
- * which the compiler requests the XIR for a given bytecode from the runtime system.
- *
- * <H3>The Graal Compilation Process</H3>
- *
- * {@link com.oracle.graal.compiler.GraalCompiler#compileMethod} creates a {@link GraalCompilation} instance and then returns the result of calling its
- * {@link com.oracle.graal.compiler.GraalCompilation#compile} method.
- * <p>
- * While there is only one {@code GraalCompiler} instance, there may be several compilations proceeding concurrently, each of
- * which is represented by a unique {@code GraalCompilation} instance. The static method {@link com.oracle.graal.compiler.GraalCompilation#currentInterval}} returns the
- * {@code GraalCompilation} instance associated with the current thread, and is managed using a {@link java.lang.ThreadLocal} variable.
- * Each {@code GraalCompilation} instance has an associated {@link com.oracle.max.cri.ci.CiStatistics} object that accumulates information about the compilation process.
- * </p>
- * <H3>Supported backends</H3>
- *
- * <ul>
- * <li>AMD64/x64 with SSE2</li>
- * </ul>
+ * Graal is intended to be used with multiple JVM's so makes no use of or reference to classes for a specific JVM.
  */
 package com.oracle.graal.compiler;

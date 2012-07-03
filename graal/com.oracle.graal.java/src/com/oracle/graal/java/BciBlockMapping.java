@@ -404,10 +404,15 @@ public final class BciBlockMapping {
     }
 
     private void addSwitchSuccessors(int predBci, BytecodeSwitch bswitch) {
+        // adds distinct targets to the successor list
+        Collection<Integer> targets = new TreeSet<>();
         for (int i = 0; i < bswitch.numberOfCases(); i++) {
-            addSuccessor(predBci, makeBlock(bswitch.targetAt(i)));
+            targets.add(bswitch.targetAt(i));
         }
-        addSuccessor(predBci, makeBlock(bswitch.defaultTarget()));
+        targets.add(bswitch.defaultTarget());
+        for (int targetBci : targets) {
+            addSuccessor(predBci, makeBlock(targetBci));
+        }
     }
 
     private void addSuccessor(int predBci, Block sux) {

@@ -89,7 +89,7 @@ public final class Interval {
          * Sets the list for a specified binding.
          *
          * @param binding specifies the list to be replaced
-         * @param a list of intervals whose binding is {@code binding}
+         * @param list a list of intervals whose binding is {@code binding}
          */
         public void set(RegisterBinding binding, Interval list) {
             assert list != null;
@@ -155,7 +155,7 @@ public final class Interval {
          * Removes an interval from a list.
          *
          * @param binding specifies the list to be updated
-         * @param interval the interval to remove
+         * @param i the interval to remove
          */
         public void remove(RegisterBinding binding, Interval i) {
             Interval list = get(binding);
@@ -405,7 +405,7 @@ public final class Interval {
     public final Value operand;
 
     /**
-     * The {@linkplain OperandPool#operandNumber(Value) operand number} for this interval's {@linkplain #operand operand}.
+     * The operand number for this interval's {@linkplain #operand operand}.
      */
     public final int operandNumber;
 
@@ -421,7 +421,6 @@ public final class Interval {
 
     /**
      * The kind of this interval.
-     * Only valid if this is a {@linkplain #xxisVariable() variable}.
      */
     private Kind kind;
 
@@ -760,7 +759,7 @@ public final class Interval {
             int len = splitChildren.size();
 
             // in outputMode, the end of the interval (opId == cur.to()) is not valid
-            int toOffset = (mode == LIRInstruction.OperandMode.Output ? 0 : 1);
+            int toOffset = (mode == LIRInstruction.OperandMode.DEF ? 0 : 1);
 
             int i;
             for (i = 0; i < len; i++) {
@@ -906,7 +905,7 @@ public final class Interval {
     }
 
     void addUsePos(int pos, RegisterPriority registerPriority) {
-        assert covers(pos, LIRInstruction.OperandMode.Input) : "use position not covered by live range";
+        assert covers(pos, LIRInstruction.OperandMode.USE) : "use position not covered by live range";
 
         // do not add use positions for precolored intervals because they are never used
         if (registerPriority != RegisterPriority.None && isVariable(operand)) {
@@ -1064,7 +1063,7 @@ public final class Interval {
         if (cur != Range.EndMarker) {
             assert cur.to != cur.next.from : "ranges not separated";
 
-            if (mode == LIRInstruction.OperandMode.Output) {
+            if (mode == LIRInstruction.OperandMode.DEF) {
                 return cur.from <= opId && opId < cur.to;
             } else {
                 return cur.from <= opId && opId <= cur.to;

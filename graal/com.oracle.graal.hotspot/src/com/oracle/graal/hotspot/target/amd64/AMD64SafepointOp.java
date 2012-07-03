@@ -25,12 +25,10 @@ package com.oracle.graal.hotspot.target.amd64;
 import static com.oracle.graal.hotspot.meta.HotSpotXirGenerator.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.target.amd64.*;
@@ -38,12 +36,14 @@ import com.oracle.max.asm.target.amd64.*;
 /**
  * Emits a safepoint poll.
  */
+@Opcode("SAFEPOINT")
 public class AMD64SafepointOp extends AMD64LIRInstruction {
+    @State protected LIRFrameState state;
 
     private final HotSpotVMConfig config;
 
-    public AMD64SafepointOp(LIRDebugInfo info, HotSpotVMConfig config) {
-        super("SAFEPOINT", LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+    public AMD64SafepointOp(LIRFrameState state, HotSpotVMConfig config) {
+        this.state = state;
         this.config = config;
     }
 
@@ -54,17 +54,12 @@ public class AMD64SafepointOp extends AMD64LIRInstruction {
         if (config.isPollingPageFar) {
             asm.movq(scratch, config.safepointPollingAddress);
             tasm.recordMark(MARK_POLL_FAR);
-            tasm.recordSafepoint(pos, info);
+            tasm.recordSafepoint(pos, state);
             asm.movq(scratch, new Address(tasm.target.wordKind, scratch.asValue()));
         } else {
             tasm.recordMark(MARK_POLL_NEAR);
-            tasm.recordSafepoint(pos, info);
+            tasm.recordSafepoint(pos, state);
             asm.movq(scratch, new Address(tasm.target.wordKind, rip.asValue()));
         }
-    }
-
-    @Override
-    protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-        throw GraalInternalError.shouldNotReachHere();
     }
 }

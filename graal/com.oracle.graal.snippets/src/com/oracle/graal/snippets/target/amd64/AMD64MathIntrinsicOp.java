@@ -24,32 +24,31 @@ package com.oracle.graal.snippets.target.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
-import java.util.*;
-
-import com.oracle.max.asm.target.amd64.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.max.asm.target.amd64.*;
 
 public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
-    public enum Opcode  {
+    public enum IntrinsicOpcode  {
         SQRT,
         SIN, COS, TAN,
         LOG, LOG10;
     }
 
-    public AMD64MathIntrinsicOp(Opcode opcode, Value result, Value input) {
-        super(opcode, new Value[] {result}, null, new Value[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+    @Opcode private final IntrinsicOpcode opcode;
+    @Def protected Value result;
+    @Use protected Value input;
+
+    public AMD64MathIntrinsicOp(IntrinsicOpcode opcode, Value result, Value input) {
+        this.opcode = opcode;
+        this.result = result;
+        this.input = input;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        Opcode opcode = (Opcode) code;
-        Value result = output(0);
-        Value input = input(0);
-
         switch (opcode) {
             case SQRT:  masm.sqrtsd(asDoubleReg(result), asDoubleReg(input)); break;
             case LOG:   masm.flog(asDoubleReg(result), asDoubleReg(input), false); break;
@@ -59,15 +58,5 @@ public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
             case TAN:   masm.ftan(asDoubleReg(result), asDoubleReg(input)); break;
             default:    throw GraalInternalError.shouldNotReachHere();
         }
-    }
-
-    @Override
-    protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-        if (mode == OperandMode.Input && index == 0) {
-            return EnumSet.of(OperandFlag.Register);
-        } else if (mode == OperandMode.Output && index == 0) {
-            return EnumSet.of(OperandFlag.Register);
-        }
-        throw GraalInternalError.shouldNotReachHere();
     }
 }

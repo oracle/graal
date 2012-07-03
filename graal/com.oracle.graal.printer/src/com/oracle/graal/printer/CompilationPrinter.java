@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.criutils;
+package com.oracle.graal.printer;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
@@ -29,6 +29,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.max.criutils.*;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases.
@@ -97,14 +98,14 @@ public class CompilationPrinter {
      */
     public void printCompilation(JavaMethod method) {
         begin("compilation");
-        out.print("name \" ").print(CodeUtil.format("%H::%n", method)).println('"');
-        out.print("method \"").print(CodeUtil.format("%f %r %H.%n(%p)", method)).println('"');
+        out.print("name \" ").print(MetaUtil.format("%H::%n", method)).println('"');
+        out.print("method \"").print(MetaUtil.format("%f %r %H.%n(%p)", method)).println('"');
         out.print("date ").println(System.currentTimeMillis());
         end("compilation");
     }
 
     /**
-     * Formats a given {@linkplain FrameState JVM frame state} as a multi line string.
+     * Formats given debug info as a multi line string.
      */
     protected String debugInfoToString(BytecodePosition codePos, BitSet registerRefMap, BitSet frameRefMap, Architecture arch) {
         StringBuilder sb = new StringBuilder();
@@ -129,7 +130,7 @@ public class CompilationPrinter {
             BytecodePosition curCodePos = codePos;
             List<VirtualObject> virtualObjects = new ArrayList<>();
             do {
-                sb.append(CodeUtil.toLocation(curCodePos.getMethod(), curCodePos.getBCI()));
+                sb.append(MetaUtil.toLocation(curCodePos.getMethod(), curCodePos.getBCI()));
                 sb.append('\n');
                 if (curCodePos instanceof BytecodeFrame) {
                     BytecodeFrame frame = (BytecodeFrame) curCodePos;

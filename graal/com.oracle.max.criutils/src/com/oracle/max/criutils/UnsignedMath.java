@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.util;
+package com.oracle.max.criutils;
 
 /**
- * {@link INTRINSIC} method definitions for unsigned comparisons.
+ * Utilities for unsigned comparisons.
  * All methods have correct, but slow, standard Java implementations so that
  * they can be used with compilers not supporting the intrinsics.
  */

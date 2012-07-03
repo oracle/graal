@@ -66,8 +66,8 @@ public class CompiledMethodTest extends GraalCompilerTest {
             }
         }
 
-        final ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(method);
-        InstalledCode compiledMethod = getCode(riMethod, graph);
+        final ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(method);
+        InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             Object result = compiledMethod.execute("1", "2", "3");
             Assert.assertEquals("1-2-3", result);
@@ -80,8 +80,8 @@ public class CompiledMethodTest extends GraalCompilerTest {
     public void test3() {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
-        final ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(method);
-        InstalledCode compiledMethod = getCode(riMethod, graph);
+        final ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(method);
+        InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             Object result = compiledMethod.executeVarargs("1", "2", "3");
             Assert.assertEquals("1 2 3", result);
@@ -94,8 +94,8 @@ public class CompiledMethodTest extends GraalCompilerTest {
     public void test4() {
         Method method = getMethod("testMethodVirtual");
         final StructuredGraph graph = parse(method);
-        final ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(method);
-        InstalledCode compiledMethod = getCode(riMethod, graph);
+        final ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(method);
+        InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             f1 = "0";
             Object result = compiledMethod.executeVarargs(this, "1", "2", "3");
@@ -108,8 +108,8 @@ public class CompiledMethodTest extends GraalCompilerTest {
     @Test
     public void test2() throws NoSuchMethodException, SecurityException {
         Method method = CompilableObjectImpl.class.getDeclaredMethod("executeHelper", ObjectCompiler.class, String.class);
-        ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(method);
-        StructuredGraph graph = new StructuredGraph(riMethod);
+        ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(method);
+        StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
         new CanonicalizerPhase(null, runtime, null).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
@@ -123,7 +123,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
             }
         }
 
-        InstalledCode compiledMethod = getCode(riMethod, graph);
+        InstalledCode compiledMethod = getCode(javaMethod, graph);
         final CompilableObject compilableObject = new CompilableObjectImpl(0);
 
         Object result;

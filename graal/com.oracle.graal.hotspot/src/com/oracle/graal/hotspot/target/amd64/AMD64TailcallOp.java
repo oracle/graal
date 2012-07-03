@@ -26,33 +26,23 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.asm.target.amd64.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.max.asm.target.amd64.*;
 
 /**
  * Performs a hard-coded tail call to the specified target, which normally should be an RiCompiledCode instance.
  */
+@Opcode("TAILCALL")
 public class AMD64TailcallOp extends AMD64LIRInstruction {
+    @Use protected Value target;
+    @Alive protected Value[] parameters;
 
-    public AMD64TailcallOp(List<Value> parameters, Value target, Value[] callingConvention) {
-        super("TAILCALL", LIRInstruction.NO_OPERANDS, null, toArray(parameters, target), LIRInstruction.NO_OPERANDS, callingConvention.clone());
-        assert inputs.length == temps.length + 1;
-
-        for (int i = 0; i < temps.length; i++) {
-            assert isRegister(temps[i]) : "too many parameters for tail call";
-            assert sameRegister(temps[i], inputs[i]) : "inputs do not match calling convention";
-        }
-    }
-
-    private static Value[] toArray(List<Value> parameters, Value target) {
-        Value[] result = new Value[parameters.size() + 1];
-        parameters.toArray(result);
-        result[parameters.size()] = target;
-        return result;
+    public AMD64TailcallOp(List<Value> parameters, Value target) {
+        this.target = target;
+        this.parameters = parameters.toArray(new Value[parameters.size()]);
     }
 
     @Override
@@ -61,17 +51,7 @@ public class AMD64TailcallOp extends AMD64LIRInstruction {
         masm.leave();
 
         // jump to the target method
-        masm.jmp(asRegister(inputs[inputs.length - 1]));
+        masm.jmp(asRegister(target));
         masm.ensureUniquePC();
-    }
-
-    @Override
-    protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-        if (mode == OperandMode.Input) {
-            return EnumSet.of(OperandFlag.Register);
-        } else if (mode == OperandMode.Temp) {
-            return EnumSet.of(OperandFlag.Register);
-        }
-        throw GraalInternalError.shouldNotReachHere();
     }
 }

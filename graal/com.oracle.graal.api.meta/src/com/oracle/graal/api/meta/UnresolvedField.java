@@ -20,21 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.criutils;
+package com.oracle.graal.api.meta;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 
 /**
  * A implementation of {@link JavaField} for an unresolved field.
  */
-public class BaseUnresolvedField implements JavaField {
+public class UnresolvedField implements JavaField {
 
     public final String name;
     public final JavaType holder;
     public final JavaType type;
 
-    public BaseUnresolvedField(JavaType holder, String name, JavaType type) {
+    public UnresolvedField(JavaType holder, String name, JavaType type) {
         this.name = name;
         this.type = type;
         this.holder = holder;
@@ -71,6 +69,6 @@ public class BaseUnresolvedField implements JavaField {
      */
     @Override
     public String toString() {
-        return CodeUtil.format("%H.%n [unresolved]", this);
+        return MetaUtil.format("%H.%n [unresolved]", this);
     }
 }

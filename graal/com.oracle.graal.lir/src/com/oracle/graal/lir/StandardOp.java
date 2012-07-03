@@ -22,12 +22,10 @@
  */
 package com.oracle.graal.lir;
 
-import java.util.*;
-
-import com.oracle.max.asm.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.max.asm.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 /**
  * A collection of machine-independent LIR operations, as well as interfaces to be implemented for specific kinds or LIR
@@ -38,6 +36,15 @@ public class StandardOp {
     private static Value[] EMPTY = new Value[0];
 
     /**
+     * Marker interface for LIR ops that can fall through to the next operation, like a switch statement.
+     * setFallThroughTarget(null) can be used to make the operation fall through to the next one.
+     */
+    public interface FallThroughOp {
+        LabelRef fallThroughTarget();
+        void setFallThroughTarget(LabelRef target);
+    }
+
+    /**
      * LIR operation that defines the position of a label.
      * The first operation of every block must implement this interface.
      */
@@ -45,14 +52,9 @@ public class StandardOp {
         private final Label label;
         private final boolean align;
 
-        protected LabelOp(Object opcode, Value[] outputs, LIRDebugInfo info, Value[] inputs, Value[] alives, Value[] temps, Label label, boolean align) {
-            super(opcode, outputs, info, inputs, alives, temps);
+        public LabelOp(Label label, boolean align) {
             this.label = label;
             this.align = align;
-        }
-
-        public LabelOp(Label label, boolean align) {
-            this("LABEL", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, label, align);
         }
 
         @Override
@@ -63,40 +65,25 @@ public class StandardOp {
             tasm.asm.bind(label);
         }
 
-        @Override
-        public String operationString() {
-            return label.toString() + " " + super.operationString();
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-
         public Label getLabel() {
             return label;
         }
     }
 
     public static class PhiLabelOp extends LabelOp {
-        public PhiLabelOp(Label label, boolean align, Value[] phiDefinitions) {
-            super("PHI_LABEL", phiDefinitions, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, label, align);
-        }
+        @Def({REG, STACK}) protected Value[] phiDefinitions;
 
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Output) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+        public PhiLabelOp(Label label, boolean align, Value[] phiDefinitions) {
+            super(label, align);
+            this.phiDefinitions = phiDefinitions;
         }
 
         public void markResolved() {
-            outputs = EMPTY;
+            phiDefinitions = EMPTY;
         }
 
         public Value[] getPhiDefinitions() {
-            return outputs;
+            return phiDefinitions;
         }
     }
 
@@ -109,29 +96,16 @@ public class StandardOp {
      */
     public static class JumpOp extends LIRInstruction {
         private final LabelRef destination;
+        @State protected LIRFrameState state;
 
-        protected JumpOp(Object opcode, Value[] outputs, LIRDebugInfo info, Value[] inputs, Value[] alives, Value[] temps, LabelRef destination) {
-            super(opcode, outputs, info, inputs, alives, temps);
+        public JumpOp(LabelRef destination, LIRFrameState state) {
             this.destination = destination;
-        }
-
-        public JumpOp(LabelRef destination, LIRDebugInfo info) {
-            this("JUMP", LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, destination);
+            this.state = state;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm) {
             tasm.asm.jmp(destination.label());
-        }
-
-        @Override
-        public String operationString() {
-            return  destination + " " + super.operationString();
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            throw GraalInternalError.shouldNotReachHere();
         }
 
         public LabelRef destination() {
@@ -140,24 +114,19 @@ public class StandardOp {
     }
 
     public static class PhiJumpOp extends JumpOp {
-        public PhiJumpOp(LabelRef destination, Value[] phiInputs) {
-            super("PHI_JUMP", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, phiInputs, LIRInstruction.NO_OPERANDS, destination);
-        }
+        @Alive({REG, STACK, CONST}) protected Value[] phiInputs;
 
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Alive) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
-            }
-            throw GraalInternalError.shouldNotReachHere();
+        public PhiJumpOp(LabelRef destination, Value[] phiInputs) {
+            super(destination, null);
+            this.phiInputs = phiInputs;
         }
 
         public void markResolved() {
-            alives = EMPTY;
+            phiInputs = EMPTY;
         }
 
         public Value[] getPhiInputs() {
-            return alives;
+            return phiInputs;
         }
     }
 
@@ -191,21 +160,15 @@ public class StandardOp {
      * In particular, it is not the actual method prologue.
      */
     public static final class ParametersOp extends LIRInstruction {
+        @Def({REG, STACK}) protected Value[] params;
+
         public ParametersOp(Value[] params) {
-            super("PARAMS", params, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+            this.params = params;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm) {
             // No code to emit.
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Output) {
-                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
-            }
-            throw GraalInternalError.shouldNotReachHere();
         }
     }
 }

@@ -28,11 +28,10 @@ import com.oracle.max.criutils.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * A {@link ValueVisitor} for {@linkplain #printInstruction(ValueNode) printing}
- * an {@link FixedWithNextNode} as an expression or statement.
+ * A utility for {@linkplain #printInstruction(ValueNode) printing}
+ * a node as an expression or statement.
  */
 public class InstructionPrinter {
-
 
     /**
      * The columns printed in a tabulated instruction
@@ -50,7 +49,7 @@ public class InstructionPrinter {
         USE(7, "use"),
 
         /**
-         * The instruction as a {@linkplain com.oracle.graal.compiler.util.Util#valueString(com.oracle.graal.compiler.ir.Value) value}.
+         * The instruction as a value.
          */
         VALUE(12, "tid"),
 

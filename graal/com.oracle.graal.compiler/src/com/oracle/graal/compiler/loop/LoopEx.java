@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.compiler.loop;
 
-import com.oracle.graal.api.code.*;
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -129,7 +130,7 @@ public class LoopEx {
             }
             BinaryNode result = BinaryNode.reassociate(binary, invariant);
             if (result != binary) {
-                Debug.log(CodeUtil.format("%H::%n", Debug.contextLookup(ResolvedJavaMethod.class)) + " : Reassociated %s into %s", binary, result);
+                Debug.log(MetaUtil.format("%H::%n", Debug.contextLookup(ResolvedJavaMethod.class)) + " : Reassociated %s into %s", binary, result);
                 graph.replaceFloating(binary, result);
             }
         }
@@ -137,5 +138,31 @@ public class LoopEx {
 
     public void setCounted(CountedLoopInfo countedLoopInfo) {
         counted = countedLoopInfo;
+    }
+
+    public LoopsData loopsData() {
+        return data;
+    }
+
+    public NodeBitMap nodesInLoopFrom(BeginNode point, BeginNode until) {
+        Collection<BeginNode> blocks = new LinkedList<>();
+        Collection<BeginNode> exits = new LinkedList<>();
+        Queue<Block> work = new LinkedList<>();
+        ControlFlowGraph cfg = loopsData().controlFlowGraph();
+        work.add(cfg.blockFor(point));
+        Block untilBlock = until != null ? cfg.blockFor(until) : null;
+        while (!work.isEmpty()) {
+            Block b = work.remove();
+            if (b == untilBlock) {
+                continue;
+            }
+            if (lirLoop().exits.contains(b)) {
+                exits.add(b.getBeginNode());
+            } else if (lirLoop().blocks.contains(b)) {
+                blocks.add(b.getBeginNode());
+                work.addAll(b.getDominated());
+            }
+        }
+        return LoopFragment.computeNodes(point.graph(), blocks, exits);
     }
 }

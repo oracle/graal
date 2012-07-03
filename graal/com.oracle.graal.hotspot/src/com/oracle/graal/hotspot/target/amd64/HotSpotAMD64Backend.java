@@ -61,7 +61,7 @@ public class HotSpotAMD64Backend extends Backend {
 
             @Override
             public void visitSafepointNode(SafepointNode i) {
-                LIRDebugInfo info = state();
+                LIRFrameState info = state();
                 append(new AMD64SafepointOp(info, ((HotSpotRuntime) runtime).config));
             }
 

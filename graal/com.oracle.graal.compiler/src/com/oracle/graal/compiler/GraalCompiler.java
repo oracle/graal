@@ -36,12 +36,12 @@ import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.types.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.max.cri.xir.*;
 
 public class GraalCompiler {
@@ -54,7 +54,7 @@ public class GraalCompiler {
     /**
      * The runtime that this compiler has been configured for.
      */
-    public final ExtendedRiRuntime runtime;
+    public final GraalCodeCacheProvider runtime;
 
     /**
      * The XIR generator that lowers Java operations to machine operations.
@@ -66,7 +66,7 @@ public class GraalCompiler {
      */
     public final Backend backend;
 
-    public GraalCompiler(ExtendedRiRuntime runtime, TargetDescription target, Backend backend, RiXirGenerator xirGen) {
+    public GraalCompiler(GraalCodeCacheProvider runtime, TargetDescription target, Backend backend, RiXirGenerator xirGen) {
         this.runtime = runtime;
         this.target = target;
         this.xir = xirGen;
@@ -74,7 +74,7 @@ public class GraalCompiler {
     }
 
 
-    public CompilationResult compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, int osrBCI, final RiGraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
+    public CompilationResult compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, int osrBCI, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.accessFlags() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
         if (osrBCI != -1) {
             throw new BailoutException("No OSR supported");
@@ -105,7 +105,7 @@ public class GraalCompiler {
     /**
      * Builds the graph, optimizes it.
      */
-    public LIR emitHIR(StructuredGraph graph, Assumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public LIR emitHIR(StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
 
         if (graph.start().next() == null) {
             plan.runPhases(PhasePosition.AFTER_PARSING, graph);
@@ -149,6 +149,7 @@ public class GraalCompiler {
             }
         }
 
+        //new ConvertUnreachedToGuardPhase(optimisticOpts).apply(graph);
 
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
 
@@ -187,18 +188,17 @@ public class GraalCompiler {
         if (GraalOptions.CheckCastElimination) {
             new CheckCastEliminationPhase().apply(graph);
         }
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+        }
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+        }
 
         if (GraalOptions.OptLoopTransform) {
             new LoopTransformLowPhase().apply(graph);
         }
         new RemoveValueProxyPhase().apply(graph);
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-        }
-        if (GraalOptions.CheckCastElimination) {
-            new CheckCastEliminationPhase().apply(graph);
-        }
-
 
         plan.runPhases(PhasePosition.MID_LEVEL, graph);
 

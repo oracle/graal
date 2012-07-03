@@ -44,7 +44,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
 
     /**
      * Create an new AccessIndexedNode.
-     * @param kind the result kind of the access
+     * @param stamp the result kind of the access
      * @param array the instruction producing the array
      * @param index the instruction producing the index
      * @param elementKind the type of the elements of the array

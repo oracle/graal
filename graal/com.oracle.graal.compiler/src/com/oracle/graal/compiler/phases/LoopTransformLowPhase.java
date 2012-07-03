@@ -28,6 +28,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 
 public class LoopTransformLowPhase extends Phase {
+    private static final DebugMetric UNSWITCHED = Debug.metric("Unswitched");
 
     @Override
     protected void run(StructuredGraph graph) {
@@ -42,6 +43,26 @@ public class LoopTransformLowPhase extends Phase {
                         }
                     }
                 });
+            }
+            if (GraalOptions.LoopUnswitch) {
+                boolean unswitched;
+                do {
+                    unswitched = false;
+                    final LoopsData dataUnswitch = new LoopsData(graph);
+                    for (LoopEx loop : dataUnswitch.loops()) {
+                        if (LoopPolicies.shouldTryUnswitch(loop)) {
+                            IfNode ifNode = LoopTransformations.findUnswitchableIf(loop);
+                            if (ifNode != null && LoopPolicies.shouldUnswitch(loop, ifNode)) {
+                                Debug.log("Unswitching %s at %s [%f - %f]", loop, ifNode, ifNode.probability(0), ifNode.probability(1));
+                                LoopTransformations.unswitch(loop, ifNode);
+                                UNSWITCHED.increment();
+                                Debug.dump(graph, "After unswitch %s", loop);
+                                unswitched = true;
+                                break;
+                            }
+                        }
+                    }
+                } while(unswitched);
             }
         }
     }

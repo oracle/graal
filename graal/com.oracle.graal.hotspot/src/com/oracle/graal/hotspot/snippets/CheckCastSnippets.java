@@ -34,7 +34,6 @@ import sun.misc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -42,6 +41,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
 import com.oracle.graal.snippets.Snippet.Fold;
@@ -50,7 +50,6 @@ import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Cache;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 import com.oracle.graal.snippets.nodes.*;
-import com.oracle.max.criutils.*;
 
 /**
  * Snippets used for implementing the type test of a checkcast instruction.
@@ -353,7 +352,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         /**
          * Lowers a checkcast node.
          */
-        public void lower(CheckCastNode checkcast, CiLoweringTool tool) {
+        public void lower(CheckCastNode checkcast, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) checkcast.graph();
             ValueNode hub = checkcast.targetClassInstruction();
             ValueNode object = checkcast.object();

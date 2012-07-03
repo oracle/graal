@@ -290,8 +290,8 @@ public class SpillAllAllocator {
     }
 
     private Value load(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        assert mode == OperandMode.Input || mode == OperandMode.Alive;
-        if (flags.contains(OperandFlag.Stack)) {
+        assert mode == OperandMode.USE || mode == OperandMode.ALIVE;
+        if (flags.contains(OperandFlag.STACK)) {
             return useSlot(value);
         }
         if (isVariable(value)) {
@@ -301,7 +301,7 @@ public class SpillAllAllocator {
                 // This variable has already been processed before.
                 Debug.log("      found location %s", regLoc);
             } else {
-                regLoc = allocateRegister(asVariable(value), curInRegisterState, mode == OperandMode.Alive ? curOutRegisterState : null, mode, flags);
+                regLoc = allocateRegister(asVariable(value), curInRegisterState, mode == OperandMode.ALIVE ? curOutRegisterState : null, mode, flags);
                 Location stackLoc = curStackLocations.get(asVariable(value));
                 assert stackLoc != null;
                 moveResolver.add(stackLoc, regLoc);
@@ -314,15 +314,15 @@ public class SpillAllAllocator {
     }
 
     private Value spill(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        assert mode == OperandMode.Temp || mode == OperandMode.Output;
-        if (flags.contains(OperandFlag.Stack)) {
+        assert mode == OperandMode.TEMP || mode == OperandMode.DEF;
+        if (flags.contains(OperandFlag.STACK)) {
             return defSlot(value);
         }
         if (isVariable(value)) {
             Debug.log("    spill %s", value);
             assert curStackLocations.get(asVariable(value)) == null;
             Location regLoc = allocateRegister(asVariable(value), null, curOutRegisterState, mode, flags);
-            if (mode == OperandMode.Output) {
+            if (mode == OperandMode.DEF) {
                 Location stackLoc = new Location(asVariable(value), frameMap.allocateSpillSlot(value.kind));
                 curStackLocations.put(stackLoc);
                 moveResolver.add(regLoc, stackLoc);
@@ -360,7 +360,7 @@ public class SpillAllAllocator {
     }
 
     private Location allocateRegister(final Variable variable, final Object[] inRegisterState, final Object[] outRegisterState, OperandMode mode, EnumSet<OperandFlag> flags) {
-        if (flags.contains(OperandFlag.RegisterHint)) {
+        if (flags.contains(OperandFlag.HINT)) {
             Value result = curInstruction.forEachRegisterHint(variable, mode, new ValueProcedure() {
                 @Override
                 public Value doValue(Value registerHint) {

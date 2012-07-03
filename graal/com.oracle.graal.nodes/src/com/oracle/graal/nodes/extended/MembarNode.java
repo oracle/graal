@@ -25,7 +25,7 @@ package com.oracle.graal.nodes.extended;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.util.*;
+import com.oracle.max.criutils.*;
 
 /**
  * Creates a memory barrier.

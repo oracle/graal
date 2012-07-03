@@ -85,8 +85,6 @@ public class LIR {
 
     /**
      * Creates a new LIR instance for the specified compilation.
-     * @param numLoops number of loops
-     * @param compilation the compilation
      */
     public LIR(ControlFlowGraph cfg, BlockMap<List<ScheduledNode>> blockToNodesMap, List<Block> linearScanOrder, List<Block> codeEmittingOrder) {
         this.cfg = cfg;
@@ -110,7 +108,7 @@ public class LIR {
     public boolean hasDebugInfo() {
         for (Block b : linearScanOrder()) {
             for (LIRInstruction op : b.lir) {
-                if (op.info != null) {
+                if (op.hasState()) {
                     return true;
                 }
             }

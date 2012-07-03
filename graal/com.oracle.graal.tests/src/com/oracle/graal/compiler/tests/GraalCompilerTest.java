@@ -35,13 +35,13 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.schedule.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
  * Base class for Graal compiler unit tests. These are white box tests
@@ -61,11 +61,11 @@ import com.oracle.graal.nodes.*;
  */
 public abstract class GraalCompilerTest {
 
-    protected final ExtendedRiRuntime runtime;
+    protected final GraalCodeCacheProvider runtime;
 
     public GraalCompilerTest() {
         Debug.enable();
-        this.runtime = Graal.getRuntime().getCapability(ExtendedRiRuntime.class);
+        this.runtime = Graal.getRuntime().getCapability(GraalCodeCacheProvider.class);
     }
 
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph) {
@@ -127,7 +127,7 @@ public abstract class GraalCompilerTest {
         return result.toString();
     }
 
-    protected ExtendedRiRuntime runtime() {
+    protected GraalCodeCacheProvider runtime() {
         return runtime;
     }
 
@@ -248,8 +248,8 @@ public abstract class GraalCompilerTest {
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parse(Method m) {
-        ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(m);
-        StructuredGraph graph = new StructuredGraph(riMethod);
+        ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(m);
+        StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;
     }
@@ -258,8 +258,8 @@ public abstract class GraalCompilerTest {
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parseProfiled(Method m) {
-        ResolvedJavaMethod riMethod = runtime.getResolvedJavaMethod(m);
-        StructuredGraph graph = new StructuredGraph(riMethod);
+        ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(m);
+        StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;
     }

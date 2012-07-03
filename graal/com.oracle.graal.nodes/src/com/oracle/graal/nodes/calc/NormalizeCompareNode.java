@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -46,7 +45,7 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public void lower(LoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) graph();
 
         BooleanNode equalComp;

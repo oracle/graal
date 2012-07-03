@@ -35,13 +35,14 @@ import com.oracle.graal.nodes.calc.*;
 public class LoopsData {
     private Map<Loop, LoopEx> lirLoopToEx = new IdentityHashMap<>();
     private Map<LoopBeginNode, LoopEx> loopBeginToEx = new IdentityHashMap<>();
+    private ControlFlowGraph cfg;
 
     public LoopsData(final StructuredGraph graph) {
 
-        ControlFlowGraph cfg = Debug.scope("ControlFlowGraph", new Callable<ControlFlowGraph>() {
+        cfg = Debug.scope("ControlFlowGraph", new Callable<ControlFlowGraph>() {
             @Override
             public ControlFlowGraph call() throws Exception {
-                return ControlFlowGraph.compute(graph, true, true, true, false);
+                return ControlFlowGraph.compute(graph, true, true, true, true);
             }
         });
         for (Loop lirLoop : cfg.getLoops()) {
@@ -149,5 +150,9 @@ public class LoopsData {
                 loop.setCounted(new CountedLoopInfo(loop, iv, limit, oneOff));
             }
         }
+    }
+
+    public ControlFlowGraph controlFlowGraph() {
+        return cfg;
     }
 }

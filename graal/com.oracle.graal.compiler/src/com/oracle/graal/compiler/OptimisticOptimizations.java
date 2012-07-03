@@ -24,7 +24,6 @@ package com.oracle.graal.compiler;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.max.criutils.*;
@@ -71,7 +70,7 @@ public final class OptimisticOptimizations {
         for (Optimization opt: Optimization.values()) {
             if (!enabledOpts.contains(opt)) {
                 if (GraalOptions.PrintDisabledOptimisticOptimizations) {
-                    TTY.println("WARN: deactivated optimistic optimization %s for %s", opt.name(), CodeUtil.format("%H.%n(%p)", method));
+                    TTY.println("WARN: deactivated optimistic optimization %s for %s", opt.name(), MetaUtil.format("%H.%n(%p)", method));
                 }
                 disabledOptimisticOptsMetric.increment();
             }

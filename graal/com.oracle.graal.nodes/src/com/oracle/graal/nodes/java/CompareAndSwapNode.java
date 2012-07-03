@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -77,7 +76,7 @@ public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 

@@ -45,7 +45,7 @@ public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowera
 
     @Override
     public void generate(LIRGenerator gen) {
-        LIRDebugInfo info = gen.state();
+        LIRFrameState info = gen.state();
         AMD64VerifyOopStubCallOp op = new AMD64VerifyOopStubCallOp(gen.operand(object), info);
         gen.append(op);
     }

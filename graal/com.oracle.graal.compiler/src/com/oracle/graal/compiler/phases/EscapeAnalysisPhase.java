@@ -28,7 +28,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.graph.*;
 import com.oracle.graal.compiler.util.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -191,13 +190,13 @@ public class EscapeAnalysisPhase extends Phase {
     }
 
     private final TargetDescription target;
-    private final ExtendedRiRuntime runtime;
+    private final GraalCodeCacheProvider runtime;
     private final Assumptions assumptions;
-    private final RiGraphCache cache;
+    private final GraphCache cache;
     private final PhasePlan plan;
     private final OptimisticOptimizations optimisticOpts;
 
-    public EscapeAnalysisPhase(TargetDescription target, ExtendedRiRuntime runtime, Assumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public EscapeAnalysisPhase(TargetDescription target, GraalCodeCacheProvider runtime, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this.runtime = runtime;
         this.target = target;
         this.assumptions = assumptions;

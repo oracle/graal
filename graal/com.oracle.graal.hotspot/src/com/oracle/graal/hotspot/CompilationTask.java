@@ -131,11 +131,11 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         } catch (BailoutException bailout) {
             Debug.metric("Bailouts").increment();
             if (GraalOptions.ExitVMOnBailout) {
-                TTY.cachedOut.println(CodeUtil.format("Bailout in %H.%n(%p)", method));
+                TTY.cachedOut.println(MetaUtil.format("Bailout in %H.%n(%p)", method));
                 bailout.printStackTrace(TTY.cachedOut);
                 System.exit(-1);
             } else if (GraalOptions.PrintBailout) {
-                TTY.cachedOut.println(CodeUtil.format("Bailout in %H.%n(%p)", method));
+                TTY.cachedOut.println(MetaUtil.format("Bailout in %H.%n(%p)", method));
                 bailout.printStackTrace(TTY.cachedOut);
             }
         } catch (Throwable t) {

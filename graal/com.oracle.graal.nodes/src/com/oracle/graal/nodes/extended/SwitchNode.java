@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -31,6 +33,8 @@ import com.oracle.graal.nodes.type.*;
 public abstract class SwitchNode extends ControlSplitNode {
 
     @Input private ValueNode value;
+    private final double[] keyProbabilities;
+    private final int[] keySuccessors;
 
     public ValueNode value() {
         return value;
@@ -40,18 +44,73 @@ public abstract class SwitchNode extends ControlSplitNode {
      * Constructs a new Switch.
      * @param value the instruction that provides the value to be switched over
      * @param successors the list of successors of this switch
-     * @param stateAfter the state after the switch
      */
-    public SwitchNode(ValueNode value, BeginNode[] successors, double[] probability) {
-        super(StampFactory.forVoid(), successors, probability);
+    public SwitchNode(ValueNode value, BeginNode[] successors, double[] successorProbabilities, int[] keySuccessors, double[] keyProbabilities) {
+        super(StampFactory.forVoid(), successors, successorProbabilities);
+        assert keySuccessors.length == keyProbabilities.length;
         this.value = value;
+        this.keySuccessors = keySuccessors;
+        this.keyProbabilities = keyProbabilities;
     }
 
     /**
-     * Gets the number of cases that this switch covers (excluding the default case).
-     * @return the number of cases
+     * The number of distinct keys in this switch.
      */
-    public int numberOfCases() {
-        return blockSuccessorCount() - 1;
+    public abstract int keyCount();
+
+    /**
+     * The key at the specified position, encoded in a Constant.
+     */
+    public abstract Constant keyAt(int i);
+
+    /**
+     * Returns the index of the successor belonging to the key at the specified index.
+     */
+    public int keySuccessorIndex(int i) {
+        return keySuccessors[i];
+    }
+
+    /**
+     * Returns the successor for the key at the given index.
+     */
+    public BeginNode keySuccessor(int i) {
+        return blockSuccessor(keySuccessors[i]);
+    }
+
+    /**
+     * Returns the probability of the key at the given index.
+     */
+    public double keyProbability(int i) {
+        return keyProbabilities[i];
+    }
+
+    /**
+     * Returns the index of the default (fall through) successor of this switch.
+     */
+    public int defaultSuccessorIndex() {
+        return keySuccessors[keySuccessors.length - 1];
+    }
+
+    /**
+     * Gets the successor corresponding to the default (fall through) case.
+     * @return the default successor
+     */
+    public BeginNode defaultSuccessor() {
+        if (defaultSuccessorIndex() == -1) {
+            throw new GraalInternalError("unexpected");
+        }
+        return defaultSuccessorIndex() == -1 ? null : blockSuccessor(defaultSuccessorIndex());
+    }
+
+    /**
+     * Helper function that sums up the probabilities of all keys that lead to a specific successor.
+     * @return an array of size successorCount with the accumulated probability for each successor.
+     */
+    public static double[] successorProbabilites(int successorCount, int[] keySuccessors, double[] keyProbabilities) {
+        double[] probability = new double[successorCount];
+        for (int i = 0; i < keySuccessors.length; i++) {
+            probability[keySuccessors[i]] += keyProbabilities[i];
+        }
+        return probability;
     }
 }

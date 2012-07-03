@@ -25,7 +25,6 @@ package com.oracle.graal.compiler.phases;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
@@ -38,10 +37,10 @@ import com.oracle.graal.nodes.spi.*;
  */
 public class LoweringPhase extends Phase {
 
-    private class LoweringToolBase implements CiLoweringTool {
+    private class LoweringToolBase implements LoweringTool {
 
         @Override
-        public ExtendedRiRuntime getRuntime() {
+        public GraalCodeCacheProvider getRuntime() {
             return runtime;
         }
 
@@ -72,10 +71,10 @@ public class LoweringPhase extends Phase {
         }
     }
 
-    private final ExtendedRiRuntime runtime;
+    private final GraalCodeCacheProvider runtime;
     private final Assumptions assumptions;
 
-    public LoweringPhase(ExtendedRiRuntime runtime, Assumptions assumptions) {
+    public LoweringPhase(GraalCodeCacheProvider runtime, Assumptions assumptions) {
         this.runtime = runtime;
         this.assumptions = assumptions;
     }
@@ -101,7 +100,7 @@ public class LoweringPhase extends Phase {
 
         // Step 2: lower the floating nodes
         processed.negate();
-        final CiLoweringTool loweringTool = new LoweringToolBase();
+        final LoweringTool loweringTool = new LoweringToolBase();
         for (Node node : processed) {
             if (node instanceof Lowerable) {
                 assert !(node instanceof FixedNode) || node.predecessor() == null : node;
@@ -142,7 +141,7 @@ public class LoweringPhase extends Phase {
 
     private void process(final Block b, final NodeBitMap activeGuards, NodeBitMap processed, final ValueNode anchor) {
 
-        final CiLoweringTool loweringTool = new LoweringToolBase() {
+        final LoweringTool loweringTool = new LoweringToolBase() {
 
             @Override
             public ValueNode getGuardAnchor() {

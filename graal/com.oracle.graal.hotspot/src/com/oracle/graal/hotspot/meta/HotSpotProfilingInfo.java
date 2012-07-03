@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
@@ -149,6 +148,6 @@ public final class HotSpotProfilingInfo extends CompilerObject implements Profil
 
     @Override
     public String toString() {
-        return "HotSpotProfilingInfo<" + CodeUtil.profileToString(this, null, "; ") + ">";
+        return "HotSpotProfilingInfo<" + MetaUtil.profileToString(this, null, "; ") + ">";
     }
 }

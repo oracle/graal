@@ -20,12 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.criutils;
+package com.oracle.graal.api.code;
 
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.*;
 

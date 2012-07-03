@@ -106,7 +106,7 @@ final class ControlFlowOptimizer {
 
         // block must have exactly one successor
 
-        return instructions.size() == 2 && instructions.get(instructions.size() - 1).info == null;
+        return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState();
     }
 
     private void deleteEmptyBlocks(List<Block> code) {
@@ -159,7 +159,7 @@ final class ControlFlowOptimizer {
             if (lastOp instanceof StandardOp.JumpOp) {
                 StandardOp.JumpOp lastJump = (StandardOp.JumpOp) lastOp;
 
-                if (lastOp.info == null) {
+                if (!lastOp.hasState()) {
                     if (lastJump.destination().label() == ((StandardOp.LabelOp) code.get(i + 1).lir.get(0)).getLabel()) {
                         // delete last branch instruction
                         Util.truncate(instructions, instructions.size() - 1);
@@ -169,7 +169,7 @@ final class ControlFlowOptimizer {
                         if (prevOp instanceof StandardOp.BranchOp) {
                             StandardOp.BranchOp prevBranch = (StandardOp.BranchOp) prevOp;
 
-                            if (prevBranch.destination().label() == ((StandardOp.LabelOp) code.get(i + 1).lir.get(0)).getLabel() && prevOp.info == null) {
+                            if (prevBranch.destination().label() == ((StandardOp.LabelOp) code.get(i + 1).lir.get(0)).getLabel() && !prevOp.hasState()) {
                                 // eliminate a conditional branch to the immediate successor
                                 prevBranch.negate(lastJump.destination());
                                 Util.truncate(instructions, instructions.size() - 1);
@@ -178,6 +178,16 @@ final class ControlFlowOptimizer {
                     }
                 }
             }
+            // TODO(ls) enable this optimization
+//            lastOp = instructions.get(instructions.size() - 1);
+//            if (lastOp instanceof FallThroughOp) {
+//                FallThroughOp fallThrough = (FallThroughOp) lastOp;
+//                if (fallThrough.fallThroughTarget() != null && lastOp.info == null) {
+//                    if (fallThrough.fallThroughTarget().label() == ((StandardOp.LabelOp) code.get(i + 1).lir.get(0)).getLabel()) {
+//                        fallThrough.setFallThroughTarget(null);
+//                    }
+//                }
+//            }
         }
 
         assert verify(code);

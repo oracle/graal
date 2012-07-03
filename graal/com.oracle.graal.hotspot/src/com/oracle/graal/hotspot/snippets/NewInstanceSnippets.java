@@ -32,7 +32,6 @@ import static com.oracle.max.asm.target.amd64.AMD64.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -40,6 +39,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
 import com.oracle.graal.snippets.Snippet.Fold;
@@ -176,7 +176,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
          * Lowers a {@link NewInstanceNode}.
          */
         @SuppressWarnings("unused")
-        public void lower(NewInstanceNode newInstanceNode, CiLoweringTool tool) {
+        public void lower(NewInstanceNode newInstanceNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) newInstanceNode.graph();
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) newInstanceNode.instanceClass();
             HotSpotKlassOop hub = type.klassOop();
@@ -197,7 +197,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
         }
 
         @SuppressWarnings("unused")
-        public void lower(TLABAllocateNode tlabAllocateNode, CiLoweringTool tool) {
+        public void lower(TLABAllocateNode tlabAllocateNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) tlabAllocateNode.graph();
             int size = tlabAllocateNode.size();
             assert (size % wordSize()) == 0;
@@ -210,7 +210,7 @@ public class NewInstanceSnippets implements SnippetsInterface {
         }
 
         @SuppressWarnings("unused")
-        public void lower(InitializeNode initializeNode, CiLoweringTool tool) {
+        public void lower(InitializeNode initializeNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) initializeNode.graph();
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) initializeNode.type();
             HotSpotKlassOop hub = type.klassOop();

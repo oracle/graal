@@ -24,16 +24,16 @@ package com.oracle.graal.compiler.phases;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.util.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 public class IntrinsificationPhase extends Phase {
 
-    private final ExtendedRiRuntime runtime;
+    private final GraalCodeCacheProvider runtime;
 
-    public IntrinsificationPhase(ExtendedRiRuntime runtime) {
+    public IntrinsificationPhase(GraalCodeCacheProvider runtime) {
         this.runtime = runtime;
     }
 
@@ -47,18 +47,18 @@ public class IntrinsificationPhase extends Phase {
         }
     }
 
-    public static boolean canIntrinsify(Invoke invoke, ResolvedJavaMethod target, ExtendedRiRuntime runtime) {
+    public static boolean canIntrinsify(Invoke invoke, ResolvedJavaMethod target, GraalCodeCacheProvider runtime) {
         return getIntrinsicGraph(invoke, target, runtime) != null;
     }
 
-    private static void tryIntrinsify(Invoke invoke, ExtendedRiRuntime runtime) {
+    private static void tryIntrinsify(Invoke invoke, GraalCodeCacheProvider runtime) {
         ResolvedJavaMethod target = invoke.callTarget().targetMethod();
         if (target != null) {
             tryIntrinsify(invoke, target, runtime);
         }
     }
 
-    private static void tryIntrinsify(Invoke invoke, ResolvedJavaMethod target, ExtendedRiRuntime runtime) {
+    private static void tryIntrinsify(Invoke invoke, ResolvedJavaMethod target, GraalCodeCacheProvider runtime) {
         StructuredGraph intrinsicGraph = getIntrinsicGraph(invoke, target, runtime);
         if (intrinsicGraph != null) {
             Debug.log(" > Intrinsify %s", target);
@@ -66,7 +66,7 @@ public class IntrinsificationPhase extends Phase {
         }
     }
 
-    private static StructuredGraph getIntrinsicGraph(Invoke invoke, ResolvedJavaMethod target, ExtendedRiRuntime runtime) {
+    private static StructuredGraph getIntrinsicGraph(Invoke invoke, ResolvedJavaMethod target, GraalCodeCacheProvider runtime) {
         StructuredGraph intrinsicGraph = (StructuredGraph) target.compilerStorage().get(Graph.class);
         if (intrinsicGraph == null) {
             // TODO remove once all intrinsics are available via compilerStorage

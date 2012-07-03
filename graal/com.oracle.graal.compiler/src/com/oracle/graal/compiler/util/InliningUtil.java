@@ -31,7 +31,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -40,6 +39,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
@@ -56,9 +56,9 @@ public class InliningUtil {
         if (!Debug.isLogEnabled()) {
             return null;
         } else if (invoke != null && invoke.stateAfter() != null) {
-            return methodName(invoke.stateAfter(), invoke.bci()) + ": " + CodeUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+            return methodName(invoke.stateAfter(), invoke.bci()) + ": " + MetaUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
         } else {
-            return CodeUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+            return MetaUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
         }
     }
 
@@ -78,7 +78,7 @@ public class InliningUtil {
             sb.append(methodName(frameState.outerFrameState(), frameState.outerFrameState().bci));
             sb.append("->");
         }
-        sb.append(CodeUtil.format("%h.%n", frameState.method()));
+        sb.append(MetaUtil.format("%h.%n", frameState.method()));
         sb.append("@").append(bci);
         return sb.toString();
     }
@@ -125,7 +125,7 @@ public class InliningUtil {
          * @param runtime
          * @param callback
          */
-        public abstract void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback);
+        public abstract void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback);
     }
 
     /**
@@ -141,7 +141,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph compilerGraph, ExtendedRiRuntime runtime, final InliningCallback callback) {
+        public void inline(StructuredGraph compilerGraph, GraalCodeCacheProvider runtime, final InliningCallback callback) {
             StructuredGraph graph = getGraph(concrete, callback);
             assert !IntrinsificationPhase.canIntrinsify(invoke, concrete, runtime);
             callback.recordMethodContentsAssumption(concrete);
@@ -155,7 +155,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "exact " + CodeUtil.format("%H.%n(%p):%r", concrete);
+            return "exact " + MetaUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -184,7 +184,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
+        public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback) {
             // receiver null check must be before the type check
             InliningUtil.receiverNullCheck(invoke);
             ValueNode receiver = invoke.callTarget().receiver();
@@ -209,7 +209,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "type-checked " + CodeUtil.format("%H.%n(%p):%r", concrete);
+            return "type-checked " + MetaUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -250,7 +250,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
+        public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback) {
             int numberOfMethods = concretes.size();
             boolean hasReturnValue = invoke.node().kind() != Kind.Void;
 
@@ -267,7 +267,7 @@ public class InliningUtil {
             return notRecordedTypeProbability > 0;
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
+        private void inlineMultipleMethods(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
             FixedNode continuation = invoke.next();
 
             // setup merge and phi nodes for results and exceptions
@@ -373,7 +373,7 @@ public class InliningUtil {
             return commonType;
         }
 
-        private void inlineSingleMethod(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
+        private void inlineSingleMethod(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback) {
             assert concretes.size() == 1 && ptypes.length > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
             MergeNode calleeEntryNode = graph.add(new MergeNode());
@@ -401,7 +401,7 @@ public class InliningUtil {
             ResolvedJavaType[] types = new ResolvedJavaType[ptypes.length];
             double[] probabilities = new double[ptypes.length + 1];
             BeginNode[] successors = new BeginNode[ptypes.length + 1];
-
+            int[] keySuccessors = new int[ptypes.length + 1];
             for (int i = 0; i < ptypes.length; i++) {
                 types[i] = ptypes[i].type;
                 probabilities[i] = ptypes[i].probability;
@@ -412,12 +412,14 @@ public class InliningUtil {
                     entry = endNode;
                 }
                 successors[i] = BeginNode.begin(entry);
+                keySuccessors[i] = i;
             }
             assert !(unknownTypeSux instanceof MergeNode);
             successors[successors.length - 1] = BeginNode.begin(unknownTypeSux);
             probabilities[successors.length - 1] = notRecordedTypeProbability;
+            keySuccessors[successors.length - 1] = successors.length - 1;
 
-            TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(objectClassNode, successors, types, probabilities));
+            TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(objectClassNode, successors, probabilities, types, probabilities, keySuccessors));
 
             return typeSwitch;
         }
@@ -485,7 +487,7 @@ public class InliningUtil {
             StringBuilder builder = new StringBuilder(shouldFallbackToInvoke() ? "megamorphic" : "polymorphic");
             builder.append(String.format(", %d methods with %d type checks:", concretes.size(), ptypes.length));
             for (int i = 0; i < concretes.size(); i++) {
-                builder.append(CodeUtil.format("  %H.%n(%p):%r", concretes.get(i)));
+                builder.append(MetaUtil.format("  %H.%n(%p):%r", concretes.get(i)));
             }
             return builder.toString();
         }
@@ -510,10 +512,10 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
+        public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback) {
             if (Debug.isLogEnabled()) {
-                String targetName = CodeUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod());
-                String concreteName = CodeUtil.format("%H.%n(%p):%r", concrete);
+                String targetName = MetaUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod());
+                String concreteName = MetaUtil.format("%H.%n(%p):%r", concrete);
                 Debug.log("recording concrete method assumption: %s on receiver type %s -> %s", targetName, context, concreteName);
             }
             callback.recordConcreteMethodAssumption(invoke.callTarget().targetMethod(), context, concrete);
@@ -523,7 +525,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "assumption " + CodeUtil.format("%H.%n(%p):%r", concrete);
+            return "assumption " + MetaUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -540,7 +542,7 @@ public class InliningUtil {
      * @param callback a callback that is used to determine the weight of a specific inlining
      * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
      */
-    public static InlineInfo getInlineInfo(Invoke invoke, int level, ExtendedRiRuntime runtime, Assumptions assumptions, InliningCallback callback, OptimisticOptimizations optimisticOpts) {
+    public static InlineInfo getInlineInfo(Invoke invoke, int level, GraalCodeCacheProvider runtime, Assumptions assumptions, InliningCallback callback, OptimisticOptimizations optimisticOpts) {
         ResolvedJavaMethod parent = invoke.stateAfter().method();
         MethodCallTargetNode callTarget = invoke.callTarget();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
@@ -780,12 +782,15 @@ public class InliningUtil {
             } else {
                 nodes.add(node);
                 if (node instanceof ReturnNode) {
+                    assert returnNode == null;
                     returnNode = (ReturnNode) node;
                 } else if (node instanceof UnwindNode) {
+                    assert unwindNode == null;
                     unwindNode = (UnwindNode) node;
                 }
             }
         }
+        replacements.put(entryPointNode, BeginNode.prevBegin(invoke.node())); // ensure proper anchoring of things that where anchored to the StartNode
 
         assert invoke.node().successors().first() != null : invoke;
         assert invoke.node().predecessor() != null;

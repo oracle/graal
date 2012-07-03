@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -85,7 +84,14 @@ public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lo
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
+    public boolean verify() {
+        assertTrue(storeKind != null, "UnsafeStoreNode must have a store kind");
+        assertTrue(object != null, "UnsafeStoreNode should have an object");
+        return super.verify();
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 

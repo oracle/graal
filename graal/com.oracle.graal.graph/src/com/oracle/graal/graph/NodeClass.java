@@ -408,8 +408,9 @@ public class NodeClass {
     }
 
     /**
-     * An iterator that will iterate over the fields given in {@link offsets}.
-     * The first {@ directCount} offsets are treated as fields of type {@link Node}, while the rest of the fields are treated as {@link NodeList}s.
+     * An iterator that will iterate over the fields given in {@link #offsets}.
+     * The first {@link #directCount} offsets are treated as fields of type {@link Node},
+     * while the rest of the fields are treated as {@link NodeList}s.
      * All elements of these NodeLists will be visited by the iterator as well.
      * This iterator can be used to iterate over the inputs or successors of a node.
      *
@@ -546,7 +547,8 @@ public class NodeClass {
     }
 
     /**
-     * Populates a given map with the names and values of all fields marked with @{@link Data}.
+     * Populates a given map with the names and values of all data fields.
+     *
      * @param node the node from which to take the values.
      * @param properties a map that will be populated.
      */
@@ -952,7 +954,7 @@ public class NodeClass {
                             replacementsMap.put(input, replacement);
                             assert replacement == null || node.getNodeClass().inputTypes[pos.index] == null || node.getNodeClass().inputTypes[pos.index].isAssignableFrom(replacement.getClass());
                             target = replacement;
-                        } else { // patch to the outer world
+                        } else if (input.graph() == graph) { // patch to the outer world
                             target = input;
                         }
                     }

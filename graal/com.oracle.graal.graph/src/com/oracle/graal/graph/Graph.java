@@ -109,7 +109,7 @@ public class Graph {
     /**
      * Creates a copy of this graph.
      *
-     * @param name the name of the copy, used for debugging purposes (can be null)
+     * @param newName the name of the copy, used for debugging purposes (can be null)
      */
     public Graph copy(String newName) {
         Graph copy = new Graph(newName);
@@ -235,7 +235,7 @@ public class Graph {
     }
 
     /**
-     * Gets a mark that can be used with {@link #getNewNodes()}.
+     * Gets a mark that can be used with {@link #getNewNodes(int)}.
      */
     public int getMark() {
         return nodeIdCount();
@@ -526,7 +526,7 @@ public class Graph {
      * regarding the matching of node types in the replacement map.
      *
      * @param newNodes the nodes to be duplicated
-     * @param replacements the replacement map (can be null if no replacement is to be performed)
+     * @param replacementsMap the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
      */
     public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, Map<Node, Node> replacementsMap) {

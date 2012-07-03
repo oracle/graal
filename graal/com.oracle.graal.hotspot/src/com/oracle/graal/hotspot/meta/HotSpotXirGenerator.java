@@ -44,7 +44,6 @@ import com.oracle.max.cri.xir.CiXirAssembler.XirLabel;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.cri.xir.CiXirAssembler.XirOperand;
 import com.oracle.max.cri.xir.CiXirAssembler.XirParameter;
-import com.oracle.max.criutils.*;
 
 public class HotSpotXirGenerator implements RiXirGenerator {
 

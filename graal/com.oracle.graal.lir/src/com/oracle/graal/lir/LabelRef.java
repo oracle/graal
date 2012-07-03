@@ -62,7 +62,8 @@ public abstract class LabelRef {
     /**
      * Returns a new reference to a successor of the given block.
      * This allows to reference the given successor even when the successor list
-     * is modified between the creation of the reference and the call to {@link #getLabel}.
+     * is modified between the creation of the reference and the call to {@link #forLabel(Label)}.
+     *
      * @param block The base block that contains the successor list.
      * @param suxIndex The index of the successor.
      * @return The newly created label reference.

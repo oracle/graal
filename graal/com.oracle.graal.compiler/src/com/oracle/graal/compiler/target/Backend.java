@@ -107,7 +107,7 @@ public abstract class Backend {
      * spilling callee-save registers, stack overflow checking, handling multiple entry
      * points etc. A suffix may contain out-of-line stubs and method end guard instructions.
      *
-     * @param the method associated with {@code lir}
+     * @param method the method associated with {@code lir}
      * @param lir the LIR of {@code method}
      */
     public abstract void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIR lir);

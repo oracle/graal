@@ -44,7 +44,7 @@ public class DebugInfoBuilder {
 
     private HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
 
-    public LIRDebugInfo build(FrameState topState, LockScope locks, List<StackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
+    public LIRFrameState build(FrameState topState, LockScope locks, List<StackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
         assert virtualObjects.size() == 0;
         BytecodeFrame frame = computeFrameForState(topState, locks, leafGraphId);
 
@@ -94,7 +94,7 @@ public class DebugInfoBuilder {
             virtualObjects.clear();
         }
 
-        return new LIRDebugInfo(frame, virtualObjectsArray, pointerSlots, exceptionEdge);
+        return new LIRFrameState(frame, virtualObjectsArray, pointerSlots, exceptionEdge);
     }
 
     private BytecodeFrame computeFrameForState(FrameState state, LockScope locks, long leafGraphId) {

@@ -32,16 +32,14 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.criutils.*;
-
 
 public class MethodEntryCounters {
     protected static final class Counter implements Comparable<Counter> {
@@ -53,7 +51,7 @@ public class MethodEntryCounters {
         protected long sortCount;
 
         protected Counter(ResolvedJavaMethod method) {
-            this.method = CodeUtil.format("%H.%n", method);
+            this.method = MetaUtil.format("%H.%n", method);
             counters.add(this);
         }
 
@@ -64,23 +62,24 @@ public class MethodEntryCounters {
     }
 
 
+    @Opcode("ENTRY_COUNTER")
     protected static class AMD64MethodEntryOp extends AMD64LIRInstruction {
+        @Temp protected Value counterArr;
+        @Temp protected Value callerPc;
+
         protected static int codeSize;
 
         protected final Counter counter;
 
         protected AMD64MethodEntryOp(Counter counter, Value counterArr, Value callerPc) {
-            super("ENTRY_COUNTER", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, new Value[] {counterArr, callerPc});
             this.counter = counter;
+            this.counterArr = counterArr;
+            this.callerPc = callerPc;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             int start = masm.codeBuffer.position();
-
-            Value counterArr = temp(0);
-            Value callerPc = temp(1);
-
             int off = Unsafe.getUnsafe().arrayBaseOffset(long[].class);
             int scale = Unsafe.getUnsafe().arrayIndexScale(long[].class);
 
@@ -113,16 +112,6 @@ public class MethodEntryCounters {
             int size = masm.codeBuffer.position() - start;
             assert codeSize == 0 || codeSize == size;
             codeSize = size;
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            if (mode == OperandMode.Temp && index == 0) {
-                return EnumSet.of(OperandFlag.Register);
-            } else if (mode == OperandMode.Temp && index == 1) {
-                return EnumSet.of(OperandFlag.Register);
-            }
-            throw GraalInternalError.shouldNotReachHere();
         }
     }
 

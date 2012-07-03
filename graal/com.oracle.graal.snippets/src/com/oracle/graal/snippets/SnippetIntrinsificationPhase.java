@@ -60,7 +60,7 @@ public class SnippetIntrinsificationPhase extends Phase {
         if (intrinsic != null) {
             assert target.getAnnotation(Fold.class) == null;
 
-            Class< ? >[] parameterTypes = CodeUtil.signatureToTypes(target.signature(), target.holder());
+            Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.signature(), target.holder());
 
             // Prepare the arguments for the reflective constructor call on the node class.
             Object[] nodeConstructorArguments = prepareArguments(invoke, parameterTypes, target, false);
@@ -76,7 +76,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnCheckCast(newInstance);
         } else if (target.getAnnotation(Fold.class) != null) {
-            Class< ? >[] parameterTypes = CodeUtil.signatureToTypes(target.signature(), target.holder());
+            Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.signature(), target.holder());
 
             // Prepare the arguments for the reflective method call
             Object[] arguments = prepareArguments(invoke, parameterTypes, target, true);
@@ -118,7 +118,7 @@ public class SnippetIntrinsificationPhase extends Phase {
                 parameterIndex--;
             }
             ValueNode argument = tryBoxingElimination(parameterIndex, target, arguments.get(i));
-            if (folding || CodeUtil.getParameterAnnotation(ConstantNodeParameter.class, parameterIndex, target) != null) {
+            if (folding || MetaUtil.getParameterAnnotation(ConstantNodeParameter.class, parameterIndex, target) != null) {
                 assert argument instanceof ConstantNode : "parameter " + parameterIndex + " must be a compile time constant for calling " + invoke.callTarget().targetMethod() + " at " + sourceLocation(invoke.node()) + ": " + argument;
                 ConstantNode constantNode = (ConstantNode) argument;
                 Constant constant = constantNode.asConstant();

@@ -27,7 +27,6 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.max.criutils.*;
 import com.oracle.graal.alloc.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -57,7 +56,7 @@ class CFGPrinter extends CompilationPrinter {
     /**
      * Creates a control flow graph printer.
      *
-     * @param buffer where the output generated via this printer shown be written
+     * @param out where the output generated via this printer shown be written
      */
     public CFGPrinter(OutputStream out) {
         super(out);
@@ -382,7 +381,7 @@ class CFGPrinter extends CompilationPrinter {
         StringBuilder buf = new StringBuilder();
         FrameState curState = state;
         do {
-            buf.append(CodeUtil.toLocation(curState.method(), curState.bci)).append('\n');
+            buf.append(MetaUtil.toLocation(curState.method(), curState.bci)).append('\n');
 
             if (curState.stackSize() > 0) {
                 buf.append("stack: ");
@@ -433,18 +432,21 @@ class CFGPrinter extends CompilationPrinter {
             LIRInstruction inst = lirInstructions.get(i);
             out.printf("nr %4d ", inst.id()).print(COLUMN_END);
 
-            if (inst.info != null) {
+            final StringBuilder stateString = new StringBuilder();
+            inst.forEachState(new LIRInstruction.StateProcedure() {
+                @Override
+                protected void doState(LIRFrameState state) {
+                    if (state.hasDebugInfo()) {
+                        stateString.append(debugInfoToString(state.debugInfo().getBytecodePosition(), state.debugInfo().getRegisterRefMap(), state.debugInfo().getFrameRefMap(), target.arch));
+                    } else {
+                        stateString.append(debugInfoToString(state.topFrame, null, null, target.arch));
+                    }
+                }
+            });
+            if (stateString.length() > 0) {
                 int level = out.indentationLevel();
                 out.adjustIndentation(-level);
-                String state;
-                if (inst.info.hasDebugInfo()) {
-                    state = debugInfoToString(inst.info.debugInfo().getBytecodePosition(), inst.info.debugInfo().getRegisterRefMap(), inst.info.debugInfo().getFrameRefMap(), target.arch);
-                } else {
-                    state = debugInfoToString(inst.info.topFrame, null, null, target.arch);
-                }
-                if (state != null) {
-                    out.print(" st ").print(HOVER_START).print("st").print(HOVER_SEP).print(state).print(HOVER_END).print(COLUMN_END);
-                }
+                out.print(" st ").print(HOVER_START).print("st").print(HOVER_SEP).print(stateString.toString()).print(HOVER_END).print(COLUMN_END);
                 out.adjustIndentation(level);
             }
 

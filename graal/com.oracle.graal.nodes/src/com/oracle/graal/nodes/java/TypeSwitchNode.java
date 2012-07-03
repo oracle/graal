@@ -22,10 +22,15 @@
  */
 package com.oracle.graal.nodes.java;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.JavaType.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 /**
  * The {@code TypeSwitchNode} performs a lookup based on the type of the input value.
@@ -35,32 +40,116 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
 
     private final ResolvedJavaType[] keys;
 
-    public TypeSwitchNode(ValueNode value, BeginNode[] successors, ResolvedJavaType[] keys, double[] probability) {
-        super(value, successors, probability);
+    /**
+     * Constructs a type switch instruction. The keyProbabilities and keySuccessors array contain key.length + 1
+     * entries, the last entry describes the default (fall through) case.
+     *
+     * @param value the instruction producing the value being switched on
+     * @param successors the list of successors
+     * @param keys the list of types
+     * @param keyProbabilities the probabilities of the keys
+     * @param keySuccessors the successor index for each key
+     */
+    public TypeSwitchNode(ValueNode value, BeginNode[] successors, double[] successorProbabilities, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
+        super(value, successors, successorProbabilities, keySuccessors, keyProbabilities);
         assert successors.length == keys.length + 1;
-        assert successors.length == probability.length;
+        assert successors.length == keyProbabilities.length;
         this.keys = keys;
     }
 
-    public TypeSwitchNode(ValueNode value, ResolvedJavaType[] keys, double[] switchProbability) {
-        this(value, new BeginNode[switchProbability.length], keys, switchProbability);
-    }
-
-    public ResolvedJavaType keyAt(int i) {
-        return keys[i];
-    }
-
-    public int keysLength() {
+    @Override
+    public int keyCount() {
         return keys.length;
     }
 
     @Override
+    public Constant keyAt(int i) {
+        return keys[i].getEncoding(Representation.ObjectHub);
+    }
+
+    @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitTypeSwitch(this);
+        gen.emitSwitch(this);
     }
 
     @Override
     public void simplify(SimplifierTool tool) {
-        // TODO(ls) perform simplifications based on the type of value
+        if (value() instanceof ConstantNode) {
+            Constant constant = value().asConstant();
+
+            int survivingEdge = keySuccessorIndex(keyCount());
+            for (int i = 0; i < keyCount(); i++) {
+                Constant typeHub = keyAt(i);
+                assert constant.kind == typeHub.kind;
+                if (tool.runtime().areConstantObjectsEqual(value().asConstant(), typeHub)) {
+                    survivingEdge = keySuccessorIndex(i);
+                }
+            }
+            for (int i = 0; i < blockSuccessorCount(); i++) {
+                if (i != survivingEdge) {
+                    tool.deleteBranch(blockSuccessor(i));
+                }
+            }
+            tool.addToWorkList(blockSuccessor(survivingEdge));
+            ((StructuredGraph) graph()).removeSplitPropagate(this, survivingEdge);
+        }
+        if (value() instanceof ReadHubNode) {
+            ObjectStamp stamp = ((ReadHubNode) value()).object().objectStamp();
+            if (stamp.type() != null) {
+                int validKeys = 0;
+                for (int i = 0; i < keyCount(); i++) {
+                    if (keys[i].isSubtypeOf(stamp.type())) {
+                        validKeys++;
+                    }
+                }
+                if (validKeys == 0) {
+                    tool.addToWorkList(defaultSuccessor());
+                    ((StructuredGraph) graph()).removeSplitPropagate(this, defaultSuccessorIndex());
+                } else if (validKeys != keys.length) {
+                    ArrayList<BeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
+                    ResolvedJavaType[] newKeys = new ResolvedJavaType[validKeys];
+                    int[] newKeySuccessors = new int [validKeys + 1];
+                    double[] newKeyProbabilities = new double[validKeys + 1];
+                    double totalProbability = 0;
+                    int current = 0;
+                    for (int i = 0; i < keyCount() + 1; i++) {
+                        if (i == keyCount() || keys[i].isSubtypeOf(stamp.type())) {
+                            int index = newSuccessors.indexOf(keySuccessor(i));
+                            if (index == -1) {
+                                index = newSuccessors.size();
+                                newSuccessors.add(keySuccessor(i));
+                            }
+                            newKeySuccessors[current] = index;
+                            if (i < keyCount()) {
+                                newKeys[current] = keys[i];
+                            }
+                            newKeyProbabilities[current] = keyProbability(i);
+                            totalProbability += keyProbability(i);
+                            current++;
+                        }
+                    }
+                    if (totalProbability > 0) {
+                        for (int i = 0; i < current; i++) {
+                            newKeyProbabilities[i] /= totalProbability;
+                        }
+                    }
+
+                    double[] newSuccessorProbabilities = successorProbabilites(newSuccessors.size(), newKeySuccessors, newKeyProbabilities);
+
+                    for (int i = 0; i < blockSuccessorCount(); i++) {
+                        BeginNode successor = blockSuccessor(i);
+                        if (!newSuccessors.contains(successor)) {
+                            tool.deleteBranch(successor);
+                        }
+                        setBlockSuccessor(i, null);
+                    }
+
+                    BeginNode[] successorsArray = newSuccessors.toArray(new BeginNode[newSuccessors.size()]);
+                    TypeSwitchNode newSwitch = graph().add(new TypeSwitchNode(value(), successorsArray, newSuccessorProbabilities, newKeys, newKeyProbabilities, newKeySuccessors));
+                    ((FixedWithNextNode) predecessor()).setNext(newSwitch);
+                    GraphUtil.killWithUnusedFloatingInputs(this);
+                }
+            }
+        }
     }
 }

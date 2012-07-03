@@ -22,11 +22,9 @@
  */
 package com.oracle.graal.compiler;
 
-import com.oracle.max.criutils.TTY.Filter;
 
 /**
  * This class encapsulates options that control the behavior of the Graal compiler.
- * The help message for each option is specified by a {@linkplain #helpMap help map}.
  *
  * (thomaswue) WARNING: Fields of this class are treated as final by Graal.
  */
@@ -99,8 +97,14 @@ public final class GraalOptions {
     //rematerialize settings
     public static float   MinimumUsageProbability            = 0.95f;
 
-    //loop transform settings
-    public static float   MinimumPeelProbability             = 0.25f;
+    //loop transform settings TODO (gd) tune
+    public static float   MinimumPeelProbability             = 0.35f;
+    public static boolean ReassociateInvariants              = true;
+    public static boolean FullUnroll                         = true;
+    public static int     FullUnrollMaxNodes                 = 150;
+    public static boolean LoopUnswitch                       = ____;
+    public static int     LoopUnswitchMaxIncrease            = 50;
+    public static int     LoopUnswitchUncertaintyBoost       = 5;
 
     // debugging settings
     public static int     MethodEndBreakpointGuards          = 0;
@@ -110,9 +114,6 @@ public final class GraalOptions {
     public static boolean VerifyPhases                       = true;
     public static boolean CreateDeoptInfo                    = ____;
 
-    /**
-     * See {@link Filter#Filter(String, Object)}.
-     */
     public static String  PrintFilter                        = null;
 
     // printing settings
@@ -183,6 +184,7 @@ public final class GraalOptions {
     // Translating tableswitch instructions
     public static int     SequentialSwitchLimit              = 4;
     public static int     RangeTestsSwitchDensity            = 5;
+    public static double  MinTableSwitchDensity              = 0.5;
 
     public static boolean DetailedAsserts                    = ____;
 
@@ -207,11 +209,6 @@ public final class GraalOptions {
     public static boolean OptLivenessAnalysis                = true;
     public static boolean OptLoopTransform                   = true;
     public static boolean OptSafepointElimination            = true;
-
-    // Loops
-    public static boolean ReassociateInvariants              = true;
-    public static boolean FullUnroll                         = true;
-    public static int FullUnrollMaxNodes                     = 250; // TODO (gd) tune
 
     /**
      * Insert a counter in the method prologue to track the most frequently called methods that were compiled by Graal.
@@ -266,16 +263,6 @@ public final class GraalOptions {
      */
     public static String HIRLowerCheckcast = "";
     public static String HIRLowerNewInstance = "";
-
-    /**
-     * The profiling info cache directory.
-     */
-    public static String PICache = null;
-
-    /**
-     * Filters the methods for which profiling info is loaded from/saved to the {@link #PICache}.
-     */
-    public static String PIFilter = null;
 
     static {
         // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)

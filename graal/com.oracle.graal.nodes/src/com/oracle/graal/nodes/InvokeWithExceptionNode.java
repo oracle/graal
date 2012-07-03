@@ -24,7 +24,6 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
@@ -44,11 +43,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     private boolean useForInlining;
     private final long leafGraphId;
 
-    /**
-     * @param kind
-     * @param blockSuccessors
-     * @param branchProbability
-     */
     public InvokeWithExceptionNode(MethodCallTargetNode callTarget, DispatchBeginNode exceptionEdge, int bci, long leafGraphId) {
         super(callTarget.returnStamp(), new BeginNode[]{null, exceptionEdge}, new double[]{1.0, 0.0});
         this.bci = bci;
@@ -162,7 +156,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         Map<Object, Object> debugProperties = super.getDebugProperties();
         debugProperties.put("memoryCheckpoint", "true");
         if (callTarget != null && callTarget.targetMethod() != null) {
-            debugProperties.put("targetMethod", CodeUtil.format("%h.%n(%p)", callTarget.targetMethod()));
+            debugProperties.put("targetMethod", MetaUtil.format("%h.%n(%p)", callTarget.targetMethod()));
         }
         return debugProperties;
     }

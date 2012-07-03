@@ -113,7 +113,6 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
      *
      * @param method the method for this frame state
      * @param bci the bytecode index of the frame state
-     * @param localsSize number of locals
      * @param stackSize size of the stack
      * @param rethrowException if true the VM should re-throw the exception on top of the stack when deopt'ing using this framestate
      */
@@ -326,7 +325,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         String nl = CodeUtil.NEW_LINE;
         FrameState fs = frameState;
         while (fs != null) {
-            CodeUtil.appendLocation(sb, fs.method, fs.bci).append(nl);
+            MetaUtil.appendLocation(sb, fs.method, fs.bci).append(nl);
             sb.append("locals: [");
             for (int i = 0; i < fs.localsSize(); i++) {
                 sb.append(i == 0 ? "" : ", ").append(fs.localAt(i) == null ? "_" : fs.localAt(i).toString(Verbosity.Id));
@@ -357,7 +356,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         Map<Object, Object> properties = super.getDebugProperties();
         properties.put("bci", bci);
         if (method != null) {
-            properties.put("method", CodeUtil.format("%H.%n(%p):%r", method));
+            properties.put("method", MetaUtil.format("%H.%n(%p):%r", method));
             StackTraceElement ste = method.toStackTraceElement(bci);
             if (ste.getFileName() != null && ste.getLineNumber() >= 0) {
                 properties.put("source", ste.getFileName() + ":" + ste.getLineNumber());
@@ -400,5 +399,32 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         if (outerFrameState() != null) {
             outerFrameState().applyToNonVirtual(closure);
         }
+    }
+
+    @Override
+    public void applyToVirtual(VirtualClosure closure) {
+        closure.apply(this);
+        for (VirtualObjectState state : virtualObjectMappings) {
+            state.applyToVirtual(closure);
+        }
+        if (outerFrameState() != null) {
+            outerFrameState().applyToVirtual(closure);
+        }
+    }
+
+    @Override
+    public boolean isPartOfThisState(VirtualState state) {
+        if (state == this) {
+            return true;
+        }
+        if (outerFrameState() != null && outerFrameState().isPartOfThisState(state)) {
+            return true;
+        }
+        for (VirtualObjectState objectState : virtualObjectMappings) {
+            if (objectState.isPartOfThisState(state)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

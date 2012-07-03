@@ -33,11 +33,11 @@ import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.compiler.util.InliningUtil.InlineInfo;
 import com.oracle.graal.compiler.util.InliningUtil.InliningCallback;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 
 public class InliningPhase extends Phase implements InliningCallback {
@@ -48,7 +48,7 @@ public class InliningPhase extends Phase implements InliningCallback {
      */
 
     private final TargetDescription target;
-    private final ExtendedRiRuntime runtime;
+    private final GraalCodeCacheProvider runtime;
 
     private final Collection<? extends Invoke> hints;
 
@@ -56,7 +56,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private Assumptions assumptions;
 
     private final PhasePlan plan;
-    private final RiGraphCache cache;
+    private final GraphCache cache;
     private final WeightComputationPolicy weightComputationPolicy;
     private final InliningPolicy inliningPolicy;
     private final OptimisticOptimizations optimisticOpts;
@@ -66,7 +66,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
 
-    public InliningPhase(TargetDescription target, ExtendedRiRuntime runtime, Collection<? extends Invoke> hints, Assumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public InliningPhase(TargetDescription target, GraalCodeCacheProvider runtime, Collection<? extends Invoke> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this.target = target;
         this.runtime = runtime;
         this.hints = hints;
@@ -184,7 +184,6 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     @Override
     public StructuredGraph buildGraph(final ResolvedJavaMethod method) {
-        final StructuredGraph newGraph = new StructuredGraph(method);
 
         return Debug.scope("buildInlineGraph", this, new Callable<StructuredGraph>() {
 
@@ -196,8 +195,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                         return cachedGraph;
                     }
                 }
-
-
+                StructuredGraph newGraph = new StructuredGraph(method);
                 if (plan != null) {
                     plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
                 }
