@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.loop.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
@@ -31,12 +32,14 @@ public class LoopTransformHighPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         if (graph.hasLoops()) {
-            LoopsData data = new LoopsData(graph);
-            for (LoopEx loop : data.outterFirst()) {
-                if (LoopPolicies.shouldPeel(loop)) {
-                    Debug.log("Peeling %s", loop);
-                    LoopTransformations.peel(loop);
-                    Debug.dump(graph, "After peeling %s", loop);
+            if (GraalOptions.LoopPeeling) {
+                LoopsData data = new LoopsData(graph);
+                for (LoopEx loop : data.outterFirst()) {
+                    if (LoopPolicies.shouldPeel(loop)) {
+                        Debug.log("Peeling %s", loop);
+                        LoopTransformations.peel(loop);
+                        Debug.dump(graph, "After peeling %s", loop);
+                    }
                 }
             }
         }

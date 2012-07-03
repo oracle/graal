@@ -98,11 +98,12 @@ public final class GraalOptions {
     public static float   MinimumUsageProbability            = 0.95f;
 
     //loop transform settings TODO (gd) tune
-    public static float   MinimumPeelProbability             = 0.35f;
+    public static boolean LoopPeeling                        = true;
     public static boolean ReassociateInvariants              = true;
     public static boolean FullUnroll                         = true;
-    public static int     FullUnrollMaxNodes                 = 150;
     public static boolean LoopUnswitch                       = ____;
+    public static int     FullUnrollMaxNodes                 = 150;
+    public static float   MinimumPeelProbability             = 0.35f;
     public static int     LoopUnswitchMaxIncrease            = 50;
     public static int     LoopUnswitchUncertaintyBoost       = 5;
 
