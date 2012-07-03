@@ -33,7 +33,7 @@ public class ArrayCopy02 {
     public static int[] dest0 = new int[]{5, 4, 3, 2, 1, 0};
     public static int[] dest = new int[]{5, 4, 3, 2, 1, 0};
     static {
-        // Ensure arraycopy is resolved
+        // Ensure System is resolved
         System.arraycopy(src, 0, src, 0, src.length);
     }
 

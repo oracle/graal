@@ -32,7 +32,7 @@ public class ArrayCopy01 {
     public static Object[] src = new Object[]{null, null};
     public static Object[] dest = new Object[]{null, null};
     static {
-        // Ensure arraycopy is resolved
+        // Ensure System is resolved
         System.arraycopy(src, 0, src, 0, src.length);
     }
 
