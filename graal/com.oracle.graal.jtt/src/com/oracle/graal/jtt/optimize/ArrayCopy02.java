@@ -32,6 +32,10 @@ public class ArrayCopy02 {
     public static int[] src = new int[]{0, 1, 2, 3, 4, 5};
     public static int[] dest0 = new int[]{5, 4, 3, 2, 1, 0};
     public static int[] dest = new int[]{5, 4, 3, 2, 1, 0};
+    static {
+        // Ensure arraycopy is resolved
+        System.arraycopy(src, 0, src, 0, src.length);
+    }
 
     @Before
     public void setUp() {
