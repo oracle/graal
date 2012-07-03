@@ -80,7 +80,8 @@ public class LoopFragmentWhole extends LoopFragment {
 
     public FixedNode entryPoint() {
         if (isDuplicate()) {
-            return getDuplicatedNode(original().loop().loopBegin()).forwardEnd();
+            LoopBeginNode newLoopBegin = getDuplicatedNode(original().loop().loopBegin());
+            return newLoopBegin.forwardEnd();
         }
         return loop().entryPoint();
     }
