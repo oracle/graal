@@ -447,7 +447,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             XirOperand rank = asm.createRegisterTemp("rank", Kind.Int, AMD64.rbx);
             XirOperand sizes = asm.createRegisterTemp("sizes", Kind.Long, AMD64.rcx);
             XirOperand thread = asm.createRegisterTemp("thread", Kind.Long, AMD64.r15);
-            asm.add(sizes, thread, asm.l(config.threadMultiNewArrayStorage));
+            asm.add(sizes, thread, asm.l(config.threadMultiNewArrayStorageOffset));
             for (int i = 0; i < dimensions; i++) {
                 XirParameter length = asm.createInputParameter("length" + i, Kind.Int, true);
                 asm.pstore(Kind.Int, sizes, asm.i(i * target.sizeInBytes(Kind.Int)), length, false);

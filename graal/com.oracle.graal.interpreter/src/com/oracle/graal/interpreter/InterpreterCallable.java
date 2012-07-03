@@ -26,7 +26,10 @@ import com.oracle.graal.api.meta.*;
 
 
 public interface InterpreterCallable {
+    // static final fields
+    String INTERPRETER_CALLABLE_INVOKE_NAME = "invoke";
+    Class<?>[] INTERPRETER_CALLABLE_INVOKE_SIGNATURE = {InterpreterFrame.class, ResolvedJavaMethod.class, Object[].class};
 
-    Object invoke(InterpreterFrame caller, ResolvedJavaMethod method, Object base, Object[] arguments) throws Throwable;
-
+    // methods
+    Object invoke(InterpreterFrame caller, ResolvedJavaMethod method, Object[] arguments) throws Throwable;
 }
