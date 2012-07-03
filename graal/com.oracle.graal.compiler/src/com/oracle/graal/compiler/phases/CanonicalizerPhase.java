@@ -97,14 +97,6 @@ public class CanonicalizerPhase extends Phase {
         }
         tool = new Tool(workList, runtime, target, assumptions, immutabilityPredicate);
         processWorkSet(graph);
-
-        while (graph.getUsagesDroppedNodesCount() > 0) {
-            for (Node n : graph.getAndCleanUsagesDroppedNodes()) {
-                if (!n.isDeleted() && n.usages().size() == 0 && GraphUtil.isFloatingNode().apply(n)) {
-                    n.safeDelete();
-                }
-            }
-        }
     }
 
     public interface IsImmutablePredicate {
@@ -140,10 +132,17 @@ public class CanonicalizerPhase extends Phase {
             int mark = graph.getMark();
             tryCanonicalize(node, graph, tool);
             tryInferStamp(node, graph);
+            tryKillUnused(node);
 
             for (Node newNode : graph.getNewNodes(mark)) {
                 workList.add(newNode);
             }
+        }
+    }
+
+    private static void tryKillUnused(Node node) {
+        if (node.isAlive() && GraphUtil.isFloatingNode().apply(node) && node.usages().isEmpty()) {
+            GraphUtil.killWithUnusedFloatingInputs(node);
         }
     }
 
