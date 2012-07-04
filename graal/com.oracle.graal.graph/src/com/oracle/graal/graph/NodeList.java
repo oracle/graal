@@ -55,7 +55,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
             this.nodes = new Node[elements.length];
             for (int i = 0; i < elements.length; i++) {
                 this.nodes[i] = elements[i];
-                assert this.nodes[i] == null || !this.nodes[i].isDeleted();
+                assert this.nodes[i] == null || !this.nodes[i].isDeleted() : "Initializing nodelist with deleted element : " + nodes[i];
             }
         }
     }
@@ -252,6 +252,13 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @Override
     public List<T> snapshot() {
         return (List<T>) Arrays.asList(Arrays.copyOf(this.nodes, this.size));
+    }
+
+    @Override
+    public void snapshotTo(List<T> to) {
+        for (int i = 0; i < size; i++) {
+            to.add(get(i));
+        }
     }
 
     @SuppressWarnings("unchecked")
