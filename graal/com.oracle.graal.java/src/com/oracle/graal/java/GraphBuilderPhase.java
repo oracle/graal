@@ -965,7 +965,11 @@ public final class GraphBuilderPhase extends Phase {
             return;
         }
 
-        MethodCallTargetNode callTarget = currentGraph.add(new MethodCallTargetNode(invokeKind, targetMethod, args, targetMethod.signature().returnType(method.holder())));
+        JavaType returnType = targetMethod.signature().returnType(method.holder());
+        if (graphBuilderConfig.eagerResolvingForSnippets()) {
+            returnType = returnType.resolve(targetMethod.holder());
+        }
+        MethodCallTargetNode callTarget = currentGraph.add(new MethodCallTargetNode(invokeKind, targetMethod, args, returnType));
         // be conservative if information was not recorded (could result in endless recompiles otherwise)
         if (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == ExceptionSeen.FALSE) {
             ValueNode result = appendWithBCI(currentGraph.add(new InvokeNode(callTarget, bci(), graphId)));

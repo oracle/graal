@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaType.*;
 import com.oracle.graal.nodes.*;
@@ -49,7 +48,7 @@ public final class ReadHubNode extends FixedWithNextNode implements Lowerable, C
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        CodeCacheProvider runtime = tool.runtime();
+        MetaAccessProvider runtime = tool.runtime();
         if (runtime != null) {
             ObjectStamp stamp = object.objectStamp();
 

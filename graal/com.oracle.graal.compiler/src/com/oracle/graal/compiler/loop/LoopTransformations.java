@@ -77,7 +77,7 @@ public abstract class LoopTransformations {
         loop.inside().duplicate().insertBefore(loop);
     }
 
-    public static void fullUnroll(LoopEx loop, CodeCacheProvider runtime) {
+    public static void fullUnroll(LoopEx loop, MetaAccessProvider runtime) {
         //assert loop.isCounted(); //TODO (gd) strenghten : counted with known trip count
         int iterations = 0;
         LoopBeginNode loopBegin = loop.loopBegin();

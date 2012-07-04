@@ -25,7 +25,6 @@ package com.oracle.graal.snippets;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;
@@ -39,14 +38,14 @@ import com.oracle.graal.snippets.Snippet.Fold;
 
 public class SnippetIntrinsificationPhase extends Phase {
 
-    private final CodeCacheProvider runtime;
+    private final MetaAccessProvider runtime;
     private final BoxingMethodPool pool;
     private final boolean intrinsificationOrFoldingCanBeDeferred;
 
     /**
      * @param intrinsificationOrFoldingCanBeDeferred if true, then {@link NonConstantParameterError}s are not fatal
      */
-    public SnippetIntrinsificationPhase(CodeCacheProvider runtime, BoxingMethodPool pool, boolean intrinsificationOrFoldingCanBeDeferred) {
+    public SnippetIntrinsificationPhase(MetaAccessProvider runtime, BoxingMethodPool pool, boolean intrinsificationOrFoldingCanBeDeferred) {
         this.runtime = runtime;
         this.pool = pool;
         this.intrinsificationOrFoldingCanBeDeferred = intrinsificationOrFoldingCanBeDeferred;
