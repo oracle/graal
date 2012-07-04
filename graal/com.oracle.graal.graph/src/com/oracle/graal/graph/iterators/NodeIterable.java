@@ -44,6 +44,8 @@ public interface NodeIterable<T extends Node> extends Iterable<T> {
 
     List<T> snapshot();
 
+    void snapshotTo(List<T> to);
+
     T first();
 
     int count();

@@ -65,6 +65,12 @@ public abstract class AbstractNodeIterable<T extends Node> implements NodeIterab
         return list;
     }
     @Override
+    public void snapshotTo(List<T> to) {
+        for (T n : this) {
+            to.add(n);
+        }
+    }
+    @Override
     public T first() {
         Iterator<T> iterator = iterator();
         if (iterator.hasNext()) {
