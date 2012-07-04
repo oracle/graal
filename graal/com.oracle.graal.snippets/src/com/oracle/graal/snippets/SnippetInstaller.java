@@ -37,7 +37,6 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.snippets.Snippet.InliningPolicy;
 
 /**

@@ -25,7 +25,6 @@ package com.oracle.graal.snippets;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;
