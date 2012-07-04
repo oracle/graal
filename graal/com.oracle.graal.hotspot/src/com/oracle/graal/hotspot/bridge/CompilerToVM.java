@@ -105,8 +105,6 @@ public interface CompilerToVM {
 
     String disassembleNative(byte[] code, long address);
 
-    String disassembleJava(HotSpotResolvedJavaMethod method);
-
     StackTraceElement JavaMethod_toStackTraceElement(HotSpotResolvedJavaMethod method, int bci);
 
     Object executeCompiledMethod(HotSpotCompiledMethod method, Object arg1, Object arg2, Object arg3);

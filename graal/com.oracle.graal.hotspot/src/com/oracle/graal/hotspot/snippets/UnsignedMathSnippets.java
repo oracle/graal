@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,72 +20,67 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.criutils;
+package com.oracle.graal.hotspot.snippets;
 
-//JaCoCo Exclude
+import static com.oracle.graal.nodes.MaterializeNode.*;
+import static com.oracle.graal.nodes.calc.Condition.*;
+
+import com.oracle.graal.snippets.*;
+import com.oracle.max.criutils.*;
 
 /**
- * Utilities for unsigned comparisons.
- * All methods have correct, but slow, standard Java implementations so that
- * they can be used with compilers not supporting the intrinsics.
+ * Snippets for {@link UnsignedMath}.
  */
-public class UnsignedMath {
-    private static final long MASK = 0xffffffffL;
+@ClassSubstitution(UnsignedMath.class)
+public class UnsignedMathSnippets implements SnippetsInterface {
 
-    /**
-     * Unsigned comparison aboveThan for two numbers.
-     */
     public static boolean aboveThan(int a, int b) {
-        return (a & MASK) > (b & MASK);
+        return materialize(BT, b, a);
     }
 
-    /**
-     * Unsigned comparison aboveOrEqual for two numbers.
-     */
     public static boolean aboveOrEqual(int a, int b) {
-        return (a & MASK) >= (b & MASK);
+        return !materialize(BT, a, b);
     }
 
     /**
      * Unsigned comparison belowThan for two numbers.
      */
     public static boolean belowThan(int a, int b) {
-        return (a & MASK) < (b & MASK);
+        return materialize(BT, a, b);
     }
 
     /**
      * Unsigned comparison belowOrEqual for two numbers.
      */
     public static boolean belowOrEqual(int a, int b) {
-        return (a & MASK) <= (b & MASK);
+        return !materialize(BT, b, a);
     }
 
     /**
      * Unsigned comparison aboveThan for two numbers.
      */
     public static boolean aboveThan(long a, long b) {
-        return (a > b) ^ ((a < 0) != (b < 0));
+        return materialize(BT, b, a);
     }
 
     /**
      * Unsigned comparison aboveOrEqual for two numbers.
      */
     public static boolean aboveOrEqual(long a, long b) {
-        return (a >= b) ^ ((a < 0) != (b < 0));
+        return !materialize(BT, a, b);
     }
 
     /**
      * Unsigned comparison belowThan for two numbers.
      */
     public static boolean belowThan(long a, long b) {
-        return (a < b) ^ ((a < 0) != (b < 0));
+        return materialize(BT, a, b);
     }
 
     /**
      * Unsigned comparison belowOrEqual for two numbers.
      */
     public static boolean belowOrEqual(long a, long b) {
-        return (a <= b) ^ ((a < 0) != (b < 0));
+        return !materialize(BT, b, a);
     }
 }
-

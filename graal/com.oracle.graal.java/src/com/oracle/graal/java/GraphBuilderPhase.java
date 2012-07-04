@@ -649,7 +649,7 @@ public final class GraphBuilderPhase extends Phase {
             ResolvedJavaType resolvedType = (ResolvedJavaType) type;
             ConstantNode hub = appendConstant(resolvedType.getEncoding(JavaType.Representation.ObjectHub));
             InstanceOfNode instanceOfNode = new InstanceOfNode(hub, (ResolvedJavaType) type, object, getProfileForTypeCheck(resolvedType));
-            frameState.ipush(append(MaterializeNode.create(currentGraph.unique(instanceOfNode), currentGraph)));
+            frameState.ipush(append(MaterializeNode.create(currentGraph.unique(instanceOfNode))));
         } else {
             BlockPlaceholderNode successor = currentGraph.add(new BlockPlaceholderNode());
             DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved, graphId));

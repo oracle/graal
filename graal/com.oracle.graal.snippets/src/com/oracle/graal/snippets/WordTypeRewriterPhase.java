@@ -199,7 +199,7 @@ public class WordTypeRewriterPhase extends Phase {
         ValueNode a = mirror ? right : left;
         ValueNode b = mirror ? left : right;
 
-        MaterializeNode materialize = MaterializeNode.create(graph.unique(new IntegerBelowThanNode(a, b)), graph);
+        MaterializeNode materialize = MaterializeNode.create(graph.unique(new IntegerBelowThanNode(a, b)));
 
         ValueNode op;
         if (condition.canonicalNegate()) {

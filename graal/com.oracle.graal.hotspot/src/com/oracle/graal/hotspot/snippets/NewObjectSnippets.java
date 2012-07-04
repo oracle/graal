@@ -29,6 +29,7 @@ import static com.oracle.graal.nodes.extended.UnsafeLoadNode.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.snippets.nodes.ExplodeLoopNode.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
+import static com.oracle.max.criutils.UnsignedMath.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -47,7 +48,6 @@ import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Cache;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
-import com.oracle.max.criutils.*;
 
 /**
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
@@ -126,7 +126,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @ConstantParameter("log2ElementSize") int log2ElementSize,
                     @ConstantParameter("type") ResolvedJavaType type,
                     @ConstantParameter("wordKind") Kind wordKind) {
-        if (UnsignedMath.aboveOrEqual(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
+        if (!belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
             // This handles both negative array sizes and very large array sizes
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.RuntimeConstraint);
         }
@@ -268,7 +268,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 ConstantNode size = ConstantNode.forInt(-1, graph);
                 InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(zero, lengthNode, size, arrayType));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
-            } else if (length != null && UnsignedMath.belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
+            } else if (length != null && belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
                 // Calculate aligned size
                 int size = getArraySize(length, alignment, headerSize, log2ElementSize);
                 ConstantNode sizeNode = ConstantNode.forInt(size, graph);

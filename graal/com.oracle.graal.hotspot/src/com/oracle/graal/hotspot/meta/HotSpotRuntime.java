@@ -180,11 +180,6 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
     }
 
     @Override
-    public String disassemble(ResolvedJavaMethod method) {
-        return compiler.getCompilerToVM().disassembleJava((HotSpotResolvedJavaMethod) method);
-    }
-
-    @Override
     public ResolvedJavaType getResolvedJavaType(Kind kind) {
         return (ResolvedJavaType) compiler.getCompilerToVM().getType(kind.toJavaClass());
     }
