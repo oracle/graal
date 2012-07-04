@@ -61,7 +61,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int instanceHeaderPrototypeOffset;
     public int threadExceptionOopOffset;
     public int threadExceptionPcOffset;
-    public int threadMultiNewArrayStorage;
+    public int threadMultiNewArrayStorageOffset;
     public long cardtableStartAddress;
     public int cardtableShift;
     public long safepointPollingAddress;

@@ -25,6 +25,7 @@ package com.oracle.graal.interpreter;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.api.*;
 import com.oracle.graal.api.interpreter.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
@@ -49,7 +50,7 @@ public final class BytecodeInterpreter implements Interpreter {
     private static final boolean TRACE = false;
     private static final boolean TRACE_BYTE_CODE = false;
 
-    private static final int DEFAULT_MAX_STACK_SIZE = 200;
+    private static final int DEFAULT_MAX_STACK_SIZE = 1500;
 
     private static final int NEXT = -1;
     private static final int BRANCH = -2;
@@ -58,28 +59,32 @@ public final class BytecodeInterpreter implements Interpreter {
 
     private InterpreterFrame callFrame;
 
-    //TODO try to remove this reference
-    private ExceptionHandler catchAllExceptionHandler;
+    private Map<ResolvedJavaMethod, MethodRedirectionInfo> methodDelegates;
 
-    private final Map<ResolvedJavaMethod, InterpreterCallable> methodDelegates = new HashMap<>();
-
-    private int maxStackFrames = DEFAULT_MAX_STACK_SIZE;
+    private int maxStackFrames;
     private int stackFrameDepth;
 
-    private final ResolvedJavaMethod rootMethod;
-    private final VMAdapter vm;
+    private ResolvedJavaMethod rootMethod;
+    private RuntimeInterpreterInterface runtimeInterface;
+    private MetaAccessProvider metaAccessProvider;
 
-    public BytecodeInterpreter() {
-        this(VMAdapter.getInstance());
-    }
+    public boolean initialize(String args) {
+        methodDelegates = new HashMap<>();
+        maxStackFrames = DEFAULT_MAX_STACK_SIZE;
 
-    public BytecodeInterpreter(VMAdapter accessor) {
-        if (accessor == null) {
-            throw new NullPointerException();
+        GraalRuntime runtime = Graal.getRuntime();
+        this.runtimeInterface = runtime.getCapability(RuntimeInterpreterInterface.class);
+        if (this.runtimeInterface == null) {
+            throw new UnsupportedOperationException("The provided graal runtime does not support the required capability " + RuntimeInterpreterInterface.class.getName() + ".");
         }
-        this.vm = accessor;
+        this.metaAccessProvider = runtime.getCapability(MetaAccessProvider.class);
+        if (this.metaAccessProvider == null) {
+            throw new UnsupportedOperationException("The provided graal runtime does not support the required capability " + MetaAccessProvider.class.getName() + ".");
+        }
+
         this.rootMethod = resolveRootMethod();
         registerDelegates();
+        return parseArguments(args);
     }
 
     @Override
@@ -89,19 +94,18 @@ public final class BytecodeInterpreter implements Interpreter {
         }
     }
 
-
     private void registerDelegates() {
        addDelegate(findMethod(Throwable.class, "fillInStackTrace"), new InterpreterCallable() {
         @Override
-        public Object invoke(InterpreterFrame caller, ResolvedJavaMethod method, Object base, Object[] arguments) throws Throwable {
-            setBackTrace(caller, (Throwable) base, createStackTraceElements(caller));
+        public Object invoke(InterpreterFrame caller, ResolvedJavaMethod method, Object[] arguments) throws Throwable {
+            setBackTrace(caller, (Throwable) arguments[0], createStackTraceElements(caller));
             return null;
         }
        });
        addDelegate(findMethod(Throwable.class, "getStackTraceDepth"), new InterpreterCallable() {
            @Override
-           public Object invoke(InterpreterFrame caller, ResolvedJavaMethod method, Object base, Object[] arguments) throws Throwable {
-               StackTraceElement[] elements = getBackTrace(caller, (Throwable) base);
+           public Object invoke(InterpreterFrame caller, ResolvedJavaMethod method, Object[] arguments) throws Throwable {
+               StackTraceElement[] elements = getBackTrace(caller, (Throwable) arguments[0]);
                if (elements != null) {
                    return elements.length;
                }
@@ -110,8 +114,8 @@ public final class BytecodeInterpreter implements Interpreter {
        });
        addDelegate(findMethod(Throwable.class, "getStackTraceElement", int.class), new InterpreterCallable() {
            @Override
-           public Object invoke(InterpreterFrame caller, ResolvedJavaMethod method, Object base, Object[] arguments) throws Throwable {
-               StackTraceElement[] elements = getBackTrace(caller, (Throwable) base);
+           public Object invoke(InterpreterFrame caller, ResolvedJavaMethod method, Object[] arguments) throws Throwable {
+               StackTraceElement[] elements = getBackTrace(caller, (Throwable) arguments[0]);
                if (elements != null) {
                    Integer index = (Integer) arguments[0];
                    if (index != null) {
@@ -123,6 +127,12 @@ public final class BytecodeInterpreter implements Interpreter {
        });
     }
 
+    @SuppressWarnings("unused")
+    private boolean parseArguments(String stringArgs) {
+        // TODO: parse the arguments
+        return true;
+    }
+
     public void setMaxStackFrames(int maxStackSize) {
         this.maxStackFrames = maxStackSize;
     }
@@ -132,53 +142,55 @@ public final class BytecodeInterpreter implements Interpreter {
     }
 
     public void addDelegate(Method method, InterpreterCallable callable) {
-        ResolvedJavaMethod resolvedMethod = vm.getRuntime().getResolvedJavaMethod(method);
+        ResolvedJavaMethod resolvedMethod = metaAccessProvider.getResolvedJavaMethod(method);
         if (methodDelegates.containsKey(resolvedMethod)) {
             throw new IllegalArgumentException("Delegate for method " + method + " already added.");
         }
-        methodDelegates.put(resolvedMethod, callable);
+
+        methodDelegates.put(resolvedMethod, new MethodRedirectionInfo(callable));
     }
 
     public void removeDelegate(Method method) {
-        methodDelegates.remove(vm.getRuntime().getResolvedJavaMethod(method));
+        methodDelegates.remove(metaAccessProvider.getResolvedJavaMethod(method));
     }
 
     @Override
-    public Object execute(ResolvedJavaMethod method, Object... boxedArguments) {
-        Signature signature = method.signature();
-        assert boxedArguments != null;
-        assert signature.argumentCount(false) == boxedArguments.length;
-
-        if (!Modifier.isStatic(method.accessFlags())) {
-            throw new UnsupportedOperationException("The interpreter can currently only be started with static methods.");
-        }
-
-        InterpreterFrame rootFrame = new InterpreterFrame(rootMethod, signature.argumentSlots(true));
-        rootFrame.pushObject(this);
-        rootFrame.pushObject(method);
-        rootFrame.pushObject(boxedArguments);
-
-        for (int i = 0; i < boxedArguments.length; i++) {
-            pushAsObject(rootFrame, signature.argumentKindAt(i), boxedArguments[i]);
-        }
-
-        InterpreterFrame frame = rootFrame.create(method, false);
-
+    public Object execute(ResolvedJavaMethod method, Object... boxedArguments) throws Throwable {
         try {
-            executeRoot(rootFrame, frame);
-        } catch (Throwable e) {
-            // clear backtrace for compatibilty and store it in stacktrace
-            StackTraceElement[] backtrace = getBackTrace(rootFrame, e);
-            setBackTrace(rootFrame, e, null);
-            setStackTrace(rootFrame, e, backtrace);
-            throw new InterpreterException(e);
-        }
+            boolean receiver = hasReceiver(method);
+            Signature signature = method.signature();
+            assert boxedArguments != null;
+            assert signature.argumentCount(receiver) == boxedArguments.length;
 
-        return popAsObject(rootFrame, signature.returnKind());
+            InterpreterFrame rootFrame = new InterpreterFrame(rootMethod, signature.argumentSlots(true));
+            rootFrame.pushObject(this);
+            rootFrame.pushObject(method);
+            rootFrame.pushObject(boxedArguments);
+
+            int index = 0;
+            if (receiver) {
+                pushAsObject(rootFrame, Kind.Object, boxedArguments[index]);
+                index++;
+            }
+
+            for (int i = 0; i < boxedArguments.length; i++, index++) {
+                pushAsObject(rootFrame, signature.argumentKindAt(i), boxedArguments[index]);
+            }
+
+            InterpreterFrame frame = rootFrame.create(method, receiver);
+            executeRoot(rootFrame, frame);
+            return popAsObject(rootFrame, signature.returnKind());
+        } catch (Exception e) {
+            throw e;
+        }
     }
 
-    public Object execute(Method javaMethod, Object... boxedArguments) throws InterpreterException {
-        return execute(vm.getRuntime().getResolvedJavaMethod(javaMethod), boxedArguments);
+    public Object execute(Method javaMethod, Object... boxedArguments) throws Throwable {
+        return execute(metaAccessProvider.getResolvedJavaMethod(javaMethod), boxedArguments);
+    }
+
+    private boolean hasReceiver(ResolvedJavaMethod method) {
+        return !Modifier.isStatic(method.accessFlags());
     }
 
     private void executeRoot(InterpreterFrame root, InterpreterFrame frame) throws Throwable {
@@ -392,28 +404,28 @@ public final class BytecodeInterpreter implements Interpreter {
                 frame.pushObject(frame.getObject(frame.resolveLocalIndex(3)));
                 break;
             case Bytecodes.IALOAD         :
-                frame.pushInt(vm.getArrayInt(frame.popInt(), frame.popObject()));
+                frame.pushInt(runtimeInterface.getArrayInt(frame.popInt(), frame.popObject()));
                 break;
             case Bytecodes.LALOAD         :
-                frame.pushLong(vm.getArrayLong(frame.popInt(), frame.popObject()));
+                frame.pushLong(runtimeInterface.getArrayLong(frame.popInt(), frame.popObject()));
                 break;
             case Bytecodes.FALOAD         :
-                frame.pushFloat(vm.getArrayFloat(frame.popInt(), frame.popObject()));
+                frame.pushFloat(runtimeInterface.getArrayFloat(frame.popInt(), frame.popObject()));
                 break;
             case Bytecodes.DALOAD         :
-                frame.pushDouble(vm.getArrayDouble(frame.popInt(), frame.popObject()));
+                frame.pushDouble(runtimeInterface.getArrayDouble(frame.popInt(), frame.popObject()));
                 break;
             case Bytecodes.AALOAD         :
-                frame.pushObject(vm.getArrayObject(frame.popInt(), frame.popObject()));
+                frame.pushObject(runtimeInterface.getArrayObject(frame.popInt(), frame.popObject()));
                 break;
             case Bytecodes.BALOAD         :
-                frame.pushInt(vm.getArrayByte(frame.popInt(), frame.popObject()));
+                frame.pushInt(runtimeInterface.getArrayByte(frame.popInt(), frame.popObject()));
                 break;
             case Bytecodes.CALOAD         :
-                frame.pushInt(vm.getArrayChar(frame.popInt(), frame.popObject()));
+                frame.pushInt(runtimeInterface.getArrayChar(frame.popInt(), frame.popObject()));
                 break;
              case Bytecodes.SALOAD:
-                frame.pushInt(vm.getArrayShort(frame.popInt(), frame.popObject()));
+                frame.pushInt(runtimeInterface.getArrayShort(frame.popInt(), frame.popObject()));
                 break;
             case Bytecodes.ISTORE:
                 frame.setInt(frame.resolveLocalIndex(bs.readLocalIndex()), frame.popInt());
@@ -491,28 +503,28 @@ public final class BytecodeInterpreter implements Interpreter {
                 frame.setObject(frame.resolveLocalIndex(3), frame.popObject());
                 break;
             case Bytecodes.IASTORE        :
-                vm.setArrayInt(frame.popInt(), frame.popInt(), frame.popObject());
+                runtimeInterface.setArrayInt(frame.popInt(), frame.popInt(), frame.popObject());
                 break;
             case Bytecodes.LASTORE        :
-                vm.setArrayLong(frame.popLong(), frame.popInt(), frame.popObject());
+                runtimeInterface.setArrayLong(frame.popLong(), frame.popInt(), frame.popObject());
                 break;
             case Bytecodes.FASTORE        :
-                vm.setArrayFloat(frame.popFloat(), frame.popInt(), frame.popObject());
+                runtimeInterface.setArrayFloat(frame.popFloat(), frame.popInt(), frame.popObject());
                 break;
             case Bytecodes.DASTORE        :
-                vm.setArrayDouble(frame.popDouble(), frame.popInt(), frame.popObject());
+                runtimeInterface.setArrayDouble(frame.popDouble(), frame.popInt(), frame.popObject());
                 break;
             case Bytecodes.AASTORE        :
-                vm.setArrayObject(frame.popObject(), frame.popInt(), frame.popObject());
+                runtimeInterface.setArrayObject(frame.popObject(), frame.popInt(), frame.popObject());
                 break;
             case Bytecodes.BASTORE        :
-                vm.setArrayByte((byte) frame.popInt(), frame.popInt(), frame.popObject());
+                runtimeInterface.setArrayByte((byte) frame.popInt(), frame.popInt(), frame.popObject());
                 break;
             case Bytecodes.CASTORE        :
-                vm.setArrayChar((char) frame.popInt(), frame.popInt(), frame.popObject());
+                runtimeInterface.setArrayChar((char) frame.popInt(), frame.popInt(), frame.popObject());
                 break;
             case Bytecodes.SASTORE        :
-                vm.setArrayShort((short) frame.popInt(), frame.popInt(), frame.popObject());
+                runtimeInterface.setArrayShort((short) frame.popInt(), frame.popInt(), frame.popObject());
                 break;
             case Bytecodes.POP            :
                 frame.popVoid(1);
@@ -849,7 +861,7 @@ public final class BytecodeInterpreter implements Interpreter {
                 }
                 return CALL;
             case Bytecodes.XXXUNUSEDXXX   :
-                assert false : "unused bytecode used. behaviour unspecfied.";
+                assert false : "unused bytecode used. behaviour unspecified.";
                 // nop
                 break;
             case Bytecodes.NEW            :
@@ -873,10 +885,10 @@ public final class BytecodeInterpreter implements Interpreter {
                 instanceOf(frame, bs.readCPI());
                 break;
             case Bytecodes.MONITORENTER   :
-                vm.monitorEnter(frame.popObject());
+                runtimeInterface.monitorEnter(frame.popObject());
                 break;
             case Bytecodes.MONITOREXIT    :
-                vm.monitorExit(frame.popObject());
+                runtimeInterface.monitorExit(frame.popObject());
                 break;
             case Bytecodes.WIDE           :
                 assert false;
@@ -912,11 +924,6 @@ public final class BytecodeInterpreter implements Interpreter {
                 currentFrame = popFrame(currentFrame);
             } else {
                 // found a handler -> execute it
-                if (handler.isCatchAll()) {
-                    catchAllExceptionHandler = handler;
-                } else {
-                    catchAllExceptionHandler = null;
-                }
                 currentFrame.setBCI(handler.handlerBCI());
                 currentFrame.popStack();
                 currentFrame.pushObject(t);
@@ -940,11 +947,11 @@ public final class BytecodeInterpreter implements Interpreter {
 
 
     private void setStackTrace(InterpreterFrame frame, Throwable t, StackTraceElement[] stackTrace) {
-      vm.setField(stackTrace, t,  findThrowableField(frame, "stackTrace"));
+      runtimeInterface.setFieldObject(stackTrace, t,  findThrowableField(frame, "stackTrace"));
     }
 
     private StackTraceElement[] getBackTrace(InterpreterFrame frame, Throwable t) {
-        Object value = vm.getField(t, findThrowableField(frame, "backtrace"));
+        Object value = runtimeInterface.getFieldObject(t, findThrowableField(frame, "backtrace"));
         if (value instanceof StackTraceElement[]) {
             return (StackTraceElement[]) value;
         }
@@ -952,19 +959,18 @@ public final class BytecodeInterpreter implements Interpreter {
     }
 
     private void setBackTrace(InterpreterFrame frame, Throwable t, StackTraceElement[] backtrace) {
-        vm.setField(backtrace, t, findThrowableField(frame, "backtrace"));
+        runtimeInterface.setFieldObject(backtrace, t, findThrowableField(frame, "backtrace"));
     }
 
     private ExceptionHandler resolveExceptionHandlers(InterpreterFrame frame, int bci, Throwable t) {
         ExceptionHandler[] handlers = frame.getMethod().exceptionHandlers();
         for (int i = 0; i < handlers.length; i++) {
             ExceptionHandler handler = handlers[i];
-            if (bci >= handler.startBCI()
-                            && bci <= handler.endBCI()
-                            && (catchAllExceptionHandler == null || !handler.isCatchAll())) {
+            if (bci >= handler.startBCI() && bci <= handler.endBCI()) {
                 ResolvedJavaType catchType = null;
                 if (!handler.isCatchAll()) {
-                    catchType = resolveType(frame, bci, (char) handler.catchTypeCPI());
+                    // exception handlers are similar to instanceof bytecodes, so we pass instanceof
+                    catchType = resolveType(frame, Bytecodes.INSTANCEOF, (char) handler.catchTypeCPI());
                 }
 
                 if (catchType == null
@@ -997,36 +1003,33 @@ public final class BytecodeInterpreter implements Interpreter {
                     traceOp("Method monitor enter");
                 }
                 if (Modifier.isStatic(nextFrame.getMethod().accessFlags())) {
-                    vm.monitorEnter(nextFrame.getMethod().holder().toJava());
+                    runtimeInterface.monitorEnter(nextFrame.getMethod().holder().toJava());
                 } else {
                     Object enterObject = nextFrame.getObject(frame.resolveLocalIndex(0));
                     assert enterObject != null;
-                    vm.monitorEnter(enterObject);
+                    runtimeInterface.monitorEnter(enterObject);
                 }
             }
 
             return nextFrame;
         } finally {
-            // catch all exception handlers are not allowed to call any method anyway.
-            catchAllExceptionHandler = null;
             callFrame = null;
             bs.next();
         }
     }
 
     private InterpreterFrame popFrame(InterpreterFrame frame) {
-        catchAllExceptionHandler = null;
         InterpreterFrame parent = frame.getParentFrame();
         if (Modifier.isSynchronized(frame.getMethod().accessFlags())) {
             if (TRACE) {
                 traceOp("Method monitor exit");
             }
             if (Modifier.isStatic(frame.getMethod().accessFlags())) {
-                vm.monitorExit(frame.getMethod().holder().toJava());
+                runtimeInterface.monitorExit(frame.getMethod().holder().toJava());
             } else {
                 Object exitObject = frame.getObject(frame.resolveLocalIndex(0));
                 if (exitObject != null) {
-                    vm.monitorExit(exitObject);
+                    runtimeInterface.monitorExit(exitObject);
                 }
             }
         }
@@ -1196,7 +1199,7 @@ public final class BytecodeInterpreter implements Interpreter {
     }
 
     private ResolvedJavaType resolveType(InterpreterFrame frame, Class<?> javaClass) {
-        return vm.getRuntime().getResolvedJavaType(javaClass).resolve(frame.getMethod().holder());
+        return metaAccessProvider.getResolvedJavaType(javaClass).resolve(frame.getMethod().holder());
     }
 
     private ResolvedJavaMethod resolveMethod(InterpreterFrame frame, int opcode, char cpi) {
@@ -1319,102 +1322,89 @@ public final class BytecodeInterpreter implements Interpreter {
         return invoke(frame, m, nullCheck(frame.peekReceiver(m)));
     }
 
-    private void invokeReflective(InterpreterFrame frame, ResolvedJavaMethod method, boolean hasReceiver) throws Throwable {
-        Class<?>[] parameterTypes = resolveMethodArguments(method);
-        Object[] parameters = popArgumentsAsObject(frame, method);
-        Class<?> javaClass = method.holder().toJava();
-
-        Object parentObject = null;
-        if (hasReceiver) {
-            parentObject = frame.popObject();
-            nullCheck(parentObject);
-        }
-        Object returnValue = null;
-
-        if (redirect(method)) {
-            if (TRACE) {
-                traceCall(frame, "Delegate " + method);
-            }
-            try {
-                returnValue = methodDelegates.get(method).invoke(frame, method, parentObject, parameters);
-            } catch (Throwable e) {
-                throw e;
-            }
-        } else {
-            if (TRACE) {
-                traceCall(frame, "Reflective " + method);
-            }
-            try {
-                Method javaMethod = javaClass.getDeclaredMethod(method.name(), parameterTypes);
-                javaMethod.setAccessible(true);
-                returnValue = javaMethod.invoke(parentObject, parameters);
-            } catch (InvocationTargetException e) {
-                e.printStackTrace(System.out);
-                throw e.getTargetException();
-            } catch (NoSuchMethodException | SecurityException e) {
-                throw new AbstractMethodError();
-            }
-        }
-
-        pushAsObject(frame, method.signature().returnKind(), returnValue);
-    }
-
-    private Object[] popArgumentsAsObject(InterpreterFrame frame, ResolvedJavaMethod method) {
+    private Object[] popArgumentsAsObject(InterpreterFrame frame, ResolvedJavaMethod method, boolean hasReceiver) {
         Signature signature = method.signature();
-        int argumentCount = method.signature().argumentCount(false);
+        int argumentCount = method.signature().argumentCount(hasReceiver);
         Object[] parameters = new Object[argumentCount];
-        for (int i = argumentCount - 1; i >= 0; i--) {
-            ResolvedJavaType type = signature.argumentTypeAt(i, method.holder()).resolve(method.holder());
-            parameters[i] =  popAsObject(frame, type.kind());
+
+        int lastSignatureIndex = hasReceiver ? 1 : 0;
+        for (int i = argumentCount - 1; i >= lastSignatureIndex; i--) {
+            ResolvedJavaType type = signature.argumentTypeAt(i - lastSignatureIndex, method.holder()).resolve(method.holder());
+            parameters[i] = popAsObject(frame, type.kind());
+        }
+
+        if (hasReceiver) {
+            parameters[0] = frame.popObject();
         }
         return parameters;
     }
 
-    private Class<?>[] resolveMethodArguments(ResolvedJavaMethod method) {
-        Signature signature = method.signature();
-        int argumentCount = signature.argumentCount(false);
-        Class<?>[] parameterTypes = new Class[argumentCount];
-
-        for (int i = 0; i < argumentCount; i++) {
-            JavaType type = signature.argumentTypeAt(i, method.holder());
-            ResolvedJavaType resolvedType = type.resolve(method.holder());
-            parameterTypes[i] = resolvedType.toJava();
-        }
-        return parameterTypes;
-    }
-
-    private InterpreterFrame invoke(InterpreterFrame parent, ResolvedJavaMethod method, Object receiver) throws Throwable {
+    private InterpreterFrame invoke(InterpreterFrame caller, ResolvedJavaMethod method, Object receiver) throws Throwable {
         if (stackFrameDepth >= maxStackFrames) {
             throw new StackOverflowError("Maximum callstack of " + maxStackFrames + " exceeded.");
         }
-        if (redirect(method)) {
-            invokeReflective(parent, method, receiver != null);
 
-            // returning null results in a jump to the next instruction
-            // since the method is already successfully invoked.
-            return null;
+        if (Modifier.isNative(method.accessFlags())) {
+            return invokeNativeMethodViaVM(caller, method, receiver != null);
         } else {
-            if (Modifier.isNative(method.accessFlags())) {
-                invokeReflective(parent, method, receiver != null);
-                return null;
+            MethodRedirectionInfo redirectedMethod = methodDelegates.get(method);
+            if (redirectedMethod != null) {
+                return invokeRedirectedMethodViaVM(caller, method, redirectedMethod, receiver != null);
             } else {
-                return parent.create(method, receiver != null);
+                return invokeOptimized(caller, method, receiver != null);
             }
         }
     }
 
-    private boolean redirect(ResolvedJavaMethod method) {
-        return methodDelegates.containsKey(method);
+    private InterpreterFrame invokeNativeMethodViaVM(InterpreterFrame caller, ResolvedJavaMethod method, boolean hasReceiver) throws Throwable {
+        assert !methodDelegates.containsKey(method) : "must not be redirected";
+        if (TRACE) {
+            traceCall(caller, "Native " + method);
+        }
+
+        // mark the current thread as high level and execute the native method
+        Object[] parameters = popArgumentsAsObject(caller, method, hasReceiver);
+        Object returnValue = runtimeInterface.invoke(method, parameters);
+        pushAsObject(caller, method.signature().returnKind(), returnValue);
+
+        return null;
     }
 
+    private InterpreterFrame invokeRedirectedMethodViaVM(InterpreterFrame caller, ResolvedJavaMethod originalMethod, MethodRedirectionInfo redirectionInfo, boolean hasReceiver) throws Throwable {
+        assert methodDelegates.containsKey(originalMethod) : "must be redirected";
+        if (TRACE) {
+            traceCall(caller, "Delegate " + originalMethod);
+        }
+
+        // current thread is low level and we also execute the target method in the low-level interpreter
+        Object[] originalCalleeParameters = popArgumentsAsObject(caller, originalMethod, hasReceiver);
+        Object[] parameters = new Object[] {caller, originalMethod, originalCalleeParameters};
+        Object returnValue = redirectionInfo.getTargetMethod().invoke(redirectionInfo.getReceiver(), parameters);
+        pushAsObject(caller, originalMethod.signature().returnKind(), returnValue);
+
+        return null;
+    }
+
+    private InterpreterFrame invokeOptimized(InterpreterFrame parent, ResolvedJavaMethod method, boolean hasReceiver) throws Throwable {
+        return parent.create(method, hasReceiver);
+    }
 
     private Object allocateMultiArray(InterpreterFrame frame, char cpi, int dimension) {
-        ResolvedJavaType type = resolveType(frame, Bytecodes.MULTIANEWARRAY, cpi);
+        ResolvedJavaType type = getLastDimensionType(resolveType(frame, Bytecodes.MULTIANEWARRAY, cpi));
+
         int[] dimensions = new int[dimension];
-        for (int i = 0; i < dimension; i++) {
+        for (int i = dimension - 1; i >= 0; i--) {
             dimensions[i] = frame.popInt();
         }
         return Array.newInstance(type.toJava(), dimensions);
+    }
+
+    private ResolvedJavaType getLastDimensionType(ResolvedJavaType type) {
+        ResolvedJavaType result = type;
+        while (result.isArrayClass()) {
+            result = result.componentType();
+        }
+        return result;
     }
 
     private Object allocateArray(InterpreterFrame frame, char cpi) {
@@ -1448,7 +1438,7 @@ public final class BytecodeInterpreter implements Interpreter {
     }
 
     private Object allocateInstance(InterpreterFrame frame, char cpi) throws InstantiationException {
-        return vm.newObject(resolveType(frame, Bytecodes.NEW, cpi));
+        return runtimeInterface.newObject(resolveType(frame, Bytecodes.NEW, cpi));
     }
 
     private void iinc(InterpreterFrame frame, BytecodeStream bs) {
@@ -1471,19 +1461,19 @@ public final class BytecodeInterpreter implements Interpreter {
             case Char :
             case Short :
             case Int :
-                vm.setFieldInt(frame.popInt(), null, field);
+                runtimeInterface.setFieldInt(frame.popInt(), null, field);
                 break;
             case Double :
-                vm.setFieldDouble(frame.popDouble(), null, field);
+                runtimeInterface.setFieldDouble(frame.popDouble(), null, field);
                 break;
             case Float :
-                vm.setFieldFloat(frame.popFloat(), null, field);
+                runtimeInterface.setFieldFloat(frame.popFloat(), null, field);
                 break;
             case Long :
-                vm.setFieldLong(frame.popLong(), null, field);
+                runtimeInterface.setFieldLong(frame.popLong(), null, field);
                 break;
             case Object :
-                vm.setField(frame.popObject(), null, field);
+                runtimeInterface.setFieldObject(frame.popObject(), null, field);
                 break;
             default :
                 assert false : "unexpected case";
@@ -1497,19 +1487,19 @@ public final class BytecodeInterpreter implements Interpreter {
             case Char :
             case Short :
             case Int :
-                vm.setFieldInt(frame.popInt(), nullCheck(frame.popObject()), field);
+                runtimeInterface.setFieldInt(frame.popInt(), nullCheck(frame.popObject()), field);
                 break;
             case Double :
-                vm.setFieldDouble(frame.popDouble(), nullCheck(frame.popObject()), field);
+                runtimeInterface.setFieldDouble(frame.popDouble(), nullCheck(frame.popObject()), field);
                 break;
             case Float :
-                vm.setFieldFloat(frame.popFloat(), nullCheck(frame.popObject()), field);
+                runtimeInterface.setFieldFloat(frame.popFloat(), nullCheck(frame.popObject()), field);
                 break;
             case Long :
-                vm.setFieldLong(frame.popLong(), nullCheck(frame.popObject()), field);
+                runtimeInterface.setFieldLong(frame.popLong(), nullCheck(frame.popObject()), field);
                 break;
             case Object :
-                vm.setField(frame.popObject(), nullCheck(frame.popObject()), field);
+                runtimeInterface.setFieldObject(frame.popObject(), nullCheck(frame.popObject()), field);
                 break;
             default :
                 assert false : "unexpected case";
@@ -1520,23 +1510,31 @@ public final class BytecodeInterpreter implements Interpreter {
         ResolvedJavaField field = resolveField(frame, opcode, cpi);
         switch (field.kind()) {
             case Boolean :
+                frame.pushInt(runtimeInterface.getFieldBoolean(base, field) ? 1 : 0);
+                break;
             case Byte :
+                frame.pushInt(runtimeInterface.getFieldByte(base, field));
+                break;
             case Char :
+                frame.pushInt(runtimeInterface.getFieldChar(base, field));
+                break;
             case Short :
+                frame.pushInt(runtimeInterface.getFieldShort(base, field));
+                break;
             case Int :
-                frame.pushInt(vm.getFieldInt(base, field));
+                frame.pushInt(runtimeInterface.getFieldInt(base, field));
                 break;
             case Double :
-                frame.pushDouble(vm.getFieldDouble(base, field));
+                frame.pushDouble(runtimeInterface.getFieldDouble(base, field));
                 break;
             case Float :
-                frame.pushFloat(vm.getFieldFloat(base, field));
+                frame.pushFloat(runtimeInterface.getFieldFloat(base, field));
                 break;
             case Long :
-                frame.pushLong(vm.getFieldLong(base, field));
+                frame.pushLong(runtimeInterface.getFieldLong(base, field));
                 break;
             case Object :
-                frame.pushObject(vm.getField(base, field));
+                frame.pushObject(runtimeInterface.getFieldObject(base, field));
                 break;
             default :
                 assert false : "unexpected case";
@@ -1611,7 +1609,7 @@ public final class BytecodeInterpreter implements Interpreter {
 
     private ResolvedJavaMethod resolveRootMethod() {
         try {
-            return vm.getRuntime().getResolvedJavaMethod(BytecodeInterpreter.class.getDeclaredMethod("execute", Method.class, Object[].class));
+            return metaAccessProvider.getResolvedJavaMethod(BytecodeInterpreter.class.getDeclaredMethod("execute", Method.class, Object[].class));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -1655,4 +1653,31 @@ public final class BytecodeInterpreter implements Interpreter {
         return null;
     }
 
+    private class MethodRedirectionInfo {
+        private InterpreterCallable receiver;
+        private Method method;
+
+        public MethodRedirectionInfo(InterpreterCallable instance) {
+            this.receiver = instance;
+            this.method = resolveMethod(instance);
+        }
+
+        public InterpreterCallable getReceiver() {
+            return receiver;
+        }
+
+        public Method getTargetMethod() {
+            return method;
+        }
+
+        private Method resolveMethod(InterpreterCallable instance) {
+            try {
+                return instance.getClass().getMethod(InterpreterCallable.INTERPRETER_CALLABLE_INVOKE_NAME, InterpreterCallable.INTERPRETER_CALLABLE_INVOKE_SIGNATURE);
+            } catch (NoSuchMethodException e) {
+                throw new InterpreterException(e);
+            } catch (SecurityException e) {
+                throw new InterpreterException(e);
+            }
+        }
+    }
 }

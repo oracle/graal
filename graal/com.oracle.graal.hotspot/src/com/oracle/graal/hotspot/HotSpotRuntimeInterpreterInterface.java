@@ -20,30 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.interpreter;
+package com.oracle.graal.hotspot;
 
 import java.lang.reflect.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.api.*;
+import com.oracle.graal.api.interpreter.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 
-
-/**
- * This class encapsulates all vm specific methods for the {@link BytecodeInterpreter}.
- */
-public class VMAdapter {
+public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInterface {
 
     private static final Unsafe unsafe = loadUnsafe();
 
-    protected VMAdapter() {
+    private final MetaAccessProvider metaProvider;
+
+    public HotSpotRuntimeInterpreterInterface(MetaAccessProvider metaProvider) {
+        this.metaProvider = metaProvider;
     }
 
-    public MetaAccessProvider getRuntime() {
-        return Graal.getRuntime().getCapability(MetaAccessProvider.class);
-    }
+    public native Object invoke(ResolvedJavaMethod method, Object... args);
 
     public void monitorEnter(Object value) {
         nullCheck(value);
@@ -59,12 +56,48 @@ public class VMAdapter {
         return unsafe.allocateInstance(type.toJava());
     }
 
-    public Object getField(Object base, ResolvedJavaField field) {
+    public Object getFieldObject(Object base, ResolvedJavaField field) {
         long offset = resolveOffset(field);
         if (isVolatile(field)) {
             return unsafe.getObjectVolatile(resolveBase(base, field), offset);
         } else {
             return unsafe.getObject(resolveBase(base, field), offset);
+        }
+    }
+
+    public boolean getFieldBoolean(Object base, ResolvedJavaField field) {
+        long offset = resolveOffset(field);
+        if (isVolatile(field)) {
+            return unsafe.getBooleanVolatile(resolveBase(base, field), offset);
+        } else {
+            return unsafe.getBoolean(resolveBase(base, field), offset);
+        }
+    }
+
+    public byte getFieldByte(Object base, ResolvedJavaField field) {
+        long offset = resolveOffset(field);
+        if (isVolatile(field)) {
+            return unsafe.getByteVolatile(resolveBase(base, field), offset);
+        } else {
+            return unsafe.getByte(resolveBase(base, field), offset);
+        }
+    }
+
+    public char getFieldChar(Object base, ResolvedJavaField field) {
+        long offset = resolveOffset(field);
+        if (isVolatile(field)) {
+            return unsafe.getCharVolatile(resolveBase(base, field), offset);
+        } else {
+            return unsafe.getChar(resolveBase(base, field), offset);
+        }
+    }
+
+    public short getFieldShort(Object base, ResolvedJavaField field) {
+        long offset = resolveOffset(field);
+        if (isVolatile(field)) {
+            return unsafe.getShortVolatile(resolveBase(base, field), offset);
+        } else {
+            return unsafe.getShort(resolveBase(base, field), offset);
         }
     }
 
@@ -104,7 +137,7 @@ public class VMAdapter {
         }
     }
 
-    public void setField(Object value, Object base, ResolvedJavaField field) {
+    public void setFieldObject(Object value, Object base, ResolvedJavaField field) {
         long offset = resolveOffset(field);
         if (isVolatile(field)) {
             unsafe.putObjectVolatile(resolveBase(base, field), offset, value);
@@ -252,7 +285,7 @@ public class VMAdapter {
         if (arrayType == null) {
             return;
         }
-        ResolvedJavaType type = getRuntime().getResolvedJavaType(array.getClass()).componentType();
+        ResolvedJavaType type = metaProvider.getResolvedJavaType(array.getClass()).componentType();
         if (!type.toJava().isAssignableFrom(arrayType)) {
             throw new ArrayStoreException(arrayType.getName());
         }
@@ -260,7 +293,7 @@ public class VMAdapter {
 
     private void checkArray(Object array, long index) {
         nullCheck(array);
-        ResolvedJavaType type = getRuntime().getResolvedJavaType(array.getClass());
+        ResolvedJavaType type = metaProvider.getResolvedJavaType(array.getClass());
         if (!type.isArrayClass()) {
             throw new ArrayStoreException(array.getClass().getName());
         }
@@ -303,11 +336,4 @@ public class VMAdapter {
             throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
         }
     }
-
-    private static final VMAdapter instance = new VMAdapter();
-    public static VMAdapter getInstance() {
-        return instance;
-    }
-
-
 }

@@ -245,6 +245,7 @@ public class InterpreterFrame extends Frame {
     }
 
     private void decrementTos(int size) {
+        assert tos - size >= stackTos();
         tos -= size;
     }
 
