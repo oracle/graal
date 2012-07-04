@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import java.util.*;
+import java.util.concurrent.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
@@ -51,6 +54,7 @@ public class CanonicalizerPhase extends Phase {
 
     private NodeWorkList workList;
     private Tool tool;
+    private List<Node> snapshotTemp;
 
     public CanonicalizerPhase(TargetDescription target, CodeCacheProvider runtime, Assumptions assumptions) {
         this(target, runtime, assumptions, null, 0, null);
@@ -82,6 +86,7 @@ public class CanonicalizerPhase extends Phase {
         this.runtime = runtime;
         this.immutabilityPredicate = immutabilityPredicate;
         this.initWorkingSet = workingSet;
+        this.snapshotTemp = new ArrayList<>();
     }
 
     @Override
@@ -130,9 +135,19 @@ public class CanonicalizerPhase extends Phase {
                 return;
             }
             int mark = graph.getMark();
-            tryCanonicalize(node, graph, tool);
-            tryInferStamp(node, graph);
-            tryKillUnused(node);
+            if (!tryKillUnused(node)) {
+                node.inputs().filter(GraphUtil.isFloatingNode()).snapshotTo(snapshotTemp);
+                if (!tryCanonicalize(node, graph, tool)) {
+                    tryInferStamp(node, graph);
+                } else {
+                    for (Node in : snapshotTemp) {
+                        if (in.isAlive() && in.usages().isEmpty()) {
+                            GraphUtil.killWithUnusedFloatingInputs(in);
+                        }
+                    }
+                }
+                snapshotTemp.clear();
+            }
 
             for (Node newNode : graph.getNewNodes(mark)) {
                 workList.add(newNode);
@@ -140,10 +155,12 @@ public class CanonicalizerPhase extends Phase {
         }
     }
 
-    private static void tryKillUnused(Node node) {
+    private static boolean tryKillUnused(Node node) {
         if (node.isAlive() && GraphUtil.isFloatingNode().apply(node) && node.usages().isEmpty()) {
             GraphUtil.killWithUnusedFloatingInputs(node);
+            return true;
         }
+        return false;
     }
 
     public static boolean tryGlobalValueNumbering(Node node, StructuredGraph graph) {
@@ -161,11 +178,11 @@ public class CanonicalizerPhase extends Phase {
         return false;
     }
 
-    public static void tryCanonicalize(final Node node, final StructuredGraph graph, final SimplifierTool tool) {
+    public static boolean tryCanonicalize(final Node node, final StructuredGraph graph, final SimplifierTool tool) {
         if (node instanceof Canonicalizable) {
             METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
-            Debug.scope("CanonicalizeNode", node, new Runnable() {
-                public void run() {
+            return Debug.scope("CanonicalizeNode", node, new Callable<Boolean>(){
+                public Boolean call() {
                     ValueNode canonical = ((Canonicalizable) node).canonical(tool);
 //     cases:                                           original node:
 //                                         |Floating|Fixed-unconnected|Fixed-connected|
@@ -181,9 +198,9 @@ public class CanonicalizerPhase extends Phase {
 //       X: must not happen (checked with assertions)
                     if (canonical == node) {
                         Debug.log("Canonicalizer: work on %s", node);
+                        return false;
                     } else {
                         Debug.log("Canonicalizer: replacing %s with %s", node, canonical);
-
                         METRIC_CANONICALIZED_NODES.increment();
                         if (node instanceof FloatingNode) {
                             if (canonical == null) {
@@ -191,7 +208,7 @@ public class CanonicalizerPhase extends Phase {
                                 graph.removeFloating((FloatingNode) node);
                             } else {
                                 // case 2
-                                assert !(canonical instanceof FixedNode) || canonical.predecessor() != null : node + " -> " + canonical +
+                                assert !(canonical instanceof FixedNode) || (canonical.predecessor() != null || canonical instanceof StartNode) : node + " -> " + canonical +
                                                 " : replacement should be floating or fixed and connected";
                                 graph.replaceFloating((FloatingNode) node, canonical);
                             }
@@ -217,6 +234,7 @@ public class CanonicalizerPhase extends Phase {
                                 }
                             }
                         }
+                        return true;
                     }
                 }
             });
@@ -225,6 +243,7 @@ public class CanonicalizerPhase extends Phase {
             METRIC_SIMPLIFICATION_CONSIDERED_NODES.increment();
             ((Simplifiable) node).simplify(tool);
         }
+        return false;
     }
 
     /**
