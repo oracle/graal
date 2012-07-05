@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.snippets;
 
+//JaCoCo Exclude
+
 import java.io.*;
 import java.util.*;
 
