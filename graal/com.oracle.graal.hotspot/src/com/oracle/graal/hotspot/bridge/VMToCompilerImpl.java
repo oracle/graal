@@ -288,7 +288,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         CompilationStatistics.clear("final");
         MethodEntryCounters.printCounters(graalRuntime);
         HotSpotXirGenerator.printCounters(TTY.out().out());
-        CheckCastSnippets.printCounters(TTY.out().out());
+        SnippetCounter.printGroups(TTY.out().out());
     }
 
     private void flattenChildren(DebugValueMap map, DebugValueMap globalMap) {
