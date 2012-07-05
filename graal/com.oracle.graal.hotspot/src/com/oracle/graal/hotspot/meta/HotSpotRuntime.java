@@ -500,13 +500,13 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
 
     public void installMethod(ResolvedJavaMethod method, CompilationResult code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
-        compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotResolvedJavaMethod) method, code), true, hsInfo);
+        compiler.getCompilerToVM().installMethod(new HotSpotCompilationResult((HotSpotResolvedJavaMethod) method, code), true, hsInfo);
     }
 
     @Override
     public InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
-        return compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotResolvedJavaMethod) method, code), false, hsInfo);
+        return compiler.getCompilerToVM().installMethod(new HotSpotCompilationResult((HotSpotResolvedJavaMethod) method, code), false, hsInfo);
     }
 
     @Override
