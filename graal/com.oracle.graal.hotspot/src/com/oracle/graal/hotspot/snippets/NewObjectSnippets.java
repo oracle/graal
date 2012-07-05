@@ -24,9 +24,9 @@ package com.oracle.graal.hotspot.snippets;
 
 import static com.oracle.graal.hotspot.nodes.CastFromHub.*;
 import static com.oracle.graal.hotspot.nodes.RegisterNode.*;
-import static com.oracle.graal.hotspot.snippets.DirectObjectStoreNode.*;
 import static com.oracle.graal.nodes.extended.UnsafeLoadNode.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
+import static com.oracle.graal.snippets.nodes.DirectObjectStoreNode.*;
 import static com.oracle.graal.snippets.nodes.ExplodeLoopNode.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 import static com.oracle.max.criutils.UnsignedMath.*;

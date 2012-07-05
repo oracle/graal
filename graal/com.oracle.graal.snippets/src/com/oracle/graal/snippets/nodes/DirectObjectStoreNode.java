@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.snippets;
+package com.oracle.graal.snippets.nodes;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -32,7 +32,7 @@ import com.oracle.graal.snippets.*;
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that
  * it is not a {@link StateSplit} and does not include a write barrier.
  */
-class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
+public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
     @Input private ValueNode object;
     @Input private ValueNode value;
     @Input private ValueNode offset;

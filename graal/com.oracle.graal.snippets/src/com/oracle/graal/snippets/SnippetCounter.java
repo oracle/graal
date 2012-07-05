@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.snippets;
+package com.oracle.graal.snippets;
 
 import java.io.*;
 import java.util.*;
@@ -29,6 +29,7 @@ import sun.misc.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.snippets.Snippet.Fold;
+import com.oracle.graal.snippets.nodes.*;
 
 /**
  * A counter that can be safely {@linkplain #inc() incremented} from within a
