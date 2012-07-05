@@ -1144,7 +1144,7 @@ public final class GraphBuilderPhase extends Phase {
                 int pos = 0;
                 ArrayList<Block> exitLoops = new ArrayList<>(Long.bitCount(exits));
                 do {
-                    int lMask = 1 << pos;
+                    long lMask = 1L << pos;
                     if ((exits & lMask) != 0) {
                         exitLoops.add(loopHeaders[pos]);
                         exits &= ~lMask;
