@@ -498,7 +498,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         protected XirTemplate create(CiXirAssembler asm, long flags, int hintCount) {
             asm.restart(Kind.Void);
             boolean exact = is(EXACT_HINTS, flags);
-            XirParameter counters = GraalOptions.CheckcastCounters ? asm.createConstantInputParameter("counters", Kind.Object) : null;
+            XirParameter counters = GraalOptions.SnippetCounters ? asm.createConstantInputParameter("counters", Kind.Object) : null;
             XirParameter object = asm.createInputParameter("object", Kind.Object);
             final XirOperand hub = exact ? null : asm.createConstantInputParameter("hub", Kind.Object);
 
@@ -807,7 +807,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
     @Override
     public XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, ResolvedJavaType type, JavaTypeProfile profile) {
-        final boolean useCounters = GraalOptions.CheckcastCounters;
+        final boolean useCounters = GraalOptions.SnippetCounters;
         TypeCheckHints hints = new TypeCheckHints(type, profile, site.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
         int hintsLength = hints.types.length;
         if (hintsLength == 0) {
@@ -1042,7 +1042,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     }
 
     public static void printCounters(PrintStream out) {
-        if (GraalOptions.CheckcastCounters) {
+        if (GraalOptions.SnippetCounters) {
             printCheckcastCounters(out);
         }
     }

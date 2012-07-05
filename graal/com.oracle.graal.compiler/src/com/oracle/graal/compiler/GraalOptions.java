@@ -231,9 +231,9 @@ public final class GraalOptions {
     public static boolean PrintFlags                           = false;
 
     /**
-     * Counts the various paths taken through a compiled checkcast.
+     * Counts the various paths taken through snippets.
      */
-    public static boolean CheckcastCounters = false;
+    public static boolean SnippetCounters = false;
 
     /**
      * If the probability that a checkcast will hit one the profiled types (up to {@link #CheckcastMaxHints})

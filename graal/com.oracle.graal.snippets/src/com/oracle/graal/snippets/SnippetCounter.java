@@ -54,15 +54,17 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
             Collections.sort(counters);
 
             long total = 0;
+            int maxNameLen = 0;
             for (SnippetCounter c : counters) {
                 total += c.value;
+                maxNameLen = Math.max(c.name.length(), maxNameLen);
             }
 
             StringBuilder buf = new StringBuilder(String.format("Counters: %s%n", name));
 
             for (SnippetCounter c : counters) {
                 double percent = total == 0D ? 0D : ((double) (c.value * 100)) / total;
-                buf.append(String.format("%16s: %5.2f%%%10d  // %s%n", c.name, percent, c.value, c.description));
+                buf.append(String.format("  %" + maxNameLen + "s: %5.2f%%%10d  // %s%n", c.name, percent, c.value, c.description));
             }
             return buf.toString();
         }

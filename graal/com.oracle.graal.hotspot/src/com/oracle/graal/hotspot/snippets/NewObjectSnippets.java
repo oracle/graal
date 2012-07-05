@@ -33,6 +33,7 @@ import static com.oracle.max.criutils.UnsignedMath.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -75,6 +76,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @ConstantParameter("size") int size) {
 
         if (memory == Word.zero()) {
+            new_stub.inc();
             return NewInstanceStubCall.call(hub);
         }
         formatObject(hub, size, memory, initialMarkWord);
@@ -106,7 +108,17 @@ public class NewObjectSnippets implements SnippetsInterface {
 
     private static Object initializeArray(Word memory, Object hub, int length, int size, Word initialMarkWord, int headerSize, boolean isObjectArray) {
         if (memory == Word.zero()) {
+            if (isObjectArray) {
+                anewarray_stub.inc();
+            } else {
+                newarray_stub.inc();
+            }
             return NewArrayStubCall.call(isObjectArray, hub, length);
+        }
+        if (isObjectArray) {
+            anewarray_loopInit.inc();
+        } else {
+            newarray_loopInit.inc();
         }
         formatArray(hub, size, length, headerSize, memory, initialMarkWord);
         Object instance = memory.toObject();
@@ -171,11 +183,13 @@ public class NewObjectSnippets implements SnippetsInterface {
         storeObject(memory, 0, markOffset(), headerPrototype);
         storeObject(memory, 0, hubOffset(), hub);
         if (size <= MAX_UNROLLED_OBJECT_ZEROING_SIZE) {
+            new_seqInit.inc();
             explodeLoop();
             for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
                 storeWord(memory, 0, offset, Word.zero());
             }
         } else {
+            new_loopInit.inc();
             for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
                 storeWord(memory, 0, offset, Word.zero());
             }
@@ -380,4 +394,17 @@ public class NewObjectSnippets implements SnippetsInterface {
     private static int arrayLengthOffset() {
         return HotSpotGraalRuntime.getInstance().getConfig().arrayLengthOffset;
     }
+
+    private static final SnippetCounter.Group countersNew = GraalOptions.SnippetCounters ? new SnippetCounter.Group("NewInstance") : null;
+    private static final SnippetCounter new_seqInit = new SnippetCounter(countersNew, "tlabSeqInit", "TLAB alloc with unrolled zeroing");
+    private static final SnippetCounter new_loopInit = new SnippetCounter(countersNew, "tlabLoopInit", "TLAB alloc with zeroing in a loop");
+    private static final SnippetCounter new_stub = new SnippetCounter(countersNew, "stub", "alloc and zeroing via stub");
+
+    private static final SnippetCounter.Group countersNewPrimitiveArray = GraalOptions.SnippetCounters ? new SnippetCounter.Group("NewPrimitiveArray") : null;
+    private static final SnippetCounter newarray_loopInit = new SnippetCounter(countersNewPrimitiveArray, "tlabLoopInit", "TLAB alloc with zeroing in a loop");
+    private static final SnippetCounter newarray_stub = new SnippetCounter(countersNewPrimitiveArray, "stub", "alloc and zeroing via stub");
+
+    private static final SnippetCounter.Group countersNewObjectArray = GraalOptions.SnippetCounters ? new SnippetCounter.Group("NewObjectArray") : null;
+    private static final SnippetCounter anewarray_loopInit = new SnippetCounter(countersNewObjectArray, "tlabLoopInit", "TLAB alloc with zeroing in a loop");
+    private static final SnippetCounter anewarray_stub = new SnippetCounter(countersNewObjectArray, "stub", "alloc and zeroing via stub");
 }

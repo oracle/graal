@@ -305,7 +305,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         }
     }
 
-    private static final SnippetCounter.Group counters = GraalOptions.CheckcastCounters ? new SnippetCounter.Group("Checkcast") : null;
+    private static final SnippetCounter.Group counters = GraalOptions.SnippetCounters ? new SnippetCounter.Group("Checkcast") : null;
     private static final SnippetCounter hintsHit = new SnippetCounter(counters, "hintsHit", "hit a hint type");
     private static final SnippetCounter exactHit = new SnippetCounter(counters, "exactHit", "exact type test succeeded");
     private static final SnippetCounter exactMiss = new SnippetCounter(counters, "exactMiss", "exact type test failed");
