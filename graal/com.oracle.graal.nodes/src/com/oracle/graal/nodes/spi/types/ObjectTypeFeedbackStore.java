@@ -504,9 +504,9 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
 
     private HashMap<ValueNode, Condition> valueBounds;
 
-    private Set<RiResolvedType> exactTypes;
+    private Set<ResolvedJavaType> exactTypes;
 
-    private Set<RiResolvedType> declaredTypes;
+    private Set<ResolvedJavaType> declaredTypes;
     private final TypeFeedbackChanged changed;
 
     private Node dependency;
@@ -594,15 +594,15 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     @Override
-    public void declaredType(RiResolvedType type, boolean nonNull) {
+    public void declaredType(ResolvedJavaType type, boolean nonNull) {
         if (declaredTypes == null) {
             declaredTypes = new HashSet<>();
             declaredTypes.add(type);
             updateDependency();
         } else {
             if (type.isInterface()) {
-                for (Iterator<RiResolvedType> iter = declaredTypes.iterator(); iter.hasNext();) {
-                    RiResolvedType declaredType = iter.next();
+                for (Iterator<ResolvedJavaType> iter = declaredTypes.iterator(); iter.hasNext();) {
+                    ResolvedJavaType declaredType = iter.next();
                     if (declaredType.isInterface()) {
                         if (type.isSubtypeOf(declaredType)) {
                             iter.remove();
@@ -616,8 +616,8 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
                     updateDependency();
                 }
             } else {
-                for (Iterator<RiResolvedType> iter = declaredTypes.iterator(); iter.hasNext();) {
-                    RiResolvedType declaredType = iter.next();
+                for (Iterator<ResolvedJavaType> iter = declaredTypes.iterator(); iter.hasNext();) {
+                    ResolvedJavaType declaredType = iter.next();
                     if (!declaredType.isInterface()) {
                         if (type.isSubtypeOf(declaredType)) {
                             iter.remove();
@@ -638,7 +638,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     @Override
-    public void exactType(RiResolvedType type) {
+    public void exactType(ResolvedJavaType type) {
         if (exactTypes == null) {
             exactTypes = new HashSet<>();
             exactTypes.add(type);
@@ -657,11 +657,11 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     @Override
-    public void notDeclaredType(RiResolvedType type, boolean nonNull) {
+    public void notDeclaredType(ResolvedJavaType type, boolean nonNull) {
     }
 
     @Override
-    public void notExactType(RiResolvedType type) {
+    public void notExactType(ResolvedJavaType type) {
     }
 
     @Override
@@ -756,7 +756,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         }
         if (declaredTypes != null) {
             str.append("declared (");
-            for (RiResolvedType type: declaredTypes) {
+            for (ResolvedJavaType type: declaredTypes) {
                 str.append(type).append(',');
             }
             str.setLength(str.length() - 1);
@@ -764,7 +764,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         }
         if (exactTypes != null) {
             str.append("exact (");
-            for (RiResolvedType type: exactTypes) {
+            for (ResolvedJavaType type: exactTypes) {
                 str.append(type).append(',');
             }
             str.setLength(str.length() - 1);

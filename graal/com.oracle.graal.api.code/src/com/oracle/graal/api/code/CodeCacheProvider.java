@@ -93,14 +93,16 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     int encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason);
 
     /**
-     * Converts a RiDeoptReason into an integer value.
-     * @return An integer value representing the given RiDeoptReason.
+     * Converts a {@link DeoptimizationReason} into an integer value.
+     *
+     * @return an integer value representing the given {@link DeoptimizationReason}
      */
     int convertDeoptReason(DeoptimizationReason reason);
 
     /**
-     * Converts a RiDeoptAction into an integer value.
-     * @return An integer value representing the given RiDeoptAction.
+     * Converts a {@link DeoptimizationAction} into an integer value.
+     *
+     * @return an integer value representing the given {@link DeoptimizationAction}
      */
     int convertDeoptAction(DeoptimizationAction action);
 }

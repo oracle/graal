@@ -168,14 +168,14 @@ public class CheckCastEliminationPhase extends Phase {
                 for (PhiNode phi : merge.phis()) {
                     if (phi.type() == PhiType.Value && phi.kind() == Kind.Object) {
                         ValueNode firstValue = phi.valueAt(0);
-                        RiResolvedType type = getNodeType(firstValue);
+                        ResolvedJavaType type = getNodeType(firstValue);
                         boolean notNull = knownNotNull.contains(firstValue);
                         boolean nul = knownNull.contains(firstValue);
 
                         for (int i = 0; i < withStates.size(); i++) {
                             State otherState = withStates.get(i);
                             ValueNode value = phi.valueAt(i + 1);
-                            RiResolvedType otherType = otherState.getNodeType(value);
+                            ResolvedJavaType otherType = otherState.getNodeType(value);
                             type = widen(type, otherType);
                             notNull &= otherState.knownNotNull.contains(value);
                             nul &= otherState.knownNull.contains(value);

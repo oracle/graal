@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 
 /**
- * Implementation of RiCompiledMethod for HotSpot.
+ * Implementation of {@link InstalledCode} for HotSpot.
  * Stores a reference to the nmethod which contains the compiled code.
  * The nmethod also stores a weak reference to the HotSpotCompiledMethod
  * instance which is necessary to keep the nmethod from being unloaded.

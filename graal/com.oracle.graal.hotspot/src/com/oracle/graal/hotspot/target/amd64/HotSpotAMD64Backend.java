@@ -56,7 +56,7 @@ public class HotSpotAMD64Backend extends Backend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, RiXirGenerator xir, Assumptions assumptions) {
+    public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, XirGenerator xir, Assumptions assumptions) {
         return new AMD64LIRGenerator(graph, runtime, target, frameMap, method, lir, xir, assumptions) {
 
             @Override

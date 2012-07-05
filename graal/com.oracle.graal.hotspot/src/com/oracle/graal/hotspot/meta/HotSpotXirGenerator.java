@@ -45,7 +45,7 @@ import com.oracle.max.cri.xir.XirAssembler.XirMark;
 import com.oracle.max.cri.xir.XirAssembler.XirOperand;
 import com.oracle.max.cri.xir.XirAssembler.XirParameter;
 
-public class HotSpotXirGenerator implements RiXirGenerator {
+public class HotSpotXirGenerator implements XirGenerator {
 
     // this needs to correspond to graal_CodeInstaller.hpp
     // @formatter:off

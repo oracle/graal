@@ -385,7 +385,7 @@ public abstract class XirAssembler {
     }
 
     /**
-     * These marks let the RiXirGenerator mark positions in the generated native code and bring them in relationship with on another.
+     * These marks let the {@link XirGenerator} mark positions in the generated native code and bring them in relationship with on another.
      * This is necessary for code patching, etc.
      */
     public static class XirMark {

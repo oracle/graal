@@ -116,9 +116,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
             // these options are important - graal will not generate correct code without them
             GraalOptions.StackShadowPages = config.stackShadowPages;
 
-            RiXirGenerator generator = new HotSpotXirGenerator(config, getTarget(), getRuntime().getGlobalStubRegisterConfig(), this);
+            XirGenerator generator = new HotSpotXirGenerator(config, getTarget(), getRuntime().getGlobalStubRegisterConfig(), this);
             if (Logger.ENABLED) {
-                generator = LoggingProxy.getProxy(RiXirGenerator.class, generator);
+                generator = LoggingProxy.getProxy(XirGenerator.class, generator);
             }
 
             Backend backend = Backend.create(runtime, target);

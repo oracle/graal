@@ -78,7 +78,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected final LIR lir;
     protected final XirSupport xirSupport;
-    protected final RiXirGenerator xir;
+    protected final XirGenerator xir;
     private final DebugInfoBuilder debugInfoBuilder;
 
     private Block currentBlock;
@@ -142,7 +142,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     private LockScope curLocks;
 
 
-    public LIRGenerator(Graph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, RiXirGenerator xir, Assumptions assumptions) {
+    public LIRGenerator(Graph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, XirGenerator xir, Assumptions assumptions) {
         this.graph = graph;
         this.runtime = runtime;
         this.target = target;

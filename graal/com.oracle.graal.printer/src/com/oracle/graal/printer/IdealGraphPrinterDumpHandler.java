@@ -102,7 +102,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
             final Graph graph = (Graph) object;
 
             if (printer != null && printer.isValid()) {
-                // Get all current RiResolvedMethod instances in the context.
+                // Get all current ResolvedJavaMethod instances in the context.
                 List<String> inlineContext = getInlineContext();
 
                 // Reverse list such that inner method comes after outer method.
