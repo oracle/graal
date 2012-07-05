@@ -230,13 +230,14 @@ public final class DebugScope {
     }
 
     public Iterable<Object> getCurrentContext() {
+        final DebugScope scope = this;
         return new Iterable<Object>() {
 
             @Override
             public Iterator<Object> iterator() {
                 return new Iterator<Object>() {
 
-                    DebugScope currentScope = DebugScope.this;
+                    DebugScope currentScope = scope;
                     int objectIndex;
 
                     @Override
