@@ -36,12 +36,17 @@ public final class VirtualObject extends Value {
     private final int id;
 
     /**
-     * Creates a new CiVirtualObject for the given type, with the given fields. If the type is an instance class then the values array needs to have one entry for each field, ordered in
-     * like the fields returned by {@link ResolvedJavaType#declaredFields()}. If the type is an array then the length of the values array determines the reallocated array length.
-     * @param type the type of the object whose allocation was removed during compilation. This can be either an instance of an array type.
+     * Creates a new {@link VirtualObject} for the given type, with the given fields. If the type is an instance class
+     * then the values array needs to have one entry for each field, ordered in like the fields returned by
+     * {@link ResolvedJavaType#declaredFields()}. If the type is an array then the length of the values array determines
+     * the reallocated array length.
+     *
+     * @param type the type of the object whose allocation was removed during compilation. This can be either an
+     *            instance of an array type.
      * @param values an array containing all the values to be stored into the object when it is recreated.
-     * @param id a unique id that identifies the object within the debug information for one position in the compiled code.
-     * @return a new CiVirtualObject instance.
+     * @param id a unique id that identifies the object within the debug information for one position in the compiled
+     *            code.
+     * @return a new {@link VirtualObject} instance.
      */
     public static VirtualObject get(JavaType type, Value[] values, int id) {
         return new VirtualObject(type, values, id);

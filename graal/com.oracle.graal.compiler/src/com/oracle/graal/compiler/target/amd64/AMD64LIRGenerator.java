@@ -32,7 +32,7 @@ import java.util.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
-import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
+import com.oracle.max.cri.xir.XirAssembler.XirMark;
 import com.oracle.max.cri.xir.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.*;

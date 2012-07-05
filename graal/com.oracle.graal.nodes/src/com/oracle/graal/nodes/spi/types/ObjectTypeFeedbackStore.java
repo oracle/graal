@@ -498,9 +498,9 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     /*
 //    equals contains all the values that might happen to be in this variable. If it is null then there is no information about possible values.
 //    If it is empty, then we're currently in a branch that will be removed by canonicalization later on.
-    private Set<CiConstant> equals;
+    private Set<Constant> equals;
 //    notEquals contains all the values that cannot be in this variable.
-    private Set<CiConstant> notEquals;
+    private Set<Constant> notEquals;
 
     private HashMap<ValueNode, Condition> valueBounds;
 
@@ -536,7 +536,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     @Override
-    public void constantBound(Condition condition, CiConstant constant) {
+    public void constantBound(Condition condition, Constant constant) {
         assert condition == Condition.EQ || condition == Condition.NE;
 
         if (condition == Condition.EQ) {
@@ -633,7 +633,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
             }
         }
         if (nonNull) {
-            constantBound(Condition.NE, CiConstant.NULL_OBJECT);
+            constantBound(Condition.NE, Constant.NULL_OBJECT);
         }
     }
 
@@ -653,7 +653,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
                 exactTypes.clear();
             }
         }
-        constantBound(Condition.NE, CiConstant.NULL_OBJECT);
+        constantBound(Condition.NE, Constant.NULL_OBJECT);
     }
 
     @Override
@@ -673,8 +673,8 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
             equals = null;
         }
         if (notEquals != null && !notEquals.isEmpty() && other.notEquals != null && !other.notEquals.isEmpty()) {
-            for (Iterator<CiConstant> iter = notEquals.iterator(); iter.hasNext();) {
-                CiConstant constant = iter.next();
+            for (Iterator<Constant> iter = notEquals.iterator(); iter.hasNext();) {
+                Constant constant = iter.next();
                 if (!other.notEquals.contains(constant)) {
                     iter.remove();
                 }
@@ -727,7 +727,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
                 str.append(equals.iterator().next());
             } else {
                 str.append("(");
-                for (CiConstant constant : equals) {
+                for (Constant constant : equals) {
                     str.append(constant).append(',');
                 }
                 str.setLength(str.length() - 1);
@@ -741,7 +741,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
                 str.append(notEquals.iterator().next());
             } else {
                 str.append("(");
-                for (CiConstant constant : notEquals) {
+                for (Constant constant : notEquals) {
                     str.append(constant).append(',');
                 }
                 str.setLength(str.length() - 1);

@@ -55,13 +55,13 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.cri.xir.CiXirAssembler.XirConstant;
-import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
-import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
-import com.oracle.max.cri.xir.CiXirAssembler.XirOperand;
-import com.oracle.max.cri.xir.CiXirAssembler.XirParameter;
-import com.oracle.max.cri.xir.CiXirAssembler.XirRegister;
-import com.oracle.max.cri.xir.CiXirAssembler.XirTemp;
+import com.oracle.max.cri.xir.XirAssembler.XirConstant;
+import com.oracle.max.cri.xir.XirAssembler.XirInstruction;
+import com.oracle.max.cri.xir.XirAssembler.XirMark;
+import com.oracle.max.cri.xir.XirAssembler.XirOperand;
+import com.oracle.max.cri.xir.XirAssembler.XirParameter;
+import com.oracle.max.cri.xir.XirAssembler.XirRegister;
+import com.oracle.max.cri.xir.XirAssembler.XirTemp;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.criutils.*;
 
@@ -504,7 +504,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     private static boolean canBeNullCheck(LocationNode location) {
-        // TODO: Make this part of CiTarget
+        // TODO: Make this part of TargetDescription
         return !(location instanceof IndexedLocationNode) && location.displacement() < 4096;
     }
 

@@ -166,7 +166,7 @@ public class CheckCastEliminationPhase extends Phase {
             // this piece of code handles phis (merges the types and knownNull/knownNotNull of the values)
             if (!(merge instanceof LoopBeginNode)) {
                 for (PhiNode phi : merge.phis()) {
-                    if (phi.type() == PhiType.Value && phi.kind() == CiKind.Object) {
+                    if (phi.type() == PhiType.Value && phi.kind() == Kind.Object) {
                         ValueNode firstValue = phi.valueAt(0);
                         RiResolvedType type = getNodeType(firstValue);
                         boolean notNull = knownNotNull.contains(firstValue);

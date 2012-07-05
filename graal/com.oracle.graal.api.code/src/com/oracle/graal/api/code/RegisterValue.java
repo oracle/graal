@@ -25,8 +25,8 @@ package com.oracle.graal.api.code;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Denotes a register that stores a value of a fixed kind. There is exactly one (canonical) instance of {@code
- * CiRegisterValue} for each ({@link Register}, {@link Kind}) pair. Use {@link Register#asValue(Kind)} to
+ * Denotes a register that stores a value of a fixed kind. There is exactly one (canonical) instance of {@link
+ * RegisterValue} for each ({@link Register}, {@link Kind}) pair. Use {@link Register#asValue(Kind)} to
  * retrieve the canonical {@link RegisterValue} instance for a given (register,kind) pair.
  */
 public final class RegisterValue extends Value {

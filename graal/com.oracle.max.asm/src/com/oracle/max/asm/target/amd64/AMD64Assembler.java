@@ -202,8 +202,8 @@ public class AMD64Assembler extends AbstractAssembler {
         if (base == Register.Frame) {
             assert frameRegister != null : "cannot use register " + Register.Frame + " in assembler with null register configuration";
             base = frameRegister;
-//        } else if (base == CiRegister.CallerFrame) {
-//            assert frameRegister != null : "cannot use register " + CiRegister.Frame + " in assembler with null register configuration";
+//        } else if (base == Register.CallerFrame) {
+//            assert frameRegister != null : "cannot use register " + Register.Frame + " in assembler with null register configuration";
 //            base = frameRegister;
 //            disp += targetMethod.frameSize() + 8;
         }

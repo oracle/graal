@@ -22,7 +22,7 @@
  */
 package com.oracle.max.cri.xir;
 
-import static com.oracle.max.cri.xir.CiXirAssembler.XirOp.*;
+import static com.oracle.max.cri.xir.XirAssembler.XirOp.*;
 
 import java.util.*;
 
@@ -34,7 +34,7 @@ import com.oracle.graal.api.meta.*;
  * Represents an assembler that allows a client such as the runtime system to
  * create {@link XirTemplate XIR templates}.
  */
-public abstract class CiXirAssembler {
+public abstract class XirAssembler {
 
     protected XirOperand resultOperand;
     protected boolean allocateResultOperand;
@@ -60,7 +60,7 @@ public abstract class CiXirAssembler {
 
     protected final TargetDescription target;
 
-    public CiXirAssembler(TargetDescription target) {
+    public XirAssembler(TargetDescription target) {
         this.target = target;
     }
 
@@ -165,7 +165,7 @@ public abstract class CiXirAssembler {
          */
         public final Object name;
 
-        public XirOperand(CiXirAssembler asm, Object name, Kind kind) {
+        public XirOperand(XirAssembler asm, Object name, Kind kind) {
             this.kind = kind;
             this.name = name;
             this.index = asm.variableCount++;
@@ -198,7 +198,7 @@ public abstract class CiXirAssembler {
 
         public final boolean canBeConstant;
 
-        XirParameter(CiXirAssembler asm, String name, Kind kind, boolean canBeConstant) {
+        XirParameter(XirAssembler asm, String name, Kind kind, boolean canBeConstant) {
             super(asm, name, kind);
             this.parameterIndex = asm.parameters.size();
             this.canBeConstant = canBeConstant;
@@ -208,7 +208,7 @@ public abstract class CiXirAssembler {
     }
 
     public static class XirConstantParameter extends XirParameter implements XirConstantOperand {
-        XirConstantParameter(CiXirAssembler asm, String name, Kind kind) {
+        XirConstantParameter(XirAssembler asm, String name, Kind kind) {
             super(asm, name, kind, true);
         }
 
@@ -218,7 +218,7 @@ public abstract class CiXirAssembler {
     }
 
     public static class XirVariableParameter extends XirParameter {
-        XirVariableParameter(CiXirAssembler asm, String name, Kind kind, boolean canBeConstant) {
+        XirVariableParameter(XirAssembler asm, String name, Kind kind, boolean canBeConstant) {
             super(asm, name, kind, canBeConstant);
         }
     }
@@ -226,7 +226,7 @@ public abstract class CiXirAssembler {
     public static class XirConstant extends XirOperand implements XirConstantOperand {
         public final Constant value;
 
-        XirConstant(CiXirAssembler asm, Constant value) {
+        XirConstant(XirAssembler asm, Constant value) {
             super(asm, value, value.kind);
             this.value = value;
         }
@@ -239,7 +239,7 @@ public abstract class CiXirAssembler {
     public static class XirTemp extends XirOperand {
         public final boolean reserve;
 
-        XirTemp(CiXirAssembler asm, String name, Kind kind, boolean reserve) {
+        XirTemp(XirAssembler asm, String name, Kind kind, boolean reserve) {
             super(asm, name, kind);
             this.reserve = reserve;
         }
@@ -248,7 +248,7 @@ public abstract class CiXirAssembler {
     public static class XirRegister extends XirTemp {
         public final Value register;
 
-        XirRegister(CiXirAssembler asm, String name, RegisterValue register, boolean reserve) {
+        XirRegister(XirAssembler asm, String name, RegisterValue register, boolean reserve) {
             super(asm, name, register.kind, reserve);
             this.register = register;
         }
@@ -934,6 +934,6 @@ public abstract class CiXirAssembler {
      */
     protected abstract XirTemplate buildTemplate(String name, boolean isStub);
 
-    public abstract CiXirAssembler copy();
+    public abstract XirAssembler copy();
 
 }

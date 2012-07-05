@@ -71,6 +71,6 @@ public interface RiXirGenerator {
      *
      * @param asm the XIR assembler
      */
-    void initialize(CiXirAssembler asm);
+    void initialize(XirAssembler asm);
 
 }

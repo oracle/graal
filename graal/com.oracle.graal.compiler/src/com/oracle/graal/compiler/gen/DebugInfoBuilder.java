@@ -62,8 +62,8 @@ public class DebugInfoBuilder {
                 }
                 current = current.outerFrameState();
             } while (current != null);
-            // fill in the CiVirtualObject values:
-            // during this process new CiVirtualObjects might be discovered, so repeat until no more changes occur.
+            // fill in the VirtualObject values:
+            // during this process new VirtualObjects might be discovered, so repeat until no more changes occur.
             boolean changed;
             do {
                 changed = false;
@@ -73,7 +73,7 @@ public class DebugInfoBuilder {
                         VirtualObjectNode vobj = entry.getKey();
                         if (vobj instanceof BoxedVirtualObjectNode) {
                             BoxedVirtualObjectNode boxedVirtualObjectNode = (BoxedVirtualObjectNode) vobj;
-                            entry.getValue().setValues(new Value[]{toCiValue(boxedVirtualObjectNode.getUnboxedValue())});
+                            entry.getValue().setValues(new Value[]{toValue(boxedVirtualObjectNode.getUnboxedValue())});
                         } else {
                             Value[] values = new Value[vobj.fieldsCount()];
                             entry.getValue().setValues(values);
@@ -82,7 +82,7 @@ public class DebugInfoBuilder {
                                 VirtualObjectState currentField = objectStates.get(vobj);
                                 assert currentField != null;
                                 for (int i = 0; i < vobj.fieldsCount(); i++) {
-                                    values[i] = toCiValue(currentField.fieldValues().get(i));
+                                    values[i] = toValue(currentField.fieldValues().get(i));
                                 }
                             }
                         }
@@ -104,17 +104,17 @@ public class DebugInfoBuilder {
 
         Value[] values = new Value[numLocals + numStack + numLocks];
         for (int i = 0; i < numLocals; i++) {
-            values[i] = toCiValue(state.localAt(i));
+            values[i] = toValue(state.localAt(i));
         }
         for (int i = 0; i < numStack; i++) {
-            values[numLocals + i] = toCiValue(state.stackAt(i));
+            values[numLocals + i] = toValue(state.stackAt(i));
         }
 
         LockScope nextLock = locks;
         for (int i = numLocks - 1; i >= 0; i--) {
             assert locks != null && nextLock.inliningIdentifier == state.inliningIdentifier() && nextLock.stateDepth == i;
 
-            Value owner = toCiValue(nextLock.monitor.object());
+            Value owner = toValue(nextLock.monitor.object());
             Value lockData = nextLock.lockData;
             boolean eliminated = nextLock.monitor.eliminated();
             values[numLocals + numStack + nextLock.stateDepth] = new MonitorValue(owner, lockData, eliminated);
@@ -135,7 +135,7 @@ public class DebugInfoBuilder {
         return frame;
     }
 
-    private Value toCiValue(ValueNode value) {
+    private Value toValue(ValueNode value) {
         if (value instanceof VirtualObjectNode) {
             VirtualObjectNode obj = (VirtualObjectNode) value;
             VirtualObject ciObj = virtualObjects.get(value);

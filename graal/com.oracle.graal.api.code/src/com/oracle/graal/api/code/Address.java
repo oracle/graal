@@ -45,7 +45,8 @@ public final class Address extends Value {
     private final int displacement;
 
     /**
-     * Creates a {@code CiAddress} with given base register, no scaling and no displacement.
+     * Creates an {@link Address} with given base register, no scaling and no displacement.
+     *
      * @param kind the kind of the value being addressed
      * @param base the base register
      */
@@ -54,7 +55,8 @@ public final class Address extends Value {
     }
 
     /**
-     * Creates a {@code CiAddress} with given base register, no scaling and a given displacement.
+     * Creates an {@link Address} with given base register, no scaling and a given displacement.
+     *
      * @param kind the kind of the value being addressed
      * @param base the base register
      * @param displacement the displacement
@@ -64,8 +66,9 @@ public final class Address extends Value {
     }
 
     /**
-     * Creates a {@code CiAddress} with given base and index registers, scaling and displacement.
-     * This is the most general constructor..
+     * Creates an {@link Address} with given base and index registers, scaling and displacement.
+     * This is the most general constructor.
+     *
      * @param kind the kind of the value being addressed
      * @param base the base register
      * @param index the index register

@@ -211,7 +211,7 @@ final class ControlFlowOptimizer {
                 // this may lead to unnecesary return instructions in the final code
 
                 assert curLastOp.info == null : "return instructions do not have debug information";
-                CiValue returnOpr = curLastOp.input(0);
+                Value returnOpr = curLastOp.input(0);
 
                 for (int j = block.numberOfPreds() - 1; j >= 0; j--) {
                     LIRBlock pred = block.predAt(j);

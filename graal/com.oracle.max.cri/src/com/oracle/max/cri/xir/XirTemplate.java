@@ -25,7 +25,7 @@ package com.oracle.max.cri.xir;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.max.cri.xir.CiXirAssembler.*;
+import com.oracle.max.cri.xir.XirAssembler.*;
 
 /**
  * Represents a completed template of XIR code that has been first assembled by
@@ -71,12 +71,12 @@ public class XirTemplate {
     /**
      * The sequence of instructions for the fast (inline) path.
      */
-    public final CiXirAssembler.XirInstruction[] fastPath;
+    public final XirAssembler.XirInstruction[] fastPath;
 
     /**
      * The sequence of instructions for the slow (out of line) path.
      */
-    public final CiXirAssembler.XirInstruction[] slowPath;
+    public final XirAssembler.XirInstruction[] slowPath;
 
     /**
      * Labels used in control transfers.
@@ -130,8 +130,8 @@ public class XirTemplate {
                        int variableCount,
                        boolean allocateResultOperand,
                        XirOperand resultOperand,
-                       CiXirAssembler.XirInstruction[] fastPath,
-                       CiXirAssembler.XirInstruction[] slowPath,
+                       XirAssembler.XirInstruction[] fastPath,
+                       XirAssembler.XirInstruction[] slowPath,
                        XirLabel[] labels,
                        XirParameter[] parameters,
                        XirTemp[] temps,

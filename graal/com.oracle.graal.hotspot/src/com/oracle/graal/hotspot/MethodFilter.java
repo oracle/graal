@@ -107,7 +107,7 @@ public class MethodFilter {
     }
 
     public boolean matches(JavaMethod o) {
-        // check method name first, since CiUtil.toJavaName is expensive
+        // check method name first, since MetaUtil.toJavaName is expensive
         if (methodName != null && !methodName.matcher(o.name()).matches()) {
             return false;
         }

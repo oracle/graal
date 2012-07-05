@@ -76,7 +76,7 @@ public abstract class Backend {
 
     public abstract TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir);
 
-    public abstract CiXirAssembler newXirAssembler();
+    public abstract XirAssembler newXirAssembler();
 
     /**
      * Emits code to do stack overflow checking.

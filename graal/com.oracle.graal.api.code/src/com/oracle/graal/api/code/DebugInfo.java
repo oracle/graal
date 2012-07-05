@@ -38,7 +38,7 @@ public class DebugInfo implements Serializable {
     private final BitSet frameRefMap;
 
     /**
-     * Creates a new {@code CiDebugInfo} from the given values.
+     * Creates a new {@link DebugInfo} from the given values.
      *
      * @param codePos the {@linkplain BytecodePosition code position} or {@linkplain BytecodeFrame frame} info
      * @param registerRefMap the register map

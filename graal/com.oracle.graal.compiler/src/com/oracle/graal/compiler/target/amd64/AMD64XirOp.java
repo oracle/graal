@@ -39,10 +39,10 @@ import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.cri.xir.CiXirAssembler.RuntimeCallInformation;
-import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
-import com.oracle.max.cri.xir.CiXirAssembler.XirLabel;
-import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
+import com.oracle.max.cri.xir.XirAssembler.RuntimeCallInformation;
+import com.oracle.max.cri.xir.XirAssembler.XirInstruction;
+import com.oracle.max.cri.xir.XirAssembler.XirLabel;
+import com.oracle.max.cri.xir.XirAssembler.XirMark;
 
 public class AMD64XirOp extends LIRXirInstruction {
     public AMD64XirOp(XirSnippet snippet, Value[] operands, Value outputOperand, Value[] inputs, Value[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
@@ -179,7 +179,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                 }
 
                 case PointerLoadDisp: {
-                    CiXirAssembler.AddressAccessInformation addressInformation = (CiXirAssembler.AddressAccessInformation) inst.extra;
+                    XirAssembler.AddressAccessInformation addressInformation = (XirAssembler.AddressAccessInformation) inst.extra;
                     boolean canTrap = addressInformation.canTrap;
 
                     Address.Scale scale = addressInformation.scale;
@@ -206,7 +206,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                 }
 
                 case LoadEffectiveAddress: {
-                    CiXirAssembler.AddressAccessInformation addressInformation = (CiXirAssembler.AddressAccessInformation) inst.extra;
+                    XirAssembler.AddressAccessInformation addressInformation = (XirAssembler.AddressAccessInformation) inst.extra;
 
                     Address.Scale scale = addressInformation.scale;
                     int displacement = addressInformation.disp;
@@ -223,7 +223,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                 }
 
                 case PointerStoreDisp: {
-                    CiXirAssembler.AddressAccessInformation addressInformation = (CiXirAssembler.AddressAccessInformation) inst.extra;
+                    XirAssembler.AddressAccessInformation addressInformation = (XirAssembler.AddressAccessInformation) inst.extra;
                     boolean canTrap = addressInformation.canTrap;
 
                     Address.Scale scale = addressInformation.scale;

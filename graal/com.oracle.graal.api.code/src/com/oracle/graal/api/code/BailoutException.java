@@ -25,7 +25,7 @@ package com.oracle.graal.api.code;
 import java.util.*;
 
 /**
- * {@code CiBailout} is thrown when the compiler refuses to compile a method because of problems with the method.
+ * Exception thrown when the compiler refuses to compile a method because of problems with the method.
  * e.g. bytecode wouldn't verify, too big, JSR/ret too complicated, etc. This exception is <i>not</i>
  * meant to indicate problems with the compiler itself.
  */
@@ -34,7 +34,8 @@ public class BailoutException extends RuntimeException {
     public static final long serialVersionUID = 8974598793458772L;
 
     /**
-     * Create a new {@code CiBailout}.
+     * Creates a new {@link BailoutException}.
+     *
      * @param reason a message indicating the reason
      */
     public BailoutException(String reason) {
@@ -42,7 +43,8 @@ public class BailoutException extends RuntimeException {
     }
 
     /**
-     * Create a new {@code CiBailout}.
+     * Creates a new {@link BailoutException}.
+     *
      * @param args parameters to the formatter
      */
     public BailoutException(String format, Object... args) {
@@ -50,7 +52,8 @@ public class BailoutException extends RuntimeException {
     }
 
     /**
-     * Create a new {@code CiBailout} t due to an internal exception being thrown.
+     * Creates a new {@link BailoutException} due to an internal exception being thrown.
+     *
      * @param reason a message indicating the reason
      * @param cause the throwable that was the cause of the bailout
      */

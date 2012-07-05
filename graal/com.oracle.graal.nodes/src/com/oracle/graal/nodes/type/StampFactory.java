@@ -120,7 +120,7 @@ public class StampFactory {
             ResolvedJavaType type = value.isNull() ? null : runtime.getTypeOf(value);
             return new ObjectStamp(type, value.isNonNull(), value.isNonNull());
         } else {
-            throw new GraalInternalError("CiKind.Object expected, actual kind: %s", value.kind);
+            throw new GraalInternalError(Kind.Object + " expected, actual kind: %s", value.kind);
         }
     }
 

@@ -111,51 +111,7 @@ public class TargetMethodAssembler {
         Debug.metric("SafepointsEmitted").add(targetMethod.getSafepoints().size());
         Debug.metric("DataPatches").add(targetMethod.getDataReferences().size());
         Debug.metric("ExceptionHandlersEmitted").add(targetMethod.getExceptionHandlers().size());
-
         Debug.log("Finished target method %s, isStub %b", name, isStub);
-/*
-        if (GraalOptions.PrintAssembly && !TTY.isSuppressed() && !isStub) {
-            Util.printSection("Target Method", Util.SECTION_CHARACTER);
-            TTY.println("Name: " + name);
-            TTY.println("Frame size: " + targetMethod.frameSize());
-            TTY.println("Register size: " + asm.target.arch.registerReferenceMapBitCount);
-
-            if (GraalOptions.PrintCodeBytes) {
-                Util.printSection("Code", Util.SUB_SECTION_CHARACTER);
-                TTY.println("Code: %d bytes", targetMethod.targetCodeSize());
-                Util.printBytes(0L, targetMethod.targetCode(), 0, targetMethod.targetCodeSize(), GraalOptions.PrintAssemblyBytesPerLine);
-            }
-
-            Util.printSection("Disassembly", Util.SUB_SECTION_CHARACTER);
-            String disassembly = runtime.disassemble(targetMethod);
-            TTY.println(disassembly);
-            boolean noDis = disassembly == null || disassembly.length() == 0;
-
-            Util.printSection("Safepoints", Util.SUB_SECTION_CHARACTER);
-            for (CiTargetMethod.Safepoint x : targetMethod.safepoints) {
-                TTY.println(x.toString());
-                if (noDis && x.debugInfo != null) {
-                    TTY.println(CiUtil.indent(x.debugInfo.toString(), "  "));
-                }
-            }
-
-            Util.printSection("Data Patches", Util.SUB_SECTION_CHARACTER);
-            for (CiTargetMethod.DataPatch x : targetMethod.dataReferences) {
-                TTY.println(x.toString());
-            }
-
-            Util.printSection("Marks", Util.SUB_SECTION_CHARACTER);
-            for (CiTargetMethod.Mark x : targetMethod.marks) {
-                TTY.println(x.toString());
-            }
-
-            Util.printSection("Exception Handlers", Util.SUB_SECTION_CHARACTER);
-            for (CiTargetMethod.ExceptionHandler x : targetMethod.exceptionHandlers) {
-                TTY.println(x.toString());
-            }
-        }
-*/
-
         return targetMethod;
     }
 

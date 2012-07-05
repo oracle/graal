@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.max.cri.xir.CiXirAssembler.*;
+import com.oracle.max.cri.xir.XirAssembler.*;
 
 /**
  * Represents a {@link XirTemplate template of XIR} along with the {@link XirArgument arguments} to be passed to the
