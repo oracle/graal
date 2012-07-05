@@ -44,14 +44,6 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     String disassemble(CodeInfo code, CompilationResult tm);
 
     /**
-     * Returns the disassembly of the given method in a {@code javap}-like format.
-     *
-     * @param method the method that should be disassembled
-     * @return the disassembly. This will be of length 0 if the runtime does not support disassembling.
-     */
-    String disassemble(ResolvedJavaMethod method);
-
-    /**
      * Gets the register configuration to use when compiling a given method.
      *
      * @param method the top level method of a compilation

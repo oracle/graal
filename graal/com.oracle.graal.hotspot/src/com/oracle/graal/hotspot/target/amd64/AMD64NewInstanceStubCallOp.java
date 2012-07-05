@@ -20,17 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.target;
+package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.graal.lir.LIRInstruction.Opcode;
 
 /**
  * LIR instruction for calling HotSpot's {@code new_instance} stub. This stub is declared in c1_Runtime1.hpp
@@ -38,31 +39,36 @@ import com.oracle.graal.lir.LIRInstruction.Opcode;
  */
 @Opcode("NEW_INSTANCE")
 public class AMD64NewInstanceStubCallOp extends AMD64LIRInstruction {
+
+    /**
+     * The stub expects the hub in RDX.
+     */
+    public static final Register HUB = AMD64.rdx;
+
+    /**
+     * The stub places the result in RAX.
+     */
+    public static final Register RESULT = AMD64.rax;
+
     @Def protected Value result;
     @Use protected Value hub;
-    @Temp protected Value temp;
     @State protected LIRFrameState state;
 
     public AMD64NewInstanceStubCallOp(Value result, Value hub, LIRFrameState state) {
-        this.result = result;
         this.hub = hub;
-        this.temp = AMD64.rax.asValue(Kind.Object);
+        this.result = result;
         this.state = state;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        // rdx: (in) hub
-        // rax: (out) result
         AMD64Call.directCall(tasm, masm, HotSpotGraalRuntime.getInstance().getConfig().newInstanceStub, state);
-        if (asRegister(result) != AMD64.rax) {
-            masm.movq(asRegister(result), AMD64.rax);
-        }
     }
 
     @Override
     protected void verify() {
         super.verify();
-        assert asRegister(hub) == AMD64.rdx;
+        assert asRegister(hub) == HUB : "expects hub in " + HUB;
+        assert asRegister(result) == RESULT : "expects result in " + RESULT;
     }
 }

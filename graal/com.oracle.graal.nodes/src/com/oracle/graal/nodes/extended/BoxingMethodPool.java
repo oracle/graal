@@ -24,18 +24,17 @@ package com.oracle.graal.nodes.extended;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 
 public class BoxingMethodPool {
 
     private final Set<JavaMethod> specialMethods = new HashSet<>();
-    private final CodeCacheProvider runtime;
+    private final MetaAccessProvider runtime;
     private final ResolvedJavaMethod[] boxingMethods = new ResolvedJavaMethod[Kind.values().length];
     private final ResolvedJavaMethod[] unboxingMethods = new ResolvedJavaMethod[Kind.values().length];
     private final ResolvedJavaField[] boxFields = new ResolvedJavaField[Kind.values().length];
 
-    public BoxingMethodPool(CodeCacheProvider runtime) {
+    public BoxingMethodPool(MetaAccessProvider runtime) {
         this.runtime = runtime;
         initialize();
     }

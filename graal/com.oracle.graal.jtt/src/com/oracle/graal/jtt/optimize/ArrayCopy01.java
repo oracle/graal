@@ -31,6 +31,10 @@ public class ArrayCopy01 {
 
     public static Object[] src = new Object[]{null, null};
     public static Object[] dest = new Object[]{null, null};
+    static {
+        // Ensure System is resolved
+        System.arraycopy(src, 0, src, 0, src.length);
+    }
 
     public static int test(int srcPos, int destPos, int length) {
         System.arraycopy(src, srcPos, dest, destPos, length);

@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.extended;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -60,7 +59,7 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        CodeCacheProvider runtime = tool.runtime();
+        MetaAccessProvider runtime = tool.runtime();
         if (runtime != null && object() != null && object().isConstant() && object().kind() == Kind.Object) {
             if (this.location() == LocationNode.FINAL_LOCATION && location().getClass() == LocationNode.class) {
                 Object value = object().asConstant().asObject();

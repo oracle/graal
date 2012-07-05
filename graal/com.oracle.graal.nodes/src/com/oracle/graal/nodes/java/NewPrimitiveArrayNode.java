@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,30 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.nodes.java;
 
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.loop.*;
-import com.oracle.graal.debug.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-public class LoopTransformPhase extends Phase {
+/**
+ * The {@code NewPrimitiveArrayNode} class definition.
+ */
+public final class NewPrimitiveArrayNode extends NewArrayNode implements LIRLowerable {
 
-    @Override
-    protected void run(StructuredGraph graph) {
-        if (graph.hasLoops()) {
-            LoopsData data = new LoopsData(graph);
-            for (LoopEx loop : data.outterFirst()) {
-                double entryProbability = loop.loopBegin().forwardEnd().probability();
-                if (entryProbability > GraalOptions.MinimumPeelProbability
-                                && loop.size() + graph.getNodeCount() < GraalOptions.MaximumDesiredSize) {
-                    Debug.log("Peeling %s", loop);
-                    LoopTransformations.peel(loop);
-                    Debug.dump(graph, "After peeling %s", loop);
-                }
-            }
-        }
+    private final ResolvedJavaType elementType;
+
+    public NewPrimitiveArrayNode(ValueNode length, ResolvedJavaType elementType) {
+        super(StampFactory.exactNonNull(elementType.arrayOf()), length);
+        this.elementType = elementType;
     }
 
+    @Override
+    public ResolvedJavaType elementType() {
+        return elementType;
+    }
 
+    @Override
+    public void generate(LIRGeneratorTool gen) {
+        gen.visitNewPrimitiveArray(this);
+    }
 }

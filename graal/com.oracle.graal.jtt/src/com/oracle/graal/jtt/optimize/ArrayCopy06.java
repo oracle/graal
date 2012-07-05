@@ -27,32 +27,31 @@ import org.junit.*;
 /*
  * Tests calls to the array copy method.
  */
-public class ArrayCopy03 {
+public class ArrayCopy06 {
 
-    public static byte[] src = new byte[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    public static byte[] dest0 = new byte[]{10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
-    public static byte[] dest = new byte[]{10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+    public static short[] array = new short[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    public static short[] array0 = new short[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     static {
         // Ensure System is resolved
-        System.arraycopy(src, 0, src, 0, src.length);
+        System.arraycopy(array, 0, array, 0, array.length);
     }
 
     @Before
     public void setUp() {
         System.currentTimeMillis();
-        for (int i = 0; i < dest.length; i++) {
-            dest[i] = dest0[i];
+        for (int i = 0; i < array.length; i++) {
+            array[i] = array0[i];
         }
     }
 
-    public static byte[] test(int srcPos, int destPos, int length) {
-        System.arraycopy(src, srcPos, dest, destPos, length);
-        return dest;
+    public static short[] test(int srcPos, int destPos, int length) {
+        System.arraycopy(array, srcPos, array, destPos, length);
+        return array;
     }
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertArrayEquals(new byte[] {10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}, test(0, 0, 0));
+        Assert.assertArrayEquals(new short[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, test(0, 0, 0));
     }
 
     @Test(expected = java.lang.IndexOutOfBoundsException.class)
@@ -72,7 +71,7 @@ public class ArrayCopy03 {
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertArrayEquals(new byte[] {0, 1, 8, 7, 6, 5, 4, 3, 2, 1, 0}, test(0, 0, 2));
+        Assert.assertArrayEquals(new short[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, test(0, 0, 2));
     }
 
     @Test(expected = java.lang.IndexOutOfBoundsException.class)
@@ -92,41 +91,51 @@ public class ArrayCopy03 {
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertArrayEquals(new byte[] {10, 0, 1, 7, 6, 5, 4, 3, 2, 1, 0}, test(0, 1, 2));
+        Assert.assertArrayEquals(new short[] {0, 0, 1, 3, 4, 5, 6, 7, 8, 9, 10}, test(0, 1, 2));
     }
 
     @Test
     public void run9() throws Throwable {
-        Assert.assertArrayEquals(new byte[] {1, 2, 8, 7, 6, 5, 4, 3, 2, 1, 0}, test(1, 0, 2));
+        Assert.assertArrayEquals(new short[] {1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10}, test(1, 0, 2));
     }
 
     @Test
     public void run10() throws Throwable {
-        Assert.assertArrayEquals(new byte[] {10, 1, 2, 7, 6, 5, 4, 3, 2, 1, 0}, test(1, 1, 2));
+        Assert.assertArrayEquals(new short[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, test(1, 1, 2));
     }
 
     @Test
     public void run11() throws Throwable {
-        Assert.assertArrayEquals(new byte[] {0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0}, test(0, 0, 6));
+        Assert.assertArrayEquals(new short[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, test(0, 0, 6));
     }
 
     @Test
     public void run12() throws Throwable {
-        Assert.assertArrayEquals(new byte[] {10, 0, 1, 2, 3, 4, 4, 3, 2, 1, 0}, test(0, 1, 5));
+        Assert.assertArrayEquals(new short[] {0, 0, 1, 2, 3, 4, 6, 7, 8, 9, 10}, test(0, 1, 5));
     }
 
     @Test
     public void run13() throws Throwable {
-        Assert.assertArrayEquals(new byte[] {1, 2, 3, 4, 5, 5, 4, 3, 2, 1, 0}, test(1, 0, 5));
+        Assert.assertArrayEquals(new short[] {1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10}, test(1, 0, 5));
     }
 
     @Test
     public void run14() throws Throwable {
-        Assert.assertArrayEquals(new byte[] {10, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0}, test(1, 1, 5));
+        Assert.assertArrayEquals(new short[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, test(1, 1, 5));
     }
 
     @Test
     public void run15() throws Throwable {
-        Assert.assertArrayEquals(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, test(0, 0, 11));
+        Assert.assertArrayEquals(new short[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, test(0, 0, 11));
+    }
+
+    @Test
+    public void run16() throws Throwable {
+        Assert.assertArrayEquals(new short[] {0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, test(0, 1, 10));
+    }
+
+    @Test
+    public void run17() throws Throwable {
+        Assert.assertArrayEquals(new short[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10}, test(1, 0, 10));
     }
 }

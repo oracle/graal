@@ -58,8 +58,8 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
             lessComp = graph.unique(new IntegerLessThanNode(x(), y()));
         }
 
-        MaterializeNode equalValue = MaterializeNode.create(equalComp, graph, ConstantNode.forInt(0, graph), ConstantNode.forInt(1, graph));
-        MaterializeNode value =  MaterializeNode.create(lessComp, graph, ConstantNode.forInt(-1, graph), equalValue);
+        MaterializeNode equalValue = MaterializeNode.create(equalComp, ConstantNode.forInt(0, graph), ConstantNode.forInt(1, graph));
+        MaterializeNode value =  MaterializeNode.create(lessComp, ConstantNode.forInt(-1, graph), equalValue);
 
         graph.replaceFloating(this, value);
     }

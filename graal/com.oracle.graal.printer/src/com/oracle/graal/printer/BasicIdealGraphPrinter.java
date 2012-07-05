@@ -134,6 +134,12 @@ class BasicIdealGraphPrinter {
         stream.println("  ]]></bytecodes>");
     }
 
+    protected void printBytecodes(String disassembly) {
+        beginBytecodes();
+        stream.println(disassembly);
+        endBytecodes();
+    }
+
     protected void endMethod() {
         stream.println(" </method>");
     }

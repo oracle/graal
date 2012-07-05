@@ -25,7 +25,6 @@ package com.oracle.graal.snippets;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;
@@ -39,18 +38,41 @@ import com.oracle.graal.snippets.Snippet.Fold;
 
 public class SnippetIntrinsificationPhase extends Phase {
 
-    private final CodeCacheProvider runtime;
+    private final MetaAccessProvider runtime;
     private final BoxingMethodPool pool;
+    private final boolean intrinsificationOrFoldingCanBeDeferred;
 
-    public SnippetIntrinsificationPhase(CodeCacheProvider runtime, BoxingMethodPool pool) {
+    /**
+     * @param intrinsificationOrFoldingCanBeDeferred if true, then {@link NonConstantParameterError}s are not fatal
+     */
+    public SnippetIntrinsificationPhase(MetaAccessProvider runtime, BoxingMethodPool pool, boolean intrinsificationOrFoldingCanBeDeferred) {
         this.runtime = runtime;
         this.pool = pool;
+        this.intrinsificationOrFoldingCanBeDeferred = intrinsificationOrFoldingCanBeDeferred;
     }
 
     @Override
     protected void run(StructuredGraph graph) {
         for (Invoke i : graph.getInvokes()) {
-            tryIntrinsify(i);
+            try {
+                tryIntrinsify(i);
+            } catch (NonConstantParameterError t) {
+                if (!intrinsificationOrFoldingCanBeDeferred) {
+                    throw t;
+                }
+            }
+        }
+    }
+
+    /**
+     * Exception raised when an argument to a {@linkplain Fold foldable} or
+     * {@link NodeIntrinsic} method is not a constant.
+     */
+    @SuppressWarnings("serial")
+    public static class NonConstantParameterError extends Error {
+
+        public NonConstantParameterError(String message) {
+            super(message);
         }
     }
 
@@ -119,7 +141,9 @@ public class SnippetIntrinsificationPhase extends Phase {
             }
             ValueNode argument = tryBoxingElimination(parameterIndex, target, arguments.get(i));
             if (folding || MetaUtil.getParameterAnnotation(ConstantNodeParameter.class, parameterIndex, target) != null) {
-                assert argument instanceof ConstantNode : "parameter " + parameterIndex + " must be a compile time constant for calling " + invoke.callTarget().targetMethod() + " at " + sourceLocation(invoke.node()) + ": " + argument;
+                if (!(argument instanceof ConstantNode)) {
+                    throw new NonConstantParameterError("parameter " + parameterIndex + " must be a compile time constant for calling " + invoke.callTarget().targetMethod() + " at " + sourceLocation(invoke.node()) + ": " + argument);
+                }
                 ConstantNode constantNode = (ConstantNode) argument;
                 Constant constant = constantNode.asConstant();
                 Object o = constant.boxedValue();

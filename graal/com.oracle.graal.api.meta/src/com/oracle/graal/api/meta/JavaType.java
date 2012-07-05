@@ -65,7 +65,9 @@ public interface JavaType {
 
     /**
      * For array types, gets the type of the components.
-     * @return the component type of this array type
+     * This will be null if this is not an array type.
+     *
+     * @return the component type of this type if it is an array type otherwise null
      */
     JavaType componentType();
 

@@ -112,7 +112,7 @@ public abstract class LIRGeneratorTool {
     public abstract void visitMonitorEnter(MonitorEnterNode i);
     public abstract void visitMonitorExit(MonitorExitNode i);
     public abstract void visitNewInstance(NewInstanceNode i);
-    public abstract void visitNewTypeArray(NewTypeArrayNode i);
+    public abstract void visitNewPrimitiveArray(NewPrimitiveArrayNode i);
     public abstract void visitNewObjectArray(NewObjectArrayNode i);
     public abstract void visitNewMultiArray(NewMultiArrayNode i);
     public abstract void visitExceptionObject(ExceptionObjectNode i);

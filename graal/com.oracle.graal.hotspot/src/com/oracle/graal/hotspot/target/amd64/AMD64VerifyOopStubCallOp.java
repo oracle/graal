@@ -20,10 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.target;
+package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
@@ -37,6 +38,12 @@ import com.oracle.max.asm.target.amd64.*;
  */
 @Opcode("VERIFY_OOP")
 public class AMD64VerifyOopStubCallOp extends AMD64LIRInstruction {
+
+    /**
+     * The stub expects the object pointer in R13.
+     */
+    public static final Register OBJECT = AMD64.r13;
+
     @Use protected Value object;
     @State protected LIRFrameState state;
 
@@ -47,14 +54,12 @@ public class AMD64VerifyOopStubCallOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        // r13: (in) object
-        if (asRegister(object) != AMD64.r13) {
-            masm.push(AMD64.r13);
-            masm.movq(AMD64.r13, asRegister(object));
-        }
         AMD64Call.directCall(tasm, masm, HotSpotGraalRuntime.getInstance().getConfig().verifyOopStub, state);
-        if (asRegister(object) != AMD64.r13) {
-            masm.pop(AMD64.r13);
-        }
+    }
+
+    @Override
+    protected void verify() {
+        super.verify();
+        assert asRegister(object) == OBJECT : "expects object in " + OBJECT;
     }
 }

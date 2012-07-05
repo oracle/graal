@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import java.lang.reflect.*;
 import com.oracle.graal.api.*;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.interpreter.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
@@ -52,6 +53,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
     private HotSpotRuntime runtime;
     private GraalCompiler compiler;
     private TargetDescription target;
+    private HotSpotRuntimeInterpreterInterface runtimeInterpreterInterface;
     private volatile HotSpotGraphCache cache;
 
     private final HotSpotVMConfig config;
@@ -176,6 +178,13 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
         return compilerToVm.Signature_lookupType(returnType, accessingClass, eagerResolve);
     }
 
+    public HotSpotRuntimeInterpreterInterface getRuntimeInterpreterInterface() {
+        if (runtimeInterpreterInterface == null) {
+            runtimeInterpreterInterface = new HotSpotRuntimeInterpreterInterface(getRuntime());
+        }
+        return runtimeInterpreterInterface;
+    }
+
     public HotSpotRuntime getRuntime() {
         if (runtime == null) {
             runtime = new HotSpotRuntime(config, this);
@@ -209,6 +218,12 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
         }
         if (clazz == GraalCompiler.class) {
             return (T) getCompiler();
+        }
+        if (clazz == MetaAccessProvider.class) {
+            return (T) getRuntime();
+        }
+        if (clazz == RuntimeInterpreterInterface.class) {
+            return (T) getRuntimeInterpreterInterface();
         }
         return null;
     }

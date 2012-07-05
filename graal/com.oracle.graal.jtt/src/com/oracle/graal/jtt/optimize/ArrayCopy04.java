@@ -31,6 +31,10 @@ public class ArrayCopy04 {
 
     public static byte[] array = new byte[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     public static byte[] array0 = new byte[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    static {
+        // Ensure System is resolved
+        System.arraycopy(array, 0, array, 0, array.length);
+    }
 
     @Before
     public void setUp() {

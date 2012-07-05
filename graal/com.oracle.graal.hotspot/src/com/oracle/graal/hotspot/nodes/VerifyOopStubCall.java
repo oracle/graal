@@ -22,9 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.target.amd64.AMD64VerifyOopStubCallOp.*;
+
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.target.*;
+import com.oracle.graal.hotspot.target.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
@@ -45,9 +49,10 @@ public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowera
 
     @Override
     public void generate(LIRGenerator gen) {
+        RegisterValue objectFixed = OBJECT.asValue(Kind.Object);
+        gen.emitMove(gen.operand(object), objectFixed);
         LIRFrameState info = gen.state();
-        AMD64VerifyOopStubCallOp op = new AMD64VerifyOopStubCallOp(gen.operand(object), info);
-        gen.append(op);
+        gen.append(new AMD64VerifyOopStubCallOp(gen.operand(object), info));
     }
 
     @SuppressWarnings("unused")

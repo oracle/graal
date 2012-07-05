@@ -68,6 +68,17 @@ public class WordTypeRewriterPhase extends Phase {
             }
         }
 
+        // Replace ObjectEqualsNodes with IntegerEqualsNodes where the values being compared are words
+        for (ObjectEqualsNode objectEqualsNode : graph.getNodes().filter(ObjectEqualsNode.class).snapshot()) {
+            ValueNode x = objectEqualsNode.x();
+            ValueNode y = objectEqualsNode.y();
+            if (x.kind() == wordKind || y.kind() == wordKind) {
+                assert x.kind() == wordKind;
+                assert y.kind() == wordKind;
+                graph.replaceFloating(objectEqualsNode, graph.unique(new IntegerEqualsNode(x, y)));
+            }
+        }
+
         for (MethodCallTargetNode callTargetNode : graph.getNodes(MethodCallTargetNode.class).snapshot()) {
             ResolvedJavaMethod targetMethod = callTargetNode.targetMethod();
             Operation operation = targetMethod.getAnnotation(Word.Operation.class);
@@ -188,7 +199,7 @@ public class WordTypeRewriterPhase extends Phase {
         ValueNode a = mirror ? right : left;
         ValueNode b = mirror ? left : right;
 
-        MaterializeNode materialize = MaterializeNode.create(graph.unique(new IntegerBelowThanNode(a, b)), graph);
+        MaterializeNode materialize = MaterializeNode.create(graph.unique(new IntegerBelowThanNode(a, b)));
 
         ValueNode op;
         if (condition.canonicalNegate()) {

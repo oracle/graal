@@ -31,9 +31,9 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.*;
+import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaType.*;
+import com.oracle.graal.api.meta.JavaType.Representation;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
@@ -590,7 +590,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitNewTypeArray(NewTypeArrayNode x) {
+    public void visitNewPrimitiveArray(NewPrimitiveArrayNode x) {
         XirArgument length = toXirArgument(x.length());
         XirSnippet snippet = xir.genNewArray(site(x), length, x.elementType().kind(), null, null);
         emitXir(snippet, x, state(), true);

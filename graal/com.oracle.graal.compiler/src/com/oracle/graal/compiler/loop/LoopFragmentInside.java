@@ -41,7 +41,7 @@ public class LoopFragmentInside extends LoopFragment {
      * In the unrolling case they will be used as the value that replace the loop-phis of the duplicated inside fragment
      */
     private Map<PhiNode, ValueNode> mergedInitializers;
-    private final DuplicationReplacement dataFix = new DuplicationReplacement() {
+    private final DuplicationReplacement dataFixBefore = new DuplicationReplacement() {
         @Override
         public Node replacement(Node oriInput) {
             if (!(oriInput instanceof ValueNode)) {
@@ -56,7 +56,7 @@ public class LoopFragmentInside extends LoopFragment {
     }
 
     public LoopFragmentInside(LoopFragmentInside original) {
-        super(original.loop(), original);
+        super(null, original);
     }
 
     @Override
@@ -76,11 +76,16 @@ public class LoopFragmentInside extends LoopFragment {
     }
 
     @Override
+    public LoopEx loop() {
+        assert !this.isDuplicate();
+        return super.loop();
+    }
+
+    @Override
     public void insertBefore(LoopEx loop) {
-        if (this.loop() != loop) {
-            throw new UnsupportedOperationException();
-        }
-        patchNodes(dataFix);
+        assert this.isDuplicate() && this.original().loop() == loop;
+
+        patchNodes(dataFixBefore);
 
         BeginNode end = mergeEnds();
 
@@ -88,7 +93,7 @@ public class LoopFragmentInside extends LoopFragment {
 
         mergeEarlyExits();
 
-        BeginNode entry = getDuplicatedNode(this.loop().loopBegin());
+        BeginNode entry = getDuplicatedNode(loop.loopBegin());
         FrameState state = entry.stateAfter();
         if (state != null) {
             entry.setStateAfter(null);
@@ -137,7 +142,6 @@ public class LoopFragmentInside extends LoopFragment {
     @Override
     protected void finishDuplication() {
         // TODO (gd) ?
-
     }
 
     private void patchPeeling(LoopFragmentInside peel) {
@@ -187,7 +191,8 @@ public class LoopFragmentInside extends LoopFragment {
      * @return corresponding value in the peel
      */
     private ValueNode prim(ValueNode b) {
-        LoopBeginNode loopBegin = loop().loopBegin();
+        assert isDuplicate();
+        LoopBeginNode loopBegin = original().loop().loopBegin();
         if (loopBegin.isPhiAtMerge(b)) {
             PhiNode phi = (PhiNode) b;
             return phi.valueAt(loopBegin.forwardEnd());
@@ -203,9 +208,10 @@ public class LoopFragmentInside extends LoopFragment {
     }
 
     private BeginNode mergeEnds() {
+        assert isDuplicate();
         List<EndNode> endsToMerge = new LinkedList<>();
         Map<EndNode, LoopEndNode> reverseEnds = new HashMap<>(); // map peel's exit to the corresponding loop exits
-        LoopBeginNode loopBegin = loop().loopBegin();
+        LoopBeginNode loopBegin = original().loop().loopBegin();
         for (LoopEndNode le : loopBegin.loopEnds()) {
             EndNode duplicate = getDuplicatedNode(le);
             if (duplicate != null) {

@@ -150,9 +150,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native String disassembleNative(byte[] code, long address);
 
     @Override
-    public native String disassembleJava(HotSpotResolvedJavaMethod method);
-
-    @Override
     public native StackTraceElement JavaMethod_toStackTraceElement(HotSpotResolvedJavaMethod method, int bci);
 
     @Override
