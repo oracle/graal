@@ -27,25 +27,116 @@ import com.oracle.graal.api.meta.*;
 
 public class FloatStamp extends Stamp {
 
+    private final double lowerBound;
+    private final double upperBound;
+    private final boolean nonNaN;
+
     protected FloatStamp(Kind kind) {
-        super(kind);
+        this(kind, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, false);
         assert kind == Kind.Float || kind == Kind.Double;
+    }
+
+    protected FloatStamp(Kind kind, double lowerBound, double upperBound, boolean nonNaN) {
+        super(kind);
+        assert lowerBound <= upperBound;
+        this.lowerBound = lowerBound;
+        this.upperBound = upperBound;
+        this.nonNaN = nonNaN;
+    }
+
+    /**
+     * The (inclusive) lower bound on the value described by this stamp.
+     */
+    public double lowerBound() {
+        return lowerBound;
+    }
+
+    /**
+     * The (inclusive) upper bound on the value described by this stamp.
+     */
+    public double upperBound() {
+        return upperBound;
+    }
+
+    public boolean isUnrestricted() {
+        return lowerBound == Double.NEGATIVE_INFINITY && upperBound == Double.POSITIVE_INFINITY && !nonNaN;
+    }
+
+    public boolean contains(double value) {
+        if (Double.isNaN(value)) {
+            return !nonNaN;
+        } else {
+            return value >= lowerBound && value <= upperBound;
+        }
     }
 
     @Override
     public String toString() {
-        return "" + kind().typeChar;
+        StringBuilder str = new StringBuilder();
+        str.append(kind().typeChar);
+        str.append(nonNaN ? "!" : "");
+        if (lowerBound == upperBound) {
+            str.append(" [").append(lowerBound).append(']');
+        } else if (lowerBound != Double.NEGATIVE_INFINITY || upperBound != Double.POSITIVE_INFINITY) {
+            str.append(" [").append(lowerBound).append(" - ").append(upperBound).append(']');
+        }
+        return str.toString();
     }
 
     @Override
-    public boolean alwaysDistinct(Stamp other) {
-        return false;
+    public boolean alwaysDistinct(Stamp otherStamp) {
+        FloatStamp other = (FloatStamp) otherStamp;
+        return (nonNaN || other.nonNaN) && (lowerBound > other.upperBound || upperBound < other.lowerBound);
     }
 
     @Override
-    public Stamp meet(Stamp other) {
+    public Stamp meet(Stamp otherStamp) {
+        FloatStamp other = (FloatStamp) otherStamp;
         assert kind() == other.kind();
-        return this;
+        double meetUpperBound = Math.max(upperBound, other.upperBound);
+        double meetLowerBound = Math.min(lowerBound, other.lowerBound);
+        boolean meetNonNaN = nonNaN && other.nonNaN;
+        if (meetLowerBound == lowerBound && meetUpperBound == upperBound && meetNonNaN == nonNaN) {
+            return this;
+        } else if (meetLowerBound == other.lowerBound && meetUpperBound == other.upperBound && meetNonNaN == other.nonNaN) {
+            return other;
+        } else {
+            return new FloatStamp(kind(), meetLowerBound, meetUpperBound, meetNonNaN);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        long temp;
+        temp = Double.doubleToLongBits(lowerBound);
+        result = prime * result + (int) (temp ^ (temp >>> 32));
+        result = prime * result + (nonNaN ? 1231 : 1237);
+        temp = Double.doubleToLongBits(upperBound);
+        result = prime * result + (int) (temp ^ (temp >>> 32));
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        FloatStamp other = (FloatStamp) obj;
+        if (Double.doubleToLongBits(lowerBound) != Double.doubleToLongBits(other.lowerBound)) {
+            return false;
+        }
+        if (Double.doubleToLongBits(upperBound) != Double.doubleToLongBits(other.upperBound)) {
+            return false;
+        }
+        if (nonNaN != other.nonNaN) {
+            return false;
+        }
+        return true;
     }
 
 }
