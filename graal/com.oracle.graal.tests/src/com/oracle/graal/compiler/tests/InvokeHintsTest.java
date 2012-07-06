@@ -30,12 +30,7 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.nodes.*;
 
-/**
- * In the following tests, the usages of local variable "a" are replaced with the integer constant 0.
- * Then canonicalization is applied and it is verified that the resulting graph is equal to the
- * graph of the method that just has a "return 1" statement in it.
- */
-public class InvokeTest extends GraalCompilerTest {
+public class InvokeHintsTest extends GraalCompilerTest {
 
     private static final String REFERENCE_SNIPPET = "referenceSnippet";
 
