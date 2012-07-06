@@ -71,6 +71,8 @@ public final class GraalOptions {
     public static int     ForcedInlineEscapeWeight           = 10;
     public static boolean PrintEscapeAnalysis                = ____;
 
+    public static double TailDuplicationProbability          = 0.5;
+
     // absolute probability analysis
     public static boolean ProbabilityAnalysis                = true;
     public static int     LoopFrequencyPropagationPolicy     = -2;
@@ -210,6 +212,7 @@ public final class GraalOptions {
     public static boolean OptLivenessAnalysis                = true;
     public static boolean OptLoopTransform                   = true;
     public static boolean OptSafepointElimination            = true;
+    public static boolean OptTailDuplication                 = true;
 
     /**
      * Insert a counter in the method prologue to track the most frequently called methods that were compiled by Graal.

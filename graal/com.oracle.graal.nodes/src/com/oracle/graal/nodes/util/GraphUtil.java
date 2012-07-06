@@ -219,4 +219,23 @@ public class GraphUtil {
         }
         return v;
     }
+
+    /**
+     * Returns a string representation of the given collection of objects.
+     *
+     * @param objects The {@link Iterable} that will be used to iterate over the objects.
+     * @return A string of the format "[a, b, ...]".
+     */
+    public static String toString(Iterable< ? > objects) {
+        StringBuilder str = new StringBuilder();
+        str.append("[");
+        for (Object o : objects) {
+            str.append(o).append(", ");
+        }
+        if (str.length() > 1) {
+            str.setLength(str.length() - 2);
+        }
+        str.append("]");
+        return str.toString();
+    }
 }

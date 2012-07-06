@@ -80,6 +80,11 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
         return merge;
     }
 
+    public void setMerge(MergeNode x) {
+        updateUsages(merge, x);
+        merge = x;
+    }
+
     public NodeInputList<ValueNode> values() {
         return values;
     }

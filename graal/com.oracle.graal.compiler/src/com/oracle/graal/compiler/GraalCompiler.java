@@ -170,9 +170,17 @@ public class GraalCompiler {
 
         new LoweringPhase(runtime, assumptions).apply(graph);
 
+        if (GraalOptions.OptTailDuplication) {
+            new TailDuplicationPhase().apply(graph);
+            if (GraalOptions.OptCanonicalizer) {
+                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+            }
+        }
+
         if (GraalOptions.CullFrameStates) {
             new CullFrameStatesPhase().apply(graph);
         }
+
         new FloatingReadPhase().apply(graph);
         if (GraalOptions.OptGVN) {
             new GlobalValueNumberingPhase().apply(graph);

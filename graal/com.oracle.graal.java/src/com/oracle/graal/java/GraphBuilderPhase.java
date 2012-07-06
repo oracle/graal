@@ -1187,7 +1187,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private FixedNode createTarget(double probability, Block block, FrameStateBuilder stateAfter) {
-        assert probability >= 0 && probability <= 1;
+        assert probability >= 0 && probability <= 1.01 : probability;
         if (probability == 0 && optimisticOpts.removeNeverExecutedCode()) {
             return currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.UnreachedCode, graphId));
         } else {
