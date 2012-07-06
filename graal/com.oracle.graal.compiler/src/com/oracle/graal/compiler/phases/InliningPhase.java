@@ -84,10 +84,10 @@ public class InliningPhase extends Phase implements InliningCallback {
         graph.createNodeMap();
 
         if (hints != null) {
-            scanInvokes((Iterable<? extends Node>) Util.uncheckedCast(this.hints), -1);
+            scanInvokes((Iterable<? extends Node>) Util.uncheckedCast(this.hints));
         } else {
-            scanInvokes(graph.getNodes(InvokeNode.class), 0);
-            scanInvokes(graph.getNodes(InvokeWithExceptionNode.class), 0);
+            scanInvokes(graph.getNodes(InvokeNode.class));
+            scanInvokes(graph.getNodes(InvokeWithExceptionNode.class));
         }
 
         while (!inlineCandidates.isEmpty() && graph.getNodeCount() < GraalOptions.MaximumDesiredSize) {
@@ -131,7 +131,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                 }
 
                 if (newNodes != null && info.level < GraalOptions.MaximumInlineLevel) {
-                    scanInvokes(newNodes, info.level + 1);
+                    scanInvokes(newNodes);
                 }
             }
         }
@@ -149,17 +149,17 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
-    private void scanInvokes(final Iterable<? extends Node> nodes, final int level) {
+    private void scanInvokes(final Iterable<? extends Node> nodes) {
         Debug.scope("InliningDecisions", new Runnable() {
             public void run() {
                 for (Node node : nodes) {
                     if (node != null) {
                         if (node instanceof Invoke) {
                             Invoke invoke = (Invoke) node;
-                            scanInvoke(invoke, level);
+                            scanInvoke(invoke);
                         }
                         for (Node usage : node.usages().filterInterface(Invoke.class).snapshot()) {
-                            scanInvoke((Invoke) usage, level);
+                            scanInvoke((Invoke) usage);
                         }
                     }
                 }
@@ -167,10 +167,9 @@ public class InliningPhase extends Phase implements InliningCallback {
         });
     }
 
-    private void scanInvoke(Invoke invoke, int level) {
-        InlineInfo info = InliningUtil.getInlineInfo(invoke, level >= 0 ? level : computeInliningLevel(invoke), runtime, assumptions, this, optimisticOpts);
+    private void scanInvoke(Invoke invoke) {
+        InlineInfo info = InliningUtil.getInlineInfo(invoke, computeInliningLevel(invoke), runtime, assumptions, this, optimisticOpts);
         if (info != null) {
-            assert level == -1 || computeInliningLevel(invoke) == level : "outer FramesStates must match inlining level";
             metricInliningConsidered.increment();
             inlineCandidates.add(info);
         }
@@ -260,13 +259,13 @@ public class InliningPhase extends Phase implements InliningCallback {
     }
 
     private static int computeInliningLevel(Invoke invoke) {
-        int count = 0;
+        int count = -1;
         FrameState curState = invoke.stateAfter();
         while (curState != null) {
             count++;
             curState = curState.outerFrameState();
         }
-        return count - 1;
+        return count;
     }
 
     private static InliningPolicy createInliningPolicy() {
