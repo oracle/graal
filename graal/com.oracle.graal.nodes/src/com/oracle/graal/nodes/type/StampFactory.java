@@ -114,7 +114,7 @@ public class StampFactory {
             if (value.kind == Kind.Int || value.kind == Kind.Long) {
                 return forInteger(value.kind, value.asLong(), value.asLong(), value.asLong() & IntegerStamp.defaultMask(value.kind));
             } else if (value.kind == Kind.Float || value.kind == Kind.Double) {
-                return forFloat(value.kind, value.asDouble(), value.asDouble(), true);
+                return forFloat(value.kind, value.asDouble(), value.asDouble(), !Double.isNaN(value.asDouble()));
             }
             return forKind(value.kind.stackKind());
         }

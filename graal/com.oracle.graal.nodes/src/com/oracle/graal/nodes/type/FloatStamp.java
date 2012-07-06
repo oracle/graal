@@ -38,7 +38,7 @@ public class FloatStamp extends Stamp {
 
     protected FloatStamp(Kind kind, double lowerBound, double upperBound, boolean nonNaN) {
         super(kind);
-        assert lowerBound <= upperBound;
+        assert (!nonNaN && Double.isNaN(lowerBound) && Double.isNaN(upperBound)) || lowerBound <= upperBound;
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
         this.nonNaN = nonNaN;
