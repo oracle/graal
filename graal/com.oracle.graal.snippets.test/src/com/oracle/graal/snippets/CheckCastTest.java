@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.tests;
+package com.oracle.graal.snippets;
 
 import org.junit.*;
 

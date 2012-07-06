@@ -63,7 +63,7 @@ public interface CompilerToVM {
 
     void ConstantPool_loadReferencedType(HotSpotResolvedJavaType pool, int cpi, byte byteCode);
 
-    HotSpotCompiledMethod installMethod(HotSpotCompilationResult comp, boolean makeDefault, HotSpotCodeInfo info);
+    HotSpotCompiledMethod installMethod(HotSpotCompilationResult compResult, boolean makeDefault, HotSpotCodeInfo info);
 
     HotSpotVMConfig getConfiguration();
 
