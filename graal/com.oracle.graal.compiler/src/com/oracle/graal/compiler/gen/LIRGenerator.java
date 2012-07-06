@@ -343,6 +343,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             if (curLocks == null) {
                 curLocks = predLocks;
             } else if (curLocks != predLocks && (!pred.isLoopEnd() || predLocks != null)) {
+//                throw new GraalInternalError("cause: %s", predLocks);
                 throw new BailoutException("unbalanced monitors: predecessor blocks have different monitor states");
             }
         }
@@ -1056,11 +1057,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     private void emitSequentialSwitch(final SwitchNode x, Variable key, LabelRef defaultTarget) {
         int keyCount = x.keyCount();
-        Integer[] indexes = new Integer[keyCount];
-        for (int i = 0; i < keyCount; i++) {
-            indexes[i] = i;
-        }
-        Arrays.sort(indexes, new Comparator<Integer>() {
+        Integer[] indexes = Util.createSortedPermutation(keyCount, new Comparator<Integer>() {
             @Override
             public int compare(Integer o1, Integer o2) {
                 return x.keyProbability(o1) < x.keyProbability(o2) ? 1 : x.keyProbability(o1) > x.keyProbability(o2) ? -1 : 0;

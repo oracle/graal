@@ -336,4 +336,23 @@ public class Util {
     public static boolean isFloating(Node n) {
         return n instanceof FloatingNode;
     }
+
+    /**
+     * Creates an array of integers of length "size", in which each number from 0 to (size - 1) occurs exactly once. The
+     * integers are sorted using the given comparator. This can be used to create a sorting for arrays that cannot be
+     * modified directly.
+     *
+     * @param size The size of the range to be sorted.
+     * @param comparator A comparator that is used to compare indexes.
+     * @return An array of integers that contains each number from 0 to (size - 1) exactly once, sorted using the
+     *         comparator.
+     */
+    public static Integer[] createSortedPermutation(int size, Comparator<Integer> comparator) {
+        Integer[] indexes = new Integer[size];
+        for (int i = 0; i < size; i++) {
+            indexes[i] = i;
+        }
+        Arrays.sort(indexes, comparator);
+        return indexes;
+    }
 }
