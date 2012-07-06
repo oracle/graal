@@ -20,10 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.tests;
+package com.oracle.graal.snippets;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.*;
+import com.oracle.graal.compiler.tests.*;
 import com.oracle.graal.nodes.*;
 
 /**
