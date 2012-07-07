@@ -372,14 +372,14 @@ public class InliningUtil {
                  */
                 FixedNode current = returnMerge;
                 int opportunities = 0;
-                while (current instanceof FixedWithNextNode) {
-                    current = ((FixedWithNextNode) current).next();
+                do {
                     if (current instanceof InvokeNode && ((InvokeNode) current).callTarget().receiver() == originalReceiver) {
                         opportunities++;
                     } else if (current.inputs().contains(originalReceiver)) {
                         opportunities++;
                     }
-                }
+                    current = ((FixedWithNextNode) current).next();
+                } while (current instanceof FixedWithNextNode);
                 if (opportunities > 0) {
                     metricInliningTailDuplication.increment();
                     Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
