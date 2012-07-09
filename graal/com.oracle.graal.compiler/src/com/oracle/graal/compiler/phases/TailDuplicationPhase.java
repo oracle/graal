@@ -74,6 +74,9 @@ public class TailDuplicationPhase extends Phase {
     public static final TailDuplicationDecision DEFAULT_DECISION = new TailDuplicationDecision() {
 
         public boolean doTransform(MergeNode merge, int fixedNodeCount) {
+            if (fixedNodeCount < GraalOptions.TailDuplicationTrivialSize) {
+                return true;
+            }
             HashSet<PhiNode> improvements = new HashSet<>();
             for (PhiNode phi : merge.phis()) {
                 Stamp phiStamp = phi.stamp();
@@ -157,13 +160,13 @@ public class TailDuplicationPhase extends Phase {
             if (fixed instanceof EndNode && !(((EndNode) fixed).merge() instanceof LoopBeginNode)) {
                 metricDuplicationEnd.increment();
                 if (decision.doTransform(merge, fixedCount)) {
-                    metricDuplicationEndPerformed.add(fixedCount);
+                    metricDuplicationEndPerformed.increment();
                     new DuplicationOperation(merge, replacements).duplicate();
                 }
             } else if (merge.stateAfter() != null) {
                 metricDuplicationOther.increment();
                 if (decision.doTransform(merge, fixedCount)) {
-                    metricDuplicationOtherPerformed.add(fixedCount);
+                    metricDuplicationOtherPerformed.increment();
                     new DuplicationOperation(merge, replacements).duplicate();
                 }
             }

@@ -71,7 +71,8 @@ public final class GraalOptions {
     public static int     ForcedInlineEscapeWeight           = 10;
     public static boolean PrintEscapeAnalysis                = ____;
 
-    public static double TailDuplicationProbability          = 0.5;
+    public static double TailDuplicationProbability          = 0.2;
+    public static int    TailDuplicationTrivialSize          = 6;
 
     // absolute probability analysis
     public static boolean ProbabilityAnalysis                = true;

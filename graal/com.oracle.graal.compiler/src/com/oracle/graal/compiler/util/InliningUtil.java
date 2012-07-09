@@ -367,7 +367,7 @@ public class InliningUtil {
             }
             if (GraalOptions.OptTailDuplication) {
                 /*
-                 * We might want to perform tail duplication at the merge after a type switch, is there are invokes that would
+                 * We might want to perform tail duplication at the merge after a type switch, if there are invokes that would
                  * benefit from the improvement in type information.
                  */
                 FixedNode current = returnMerge;
