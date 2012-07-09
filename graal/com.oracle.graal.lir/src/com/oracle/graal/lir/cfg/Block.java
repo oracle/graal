@@ -53,7 +53,6 @@ public class Block {
     }
 
     public int getId() {
-        assert id >= 0;
         return id;
     }
 

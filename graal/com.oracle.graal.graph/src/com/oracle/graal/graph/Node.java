@@ -279,9 +279,6 @@ public abstract class Node implements Cloneable, Formattable {
 
     private boolean removeThisFromUsages(Node n) {
         if (n.usages.remove(this)) {
-            if (n.usages.size() == 0) {
-                graph.usagesDropped.add(n);
-            }
             return true;
         } else {
             return false;
@@ -490,6 +487,12 @@ public abstract class Node implements Cloneable, Formattable {
             default:
                 throw new RuntimeException("unknown verbosity: " + verbosity);
         }
+    }
+
+
+    @Deprecated
+    public int getId() {
+        return id;
     }
 
     @Override

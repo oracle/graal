@@ -130,12 +130,13 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
                 AccessIndexedNode x = (AccessIndexedNode) current;
                 if (GraphUtil.unProxify(x.array()) == node) {
                     int index = ((AccessIndexedNode) current).index().asConstant().asInt();
+                    StructuredGraph graph = (StructuredGraph) x.graph();
                     if (current instanceof LoadIndexedNode) {
                         x.replaceAtUsages(fieldState[index]);
-                        ((StructuredGraph) x.graph()).removeFixed(x);
+                        graph.removeFixed(x);
                     } else if (current instanceof StoreIndexedNode) {
                         fieldState[index] = ((StoreIndexedNode) x).value();
-                        ((StructuredGraph) x.graph()).removeFixed(x);
+                        graph.removeFixed(x);
                         return index;
                     }
                 }

@@ -25,6 +25,7 @@ package com.oracle.graal.lir.cfg;
 public class CFGVerifier {
     public static boolean verify(ControlFlowGraph cfg) {
         for (Block block : cfg.getBlocks()) {
+            assert block.getId() >= 0;
             assert cfg.getBlocks()[block.getId()] == block;
 
             for (Block pred : block.getPredecessors()) {
