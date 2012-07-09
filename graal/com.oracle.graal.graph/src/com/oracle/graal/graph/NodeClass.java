@@ -570,17 +570,6 @@ public class NodeClass {
                 } else {
                     assert false : "unhandled property type: " + type;
                 }
-            } else {
-                value = unsafe.getObject(node, dataOffsets[i]);
-                if (type.isArray()) {
-                    if (!type.getComponentType().isPrimitive()) {
-                        value = Arrays.toString((Object[]) value);
-                    } else if (type.getComponentType() == Integer.TYPE) {
-                        value = Arrays.toString((int[]) value);
-                    } else if (type.getComponentType() == Double.TYPE) {
-                        value = Arrays.toString((double[]) value);
-                    }
-                }
             }
             properties.put("data." + dataNames[i], value);
         }

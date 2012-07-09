@@ -94,12 +94,12 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
                 schedule = new SchedulePhase();
                 schedule.apply((StructuredGraph) graph);
             } catch (Throwable t) {
-                schedule = null;
             }
         }
+        ControlFlowGraph cfg =  schedule == null ? null : schedule.getCFG();
 
         beginNodes();
-        List<Edge> edges = printNodes(graph, schedule == null ? null : schedule.getCFG().getNodeToBlock(), noBlockNodes);
+        List<Edge> edges = printNodes(graph, cfg == null ? null : cfg.getNodeToBlock(), noBlockNodes);
         endNodes();
 
         beginEdges();
@@ -108,10 +108,10 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
         }
         endEdges();
 
-        if (schedule != null) {
+        if (cfg != null && cfg.getBlocks() != null) {
             beginControlFlow();
-            for (Block block : schedule.getCFG().getBlocks()) {
-                printBlock(graph, block, schedule.getCFG().getNodeToBlock());
+            for (Block block : cfg.getBlocks()) {
+                printBlock(graph, block, cfg.getNodeToBlock());
             }
             printNoBlock(noBlockNodes);
             endControlFlow();

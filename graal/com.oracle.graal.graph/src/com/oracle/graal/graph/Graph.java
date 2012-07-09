@@ -311,6 +311,11 @@ public class Graph {
                 }
                 return super.filter(clazz);
             }
+
+            @Override
+            public int count() {
+                return getNodeCount();
+            }
         };
     }
 

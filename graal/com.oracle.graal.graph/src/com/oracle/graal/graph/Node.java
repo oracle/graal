@@ -489,6 +489,12 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
+
+    @Deprecated
+    public int getId() {
+        return id;
+    }
+
     @Override
     public void formatTo(Formatter formatter, int flags, int width, int precision) {
         if ((flags & FormattableFlags.ALTERNATE) == FormattableFlags.ALTERNATE) {
