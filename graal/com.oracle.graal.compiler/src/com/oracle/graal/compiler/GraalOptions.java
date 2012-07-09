@@ -139,7 +139,6 @@ public final class GraalOptions {
     // Ideal graph visualizer output settings
     public static boolean PrintBinaryGraphs                  = ____;
     public static boolean PrintCFG                           = true;
-    public static int     PlotLevel                          = 3;
     public static boolean PrintIdealGraphFile                = ____;
     public static String  PrintIdealGraphAddress             = "127.0.0.1";
     public static int     PrintIdealGraphPort                = 4444;
@@ -214,6 +213,7 @@ public final class GraalOptions {
     public static boolean OptLivenessAnalysis                = true;
     public static boolean OptLoopTransform                   = true;
     public static boolean OptSafepointElimination            = true;
+    public static boolean FloatingReads                      = true;
     public static boolean OptTailDuplication                 = true;
 
     /**

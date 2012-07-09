@@ -63,49 +63,6 @@ public class BinaryGraphPrinter {
     private static final int KLASS = 0x00;
     private static final int ENUM_KLASS = 0x01;
 
-    protected static class Edge {
-        final int from;
-        final char fromIndex;
-        final int to;
-        final char toIndex;
-        final String label;
-
-        public Edge(int from, char fromIndex, int to, char toIndex, String label) {
-            this.from = from;
-            this.fromIndex = fromIndex;
-            this.to = to;
-            this.toIndex = toIndex;
-            this.label = label;
-        }
-
-        @Override
-        public int hashCode() {
-            int h = from ^ to;
-            h = 3 * h + fromIndex;
-            h = 5 * h + toIndex;
-            if (label != null) {
-                h ^= label.hashCode();
-            }
-            return h;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) {
-                return true;
-            }
-            if (obj instanceof Edge) {
-                Edge other = (Edge) obj;
-                return from == other.from
-                        && fromIndex == other.fromIndex
-                        && to == other.to
-                        && toIndex == other.toIndex
-                        && (label == other.label || (label != null && label.equals(other.label)));
-            }
-            return false;
-        }
-    }
-
     private static final class CosntantPool extends LinkedHashMap<Object, Integer> {
         private final LinkedList<Integer> availableIds;
         private int nextId;
