@@ -25,11 +25,14 @@ package com.oracle.graal.hotspot.target.amd64;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.meta.HotSpotXirGenerator.*;
+import static com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
@@ -42,11 +45,13 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.asm.TargetMethodAssembler.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.max.asm.*;
-import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.cri.xir.*;
 
 public class HotSpotAMD64Backend extends Backend {
@@ -57,37 +62,109 @@ public class HotSpotAMD64Backend extends Backend {
 
     @Override
     public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, XirGenerator xir, Assumptions assumptions) {
-        return new AMD64LIRGenerator(graph, runtime, target, frameMap, method, lir, xir, assumptions) {
-
-            @Override
-            public void visitSafepointNode(SafepointNode i) {
-                LIRFrameState info = state();
-                append(new AMD64SafepointOp(info, ((HotSpotRuntime) runtime).config));
-            }
-
-            @Override
-            public void visitExceptionObject(ExceptionObjectNode x) {
-                HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
-                RegisterValue thread = r15.asValue();
-                Address exceptionAddress = new Address(Kind.Object, thread, config.threadExceptionOopOffset);
-                Address pcAddress = new Address(Kind.Long, thread, config.threadExceptionPcOffset);
-                Value exception = emitLoad(exceptionAddress, false);
-                emitStore(exceptionAddress, Constant.NULL_OBJECT, false);
-                emitStore(pcAddress, Constant.LONG_0, false);
-                setResult(x, exception);
-            }
-
-            @Override
-            protected void emitPrologue() {
-                super.emitPrologue();
-                MethodEntryCounters.emitCounter(this, method);
-            }
-        };
+        return new HotSpotAMD64LIRGenerator(graph, runtime, target, frameMap, method, lir, xir, assumptions);
     }
 
     @Override
     public AMD64XirAssembler newXirAssembler() {
         return new AMD64XirAssembler(target);
+    }
+
+    static final class HotSpotAMD64LIRGenerator extends AMD64LIRGenerator {
+
+        private HotSpotAMD64LIRGenerator(Graph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, XirGenerator xir,
+                        Assumptions assumptions) {
+            super(graph, runtime, target, frameMap, method, lir, xir, assumptions);
+        }
+
+        @Override
+        public void visitSafepointNode(SafepointNode i) {
+            LIRFrameState info = state();
+            append(new AMD64SafepointOp(info, ((HotSpotRuntime) runtime).config));
+        }
+
+        @Override
+        public void visitExceptionObject(ExceptionObjectNode x) {
+            HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
+            RegisterValue thread = r15.asValue();
+            Address exceptionAddress = new Address(Kind.Object, thread, config.threadExceptionOopOffset);
+            Address pcAddress = new Address(Kind.Long, thread, config.threadExceptionPcOffset);
+            Value exception = emitLoad(exceptionAddress, false);
+            emitStore(exceptionAddress, Constant.NULL_OBJECT, false);
+            emitStore(pcAddress, Constant.LONG_0, false);
+            setResult(x, exception);
+        }
+
+        @Override
+        protected void emitPrologue() {
+            super.emitPrologue();
+            MethodEntryCounters.emitCounter(this, method);
+        }
+
+        @Override
+        public void emitInvoke(Invoke x) {
+            if (GraalOptions.XIRLowerInvokes) {
+                super.emitInvoke(x);
+                return;
+            }
+            final MethodCallTargetNode callTarget = x.callTarget();
+            final InvokeKind invokeKind = callTarget.invokeKind();
+            Kind[] signature = MetaUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind());
+            CallingConvention cc = frameMap.registerConfig.getCallingConvention(JavaCall, signature, target(), false);
+            frameMap.callsMethod(cc, JavaCall);
+            List<Value> argList = visitInvokeArguments(cc, callTarget.arguments());
+
+            Value address = callTarget.address() == null ? Constant.forLong(0L) : operand(callTarget.address());
+
+            final Mark[] callsiteForStaticCallStub = {null};
+
+            if (invokeKind == Static || invokeKind == Special) {
+                lir.stubs.add(new AMD64Code() {
+                    public String description() {
+                        return "static call stub for Invoke" + invokeKind;
+                    }
+                    @Override
+                    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+                        assert callsiteForStaticCallStub[0] != null;
+                        tasm.recordMark(MARK_STATIC_CALL_STUB, callsiteForStaticCallStub);
+                        masm.movq(AMD64.rbx, 0L);
+                        Label dummy = new Label();
+                        masm.jmp(dummy);
+                        masm.bind(dummy);
+                    }
+                });
+            }
+
+            CallPositionListener cpl = new CallPositionListener() {
+                @Override
+                public void beforeCall(TargetMethodAssembler tasm) {
+                    if (invokeKind == Static || invokeKind == Special) {
+                        tasm.recordMark(invokeKind == Static ? MARK_INVOKESTATIC : MARK_INVOKESPECIAL);
+                    } else {
+                        // The mark for an invocation that uses an inline cache must be placed at the instruction
+                        // that loads the klassOop from the inline cache so that the C++ code can find it
+                        // and replace the inline null value with Universe::non_oop_word()
+                        assert invokeKind == Virtual || invokeKind == Interface;
+                        tasm.recordMark(invokeKind == Virtual ? MARK_INVOKEVIRTUAL : MARK_INVOKEINTERFACE);
+                        AMD64MacroAssembler masm = (AMD64MacroAssembler) tasm.asm;
+                        AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Object), Constant.NULL_OBJECT);
+                    }
+                }
+                public void atCall(TargetMethodAssembler tasm) {
+                    if (invokeKind == Static || invokeKind == Special) {
+                        callsiteForStaticCallStub[0] = tasm.recordMark(null);
+                    }
+                }
+            };
+
+            LIRFrameState callState = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
+            Value result = resultOperandFor(x.node().kind());
+            emitCall(callTarget.targetMethod(), result, argList, address, callState, cpl);
+
+            if (isLegal(result)) {
+                setResult(x.node(), emitMove(result));
+            }
+        }
     }
 
     class HotSpotFrameContext implements FrameContext {

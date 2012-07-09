@@ -119,7 +119,8 @@ public class HotSpotXirGenerator implements XirGenerator {
                 asm.pload(target.wordKind, temp, receiver, true);
             }
             asm.mark(MARK_INVOKEINTERFACE);
-            asm.mov(tempO, asm.createConstant(Constant.forObject(HotSpotProxy.DUMMY_CONSTANT_OBJ)));
+            // Initialize the klassOop slot of an inline cache with null - the C++ Graal code will convert this to Universe::non_oop_word()
+            asm.mov(tempO, asm.createConstant(Constant.NULL_OBJECT));
 
             return asm.finishTemplate(addr, "invokeinterface");
         }
@@ -140,7 +141,8 @@ public class HotSpotXirGenerator implements XirGenerator {
                 asm.pload(target.wordKind, temp, receiver, true);
             }
             asm.mark(MARK_INVOKEVIRTUAL);
-            asm.mov(tempO, asm.createConstant(Constant.forObject(HotSpotProxy.DUMMY_CONSTANT_OBJ)));
+            // Initialize the klassOop slot of an inline cache with null - the C++ Graal code will convert this to Universe::non_oop_word()
+            asm.mov(tempO, asm.createConstant(Constant.NULL_OBJECT));
 
             return asm.finishTemplate(addr, "invokevirtual");
         }
