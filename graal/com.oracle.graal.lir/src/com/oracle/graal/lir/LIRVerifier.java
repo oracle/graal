@@ -59,7 +59,11 @@ public final class LIRVerifier {
     }
 
     public static boolean verify(final LIRInstruction op) {
-        ValueProcedure allowedProc = new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return allowed(op, value, mode, flags); } };
+        ValueProcedure allowedProc = new ValueProcedure() {
+            @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                return allowed(op, value, mode, flags);
+            }
+        };
 
         op.forEachInput(allowedProc);
         op.forEachAlive(allowedProc);
