@@ -275,7 +275,7 @@ public final class GraalOptions {
     /**
      * Use XIR to lower {@link Invoke} nodes.
      */
-    public static boolean XIRLowerInvokes = true;
+    public static boolean XIRLowerInvokes = false;
 
     static {
         // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
