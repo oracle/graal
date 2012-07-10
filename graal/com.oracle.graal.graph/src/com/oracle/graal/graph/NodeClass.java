@@ -28,6 +28,7 @@ import java.util.Map.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
+import com.oracle.graal.graph.Node.*;
 
 import sun.misc.Unsafe;
 
@@ -83,6 +84,7 @@ public class NodeClass {
     private final boolean canGVN;
     private final int startGVNNumber;
     private final String shortName;
+    private final String nameTemplate;
     private final int iterableId;
     private final boolean hasOutgoingEdges;
 
@@ -122,12 +124,17 @@ public class NodeClass {
         if (newShortName.endsWith("Node") && !newShortName.equals("StartNode") && !newShortName.equals("EndNode")) {
             newShortName = newShortName.substring(0, newShortName.length() - 4);
         }
+        String newNameTemplate = null;
         NodeInfo info = clazz.getAnnotation(NodeInfo.class);
         if (info != null) {
             if (!info.shortName().isEmpty()) {
                 newShortName = info.shortName();
             }
+            if (!info.nameTemplate().isEmpty()) {
+                newNameTemplate = info.nameTemplate();
+            }
         }
+        this.nameTemplate = newNameTemplate == null ? newShortName : newNameTemplate;
         this.shortName = newShortName;
         if (Node.IterableNodeType.class.isAssignableFrom(clazz)) {
             this.iterableId = nextIterableId++;
@@ -570,8 +577,10 @@ public class NodeClass {
                 } else {
                     assert false : "unhandled property type: " + type;
                 }
+            } else {
+                value = unsafe.getObject(node, dataOffsets[i]);
             }
-            properties.put("data." + dataNames[i], value);
+            properties.put(dataNames[i], value);
         }
     }
 
@@ -898,12 +907,32 @@ public class NodeClass {
         return false;
     }
 
-    public int directInputCount() {
-        return directInputCount;
+    public List<Position> getFirstLevelInputPositions() {
+        List<Position> positions = new ArrayList<>(inputOffsets.length);
+        for (int i = 0; i < inputOffsets.length; i++) {
+            positions.add(new Position(true, i, NOT_ITERABLE));
+        }
+        return positions;
     }
 
-    public int directSuccessorCount() {
-        return directSuccessorCount;
+    public List<Position> getFirstLevelSuccessorPositions() {
+        List<Position> positions = new ArrayList<>(successorOffsets.length);
+        for (int i = 0; i < successorOffsets.length; i++) {
+            positions.add(new Position(false, i, NOT_ITERABLE));
+        }
+        return positions;
+    }
+
+    public Class<?> getJavaClass() {
+        return clazz;
+    }
+
+    /**
+     * The template used to build the {@link Verbosity#Name} version.
+     * Variable part are specified using &#123;i#inputName&#125; or &#123;p#propertyName&#125;.
+     */
+    public String getNameTemplate() {
+        return nameTemplate;
     }
 
     static Map<Node, Node> addGraphDuplicate(Graph graph, Iterable<Node> nodes, DuplicationReplacement replacements) {

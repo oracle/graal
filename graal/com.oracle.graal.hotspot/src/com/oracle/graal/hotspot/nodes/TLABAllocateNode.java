@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -68,13 +66,6 @@ public final class TLABAllocateNode extends FixedWithNextNode implements Lowerab
     @Override
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
-    }
-
-    @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> debugProperties = super.getDebugProperties();
-        debugProperties.put("size", String.valueOf(size));
-        return debugProperties;
     }
 
     /**

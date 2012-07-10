@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
@@ -32,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  * The {@code ConstantNode} represents a constant such as an integer value,
  * long, float, object reference, address, etc.
  */
-@NodeInfo(shortName = "Const")
+@NodeInfo(shortName = "Const", nameTemplate = "Const({p#rawvalue})")
 public class ConstantNode extends BooleanNode implements LIRLowerable {
 
     public final Constant value;
@@ -216,6 +218,13 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
             default:
                 return null;
         }
+    }
+
+    @Override
+    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
+        Map<Object, Object> properties = super.getDebugProperties(map);
+        properties.put("rawvalue", value.kind.isObject() ? value.kind.format(value.boxedValue()) : value.boxedValue());
+        return properties;
     }
 
     @Override

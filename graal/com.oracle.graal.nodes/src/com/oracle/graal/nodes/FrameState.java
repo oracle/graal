@@ -352,9 +352,8 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
     }
 
     @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> properties = super.getDebugProperties();
-        properties.put("bci", bci);
+    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
+        Map<Object, Object> properties = super.getDebugProperties(map);
         if (method != null) {
             properties.put("method", MetaUtil.format("%H.%n(%p):%r", method));
             StackTraceElement ste = method.toStackTraceElement(bci);
@@ -374,8 +373,6 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
             sb.append(i == 0 ? "" : ", ").append(stackAt(i) == null ? "_" : stackAt(i).toString(Verbosity.Id));
         }
         properties.put("stack", sb.toString());
-        properties.put("rethrowException", rethrowException);
-        properties.put("duringCall", duringCall);
         return properties;
     }
 

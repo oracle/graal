@@ -180,8 +180,8 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
     }
 
     @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> properties = super.getDebugProperties();
+    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
+        Map<Object, Object> properties = super.getDebugProperties(map);
         if (!dependencies.isEmpty()) {
             StringBuilder str = new StringBuilder();
             for (int i = 0; i < dependencies.size(); i++) {

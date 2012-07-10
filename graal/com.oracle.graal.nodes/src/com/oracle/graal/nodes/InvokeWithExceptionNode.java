@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
-
+@NodeInfo(nameTemplate = "Invoke!#{p#targetMethod}")
 public class InvokeWithExceptionNode extends ControlSplitNode implements Node.IterableNodeType, Invoke, MemoryCheckpoint, LIRLowerable {
     public static final int NORMAL_EDGE = 0;
     public static final int EXCEPTION_EDGE = 1;
@@ -152,8 +152,8 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     }
 
     @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> debugProperties = super.getDebugProperties();
+    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
+        Map<Object, Object> debugProperties = super.getDebugProperties(map);
         debugProperties.put("memoryCheckpoint", "true");
         if (callTarget != null && callTarget.targetMethod() != null) {
             debugProperties.put("targetMethod", MetaUtil.format("%h.%n(%p)", callTarget.targetMethod()));

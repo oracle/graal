@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.type.*;
  * The {@code PhiNode} represents the merging of dataflow in the graph. It refers to a merge
  * and a variable.
  */
+@NodeInfo(nameTemplate = "Phi({i#values})")
 public final class PhiNode extends FloatingNode implements Canonicalizable, Node.IterableNodeType {
 
     public static enum PhiType {

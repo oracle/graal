@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -33,6 +34,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Access the value of a specific register.
  */
+@NodeInfo(nameTemplate = "Register %{p#register}")
 public final class RegisterNode extends FixedWithNextNode implements LIRLowerable {
 
     private final Register register;
@@ -63,13 +65,6 @@ public final class RegisterNode extends FixedWithNextNode implements LIRLowerabl
         } else {
             return super.toString(verbosity);
         }
-    }
-
-    @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> properties = super.getDebugProperties();
-        properties.put("register", register.toString());
-        return properties;
     }
 
     @SuppressWarnings("unused")

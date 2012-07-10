@@ -40,8 +40,8 @@ public abstract class ScheduledNode extends Node {
     }
 
     @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> debugProperties = super.getDebugProperties();
+    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
+        Map<Object, Object> debugProperties = super.getDebugProperties(map);
         if (this instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) this;
             if (stateSplit.stateAfter() != null) {

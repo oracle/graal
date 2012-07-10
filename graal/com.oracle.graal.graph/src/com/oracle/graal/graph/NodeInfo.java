@@ -27,9 +27,16 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.graal.graph.Node.*;
+
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface NodeInfo {
     String shortName() default "";
+    /**
+     * The template used to build the {@link Verbosity#Name} version.
+     * Variable part are specified using &#123;i#inputName&#125; or &#123;p#propertyName&#125;.
+     */
+    String nameTemplate() default "";
 }

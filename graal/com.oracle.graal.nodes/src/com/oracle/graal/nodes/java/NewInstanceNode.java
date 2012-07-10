@@ -65,13 +65,6 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
         gen.visitNewInstance(this);
     }
 
-    @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> properties = super.getDebugProperties();
-        properties.put("instanceClass", instanceClass);
-        return properties;
-    }
-
     public EscapeOp getEscapeOp() {
         return ESCAPE;
     }

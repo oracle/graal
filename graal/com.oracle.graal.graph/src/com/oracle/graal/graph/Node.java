@@ -416,12 +416,21 @@ public abstract class Node implements Cloneable, Formattable {
 
     /**
      * Provides a {@link Map} of properties of this node for use in debugging (e.g., to view in the ideal graph
-     * visualizer). Subclasses overriding this method should add to the map returned by their superclass.
+     * visualizer).
      */
     public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> map = new HashMap<>();
+        return getDebugProperties(new HashMap<>());
+    }
+
+
+    /**
+     * Fills a {@link Map} with properties of this node for use in debugging (e.g., to view in the ideal graph
+     * visualizer). Subclasses overriding this method should also fill the map using their superclass.
+     * @param map
+     */
+    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         map.put("usageCount", usages.size());
-        map.put("predecessorCount", predecessor == null ? 0 : 1);
+        map.put("hasPredecessor", predecessor != null);
         getNodeClass().getDebugProperties(this, map);
         return map;
     }
