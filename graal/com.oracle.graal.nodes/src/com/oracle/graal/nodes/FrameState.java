@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and
  * operand stack) at a particular point in the abstract interpretation.
  */
+@NodeInfo(nameTemplate = "FrameState@{p#method/s}:{p#bci}")
 public final class FrameState extends VirtualState implements Node.IterableNodeType, LIRLowerable {
 
     /**
@@ -355,24 +356,13 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> properties = super.getDebugProperties(map);
         if (method != null) {
-            properties.put("method", MetaUtil.format("%H.%n(%p):%r", method));
+            //properties.put("method", MetaUtil.format("%H.%n(%p):%r", method));
             StackTraceElement ste = method.toStackTraceElement(bci);
             if (ste.getFileName() != null && ste.getLineNumber() >= 0) {
-                properties.put("source", ste.getFileName() + ":" + ste.getLineNumber());
+                properties.put("sourceFile", ste.getFileName());
+                properties.put("sourceLine", ste.getLineNumber());
             }
-        } else {
-            properties.put("method", "None");
         }
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < localsSize(); i++) {
-            sb.append(i == 0 ? "" : ", ").append(localAt(i) == null ? "_" : localAt(i).toString(Verbosity.Id));
-        }
-        properties.put("locals", sb.toString());
-        sb = new StringBuilder();
-        for (int i = 0; i < stackSize(); i++) {
-            sb.append(i == 0 ? "" : ", ").append(stackAt(i) == null ? "_" : stackAt(i).toString(Verbosity.Id));
-        }
-        properties.put("stack", sb.toString());
         return properties;
     }
 

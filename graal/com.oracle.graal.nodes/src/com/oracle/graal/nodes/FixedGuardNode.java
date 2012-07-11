@@ -29,10 +29,11 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
+@NodeInfo(nameTemplate = "FixedGuard(!={p#negated}) {p#reason/s}")
 public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, LIRLowerable, Node.IterableNodeType, Negatable {
 
     @Input private BooleanNode condition;
-    private final DeoptimizationReason deoptReason;
+    private final DeoptimizationReason reason;
     private final DeoptimizationAction action;
     private boolean negated;
     private final long leafGraphId;
@@ -56,7 +57,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
         this.negated = negated;
         this.leafGraphId = leafGraphId;
         this.condition = condition;
-        this.deoptReason = deoptReason;
+        this.reason = deoptReason;
     }
 
     @Override
@@ -70,7 +71,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitGuardCheck(condition, deoptReason, action, negated, leafGraphId);
+        gen.emitGuardCheck(condition, reason, action, negated, leafGraphId);
     }
 
     @Override
@@ -84,7 +85,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
                 if (next != null) {
                     tool.deleteBranch(next);
                 }
-                setNext(graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, deoptReason, leafGraphId)));
+                setNext(graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, reason, leafGraphId)));
                 return;
             }
         }
@@ -92,7 +93,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
 
     @Override
     public void lower(LoweringTool tool) {
-        ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(tool.createGuard(condition, deoptReason, action, negated, leafGraphId)));
+        ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(tool.createGuard(condition, reason, action, negated, leafGraphId)));
         ((StructuredGraph) graph()).replaceFixedWithFixed(this, newAnchor);
     }
 

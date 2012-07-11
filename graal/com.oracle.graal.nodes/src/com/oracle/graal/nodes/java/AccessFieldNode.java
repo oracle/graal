@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.java;
 
 import java.lang.reflect.*;
-import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
@@ -88,13 +87,6 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
     @Override
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
-    }
-
-    @Override
-    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
-        Map<Object, Object> debugProperties = super.getDebugProperties(map);
-        debugProperties.put("field", MetaUtil.format("%h.%n", field));
-        return debugProperties;
     }
 
     @Override

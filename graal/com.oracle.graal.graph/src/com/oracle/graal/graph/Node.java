@@ -429,8 +429,6 @@ public abstract class Node implements Cloneable, Formattable {
      * @param map
      */
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
-        map.put("usageCount", usages.size());
-        map.put("hasPredecessor", predecessor != null);
         getNodeClass().getDebugProperties(this, map);
         return map;
     }

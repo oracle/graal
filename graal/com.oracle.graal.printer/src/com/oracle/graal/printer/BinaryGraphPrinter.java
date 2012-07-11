@@ -50,6 +50,8 @@ public class BinaryGraphPrinter {
     private static final int POOL_METHOD = 0x04;
     private static final int POOL_NULL = 0x05;
     private static final int POOL_NODE_CLASS = 0x06;
+    private static final int POOL_FIELD = 0x07;
+    private static final int POOL_SIGNATURE = 0x08;
 
     private static final int PROPERTY_POOL = 0x00;
     private static final int PROPERTY_INT = 0x01;
@@ -63,11 +65,11 @@ public class BinaryGraphPrinter {
     private static final int KLASS = 0x00;
     private static final int ENUM_KLASS = 0x01;
 
-    private static final class CosntantPool extends LinkedHashMap<Object, Integer> {
+    private static final class ConstantPool extends LinkedHashMap<Object, Integer> {
         private final LinkedList<Integer> availableIds;
         private int nextId;
         private static final long serialVersionUID = -2676889957907285681L;
-        public CosntantPool() {
+        public ConstantPool() {
             super(50, 0.65f);
             availableIds = new LinkedList<>();
         }
@@ -94,14 +96,14 @@ public class BinaryGraphPrinter {
         }
     }
 
-    private final CosntantPool constantPool;
+    private final ConstantPool constantPool;
     private final ByteBuffer buffer;
     private final WritableByteChannel channel;
     private long bytes;
     private long newPoolEntry;
 
     public BinaryGraphPrinter(WritableByteChannel channel) {
-        constantPool = new CosntantPool();
+        constantPool = new ConstantPool();
         buffer = ByteBuffer.allocateDirect(256 * 1024);
         this.channel = channel;
     }
@@ -221,6 +223,10 @@ public class BinaryGraphPrinter {
             writeByte(POOL_NULL);
             return;
         }
+        if (object instanceof ResolvedJavaType) {
+            writePoolObject(((ResolvedJavaType) object).toJava());
+            return;
+        }
         Integer id = constantPool.get(object);
         if (id == null) {
             addPoolEntry(object);
@@ -233,6 +239,10 @@ public class BinaryGraphPrinter {
                 writeByte(POOL_NODE_CLASS);
             } else if (object instanceof ResolvedJavaMethod) {
                 writeByte(POOL_METHOD);
+            } else if (object instanceof ResolvedJavaField) {
+                writeByte(POOL_FIELD);
+            } else if (object instanceof Signature) {
+                writeByte(POOL_SIGNATURE);
             } else {
                 writeByte(POOL_STRING);
             }
@@ -280,7 +290,28 @@ public class BinaryGraphPrinter {
             }
         } else if (object instanceof ResolvedJavaMethod) {
             writeByte(POOL_METHOD);
-            writeBytes(((ResolvedJavaMethod) object).code());
+            ResolvedJavaMethod method = ((ResolvedJavaMethod) object);
+            writePoolObject(method.holder());
+            writePoolObject(method.name());
+            writePoolObject(method.signature());
+            writeInt(method.accessFlags());
+            writeBytes(method.code());
+        } else if (object instanceof ResolvedJavaField) {
+            writeByte(POOL_FIELD);
+            ResolvedJavaField field = ((ResolvedJavaField) object);
+            writePoolObject(field.holder());
+            writePoolObject(field.name());
+            writePoolObject(field.type().name());
+            writeInt(field.accessFlags());
+        } else if (object instanceof Signature) {
+            writeByte(POOL_SIGNATURE);
+            Signature signature = ((Signature) object);
+            int args = signature.argumentCount(false);
+            writeShort((char) args);
+            for (int i = 0; i < args; i++) {
+                writePoolObject(signature.argumentTypeAt(i, null).name());
+            }
+            writePoolObject(signature.returnType(null).name());
         } else {
             writeByte(POOL_STRING);
             writeString(object.toString());
@@ -345,6 +376,7 @@ public class BinaryGraphPrinter {
             node.getDebugProperties(props);
             writeInt(node.getId());
             writePoolObject(nodeClass);
+            writeByte(node.predecessor() == null ? 0 : 1);
             writeShort((char) props.size());
             for (Entry<Object, Object> entry : props.entrySet()) {
                 String key = entry.getKey().toString();

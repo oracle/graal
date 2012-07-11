@@ -28,7 +28,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-@NodeInfo(shortName = "Deopt")
+@NodeInfo(shortName = "Deopt", nameTemplate = "Deopt {p#reason/s}")
 public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
 
     private String message;

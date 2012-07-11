@@ -23,25 +23,18 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code NewPrimitiveArrayNode} class definition.
  */
+@NodeInfo(nameTemplate = "NewArray {p#elementType}")
 public final class NewPrimitiveArrayNode extends NewArrayNode implements LIRLowerable {
 
-    private final ResolvedJavaType elementType;
-
-    public NewPrimitiveArrayNode(ValueNode length, ResolvedJavaType elementType) {
-        super(StampFactory.exactNonNull(elementType.arrayOf()), length);
-        this.elementType = elementType;
-    }
-
-    @Override
-    public ResolvedJavaType elementType() {
-        return elementType;
+    public NewPrimitiveArrayNode(ResolvedJavaType elementType, ValueNode length) {
+        super(elementType, length);
     }
 
     @Override

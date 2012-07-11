@@ -62,13 +62,6 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
     }
 
     @Override
-    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
-        Map<Object, Object> debugProperties = super.getDebugProperties(map);
-        debugProperties.put("shortName", "B");
-        return debugProperties;
-    }
-
-    @Override
     public void simplify(SimplifierTool tool) {
         FixedNode prev = (FixedNode) this.predecessor();
         if (prev == null) {

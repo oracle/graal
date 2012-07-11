@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.*;
-
 import com.oracle.graal.graph.*;
 
 public abstract class ScheduledNode extends Node {
@@ -38,17 +36,4 @@ public abstract class ScheduledNode extends Node {
         updatePredecessor(scheduledNext, x);
         scheduledNext = x;
     }
-
-    @Override
-    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
-        Map<Object, Object> debugProperties = super.getDebugProperties(map);
-        if (this instanceof StateSplit) {
-            StateSplit stateSplit = (StateSplit) this;
-            if (stateSplit.stateAfter() != null) {
-                debugProperties.put("stateAfter", stateSplit.stateAfter().toString(Verbosity.Debugger));
-            }
-        }
-        return debugProperties;
-    }
-
 }

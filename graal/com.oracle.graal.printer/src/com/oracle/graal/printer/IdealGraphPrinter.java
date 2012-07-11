@@ -158,11 +158,38 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
                     printProperty(bit, "true");
                 }
             }
+            if (node.getClass() == BeginNode.class) {
+                printProperty("shortName", "B");
+            } else if (node.getClass() == EndNode.class) {
+                printProperty("shortName", "E");
+            }
+            if (node.predecessor() != null) {
+                printProperty("hasPredecessor", "true");
+            }
 
             for (Entry<Object, Object> entry : props.entrySet()) {
                 String key = entry.getKey().toString();
-                String value = entry.getValue() == null ? "null" : entry.getValue().toString();
-                printProperty(key, value);
+                Object value = entry.getValue();
+                String valueString;
+                if (value == null) {
+                    valueString = "null";
+                } else {
+                    Class<?> type = value.getClass();
+                    if (type.isArray()) {
+                        if (!type.getComponentType().isPrimitive()) {
+                            valueString = Arrays.toString((Object[]) value);
+                        } else if (type.getComponentType() == Integer.TYPE) {
+                            valueString = Arrays.toString((int[]) value);
+                        } else if (type.getComponentType() == Double.TYPE) {
+                            valueString = Arrays.toString((double[]) value);
+                        } else {
+                            valueString = toString();
+                        }
+                    } else {
+                        valueString = value.toString();
+                    }
+                }
+                printProperty(key, valueString);
             }
 
             endProperties();

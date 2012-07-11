@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.util.*;
 /**
  * The {@code NewInstanceNode} represents the allocation of an instance class object.
  */
+@NodeInfo(nameTemplate = "New {p#instanceClass/s}")
 public final class NewInstanceNode extends FixedWithNextNode implements EscapeAnalyzable, Lowerable, LIRLowerable, Node.IterableNodeType {
 
     private final ResolvedJavaType instanceClass;

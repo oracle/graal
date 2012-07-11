@@ -39,6 +39,7 @@ import com.oracle.graal.nodes.util.*;
 public abstract class NewArrayNode extends FixedWithNextNode implements Lowerable, EscapeAnalyzable, TypeFeedbackProvider {
 
     @Input private ValueNode length;
+    private final ResolvedJavaType elementType;
 
     public static final int MaximumEscapeAnalysisArrayLength = 32;
 
@@ -50,9 +51,10 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
      * Constructs a new NewArrayNode.
      * @param length the node that produces the length for this allocation
      */
-    protected NewArrayNode(Stamp stamp, ValueNode length) {
-        super(stamp);
+    protected NewArrayNode(ResolvedJavaType elementType, ValueNode length) {
+        super(StampFactory.exactNonNull(elementType.arrayOf()));
         this.length = length;
+        this.elementType = elementType;
     }
 
     /**
@@ -64,17 +66,19 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
     }
 
     /**
+     * Gets the element type of the array.
+     * @return the element type of the array
+     */
+    public ResolvedJavaType elementType() {
+        return elementType;
+    }
+
+    /**
      * The rank of the array allocated by this node, i.e. how many array dimensions.
      */
     public int dimensionCount() {
         return 1;
     }
-
-    /**
-     * Gets the element type of the array.
-     * @return the element type of the array
-     */
-    public abstract ResolvedJavaType elementType();
 
     @Override
     public void typeFeedback(TypeFeedbackTool tool) {
