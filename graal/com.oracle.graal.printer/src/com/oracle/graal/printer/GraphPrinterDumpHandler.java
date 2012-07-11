@@ -42,23 +42,14 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     private static final SimpleDateFormat sdf = new SimpleDateFormat("YYYY-MM-dd-HHmm");
 
     private GraphPrinter printer;
-    private List<String> previousInlineContext = new ArrayList<>();
-    private String host;
-    private int port;
+    private List<String> previousInlineContext;
     private int failuresCount;
 
     /**
-     * Creates a new {@link GraphPrinterDumpHandler} that writes output to a file.
+     * Creates a new {@link GraphPrinterDumpHandler}.
      */
     public GraphPrinterDumpHandler() {
-    }
-
-    /**
-     * Creates a new {@link GraphPrinterDumpHandler} that sends output to a remote IdealGraphVisualizer instance.
-     */
-    public GraphPrinterDumpHandler(String host, int port) {
-        this.host = host;
-        this.port = port;
+        previousInlineContext = new ArrayList<>();
     }
 
     private void ensureInitialized() {
@@ -67,7 +58,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 return;
             }
             previousInlineContext.clear();
-            if (host == null) {
+            if (GraalOptions.PrintIdealGraphAddress == null) {
                 initializeFilePrinter();
             } else {
                 initializeNetworkPrinter();
@@ -97,8 +88,9 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     private void initializeNetworkPrinter() {
+        String host = GraalOptions.PrintIdealGraphAddress;
+        int port = GraalOptions.PrintBinaryGraphs ? GraalOptions.PrintBinaryGraphPort : GraalOptions.PrintIdealGraphPort;
         try {
-
             if (GraalOptions.PrintBinaryGraphs) {
                 printer = new BinaryGraphPrinter(SocketChannel.open(new InetSocketAddress(host, port)));
             } else {
