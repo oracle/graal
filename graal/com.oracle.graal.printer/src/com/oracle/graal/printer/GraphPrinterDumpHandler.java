@@ -25,10 +25,12 @@ package com.oracle.graal.printer;
 import java.io.*;
 import java.net.*;
 import java.nio.channels.*;
+import java.text.*;
 import java.util.*;
 
 import com.oracle.max.criutils.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 
@@ -36,28 +38,25 @@ import com.oracle.graal.graph.*;
  * Observes compilation events and uses {@link IdealGraphPrinter} to generate a graph representation that can be
  * inspected with the <a href="http://kenai.com/projects/igv">Ideal Graph Visualizer</a>.
  */
-public class BinaryGraphPrinterDumpHandler implements DebugDumpHandler {
+public class GraphPrinterDumpHandler implements DebugDumpHandler {
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("YYYY-MM-dd-HHmm");
 
-    private static final String DEFAULT_FILE_NAME = "output.gvb";
-
-    private BinaryGraphPrinter printer;
+    private GraphPrinter printer;
     private List<String> previousInlineContext = new ArrayList<>();
-    private String fileName;
     private String host;
     private int port;
     private int failuresCount;
 
     /**
-     * Creates a new {@link BinaryGraphPrinterDumpHandler} that writes output to a file named after the compiled method.
+     * Creates a new {@link GraphPrinterDumpHandler} that writes output to a file.
      */
-    public BinaryGraphPrinterDumpHandler() {
-        this.fileName = DEFAULT_FILE_NAME;
+    public GraphPrinterDumpHandler() {
     }
 
     /**
-     * Creates a new {@link BinaryGraphPrinterDumpHandler} that sends output to a remote IdealGraphVisualizer instance.
+     * Creates a new {@link GraphPrinterDumpHandler} that sends output to a remote IdealGraphVisualizer instance.
      */
-    public BinaryGraphPrinterDumpHandler(String host, int port) {
+    public GraphPrinterDumpHandler(String host, int port) {
         this.host = host;
         this.port = port;
     }
@@ -68,7 +67,7 @@ public class BinaryGraphPrinterDumpHandler implements DebugDumpHandler {
                 return;
             }
             previousInlineContext.clear();
-            if (fileName != null) {
+            if (host == null) {
                 initializeFilePrinter();
             } else {
                 initializeNetworkPrinter();
@@ -78,7 +77,19 @@ public class BinaryGraphPrinterDumpHandler implements DebugDumpHandler {
 
     private void initializeFilePrinter() {
         try {
-            printer = new BinaryGraphPrinter(FileChannel.open(new File(fileName).toPath()));
+            String ext;
+            if (GraalOptions.PrintBinaryGraphs) {
+                ext = ".bgv";
+            } else {
+                ext = ".gv.xml";
+            }
+            String fileName = "Graphs-" + Thread.currentThread().getName() + "-" + sdf.format(new Date()) + ext;
+            if (GraalOptions.PrintBinaryGraphs) {
+                printer = new BinaryGraphPrinter(FileChannel.open(new File(fileName).toPath()));
+            } else {
+                printer = new IdealGraphPrinter(new FileOutputStream(fileName));
+            }
+            TTY.println("Dumping IGV graphs to %s", fileName);
         } catch (IOException e) {
             failuresCount++;
             printer = null;
@@ -87,11 +98,17 @@ public class BinaryGraphPrinterDumpHandler implements DebugDumpHandler {
 
     private void initializeNetworkPrinter() {
         try {
-            SocketChannel channel = SocketChannel.open(new InetSocketAddress(host, port));
-            printer = new BinaryGraphPrinter(channel);
-            TTY.println("Connected to the IGV on port %d", port);
+
+            if (GraalOptions.PrintBinaryGraphs) {
+                printer = new BinaryGraphPrinter(SocketChannel.open(new InetSocketAddress(host, port)));
+            } else {
+                IdealGraphPrinter xmlPrinter = new IdealGraphPrinter(new Socket(host, port).getOutputStream());
+                xmlPrinter.begin();
+                printer = xmlPrinter;
+            }
+            TTY.println("Connected to the IGV on %s:%d", host, port);
         } catch (IOException e) {
-            TTY.println("Could not connect to the IGV on port %d: %s", port, e);
+            TTY.println("Could not connect to the IGV on %s:%d: %s", host, port, e);
             failuresCount++;
             printer = null;
         }

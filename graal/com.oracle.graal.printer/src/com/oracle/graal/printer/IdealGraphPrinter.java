@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.*;
  * Generates a representation of {@link Graph Graphs} that can be visualized and inspected with the <a
  * href="http://kenai.com/projects/igv">Ideal Graph Visualizer</a>.
  */
-class IdealGraphPrinter extends BasicIdealGraphPrinter {
+class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
     /**
      * Creates a new {@link IdealGraphPrinter} that writes to the specified output stream.
      */
@@ -51,6 +51,7 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
     /**
      * Starts a new group of graphs with the given name, short name and method byte code index (BCI) as properties.
      */
+    @Override
     public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci) {
         beginGroup();
         beginProperties();
@@ -70,6 +71,7 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
     /**
      * Prints an entire {@link Graph} with the specified title, optionally using short names for nodes.
      */
+    @Override
     public void print(Graph graph, String title, SchedulePhase predefinedSchedule) {
         beginGraph(title);
         Set<Node> noBlockNodes = new HashSet<>();

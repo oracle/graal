@@ -36,7 +36,7 @@ import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 
-public class BinaryGraphPrinter {
+public class BinaryGraphPrinter implements GraphPrinter{
     private static final int CONSTANT_POOL_MAX_SIZE = 2000;
 
     private static final int BEGIN_GROUP = 0x00;
