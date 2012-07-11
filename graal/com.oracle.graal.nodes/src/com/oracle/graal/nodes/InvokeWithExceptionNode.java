@@ -127,6 +127,15 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     }
 
     @Override
+    public void lower(LoweringTool tool) {
+        NodeInputList<ValueNode> parameters = callTarget.arguments();
+        ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
+        if (!callTarget.isStatic() && firstParam.kind() == Kind.Object && !firstParam.objectStamp().nonNull()) {
+            dependencies().add(tool.createNullCheckGuard(firstParam, leafGraphId));
+        }
+    }
+
+    @Override
     public void generate(LIRGeneratorTool gen) {
         gen.emitInvoke(this);
     }

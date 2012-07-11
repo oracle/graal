@@ -31,6 +31,16 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
     @Input protected final NodeInputList<ValueNode> arguments;
 
+    @Input protected ValueNode address;
+
+    public ValueNode address() {
+        return address;
+    }
+
+    public void setAddress(ValueNode address) {
+        this.address = address;
+    }
+
     public CallTargetNode(ValueNode[] arguments) {
         super(StampFactory.extension());
         this.arguments = new NodeInputList<>(this, arguments);

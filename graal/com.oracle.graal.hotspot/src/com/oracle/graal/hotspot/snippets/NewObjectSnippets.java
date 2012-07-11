@@ -143,7 +143,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.RuntimeConstraint);
         }
         int size = getArraySize(length, alignment, headerSize, log2ElementSize);
-        Word memory = TLABAllocateNode.allocateVariableSize(wordKind, size);
+        Word memory = TLABAllocateNode.allocateVariableSize(size, wordKind);
         return InitializeArrayNode.initialize(memory, length, size, type);
     }
 
@@ -252,7 +252,8 @@ public class NewObjectSnippets implements SnippetsInterface {
             if (!useTLAB) {
                 memory = ConstantNode.forConstant(new Constant(target.wordKind, 0L), runtime, graph);
             } else {
-                TLABAllocateNode tlabAllocateNode = graph.add(new TLABAllocateNode(size, wordKind()));
+                ConstantNode sizeNode = ConstantNode.forInt(size, graph);
+                TLABAllocateNode tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode, wordKind()));
                 graph.addBeforeFixed(newInstanceNode, tlabAllocateNode);
                 memory = tlabAllocateNode;
             }
@@ -286,7 +287,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 // Calculate aligned size
                 int size = getArraySize(length, alignment, headerSize, log2ElementSize);
                 ConstantNode sizeNode = ConstantNode.forInt(size, graph);
-                tlabAllocateNode = graph.add(new TLABAllocateNode(size, target.wordKind));
+                tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode, target.wordKind));
                 graph.addBeforeFixed(newArrayNode, tlabAllocateNode);
                 InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(tlabAllocateNode, lengthNode, sizeNode, arrayType));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
@@ -307,12 +308,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         @SuppressWarnings("unused")
         public void lower(TLABAllocateNode tlabAllocateNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) tlabAllocateNode.graph();
-            ValueNode size;
-            if (tlabAllocateNode.isSizeConstant()) {
-                size = ConstantNode.forInt(tlabAllocateNode.constantSize(), graph);
-            } else {
-                size = tlabAllocateNode.variableSize();
-            }
+            ValueNode size = tlabAllocateNode.size();
             Key key = new Key(allocate);
             Arguments arguments = arguments("size", size);
             SnippetTemplate template = cache.get(key);

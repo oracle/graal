@@ -27,7 +27,6 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.logging.*;
 
 public class ReplacingStreams {
@@ -48,7 +47,6 @@ public class ReplacingStreams {
         invocation = new InvocationSocket(output, input);
 
         addStaticObject(Value.IllegalValue);
-        addStaticObject(HotSpotProxy.DUMMY_CONSTANT_OBJ);
     }
 
     public void setInvocationSocket(InvocationSocket invocation) {

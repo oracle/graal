@@ -44,6 +44,8 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.ParametersOp;
 import com.oracle.graal.lir.StandardOp.PhiJumpOp;
 import com.oracle.graal.lir.StandardOp.PhiLabelOp;
+import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.asm.TargetMethodAssembler.CallPositionListener;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.FrameState.InliningIdentifier;
@@ -55,6 +57,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.max.asm.*;
+import com.oracle.max.cri.xir.*;
 import com.oracle.max.cri.xir.XirAssembler.XirConstant;
 import com.oracle.max.cri.xir.XirAssembler.XirInstruction;
 import com.oracle.max.cri.xir.XirAssembler.XirMark;
@@ -62,7 +65,6 @@ import com.oracle.max.cri.xir.XirAssembler.XirOperand;
 import com.oracle.max.cri.xir.XirAssembler.XirParameter;
 import com.oracle.max.cri.xir.XirAssembler.XirRegister;
 import com.oracle.max.cri.xir.XirAssembler.XirTemp;
-import com.oracle.max.cri.xir.*;
 import com.oracle.max.criutils.*;
 
 /**
@@ -900,15 +902,27 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             destinationAddress = emitXir(snippet, x.node(), addrInfo, false);
         }
 
+        final Map<XirMark, Mark> marks = snippet.marks;
+
+        CallPositionListener callPositionListener = new CallPositionListener() {
+            public void beforeCall(TargetMethodAssembler tasm) {
+            }
+            public void atCall(TargetMethodAssembler tasm) {
+                if (marks != null) {
+                    marks.put(XirMark.CALLSITE, tasm.recordMark(null, new Mark[0]));
+                }
+            }
+        };
+
         LIRFrameState callInfo = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
-        emitCall(targetMethod, resultOperand, argList, destinationAddress, callInfo, snippet.marks);
+        emitCall(targetMethod, resultOperand, argList, destinationAddress, callInfo, callPositionListener);
 
         if (isLegal(resultOperand)) {
             setResult(x.node(), emitMove(resultOperand));
         }
     }
 
-    protected abstract void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRFrameState info, Map<XirMark, Mark> marks);
+    protected abstract void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRFrameState info, CallPositionListener ecl);
 
 
     private static Value toStackKind(Value value) {

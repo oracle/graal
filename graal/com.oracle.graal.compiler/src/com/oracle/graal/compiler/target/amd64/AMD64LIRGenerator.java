@@ -29,13 +29,7 @@ import static com.oracle.graal.lir.amd64.AMD64Compare.*;
 
 import java.util.*;
 
-import com.oracle.max.asm.*;
-import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
-import com.oracle.max.cri.xir.XirAssembler.XirMark;
-import com.oracle.max.cri.xir.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -44,7 +38,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Reg;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Stack;
@@ -54,7 +47,14 @@ import com.oracle.graal.lir.amd64.AMD64Arithmetic.ShiftOp;
 import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
 import com.oracle.graal.lir.amd64.AMD64Call.IndirectCallOp;
 import com.oracle.graal.lir.amd64.AMD64Compare.CompareOp;
-import com.oracle.graal.lir.amd64.AMD64ControlFlow.*;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.BranchOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatBranchOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.SequentialSwitchOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.SwitchRangesOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
@@ -64,10 +64,15 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.NullCheckOp;
 import com.oracle.graal.lir.amd64.AMD64Move.SpillMoveOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
+import com.oracle.graal.lir.asm.TargetMethodAssembler.CallPositionListener;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.max.asm.*;
+import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
+import com.oracle.max.cri.xir.*;
 
 /**
  * This class implements the X86-specific portion of the LIR generator.
@@ -542,11 +547,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRFrameState info, Map<XirMark, Mark> marks) {
+    protected void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRFrameState info, CallPositionListener cpl) {
         if (isConstant(targetAddress)) {
-            append(new DirectCallOp(targetMethod, result, arguments.toArray(new Value[arguments.size()]), info, marks));
+            append(new DirectCallOp(targetMethod, result, arguments.toArray(new Value[arguments.size()]), info, cpl));
         } else {
-            append(new IndirectCallOp(targetMethod, result, arguments.toArray(new Value[arguments.size()]), targetAddress, info, marks));
+            append(new IndirectCallOp(targetMethod, result, arguments.toArray(new Value[arguments.size()]), targetAddress, info, cpl));
         }
     }
 

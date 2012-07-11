@@ -264,16 +264,16 @@ public enum Kind {
                 if (value instanceof String) {
                     String s = (String) value;
                     if (s.length() > 50) {
-                        return "\"" + s.substring(0, 30) + "...\"";
+                        return "String:\"" + s.substring(0, 30) + "...\"";
                     } else {
-                        return " \"" + s + '"';
+                        return "String:\"" + s + '"';
                     }
                 } else if (value instanceof JavaType) {
-                    return "class " + MetaUtil.toJavaName((JavaType) value);
-                } else if (value instanceof Enum || value instanceof FormatWithToString) {
-                    return String.valueOf(value);
+                    return "JavaType:" + MetaUtil.toJavaName((JavaType) value);
+                } else if (value instanceof Enum || value instanceof FormatWithToString || value instanceof Number) {
+                    return MetaUtil.getSimpleName(value.getClass(), true) + ":" + String.valueOf(value);
                 } else if (value instanceof Class< ? >) {
-                    return ((Class< ? >) value).getName() + ".class";
+                    return "Class:" + ((Class< ? >) value).getName();
                 } else if (value.getClass().isArray()) {
                     return formatArray(value);
                 } else {

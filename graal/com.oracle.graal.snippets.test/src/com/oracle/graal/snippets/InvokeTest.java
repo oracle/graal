@@ -44,8 +44,9 @@ public class InvokeTest extends GraalCompilerTest {
     }
 
     public static class A implements I {
+        final String name = "A";
         public String virtualMethod(String s) {
-            return s;
+            return name + s;
         }
     }
 
@@ -60,7 +61,15 @@ public class InvokeTest extends GraalCompilerTest {
         test("invokespecialConstructor", "a string");
         test("invokespecial", this, "a string");
         test("invokevirtual", new A(), "a string");
+        test("invokevirtual2", new A(), "a string");
         test("invokeinterface", new A(), "a string");
+        Object[] args = {null};
+        test("invokestatic", args);
+        test("invokespecialConstructor", args);
+        test("invokespecial", null, null);
+        test("invokevirtual", null, null);
+        test("invokevirtual2", null, null);
+        test("invokeinterface", null, null);
     }
 
     public static String invokestatic(String s) {
@@ -80,6 +89,11 @@ public class InvokeTest extends GraalCompilerTest {
     }
 
     public static String invokevirtual(A a, String s) {
+        return a.virtualMethod(s);
+    }
+
+    public static String invokevirtual2(A a, String s) {
+        a.virtualMethod(s);
         return a.virtualMethod(s);
     }
 

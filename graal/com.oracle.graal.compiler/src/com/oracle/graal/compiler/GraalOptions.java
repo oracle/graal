@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler;
 
+import com.oracle.graal.nodes.*;
+
 
 /**
  * This class encapsulates options that control the behavior of the Graal compiler.
@@ -72,6 +74,7 @@ public final class GraalOptions {
     public static boolean PrintEscapeAnalysis                = ____;
 
     public static double TailDuplicationProbability          = 0.5;
+    public static int    TailDuplicationTrivialSize          = 1;
 
     // absolute probability analysis
     public static boolean ProbabilityAnalysis                = true;
@@ -270,6 +273,11 @@ public final class GraalOptions {
     public static String HIRLowerCheckcast = "";
     public static String HIRLowerNewInstance = "";
     public static String HIRLowerNewArray = "";
+
+    /**
+     * Use XIR to lower {@link Invoke} nodes.
+     */
+    public static boolean XIRLowerInvokes = false;
 
     static {
         // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)

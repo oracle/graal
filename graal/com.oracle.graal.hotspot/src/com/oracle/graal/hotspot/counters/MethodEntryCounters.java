@@ -80,8 +80,8 @@ public class MethodEntryCounters {
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             int start = masm.codeBuffer.position();
-            int off = Unsafe.getUnsafe().arrayBaseOffset(long[].class);
-            int scale = Unsafe.getUnsafe().arrayIndexScale(long[].class);
+            int off = Unsafe.ARRAY_LONG_BASE_OFFSET;
+            int scale = Unsafe.ARRAY_LONG_INDEX_SCALE;
 
             AMD64Move.move(tasm, masm, counterArr, Constant.forObject(counter.counts));
             AMD64Move.load(tasm, masm, callerPc, new Address(Kind.Long, AMD64.rbp.asValue(Kind.Long), 8), null);
