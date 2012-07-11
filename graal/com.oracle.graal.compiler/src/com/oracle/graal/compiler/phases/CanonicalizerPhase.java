@@ -243,7 +243,7 @@ public class CanonicalizerPhase extends Phase {
             METRIC_SIMPLIFICATION_CONSIDERED_NODES.increment();
             ((Simplifiable) node).simplify(tool);
         }
-        return false;
+        return node.isDeleted();
     }
 
     /**
