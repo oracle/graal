@@ -231,6 +231,14 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             ArrayLengthNode arrayLengthNode = (ArrayLengthNode) n;
             SafeReadNode safeReadArrayLength = safeReadArrayLength(arrayLengthNode.array(), StructuredGraph.INVALID_GRAPH_ID);
             graph.replaceFixedWithFixed(arrayLengthNode, safeReadArrayLength);
+        } else if (n instanceof Invoke) {
+            Invoke invoke = (Invoke) n;
+            MethodCallTargetNode callTarget = invoke.callTarget();
+            NodeInputList<ValueNode> parameters = callTarget.arguments();
+            ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
+            if (!callTarget.isStatic() && firstParam.kind() == Kind.Object && !firstParam.objectStamp().nonNull()) {
+                invoke.node().dependencies().add(tool.createNullCheckGuard(firstParam, invoke.leafGraphId()));
+            }
         } else if (n instanceof LoadFieldNode) {
             LoadFieldNode field = (LoadFieldNode) n;
             int displacement = ((HotSpotResolvedJavaField) field.field()).offset();
