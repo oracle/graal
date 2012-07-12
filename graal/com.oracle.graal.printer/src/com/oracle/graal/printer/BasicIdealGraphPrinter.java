@@ -269,6 +269,10 @@ class BasicIdealGraphPrinter {
         flush();
     }
 
+    public void close() {
+        end();
+        stream.close();
+    }
 
     public boolean isValid() {
         return !stream.checkError();

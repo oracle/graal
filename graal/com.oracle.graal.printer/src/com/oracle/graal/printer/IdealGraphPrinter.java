@@ -46,6 +46,7 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
      */
     public IdealGraphPrinter(OutputStream stream) {
         super(stream);
+        this.begin();
     }
 
     /**

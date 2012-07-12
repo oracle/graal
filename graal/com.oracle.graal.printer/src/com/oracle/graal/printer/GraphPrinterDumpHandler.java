@@ -25,6 +25,7 @@ package com.oracle.graal.printer;
 import java.io.*;
 import java.net.*;
 import java.nio.channels.*;
+import java.nio.file.*;
 import java.text.*;
 import java.util.*;
 
@@ -58,7 +59,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 return;
             }
             previousInlineContext.clear();
-            if (GraalOptions.PrintIdealGraphAddress == null) {
+            if (GraalOptions.PrintIdealGraphFile) {
                 initializeFilePrinter();
             } else {
                 initializeNetworkPrinter();
@@ -67,21 +68,22 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     private void initializeFilePrinter() {
+        String ext;
+        if (GraalOptions.PrintBinaryGraphs) {
+            ext = ".bgv";
+        } else {
+            ext = ".gv.xml";
+        }
+        String fileName = "Graphs-" + Thread.currentThread().getName() + "-" + sdf.format(new Date()) + ext;
         try {
-            String ext;
             if (GraalOptions.PrintBinaryGraphs) {
-                ext = ".bgv";
-            } else {
-                ext = ".gv.xml";
-            }
-            String fileName = "Graphs-" + Thread.currentThread().getName() + "-" + sdf.format(new Date()) + ext;
-            if (GraalOptions.PrintBinaryGraphs) {
-                printer = new BinaryGraphPrinter(FileChannel.open(new File(fileName).toPath()));
+                printer = new BinaryGraphPrinter(FileChannel.open(new File(fileName).toPath(), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW));
             } else {
                 printer = new IdealGraphPrinter(new FileOutputStream(fileName));
             }
             TTY.println("Dumping IGV graphs to %s", fileName);
         } catch (IOException e) {
+            TTY.println("Faild to open %s to dump IGV graphs : %s", fileName, e);
             failuresCount++;
             printer = null;
         }
@@ -95,12 +97,11 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 printer = new BinaryGraphPrinter(SocketChannel.open(new InetSocketAddress(host, port)));
             } else {
                 IdealGraphPrinter xmlPrinter = new IdealGraphPrinter(new Socket(host, port).getOutputStream());
-                xmlPrinter.begin();
                 printer = xmlPrinter;
             }
             TTY.println("Connected to the IGV on %s:%d", host, port);
         } catch (IOException e) {
-            TTY.println("Could not connect to the IGV on %s:%d: %s", host, port, e);
+            TTY.println("Could not connect to the IGV on %s:%d : %s", host, port, e);
             failuresCount++;
             printer = null;
         }
@@ -197,5 +198,13 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             failuresCount++;
             printer = null;
         }
+    }
+
+    @Override
+    public void close() throws IOException {
+        for (int i = 0; i < previousInlineContext.size(); i++) {
+            closeScope();
+        }
+        printer.close();
     }
 }
