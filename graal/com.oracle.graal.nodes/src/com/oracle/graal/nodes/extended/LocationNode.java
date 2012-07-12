@@ -40,12 +40,20 @@ public class LocationNode extends FloatingNode implements LIRLowerable, ValueNum
     private Kind valueKind;
     private Object locationIdentity;
 
+    /**
+     * Denotes any location. A write to such a location kills all values in a memory map
+     * during an analysis of memory accesses in a graph.
+     */
     public static final Object ANY_LOCATION = new Object() {
         @Override
         public String toString() {
             return "ANY_LOCATION";
         }
     };
+
+    /**
+     * Denotes the location of a value that is guaranteed to be final.
+     */
     public static final Object FINAL_LOCATION = new Object() {
         @Override
         public String toString() {

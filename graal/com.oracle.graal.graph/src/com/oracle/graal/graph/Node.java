@@ -50,6 +50,11 @@ public abstract class Node implements Cloneable, Formattable {
     static final int INITIAL_ID = -1;
     static final int ALIVE_ID_START = 0;
 
+    /**
+     * Denotes a node input. This should be applied to exactly the fields of a node that are of type {@link Node}.
+     * Nodes that update their inputs outside of their constructor should call {@link Node#updateUsages(Node, Node)}
+     * just prior to doing the update of the input.
+     */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public static @interface Input {

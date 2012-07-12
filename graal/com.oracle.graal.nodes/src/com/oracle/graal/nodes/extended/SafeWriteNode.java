@@ -26,6 +26,10 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
+/**
+ * An analog to {@link WriteNode} with the additional semantics of null-checking
+ * the receiver object before writing to it.
+ */
 public class SafeWriteNode extends SafeAccessNode implements StateSplit, Lowerable {
 
     @Input private ValueNode value;

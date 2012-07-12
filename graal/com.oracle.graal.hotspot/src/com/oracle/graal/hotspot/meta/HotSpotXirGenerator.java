@@ -62,6 +62,7 @@ public class HotSpotXirGenerator implements XirGenerator {
     public static final Integer MARK_INVOKESTATIC              = 0x2002;
     public static final Integer MARK_INVOKESPECIAL             = 0x2003;
     public static final Integer MARK_INVOKEVIRTUAL             = 0x2004;
+    public static final Integer MARK_INLINE_INVOKEVIRTUAL      = 0x2005;
 
     public static final Integer MARK_IMPLICIT_NULL             = 0x3000;
     public static final Integer MARK_POLL_NEAR                 = 0x3001;
@@ -167,7 +168,7 @@ public class HotSpotXirGenerator implements XirGenerator {
             // load entry point from methodOop
             asm.mark(MARK_IMPLICIT_NULL);
             asm.pload(target.wordKind, temp, method, asm.i(config.methodCompiledEntryOffset), true);
-            asm.mark(MARK_INVOKEVIRTUAL);
+            asm.mark(MARK_INLINE_INVOKEVIRTUAL);
 
             return asm.finishTemplate(temp, "invokevirtual");
         }
