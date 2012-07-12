@@ -22,28 +22,11 @@
  */
 package com.oracle.graal.nodes.type;
 
-import com.oracle.graal.api.meta.*;
 
-public final class GenericStamp extends Stamp {
+public final class TopStamp extends Stamp {
 
-    public enum GenericStampType {
-        Dependency, Extension, Virtual, Condition, Void
-    }
-
-    private final GenericStampType type;
-
-    protected GenericStamp(GenericStampType type) {
-        super(Kind.Void);
-        this.type = type;
-    }
-
-    public GenericStampType type() {
-        return type;
-    }
-
-    @Override
-    public String toString() {
-        return type.toString();
+    TopStamp() {
+        super(null);
     }
 
     @Override
@@ -53,29 +36,7 @@ public final class GenericStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp other) {
-        if (other == StampFactory.top()) {
-            return this;
-        }
-        assert ((GenericStamp) other).type == type;
-        return this;
+        return other;
     }
 
-    @Override
-    public int hashCode() {
-        return 31 + ((type == null) ? 0 : type.hashCode());
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
-        if (type != ((GenericStamp) obj).type) {
-            return false;
-        }
-        return true;
-    }
 }

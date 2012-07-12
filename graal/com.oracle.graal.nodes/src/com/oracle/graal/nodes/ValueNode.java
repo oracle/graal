@@ -55,19 +55,16 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
     public ValueNode(Stamp stamp) {
         this.stamp = stamp;
         this.dependencies = new NodeInputList<>(this);
-        assert kind() != null && kind() == kind().stackKind() : kind() + " != " + kind().stackKind();
     }
 
     public ValueNode(Stamp stamp, ValueNode... dependencies) {
         this.stamp = stamp;
         this.dependencies = new NodeInputList<>(this, dependencies);
-        assert kind() != null && kind() == kind().stackKind() : kind() + " != " + kind().stackKind();
     }
 
     public ValueNode(Stamp stamp, List<ValueNode> dependencies) {
         this.stamp = stamp;
         this.dependencies = new NodeInputList<>(this, dependencies);
-        assert kind() != null && kind() == kind().stackKind() : kind() + " != " + kind().stackKind();
     }
 
     public Stamp stamp() {
@@ -176,6 +173,8 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
         for (ValueNode v : dependencies().nonNull()) {
             assertTrue(!(v.stamp() instanceof GenericStamp) || ((GenericStamp) v.stamp()).type() == GenericStampType.Dependency, "cannot depend on node with stamp %s", v.stamp());
         }
+        assertTrue(kind() != null, "Should have a valid kind");
+        assertTrue(kind() == kind().stackKind(), "Should have a stack kind : %s", kind());
         return super.verify();
     }
 
