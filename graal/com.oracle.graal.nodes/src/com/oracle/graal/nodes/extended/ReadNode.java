@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 
-public final class ReadNode extends AccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
+public final class ReadNode extends AccessNode implements Node.IterableNodeType, LIRLowerable/*, Canonicalizable*/ {
 
     public ReadNode(ValueNode object, LocationNode location, Stamp stamp) {
         super(object, location, stamp);
@@ -40,10 +40,11 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
         gen.setResult(this, gen.emitLoad(gen.makeAddress(location(), object()), getNullCheck()));
     }
 
-    @Override
+    // Canonicalization disabled untill we have a solution for non-Object oops in Hotspot
+    /*@Override
     public ValueNode canonical(CanonicalizerTool tool) {
         return canonicalizeRead(this, tool);
-    }
+    }*/
 
     public static ValueNode canonicalizeRead(Access read, CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
@@ -54,6 +55,7 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
                 Kind kind = read.location().getValueKind();
                 Constant constant = kind.readUnsafeConstant(value, displacement);
                 if (constant != null) {
+                    System.out.println("Canon read to " + constant);
                     return ConstantNode.forConstant(constant, runtime, read.node().graph());
                 }
             }
