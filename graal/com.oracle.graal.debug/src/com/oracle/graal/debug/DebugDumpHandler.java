@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.debug;
 
-public interface DebugDumpHandler {
+import java.io.*;
+
+public interface DebugDumpHandler extends Closeable {
     void dump(Object object, String message);
 }

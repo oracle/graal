@@ -91,6 +91,9 @@ public class FloatStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp otherStamp) {
+        if (otherStamp == StampFactory.top()) {
+            return this;
+        }
         FloatStamp other = (FloatStamp) otherStamp;
         assert kind() == other.kind();
         double meetUpperBound = Math.max(upperBound, other.upperBound);

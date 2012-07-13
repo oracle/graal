@@ -99,8 +99,6 @@ public class BinaryGraphPrinter implements GraphPrinter{
     private final ConstantPool constantPool;
     private final ByteBuffer buffer;
     private final WritableByteChannel channel;
-    private long bytes;
-    private long newPoolEntry;
 
     public BinaryGraphPrinter(WritableByteChannel channel) {
         constantPool = new ConstantPool();
@@ -109,9 +107,6 @@ public class BinaryGraphPrinter implements GraphPrinter{
     }
 
     public void print(Graph graph, String title, SchedulePhase predefinedSchedule) throws IOException {
-        long startBytes = bytes;
-        long startTime = System.currentTimeMillis();
-        long startPool = newPoolEntry;
         SchedulePhase schedule = predefinedSchedule;
         if (schedule == null) {
             try {
@@ -128,15 +123,11 @@ public class BinaryGraphPrinter implements GraphPrinter{
         writeNodes(graph);
         writeBlocks(blocks, blockToNodes);
         flush();
-        long t = System.currentTimeMillis() - startTime;
-        long b = bytes - startBytes;
-        long pool = newPoolEntry - startPool;
-        System.out.println("Graph printed in " + t + " ms and " + b + " bytes, " + pool + " pool entries created (" + graph.getNodeCount() + " nodes)");
     }
 
     private void flush() throws IOException {
         buffer.flip();
-        bytes += channel.write(buffer);
+        channel.write(buffer);
         buffer.compact();
     }
 
@@ -251,7 +242,6 @@ public class BinaryGraphPrinter implements GraphPrinter{
     }
 
     private void addPoolEntry(Object object) throws IOException {
-        newPoolEntry++;
         int index = constantPool.add(object);
         writeByte(POOL_NEW);
         writeInt(index);
@@ -438,5 +428,11 @@ public class BinaryGraphPrinter implements GraphPrinter{
 
     public void endGroup() throws IOException {
         writeByte(CLOSE_GROUP);
+    }
+
+    @Override
+    public void close() throws IOException {
+        flush();
+        channel.close();
     }
 }

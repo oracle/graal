@@ -36,7 +36,7 @@ import com.oracle.max.criutils.*;
  * The output format is such that it can then be fed to the
  * <a href="https://c1visualizer.dev.java.net/">C1 Visualizer</a>.
  */
-public class CompilationPrinter {
+public class CompilationPrinter implements Closeable {
     public static final String COLUMN_END = " <|@";
     public static final String HOVER_START = "<@";
     public static final String HOVER_SEP = "|@";
@@ -79,6 +79,11 @@ public class CompilationPrinter {
      */
     public void flush() {
         out.flush();
+    }
+
+    @Override
+    public void close() throws IOException {
+        out.out().close();
     }
 
     protected void begin(String string) {

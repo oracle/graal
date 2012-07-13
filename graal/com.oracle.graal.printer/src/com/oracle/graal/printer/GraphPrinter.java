@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.graph.*;
 
-interface GraphPrinter {
+interface GraphPrinter extends Closeable {
     /**
      * Starts a new group of graphs with the given name, short name and method byte code index (BCI) as properties.
      */

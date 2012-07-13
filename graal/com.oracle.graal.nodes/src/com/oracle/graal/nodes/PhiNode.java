@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
 public final class PhiNode extends FloatingNode implements Canonicalizable, Node.IterableNodeType {
 
     public static enum PhiType {
-        Value(null), // normal value phis
+        Value(StampFactory.top()), // normal value phis
         Memory(StampFactory.dependency());
 
         public final Stamp stamp;
@@ -62,7 +62,9 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
     }
 
     /**
-     * Create a non-value phi ({@link PhiType#Memory} with the specified kind.
+     * Create a phi with the specified {@link PhiType}.
+     * If you use this to create a {@link PhiType#Value value} phi, its {@link Kind kind} will originally be {@link Kind#Void void} ;
+     * use {@link PhiNode#inferStamp()} to update it when it has valid inputs.
      * @param type the type of the new phi
      * @param merge the merge that the new phi belongs to
      */

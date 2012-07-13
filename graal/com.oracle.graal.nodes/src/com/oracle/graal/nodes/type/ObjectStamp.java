@@ -75,6 +75,9 @@ public class ObjectStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp otherStamp) {
+        if (otherStamp == StampFactory.top()) {
+            return this;
+        }
         ObjectStamp other = (ObjectStamp) otherStamp;
         ResolvedJavaType orType = meetTypes(type(), other.type());
         boolean meetExactType = orType == type && orType == other.type && exactType && other.exactType;
