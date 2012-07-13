@@ -103,15 +103,8 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
                 // since the subtype comparison was only performed on a declared type we don't really know if it might be true at run time...
             }
         }
-
-        Constant constant = object().asConstant();
-        if (constant != null) {
-            assert constant.kind == Kind.Object;
-            if (constant.isNull()) {
-                return ConstantNode.forBoolean(false, graph());
-            } else {
-                assert false : "non-null constants are always expected to provide an exact type";
-            }
+        if (object().objectStamp().alwaysNull()) {
+            return ConstantNode.forBoolean(false, graph());
         }
         return this;
     }

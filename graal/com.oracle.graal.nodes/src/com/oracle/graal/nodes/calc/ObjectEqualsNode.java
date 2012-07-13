@@ -58,9 +58,9 @@ public final class ObjectEqualsNode extends CompareNode {
             return ConstantNode.forBoolean(true, graph());
         }
 
-        if (x().isNullConstant()) {
+        if (x().objectStamp().alwaysNull()) {
             return graph().unique(new IsNullNode(y()));
-        } else if (y().isNullConstant()) {
+        } else if (y().objectStamp().alwaysNull()) {
             return graph().unique(new IsNullNode(x()));
         }
         if (x().stamp().alwaysDistinct(y().stamp())) {

@@ -71,6 +71,7 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
         } else {
             // This begin node can be removed and all guards moved up to the preceding begin node.
             prepareDelete();
+            tool.addToWorkList(next());
             ((StructuredGraph) graph()).removeFixed(this);
         }
     }

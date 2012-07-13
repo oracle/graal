@@ -253,7 +253,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             graph.replaceFixedWithFixed(storeField, memoryWrite);
 
             FixedWithNextNode last = memoryWrite;
-            if (field.kind() == Kind.Object && !memoryWrite.value().isNullConstant()) {
+            if (field.kind() == Kind.Object && !memoryWrite.value().objectStamp().alwaysNull()) {
                 FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(memoryWrite.object()));
                 graph.addAfterFixed(memoryWrite, writeBarrier);
                 last = writeBarrier;
@@ -268,7 +268,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             // Separate out GC barrier semantics
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
             ValueNode expected = cas.expected();
-            if (expected.kind() == Kind.Object && !cas.newValue().isNullConstant()) {
+            if (expected.kind() == Kind.Object && !cas.newValue().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = cas.object().objectStamp().type();
                 if (type != null && !type.isArrayClass() && type.toJava() != Object.class) {
                     // Use a field write barrier since it's not an array store
@@ -299,7 +299,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             ValueNode value = storeIndexed.value();
             CheckCastNode checkcast = null;
             ValueNode array = storeIndexed.array();
-            if (elementKind == Kind.Object && !value.isNullConstant()) {
+            if (elementKind == Kind.Object && !value.objectStamp().alwaysNull()) {
                 // Store check!
                 ResolvedJavaType arrayType = array.objectStamp().type();
                 if (arrayType != null && array.objectStamp().isExactType()) {
@@ -328,7 +328,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
 
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 
-            if (elementKind == Kind.Object && !value.isNullConstant()) {
+            if (elementKind == Kind.Object && !value.objectStamp().alwaysNull()) {
                 graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation)));
             }
         } else if (n instanceof UnsafeLoadNode) {
@@ -347,7 +347,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             WriteNode write = graph.add(new WriteNode(object, store.value(), location));
             write.setStateAfter(store.stateAfter());
             graph.replaceFixedWithFixed(store, write);
-            if (write.value().kind() == Kind.Object && !write.value().isNullConstant()) {
+            if (write.value().kind() == Kind.Object && !write.value().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = object.objectStamp().type();
                 WriteBarrier writeBarrier;
                 if (type != null && !type.isArrayClass() && type.toJava() != Object.class) {

@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.nodes.extended.*;
+
 /**
  * The start node of a graph.
  */
-public class StartNode extends BeginStateSplitNode {
+public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint{
 
 }
