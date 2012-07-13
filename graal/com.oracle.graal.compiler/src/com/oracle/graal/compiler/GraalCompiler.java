@@ -181,14 +181,12 @@ public class GraalCompiler {
             new CullFrameStatesPhase().apply(graph);
         }
 
-        if (GraalOptions.FloatingReads) {
-            Debug.dump(graph, "Before floating read");
-            int mark = graph.getMark();
-            new FloatingRead2Phase().apply(graph);
-            new CanonicalizerPhase(target, runtime, assumptions, mark, null).apply(graph);
-            if (GraalOptions.OptReadElimination) {
-                new ReadEliminationPhase().apply(graph);
-            }
+        new FloatingReadPhase().apply(graph);
+        if (GraalOptions.OptGVN) {
+            new GlobalValueNumberingPhase().apply(graph);
+        }
+        if (GraalOptions.OptReadElimination) {
+            new ReadEliminationPhase().apply(graph);
         }
 
         if (GraalOptions.PropagateTypes) {
@@ -197,6 +195,9 @@ public class GraalCompiler {
 
         if (GraalOptions.CheckCastElimination) {
             new CheckCastEliminationPhase().apply(graph);
+        }
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
         }
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
