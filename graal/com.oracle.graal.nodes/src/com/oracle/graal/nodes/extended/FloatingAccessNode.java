@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.extended;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
@@ -66,5 +67,10 @@ public abstract class FloatingAccessNode extends FloatingNode implements Access 
         super(stamp, dependencies);
         this.object = object;
         this.location = location;
+    }
+
+    @Override
+    public Node node() {
+        return this;
     }
 }

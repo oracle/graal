@@ -42,18 +42,22 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
+        return canonicalizeRead(this, tool);
+    }
+
+    public static ValueNode canonicalizeRead(Access read, CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
-        if (runtime != null && object() != null && object().isConstant() && object().kind() == Kind.Object) {
-            if (location() == LocationNode.FINAL_LOCATION && location().getClass() == LocationNode.class) {
-                Object value = object().asConstant().asObject();
-                long displacement = location().displacement();
-                Kind kind = location().kind();
+        if (runtime != null && read.object() != null && read.object().isConstant() && read.object().kind() == Kind.Object) {
+            if (read.location().locationIdentity() == LocationNode.FINAL_LOCATION && read.location().getClass() == LocationNode.class) {
+                Object value = read.object().asConstant().asObject();
+                long displacement = read.location().displacement();
+                Kind kind = read.location().kind();
                 Constant constant = kind.readUnsafeConstant(value, displacement);
                 if (constant != null) {
-                    return ConstantNode.forConstant(constant, runtime, graph());
+                    return ConstantNode.forConstant(constant, runtime, read.node().graph());
                 }
             }
         }
-        return this;
+        return (ValueNode) read;
     }
 }
