@@ -52,7 +52,7 @@ public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowera
         RegisterValue objectFixed = OBJECT.asValue(Kind.Object);
         gen.emitMove(gen.operand(object), objectFixed);
         LIRFrameState info = gen.state();
-        gen.append(new AMD64VerifyOopStubCallOp(gen.operand(object), info));
+        gen.append(new AMD64VerifyOopStubCallOp(objectFixed, info));
     }
 
     @SuppressWarnings("unused")
