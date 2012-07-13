@@ -28,7 +28,6 @@ import com.oracle.graal.nodes.type.GenericStamp.GenericStampType;
 
 
 public class StampFactory {
-    private static final TopStamp top = new TopStamp();
     private static final Stamp[] stampCache = new Stamp[Kind.values().length];
     private static final Stamp objectStamp = new ObjectStamp(null, false, false);
     private static final Stamp objectNonNullStamp = new ObjectStamp(null, false, true);
@@ -96,10 +95,6 @@ public class StampFactory {
 
     public static Stamp positiveInt() {
         return positiveInt;
-    }
-
-    public static Stamp top() {
-        return top;
     }
 
     public static Stamp forInteger(Kind kind, long lowerBound, long upperBound, long mask) {

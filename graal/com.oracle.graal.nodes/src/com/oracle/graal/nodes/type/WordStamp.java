@@ -56,9 +56,6 @@ public class WordStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp otherStamp) {
-        if (otherStamp == StampFactory.top()) {
-            return this;
-        }
         WordStamp other = (WordStamp) otherStamp;
         if (other.nonNull == nonNull) {
             return this;

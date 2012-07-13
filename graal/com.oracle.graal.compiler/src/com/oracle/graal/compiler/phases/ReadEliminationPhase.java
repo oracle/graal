@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.extended.*;
 
 public class ReadEliminationPhase extends Phase {
@@ -39,18 +38,9 @@ public class ReadEliminationPhase extends Phase {
         for (FloatingReadNode n : graph.getNodes(FloatingReadNode.class)) {
             if (isReadEliminable(n)) {
                 NodeMap<ValueNode> nodeMap = n.graph().createNodeMap();
-                ValueNode value = getValue(n.lastLocationAccess(), nodeMap);
+                ValueNode value = getValue(n, n.lastLocationAccess(), nodeMap);
                 Debug.log("Eliminated memory read %1.1s and replaced with node %s", n, value);
                 graph.replaceFloating(n, value);
-            }
-        }
-        // get a proper stamp for the new phis
-        while (!newPhis.isEmpty()) {
-            PhiNode phi = newPhis.poll();
-            if (phi.inferStamp()) {
-                for (PhiNode usagePhi : phi.usages().filter(PhiNode.class)) {
-                    newPhis.add(usagePhi);
-                }
             }
         }
     }
@@ -82,7 +72,7 @@ public class ReadEliminationPhase extends Phase {
         return false;
     }
 
-    private ValueNode getValue(Node lastLocationAccess, NodeMap<ValueNode> nodeMap) {
+    private ValueNode getValue(FloatingReadNode n, Node lastLocationAccess, NodeMap<ValueNode> nodeMap) {
         ValueNode exisiting = nodeMap.get(lastLocationAccess);
         if (exisiting != null) {
             return exisiting;
@@ -92,10 +82,10 @@ public class ReadEliminationPhase extends Phase {
         }
         if (lastLocationAccess instanceof PhiNode) {
             PhiNode phi = (PhiNode) lastLocationAccess;
-            PhiNode newPhi = phi.graph().add(new PhiNode(PhiType.Value, phi.merge()));
+            PhiNode newPhi = phi.graph().add(new PhiNode(n.kind(), phi.merge()));
             nodeMap.set(lastLocationAccess, newPhi);
             for (ValueNode value : phi.values()) {
-                newPhi.addInput(getValue(value, nodeMap));
+                newPhi.addInput(getValue(n, value, nodeMap));
             }
             newPhis.add(newPhi);
             return newPhi;
