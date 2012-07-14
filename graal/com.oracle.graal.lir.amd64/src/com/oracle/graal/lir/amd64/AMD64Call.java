@@ -80,7 +80,10 @@ public class AMD64Call {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            callAlignment(tasm, masm, callPositionListener);
+            if (callPositionListener != null) {
+                callPositionListener.beforeCall(tasm);
+                callPositionListener.atCall(tasm);
+            }
             indirectCall(tasm, masm, asRegister(targetAddress), targetMethod, state);
         }
     }
