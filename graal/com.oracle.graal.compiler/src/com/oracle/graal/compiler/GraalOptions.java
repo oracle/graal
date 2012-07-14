@@ -273,7 +273,6 @@ public final class GraalOptions {
     public static String HIRLowerCheckcast = "";
     public static String HIRLowerNewInstance = "";
     public static String HIRLowerNewArray = "";
-    public static String HIRLowerInlineVirtualInvokes = "";
 
     /**
      * Use XIR to lower {@link Invoke} nodes.

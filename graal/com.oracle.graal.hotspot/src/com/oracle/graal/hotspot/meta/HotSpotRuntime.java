@@ -46,6 +46,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
@@ -241,18 +242,24 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
                     invoke.node().dependencies().add(tool.createNullCheckGuard(receiver, invoke.leafGraphId()));
                 }
 
-                int vtableEntryOffset = 0;
-                if (matches(graph, GraalOptions.HIRLowerInlineVirtualInvokes) || (GraalOptions.InlineVTableStubs && (GraalOptions.AlwaysInlineVTableStubs || invoke.isMegamorphic()))) {
+                if (callTarget.invokeKind() == InvokeKind.Virtual &&
+                    GraalOptions.InlineVTableStubs &&
+                    (GraalOptions.AlwaysInlineVTableStubs || invoke.isMegamorphic())) {
+
+                    // TODO (dnsimon) I'm not sure of other invariants of HotSpot's calling conventions that may
+                    // be required for register indirect calls.
+                    assert false : "HotSpot expects the methodOop of the callee to be in rbx - this is yet to be implemented for inline vtable dispatch";
+
                     // TODO: successive inlined invokevirtuals to the same method cause register allocation to fail - fix this!
                     HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
                     if (!hsMethod.holder().isInterface()) {
-                        vtableEntryOffset = hsMethod.vtableEntryOffset();
+                        int vtableEntryOffset = hsMethod.vtableEntryOffset();
                         assert vtableEntryOffset != 0;
                         SafeReadNode hub = safeReadHub(graph, receiver, StructuredGraph.INVALID_GRAPH_ID);
                         Kind wordKind = graalRuntime.getTarget().wordKind;
                         Stamp nonNullWordStamp = StampFactory.forWord(wordKind, true);
-                        ReadNode methodOop = graph.add(new ReadNode(hub, LocationNode.create(LocationNode.FINAL_LOCATION, wordKind, vtableEntryOffset, graph), nonNullWordStamp));
-                        ReadNode compiledEntry = graph.add(new ReadNode(methodOop, LocationNode.create(LocationNode.FINAL_LOCATION, wordKind, config.methodCompiledEntryOffset, graph), nonNullWordStamp));
+                        ReadNode methodOop = graph.add(new ReadNode(hub, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, vtableEntryOffset, graph), nonNullWordStamp));
+                        ReadNode compiledEntry = graph.add(new ReadNode(methodOop, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph), nonNullWordStamp));
                         callTarget.setAddress(compiledEntry);
 
                         graph.addBeforeFixed(invoke.node(), hub);
