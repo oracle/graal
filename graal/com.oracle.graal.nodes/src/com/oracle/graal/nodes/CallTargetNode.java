@@ -38,6 +38,7 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
     }
 
     public void setAddress(ValueNode address) {
+        updateUsages(this.address, address);
         this.address = address;
     }
 

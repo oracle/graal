@@ -46,6 +46,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
@@ -231,6 +232,42 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             ArrayLengthNode arrayLengthNode = (ArrayLengthNode) n;
             SafeReadNode safeReadArrayLength = safeReadArrayLength(arrayLengthNode.array(), StructuredGraph.INVALID_GRAPH_ID);
             graph.replaceFixedWithFixed(arrayLengthNode, safeReadArrayLength);
+        } else if (n instanceof Invoke) {
+            if (!GraalOptions.XIRLowerInvokes) {
+                Invoke invoke = (Invoke) n;
+                MethodCallTargetNode callTarget = invoke.callTarget();
+                NodeInputList<ValueNode> parameters = callTarget.arguments();
+                ValueNode receiver = parameters.size() <= 0 ? null : parameters.get(0);
+                if (!callTarget.isStatic() && receiver.kind() == Kind.Object && !receiver.objectStamp().nonNull()) {
+                    invoke.node().dependencies().add(tool.createNullCheckGuard(receiver, invoke.leafGraphId()));
+                }
+
+                if (callTarget.invokeKind() == InvokeKind.Virtual &&
+                    GraalOptions.InlineVTableStubs &&
+                    (GraalOptions.AlwaysInlineVTableStubs || invoke.isMegamorphic())) {
+
+                    // TODO (dnsimon) I'm not sure of other invariants of HotSpot's calling conventions that may
+                    // be required for register indirect calls.
+                    assert false : "HotSpot expects the methodOop of the callee to be in rbx - this is yet to be implemented for inline vtable dispatch";
+
+                    // TODO: successive inlined invokevirtuals to the same method cause register allocation to fail - fix this!
+                    HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
+                    if (!hsMethod.holder().isInterface()) {
+                        int vtableEntryOffset = hsMethod.vtableEntryOffset();
+                        assert vtableEntryOffset != 0;
+                        SafeReadNode hub = safeReadHub(graph, receiver, StructuredGraph.INVALID_GRAPH_ID);
+                        Kind wordKind = graalRuntime.getTarget().wordKind;
+                        Stamp nonNullWordStamp = StampFactory.forWord(wordKind, true);
+                        ReadNode methodOop = graph.add(new ReadNode(hub, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, vtableEntryOffset, graph), nonNullWordStamp));
+                        ReadNode compiledEntry = graph.add(new ReadNode(methodOop, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph), nonNullWordStamp));
+                        callTarget.setAddress(compiledEntry);
+
+                        graph.addBeforeFixed(invoke.node(), hub);
+                        graph.addAfterFixed(hub, methodOop);
+                        graph.addAfterFixed(methodOop, compiledEntry);
+                    }
+                }
+            }
         } else if (n instanceof LoadFieldNode) {
             LoadFieldNode field = (LoadFieldNode) n;
             int displacement = ((HotSpotResolvedJavaField) field.field()).offset();
@@ -366,15 +403,15 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             memoryRead.dependencies().add(tool.createNullCheckGuard(objectClassNode.object(), StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixed(objectClassNode, memoryRead);
         } else if (n instanceof CheckCastNode) {
-            if (shouldLower(graph, GraalOptions.HIRLowerCheckcast)) {
+            if (matches(graph, GraalOptions.HIRLowerCheckcast)) {
                 checkcastSnippets.lower((CheckCastNode) n, tool);
             }
         } else if (n instanceof NewInstanceNode) {
-            if (shouldLower(graph, GraalOptions.HIRLowerNewInstance)) {
+            if (matches(graph, GraalOptions.HIRLowerNewInstance)) {
                 newObjectSnippets.lower((NewInstanceNode) n, tool);
             }
         } else if (n instanceof NewArrayNode) {
-            if (shouldLower(graph, GraalOptions.HIRLowerNewArray)) {
+            if (matches(graph, GraalOptions.HIRLowerNewArray)) {
                 newObjectSnippets.lower((NewArrayNode) n, tool);
             }
         } else if (n instanceof TLABAllocateNode) {
@@ -388,13 +425,13 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
         }
     }
 
-    private static boolean shouldLower(StructuredGraph graph, String option) {
-        if (option != null) {
-            if (option.length() == 0) {
+    private static boolean matches(StructuredGraph graph, String filter) {
+        if (filter != null) {
+            if (filter.length() == 0) {
                 return true;
             }
             ResolvedJavaMethod method = graph.method();
-            return method != null && MetaUtil.format("%H.%n", method).contains(option);
+            return method != null && MetaUtil.format("%H.%n", method).contains(filter);
         }
         return false;
     }

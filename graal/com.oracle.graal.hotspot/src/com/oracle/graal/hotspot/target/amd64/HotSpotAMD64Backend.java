@@ -145,9 +145,13 @@ public class HotSpotAMD64Backend extends Backend {
                         // that loads the klassOop from the inline cache so that the C++ code can find it
                         // and replace the inline null value with Universe::non_oop_word()
                         assert invokeKind == Virtual || invokeKind == Interface;
-                        tasm.recordMark(invokeKind == Virtual ? MARK_INVOKEVIRTUAL : MARK_INVOKEINTERFACE);
-                        AMD64MacroAssembler masm = (AMD64MacroAssembler) tasm.asm;
-                        AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Object), Constant.NULL_OBJECT);
+                        if (callTarget.address() == null) {
+                            tasm.recordMark(invokeKind == Virtual ? MARK_INVOKEVIRTUAL : MARK_INVOKEINTERFACE);
+                            AMD64MacroAssembler masm = (AMD64MacroAssembler) tasm.asm;
+                            AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Object), Constant.NULL_OBJECT);
+                        } else {
+                            tasm.recordMark(MARK_INLINE_INVOKEVIRTUAL);
+                        }
                     }
                 }
                 public void atCall(TargetMethodAssembler tasm) {

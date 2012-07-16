@@ -28,7 +28,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-
+/**
+ * Reads an {@linkplain AccessNode accessed} value.
+ */
 public final class ReadNode extends AccessNode implements Node.IterableNodeType, LIRLowerable/*, Canonicalizable*/ {
 
     public ReadNode(ValueNode object, LocationNode location, Stamp stamp) {
