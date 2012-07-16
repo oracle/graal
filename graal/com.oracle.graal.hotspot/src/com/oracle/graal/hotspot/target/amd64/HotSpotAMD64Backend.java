@@ -112,12 +112,33 @@ public class HotSpotAMD64Backend extends Backend {
             Kind[] signature = MetaUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind());
             CallingConvention cc = frameMap.registerConfig.getCallingConvention(JavaCall, signature, target(), false);
             frameMap.callsMethod(cc, JavaCall);
+
+            Value address = Constant.forLong(0L);
+
+            ValueNode methodOopNode = null;
+
+            if (callTarget.computedAddress() != null) {
+                // If a virtual dispatch address was computed, then an extra argument
+                // was append for passing the methodOop in RBX
+                methodOopNode = callTarget.arguments().remove(callTarget.arguments().size() - 1);
+
+                if (invokeKind == Virtual) {
+                    address = operand(callTarget.computedAddress());
+                } else {
+                    // An invokevirtual may have been canonicalized into an invokespecial;
+                    // the methodOop argument is ignored in this case
+                }
+            }
+
             List<Value> argList = visitInvokeArguments(cc, callTarget.arguments());
 
-            Value address = callTarget.address() == null ? Constant.forLong(0L) : operand(callTarget.address());
+            if (methodOopNode != null) {
+                Value methodOopArg = operand(methodOopNode);
+                emitMove(methodOopArg, AMD64.rbx.asValue());
+                argList.add(methodOopArg);
+            }
 
             final Mark[] callsiteForStaticCallStub = {null};
-
             if (invokeKind == Static || invokeKind == Special) {
                 lir.stubs.add(new AMD64Code() {
                     public String description() {
@@ -145,12 +166,12 @@ public class HotSpotAMD64Backend extends Backend {
                         // that loads the klassOop from the inline cache so that the C++ code can find it
                         // and replace the inline null value with Universe::non_oop_word()
                         assert invokeKind == Virtual || invokeKind == Interface;
-                        if (callTarget.address() == null) {
+                        if (invokeKind == Virtual && callTarget.computedAddress() != null) {
+                            tasm.recordMark(MARK_INLINE_INVOKEVIRTUAL);
+                        } else {
                             tasm.recordMark(invokeKind == Virtual ? MARK_INVOKEVIRTUAL : MARK_INVOKEINTERFACE);
                             AMD64MacroAssembler masm = (AMD64MacroAssembler) tasm.asm;
                             AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Object), Constant.NULL_OBJECT);
-                        } else {
-                            tasm.recordMark(MARK_INLINE_INVOKEVIRTUAL);
                         }
                     }
                 }

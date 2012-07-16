@@ -31,15 +31,18 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
     @Input protected final NodeInputList<ValueNode> arguments;
 
-    @Input protected ValueNode address;
+    /**
+     * The address computation for an indirect call (e.g., invokevirtual or invokeinterface).
+     */
+    @Input protected ValueNode computedAddress;
 
-    public ValueNode address() {
-        return address;
+    public ValueNode computedAddress() {
+        return computedAddress;
     }
 
-    public void setAddress(ValueNode address) {
-        updateUsages(this.address, address);
-        this.address = address;
+    public void setComputedAddress(ValueNode address) {
+        updateUsages(this.computedAddress, address);
+        this.computedAddress = address;
     }
 
     public CallTargetNode(ValueNode[] arguments) {
