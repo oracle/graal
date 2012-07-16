@@ -104,9 +104,6 @@ public class IntegerStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp otherStamp) {
-        if (otherStamp == StampFactory.top()) {
-            return this;
-        }
         IntegerStamp other = (IntegerStamp) otherStamp;
         assert kind() == other.kind();
         long meetUpperBound = Math.max(upperBound, other.upperBound);

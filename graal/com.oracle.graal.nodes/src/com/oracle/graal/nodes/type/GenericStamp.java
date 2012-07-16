@@ -53,9 +53,6 @@ public final class GenericStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp other) {
-        if (other == StampFactory.top()) {
-            return this;
-        }
         assert ((GenericStamp) other).type == type;
         return this;
     }

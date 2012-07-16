@@ -30,8 +30,10 @@ import org.junit.*;
  */
 @SuppressWarnings("unused")
 public class Conditional01 {
-
     private static final int RAM_SIZE = 0x100;
+    private static final int init = new Random().nextInt();
+    private static final int init1 = new Register().val;
+    private static final Register init2 = new CPC().r1;
 
     public static int test(int arg) {
         Conditional01 c = new Conditional01();

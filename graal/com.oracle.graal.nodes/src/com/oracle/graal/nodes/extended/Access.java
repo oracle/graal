@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 public interface Access {
@@ -31,4 +32,6 @@ public interface Access {
     LocationNode location();
 
     void setNullCheck(boolean check);
+
+    Node node();
 }

@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.extended;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
  * A floating read of a value from memory specified in terms of an object base and an object relative location.
  * This node does not null check the object.
  */
-public final class FloatingReadNode extends FloatingAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
+public final class FloatingReadNode extends FloatingAccessNode implements Node.IterableNodeType, LIRLowerable/*, Canonicalizable*/ {
 
     @Input private Node lastLocationAccess;
 
@@ -57,20 +56,9 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
         gen.setResult(this, gen.emitLoad(gen.makeAddress(location(), object()), getNullCheck()));
     }
 
-    @Override
+    // Canonicalization disabled untill we have a solution for non-Object oops in Hotspot
+    /*@Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        MetaAccessProvider runtime = tool.runtime();
-        if (runtime != null && object() != null && object().isConstant() && object().kind() == Kind.Object) {
-            if (this.location() == LocationNode.FINAL_LOCATION && location().getClass() == LocationNode.class) {
-                Object value = object().asConstant().asObject();
-                long displacement = location().displacement();
-                Kind kind = location().kind();
-                Constant constant = kind.readUnsafeConstant(value, displacement);
-                if (constant != null) {
-                    return ConstantNode.forConstant(constant, runtime, graph());
-                }
-            }
-        }
-        return this;
-    }
+        return ReadNode.canonicalizeRead(this, tool);
+    }*/
 }

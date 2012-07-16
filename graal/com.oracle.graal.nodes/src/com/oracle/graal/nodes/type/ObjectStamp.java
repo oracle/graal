@@ -30,18 +30,25 @@ public class ObjectStamp extends Stamp {
     private final ResolvedJavaType type;
     private final boolean exactType;
     private final boolean nonNull;
+    private final boolean alwaysNull;
 
-    public ObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull) {
+    public ObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
         super(Kind.Object);
         assert !exactType || type != null;
+        assert !(nonNull && alwaysNull);
         this.type = type;
         this.exactType = exactType;
         this.nonNull = nonNull;
+        this.alwaysNull = alwaysNull;
     }
 
     @Override
     public boolean nonNull() {
         return nonNull;
+    }
+
+    public boolean alwaysNull() {
+        return alwaysNull;
     }
 
     public ResolvedJavaType type() {
@@ -56,13 +63,16 @@ public class ObjectStamp extends Stamp {
     public String toString() {
         StringBuilder str = new StringBuilder();
         str.append(kind().typeChar);
-        str.append(nonNull ? "!" : "").append(exactType ? "#" : "").append(' ').append(type == null ? "-" : type.name());
+        str.append(nonNull ? "!" : "").append(exactType ? "#" : "").append(' ').append(type == null ? "-" : type.name()).append(alwaysNull ? " NULL" : "");
         return str.toString();
     }
 
     @Override
     public boolean alwaysDistinct(Stamp otherStamp) {
         ObjectStamp other = (ObjectStamp) otherStamp;
+        if ((alwaysNull && other.nonNull) || (nonNull && other.alwaysNull)) {
+            return true;
+        }
         if (other.type == null || type == null) {
             // We have no type information for one of the values.
             return false;
@@ -75,18 +85,32 @@ public class ObjectStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp otherStamp) {
-        if (otherStamp == StampFactory.top()) {
-            return this;
-        }
         ObjectStamp other = (ObjectStamp) otherStamp;
-        ResolvedJavaType orType = meetTypes(type(), other.type());
-        boolean meetExactType = orType == type && orType == other.type && exactType && other.exactType;
-        boolean meetNonNull = nonNull && other.nonNull;
+        ResolvedJavaType meetType;
+        boolean meetExactType;
+        boolean meetNonNull;
+        boolean meetAlwaysNull;
+        if (other.alwaysNull) {
+            meetType = type();
+            meetExactType = exactType;
+            meetNonNull = false;
+            meetAlwaysNull = alwaysNull;
+        } else if (alwaysNull) {
+            meetType = other.type();
+            meetExactType = other.exactType;
+            meetNonNull = false;
+            meetAlwaysNull = other.alwaysNull;
+        } else {
+            meetType = meetTypes(type(), other.type());
+            meetExactType = meetType == type && meetType == other.type && exactType && other.exactType;
+            meetNonNull = nonNull && other.nonNull;
+            meetAlwaysNull = false;
+        }
 
-        if (orType == type && meetExactType == exactType && meetNonNull == nonNull) {
+        if (meetType == type && meetExactType == exactType && meetNonNull == nonNull && meetAlwaysNull == alwaysNull) {
             return this;
         } else {
-            return new ObjectStamp(orType, meetExactType, meetNonNull);
+            return new ObjectStamp(meetType, meetExactType, meetNonNull, meetAlwaysNull);
         }
     }
 
