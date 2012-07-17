@@ -32,7 +32,6 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
@@ -45,7 +44,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.asm.TargetMethodAssembler.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
@@ -54,6 +52,9 @@ import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.cri.xir.*;
 
+/**
+ * HotSpot AMD64 specific backend.
+ */
 public class HotSpotAMD64Backend extends Backend {
 
     public HotSpotAMD64Backend(CodeCacheProvider runtime, TargetDescription target) {
@@ -113,78 +114,36 @@ public class HotSpotAMD64Backend extends Backend {
             CallingConvention cc = frameMap.registerConfig.getCallingConvention(JavaCall, signature, target(), false);
             frameMap.callsMethod(cc, JavaCall);
 
-            Value address = Constant.forLong(0L);
-
             ValueNode methodOopNode = null;
-
+            boolean inlineVirtualCall = false;
             if (callTarget.computedAddress() != null) {
                 // If a virtual dispatch address was computed, then an extra argument
                 // was append for passing the methodOop in RBX
                 methodOopNode = callTarget.arguments().remove(callTarget.arguments().size() - 1);
 
                 if (invokeKind == Virtual) {
-                    address = operand(callTarget.computedAddress());
+                    inlineVirtualCall = true;
                 } else {
                     // An invokevirtual may have been canonicalized into an invokespecial;
                     // the methodOop argument is ignored in this case
+                    methodOopNode = null;
                 }
             }
 
             List<Value> argList = visitInvokeArguments(cc, callTarget.arguments());
-
-            if (methodOopNode != null) {
-                Value methodOopArg = operand(methodOopNode);
-                emitMove(methodOopArg, AMD64.rbx.asValue());
-                argList.add(methodOopArg);
-            }
-
-            final Mark[] callsiteForStaticCallStub = {null};
-            if (invokeKind == Static || invokeKind == Special) {
-                lir.stubs.add(new AMD64Code() {
-                    public String description() {
-                        return "static call stub for Invoke" + invokeKind;
-                    }
-                    @Override
-                    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                        assert callsiteForStaticCallStub[0] != null;
-                        tasm.recordMark(MARK_STATIC_CALL_STUB, callsiteForStaticCallStub);
-                        masm.movq(AMD64.rbx, 0L);
-                        Label dummy = new Label();
-                        masm.jmp(dummy);
-                        masm.bind(dummy);
-                    }
-                });
-            }
-
-            CallPositionListener cpl = new CallPositionListener() {
-                @Override
-                public void beforeCall(TargetMethodAssembler tasm) {
-                    if (invokeKind == Static || invokeKind == Special) {
-                        tasm.recordMark(invokeKind == Static ? MARK_INVOKESTATIC : MARK_INVOKESPECIAL);
-                    } else {
-                        // The mark for an invocation that uses an inline cache must be placed at the instruction
-                        // that loads the klassOop from the inline cache so that the C++ code can find it
-                        // and replace the inline null value with Universe::non_oop_word()
-                        assert invokeKind == Virtual || invokeKind == Interface;
-                        if (invokeKind == Virtual && callTarget.computedAddress() != null) {
-                            tasm.recordMark(MARK_INLINE_INVOKEVIRTUAL);
-                        } else {
-                            tasm.recordMark(invokeKind == Virtual ? MARK_INVOKEVIRTUAL : MARK_INVOKEINTERFACE);
-                            AMD64MacroAssembler masm = (AMD64MacroAssembler) tasm.asm;
-                            AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Object), Constant.NULL_OBJECT);
-                        }
-                    }
-                }
-                public void atCall(TargetMethodAssembler tasm) {
-                    if (invokeKind == Static || invokeKind == Special) {
-                        callsiteForStaticCallStub[0] = tasm.recordMark(null);
-                    }
-                }
-            };
+            Value[] parameters = argList.toArray(new Value[argList.size()]);
 
             LIRFrameState callState = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
             Value result = resultOperandFor(x.node().kind());
-            emitCall(callTarget.targetMethod(), result, argList, address, callState, cpl);
+            if (!inlineVirtualCall) {
+                assert methodOopNode == null;
+                append(new AMD64DirectCallOp(callTarget.targetMethod(), result, parameters, callState, invokeKind, lir));
+            } else {
+                assert methodOopNode != null;
+                Value methodOop = AMD64.rbx.asValue();
+                emitMove(operand(methodOopNode), methodOop);
+                append(new AMD64IndirectCallOp(callTarget.targetMethod(), result, parameters, methodOop, operand(callTarget.computedAddress()), callState));
+            }
 
             if (isLegal(result)) {
                 setResult(x.node(), emitMove(result));

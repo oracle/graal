@@ -54,8 +54,27 @@ public class AMD64Call {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            callAlignment(tasm, masm, callPositionListener);
+            if (callPositionListener != null) {
+                callPositionListener.beforeCall(tasm);
+            }
+
+            emitAlignmentForDirectCall(tasm, masm);
+
+            if (callPositionListener != null) {
+                int pos = masm.codeBuffer.position();
+                callPositionListener.atCall(tasm);
+                assert pos == masm.codeBuffer.position() : "call position listener inserted code before an aligned call";
+            }
             directCall(tasm, masm, targetMethod, state);
+        }
+
+        protected void emitAlignmentForDirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            // make sure that the displacement word of the call ends up word aligned
+            int offset = masm.codeBuffer.position();
+            offset += tasm.target.arch.machineCodeCallDisplacementOffset;
+            while (offset++ % tasm.target.wordSize != 0) {
+                masm.nop();
+            }
         }
     }
 
@@ -66,7 +85,7 @@ public class AMD64Call {
         @Use({REG}) protected Value targetAddress;
         @State protected LIRFrameState state;
 
-        private final Object targetMethod;
+        protected final Object targetMethod;
         protected final CallPositionListener callPositionListener;
 
         public IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value targetAddress, LIRFrameState state, CallPositionListener callPositionListener) {
@@ -85,25 +104,6 @@ public class AMD64Call {
                 callPositionListener.atCall(tasm);
             }
             indirectCall(tasm, masm, asRegister(targetAddress), targetMethod, state);
-        }
-    }
-
-    public static void callAlignment(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CallPositionListener callPositionListener) {
-        if (callPositionListener != null) {
-            callPositionListener.beforeCall(tasm);
-        }
-
-        // make sure that the displacement word of the call ends up word aligned
-        int offset = masm.codeBuffer.position();
-        offset += tasm.target.arch.machineCodeCallDisplacementOffset;
-        while (offset++ % tasm.target.wordSize != 0) {
-            masm.nop();
-        }
-
-        if (callPositionListener != null) {
-            int pos = masm.codeBuffer.position();
-            callPositionListener.atCall(tasm);
-            assert pos == masm.codeBuffer.position() : "call position listener inserted code before an aligned call";
         }
     }
 
