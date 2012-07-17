@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.hotspot.meta.HotSpotXirGenerator.*;
 import static com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 
@@ -57,6 +56,30 @@ import com.oracle.max.cri.xir.*;
  */
 public class HotSpotAMD64Backend extends Backend {
 
+    // this needs to correspond to graal_CodeInstaller.hpp
+    // @formatter:off
+    public static final Integer MARK_VERIFIED_ENTRY            = 0x0001;
+    public static final Integer MARK_UNVERIFIED_ENTRY          = 0x0002;
+    public static final Integer MARK_OSR_ENTRY                 = 0x0003;
+    public static final Integer MARK_UNWIND_ENTRY              = 0x0004;
+    public static final Integer MARK_EXCEPTION_HANDLER_ENTRY   = 0x0005;
+    public static final Integer MARK_DEOPT_HANDLER_ENTRY       = 0x0006;
+
+    public static final Integer MARK_STATIC_CALL_STUB          = 0x1000;
+
+    public static final Integer MARK_INVOKEINTERFACE           = 0x2001;
+    public static final Integer MARK_INVOKESTATIC              = 0x2002;
+    public static final Integer MARK_INVOKESPECIAL             = 0x2003;
+    public static final Integer MARK_INVOKEVIRTUAL             = 0x2004;
+    public static final Integer MARK_INLINE_INVOKEVIRTUAL      = 0x2005;
+
+    public static final Integer MARK_IMPLICIT_NULL             = 0x3000;
+    public static final Integer MARK_POLL_NEAR                 = 0x3001;
+    public static final Integer MARK_POLL_RETURN_NEAR          = 0x3002;
+    public static final Integer MARK_POLL_FAR                  = 0x3003;
+    public static final Integer MARK_POLL_RETURN_FAR           = 0x3004;
+
+    // @formatter:on
     public HotSpotAMD64Backend(CodeCacheProvider runtime, TargetDescription target) {
         super(runtime, target);
     }

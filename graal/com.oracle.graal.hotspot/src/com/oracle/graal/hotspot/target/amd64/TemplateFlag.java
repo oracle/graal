@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.hotspot.target.amd64;
 
 enum TemplateFlag {
     NULL_CHECK,

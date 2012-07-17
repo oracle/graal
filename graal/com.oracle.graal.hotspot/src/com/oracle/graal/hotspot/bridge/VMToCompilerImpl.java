@@ -39,6 +39,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.snippets.*;
+import com.oracle.graal.hotspot.target.amd64.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.max.criutils.*;

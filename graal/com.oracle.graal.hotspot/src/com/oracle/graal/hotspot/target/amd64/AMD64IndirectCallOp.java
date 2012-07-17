@@ -23,13 +23,13 @@
 package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.hotspot.meta.HotSpotXirGenerator.*;
+import static com.oracle.graal.hotspot.target.amd64.HotSpotAMD64Backend.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Call.IndirectCallOp;
 import com.oracle.graal.lir.asm.*;

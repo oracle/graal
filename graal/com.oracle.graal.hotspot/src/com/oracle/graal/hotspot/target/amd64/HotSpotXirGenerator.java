@@ -20,10 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.hotspot.meta.TemplateFlag.*;
+import static com.oracle.graal.hotspot.target.amd64.TemplateFlag.*;
+import static com.oracle.graal.hotspot.target.amd64.HotSpotAMD64Backend.*;
 
 import java.io.*;
 import java.util.*;
@@ -37,6 +38,7 @@ import com.oracle.graal.api.code.Register.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.cri.xir.XirAssembler.XirConstant;
@@ -46,31 +48,6 @@ import com.oracle.max.cri.xir.XirAssembler.XirOperand;
 import com.oracle.max.cri.xir.XirAssembler.XirParameter;
 
 public class HotSpotXirGenerator implements XirGenerator {
-
-    // this needs to correspond to graal_CodeInstaller.hpp
-    // @formatter:off
-    public static final Integer MARK_VERIFIED_ENTRY            = 0x0001;
-    public static final Integer MARK_UNVERIFIED_ENTRY          = 0x0002;
-    public static final Integer MARK_OSR_ENTRY                 = 0x0003;
-    public static final Integer MARK_UNWIND_ENTRY              = 0x0004;
-    public static final Integer MARK_EXCEPTION_HANDLER_ENTRY   = 0x0005;
-    public static final Integer MARK_DEOPT_HANDLER_ENTRY       = 0x0006;
-
-    public static final Integer MARK_STATIC_CALL_STUB          = 0x1000;
-
-    public static final Integer MARK_INVOKEINTERFACE           = 0x2001;
-    public static final Integer MARK_INVOKESTATIC              = 0x2002;
-    public static final Integer MARK_INVOKESPECIAL             = 0x2003;
-    public static final Integer MARK_INVOKEVIRTUAL             = 0x2004;
-    public static final Integer MARK_INLINE_INVOKEVIRTUAL      = 0x2005;
-
-    public static final Integer MARK_IMPLICIT_NULL             = 0x3000;
-    public static final Integer MARK_POLL_NEAR                 = 0x3001;
-    public static final Integer MARK_POLL_RETURN_NEAR          = 0x3002;
-    public static final Integer MARK_POLL_FAR                  = 0x3003;
-    public static final Integer MARK_POLL_RETURN_FAR           = 0x3004;
-
-    // @formatter:on
 
     private final HotSpotVMConfig config;
     private final TargetDescription target;
