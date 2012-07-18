@@ -43,11 +43,16 @@ public class IterativeCheckCastEliminationPhase extends Phase {
     protected void run(StructuredGraph graph) {
         CheckCastEliminationPhase eliminate = new CheckCastEliminationPhase();
         CanonicalizerPhase canon = new CanonicalizerPhase(target, runtime, assumptions);
+        boolean canonRun = false;
         while (true) {
             eliminate.apply(graph);
             if (!eliminate.wasGraphModfied()) {
                 break;
             }
+            canon.apply(graph);
+            canonRun = true;
+        }
+        if (!canonRun) {
             canon.apply(graph);
         }
     }
