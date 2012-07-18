@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,66 +21,46 @@
  * questions.
  */
 package com.oracle.graal.graph;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 import java.util.*;
-import java.util.Map.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map.Entry;
 
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.Node.Verbosity;
 
-import sun.misc.Unsafe;
+public class NodeClass extends FieldIntrospection {
 
-public class NodeClass {
+    public static final NodeClass get(Class<?> c) {
+        NodeClass clazz = (NodeClass) allClasses.get(c);
+        if (clazz != null) {
+            return clazz;
+        }
+
+        // We can have a race of multiple threads creating the LIRInstructionClass at the same time.
+        // However, only one will be put into the map, and this is the one returned by all threads.
+        clazz = new NodeClass(c);
+        NodeClass oldClazz = (NodeClass) allClasses.putIfAbsent(c, clazz);
+        if (oldClazz != null) {
+            return oldClazz;
+        } else {
+            return clazz;
+        }
+    }
+
 
     public static final int NOT_ITERABLE = -1;
 
-    /**
-     * Interface used by {@link NodeClass#rescanAllFieldOffsets(CalcOffset)} to determine the offset (in bytes) of a field.
-     */
-    public interface CalcOffset {
-        long getOffset(Field field);
-    }
+    private static final Class<?> NODE_CLASS = Node.class;
+    private static final Class<?> INPUT_LIST_CLASS = NodeInputList.class;
+    private static final Class<?> SUCCESSOR_LIST_CLASS = NodeSuccessorList.class;
 
-    private static final Class< ? > NODE_CLASS = Node.class;
-    private static final Class< ? > INPUT_LIST_CLASS = NodeInputList.class;
-    private static final Class< ? > SUCCESSOR_LIST_CLASS = NodeSuccessorList.class;
-
-    private static final Unsafe unsafe = getUnsafe();
-
-    private static Unsafe getUnsafe() {
-        try {
-            // this will only fail if graal is not part of the boot class path
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-            // nothing to do
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            // currently we rely on being able to use Unsafe...
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-        }
-    }
-
-    private static final Map<Class< ? >, NodeClass> nodeClasses = new ConcurrentHashMap<>();
     private static int nextIterableId = 0;
 
-    private final Class< ? > clazz;
     private final int directInputCount;
     private final long[] inputOffsets;
-    private final Class<?>[] inputTypes;
-    private final String[] inputNames;
     private final int directSuccessorCount;
     private final long[] successorOffsets;
-    private final Class<?>[] successorTypes;
-    private final String[] successorNames;
-    private final long[] dataOffsets;
     private final Class<?>[] dataTypes;
-    private final String[] dataNames;
     private final boolean canGVN;
     private final int startGVNNumber;
     private final String shortName;
@@ -88,16 +68,10 @@ public class NodeClass {
     private final int iterableId;
     private final boolean hasOutgoingEdges;
 
-    static class DefaultCalcOffset implements CalcOffset {
-        @Override
-        public long getOffset(Field field) {
-            return unsafe.objectFieldOffset(field);
-        }
-    }
 
-    public NodeClass(Class< ? > clazz) {
+    public NodeClass(Class<?> clazz) {
+        super(clazz);
         assert NODE_CLASS.isAssignableFrom(clazz);
-        this.clazz = clazz;
 
         FieldScanner scanner = new FieldScanner(new DefaultCalcOffset());
         scanner.scan(clazz);
@@ -106,16 +80,15 @@ public class NodeClass {
         inputOffsets = sortedLongCopy(scanner.inputOffsets, scanner.inputListOffsets);
         directSuccessorCount = scanner.successorOffsets.size();
         successorOffsets = sortedLongCopy(scanner.successorOffsets, scanner.successorListOffsets);
-        dataOffsets = new long[scanner.dataOffsets.size()];
-        for (int i = 0; i < scanner.dataOffsets.size(); ++i) {
-            dataOffsets[i] = scanner.dataOffsets.get(i);
+
+        dataOffsets = sortedLongCopy(scanner.dataOffsets);
+        dataTypes = new Class[dataOffsets.length];
+        for (int i = 0; i < dataOffsets.length; i++) {
+            dataTypes[i] = scanner.fieldTypes.get(dataOffsets[i]);
         }
-        dataTypes = scanner.dataTypes.toArray(new Class[0]);
-        dataNames = scanner.dataNames.toArray(new String[0]);
-        inputTypes = arrayUsingSortedOffsets(scanner.inputTypesMap, inputOffsets, new Class<?>[inputOffsets.length]);
-        inputNames = arrayUsingSortedOffsets(scanner.inputNamesMap, inputOffsets, new String[inputOffsets.length]);
-        successorTypes = arrayUsingSortedOffsets(scanner.successorTypesMap, successorOffsets, new Class<?>[successorOffsets.length]);
-        successorNames = arrayUsingSortedOffsets(scanner.successorNamesMap, successorOffsets, new String[successorOffsets.length]);
+
+        fieldNames = scanner.fieldNames;
+        fieldTypes = scanner.fieldTypes;
 
         canGVN = Node.ValueNumberable.class.isAssignableFrom(clazz);
         startGVNNumber = clazz.hashCode();
@@ -150,52 +123,26 @@ public class NodeClass {
         this.hasOutgoingEdges = this.inputOffsets.length > 0 || this.successorOffsets.length > 0;
     }
 
-    public static void rescanAllFieldOffsets(CalcOffset calc) {
-        for (NodeClass nodeClass : nodeClasses.values()) {
-            nodeClass.rescanFieldOffsets(calc);
-        }
-    }
-
-    private void rescanFieldOffsets(CalcOffset calc) {
+    @Override
+    protected void rescanFieldOffsets(CalcOffset calc) {
         FieldScanner scanner = new FieldScanner(calc);
         scanner.scan(clazz);
         assert directInputCount == scanner.inputOffsets.size();
         copyInto(inputOffsets, sortedLongCopy(scanner.inputOffsets, scanner.inputListOffsets));
         assert directSuccessorCount == scanner.successorOffsets.size();
         copyInto(successorOffsets, sortedLongCopy(scanner.successorOffsets, scanner.successorListOffsets));
-        assert dataOffsets.length == scanner.dataOffsets.size();
-        for (int i = 0; i < scanner.dataOffsets.size(); ++i) {
-            dataOffsets[i] = scanner.dataOffsets.get(i);
-        }
-        copyInto(dataTypes, scanner.dataTypes);
-        copyInto(dataNames, scanner.dataNames);
+        copyInto(dataOffsets, sortedLongCopy(scanner.dataOffsets));
 
-        copyInto(inputTypes, arrayUsingSortedOffsets(scanner.inputTypesMap, this.inputOffsets, new Class<?>[this.inputOffsets.length]));
-        copyInto(inputNames, arrayUsingSortedOffsets(scanner.inputNamesMap, this.inputOffsets, new String[this.inputOffsets.length]));
-        copyInto(successorTypes, arrayUsingSortedOffsets(scanner.successorTypesMap, this.successorOffsets, new Class<?>[this.successorOffsets.length]));
-        copyInto(successorNames, arrayUsingSortedOffsets(scanner.successorNamesMap, this.successorOffsets, new String[this.successorNames.length]));
+        for (int i = 0; i < dataOffsets.length; i++) {
+            dataTypes[i] = scanner.fieldTypes.get(dataOffsets[i]);
+        }
+
+        fieldNames.clear();
+        fieldNames.putAll(scanner.fieldNames);
+        fieldTypes.clear();
+        fieldTypes.putAll(scanner.fieldTypes);
     }
 
-    private static void copyInto(long[] dest, long[] src) {
-        assert dest.length == src.length;
-        for (int i = 0; i < dest.length; i++) {
-            dest[i] = src[i];
-        }
-    }
-
-    private static <T> void copyInto(T[] dest, T[] src) {
-        assert dest.length == src.length;
-        for (int i = 0; i < dest.length; i++) {
-            dest[i] = src[i];
-        }
-    }
-
-    private static <T> void copyInto(T[] dest, List<T> src) {
-        assert dest.length == src.size();
-        for (int i = 0; i < dest.length; i++) {
-            dest[i] = src.get(i);
-        }
-    }
 
     public boolean hasOutgoingEdges() {
         return hasOutgoingEdges;
@@ -213,107 +160,49 @@ public class NodeClass {
         return canGVN;
     }
 
-    private static synchronized NodeClass getSynchronized(Class< ? > c) {
-        NodeClass clazz = nodeClasses.get(c);
-        if (clazz == null) {
-            clazz = new NodeClass(c);
-            nodeClasses.put(c, clazz);
-        }
-        return clazz;
-    }
-
-    public static final NodeClass get(Class< ? > c) {
-        NodeClass clazz = nodeClasses.get(c);
-        return clazz == null ? getSynchronized(c) : clazz;
-    }
-
     public static int cacheSize() {
         return nextIterableId;
     }
 
-    private static class FieldScanner {
+    protected static class FieldScanner extends BaseFieldScanner {
         public final ArrayList<Long> inputOffsets = new ArrayList<>();
         public final ArrayList<Long> inputListOffsets = new ArrayList<>();
-        public final Map<Long, Class< ? >> inputTypesMap = new HashMap<>();
-        public final Map<Long, String> inputNamesMap = new HashMap<>();
         public final ArrayList<Long> successorOffsets = new ArrayList<>();
         public final ArrayList<Long> successorListOffsets = new ArrayList<>();
-        public final Map<Long, Class< ? >> successorTypesMap = new HashMap<>();
-        public final Map<Long, String> successorNamesMap = new HashMap<>();
-        public final ArrayList<Long> dataOffsets = new ArrayList<>();
-        public final ArrayList<Class< ? >> dataTypes = new ArrayList<>();
-        public final ArrayList<String> dataNames = new ArrayList<>();
-        public final CalcOffset calc;
 
-        public FieldScanner(CalcOffset calc) {
-            this.calc = calc;
+        protected FieldScanner(CalcOffset calc) {
+            super(calc);
         }
 
-        public void scan(Class< ? > clazz) {
-            Class< ? > currentClazz = clazz;
-            do {
-                for (Field field : currentClazz.getDeclaredFields()) {
-                    if (!Modifier.isStatic(field.getModifiers())) {
-                        Class< ? > type = field.getType();
-                        long offset = calc.getOffset(field);
-                        String name = field.getName();
-                        if (field.isAnnotationPresent(Node.Input.class)) {
-                            assert !field.isAnnotationPresent(Node.Successor.class) : "field cannot be both input and successor";
-                            if (INPUT_LIST_CLASS.isAssignableFrom(type)) {
-                                inputListOffsets.add(offset);
-                            } else {
-                                assert NODE_CLASS.isAssignableFrom(type) : "invalid input type: " + type;
-                                inputOffsets.add(offset);
-                                inputTypesMap.put(offset, type);
-                            }
-                            if (field.getAnnotation(Node.Input.class).notDataflow()) {
-                                inputNamesMap.put(offset, name + "#NDF");
-                            } else {
-                                inputNamesMap.put(offset, name);
-                            }
-                        } else if (field.isAnnotationPresent(Node.Successor.class)) {
-                            if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
-                                successorListOffsets.add(offset);
-                            } else {
-                                assert NODE_CLASS.isAssignableFrom(type) : "invalid successor type: " + type;
-                                successorOffsets.add(offset);
-                                successorTypesMap.put(offset, type);
-                            }
-                            successorNamesMap.put(offset, name);
-                        } else {
-                            assert !NODE_CLASS.isAssignableFrom(type) || name.equals("Null") : "suspicious node field: " + field;
-                            assert !INPUT_LIST_CLASS.isAssignableFrom(type) : "suspicious node input list field: " + field;
-                            assert !SUCCESSOR_LIST_CLASS.isAssignableFrom(type) : "suspicious node successor list field: " + field;
-                            dataOffsets.add(offset);
-                            dataTypes.add(type);
-                            dataNames.add(name);
-                        }
-                    }
+        @Override
+        protected void scanField(Field field, Class<?> type, long offset) {
+            if (field.isAnnotationPresent(Node.Input.class)) {
+                assert !field.isAnnotationPresent(Node.Successor.class) : "field cannot be both input and successor";
+                if (INPUT_LIST_CLASS.isAssignableFrom(type)) {
+                    inputListOffsets.add(offset);
+                } else {
+                    assert NODE_CLASS.isAssignableFrom(type) : "invalid input type: " + type;
+                    inputOffsets.add(offset);
                 }
-                currentClazz = currentClazz.getSuperclass();
-            } while (currentClazz != Node.class);
+                if (field.getAnnotation(Node.Input.class).notDataflow()) {
+                    fieldNames.put(offset, field.getName() + "#NDF");
+                }
+            } else if (field.isAnnotationPresent(Node.Successor.class)) {
+                if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
+                    successorListOffsets.add(offset);
+                } else {
+                    assert NODE_CLASS.isAssignableFrom(type) : "invalid successor type: " + type;
+                    successorOffsets.add(offset);
+                }
+            } else {
+                assert !NODE_CLASS.isAssignableFrom(type) || field.getName().equals("Null") : "suspicious node field: " + field;
+                assert !INPUT_LIST_CLASS.isAssignableFrom(type) : "suspicious node input list field: " + field;
+                assert !SUCCESSOR_LIST_CLASS.isAssignableFrom(type) : "suspicious node successor list field: " + field;
+                dataOffsets.add(offset);
+            }
         }
     }
 
-    private static <T> T[] arrayUsingSortedOffsets(Map<Long, T> map, long[] sortedOffsets, T[] result) {
-        for (int i = 0; i < sortedOffsets.length; i++) {
-            result[i] = map.get(sortedOffsets[i]);
-        }
-        return result;
-    }
-
-    private static long[] sortedLongCopy(ArrayList<Long> list1, ArrayList<Long> list2) {
-        Collections.sort(list1);
-        Collections.sort(list2);
-        long[] result = new long[list1.size() + list2.size()];
-        for (int i = 0; i < list1.size(); i++) {
-            result[i] = list1.get(i);
-        }
-        for (int i = 0; i < list2.size(); i++) {
-            result[list1.size() + i] = list2.get(i);
-        }
-        return result;
-    }
 
     @Override
     public String toString() {
@@ -561,7 +450,7 @@ public class NodeClass {
      */
     public void getDebugProperties(Node node, Map<Object, Object> properties) {
         for (int i = 0; i < dataOffsets.length; ++i) {
-            Class<?> type = dataTypes[i];
+            Class<?> type = fieldTypes.get(dataOffsets[i]);
             Object value = null;
             if (type.isPrimitive()) {
                 if (type == Integer.TYPE) {
@@ -580,7 +469,7 @@ public class NodeClass {
             } else {
                 value = unsafe.getObject(node, dataOffsets[i]);
             }
-            properties.put(dataNames[i], value);
+            properties.put(fieldNames.get(dataOffsets[i]), value);
         }
     }
 
@@ -654,14 +543,14 @@ public class NodeClass {
     }
 
     public String getName(Position pos) {
-        return pos.input ? inputNames[pos.index] : successorNames[pos.index];
+        return fieldNames.get(pos.input ? inputOffsets[pos.index] : successorOffsets[pos.index]);
     }
 
     private void set(Node node, Position pos, Node x) {
         long offset = pos.input ? inputOffsets[pos.index] : successorOffsets[pos.index];
         if (pos.subIndex == NOT_ITERABLE) {
             Node old = getNode(node,  offset);
-            assert x == null || (pos.input ? inputTypes : successorTypes)[pos.index].isAssignableFrom(x.getClass()) : this + ".set(node, pos, " + x + ") while type is " + (pos.input ? inputTypes : successorTypes)[pos.index];
+            assert x == null || fieldTypes.get((pos.input ? inputOffsets : successorOffsets)[pos.index]).isAssignableFrom(x.getClass()) : this + ".set(node, pos, " + x + ")";
             putNode(node, offset, x);
             if (pos.input) {
                 node.updateUsages(old, x);
@@ -717,7 +606,7 @@ public class NodeClass {
         while (index < directInputCount) {
             Node input = getNode(node, inputOffsets[index]);
             if (input == old) {
-                assert other == null || inputTypes[index].isAssignableFrom(other.getClass()); // : "Can not assign " + other.getClass() + " to " + inputTypes[index] + " in " + node;
+                assert other == null || fieldTypes.get(inputOffsets[index]).isAssignableFrom(other.getClass()); // : "Can not assign " + other.getClass() + " to " + inputTypes[index] + " in " + node;
                 putNode(node, inputOffsets[index], other);
                 return true;
             }
@@ -739,7 +628,7 @@ public class NodeClass {
         while (index < directSuccessorCount) {
             Node successor = getNode(node, successorOffsets[index]);
             if (successor == old) {
-                assert other == null || successorTypes[index].isAssignableFrom(other.getClass()); // : successorTypes[index] + " is not compatible with " + other.getClass();
+                assert other == null || fieldTypes.get(successorOffsets[index]).isAssignableFrom(other.getClass()); // : successorTypes[index] + " is not compatible with " + other.getClass();
                 putNode(node, successorOffsets[index], other);
                 return true;
             }
@@ -970,7 +859,7 @@ public class NodeClass {
                         Node replacement = replacements.replacement(input);
                         if (replacement != input) {
                             replacementsMap.put(input, replacement);
-                            assert replacement == null || node.getNodeClass().inputTypes[pos.index] == null || node.getNodeClass().inputTypes[pos.index].isAssignableFrom(replacement.getClass());
+                            assert isAssignable(node.getNodeClass().fieldTypes.get(node.getNodeClass().inputOffsets[pos.index]), replacement);
                             target = replacement;
                         } else if (input.graph() == graph) { // patch to the outer world
                             target = input;
@@ -998,7 +887,7 @@ public class NodeClass {
                         Node replacement = replacements.replacement(succ);
                         if (replacement != succ) {
                             replacementsMap.put(succ, replacement);
-                            assert replacement == null || node.getNodeClass().successorTypes[pos.index] == null || node.getNodeClass().successorTypes[pos.index].isAssignableFrom(replacement.getClass());
+                            assert isAssignable(node.getNodeClass().fieldTypes.get(node.getNodeClass().successorOffsets[pos.index]), replacement);
                             target = replacement;
                         }
                     }
@@ -1007,5 +896,9 @@ public class NodeClass {
             }
         }
         return newNodes;
+    }
+
+    private static boolean isAssignable(Class<?> fieldType, Node replacement) {
+        return replacement == null || !NODE_CLASS.isAssignableFrom(fieldType) || fieldType.isAssignableFrom(replacement.getClass());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,6 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.*;
-
-import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -39,51 +36,31 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.StateProcedure;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
-public class LIRInstructionClass {
-    // TODO(cwimmer) factor out the common methods of this class and NodeClass into a base class.
+public class LIRInstructionClass extends FieldIntrospection {
 
-    /**
-     * Interface used by {@link LIRInstructionClass#rescanAllFieldOffsets(CalcOffset)} to determine the offset (in bytes) of a field.
-     */
-    public interface CalcOffset {
-        long getOffset(Field field);
-    }
-
-    private static final Unsafe unsafe = getUnsafe();
-
-    private static Unsafe getUnsafe() {
-        try {
-            // this will only fail if graal is not part of the boot class path
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-            // nothing to do
+    public static final LIRInstructionClass get(Class<? extends LIRInstruction> c) {
+        LIRInstructionClass clazz = (LIRInstructionClass) allClasses.get(c);
+        if (clazz != null) {
+            return clazz;
         }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            // currently we rely on being able to use Unsafe...
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+
+        // We can have a race of multiple threads creating the LIRInstructionClass at the same time.
+        // However, only one will be put into the map, and this is the one returned by all threads.
+        clazz = new LIRInstructionClass(c);
+        LIRInstructionClass oldClazz = (LIRInstructionClass) allClasses.putIfAbsent(c, clazz);
+        if (oldClazz != null) {
+            return oldClazz;
+        } else {
+            return clazz;
         }
     }
 
-    static class DefaultCalcOffset implements CalcOffset {
-        @Override
-        public long getOffset(Field field) {
-            return unsafe.objectFieldOffset(field);
-        }
-    }
 
     private static final Class<?> INSTRUCTION_CLASS = LIRInstruction.class;
     private static final Class<?> VALUE_CLASS = Value.class;
     private static final Class<?> VALUE_ARRAY_CLASS = Value[].class;
     private static final Class<?> STATE_CLASS = LIRFrameState.class;
 
-
-    private static final ConcurrentHashMap<Class< ? >, LIRInstructionClass> classes = new ConcurrentHashMap<>();
-
-    private final Class< ? > clazz;
     private final int directUseCount;
     private final long[] useOffsets;
     private final EnumSet<OperandFlag>[] useFlags;
@@ -98,18 +75,14 @@ public class LIRInstructionClass {
     private final EnumSet<OperandFlag>[] defFlags;
 
     private final long[] stateOffsets;
-    private final long[] dataOffsets;
-
-    private final Map<Long, String> fieldNames;
-    private final Map<Long, Class<?>> fieldTypes;
 
     private String opcodeConstant;
     private long opcodeOffset;
 
     @SuppressWarnings("unchecked")
     public LIRInstructionClass(Class<?> clazz) {
+        super(clazz);
         assert INSTRUCTION_CLASS.isAssignableFrom(clazz);
-        this.clazz = clazz;
 
         FieldScanner scanner = new FieldScanner(new DefaultCalcOffset());
         scanner.scan(clazz);
@@ -144,13 +117,8 @@ public class LIRInstructionClass {
         opcodeOffset = scanner.opcodeOffset;
     }
 
-    public static void rescanAllFieldOffsets(CalcOffset calc) {
-        for (LIRInstructionClass nodeClass : classes.values()) {
-            nodeClass.rescanFieldOffsets(calc);
-        }
-    }
-
-    private void rescanFieldOffsets(CalcOffset calc) {
+    @Override
+    protected void rescanFieldOffsets(CalcOffset calc) {
         FieldScanner scanner = new FieldScanner(calc);
         scanner.scan(clazz);
 
@@ -175,30 +143,6 @@ public class LIRInstructionClass {
         opcodeOffset = scanner.opcodeOffset;
     }
 
-    private static void copyInto(long[] dest, long[] src) {
-        assert dest.length == src.length;
-        for (int i = 0; i < dest.length; i++) {
-            dest[i] = src[i];
-        }
-    }
-
-    public static final LIRInstructionClass get(Class<?> c) {
-        LIRInstructionClass clazz = classes.get(c);
-        if (clazz != null) {
-            return clazz;
-        }
-
-        // We can have a race of multiple threads creating the LIRInstructionClass at the same time.
-        // However, only one will be put into the map, and this is the one returned by all threads.
-        clazz = new LIRInstructionClass(c);
-        LIRInstructionClass oldClazz = classes.putIfAbsent(c, clazz);
-        if (oldClazz != null) {
-            return oldClazz;
-        } else {
-            return clazz;
-        }
-    }
-
 
     private static class OperandModeAnnotation {
         public final ArrayList<Long> scalarOffsets = new ArrayList<>();
@@ -206,21 +150,15 @@ public class LIRInstructionClass {
         public final Map<Long, EnumSet<OperandFlag>> flags = new HashMap<>();
     }
 
-    private static class FieldScanner {
-        public final CalcOffset calc;
-
+    protected static class FieldScanner extends BaseFieldScanner {
         public final Map<Class<? extends Annotation>, OperandModeAnnotation> valueAnnotations;
         public final ArrayList<Long> stateOffsets = new ArrayList<>();
-        public final ArrayList<Long> dataOffsets = new ArrayList<>();
-
-        public final Map<Long, String> fieldNames = new HashMap<>();
-        public final Map<Long, Class<?>> fieldTypes = new HashMap<>();
 
         private String opcodeConstant;
         private long opcodeOffset;
 
         public FieldScanner(CalcOffset calc) {
-            this.calc = calc;
+            super(calc);
 
             valueAnnotations = new HashMap<>();
             valueAnnotations.put(LIRInstruction.Use.class, new OperandModeAnnotation()); //LIRInstruction.Use.class));
@@ -259,52 +197,14 @@ public class LIRInstructionClass {
             return result;
         }
 
-        public void scan(Class<?> clazz) {
+        @Override
+        protected void scan(Class<?> clazz) {
             if (clazz.getAnnotation(LIRInstruction.Opcode.class) != null) {
                 opcodeConstant = clazz.getAnnotation(LIRInstruction.Opcode.class).value();
             }
             opcodeOffset = -1;
 
-            Class<?> currentClazz = clazz;
-            do {
-                for (Field field : currentClazz.getDeclaredFields()) {
-                    if (Modifier.isStatic(field.getModifiers())) {
-                        continue;
-                    }
-
-                    Class< ? > type = field.getType();
-                    long offset = calc.getOffset(field);
-
-                    if (VALUE_CLASS.isAssignableFrom(type)) {
-                        assert Modifier.isProtected(field.getModifiers()) && !Modifier.isFinal(field.getModifiers()) : "Value field must not be declared final or [package] private because it is modified by register allocator: " + field;
-                        OperandModeAnnotation annotation = getOperandModeAnnotation(field);
-                        assert annotation != null : "Field must have operand mode annotation: " + field;
-                        annotation.scalarOffsets.add(offset);
-                        annotation.flags.put(offset, getFlags(field));
-                    } else if (VALUE_ARRAY_CLASS.isAssignableFrom(type)) {
-                        OperandModeAnnotation annotation = getOperandModeAnnotation(field);
-                        assert annotation != null : "Field must have operand mode annotation: " + field;
-                        annotation.arrayOffsets.add(offset);
-                        annotation.flags.put(offset, getFlags(field));
-                    } else if (STATE_CLASS.isAssignableFrom(type)) {
-                        assert getOperandModeAnnotation(field) == null : "Field must not have operand mode annotation: " + field;
-                        assert field.getAnnotation(LIRInstruction.State.class) != null : "Field must have state annotation: " + field;
-                        stateOffsets.add(offset);
-                    } else {
-                        assert getOperandModeAnnotation(field) == null : "Field must not have operand mode annotation: " + field;
-                        assert field.getAnnotation(LIRInstruction.State.class) == null : "Field must not have state annotation: " + field;
-                        dataOffsets.add(offset);
-                    }
-                    fieldNames.put(offset, field.getName());
-                    fieldTypes.put(offset, type);
-
-                    if (field.getAnnotation(LIRInstruction.Opcode.class) != null) {
-                        assert opcodeConstant == null && opcodeOffset == -1 : "Can have only one Opcode definition: " + clazz;
-                        opcodeOffset = offset;
-                    }
-                }
-                currentClazz = currentClazz.getSuperclass();
-            } while (currentClazz != LIRInstruction.class);
+            super.scan(clazz);
 
             if (opcodeConstant == null && opcodeOffset == -1) {
                 opcodeConstant = clazz.getSimpleName();
@@ -313,37 +213,36 @@ public class LIRInstructionClass {
                 }
             }
         }
-    }
 
-    private static <T> T[] arrayUsingSortedOffsets(Map<Long, T> map, long[] sortedOffsets, T[] result) {
-        for (int i = 0; i < sortedOffsets.length; i++) {
-            result[i] = map.get(sortedOffsets[i]);
-        }
-        return result;
-    }
+        @Override
+        protected void scanField(Field field, Class<?> type, long offset) {
+            if (VALUE_CLASS.isAssignableFrom(type)) {
+                assert Modifier.isProtected(field.getModifiers()) && !Modifier.isFinal(field.getModifiers()) : "Value field must not be declared final or [package] private because it is modified by register allocator: " + field;
+                OperandModeAnnotation annotation = getOperandModeAnnotation(field);
+                assert annotation != null : "Field must have operand mode annotation: " + field;
+                annotation.scalarOffsets.add(offset);
+                annotation.flags.put(offset, getFlags(field));
+            } else if (VALUE_ARRAY_CLASS.isAssignableFrom(type)) {
+                OperandModeAnnotation annotation = getOperandModeAnnotation(field);
+                assert annotation != null : "Field must have operand mode annotation: " + field;
+                annotation.arrayOffsets.add(offset);
+                annotation.flags.put(offset, getFlags(field));
+            } else if (STATE_CLASS.isAssignableFrom(type)) {
+                assert getOperandModeAnnotation(field) == null : "Field must not have operand mode annotation: " + field;
+                assert field.getAnnotation(LIRInstruction.State.class) != null : "Field must have state annotation: " + field;
+                stateOffsets.add(offset);
+            } else {
+                assert getOperandModeAnnotation(field) == null : "Field must not have operand mode annotation: " + field;
+                assert field.getAnnotation(LIRInstruction.State.class) == null : "Field must not have state annotation: " + field;
+                dataOffsets.add(offset);
+            }
 
-    private static long[] sortedLongCopy(ArrayList<Long> list1) {
-        Collections.sort(list1);
-        long[] result = new long[list1.size()];
-        for (int i = 0; i < list1.size(); i++) {
-            result[i] = list1.get(i);
+            if (field.getAnnotation(LIRInstruction.Opcode.class) != null) {
+                assert opcodeConstant == null && opcodeOffset == -1 : "Can have only one Opcode definition: " + field.getType();
+                opcodeOffset = offset;
+            }
         }
-        return result;
     }
-
-    private static long[] sortedLongCopy(ArrayList<Long> list1, ArrayList<Long> list2) {
-        Collections.sort(list1);
-        Collections.sort(list2);
-        long[] result = new long[list1.size() + list2.size()];
-        for (int i = 0; i < list1.size(); i++) {
-            result[i] = list1.get(i);
-        }
-        for (int i = 0; i < list2.size(); i++) {
-            result[list1.size() + i] = list2.get(i);
-        }
-        return result;
-    }
-
 
     @Override
     public String toString() {
