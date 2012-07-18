@@ -24,7 +24,10 @@ package com.oracle.graal.api.code;
 
 import com.oracle.graal.api.meta.*;
 
-
+/**
+ * Callback mechanism for the VM to schedule a compilation.
+ */
 public interface CompilationQueue {
+
     boolean enqueue(final ResolvedJavaMethod method, final int entryBCI, boolean blocking, int priority) throws Throwable;
 }

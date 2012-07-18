@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.snippets;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaTypeProfile.*;
+import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.compiler.tests.*;
 import com.oracle.graal.nodes.*;
 

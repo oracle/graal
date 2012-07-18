@@ -20,7 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta;
+package com.oracle.graal.api.code;
+
+import com.oracle.graal.api.meta.*;
 
 /**
  * Represents a compiled instance of a method. It may have been invalidated or removed in the meantime.
