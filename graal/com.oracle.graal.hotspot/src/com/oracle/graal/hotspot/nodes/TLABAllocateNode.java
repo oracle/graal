@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -36,33 +34,15 @@ import com.oracle.graal.snippets.*;
  */
 public final class TLABAllocateNode extends FixedWithNextNode implements Lowerable {
 
-    private final int size;
-    @Input private ValueNode sizeNode;
+    @Input private ValueNode size;
 
-    public TLABAllocateNode(int size, Kind wordKind) {
+    public TLABAllocateNode(ValueNode size, Kind wordKind) {
         super(StampFactory.forWord(wordKind, true));
         this.size = size;
-        this.sizeNode = null;
     }
 
-    public TLABAllocateNode(Kind wordKind, ValueNode size) {
-        super(StampFactory.forWord(wordKind, true));
-        this.size = -1;
-        this.sizeNode = size;
-    }
-
-    public boolean isSizeConstant() {
-        return sizeNode == null;
-    }
-
-    public int constantSize() {
-        assert isSizeConstant();
+    public ValueNode size() {
         return size;
-    }
-
-    public ValueNode variableSize() {
-        assert !isSizeConstant();
-        return sizeNode;
     }
 
     @Override
@@ -70,28 +50,15 @@ public final class TLABAllocateNode extends FixedWithNextNode implements Lowerab
         tool.getRuntime().lower(this, tool);
     }
 
-    @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> debugProperties = super.getDebugProperties();
-        debugProperties.put("size", String.valueOf(size));
-        return debugProperties;
-    }
-
+    /**
+     * @return null if allocation fails
+     */
     /**
      * @return null if allocation fails
      */
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Word allocateConstantSize(@ConstantNodeParameter int size, @ConstantNodeParameter Kind wordKind) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * @return null if allocation fails
-     */
-    @SuppressWarnings("unused")
-    @NodeIntrinsic
-    public static Word allocateVariableSize(@ConstantNodeParameter Kind wordKind, int size) {
+    public static Word allocateVariableSize(int size, @ConstantNodeParameter Kind wordKind) {
         throw new UnsupportedOperationException();
     }
 }

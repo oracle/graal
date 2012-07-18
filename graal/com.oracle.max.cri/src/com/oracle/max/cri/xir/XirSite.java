@@ -25,7 +25,7 @@ package com.oracle.max.cri.xir;
 import com.oracle.graal.api.code.*;
 
 /**
- * Encapsulates the notion of a site where XIR can be supplied. It is supplied to the {@link RiXirGenerator} by the
+ * Encapsulates the notion of a site where XIR can be supplied. It is supplied to the {@link XirGenerator} by the
  * compiler for each place where XIR can be generated. This interface allows a number of queries, including the
  * bytecode-level location and optimization hints computed by the compiler.
  */

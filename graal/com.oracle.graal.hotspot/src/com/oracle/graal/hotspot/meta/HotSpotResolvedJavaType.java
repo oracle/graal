@@ -31,7 +31,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 
 /**
- * Implementation of RiType for resolved non-primitive HotSpot classes.
+ * Implementation of {@link JavaType} for resolved non-primitive HotSpot classes.
  */
 public final class HotSpotResolvedJavaType extends HotSpotJavaType implements ResolvedJavaType {
 
@@ -217,7 +217,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
         return instanceSize;
     }
 
-    public synchronized ResolvedJavaField createRiField(String fieldName, JavaType type, int offset, int flags) {
+    public synchronized ResolvedJavaField createField(String fieldName, JavaType type, int offset, int flags) {
         ResolvedJavaField result = null;
 
         long id = offset + ((long) flags << 32);

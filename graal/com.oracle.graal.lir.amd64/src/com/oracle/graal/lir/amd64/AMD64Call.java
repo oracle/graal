@@ -25,16 +25,13 @@ package com.oracle.graal.lir.amd64;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import java.util.*;
-
-import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.asm.TargetMethodAssembler.CallPositionListener;
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 
 public class AMD64Call {
 
@@ -45,23 +42,39 @@ public class AMD64Call {
         @State protected LIRFrameState state;
 
         protected final Object targetMethod;
-        protected final Map<XirMark, Mark> marks;
+        protected final CallPositionListener callPositionListener;
 
-        public DirectCallOp(Object targetMethod, Value result, Value[] parameters, LIRFrameState state, Map<XirMark, Mark> marks) {
+        public DirectCallOp(Object targetMethod, Value result, Value[] parameters, LIRFrameState state, CallPositionListener callPositionListener) {
             this.targetMethod = targetMethod;
             this.result = result;
             this.parameters = parameters;
             this.state = state;
-            this.marks = marks;
+            this.callPositionListener = callPositionListener;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            callAlignment(tasm, masm);
-            if (marks != null) {
-                marks.put(XirMark.CALLSITE, tasm.recordMark(null, new Mark[0]));
+            if (callPositionListener != null) {
+                callPositionListener.beforeCall(tasm);
+            }
+
+            emitAlignmentForDirectCall(tasm, masm);
+
+            if (callPositionListener != null) {
+                int pos = masm.codeBuffer.position();
+                callPositionListener.atCall(tasm);
+                assert pos == masm.codeBuffer.position() : "call position listener inserted code before an aligned call";
             }
             directCall(tasm, masm, targetMethod, state);
+        }
+
+        protected void emitAlignmentForDirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            // make sure that the displacement word of the call ends up word aligned
+            int offset = masm.codeBuffer.position();
+            offset += tasm.target.arch.machineCodeCallDisplacementOffset;
+            while (offset++ % tasm.target.wordSize != 0) {
+                masm.nop();
+            }
         }
     }
 
@@ -72,35 +85,25 @@ public class AMD64Call {
         @Use({REG}) protected Value targetAddress;
         @State protected LIRFrameState state;
 
-        private final Object targetMethod;
-        private final Map<XirMark, Mark> marks;
+        protected final Object targetMethod;
+        protected final CallPositionListener callPositionListener;
 
-        public IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value targetAddress, LIRFrameState state, Map<XirMark, Mark> marks) {
+        public IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value targetAddress, LIRFrameState state, CallPositionListener callPositionListener) {
             this.targetMethod = targetMethod;
             this.result = result;
             this.parameters = parameters;
             this.targetAddress = targetAddress;
             this.state = state;
-            this.marks = marks;
+            this.callPositionListener = callPositionListener;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            callAlignment(tasm, masm);
-            if (marks != null) {
-                marks.put(XirMark.CALLSITE, tasm.recordMark(null, new Mark[0]));
+            if (callPositionListener != null) {
+                callPositionListener.beforeCall(tasm);
+                callPositionListener.atCall(tasm);
             }
             indirectCall(tasm, masm, asRegister(targetAddress), targetMethod, state);
-        }
-    }
-
-
-    public static void callAlignment(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        // make sure that the displacement word of the call ends up word aligned
-        int offset = masm.codeBuffer.position();
-        offset += tasm.target.arch.machineCodeCallDisplacementOffset;
-        while (offset++ % tasm.target.wordSize != 0) {
-            masm.nop();
         }
     }
 

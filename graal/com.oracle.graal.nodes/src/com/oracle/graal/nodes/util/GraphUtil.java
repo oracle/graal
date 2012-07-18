@@ -22,21 +22,24 @@
  */
 package com.oracle.graal.nodes.util;
 
-import static com.oracle.graal.graph.iterators.NodePredicates.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.graph.iterators.NodePredicates.PositiveTypePredicate;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 
 public class GraphUtil {
 
-    private static final PositiveTypePredicate FLOATING = isA(FloatingNode.class).or(VirtualState.class).or(CallTargetNode.class);
+    private static final NodePredicate FLOATING = new NodePredicate() {
+        @Override
+        public final boolean  apply(Node n) {
+            //isA(FloatingNode.class).or(VirtualState.class).or(CallTargetNode.class)
+            return n instanceof FloatingNode || n instanceof VirtualState || n instanceof CallTargetNode;
+        }
+    };
 
     public static void killCFG(FixedNode node) {
         assert node.isAlive();
@@ -218,5 +221,24 @@ public class GraphUtil {
             v = ((ValueProxyNode) v).value();
         }
         return v;
+    }
+
+    /**
+     * Returns a string representation of the given collection of objects.
+     *
+     * @param objects The {@link Iterable} that will be used to iterate over the objects.
+     * @return A string of the format "[a, b, ...]".
+     */
+    public static String toString(Iterable< ? > objects) {
+        StringBuilder str = new StringBuilder();
+        str.append("[");
+        for (Object o : objects) {
+            str.append(o).append(", ");
+        }
+        if (str.length() > 1) {
+            str.setLength(str.length() - 2);
+        }
+        str.append("]");
+        return str.toString();
     }
 }

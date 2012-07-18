@@ -85,17 +85,6 @@ public abstract class ControlSplitNode extends FixedNode {
         };
     }
 
-    @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> properties = super.getDebugProperties();
-        StringBuilder str = new StringBuilder();
-        for (int i = 0; i < branchProbability.length; i++) {
-            str.append(i == 0 ? "" : ", ").append(String.format(Locale.ENGLISH, "%7.5f", branchProbability[i]));
-        }
-        properties.put("branchProbability", str.toString());
-        return properties;
-    }
-
     public int blockSuccessorIndex(BeginNode successor) {
         int idx = blockSuccessors.indexOf(successor);
         if (idx < 0) {

@@ -39,6 +39,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.snippets.*;
+import com.oracle.graal.hotspot.target.amd64.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.max.criutils.*;
@@ -113,7 +114,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                 @Override
                 public void run() {
                     VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime);
-                    SnippetInstaller installer = new SnippetInstaller(runtime, runtime.getCompiler().getTarget());
+                    SnippetInstaller installer = new SnippetInstaller(runtime, runtime.getGraalRuntime().getTarget());
                     GraalIntrinsics.installIntrinsics(installer);
                     runtime.installSnippets(installer);
                 }
@@ -288,7 +289,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         CompilationStatistics.clear("final");
         MethodEntryCounters.printCounters(graalRuntime);
         HotSpotXirGenerator.printCounters(TTY.out().out());
-        CheckCastSnippets.printCounters(TTY.out().out());
+        SnippetCounter.printGroups(TTY.out().out());
     }
 
     private void flattenChildren(DebugValueMap map, DebugValueMap globalMap) {
@@ -411,7 +412,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     public JavaField createJavaField(JavaType holder, String name, JavaType type, int offset, int flags) {
         if (offset != -1) {
             HotSpotResolvedJavaType resolved = (HotSpotResolvedJavaType) holder;
-            return resolved.createRiField(name, type, offset, flags);
+            return resolved.createField(name, type, offset, flags);
         }
         return new UnresolvedField(holder, name, type);
     }

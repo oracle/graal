@@ -77,14 +77,15 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     long getMaxCallTargetOffset(RuntimeCall rtcall);
 
     /**
-     * Adds the given machine code as an implementation of the given method without making it the default implementation.
+     * Adds the given compilation result as an implementation of the given method without making it the default implementation.
+     *
      * @param method a method to which the executable code is begin added
-     * @param code the code to be added
+     * @param compResult the compilation result to be added
      * @param info the object into which details of the installed code will be written.
      *        Ignored if null, otherwise the info is written to index 0 of this array.
      * @return a reference to the compiled and ready-to-run code
      */
-    InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult code, CodeInfo[] info);
+    InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, CodeInfo[] info);
 
     /**
      * Encodes a deoptimization action and a deoptimization reason in an integer value.
@@ -93,14 +94,16 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     int encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason);
 
     /**
-     * Converts a RiDeoptReason into an integer value.
-     * @return An integer value representing the given RiDeoptReason.
+     * Converts a {@link DeoptimizationReason} into an integer value.
+     *
+     * @return an integer value representing the given {@link DeoptimizationReason}
      */
     int convertDeoptReason(DeoptimizationReason reason);
 
     /**
-     * Converts a RiDeoptAction into an integer value.
-     * @return An integer value representing the given RiDeoptAction.
+     * Converts a {@link DeoptimizationAction} into an integer value.
+     *
+     * @return an integer value representing the given {@link DeoptimizationAction}
      */
     int convertDeoptAction(DeoptimizationAction action);
 }

@@ -27,7 +27,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 
 /**
- * Implementation of RiType for unresolved HotSpot classes.
+ * Implementation of {@link JavaType} for unresolved HotSpot classes.
  */
 public class HotSpotTypeUnresolved extends HotSpotJavaType {
 

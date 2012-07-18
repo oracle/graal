@@ -358,7 +358,7 @@ public final class HotSpotMethodData extends CompilerObject {
             }
 
             totalCount += getTypesNotRecordedExecutionCount(data, position);
-            return createRiTypeProfile(types, counts, totalCount, entries);
+            return createTypeProfile(types, counts, totalCount, entries);
         }
 
         protected long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position) {
@@ -367,7 +367,7 @@ public final class HotSpotMethodData extends CompilerObject {
             return getCounterValue(data, position);
         }
 
-        private static JavaTypeProfile createRiTypeProfile(ResolvedJavaType[] types, long[] counts, long totalCount, int entries) {
+        private static JavaTypeProfile createTypeProfile(ResolvedJavaType[] types, long[] counts, long totalCount, int entries) {
             if (entries <= 0 || totalCount < GraalOptions.MatureExecutionsTypeProfile) {
                 return null;
             }

@@ -104,7 +104,7 @@ public final class Register implements Comparable<Register>, Serializable {
     }
 
     /**
-     * Creates a {@code CiRegister} instance.
+     * Creates a {@link Register} instance.
      *
      * @param number unique identifier for the register
      * @param encoding the target machine encoding for the register

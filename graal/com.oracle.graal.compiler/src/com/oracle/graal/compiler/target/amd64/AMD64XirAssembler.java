@@ -32,10 +32,10 @@ import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.xir.*;
 
 /**
- * AMD64 version of {@link CiXirAssembler}.
+ * AMD64 version of {@link XirAssembler}.
  *
  */
-public class AMD64XirAssembler extends CiXirAssembler {
+public class AMD64XirAssembler extends XirAssembler {
     public AMD64XirAssembler(TargetDescription target) {
         super(target);
     }
@@ -216,7 +216,7 @@ public class AMD64XirAssembler extends CiXirAssembler {
     }
 
     @Override
-    public CiXirAssembler copy() {
+    public XirAssembler copy() {
         return new AMD64XirAssembler(target);
     }
 }

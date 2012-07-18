@@ -45,7 +45,7 @@ public final class IsNullNode extends BooleanNode implements Canonicalizable, LI
      */
     public IsNullNode(ValueNode object) {
         super(StampFactory.condition());
-        assert object.kind() == Kind.Object : object.kind();
+        assert object.kind() == Kind.Object : object;
         this.object = object;
     }
 

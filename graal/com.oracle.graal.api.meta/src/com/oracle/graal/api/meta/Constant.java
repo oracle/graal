@@ -397,6 +397,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed object constant.
+     *
      * @param o the object value to box
      * @return a boxed copy of {@code value}
      */
@@ -410,8 +411,9 @@ public final class Constant extends Value {
     /**
      * Creates a boxed constant for the given kind from an Object.
      * The object needs to be of the Java boxed type corresponding to the kind.
+     *
      * @param kind the kind of the constant to create
-     * @param value the Java boxed value: a Byte instance for CiKind Byte, etc.
+     * @param value the Java boxed value: a {@link Byte} instance for {@link Kind#Byte}, etc.
      * @return the boxed copy of {@code value}
      */
     public static Constant forBoxed(Kind kind, Object value) {

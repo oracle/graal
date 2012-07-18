@@ -64,13 +64,10 @@ public class HotSpotDebugConfig implements DebugConfig {
         if (logFilter != null || meterFilter != null || timerFilter != null || dumpFilter != null || methodFilter != null) {
             TTY.println(Thread.currentThread().getName() + ": " + toString());
         }
-
-        if (GraalOptions.PrintIdealGraphFile) {
-            dumpHandlers.add(new IdealGraphPrinterDumpHandler());
-        } else {
-            dumpHandlers.add(new IdealGraphPrinterDumpHandler(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort));
+        dumpHandlers.add(new GraphPrinterDumpHandler());
+        if (GraalOptions.PrintCFG) {
+            dumpHandlers.add(new CFGPrinterObserver());
         }
-        dumpHandlers.add(new CFGPrinterObserver());
         this.output = output;
     }
 

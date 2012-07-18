@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.type.*;
 public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType {
 
     public ValueAnchorNode(ValueNode... values) {
-        super(StampFactory.forVoid(), values);
+        super(StampFactory.dependency(), values);
     }
 
     @Override

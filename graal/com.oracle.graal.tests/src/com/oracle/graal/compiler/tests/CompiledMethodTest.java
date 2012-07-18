@@ -26,8 +26,9 @@ import java.lang.reflect.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.InstalledCode.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.InstalledCode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;

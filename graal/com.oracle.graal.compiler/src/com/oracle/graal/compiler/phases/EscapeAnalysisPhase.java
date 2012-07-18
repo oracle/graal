@@ -169,7 +169,7 @@ public class EscapeAnalysisPhase extends Phase {
 
             if (virtual.fieldsCount() > 0) {
                 final BlockExitState startState = new BlockExitState(escapeFields, virtual);
-                final PostOrderNodeIterator<?> iterator = new PostOrderNodeIterator<BlockExitState>(next, startState) {
+                new PostOrderNodeIterator<BlockExitState>(next, startState) {
                     @Override
                     protected void node(FixedNode curNode) {
                         op.updateState(virtual, curNode, fields, state.fieldState);
@@ -183,8 +183,7 @@ public class EscapeAnalysisPhase extends Phase {
                             ((StateSplit) curNode).stateAfter().addVirtualObjectMapping(v);
                         }
                     }
-                };
-                iterator.apply();
+                }.apply();
             }
         }
     }

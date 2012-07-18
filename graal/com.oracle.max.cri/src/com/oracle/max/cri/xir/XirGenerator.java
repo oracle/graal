@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.JavaType.*;
 /**
  * Represents the interface through which the compiler requests the XIR for a given bytecode from the runtime system.
  */
-public interface RiXirGenerator {
+public interface XirGenerator {
 
     XirSnippet genInvokeInterface(XirSite site, XirArgument receiver, JavaMethod method);
 
@@ -71,6 +71,6 @@ public interface RiXirGenerator {
      *
      * @param asm the XIR assembler
      */
-    void initialize(CiXirAssembler asm);
+    void initialize(XirAssembler asm);
 
 }

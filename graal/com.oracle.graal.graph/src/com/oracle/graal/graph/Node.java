@@ -50,6 +50,11 @@ public abstract class Node implements Cloneable, Formattable {
     static final int INITIAL_ID = -1;
     static final int ALIVE_ID_START = 0;
 
+    /**
+     * Denotes a node input. This should be applied to exactly the fields of a node that are of type {@link Node}.
+     * Nodes that update their inputs outside of their constructor should call {@link Node#updateUsages(Node, Node)}
+     * just prior to doing the update of the input.
+     */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public static @interface Input {
@@ -279,9 +284,6 @@ public abstract class Node implements Cloneable, Formattable {
 
     private boolean removeThisFromUsages(Node n) {
         if (n.usages.remove(this)) {
-            if (n.usages.size() == 0) {
-                graph.usagesDropped.add(n);
-            }
             return true;
         } else {
             return false;
@@ -419,12 +421,19 @@ public abstract class Node implements Cloneable, Formattable {
 
     /**
      * Provides a {@link Map} of properties of this node for use in debugging (e.g., to view in the ideal graph
-     * visualizer). Subclasses overriding this method should add to the map returned by their superclass.
+     * visualizer).
      */
     public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> map = new HashMap<>();
-        map.put("usageCount", usages.size());
-        map.put("predecessorCount", predecessor == null ? 0 : 1);
+        return getDebugProperties(new HashMap<>());
+    }
+
+
+    /**
+     * Fills a {@link Map} with properties of this node for use in debugging (e.g., to view in the ideal graph
+     * visualizer). Subclasses overriding this method should also fill the map using their superclass.
+     * @param map
+     */
+    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         getNodeClass().getDebugProperties(this, map);
         return map;
     }
@@ -490,6 +499,12 @@ public abstract class Node implements Cloneable, Formattable {
             default:
                 throw new RuntimeException("unknown verbosity: " + verbosity);
         }
+    }
+
+
+    @Deprecated
+    public int getId() {
+        return id;
     }
 
     @Override

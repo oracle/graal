@@ -22,26 +22,80 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import java.util.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
 public class ReadEliminationPhase extends Phase {
+    private Queue<PhiNode> newPhis;
 
     @Override
     protected void run(StructuredGraph graph) {
+        newPhis = new LinkedList<>();
         for (FloatingReadNode n : graph.getNodes(FloatingReadNode.class)) {
-            if (n.lastLocationAccess() != null) {
-                Node memoryInput = n.lastLocationAccess();
-                if (memoryInput instanceof WriteNode) {
-                    WriteNode other = (WriteNode) memoryInput;
-                    if (other.object() == n.object() && other.location() == n.location()) {
-                        Debug.log("Eliminated memory read %1.1s and replaced with node %s", n, other.value());
-                        graph.replaceFloating(n, other.value());
-                    }
-                }
+            if (isReadEliminable(n)) {
+                NodeMap<ValueNode> nodeMap = n.graph().createNodeMap();
+                ValueNode value = getValue(n, n.lastLocationAccess(), nodeMap);
+                Debug.log("Eliminated memory read %1.1s and replaced with node %s", n, value);
+                graph.replaceFloating(n, value);
             }
         }
+    }
+
+    private boolean isReadEliminable(FloatingReadNode n) {
+        return isWrites(n, n.lastLocationAccess(), n.graph().createNodeBitMap());
+    }
+
+    private boolean isWrites(FloatingReadNode n, Node lastLocationAccess, NodeBitMap visited) {
+        if (lastLocationAccess == null) {
+            return false;
+        }
+        if (visited.isMarked(lastLocationAccess)) {
+            return true; // dataflow loops must come from Phis assume them ok until proven wrong
+        }
+        if (lastLocationAccess instanceof ValueProxyNode) {
+            return isWrites(n, ((ValueProxyNode) lastLocationAccess).value(), visited);
+        }
+        if (lastLocationAccess instanceof WriteNode) {
+            WriteNode other = (WriteNode) lastLocationAccess;
+            return other.object() == n.object() && other.location() == n.location();
+        }
+        if (lastLocationAccess instanceof PhiNode) {
+            visited.mark(lastLocationAccess);
+            for (ValueNode value : ((PhiNode) lastLocationAccess).values()) {
+                if (!isWrites(n, value, visited)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private ValueNode getValue(FloatingReadNode n, Node lastLocationAccess, NodeMap<ValueNode> nodeMap) {
+        ValueNode exisiting = nodeMap.get(lastLocationAccess);
+        if (exisiting != null) {
+            return exisiting;
+        }
+        if (lastLocationAccess instanceof ValueProxyNode) {
+            return getValue(n, ((ValueProxyNode) lastLocationAccess).value(), nodeMap);
+        }
+        if (lastLocationAccess instanceof WriteNode) {
+            return ((WriteNode) lastLocationAccess).value();
+        }
+        if (lastLocationAccess instanceof PhiNode) {
+            PhiNode phi = (PhiNode) lastLocationAccess;
+            PhiNode newPhi = phi.graph().add(new PhiNode(n.kind(), phi.merge()));
+            nodeMap.set(lastLocationAccess, newPhi);
+            for (ValueNode value : phi.values()) {
+                newPhi.addInput(getValue(n, value, nodeMap));
+            }
+            newPhis.add(newPhi);
+            return newPhi;
+        }
+        throw GraalInternalError.shouldNotReachHere();
     }
 }

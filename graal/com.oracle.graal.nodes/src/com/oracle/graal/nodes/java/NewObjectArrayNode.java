@@ -26,14 +26,12 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code NewObjectArrayNode} represents an allocation of an object array.
  */
+@NodeInfo(nameTemplate = "NewArray {p#elementType}")
 public final class NewObjectArrayNode extends NewArrayNode implements LIRLowerable, Node.IterableNodeType {
-
-    private final ResolvedJavaType elementClass;
 
     /**
      * Constructs a new NewObjectArrayNode.
@@ -41,13 +39,7 @@ public final class NewObjectArrayNode extends NewArrayNode implements LIRLowerab
      * @param length the node producing the length of the array
      */
     public NewObjectArrayNode(ResolvedJavaType elementClass, ValueNode length) {
-        super(StampFactory.exactNonNull(elementClass.arrayOf()), length);
-        this.elementClass = elementClass;
-    }
-
-    @Override
-    public ResolvedJavaType elementType() {
-        return elementClass;
+        super(elementClass, length);
     }
 
     @Override

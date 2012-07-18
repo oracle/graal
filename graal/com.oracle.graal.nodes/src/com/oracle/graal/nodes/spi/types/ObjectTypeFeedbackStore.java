@@ -498,15 +498,15 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     /*
 //    equals contains all the values that might happen to be in this variable. If it is null then there is no information about possible values.
 //    If it is empty, then we're currently in a branch that will be removed by canonicalization later on.
-    private Set<CiConstant> equals;
+    private Set<Constant> equals;
 //    notEquals contains all the values that cannot be in this variable.
-    private Set<CiConstant> notEquals;
+    private Set<Constant> notEquals;
 
     private HashMap<ValueNode, Condition> valueBounds;
 
-    private Set<RiResolvedType> exactTypes;
+    private Set<ResolvedJavaType> exactTypes;
 
-    private Set<RiResolvedType> declaredTypes;
+    private Set<ResolvedJavaType> declaredTypes;
     private final TypeFeedbackChanged changed;
 
     private Node dependency;
@@ -536,7 +536,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     @Override
-    public void constantBound(Condition condition, CiConstant constant) {
+    public void constantBound(Condition condition, Constant constant) {
         assert condition == Condition.EQ || condition == Condition.NE;
 
         if (condition == Condition.EQ) {
@@ -594,15 +594,15 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     @Override
-    public void declaredType(RiResolvedType type, boolean nonNull) {
+    public void declaredType(ResolvedJavaType type, boolean nonNull) {
         if (declaredTypes == null) {
             declaredTypes = new HashSet<>();
             declaredTypes.add(type);
             updateDependency();
         } else {
             if (type.isInterface()) {
-                for (Iterator<RiResolvedType> iter = declaredTypes.iterator(); iter.hasNext();) {
-                    RiResolvedType declaredType = iter.next();
+                for (Iterator<ResolvedJavaType> iter = declaredTypes.iterator(); iter.hasNext();) {
+                    ResolvedJavaType declaredType = iter.next();
                     if (declaredType.isInterface()) {
                         if (type.isSubtypeOf(declaredType)) {
                             iter.remove();
@@ -616,8 +616,8 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
                     updateDependency();
                 }
             } else {
-                for (Iterator<RiResolvedType> iter = declaredTypes.iterator(); iter.hasNext();) {
-                    RiResolvedType declaredType = iter.next();
+                for (Iterator<ResolvedJavaType> iter = declaredTypes.iterator(); iter.hasNext();) {
+                    ResolvedJavaType declaredType = iter.next();
                     if (!declaredType.isInterface()) {
                         if (type.isSubtypeOf(declaredType)) {
                             iter.remove();
@@ -633,12 +633,12 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
             }
         }
         if (nonNull) {
-            constantBound(Condition.NE, CiConstant.NULL_OBJECT);
+            constantBound(Condition.NE, Constant.NULL_OBJECT);
         }
     }
 
     @Override
-    public void exactType(RiResolvedType type) {
+    public void exactType(ResolvedJavaType type) {
         if (exactTypes == null) {
             exactTypes = new HashSet<>();
             exactTypes.add(type);
@@ -653,15 +653,15 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
                 exactTypes.clear();
             }
         }
-        constantBound(Condition.NE, CiConstant.NULL_OBJECT);
+        constantBound(Condition.NE, Constant.NULL_OBJECT);
     }
 
     @Override
-    public void notDeclaredType(RiResolvedType type, boolean nonNull) {
+    public void notDeclaredType(ResolvedJavaType type, boolean nonNull) {
     }
 
     @Override
-    public void notExactType(RiResolvedType type) {
+    public void notExactType(ResolvedJavaType type) {
     }
 
     @Override
@@ -673,8 +673,8 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
             equals = null;
         }
         if (notEquals != null && !notEquals.isEmpty() && other.notEquals != null && !other.notEquals.isEmpty()) {
-            for (Iterator<CiConstant> iter = notEquals.iterator(); iter.hasNext();) {
-                CiConstant constant = iter.next();
+            for (Iterator<Constant> iter = notEquals.iterator(); iter.hasNext();) {
+                Constant constant = iter.next();
                 if (!other.notEquals.contains(constant)) {
                     iter.remove();
                 }
@@ -727,7 +727,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
                 str.append(equals.iterator().next());
             } else {
                 str.append("(");
-                for (CiConstant constant : equals) {
+                for (Constant constant : equals) {
                     str.append(constant).append(',');
                 }
                 str.setLength(str.length() - 1);
@@ -741,7 +741,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
                 str.append(notEquals.iterator().next());
             } else {
                 str.append("(");
-                for (CiConstant constant : notEquals) {
+                for (Constant constant : notEquals) {
                     str.append(constant).append(',');
                 }
                 str.setLength(str.length() - 1);
@@ -756,7 +756,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         }
         if (declaredTypes != null) {
             str.append("declared (");
-            for (RiResolvedType type: declaredTypes) {
+            for (ResolvedJavaType type: declaredTypes) {
                 str.append(type).append(',');
             }
             str.setLength(str.length() - 1);
@@ -764,7 +764,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         }
         if (exactTypes != null) {
             str.append("exact (");
-            for (RiResolvedType type: exactTypes) {
+            for (ResolvedJavaType type: exactTypes) {
                 str.append(type).append(',');
             }
             str.setLength(str.length() - 1);

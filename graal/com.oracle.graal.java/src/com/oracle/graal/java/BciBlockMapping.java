@@ -527,7 +527,7 @@ public final class BciBlockMapping {
                 // There is a path from a loop end to the method entry that does not pass the loop header.
                 // Therefore, the loop is non reducible (has more than one entry).
                 // We don't want to compile such methods because the IR only supports structured loops.
-                throw new BailoutException("Non-reducible loop");
+                throw new BailoutException("Non-reducible loop: %016x", loop);
             }
         } while (loopChanges);
     }
@@ -629,7 +629,7 @@ public final class BciBlockMapping {
             }
 
             assert block.loops == 0;
-            block.loops = (long) 1 << (long) nextLoop;
+            block.loops = 1L << nextLoop;
             Debug.log("makeLoopHeader(%s) -> %x", block, block.loops);
             loopHeaders[nextLoop] = block;
             block.loopId = nextLoop;
@@ -660,7 +660,7 @@ public final class BciBlockMapping {
         block.visited = true;
         block.active = true;
 
-        int loops = 0;
+        long loops = 0;
         for (Block successor : block.successors) {
             // Recursively process successors.
             loops |= computeBlockOrder(successor);

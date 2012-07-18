@@ -85,7 +85,13 @@ class BasicIdealGraphPrinter {
      */
     protected BasicIdealGraphPrinter(OutputStream stream) {
         try {
-            this.stream = new PrintStream(stream, false, "US-ASCII");
+            OutputStream buffered;
+            if (stream instanceof BufferedOutputStream) {
+                buffered = stream;
+            } else {
+                buffered = new BufferedOutputStream(stream, 256 * 1024);
+            }
+            this.stream = new PrintStream(buffered, false, "US-ASCII");
         } catch (UnsupportedEncodingException e) {
             throw new RuntimeException(e);
         }
@@ -251,7 +257,7 @@ class BasicIdealGraphPrinter {
     /**
      * Ends the current group.
      */
-    protected void endGroup() {
+    public void endGroup() {
         stream.println("</group>");
     }
 
@@ -263,6 +269,10 @@ class BasicIdealGraphPrinter {
         flush();
     }
 
+    public void close() {
+        end();
+        stream.close();
+    }
 
     public boolean isValid() {
         return !stream.checkError();

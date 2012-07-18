@@ -56,12 +56,25 @@ public final class CompilerThread extends Thread {
 
     @Override
     public void run() {
+        HotSpotDebugConfig hotspotDebugConfig = null;
         if (GraalOptions.Debug) {
             Debug.enable();
             PrintStream log = HotSpotGraalRuntime.getInstance().getVMToCompiler().log();
-            HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter, log);
+            hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter, log);
             Debug.setConfig(hotspotDebugConfig);
         }
-        super.run();
+        try {
+            super.run();
+        } finally {
+            if (hotspotDebugConfig != null) {
+                for (DebugDumpHandler dumpHandler : hotspotDebugConfig.dumpHandlers()) {
+                    try {
+                        dumpHandler.close();
+                    } catch (Throwable t) {
+
+                    }
+                }
+            }
+        }
     }
 }

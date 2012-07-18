@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code LoadFieldNode} represents a read of a static or instance field.
  */
+@NodeInfo(nameTemplate = "LoadField#{p#field/s}")
 public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable, Node.IterableNodeType {
 
     /**

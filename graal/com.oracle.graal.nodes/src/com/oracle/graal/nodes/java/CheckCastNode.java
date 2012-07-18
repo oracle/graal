@@ -51,7 +51,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     }
 
     public CheckCastNode(ValueNode targetClassInstruction, ResolvedJavaType targetClass, ValueNode object, JavaTypeProfile profile) {
-        super(targetClass == null ? StampFactory.forKind(Kind.Object) : StampFactory.declared(targetClass));
+        super(targetClass == null ? StampFactory.object() : StampFactory.declared(targetClass));
         this.targetClassInstruction = targetClassInstruction;
         this.targetClass = targetClass;
         this.object = object;
@@ -69,6 +69,15 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     }
 
     @Override
+    public boolean inferStamp() {
+        if (object().stamp().nonNull() && !stamp().nonNull()) {
+            setStamp(targetClass == null ? StampFactory.objectNonNull() : StampFactory.declaredNonNull(targetClass));
+            return true;
+        }
+        return super.inferStamp();
+    }
+
+    @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         assert object() != null : this;
 
@@ -80,12 +89,8 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             }
         }
 
-        Constant constant = object().asConstant();
-        if (constant != null) {
-            assert constant.kind == Kind.Object;
-            if (constant.isNull()) {
-                return object();
-            }
+        if (object().objectStamp().alwaysNull()) {
+            return object();
         }
         return this;
     }

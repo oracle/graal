@@ -27,6 +27,7 @@ import java.util.*;
 
 import com.oracle.max.criutils.*;
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
@@ -304,15 +305,21 @@ public final class ComputeLinearScanOrder {
             Block cur = workList.remove(workList.size() - 1);
             appendBlock(cur);
 
-            // make the most successor with the highest probability the immediate successor
             Node endNode = cur.getEndNode();
-            if (endNode instanceof IfNode && ((IfNode) endNode).probability() < 0.5) {
-                assert cur.numberOfSux() == 2;
-                if (readyForProcessing(cur.suxAt(1))) {
-                    sortIntoWorkList(cur.suxAt(1));
-                }
-                if (readyForProcessing(cur.suxAt(0))) {
-                    sortIntoWorkList(cur.suxAt(0));
+            if (endNode instanceof ControlSplitNode) {
+                // Sort the successors according to their probabilities:
+                final ControlSplitNode split = (ControlSplitNode) endNode;
+                Integer[] indexes = Util.createSortedPermutation(split.blockSuccessorCount(), new Comparator<Integer>() {
+                    @Override
+                    public int compare(Integer o1, Integer o2) {
+                        return split.probability(o1) < split.probability(o2) ? 1 : split.probability(o1) > split.probability(o2) ? -1 : 0;
+                    }
+                });
+                for (int index : indexes) {
+                    Block sux = cur.getSuccessors().get(indexes[index]);
+                    if (readyForProcessing(sux)) {
+                        sortIntoWorkList(sux);
+                    }
                 }
             } else {
                 for (Block sux : cur.getSuccessors()) {

@@ -28,13 +28,13 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaTypeProfile.*;
+import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.FrameState.*;
+import com.oracle.graal.nodes.FrameState.InliningIdentifier;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -44,6 +44,8 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 public class InliningUtil {
+
+    private static final DebugMetric metricInliningTailDuplication = Debug.metric("InliningTailDuplication");
 
     public interface InliningCallback {
         StructuredGraph buildGraph(ResolvedJavaMethod method);
@@ -270,6 +272,7 @@ public class InliningUtil {
         private void inlineMultipleMethods(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
             FixedNode continuation = invoke.next();
 
+            ValueNode originalReceiver = invoke.callTarget().receiver();
             // setup merge and phi nodes for results and exceptions
             MergeNode returnMerge = graph.add(new MergeNode());
             returnMerge.setProbability(invoke.probability());
@@ -329,7 +332,7 @@ public class InliningUtil {
                 GraphUtil.killCFG(invokeWithExceptionNode.exceptionEdge());
             }
 
-            // replace the invoke with a cascade of if nodes
+            // replace the invoke with a switch on the type of the actual receiver
             ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.callTarget().receiver()));
             graph.addBeforeFixed(invoke.node(), objectClassNode);
             FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, calleeEntryNodes, unknownTypeNode);
@@ -340,6 +343,8 @@ public class InliningUtil {
             invoke.node().replaceAtUsages(returnValuePhi);
             invoke.node().replaceAndDelete(dispatchOnType);
 
+            ArrayList<PiNode> replacements = new ArrayList<>();
+
             // do the actual inlining for every invoke
             for (int i = 0; i < calleeEntryNodes.length; i++) {
                 BeginNode node = calleeEntryNodes[i];
@@ -347,7 +352,7 @@ public class InliningUtil {
 
                 ResolvedJavaType commonType = getLeastCommonType(i);
                 ValueNode receiver = invokeForInlining.callTarget().receiver();
-                ValueNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver);
+                PiNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver);
                 invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
                 ResolvedJavaMethod concrete = concretes.get(i);
@@ -355,6 +360,31 @@ public class InliningUtil {
                 callback.recordMethodContentsAssumption(concrete);
                 assert !IntrinsificationPhase.canIntrinsify(invokeForInlining, concrete, runtime);
                 InliningUtil.inline(invokeForInlining, calleeGraph, false);
+                replacements.add(anchoredReceiver);
+            }
+            if (shouldFallbackToInvoke()) {
+                replacements.add(null);
+            }
+            if (GraalOptions.OptTailDuplication) {
+                /*
+                 * We might want to perform tail duplication at the merge after a type switch, if there are invokes that would
+                 * benefit from the improvement in type information.
+                 */
+                FixedNode current = returnMerge;
+                int opportunities = 0;
+                do {
+                    if (current instanceof InvokeNode && ((InvokeNode) current).callTarget().receiver() == originalReceiver) {
+                        opportunities++;
+                    } else if (current.inputs().contains(originalReceiver)) {
+                        opportunities++;
+                    }
+                    current = ((FixedWithNextNode) current).next();
+                } while (current instanceof FixedWithNextNode);
+                if (opportunities > 0) {
+                    metricInliningTailDuplication.increment();
+                    Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
+                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacements);
+                }
             }
         }
 
@@ -679,7 +709,7 @@ public class InliningUtil {
         }
     }
 
-    private static ValueNode createAnchoredReceiver(StructuredGraph graph, FixedNode anchor, ResolvedJavaType commonType, ValueNode receiver) {
+    private static PiNode createAnchoredReceiver(StructuredGraph graph, FixedNode anchor, ResolvedJavaType commonType, ValueNode receiver) {
         // to avoid that floating reads on receiver fields float above the type check
         return graph.unique(new PiNode(receiver, anchor, StampFactory.declaredNonNull(commonType)));
     }

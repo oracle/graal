@@ -32,6 +32,7 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.target.amd64.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.xir.*;
@@ -116,9 +117,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
             // these options are important - graal will not generate correct code without them
             GraalOptions.StackShadowPages = config.stackShadowPages;
 
-            RiXirGenerator generator = new HotSpotXirGenerator(config, getTarget(), getRuntime().getGlobalStubRegisterConfig(), this);
+            XirGenerator generator = new HotSpotXirGenerator(config, getTarget(), getRuntime().getGlobalStubRegisterConfig(), this);
             if (Logger.ENABLED) {
-                generator = LoggingProxy.getProxy(RiXirGenerator.class, generator);
+                generator = LoggingProxy.getProxy(XirGenerator.class, generator);
             }
 
             Backend backend = Backend.create(runtime, target);

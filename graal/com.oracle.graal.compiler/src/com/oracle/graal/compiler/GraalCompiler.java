@@ -59,14 +59,14 @@ public class GraalCompiler {
     /**
      * The XIR generator that lowers Java operations to machine operations.
      */
-    public final RiXirGenerator xir;
+    public final XirGenerator xir;
 
     /**
      * The backend that this compiler has been configured for.
      */
     public final Backend backend;
 
-    public GraalCompiler(GraalCodeCacheProvider runtime, TargetDescription target, Backend backend, RiXirGenerator xirGen) {
+    public GraalCompiler(GraalCodeCacheProvider runtime, TargetDescription target, Backend backend, XirGenerator xirGen) {
         this.runtime = runtime;
         this.target = target;
         this.xir = xirGen;
@@ -170,29 +170,28 @@ public class GraalCompiler {
 
         new LoweringPhase(runtime, assumptions).apply(graph);
 
+        if (GraalOptions.OptTailDuplication) {
+            new TailDuplicationPhase().apply(graph);
+            if (GraalOptions.OptCanonicalizer) {
+                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+            }
+        }
+
         if (GraalOptions.CullFrameStates) {
             new CullFrameStatesPhase().apply(graph);
         }
-        new FloatingReadPhase().apply(graph);
-        if (GraalOptions.OptGVN) {
-            new GlobalValueNumberingPhase().apply(graph);
-        }
-        if (GraalOptions.OptReadElimination) {
-            new ReadEliminationPhase().apply(graph);
+
+        if (GraalOptions.FloatingReads) {
+            int mark = graph.getMark();
+            new FloatingReadPhase().apply(graph);
+            new CanonicalizerPhase(target, runtime, assumptions, mark, null).apply(graph);
+            if (GraalOptions.OptReadElimination) {
+                new ReadEliminationPhase().apply(graph);
+            }
         }
 
         if (GraalOptions.PropagateTypes) {
             new PropagateTypeCachePhase(target, runtime, assumptions).apply(graph);
-        }
-
-        if (GraalOptions.CheckCastElimination) {
-            new CheckCastEliminationPhase().apply(graph);
-        }
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-        }
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
         }
 
         if (GraalOptions.OptLoopTransform) {
@@ -200,14 +199,17 @@ public class GraalCompiler {
         }
         new RemoveValueProxyPhase().apply(graph);
 
+        if (GraalOptions.CheckCastElimination) {
+            new CheckCastEliminationPhase().apply(graph);
+        }
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+        }
+
         plan.runPhases(PhasePosition.MID_LEVEL, graph);
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
-        new DeadCodeEliminationPhase().apply(graph);
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-        }
         // Add safepoints to loops
         if (GraalOptions.GenLoopSafepoints) {
             new LoopSafepointInsertionPhase().apply(graph);

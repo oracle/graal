@@ -22,9 +22,15 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
+/**
+ * Accesses a value at an memory address specified by an {@linkplain #object object}
+ * and a {@linkplain #location() location}. The access does not include a null check
+ * on the object.
+ */
 public abstract class AccessNode extends FixedWithNextNode implements Access {
 
     @Input private ValueNode object;
@@ -51,5 +57,10 @@ public abstract class AccessNode extends FixedWithNextNode implements Access {
         super(stamp);
         this.object = object;
         this.location = location;
+    }
+
+    @Override
+    public Node node() {
+        return this;
     }
 }

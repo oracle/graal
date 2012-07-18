@@ -26,7 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 
 /**
- * Implementation of RiConstantPool for HotSpot.
+ * Implementation of {@link ConstantPool} for HotSpot.
  */
 public class HotSpotConstantPool extends CompilerObject implements ConstantPool {
 

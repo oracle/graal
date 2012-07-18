@@ -34,7 +34,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.counters.*;
 
 /**
- * Implementation of RiMethod for resolved HotSpot methods.
+ * Implementation of {@link JavaMethod} for resolved HotSpot methods.
  */
 public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements ResolvedJavaMethod {
 

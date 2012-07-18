@@ -696,7 +696,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genNewPrimitiveArray(int typeCode) {
         Kind kind = arrayTypeCodeToKind(typeCode);
         ResolvedJavaType elementType = runtime.getResolvedJavaType(kind);
-        NewPrimitiveArrayNode nta = currentGraph.add(new NewPrimitiveArrayNode(frameState.ipop(), elementType));
+        NewPrimitiveArrayNode nta = currentGraph.add(new NewPrimitiveArrayNode(elementType, frameState.ipop()));
         frameState.apush(append(nta));
     }
 
@@ -1144,7 +1144,7 @@ public final class GraphBuilderPhase extends Phase {
                 int pos = 0;
                 ArrayList<Block> exitLoops = new ArrayList<>(Long.bitCount(exits));
                 do {
-                    int lMask = 1 << pos;
+                    long lMask = 1L << pos;
                     if ((exits & lMask) != 0) {
                         exitLoops.add(loopHeaders[pos]);
                         exits &= ~lMask;
@@ -1187,7 +1187,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private FixedNode createTarget(double probability, Block block, FrameStateBuilder stateAfter) {
-        assert probability >= 0 && probability <= 1;
+        assert probability >= 0 && probability <= 1.01 : probability;
         if (probability == 0 && optimisticOpts.removeNeverExecutedCode()) {
             return currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.UnreachedCode, graphId));
         } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,8 @@
  */
 package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.hotspot.snippets.ArrayCopySnippets.*;
-import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.Counter.*;
 import static com.oracle.graal.snippets.Snippet.Multiple.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
-
-import java.io.*;
-import java.util.*;
-
-import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -224,54 +218,6 @@ public class CheckCastSnippets implements SnippetsInterface {
         return false;
     }
 
-    /**
-     * Counters for the various code paths through a checkcast.
-     */
-    public enum Counter {
-        hintsHit("hit a hint type"),
-        exactHit("exact type test succeeded"),
-        exactMiss("exact type test failed"),
-        isNull("object tested was null"),
-        cacheHit("secondary type cache hit"),
-        secondariesHit("secondaries scan succeeded"),
-        secondariesMiss("secondaries scan failed"),
-        displayHit("primary type test succeeded"),
-        displayMiss("primary type test failed"),
-        T_equals_S("object type was equal to secondary type");
-
-        final String description;
-        final int index;
-        long count;
-
-        private Counter(String desc) {
-            this.description = desc;
-            this.index = ordinal();
-        }
-
-        @Fold
-        static int countOffset() {
-            try {
-                return (int) Unsafe.getUnsafe().objectFieldOffset(Counter.class.getDeclaredField("count"));
-            } catch (Exception e) {
-                throw new GraalInternalError(e);
-            }
-        }
-
-        /**
-         * Increments this counter if counters are enabled. The body of this method has been carefully crafted
-         * such that it contains no safepoints and no calls, neither of which are permissible in a snippet.
-         * Also, increments are not guaranteed to be atomic which is acceptable for a counter.
-         */
-        void inc() {
-            if (ENABLED) {
-                DirectObjectStoreNode.storeLong(this, countOffset(), 0, count + 1);
-            }
-        }
-
-        static final Counter[] VALUES = values();
-        static final boolean ENABLED = GraalOptions.CheckcastCounters;
-    }
-
     @Fold
     private static int superCheckOffsetOffset() {
         return HotSpotGraalRuntime.getInstance().getConfig().superCheckOffsetOffset;
@@ -290,41 +236,6 @@ public class CheckCastSnippets implements SnippetsInterface {
     @Fold
     private static int hubOffset() {
         return HotSpotGraalRuntime.getInstance().getConfig().hubOffset;
-    }
-
-    public static void printCounter(PrintStream out, Counter c, long total) {
-        double percent = total == 0D ? 0D : ((double) (c.count * 100)) / total;
-        out.println(String.format("%16s: %5.2f%%%10d  // %s", c.name(), percent, c.count, c.description));
-    }
-
-    public static void printCounters(PrintStream out) {
-        if (!Counter.ENABLED) {
-            return;
-        }
-        Counter[] counters = Counter.values();
-        Arrays.sort(counters, new Comparator<Counter>() {
-            @Override
-            public int compare(Counter o1, Counter o2) {
-                if (o1.count > o2.count) {
-                    return -1;
-                } else if (o2.count > o1.count) {
-                    return 1;
-                }
-                return 0;
-            }
-
-        });
-
-        long total = 0;
-        for (Counter c : counters) {
-            total += c.count;
-        }
-
-        out.println();
-        out.println("** Checkcast counters **");
-        for (Counter c : counters) {
-            printCounter(out, c, total);
-        }
     }
 
     public static class Templates {
@@ -393,4 +304,16 @@ public class CheckCastSnippets implements SnippetsInterface {
             return hintHubs;
         }
     }
+
+    private static final SnippetCounter.Group counters = GraalOptions.SnippetCounters ? new SnippetCounter.Group("Checkcast") : null;
+    private static final SnippetCounter hintsHit = new SnippetCounter(counters, "hintsHit", "hit a hint type");
+    private static final SnippetCounter exactHit = new SnippetCounter(counters, "exactHit", "exact type test succeeded");
+    private static final SnippetCounter exactMiss = new SnippetCounter(counters, "exactMiss", "exact type test failed");
+    private static final SnippetCounter isNull = new SnippetCounter(counters, "isNull", "object tested was null");
+    private static final SnippetCounter cacheHit = new SnippetCounter(counters, "cacheHit", "secondary type cache hit");
+    private static final SnippetCounter secondariesHit = new SnippetCounter(counters, "secondariesHit", "secondaries scan succeeded");
+    private static final SnippetCounter secondariesMiss = new SnippetCounter(counters, "secondariesMiss", "secondaries scan failed");
+    private static final SnippetCounter displayHit = new SnippetCounter(counters, "displayHit", "primary type test succeeded");
+    private static final SnippetCounter displayMiss = new SnippetCounter(counters, "displayMiss", "primary type test failed");
+    private static final SnippetCounter T_equals_S = new SnippetCounter(counters, "T_equals_S", "object type was equal to secondary type");
 }

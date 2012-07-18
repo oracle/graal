@@ -30,6 +30,7 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
 import com.oracle.graal.snippets.Snippet.Fold;
+import com.oracle.graal.snippets.nodes.*;
 
 
 @SuppressWarnings("unused")

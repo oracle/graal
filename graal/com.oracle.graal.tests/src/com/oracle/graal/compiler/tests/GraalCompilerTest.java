@@ -53,7 +53,7 @@ import com.oracle.graal.nodes.spi.*;
  * <li>Assert that the transformed graph is equal to an expected graph.</li>
  * </ol>
  * <p>
- * See {@link InvokeTest} as an example.
+ * See {@link InvokeHintsTest} as an example.
  * <p>
  * The tests can be run in Eclipse with the "Compiler Unit Test" Eclipse
  * launch configuration found in the top level of this project or by
@@ -62,10 +62,12 @@ import com.oracle.graal.nodes.spi.*;
 public abstract class GraalCompilerTest {
 
     protected final GraalCodeCacheProvider runtime;
+    protected final GraalCompiler graalCompiler;
 
     public GraalCompilerTest() {
         Debug.enable();
         this.runtime = Graal.getRuntime().getCapability(GraalCodeCacheProvider.class);
+        this.graalCompiler = Graal.getRuntime().getCapability(GraalCompiler.class);
     }
 
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph) {
@@ -198,6 +200,16 @@ public abstract class GraalCompilerTest {
     }
 
     /**
+     * Can be overridden to modify the compilation phases applied for a test.
+     *
+     * @param method the method being compiled
+     * @param graph the graph being compiled
+     * @param phasePlan the phase plan to be edited
+     */
+    protected void editPhasePlan(ResolvedJavaMethod method, StructuredGraph graph, PhasePlan phasePlan) {
+    }
+
+    /**
      * Gets installed code for a given method and graph, compiling it first if necessary.
      *
      * @param forceCompile specifies whether to ignore any previous code cached for the (method, key) pair
@@ -211,24 +223,27 @@ public abstract class GraalCompilerTest {
         }
         InstalledCode installedCode = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(compilationId++), true), new Callable<InstalledCode>() {
             public InstalledCode call() throws Exception {
-                CompilationResult targetMethod = runtime.compile(method, graph);
-                return addMethod(method, targetMethod);
+                PhasePlan phasePlan = new PhasePlan();
+                GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+                phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+                editPhasePlan(method, graph, phasePlan);
+                CompilationResult compResult = graalCompiler.compileMethod(method, graph, -1, null, phasePlan, OptimisticOptimizations.ALL);
+                return addMethod(method, compResult);
             }
         });
         cache.put(method, installedCode);
         return installedCode;
     }
 
-    protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult tm) {
-        GraalCompiler graalCompiler = Graal.getRuntime().getCapability(GraalCompiler.class);
+    protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult) {
         assert graalCompiler != null;
         return Debug.scope("CodeInstall", new Object[] {graalCompiler, method}, new Callable<InstalledCode>() {
             @Override
             public InstalledCode call() throws Exception {
                 final CodeInfo[] info = Debug.isDumpEnabled() ? new CodeInfo[1] : null;
-                InstalledCode installedMethod = runtime.addMethod(method, tm, info);
+                InstalledCode installedMethod = runtime.addMethod(method, compResult, info);
                 if (info != null) {
-                    Debug.dump(new Object[] {tm, info[0]}, "After code installation");
+                    Debug.dump(new Object[] {compResult, info[0]}, "After code installation");
                 }
                 return installedMethod;
             }

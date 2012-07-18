@@ -37,7 +37,4 @@ public interface GraalCodeCacheProvider extends CodeCacheProvider {
     void lower(Node n, LoweringTool tool);
 
     StructuredGraph intrinsicGraph(ResolvedJavaMethod caller, int bci, ResolvedJavaMethod method, List<? extends Node> parameters);
-
-    CompilationResult compile(ResolvedJavaMethod method, StructuredGraph graph);
-
 }

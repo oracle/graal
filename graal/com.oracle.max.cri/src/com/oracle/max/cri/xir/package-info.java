@@ -24,14 +24,14 @@
  * XIR defines a domain specific instruction set for expressing the lowering of bytecode operations. The details of the
  * lowering operations are entirely encapsulated in the runtime and are provided to the compiler on request using
  * {@link com.oracle.max.cri.xir.XirSnippet XIR snippets}. A snippet is a combination of a {@link com.oracle.max.cri.xir.XirTemplate
- * template}, which is a sequence of {@link com.oracle.max.cri.xir.CiXirAssembler.XirInstruction XIR instructions} that has
- * unbound {@link com.oracle.max.cri.xir.CiXirAssembler.XirParameter parameters}, and site-specific
+ * template}, which is a sequence of {@link com.oracle.max.cri.xir.XirAssembler.XirInstruction XIR instructions} that has
+ * unbound {@link com.oracle.max.cri.xir.XirAssembler.XirParameter parameters}, and site-specific
  * {@link com.oracle.max.cri.xir.XirArgument arguments} that are bound to the parameters.
  * <p>
  * The runtime is responsible for creating the {@link com.oracle.max.cri.xir.XirTemplate templates} and provides these to the
  * compiler as part of the initialization process.
  * <p>
  * The XIR instruction set has no textual representation, and therefore no parser. An assembly is represented by an
- * instance of {@link com.oracle.max.cri.xir.CiXirAssembler}, which provides methods to create instructions and operands.
+ * instance of {@link com.oracle.max.cri.xir.XirAssembler}, which provides methods to create instructions and operands.
  */
 package com.oracle.max.cri.xir;

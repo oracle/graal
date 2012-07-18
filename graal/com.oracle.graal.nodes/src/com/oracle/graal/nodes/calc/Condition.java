@@ -240,9 +240,10 @@ public enum Condition {
 
     /**
      * Attempts to fold a comparison between two constants and return the result.
+     *
      * @param lt the constant on the left side of the comparison
      * @param rt the constant on the right side of the comparison
-     * @param runtime the RiRuntime (might be needed to compare runtime-specific types)
+     * @param runtime needed to compare runtime-specific types
      * @return {@link Boolean#TRUE} if the comparison is known to be true,
      * {@link Boolean#FALSE} if the comparison is known to be false
      */
@@ -253,9 +254,10 @@ public enum Condition {
 
     /**
      * Attempts to fold a comparison between two constants and return the result.
+     *
      * @param lt the constant on the left side of the comparison
      * @param rt the constant on the right side of the comparison
-     * @param runtime the RiRuntime (might be needed to compare runtime-specific types)
+     * @param runtime needed to compare runtime-specific types
      * @param unorderedIsTrue true if an undecided float comparison should result in "true"
      * @return true if the comparison is known to be true, false if the comparison is known to be false
      */

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler;
 
+import com.oracle.graal.nodes.*;
+
 
 /**
  * This class encapsulates options that control the behavior of the Graal compiler.
@@ -70,6 +72,9 @@ public final class GraalOptions {
     public static boolean EscapeAnalysis                     = true;
     public static int     ForcedInlineEscapeWeight           = 10;
     public static boolean PrintEscapeAnalysis                = ____;
+
+    public static double TailDuplicationProbability          = 0.5;
+    public static int    TailDuplicationTrivialSize          = 1;
 
     // absolute probability analysis
     public static boolean ProbabilityAnalysis                = true;
@@ -135,11 +140,12 @@ public final class GraalOptions {
     public static boolean DumpOnError                        = ____;
 
     // Ideal graph visualizer output settings
-    public static int     PlotLevel                          = 3;
-    public static int     PrintIdealGraphLevel               = 0;
+    public static boolean PrintBinaryGraphs                  = ____;
+    public static boolean PrintCFG                           = true;
     public static boolean PrintIdealGraphFile                = ____;
     public static String  PrintIdealGraphAddress             = "127.0.0.1";
     public static int     PrintIdealGraphPort                = 4444;
+    public static int     PrintBinaryGraphPort               = 4445;
 
     // Other printing settings
     public static boolean PrintQueue                         = ____;
@@ -175,7 +181,7 @@ public final class GraalOptions {
     public static boolean GenSafepoints                      = true;
     public static boolean GenLoopSafepoints                  = true;
            static boolean UseTypeCheckHints                  = true;
-    public static boolean InlineVTableStubs                  = ____;
+    public static boolean InlineVTableStubs                  = true;
     public static boolean AlwaysInlineVTableStubs            = ____;
 
     public static boolean GenAssertionCode                   = ____;
@@ -210,6 +216,8 @@ public final class GraalOptions {
     public static boolean OptLivenessAnalysis                = true;
     public static boolean OptLoopTransform                   = true;
     public static boolean OptSafepointElimination            = true;
+    public static boolean FloatingReads                      = true;
+    public static boolean OptTailDuplication                 = true;
 
     /**
      * Insert a counter in the method prologue to track the most frequently called methods that were compiled by Graal.
@@ -231,9 +239,9 @@ public final class GraalOptions {
     public static boolean PrintFlags                           = false;
 
     /**
-     * Counts the various paths taken through a compiled checkcast.
+     * Counts the various paths taken through snippets.
      */
-    public static boolean CheckcastCounters = false;
+    public static boolean SnippetCounters = false;
 
     /**
      * If the probability that a checkcast will hit one the profiled types (up to {@link #CheckcastMaxHints})
@@ -265,6 +273,11 @@ public final class GraalOptions {
     public static String HIRLowerCheckcast = "";
     public static String HIRLowerNewInstance = "";
     public static String HIRLowerNewArray = "";
+
+    /**
+     * Use XIR to lower {@link Invoke} nodes.
+     */
+    public static boolean XIRLowerInvokes = false;
 
     static {
         // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)

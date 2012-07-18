@@ -53,7 +53,7 @@ public class TargetDescription {
     public final int wordSize;
 
     /**
-     * The CiKind to be used for representing raw pointers and CPU registers.
+     * The kind to be used for representing raw pointers and CPU registers.
      */
     public final Kind wordKind;
 

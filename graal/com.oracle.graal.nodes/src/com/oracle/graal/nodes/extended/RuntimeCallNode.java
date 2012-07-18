@@ -23,10 +23,12 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
+@NodeInfo(nameTemplate = "RuntimeCall#{p#call/s}")
 public final class RuntimeCallNode extends AbstractCallNode implements LIRLowerable {
 
     private final RuntimeCall call;

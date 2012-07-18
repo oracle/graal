@@ -20,29 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.api.code;
 
-enum TemplateFlag {
-    NULL_CHECK,
-    READ_BARRIER,
-    WRITE_BARRIER,
-    STORE_CHECK,
-    BOUNDS_CHECK,
-    GIVEN_LENGTH,
-    INPUTS_DIFFERENT,
-    INPUTS_SAME,
-    STATIC_METHOD,
-    SYNCHRONIZED,
-    INTERFACE_TYPE,
-    NULL_TYPE,
-    EXACT_HINTS;
+import com.oracle.graal.api.meta.*;
 
-    private static final long FIRST_FLAG = 0x0000000100000000L;
-    public static final long FLAGS_MASK = 0x0000FFFF00000000L;
-    public static final long INDEX_MASK = 0x00000000FFFFFFFFL;
+/**
+ * Represents a compiled instance of a method. It may have been invalidated or removed in the meantime.
+ */
+public interface InstalledCode {
 
-    public long bits() {
-        assert ((FIRST_FLAG << ordinal()) & FLAGS_MASK) != 0;
-        return FIRST_FLAG << ordinal();
+    public abstract class MethodInvalidatedException extends RuntimeException {
+
+        private static final long serialVersionUID = -3540232440794244844L;
     }
+
+    /**
+     * Returns the method to which the compiled code belongs.
+     * @return the method to which the compiled code belongs.
+     */
+    ResolvedJavaMethod method();
+
+    /**
+     * @return true if the code represented by this object is still valid, false otherwise (may happen due to deopt, etc.)
+     */
+    boolean isValid();
+
+    Object execute(Object arg1, Object arg2, Object arg3);
+
+    Object executeVarargs(Object... args);
 }

@@ -47,19 +47,19 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
 
     private volatile boolean cancelled;
 
-    private final HotSpotGraalRuntime compiler;
+    private final HotSpotGraalRuntime graalRuntime;
     private final PhasePlan plan;
     private final HotSpotResolvedJavaMethod method;
     private final OptimisticOptimizations optimisticOpts;
     private final int id;
     private final int priority;
 
-    public static CompilationTask create(HotSpotGraalRuntime compiler, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int id, int priority) {
-        return new CompilationTask(compiler, plan, optimisticOpts, method, id, priority);
+    public static CompilationTask create(HotSpotGraalRuntime graalRuntime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int id, int priority) {
+        return new CompilationTask(graalRuntime, plan, optimisticOpts, method, id, priority);
     }
 
-    private CompilationTask(HotSpotGraalRuntime compiler, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int id, int priority) {
-        this.compiler = compiler;
+    private CompilationTask(HotSpotGraalRuntime graalRuntime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int id, int priority) {
+        this.graalRuntime = graalRuntime;
         this.plan = plan;
         this.method = method;
         this.optimisticOpts = optimisticOpts;
@@ -115,9 +115,9 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
 
                     @Override
                     public CompilationResult call() throws Exception {
-                        compiler.evictDeoptedGraphs();
+                        graalRuntime.evictDeoptedGraphs();
                         StructuredGraph graph = new StructuredGraph(method);
-                        return compiler.getCompiler().compileMethod(method, graph, -1, compiler.getCache(), plan, optimisticOpts);
+                        return graalRuntime.getCompiler().compileMethod(method, graph, -1, graalRuntime.getCache(), plan, optimisticOpts);
                     }
                 });
             } finally {
@@ -148,11 +148,11 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     }
 
     private void installMethod(final CompilationResult tm) {
-        Debug.scope("CodeInstall", new Object[] {new DebugDumpScope(String.valueOf(id), true), compiler.getCompiler(), method}, new Runnable() {
+        Debug.scope("CodeInstall", new Object[] {new DebugDumpScope(String.valueOf(id), true), graalRuntime.getCompiler(), method}, new Runnable() {
             @Override
             public void run() {
                 final CodeInfo[] info = Debug.isDumpEnabled() ? new CodeInfo[1] : null;
-                compiler.getRuntime().installMethod(method, tm, info);
+                graalRuntime.getRuntime().installMethod(method, tm, info);
                 if (info != null) {
                     Debug.dump(new Object[] {tm, info[0]}, "After code installation");
                 }

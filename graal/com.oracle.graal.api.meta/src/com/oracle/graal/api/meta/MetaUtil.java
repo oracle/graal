@@ -369,7 +369,8 @@ public class MetaUtil {
      *     java.lang.String.valueOf(String.java:2930) [bci: 12]
      * </pre>
      *
-     * Otherwise, the string returned is the value of {@code CiUtil.format("%H.%n(%p)"}, suffixed by the bci location.
+     * Otherwise, the string returned is the value of applying {@link #format(String, JavaMethod)}
+     * with the format string {@code "%H.%n(%p)"}, suffixed by the bci location.
      * For example:
      *
      * <pre>

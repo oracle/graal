@@ -26,9 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.graph.iterators.*;
 
-
-
-public final class NodeBitMap extends AbstractNodeIterable<Node>{
+public final class NodeBitMap extends AbstractNodeIterable<Node> {
     private final boolean autoGrow;
     private final BitSet bitMap;
     private final Graph graph;
@@ -98,6 +96,11 @@ public final class NodeBitMap extends AbstractNodeIterable<Node>{
         bitMap.clear();
     }
 
+    public void intersect(NodeBitMap other) {
+        assert graph == other.graph;
+        bitMap.and(other.bitMap);
+    }
+
     public void grow(Node node) {
         nodeCount = Math.max(nodeCount, node.id() + 1);
     }
@@ -120,6 +123,7 @@ public final class NodeBitMap extends AbstractNodeIterable<Node>{
     }
 
     private static class MarkedNodeIterator implements Iterator<Node> {
+
         private final NodeBitMap visited;
         private Iterator<Node> nodes;
         private Node nextNode;

@@ -23,10 +23,11 @@
 package com.oracle.graal.nodes.virtual;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-
+@NodeInfo(nameTemplate = "VirtualObject {p#type}")
 public class VirtualObjectNode extends FloatingNode implements LIRLowerable {
 
     private ResolvedJavaType type;

@@ -31,7 +31,7 @@ public abstract class Value implements Serializable {
     private static final long serialVersionUID = -6909397188697766469L;
 
     @SuppressWarnings("serial")
-    public static Value IllegalValue = new Value(Kind.Illegal) {
+    public static final Value IllegalValue = new Value(Kind.Illegal) {
         @Override
         public String toString() {
             return "-";

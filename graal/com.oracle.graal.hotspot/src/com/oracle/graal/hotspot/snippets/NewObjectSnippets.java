@@ -24,15 +24,16 @@ package com.oracle.graal.hotspot.snippets;
 
 import static com.oracle.graal.hotspot.nodes.CastFromHub.*;
 import static com.oracle.graal.hotspot.nodes.RegisterNode.*;
-import static com.oracle.graal.hotspot.snippets.DirectObjectStoreNode.*;
 import static com.oracle.graal.nodes.extended.UnsafeLoadNode.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
+import static com.oracle.graal.snippets.nodes.DirectObjectStoreNode.*;
 import static com.oracle.graal.snippets.nodes.ExplodeLoopNode.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 import static com.oracle.max.criutils.UnsignedMath.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -75,6 +76,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @ConstantParameter("size") int size) {
 
         if (memory == Word.zero()) {
+            new_stub.inc();
             return NewInstanceStubCall.call(hub);
         }
         formatObject(hub, size, memory, initialMarkWord);
@@ -106,7 +108,17 @@ public class NewObjectSnippets implements SnippetsInterface {
 
     private static Object initializeArray(Word memory, Object hub, int length, int size, Word initialMarkWord, int headerSize, boolean isObjectArray) {
         if (memory == Word.zero()) {
+            if (isObjectArray) {
+                anewarray_stub.inc();
+            } else {
+                newarray_stub.inc();
+            }
             return NewArrayStubCall.call(isObjectArray, hub, length);
+        }
+        if (isObjectArray) {
+            anewarray_loopInit.inc();
+        } else {
+            newarray_loopInit.inc();
         }
         formatArray(hub, size, length, headerSize, memory, initialMarkWord);
         Object instance = memory.toObject();
@@ -131,7 +143,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.RuntimeConstraint);
         }
         int size = getArraySize(length, alignment, headerSize, log2ElementSize);
-        Word memory = TLABAllocateNode.allocateVariableSize(wordKind, size);
+        Word memory = TLABAllocateNode.allocateVariableSize(size, wordKind);
         return InitializeArrayNode.initialize(memory, length, size, type);
     }
 
@@ -171,11 +183,13 @@ public class NewObjectSnippets implements SnippetsInterface {
         storeObject(memory, 0, markOffset(), headerPrototype);
         storeObject(memory, 0, hubOffset(), hub);
         if (size <= MAX_UNROLLED_OBJECT_ZEROING_SIZE) {
+            new_seqInit.inc();
             explodeLoop();
             for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
                 storeWord(memory, 0, offset, Word.zero());
             }
         } else {
+            new_loopInit.inc();
             for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
                 storeWord(memory, 0, offset, Word.zero());
             }
@@ -238,7 +252,8 @@ public class NewObjectSnippets implements SnippetsInterface {
             if (!useTLAB) {
                 memory = ConstantNode.forConstant(new Constant(target.wordKind, 0L), runtime, graph);
             } else {
-                TLABAllocateNode tlabAllocateNode = graph.add(new TLABAllocateNode(size, wordKind()));
+                ConstantNode sizeNode = ConstantNode.forInt(size, graph);
+                TLABAllocateNode tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode, wordKind()));
                 graph.addBeforeFixed(newInstanceNode, tlabAllocateNode);
                 memory = tlabAllocateNode;
             }
@@ -272,7 +287,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 // Calculate aligned size
                 int size = getArraySize(length, alignment, headerSize, log2ElementSize);
                 ConstantNode sizeNode = ConstantNode.forInt(size, graph);
-                tlabAllocateNode = graph.add(new TLABAllocateNode(size, target.wordKind));
+                tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode, target.wordKind));
                 graph.addBeforeFixed(newArrayNode, tlabAllocateNode);
                 InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(tlabAllocateNode, lengthNode, sizeNode, arrayType));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
@@ -293,12 +308,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         @SuppressWarnings("unused")
         public void lower(TLABAllocateNode tlabAllocateNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) tlabAllocateNode.graph();
-            ValueNode size;
-            if (tlabAllocateNode.isSizeConstant()) {
-                size = ConstantNode.forInt(tlabAllocateNode.constantSize(), graph);
-            } else {
-                size = tlabAllocateNode.variableSize();
-            }
+            ValueNode size = tlabAllocateNode.size();
             Key key = new Key(allocate);
             Arguments arguments = arguments("size", size);
             SnippetTemplate template = cache.get(key);
@@ -380,4 +390,17 @@ public class NewObjectSnippets implements SnippetsInterface {
     private static int arrayLengthOffset() {
         return HotSpotGraalRuntime.getInstance().getConfig().arrayLengthOffset;
     }
+
+    private static final SnippetCounter.Group countersNew = GraalOptions.SnippetCounters ? new SnippetCounter.Group("NewInstance") : null;
+    private static final SnippetCounter new_seqInit = new SnippetCounter(countersNew, "tlabSeqInit", "TLAB alloc with unrolled zeroing");
+    private static final SnippetCounter new_loopInit = new SnippetCounter(countersNew, "tlabLoopInit", "TLAB alloc with zeroing in a loop");
+    private static final SnippetCounter new_stub = new SnippetCounter(countersNew, "stub", "alloc and zeroing via stub");
+
+    private static final SnippetCounter.Group countersNewPrimitiveArray = GraalOptions.SnippetCounters ? new SnippetCounter.Group("NewPrimitiveArray") : null;
+    private static final SnippetCounter newarray_loopInit = new SnippetCounter(countersNewPrimitiveArray, "tlabLoopInit", "TLAB alloc with zeroing in a loop");
+    private static final SnippetCounter newarray_stub = new SnippetCounter(countersNewPrimitiveArray, "stub", "alloc and zeroing via stub");
+
+    private static final SnippetCounter.Group countersNewObjectArray = GraalOptions.SnippetCounters ? new SnippetCounter.Group("NewObjectArray") : null;
+    private static final SnippetCounter anewarray_loopInit = new SnippetCounter(countersNewObjectArray, "tlabLoopInit", "TLAB alloc with zeroing in a loop");
+    private static final SnippetCounter anewarray_stub = new SnippetCounter(countersNewObjectArray, "stub", "alloc and zeroing via stub");
 }

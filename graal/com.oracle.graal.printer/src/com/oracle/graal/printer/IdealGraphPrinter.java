@@ -40,17 +40,19 @@ import com.oracle.graal.nodes.*;
  * Generates a representation of {@link Graph Graphs} that can be visualized and inspected with the <a
  * href="http://kenai.com/projects/igv">Ideal Graph Visualizer</a>.
  */
-class IdealGraphPrinter extends BasicIdealGraphPrinter {
+class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
     /**
      * Creates a new {@link IdealGraphPrinter} that writes to the specified output stream.
      */
     public IdealGraphPrinter(OutputStream stream) {
         super(stream);
+        this.begin();
     }
 
     /**
      * Starts a new group of graphs with the given name, short name and method byte code index (BCI) as properties.
      */
+    @Override
     public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci) {
         beginGroup();
         beginProperties();
@@ -70,6 +72,7 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
     /**
      * Prints an entire {@link Graph} with the specified title, optionally using short names for nodes.
      */
+    @Override
     public void print(Graph graph, String title, SchedulePhase predefinedSchedule) {
         beginGraph(title);
         Set<Node> noBlockNodes = new HashSet<>();
@@ -79,12 +82,12 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
                 schedule = new SchedulePhase();
                 schedule.apply((StructuredGraph) graph);
             } catch (Throwable t) {
-                schedule = null;
             }
         }
+        ControlFlowGraph cfg =  schedule == null ? null : schedule.getCFG();
 
         beginNodes();
-        List<Edge> edges = printNodes(graph, schedule == null ? null : schedule.getCFG().getNodeToBlock(), noBlockNodes);
+        List<Edge> edges = printNodes(graph, cfg == null ? null : cfg.getNodeToBlock(), noBlockNodes);
         endNodes();
 
         beginEdges();
@@ -93,10 +96,10 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
         }
         endEdges();
 
-        if (schedule != null) {
+        if (cfg != null && cfg.getBlocks() != null) {
             beginControlFlow();
-            for (Block block : schedule.getCFG().getBlocks()) {
-                printBlock(graph, block, schedule.getCFG().getNodeToBlock());
+            for (Block block : cfg.getBlocks()) {
+                printBlock(graph, block, cfg.getNodeToBlock());
             }
             printNoBlock(noBlockNodes);
             endControlFlow();
@@ -158,11 +161,38 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
                     printProperty(bit, "true");
                 }
             }
+            if (node.getClass() == BeginNode.class) {
+                printProperty("shortName", "B");
+            } else if (node.getClass() == EndNode.class) {
+                printProperty("shortName", "E");
+            }
+            if (node.predecessor() != null) {
+                printProperty("hasPredecessor", "true");
+            }
 
             for (Entry<Object, Object> entry : props.entrySet()) {
                 String key = entry.getKey().toString();
-                String value = entry.getValue() == null ? "null" : entry.getValue().toString();
-                printProperty(key, value);
+                Object value = entry.getValue();
+                String valueString;
+                if (value == null) {
+                    valueString = "null";
+                } else {
+                    Class<?> type = value.getClass();
+                    if (type.isArray()) {
+                        if (!type.getComponentType().isPrimitive()) {
+                            valueString = Arrays.toString((Object[]) value);
+                        } else if (type.getComponentType() == Integer.TYPE) {
+                            valueString = Arrays.toString((int[]) value);
+                        } else if (type.getComponentType() == Double.TYPE) {
+                            valueString = Arrays.toString((double[]) value);
+                        } else {
+                            valueString = toString();
+                        }
+                    } else {
+                        valueString = value.toString();
+                    }
+                }
+                printProperty(key, valueString);
             }
 
             endProperties();

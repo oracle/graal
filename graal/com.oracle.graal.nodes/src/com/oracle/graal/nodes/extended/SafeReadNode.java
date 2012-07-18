@@ -26,6 +26,10 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
+/**
+ * An analog to {@link ReadNode} with the additional semantics of null-checking
+ * the receiver object before reading from it.
+ */
 public class SafeReadNode extends SafeAccessNode implements Lowerable {
 
     public SafeReadNode(ValueNode object, LocationNode location, Stamp stamp, long leafGraphId) {

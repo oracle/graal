@@ -37,21 +37,23 @@ public class InterpreterFrame extends Frame {
     private static final int SINGLE = 1;
 
     /** Pointer to the top-most stack frame element. */
+    private int depth;
     private int tos;
 
     public InterpreterFrame(ResolvedJavaMethod method, int additionalStackSpace) {
-        this(method, null, additionalStackSpace);
+        this(method, null, additionalStackSpace, 0);
     }
 
-    private InterpreterFrame(ResolvedJavaMethod method, InterpreterFrame parent, int additionalStackSpace) {
+    private InterpreterFrame(ResolvedJavaMethod method, InterpreterFrame parent, int additionalStackSpace, int depth) {
         super(method.maxLocals() + method.maxStackSize() + BASE_LENGTH + additionalStackSpace, parent);
         setMethod(method);
         setBCI(0);
+        this.depth = depth;
         this.tos = BASE_LENGTH;
     }
 
     public InterpreterFrame create(ResolvedJavaMethod method, boolean hasReceiver) {
-        InterpreterFrame frame = new InterpreterFrame(method, this, 0);
+        InterpreterFrame frame = new InterpreterFrame(method, this, 0, this.depth + 1);
         int length = method.signature().argumentSlots(hasReceiver);
 
         frame.pushVoid(method.maxLocals());
@@ -65,6 +67,10 @@ public class InterpreterFrame extends Frame {
 
     public int resolveLocalIndex(int index) {
         return BASE_LENGTH + index;
+    }
+
+    public int depth() {
+        return depth;
     }
 
     private int stackTos() {

@@ -24,10 +24,14 @@ package com.oracle.graal.printer;
 
 import java.io.*;
 import java.net.*;
+import java.nio.channels.*;
+import java.nio.file.*;
+import java.text.*;
 import java.util.*;
 
 import com.oracle.max.criutils.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 
@@ -35,36 +39,27 @@ import com.oracle.graal.graph.*;
  * Observes compilation events and uses {@link IdealGraphPrinter} to generate a graph representation that can be
  * inspected with the <a href="http://kenai.com/projects/igv">Ideal Graph Visualizer</a>.
  */
-public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
+public class GraphPrinterDumpHandler implements DebugDumpHandler {
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("YYYY-MM-dd-HHmm");
 
-    private static final String DEFAULT_FILE_NAME = "output.igv.xml";
-
-    private IdealGraphPrinter printer;
-    private List<String> previousInlineContext = new ArrayList<>();
-    private String fileName;
-    private String host;
-    private int port;
-    private boolean initialized;
+    private GraphPrinter printer;
+    private List<String> previousInlineContext;
+    private int failuresCount;
 
     /**
-     * Creates a new {@link IdealGraphPrinterDumpHandler} that writes output to a file named after the compiled method.
+     * Creates a new {@link GraphPrinterDumpHandler}.
      */
-    public IdealGraphPrinterDumpHandler() {
-        this.fileName = DEFAULT_FILE_NAME;
-    }
-
-    /**
-     * Creates a new {@link IdealGraphPrinterDumpHandler} that sends output to a remote IdealGraphVisualizer instance.
-     */
-    public IdealGraphPrinterDumpHandler(String host, int port) {
-        this.host = host;
-        this.port = port;
+    public GraphPrinterDumpHandler() {
+        previousInlineContext = new ArrayList<>();
     }
 
     private void ensureInitialized() {
-        if (!initialized) {
-            initialized = true;
-            if (fileName != null) {
+        if (printer == null) {
+            if (failuresCount > 8) {
+                return;
+            }
+            previousInlineContext.clear();
+            if (GraalOptions.PrintIdealGraphFile) {
                 initializeFilePrinter();
             } else {
                 initializeNetworkPrinter();
@@ -73,24 +68,41 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     private void initializeFilePrinter() {
+        String ext;
+        if (GraalOptions.PrintBinaryGraphs) {
+            ext = ".bgv";
+        } else {
+            ext = ".gv.xml";
+        }
+        String fileName = "Graphs-" + Thread.currentThread().getName() + "-" + sdf.format(new Date()) + ext;
         try {
-            FileOutputStream stream = new FileOutputStream(fileName);
-            printer = new IdealGraphPrinter(stream);
-            printer.begin();
+            if (GraalOptions.PrintBinaryGraphs) {
+                printer = new BinaryGraphPrinter(FileChannel.open(new File(fileName).toPath(), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW));
+            } else {
+                printer = new IdealGraphPrinter(new FileOutputStream(fileName));
+            }
+            TTY.println("Dumping IGV graphs to %s", fileName);
         } catch (IOException e) {
+            TTY.println("Faild to open %s to dump IGV graphs : %s", fileName, e);
+            failuresCount++;
             printer = null;
         }
     }
 
     private void initializeNetworkPrinter() {
+        String host = GraalOptions.PrintIdealGraphAddress;
+        int port = GraalOptions.PrintBinaryGraphs ? GraalOptions.PrintBinaryGraphPort : GraalOptions.PrintIdealGraphPort;
         try {
-            Socket socket = new Socket(host, port);
-            BufferedOutputStream stream = new BufferedOutputStream(socket.getOutputStream(), 0x4000);
-            printer = new IdealGraphPrinter(stream);
-            printer.begin();
-            TTY.println("Connected to the IGV on port %d", port);
+            if (GraalOptions.PrintBinaryGraphs) {
+                printer = new BinaryGraphPrinter(SocketChannel.open(new InetSocketAddress(host, port)));
+            } else {
+                IdealGraphPrinter xmlPrinter = new IdealGraphPrinter(new Socket(host, port).getOutputStream());
+                printer = xmlPrinter;
+            }
+            TTY.println("Connected to the IGV on %s:%d", host, port);
         } catch (IOException e) {
-            TTY.println("Could not connect to the IGV on port %d: %s", port, e);
+            TTY.println("Could not connect to the IGV on %s:%d : %s", host, port, e);
+            failuresCount++;
             printer = null;
         }
     }
@@ -99,9 +111,12 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
     public void dump(Object object, final String message) {
         if (object instanceof Graph) {
             ensureInitialized();
+            if (printer == null) {
+                return;
+            }
             final Graph graph = (Graph) object;
 
-            if (printer != null && printer.isValid()) {
+            if (printer != null) {
                 // Get all current RiResolvedMethod instances in the context.
                 List<String> inlineContext = getInlineContext();
 
@@ -136,8 +151,12 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
                     @Override
                     public void run() {
                         // Finally, output the graph.
-                        printer.print(graph, message);
-
+                        try {
+                            printer.print(graph, message, null);
+                        } catch (IOException e) {
+                            failuresCount++;
+                            printer = null;
+                        }
                     }
                 });
             }
@@ -164,10 +183,28 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
 
     private void openScope(String name, boolean showThread) {
         String prefix = showThread ? Thread.currentThread().getName() + ":" : "";
-        printer.beginGroup(prefix + name, name, Debug.contextLookup(ResolvedJavaMethod.class), -1);
+        try {
+            printer.beginGroup(prefix + name, name, Debug.contextLookup(ResolvedJavaMethod.class), -1);
+        } catch (IOException e) {
+            failuresCount++;
+            printer = null;
+        }
     }
 
     private void closeScope() {
-        printer.endGroup();
+        try {
+            printer.endGroup();
+        } catch (IOException e) {
+            failuresCount++;
+            printer = null;
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        for (int i = 0; i < previousInlineContext.size(); i++) {
+            closeScope();
+        }
+        printer.close();
     }
 }

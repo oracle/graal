@@ -30,28 +30,28 @@ import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
 
 /**
- * CiTargetMethod augmented with HotSpot-specific information.
+ * Augments a {@link CompilationResult} with HotSpot-specific information.
  */
-public final class HotSpotTargetMethod extends CompilerObject {
+public final class HotSpotCompilationResult extends CompilerObject {
 
     private static final long serialVersionUID = 7807321392203253218L;
-    public final CompilationResult targetMethod;
+    public final CompilationResult comp;
     public final HotSpotResolvedJavaMethod method; // used only for methods
     public final String name; // used only for stubs
 
     public final Site[] sites;
     public final ExceptionHandler[] exceptionHandlers;
 
-    public HotSpotTargetMethod(HotSpotResolvedJavaMethod method, CompilationResult targetMethod) {
+    public HotSpotCompilationResult(HotSpotResolvedJavaMethod method, CompilationResult comp) {
         this.method = method;
-        this.targetMethod = targetMethod;
+        this.comp = comp;
         this.name = null;
 
-        sites = getSortedSites(targetMethod);
-        if (targetMethod.getExceptionHandlers() == null) {
+        sites = getSortedSites(comp);
+        if (comp.getExceptionHandlers() == null) {
             exceptionHandlers = null;
         } else {
-            exceptionHandlers = targetMethod.getExceptionHandlers().toArray(new ExceptionHandler[targetMethod.getExceptionHandlers().size()]);
+            exceptionHandlers = comp.getExceptionHandlers().toArray(new ExceptionHandler[comp.getExceptionHandlers().size()]);
         }
     }
 
