@@ -45,20 +45,10 @@ import com.oracle.graal.nodes.type.*;
 public final class GuardNode extends FloatingNode implements Canonicalizable, LIRLowerable, TypeFeedbackProvider, Node.IterableNodeType, Negatable {
 
     @Input private BooleanNode condition;
-    @Input(notDataflow = true) private FixedNode anchor;
     private final DeoptimizationReason reason;
     private final DeoptimizationAction action;
     private boolean negated;
     private final long leafGraphId;
-
-    public FixedNode anchor() {
-        return anchor;
-    }
-
-    public void setAnchor(FixedNode x) {
-        updateUsages(anchor, x);
-        anchor = x;
-    }
 
     /**
      * The instruction that produces the tested boolean value.
@@ -85,9 +75,8 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
     }
 
     public GuardNode(BooleanNode condition, FixedNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, long leafGraphId) {
-        super(StampFactory.dependency());
+        super(StampFactory.dependency(), anchor);
         this.condition = condition;
-        this.anchor = anchor;
         this.reason = reason;
         this.action = action;
         this.negated = negated;
