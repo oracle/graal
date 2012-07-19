@@ -91,19 +91,19 @@ public class FloatingReadPhase extends Phase {
                 }
             }
 
-            IdentityHashMap<Object, Object> keys = new IdentityHashMap<>();
+            Set<Object> keys = new HashSet<>();
             for (Object key : lastMemorySnapshot.keySet()) {
-                keys.put(key, key);
+                keys.add(key);
             }
             for (MemoryMap other : withStates) {
                 assert other.loops.size() == loops.size();
                 assert other.loops.size() < 1 || other.loops.peek().loopBegin == loops.peek().loopBegin;
                 for (Object key : other.lastMemorySnapshot.keySet()) {
-                    keys.put(key, key);
+                    keys.add(key);
                 }
             }
 
-            for (Object key : keys.keySet()) {
+            for (Object key : keys) {
                 ValueNode merged = lastMemorySnapshot.get(key);
                 if (merged == null) {
                     merged = lastMemorySnapshot.get(LocationNode.ANY_LOCATION);
