@@ -47,12 +47,10 @@ public class CheckCastEliminationPhase extends Phase {
     private static final DebugMetric metricGuardsReplaced = Debug.metric("GuardsReplaced");
 
     private StructuredGraph graph;
-    private boolean graphModified;
 
     @Override
     protected void run(StructuredGraph inputGraph) {
         graph = inputGraph;
-        graphModified = false;
         new EliminateCheckCasts(graph.start(), new State()).apply();
     }
 
@@ -307,7 +305,6 @@ public class CheckCastEliminationPhase extends Phase {
                     BooleanNode condition = guard.condition();
                     ValueNode existingGuards = guard.negated() ? state.falseConditions.get(condition) : state.trueConditions.get(condition);
                     if (existingGuards != null) {
-                        graphModified = true;
                         guard.replaceAtUsages(existingGuards);
                         GraphUtil.killWithUnusedFloatingInputs(guard);
                         metricGuardsReplaced.increment();
@@ -321,7 +318,6 @@ public class CheckCastEliminationPhase extends Phase {
                                 removeCheck = true;
                             }
                             if (removeCheck) {
-                                graphModified = true;
                                 metricNullCheckGuardRemoved.increment();
                             }
                         }
@@ -346,7 +342,6 @@ public class CheckCastEliminationPhase extends Phase {
                     piNode = graph.unique(new PiNode(checkCast.object(), lastBegin, nonNull ? StampFactory.declaredNonNull(type) : StampFactory.declared(type)));
                     checkCast.replaceAtUsages(piNode);
                     graph.removeFixed(checkCast);
-                    graphModified = true;
                     metricCheckCastRemoved.increment();
                 }
             } else if (node instanceof IfNode) {
@@ -387,7 +382,6 @@ public class CheckCastEliminationPhase extends Phase {
                     }
                 }
                 if (replaceWith != null) {
-                    graphModified = true;
                     ifNode.setCompare(replaceWith);
                     if (compare.usages().isEmpty()) {
                         GraphUtil.killWithUnusedFloatingInputs(compare);
@@ -395,10 +389,6 @@ public class CheckCastEliminationPhase extends Phase {
                 }
             }
         }
-    }
-
-    public boolean wasGraphModfied() {
-        return graphModified;
     }
 
 }
