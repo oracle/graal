@@ -97,7 +97,7 @@ public class CanonicalizerPhase extends Phase {
                 workList.addAll(graph.getNewNodes(newNodesMark));
             }
         } else {
-            workList = graph.createNodeWorkList(newNodesMark == 0, MAX_ITERATION_PER_NODE);
+            workList = graph.createNodeWorkList(false, MAX_ITERATION_PER_NODE);
             workList.addAll(initWorkingSet);
         }
         tool = new Tool(workList, runtime, target, assumptions, immutabilityPredicate);
