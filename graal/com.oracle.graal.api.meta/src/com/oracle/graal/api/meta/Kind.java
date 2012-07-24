@@ -438,4 +438,23 @@ public enum Kind {
         }
     }
 
+    public int bits() {
+        switch (this) {
+            case Boolean:
+                return 1;
+            case Byte:
+                return 8;
+            case Char:
+                return 16;
+            case Short:
+                return 16;
+            case Jsr:
+            case Int:
+                return 32;
+            case Long:
+                return 64;
+            default:
+                throw new IllegalArgumentException("illegal call to bits on " + this);
+        }
+    }
 }

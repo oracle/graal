@@ -102,6 +102,16 @@ public class StampFactory {
         return new IntegerStamp(kind, lowerBound, upperBound, mask);
     }
 
+    public static Stamp forInteger(Kind kind, long lowerBound, long upperBound) {
+        long mask;
+        if (lowerBound < 0) {
+            mask = IntegerStamp.defaultMask(kind);
+        } else {
+            mask = -1 >>> Long.numberOfLeadingZeros(upperBound);
+        }
+        return forInteger(kind, lowerBound, upperBound, mask);
+    }
+
     public static Stamp forFloat(Kind kind, double lowerBound, double upperBound, boolean nonNaN) {
         return new FloatStamp(kind, lowerBound, upperBound, nonNaN);
     }

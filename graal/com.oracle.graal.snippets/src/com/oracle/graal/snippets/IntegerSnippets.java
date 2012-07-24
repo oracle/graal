@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,26 @@
  */
 package com.oracle.graal.snippets;
 
-import com.oracle.graal.compiler.*;
+import com.oracle.graal.snippets.nodes.*;
 
-/**
- * Definition of the snippets that are VM-independent and can be intrinsified by Graal in any VM.
- */
-public class GraalIntrinsics {
-    public static void installIntrinsics(SnippetInstaller installer) {
-        if (GraalOptions.Intrinsify) {
-            installer.install(MathSnippetsX86.class);
-            installer.install(DoubleSnippets.class);
-            installer.install(FloatSnippets.class);
-            installer.install(NodeClassSnippets.class);
-            installer.install(LongSnippets.class);
-            installer.install(IntegerSnippets.class);
+@ClassSubstitution(Integer.class)
+public class IntegerSnippets implements SnippetsInterface{
+
+    public static int reverseBytes(int i) {
+        return ReverseBytesNode.reverse(i);
+    }
+
+    public static int numberOfLeadingZeros(int i) {
+        if (i == 0) {
+            return 32;
         }
+        return 31 - BitScanReverseNode.scan(i);
+    }
+
+    public static int numberOfTrailingZeros(int i) {
+        if (i == 0) {
+            return 32;
+        }
+        return BitScanForwardNode.scan(i);
     }
 }
