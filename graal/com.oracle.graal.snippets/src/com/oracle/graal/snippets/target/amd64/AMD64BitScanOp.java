@@ -31,8 +31,8 @@ import com.oracle.max.asm.target.amd64.*;
 
 public class AMD64BitScanOp extends AMD64LIRInstruction {
     public enum IntrinsicOpcode  {
-        BSF,
-        BSR;
+        IBSR, LBSR,
+        BSF;
     }
 
     @Opcode private final IntrinsicOpcode opcode;
@@ -47,21 +47,33 @@ public class AMD64BitScanOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        switch(opcode) {
-            case BSF:
-                if (ValueUtil.isAddress(input)) {
-                    masm.bsfq(ValueUtil.asIntReg(result), ValueUtil.asAddress(input));
-                } else {
-                    masm.bsfq(ValueUtil.asIntReg(result), ValueUtil.asRegister(input));
-                }
-                break;
-            case BSR:
-                if (ValueUtil.isAddress(input)) {
-                    masm.bsrq(ValueUtil.asIntReg(result), ValueUtil.asAddress(input));
-                } else {
-                    masm.bsrq(ValueUtil.asIntReg(result), ValueUtil.asRegister(input));
-                }
-                break;
+        Register dst = ValueUtil.asIntReg(result);
+        if (ValueUtil.isAddress(input)) {
+            Address src = ValueUtil.asAddress(input);
+            switch(opcode) {
+                case BSF:
+                    masm.bsfq(dst, src);
+                    break;
+                case IBSR:
+                    masm.bsrl(dst, src);
+                    break;
+                case LBSR:
+                    masm.bsrq(dst, src);
+                    break;
+            }
+        } else {
+            Register src = ValueUtil.asRegister(input);
+            switch(opcode) {
+                case BSF:
+                    masm.bsfq(dst, src);
+                    break;
+                case IBSR:
+                    masm.bsrl(dst, src);
+                    break;
+                case LBSR:
+                    masm.bsrq(dst, src);
+                    break;
+            }
         }
     }
 

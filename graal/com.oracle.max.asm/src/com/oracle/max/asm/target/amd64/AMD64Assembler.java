@@ -446,6 +446,20 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(dst, src);
     }
 
+    public final void bsrl(Register dst, Register src) {
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0F);
+        emitByte(0xBD);
+        emitByte(0xC0 | encode);
+    }
+
+
+    public final void bsrl(Register dst, Address src) {
+        prefix(src, dst);
+        emitByte(0xBD);
+        emitOperandHelper(dst, src);
+    }
+
     public final void bswapl(Register reg) { // bswap
         int encode = prefixAndEncode(reg.encoding);
         emitByte(0x0F);

@@ -46,18 +46,13 @@ public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable,
     public ValueNode canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
             long v = value.asConstant().asLong();
-            if (kind().isInt()) {
+            if (value.kind().isInt()) {
                 return ConstantNode.forInt(Integer.numberOfTrailingZeros((int) v), graph());
-            } else if (kind().isLong()) {
-                return ConstantNode.forLong(Long.numberOfTrailingZeros(v), graph());
+            } else if (value.kind().isLong()) {
+                return ConstantNode.forInt(Long.numberOfTrailingZeros(v), graph());
             }
         }
         return this;
-    }
-
-    @NodeIntrinsic
-    public static int scan(@SuppressWarnings("unused") int v) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 
     @NodeIntrinsic

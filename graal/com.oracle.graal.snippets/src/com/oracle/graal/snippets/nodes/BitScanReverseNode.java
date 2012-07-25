@@ -25,6 +25,7 @@ package com.oracle.graal.snippets.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -46,10 +47,10 @@ public class BitScanReverseNode extends FloatingNode implements LIRGenLowerable,
     public ValueNode canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
             long v = value.asConstant().asLong();
-            if (kind().isInt()) {
+            if (value.kind().isInt()) {
                 return ConstantNode.forInt(31 - Integer.numberOfLeadingZeros((int) v), graph());
-            } else if (kind().isLong()) {
-                return ConstantNode.forLong(63 - Long.numberOfLeadingZeros(v), graph());
+            } else if (value.kind().isLong()) {
+                return ConstantNode.forInt(63 - Long.numberOfLeadingZeros(v), graph());
             }
         }
         return this;
@@ -68,7 +69,15 @@ public class BitScanReverseNode extends FloatingNode implements LIRGenLowerable,
     @Override
     public void generate(LIRGenerator gen) {
         Variable result = gen.newVariable(Kind.Int);
-        gen.append(new AMD64BitScanOp(IntrinsicOpcode.BSR, result, gen.operand(value)));
+        IntrinsicOpcode opcode;
+        if (value.kind().isInt()) {
+            opcode = IntrinsicOpcode.IBSR;
+        } else if (value.kind().isLong()) {
+            opcode = IntrinsicOpcode.LBSR;
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+        gen.append(new AMD64BitScanOp(opcode, result, gen.operand(value)));
         gen.setResult(this, result);
     }
 
