@@ -22,11 +22,32 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import java.lang.reflect.*;
 import java.util.*;
+import java.util.Map.Entry;
 
 import com.oracle.graal.api.meta.*;
 
 public class BoxingMethodPool {
+    private static final Map<Kind, BoxingMethod> boxings = new HashMap<>();
+    private static class BoxingMethod {
+        final Class<?> type;
+        final String unboxMethod;
+        public BoxingMethod(Class< ? > type, String unboxMethod) {
+            this.type = type;
+            this.unboxMethod = unboxMethod;
+        }
+    }
+    static {
+        boxings.put(Kind.Boolean, new BoxingMethod(Boolean.class, "booleanValue"));
+        boxings.put(Kind.Byte, new BoxingMethod(Byte.class, "byteValue"));
+        boxings.put(Kind.Char, new BoxingMethod(Character.class, "charValue"));
+        boxings.put(Kind.Short, new BoxingMethod(Short.class, "shortValue"));
+        boxings.put(Kind.Int, new BoxingMethod(Integer.class, "intValue"));
+        boxings.put(Kind.Long, new BoxingMethod(Long.class, "longValue"));
+        boxings.put(Kind.Float, new BoxingMethod(Float.class, "floatValue"));
+        boxings.put(Kind.Double, new BoxingMethod(Double.class, "doubleValue"));
+    }
 
     private final Set<JavaMethod> specialMethods = new HashSet<>();
     private final MetaAccessProvider runtime;
@@ -41,14 +62,11 @@ public class BoxingMethodPool {
 
     private void initialize() {
         try {
-            initialize(Kind.Boolean, Boolean.class, "booleanValue");
-            initialize(Kind.Byte, Byte.class, "byteValue");
-            initialize(Kind.Char, Character.class, "charValue");
-            initialize(Kind.Short, Short.class, "shortValue");
-            initialize(Kind.Int, Integer.class, "intValue");
-            initialize(Kind.Long, Long.class, "longValue");
-            initialize(Kind.Float, Float.class, "floatValue");
-            initialize(Kind.Double, Double.class, "doubleValue");
+            for (Entry<Kind, BoxingMethod> entry : boxings.entrySet()) {
+                Kind kind = entry.getKey();
+                BoxingMethod boxing = entry.getValue();
+                initialize(kind, boxing.type, boxing.unboxMethod);
+            }
         } catch (SecurityException e) {
             throw new RuntimeException(e);
         } catch (NoSuchMethodException e) {
@@ -97,5 +115,39 @@ public class BoxingMethodPool {
 
     public ResolvedJavaField getBoxField(Kind kind) {
         return boxFields[kind.ordinal()];
+    }
+
+    public static boolean isSpecialMethodStatic(ResolvedJavaMethod method) {
+        return isUnboxingMethodStatic(method) || isBoxingMethodStatic(method);
+    }
+
+    public static boolean isBoxingMethodStatic(ResolvedJavaMethod method) {
+        Signature signature = method.signature();
+        if (!Modifier.isStatic(method.accessFlags())
+                        || signature.returnKind() == Kind.Object
+                        || signature.argumentCount(false) != 1) {
+            return false;
+        }
+        Kind kind = signature.argumentKindAt(0);
+        BoxingMethod boxing = boxings.get(kind);
+        if (boxing == null) {
+            return false;
+        }
+        return method.holder().toJava() == boxing.type && method.name().equals("valueOf");
+    }
+
+    public static boolean isUnboxingMethodStatic(ResolvedJavaMethod method) {
+        Signature signature = method.signature();
+        if (signature.returnKind() == Kind.Object
+                        || signature.argumentCount(false) != 0
+                        || Modifier.isStatic(method.accessFlags())) {
+            return false;
+        }
+        Kind kind = signature.returnKind();
+        BoxingMethod boxing = boxings.get(kind);
+        if (boxing == null) {
+            return false;
+        }
+        return method.holder().toJava() == boxing.type && method.name().equals(boxing.unboxMethod);
     }
 }

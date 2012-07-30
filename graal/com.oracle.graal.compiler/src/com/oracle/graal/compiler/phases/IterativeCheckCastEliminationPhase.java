@@ -25,18 +25,18 @@ package com.oracle.graal.compiler.phases;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.Graph.InputChangedListener;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 
 
 public class IterativeCheckCastEliminationPhase extends Phase {
     private final TargetDescription target;
-    private final GraalCodeCacheProvider runtime;
+    private final MetaAccessProvider runtime;
     private final Assumptions assumptions;
 
-    public IterativeCheckCastEliminationPhase(TargetDescription target, GraalCodeCacheProvider runtime, Assumptions assumptions) {
+    public IterativeCheckCastEliminationPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions) {
         this.target = target;
         this.runtime = runtime;
         this.assumptions = assumptions;

@@ -66,5 +66,4 @@ public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable,
         gen.append(new AMD64BitScanOp(IntrinsicOpcode.BSF, result, gen.operand(value)));
         gen.setResult(this, result);
     }
-
 }
