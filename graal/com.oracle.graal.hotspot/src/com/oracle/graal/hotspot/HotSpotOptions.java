@@ -105,7 +105,7 @@ public class HotSpotOptions {
             Logger.info("Security exception when setting option " + option);
             return false;
         } catch (NoSuchFieldException e) {
-            Logger.info("Could not find option " + fieldName);
+            Logger.info("Could not find option " + fieldName + " (use -G:+PrintFlags to see Graal options)");
             return false;
         } catch (IllegalArgumentException e) {
             Logger.info("Illegal value for option " + option);
