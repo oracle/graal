@@ -66,6 +66,9 @@ public class HotSpotDebugConfig implements DebugConfig {
         }
         dumpHandlers.add(new GraphPrinterDumpHandler());
         if (GraalOptions.PrintCFG) {
+            if (GraalOptions.PrintBinaryGraphs) {
+                TTY.println("CFG dumping slows down PrintBinaryGraphs: use -G:-PrintCFG to disable it");
+            }
             dumpHandlers.add(new CFGPrinterObserver());
         }
         this.output = output;
