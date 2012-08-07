@@ -165,7 +165,9 @@ public class HotSpotAMD64Backend extends Backend {
                 assert methodOopNode != null;
                 Value methodOop = AMD64.rbx.asValue();
                 emitMove(operand(methodOopNode), methodOop);
-                append(new AMD64IndirectCallOp(callTarget.targetMethod(), result, parameters, methodOop, operand(callTarget.computedAddress()), callState));
+                Value targetAddress = AMD64.rax.asValue();
+                emitMove(operand(callTarget.computedAddress()), targetAddress);
+                append(new AMD64IndirectCallOp(callTarget.targetMethod(), result, parameters, methodOop, targetAddress, callState));
             }
 
             if (isLegal(result)) {
