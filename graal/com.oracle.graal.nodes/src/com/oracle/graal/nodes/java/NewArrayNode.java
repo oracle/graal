@@ -36,13 +36,14 @@ import com.oracle.graal.nodes.util.*;
 /**
  * The {@code NewArrayNode} class is the base of all instructions that allocate arrays.
  */
-public abstract class NewArrayNode extends FixedWithNextNode implements Lowerable, EscapeAnalyzable, TypeFeedbackProvider {
+public abstract class NewArrayNode extends FixedWithNextNode implements Lowerable, EscapeAnalyzable, TypeFeedbackProvider, ArrayLengthProvider {
 
     @Input private ValueNode length;
     private final ResolvedJavaType elementType;
 
     public static final int MaximumEscapeAnalysisArrayLength = 32;
 
+    @Override
     public ValueNode length() {
         return length;
     }
