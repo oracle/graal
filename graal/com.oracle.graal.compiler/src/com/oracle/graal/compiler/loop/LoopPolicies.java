@@ -45,7 +45,8 @@ public abstract class LoopPolicies {
             return false;
         }
         long exactTrips = loop.counted().constantMaxTripCount();
-        int maxNodes = Math.min(GraalOptions.FullUnrollMaxNodes, GraalOptions.MaximumDesiredSize - loop.loopBegin().graph().getNodeCount());
+        int maxNodes = loop.counted().isConstantExactTripCount() ? GraalOptions.ExactFullUnrollMaxNodes : GraalOptions.FullUnrollMaxNodes;
+        maxNodes = Math.min(maxNodes, GraalOptions.MaximumDesiredSize - loop.loopBegin().graph().getNodeCount());
         int size = Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count());
         return size * exactTrips <= maxNodes;
     }
