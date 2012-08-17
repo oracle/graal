@@ -44,15 +44,16 @@ public abstract class LoopPolicies {
         if (!loop.isCounted() || !loop.counted().isConstantMaxTripCount()) {
             return false;
         }
-        long exactTrips = loop.counted().constantMaxTripCount();
-        int maxNodes = loop.counted().isConstantExactTripCount() ? GraalOptions.ExactFullUnrollMaxNodes : GraalOptions.FullUnrollMaxNodes;
+        CountedLoopInfo counted = loop.counted();
+        long exactTrips = counted.constantMaxTripCount();
+        int maxNodes = (counted.isExactTripCount() && counted.isConstantExactTripCount()) ? GraalOptions.ExactFullUnrollMaxNodes : GraalOptions.FullUnrollMaxNodes;
         maxNodes = Math.min(maxNodes, GraalOptions.MaximumDesiredSize - loop.loopBegin().graph().getNodeCount());
         int size = Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count());
         return size * exactTrips <= maxNodes;
     }
 
     public static boolean shouldTryUnswitch(@SuppressWarnings("unused") LoopEx loop) {
-        // TODO (gd) maybe there should be a may number of unswitching per loop
+        // TODO (gd) maybe there should be a max number of unswitching per loop
         return true;
     }
 
