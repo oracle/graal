@@ -418,7 +418,7 @@ public class EscapeAnalysisPhase extends Phase {
                 } else if (usage instanceof ValueProxyNode) {
                     ValueProxyNode proxy = (ValueProxyNode) usage;
                     for (Node proxyUsage : proxy.usages()) {
-                        if (proxyUsage instanceof VirtualObjectState) {
+                        if (!(proxyUsage instanceof VirtualObjectState)) {
                             exits.add(usage);
                             break;
                         }
