@@ -155,6 +155,9 @@ public class GraalCompiler {
 
         if (GraalOptions.FullUnroll) {
             new LoopFullUnrollPhase(runtime).apply(graph);
+            if (GraalOptions.OptCanonicalizer) {
+                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+            }
         }
 
         if (GraalOptions.EscapeAnalysis && !plan.isPhaseDisabled(EscapeAnalysisPhase.class)) {
