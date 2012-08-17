@@ -415,8 +415,16 @@ public class EscapeAnalysisPhase extends Phase {
             if (escapes) {
                 if (usage instanceof VirtualState) {
                     // nothing to do...
+                } else if (usage instanceof ValueProxyNode) {
+                    ValueProxyNode proxy = (ValueProxyNode) usage;
+                    for (Node proxyUsage : proxy.usages()) {
+                        if (proxyUsage instanceof VirtualObjectState) {
+                            exits.add(usage);
+                            break;
+                        }
+                    }
                 } else if (usage instanceof MethodCallTargetNode) {
-                    if (usage.usages().size() == 0) {
+                    if (usage.usages().isEmpty()) {
                         usage.safeDelete();
                     } else {
                         invokes.add(((MethodCallTargetNode) usage).invoke());
