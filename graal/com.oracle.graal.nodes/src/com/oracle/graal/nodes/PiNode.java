@@ -61,6 +61,9 @@ public class PiNode extends FloatingNode implements LIRLowerable {
             setStamp(StampFactory.alwaysNull());
             return true;
         }
+        if (object().objectStamp().isExactType() && !objectStamp().isExactType()) {
+            setStamp(object().objectStamp());
+        }
         return super.inferStamp();
     }
 }
