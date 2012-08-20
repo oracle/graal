@@ -350,7 +350,7 @@ public class EscapeAnalysisPhase extends Phase {
 
                 Debug.dump(graph, "Before escape %s", node);
                 Debug.log("!!!!!!!! non-escaping object: %s (%s)", node, node.stamp());
-                removeAllocation(node, op);
+                removeAllocation(graph, node, op);
                 Debug.dump(graph, "After escape", graph);
                 break;
             }
@@ -379,8 +379,8 @@ public class EscapeAnalysisPhase extends Phase {
         } while (iterations++ < 3);
     }
 
-    protected void removeAllocation(FixedWithNextNode node, EscapeOp op) {
-        new EscapementFixup(op, (StructuredGraph) node.graph(), node).apply();
+    protected void removeAllocation(StructuredGraph graph, FixedWithNextNode node, EscapeOp op) {
+        new EscapementFixup(op, graph, node).apply();
 
         for (PhiNode phi : node.graph().getNodes(PhiNode.class)) {
             ValueNode simpleValue = phi;
@@ -395,9 +395,10 @@ public class EscapeAnalysisPhase extends Phase {
                 }
             }
             if (!required) {
-                ((StructuredGraph) node.graph()).replaceFloating(phi, simpleValue);
+                graph.replaceFloating(phi, simpleValue);
             }
         }
+        new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
     }
 
     protected boolean shouldAnalyze(@SuppressWarnings("unused") FixedWithNextNode node) {
