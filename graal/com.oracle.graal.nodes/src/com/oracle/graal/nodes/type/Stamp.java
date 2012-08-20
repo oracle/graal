@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.types.*;
 
 /**
@@ -54,5 +55,17 @@ public abstract class Stamp {
 
     public abstract boolean alwaysDistinct(Stamp other);
 
+    /**
+     * Returns the union of this stamp and the given stamp. Typically used to create stamps for {@link PhiNode}s.
+     * @param other The stamp that will enlarge this stamp.
+     * @return The union of this stamp and the given stamp.
+     */
     public abstract Stamp meet(Stamp other);
+
+    /**
+     * Returns the intersection of this stamp and the given stamp.
+     * @param other The stamp that will tighten this stamp.
+     * @return The intersection of this stamp and the given stamp.
+     */
+    public abstract Stamp join(Stamp other);
 }

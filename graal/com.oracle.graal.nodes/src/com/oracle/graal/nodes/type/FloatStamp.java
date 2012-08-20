@@ -106,6 +106,22 @@ public class FloatStamp extends Stamp {
     }
 
     @Override
+    public Stamp join(Stamp otherStamp) {
+        FloatStamp other = (FloatStamp) otherStamp;
+        assert kind() == other.kind();
+        double joinUpperBound = Math.min(upperBound, other.upperBound);
+        double joinLowerBound = Math.max(lowerBound, other.lowerBound);
+        boolean joinNonNaN = nonNaN || other.nonNaN;
+        if (joinLowerBound == lowerBound && joinUpperBound == upperBound && joinNonNaN == nonNaN) {
+            return this;
+        } else if (joinLowerBound == other.lowerBound && joinUpperBound == other.upperBound && joinNonNaN == other.nonNaN) {
+            return other;
+        } else {
+            return new FloatStamp(kind(), joinLowerBound, joinUpperBound, joinNonNaN);
+        }
+    }
+
+    @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
