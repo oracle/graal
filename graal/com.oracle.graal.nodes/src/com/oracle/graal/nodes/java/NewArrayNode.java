@@ -27,16 +27,14 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
  * The {@code NewArrayNode} class is the base of all instructions that allocate arrays.
  */
-public abstract class NewArrayNode extends FixedWithNextNode implements Lowerable, EscapeAnalyzable, TypeFeedbackProvider, ArrayLengthProvider {
+public abstract class NewArrayNode extends FixedWithNextNode implements Lowerable, EscapeAnalyzable, ArrayLengthProvider {
 
     @Input private ValueNode length;
     private final ResolvedJavaType elementType;
@@ -79,12 +77,6 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
      */
     public int dimensionCount() {
         return 1;
-    }
-
-    @Override
-    public void typeFeedback(TypeFeedbackTool tool) {
-        assert length.kind() == Kind.Int;
-        tool.addScalar(length).constantBound(Condition.GE, Constant.INT_0);
     }
 
     public EscapeOp getEscapeOp() {

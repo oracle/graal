@@ -26,14 +26,13 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome of a
  * comparison.
  */
-public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, SplitTypeFeedbackProvider, Negatable {
+public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, Negatable {
     public static final int TRUE_EDGE = 0;
     public static final int FALSE_EDGE = 1;
     private final long leafGraphId;
@@ -186,13 +185,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         trueEnd.safeDelete();
         falseEnd.safeDelete();
         tool.addToWorkList(next);
-    }
-
-    @Override
-    public void typeFeedback(int blockSuccessor, TypeFeedbackTool tool) {
-        if (compare instanceof ConditionalTypeFeedbackProvider) {
-            ((ConditionalTypeFeedbackProvider) compare).typeFeedback(blockSuccessor == TRUE_EDGE ? tool : tool.negate());
-        }
     }
 
     @Override

@@ -25,15 +25,13 @@ package com.oracle.graal.nodes.java;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * Implements a type check that results in a {@link ClassCastException} if it fails.
  */
-public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Lowerable, Node.IterableNodeType, TypeFeedbackProvider, TypeCanonicalizable {
+public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Lowerable, Node.IterableNodeType {
 
     @Input private ValueNode object;
     @Input private ValueNode targetClassInstruction;
@@ -93,26 +91,6 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             return object();
         }
         return this;
-    }
-
-    @Override
-    public void typeFeedback(TypeFeedbackTool tool) {
-        if (targetClass() != null) {
-            tool.addObject(object()).declaredType(targetClass(), false);
-        }
-    }
-
-    @Override
-    public Result canonical(TypeFeedbackTool tool) {
-        ObjectTypeQuery query = tool.queryObject(object());
-        if (query.constantBound(Condition.EQ, Constant.NULL_OBJECT)) {
-            return new Result(object(), query);
-        } else if (targetClass() != null) {
-            if (query.declaredType(targetClass())) {
-                return new Result(object(), query);
-            }
-        }
-        return null;
     }
 
     public ValueNode object() {

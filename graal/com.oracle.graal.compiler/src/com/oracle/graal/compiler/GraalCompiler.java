@@ -35,7 +35,6 @@ import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.compiler.types.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -117,10 +116,6 @@ public class GraalCompiler {
             new ComputeProbabilityPhase().apply(graph);
         }
 
-        if (GraalOptions.PropagateTypes) {
-            new PropagateTypeCachePhase(target, runtime, assumptions).apply(graph);
-        }
-
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
         }
@@ -131,10 +126,6 @@ public class GraalCompiler {
 
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
             new InliningPhase(target, runtime, null, assumptions, cache, plan, optimisticOpts).apply(graph);
-
-            if (GraalOptions.PropagateTypes) {
-                new PropagateTypeCachePhase(target, runtime, assumptions).apply(graph);
-            }
 
             if (GraalOptions.OptCanonicalizer) {
                 new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
@@ -186,10 +177,6 @@ public class GraalCompiler {
             if (GraalOptions.OptReadElimination) {
                 new ReadEliminationPhase().apply(graph);
             }
-        }
-
-        if (GraalOptions.PropagateTypes) {
-            new PropagateTypeCachePhase(target, runtime, assumptions).apply(graph);
         }
 
         if (GraalOptions.OptLoopTransform) {
