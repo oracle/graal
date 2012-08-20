@@ -73,7 +73,6 @@ public class GraalCompiler {
         this.backend = backend;
     }
 
-
     public CompilationResult compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, int osrBCI, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.accessFlags() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
         if (osrBCI != -1) {
@@ -114,8 +113,6 @@ public class GraalCompiler {
             Debug.dump(graph, "initial state");
         }
 
-        new PhiStampPhase().apply(graph);
-
         if (GraalOptions.ProbabilityAnalysis && graph.start().probability() == 0) {
             new ComputeProbabilityPhase().apply(graph);
         }
@@ -134,7 +131,6 @@ public class GraalCompiler {
 
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
             new InliningPhase(target, runtime, null, assumptions, cache, plan, optimisticOpts).apply(graph);
-            new PhiStampPhase().apply(graph);
 
             if (GraalOptions.PropagateTypes) {
                 new PropagateTypeCachePhase(target, runtime, assumptions).apply(graph);
@@ -162,7 +158,6 @@ public class GraalCompiler {
 
         if (GraalOptions.EscapeAnalysis && !plan.isPhaseDisabled(EscapeAnalysisPhase.class)) {
             new EscapeAnalysisPhase(target, runtime, assumptions, cache, plan, optimisticOpts).apply(graph);
-            new PhiStampPhase().apply(graph);
         }
         if (GraalOptions.OptLoopTransform) {
             new LoopTransformHighPhase().apply(graph);
