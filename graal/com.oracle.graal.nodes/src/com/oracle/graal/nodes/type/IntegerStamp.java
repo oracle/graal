@@ -119,6 +119,22 @@ public class IntegerStamp extends Stamp {
     }
 
     @Override
+    public Stamp join(Stamp otherStamp) {
+        IntegerStamp other = (IntegerStamp) otherStamp;
+        assert kind() == other.kind();
+        long joinUpperBound = Math.min(upperBound, other.upperBound);
+        long joinLowerBound = Math.max(lowerBound, other.lowerBound);
+        long joinMask = mask & other.mask;
+        if (joinLowerBound == lowerBound && joinUpperBound == upperBound && joinMask == mask) {
+            return this;
+        } else if (joinLowerBound == other.lowerBound && joinUpperBound == other.upperBound && joinMask == other.mask) {
+            return other;
+        } else {
+            return new IntegerStamp(kind(), joinLowerBound, joinUpperBound, joinMask);
+        }
+    }
+
+    @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;

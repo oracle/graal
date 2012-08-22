@@ -105,6 +105,12 @@ public class AMD64Call {
             }
             indirectCall(tasm, masm, asRegister(targetAddress), targetMethod, state);
         }
+
+        @Override
+        protected void verify() {
+            super.verify();
+            assert isRegister(targetAddress) : "The current register allocator cannot handle variables to be used at call sites, it must be in a fixed register for now";
+        }
     }
 
     public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Object target, LIRFrameState info) {

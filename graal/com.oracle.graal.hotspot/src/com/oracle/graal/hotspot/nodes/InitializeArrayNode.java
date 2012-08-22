@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
  * if the memory address it is given is zero/null (e.g. due to
  * {@linkplain TLABAllocateNode TLAB allocation} failing).
  */
-public final class InitializeArrayNode extends FixedWithNextNode implements Lowerable {
+public final class InitializeArrayNode extends FixedWithNextNode implements Lowerable, ArrayLengthProvider {
 
     @Input private final ValueNode memory;
     @Input private final ValueNode length;
@@ -52,6 +52,7 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
         return memory;
     }
 
+    @Override
     public ValueNode length() {
         return length;
     }

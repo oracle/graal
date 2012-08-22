@@ -26,13 +26,12 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
-public final class InstanceOfNode extends BooleanNode implements Canonicalizable, LIRLowerable, ConditionalTypeFeedbackProvider, TypeCanonicalizable {
+public final class InstanceOfNode extends BooleanNode implements Canonicalizable, LIRLowerable {
 
     @Input private ValueNode object;
     @Input private ValueNode targetClassInstruction;
@@ -107,29 +106,6 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
             return ConstantNode.forBoolean(false, graph());
         }
         return this;
-    }
-
-    @Override
-    public void typeFeedback(TypeFeedbackTool tool) {
-        tool.addObject(object()).declaredType(targetClass(), true);
-    }
-
-    @Override
-    public Result canonical(TypeFeedbackTool tool) {
-        ObjectTypeQuery query = tool.queryObject(object());
-        if (query.constantBound(Condition.EQ, Constant.NULL_OBJECT)) {
-            return new Result(ConstantNode.forBoolean(false, graph()), query);
-        } else if (targetClass() != null) {
-            if (query.notDeclaredType(targetClass())) {
-                return new Result(ConstantNode.forBoolean(false, graph()), query);
-            }
-            if (query.constantBound(Condition.NE, Constant.NULL_OBJECT)) {
-                if (query.declaredType(targetClass())) {
-                    return new Result(ConstantNode.forBoolean(true, graph()), query);
-                }
-            }
-        }
-        return null;
     }
 
     public ValueNode object() {

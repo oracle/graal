@@ -88,7 +88,9 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
         if (isArrayClass()) {
             return Modifier.isFinal(componentType().accessFlags()) ? this : null;
         } else {
-            return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_uniqueConcreteSubtype(this);
+            ResolvedJavaType subtype = (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_uniqueConcreteSubtype(this);
+            assert subtype == null || !subtype.isInterface();
+            return subtype;
         }
     }
 

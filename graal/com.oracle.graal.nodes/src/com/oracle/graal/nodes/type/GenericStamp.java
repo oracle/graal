@@ -58,6 +58,12 @@ public final class GenericStamp extends Stamp {
     }
 
     @Override
+    public Stamp join(Stamp other) {
+        assert ((GenericStamp) other).type == type;
+        return this;
+    }
+
+    @Override
     public int hashCode() {
         return 31 + ((type == null) ? 0 : type.hashCode());
     }

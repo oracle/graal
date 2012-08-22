@@ -85,6 +85,9 @@ public class ObjectStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp otherStamp) {
+        if (this == otherStamp) {
+            return this;
+        }
         ObjectStamp other = (ObjectStamp) otherStamp;
         ResolvedJavaType meetType;
         boolean meetExactType;
@@ -109,8 +112,45 @@ public class ObjectStamp extends Stamp {
 
         if (meetType == type && meetExactType == exactType && meetNonNull == nonNull && meetAlwaysNull == alwaysNull) {
             return this;
+        } else if (meetType == other.type && meetExactType == other.exactType && meetNonNull == other.nonNull && meetAlwaysNull == other.alwaysNull) {
+            return other;
         } else {
             return new ObjectStamp(meetType, meetExactType, meetNonNull, meetAlwaysNull);
+        }
+    }
+
+    @Override
+    public Stamp join(Stamp otherStamp) {
+        if (this == otherStamp) {
+            return this;
+        }
+        ObjectStamp other = (ObjectStamp) otherStamp;
+        ResolvedJavaType joinType;
+        boolean joinExactType = exactType || other.exactType;
+        boolean joinNonNull = nonNull || other.nonNull;
+        boolean joinAlwaysNull = alwaysNull || other.alwaysNull;
+        if (type == other.type) {
+            joinType = type;
+        } else if (type == null && other.type == null) {
+            joinType = null;
+        } else if (type == null) {
+            joinType = other.type;
+        } else if (other.type == null) {
+            joinType = type;
+        } else {
+            // both types are != null
+            if (other.type.isSubtypeOf(type)) {
+                joinType = other.type;
+            } else {
+                joinType = type;
+            }
+        }
+        if (joinType == type && joinExactType == exactType && joinNonNull == nonNull && joinAlwaysNull == alwaysNull) {
+            return this;
+        } else if (joinType == other.type && joinExactType == other.exactType && joinNonNull == other.nonNull && joinAlwaysNull == other.alwaysNull) {
+            return other;
+        } else {
+            return new ObjectStamp(joinType, joinExactType, joinNonNull, joinAlwaysNull);
         }
     }
 

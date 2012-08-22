@@ -57,10 +57,26 @@ public class WordStamp extends Stamp {
     @Override
     public Stamp meet(Stamp otherStamp) {
         WordStamp other = (WordStamp) otherStamp;
-        if (other.nonNull == nonNull) {
+        boolean meetNonNull = nonNull && other.nonNull;
+        if (meetNonNull == this.nonNull) {
             return this;
+        } else if (meetNonNull == other.nonNull) {
+            return other;
         } else {
-            return new WordStamp(kind(), nonNull && other.nonNull);
+            return new WordStamp(kind(), meetNonNull);
+        }
+    }
+
+    @Override
+    public Stamp join(Stamp otherStamp) {
+        WordStamp other = (WordStamp) otherStamp;
+        boolean joinNonNull = nonNull || other.nonNull;
+        if (joinNonNull == this.nonNull) {
+            return this;
+        } else if (joinNonNull == other.nonNull) {
+            return other;
+        } else {
+            return new WordStamp(kind(), joinNonNull);
         }
     }
 

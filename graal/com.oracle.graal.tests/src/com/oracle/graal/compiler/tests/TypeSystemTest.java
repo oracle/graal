@@ -30,7 +30,6 @@ import org.junit.Test;
 
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.schedule.*;
-import com.oracle.graal.compiler.types.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
@@ -113,7 +112,7 @@ public class TypeSystemTest extends GraalCompilerTest {
         }
     }
 
-//    @Test
+    @Test
     public void test5() {
         test("test5Snippet", "referenceSnippet5");
     }
@@ -190,7 +189,7 @@ public class TypeSystemTest extends GraalCompilerTest {
             StructuredGraph graph = parse(snippet);
             Debug.dump(graph, "Graph");
             new CanonicalizerPhase(null, runtime(), null).apply(graph);
-            new PropagateTypeCachePhase(null, runtime(), null).apply(graph);
+            new CheckCastEliminationPhase().apply(graph);
             new CanonicalizerPhase(null, runtime(), null).apply(graph);
             new GlobalValueNumberingPhase().apply(graph);
             StructuredGraph referenceGraph = parse(referenceSnippet);
@@ -240,7 +239,7 @@ public class TypeSystemTest extends GraalCompilerTest {
             StructuredGraph graph = parse(snippet);
             Debug.dump(graph, "Graph");
             new CanonicalizerPhase(null, runtime(), null).apply(graph);
-            new PropagateTypeCachePhase(null, runtime(), null).apply(graph);
+            new CheckCastEliminationPhase().apply(graph);
             new CanonicalizerPhase(null, runtime(), null).apply(graph);
             Debug.dump(graph, "Graph");
             Assert.assertFalse("shouldn't have nodes of type " + clazz, graph.getNodes(clazz).iterator().hasNext());

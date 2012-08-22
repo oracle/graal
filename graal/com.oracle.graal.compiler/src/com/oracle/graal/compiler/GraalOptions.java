@@ -108,6 +108,7 @@ public final class GraalOptions {
     public static boolean FullUnroll                         = true;
     public static boolean LoopUnswitch                       = ____;
     public static int     FullUnrollMaxNodes                 = 150;
+    public static int     ExactFullUnrollMaxNodes            = 600;
     public static float   MinimumPeelProbability             = 0.35f;
     public static int     LoopUnswitchMaxIncrease            = 50;
     public static int     LoopUnswitchUncertaintyBoost       = 5;
@@ -170,7 +171,6 @@ public final class GraalOptions {
     public static boolean AssumeVerifiedBytecode             = true;
 
     // Code generator settings
-    public static boolean PropagateTypes                     = ____;
     public static boolean CheckCastElimination               = true;
     public static boolean CullFrameStates                    = ____;
     public static boolean UseProfilingInformation            = true;

@@ -45,8 +45,8 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (array() instanceof NewArrayNode) {
-            ValueNode length = ((NewArrayNode) array()).dimension(0);
+        if (array() instanceof ArrayLengthProvider) {
+            ValueNode length = ((ArrayLengthProvider) array()).length();
             assert length != null;
             return length;
         }

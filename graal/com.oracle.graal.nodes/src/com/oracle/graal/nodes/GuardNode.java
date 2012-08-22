@@ -27,7 +27,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
@@ -42,7 +41,7 @@ import com.oracle.graal.nodes.type.*;
  * reached the guarded node (without taking exceptions into account).
  */
 @NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}")
-public final class GuardNode extends FloatingNode implements Canonicalizable, LIRLowerable, TypeFeedbackProvider, Node.IterableNodeType, Negatable {
+public final class GuardNode extends FloatingNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType, Negatable {
 
     @Input private BooleanNode condition;
     private final DeoptimizationReason reason;
@@ -114,13 +113,6 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
             }
         }
         return this;
-    }
-
-    @Override
-    public void typeFeedback(TypeFeedbackTool tool) {
-        if (condition instanceof ConditionalTypeFeedbackProvider) {
-            ((ConditionalTypeFeedbackProvider) condition).typeFeedback(tool);
-        }
     }
 
     @Override
