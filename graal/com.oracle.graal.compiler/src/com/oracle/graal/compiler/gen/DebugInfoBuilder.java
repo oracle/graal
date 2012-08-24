@@ -43,25 +43,31 @@ public class DebugInfoBuilder {
 
 
     private HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
+    private IdentityHashMap<VirtualObjectNode, EscapeObjectState> objectStates = new IdentityHashMap<>();
 
     public LIRFrameState build(FrameState topState, LockScope locks, List<StackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
         assert virtualObjects.size() == 0;
+        assert objectStates.size() == 0;
+
+        // collect all VirtualObjectField instances:
+        FrameState current = topState;
+        do {
+            for (EscapeObjectState state : current.virtualObjectMappings()) {
+                // null states occur for objects with 0 fields
+                if (objectStates == null) {
+                    objectStates = new IdentityHashMap<>();
+                }
+                if (!objectStates.containsKey(state.object())) {
+                    objectStates.put(state.object(), state);
+                }
+            }
+            current = current.outerFrameState();
+        } while (current != null);
+
         BytecodeFrame frame = computeFrameForState(topState, locks, leafGraphId);
 
         VirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
-            // collect all VirtualObjectField instances:
-            IdentityHashMap<VirtualObjectNode, VirtualObjectState> objectStates = new IdentityHashMap<>();
-            FrameState current = topState;
-            do {
-                for (VirtualObjectState state : current.virtualObjectMappings()) {
-                    // null states occur for objects with 0 fields
-                    if (!objectStates.containsKey(state.object())) {
-                        objectStates.put(state.object(), state);
-                    }
-                }
-                current = current.outerFrameState();
-            } while (current != null);
             // fill in the VirtualObject values:
             // during this process new VirtualObjects might be discovered, so repeat until no more changes occur.
             boolean changed;
@@ -79,7 +85,7 @@ public class DebugInfoBuilder {
                             entry.getValue().setValues(values);
                             if (values.length > 0) {
                                 changed = true;
-                                VirtualObjectState currentField = objectStates.get(vobj);
+                                VirtualObjectState currentField = (VirtualObjectState) objectStates.get(vobj);
                                 assert currentField != null;
                                 for (int i = 0; i < vobj.fieldsCount(); i++) {
                                     values[i] = toValue(currentField.fieldValues().get(i));
@@ -93,6 +99,7 @@ public class DebugInfoBuilder {
             virtualObjectsArray = virtualObjects.values().toArray(new VirtualObject[virtualObjects.size()]);
             virtualObjects.clear();
         }
+        objectStates.clear();
 
         return new LIRFrameState(frame, virtualObjectsArray, pointerSlots, exceptionEdge);
     }
@@ -138,14 +145,22 @@ public class DebugInfoBuilder {
     private Value toValue(ValueNode value) {
         if (value instanceof VirtualObjectNode) {
             VirtualObjectNode obj = (VirtualObjectNode) value;
-            VirtualObject ciObj = virtualObjects.get(value);
-            if (ciObj == null) {
-                ciObj = VirtualObject.get(obj.type(), null, virtualObjects.size());
-                virtualObjects.put(obj, ciObj);
+            EscapeObjectState state = objectStates.get(obj);
+            if (state == null) {
+                throw new GraalInternalError("no mapping found for virtual object %s", obj);
             }
-            Debug.metric("StateVirtualObjects").increment();
-            return ciObj;
-
+            if (state instanceof MaterializedObjectState) {
+                return toValue(((MaterializedObjectState) state).materializedValue());
+            } else {
+                assert state instanceof VirtualObjectState;
+                VirtualObject ciObj = virtualObjects.get(value);
+                if (ciObj == null) {
+                    ciObj = VirtualObject.get(obj.type(), null, virtualObjects.size());
+                    virtualObjects.put(obj, ciObj);
+                }
+                Debug.metric("StateVirtualObjects").increment();
+                return ciObj;
+            }
         } else if (value instanceof ConstantNode) {
             Debug.metric("StateConstants").increment();
             return ((ConstantNode) value).value;

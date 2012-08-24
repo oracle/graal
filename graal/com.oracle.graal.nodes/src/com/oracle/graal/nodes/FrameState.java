@@ -100,7 +100,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
 
     @Input private final NodeInputList<ValueNode> values;
 
-    @Input private final NodeInputList<VirtualObjectState> virtualObjectMappings;
+    @Input private final NodeInputList<EscapeObjectState> virtualObjectMappings;
 
     /**
      * The bytecode index to which this frame state applies.
@@ -117,7 +117,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
      * @param stackSize size of the stack
      * @param rethrowException if true the VM should re-throw the exception on top of the stack when deopt'ing using this framestate
      */
-    public FrameState(ResolvedJavaMethod method, int bci, List<ValueNode> values, int stackSize, boolean rethrowException, boolean duringCall, InliningIdentifier inliningIdentifier, List<VirtualObjectState> virtualObjectMappings) {
+    public FrameState(ResolvedJavaMethod method, int bci, List<ValueNode> values, int stackSize, boolean rethrowException, boolean duringCall, InliningIdentifier inliningIdentifier, List<EscapeObjectState> virtualObjectMappings) {
         assert stackSize >= 0;
         assert (bci >= 0 && method != null) || (bci < 0 && method == null && values.isEmpty());
         this.method = method;
@@ -137,7 +137,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
      * @param bci marker bci, needs to be < 0
      */
     public FrameState(int bci) {
-        this(null, bci, Collections.<ValueNode>emptyList(), 0, false, false, null, Collections.<VirtualObjectState>emptyList());
+        this(null, bci, Collections.<ValueNode>emptyList(), 0, false, false, null, Collections.<EscapeObjectState>emptyList());
     }
 
     public FrameState(ResolvedJavaMethod method, int bci, ValueNode[] locals, ValueNode[] stack, int stackSize, boolean rethrowException, boolean duringCall, InliningIdentifier inliningIdentifier) {
@@ -199,7 +199,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         return method;
     }
 
-    public void addVirtualObjectMapping(VirtualObjectState virtualObject) {
+    public void addVirtualObjectMapping(EscapeObjectState virtualObject) {
         virtualObjectMappings.add(virtualObject);
     }
 
@@ -211,7 +211,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         return virtualObjectMappings.get(i);
     }
 
-    public NodeInputList<VirtualObjectState> virtualObjectMappings() {
+    public NodeInputList<EscapeObjectState> virtualObjectMappings() {
         return virtualObjectMappings;
     }
 
@@ -241,8 +241,8 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         if (newOuterFrameState != null) {
             newOuterFrameState = newOuterFrameState.duplicateWithVirtualState();
         }
-        ArrayList<VirtualObjectState> newVirtualMappings = new ArrayList<>(virtualObjectMappings.size());
-        for (VirtualObjectState state : virtualObjectMappings) {
+        ArrayList<EscapeObjectState> newVirtualMappings = new ArrayList<>(virtualObjectMappings.size());
+        for (EscapeObjectState state : virtualObjectMappings) {
             newVirtualMappings.add(state.duplicateWithVirtualState());
         }
         FrameState other = graph().add(new FrameState(method, bci, values, stackSize, rethrowException, duringCall, inliningIdentifier, newVirtualMappings));
@@ -380,7 +380,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         for (ValueNode value : values.nonNull()) {
             closure.apply(this, value);
         }
-        for (VirtualObjectState state : virtualObjectMappings) {
+        for (EscapeObjectState state : virtualObjectMappings) {
             state.applyToNonVirtual(closure);
         }
         if (outerFrameState() != null) {
@@ -391,7 +391,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
     @Override
     public void applyToVirtual(VirtualClosure closure) {
         closure.apply(this);
-        for (VirtualObjectState state : virtualObjectMappings) {
+        for (EscapeObjectState state : virtualObjectMappings) {
             state.applyToVirtual(closure);
         }
         if (outerFrameState() != null) {
@@ -407,7 +407,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         if (outerFrameState() != null && outerFrameState().isPartOfThisState(state)) {
             return true;
         }
-        for (VirtualObjectState objectState : virtualObjectMappings) {
+        for (EscapeObjectState objectState : virtualObjectMappings) {
             if (objectState.isPartOfThisState(state)) {
                 return true;
             }

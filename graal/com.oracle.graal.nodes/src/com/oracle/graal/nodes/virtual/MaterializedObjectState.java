@@ -22,33 +22,24 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import java.util.*;
-
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * This class encapsulated the virtual state of an escape analyzed object.
+ * This class encapsulated the materialized state of an escape analyzed object.
  */
-public final class VirtualObjectState extends EscapeObjectState implements Node.IterableNodeType, LIRLowerable {
+public final class MaterializedObjectState extends EscapeObjectState implements Node.IterableNodeType, LIRLowerable {
 
-    @Input private NodeInputList<ValueNode> fieldValues;
+    @Input private ValueNode materializedValue;
 
-    public NodeInputList<ValueNode> fieldValues() {
-        return fieldValues;
+    public ValueNode materializedValue() {
+        return materializedValue;
     }
 
-    public VirtualObjectState(VirtualObjectNode object, ValueNode[] fieldValues) {
+    public MaterializedObjectState(VirtualObjectNode object, ValueNode materializedValue) {
         super(object);
-        assert object.fieldsCount() == fieldValues.length;
-        this.fieldValues = new NodeInputList<>(this, fieldValues);
-    }
-
-    private VirtualObjectState(VirtualObjectNode object, List<ValueNode> fieldValues) {
-        super(object);
-        assert object.fieldsCount() == fieldValues.size();
-        this.fieldValues = new NodeInputList<>(this, fieldValues);
+        this.materializedValue = materializedValue;
     }
 
     @Override
@@ -57,14 +48,12 @@ public final class VirtualObjectState extends EscapeObjectState implements Node.
     }
 
     @Override
-    public VirtualObjectState duplicateWithVirtualState() {
-        return graph().add(new VirtualObjectState(object(), fieldValues));
+    public MaterializedObjectState duplicateWithVirtualState() {
+        return graph().add(new MaterializedObjectState(object(), materializedValue));
     }
 
     @Override
     public void applyToNonVirtual(NodeClosure< ? super ValueNode> closure) {
-        for (ValueNode value : fieldValues) {
-            closure.apply(this, value);
-        }
+        closure.apply(this, materializedValue);
     }
 }

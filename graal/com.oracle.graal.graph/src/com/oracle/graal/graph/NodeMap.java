@@ -23,8 +23,7 @@
 package com.oracle.graal.graph;
 
 import java.util.AbstractMap.SimpleEntry;
-import java.util.Arrays;
-import java.util.Iterator;
+import java.util.*;
 import java.util.Map.Entry;
 
 

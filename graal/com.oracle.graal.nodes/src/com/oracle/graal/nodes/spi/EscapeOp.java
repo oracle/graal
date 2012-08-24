@@ -101,6 +101,8 @@ public abstract class EscapeOp {
 
     public abstract EscapeField[] fields(Node node);
 
+    public abstract ResolvedJavaType type(Node node);
+
     public void beforeUpdate(Node node, Node usage) {
         // IsNonNullNode and IsTypeNode should have been eliminated by the CanonicalizerPhase, but we can't rely on this
         if (usage instanceof IsNullNode) {

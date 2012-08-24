@@ -22,33 +22,20 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import java.util.*;
-
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-/**
- * This class encapsulated the virtual state of an escape analyzed object.
- */
-public final class VirtualObjectState extends EscapeObjectState implements Node.IterableNodeType, LIRLowerable {
+public abstract class EscapeObjectState extends VirtualState implements Node.IterableNodeType, LIRLowerable {
 
-    @Input private NodeInputList<ValueNode> fieldValues;
+    @Input private VirtualObjectNode object;
 
-    public NodeInputList<ValueNode> fieldValues() {
-        return fieldValues;
+    public VirtualObjectNode object() {
+        return object;
     }
 
-    public VirtualObjectState(VirtualObjectNode object, ValueNode[] fieldValues) {
-        super(object);
-        assert object.fieldsCount() == fieldValues.length;
-        this.fieldValues = new NodeInputList<>(this, fieldValues);
-    }
-
-    private VirtualObjectState(VirtualObjectNode object, List<ValueNode> fieldValues) {
-        super(object);
-        assert object.fieldsCount() == fieldValues.size();
-        this.fieldValues = new NodeInputList<>(this, fieldValues);
+    public EscapeObjectState(VirtualObjectNode object) {
+        this.object = object;
     }
 
     @Override
@@ -57,14 +44,15 @@ public final class VirtualObjectState extends EscapeObjectState implements Node.
     }
 
     @Override
-    public VirtualObjectState duplicateWithVirtualState() {
-        return graph().add(new VirtualObjectState(object(), fieldValues));
+    public abstract EscapeObjectState duplicateWithVirtualState();
+
+    @Override
+    public boolean isPartOfThisState(VirtualState state) {
+        return this == state;
     }
 
     @Override
-    public void applyToNonVirtual(NodeClosure< ? super ValueNode> closure) {
-        for (ValueNode value : fieldValues) {
-            closure.apply(this, value);
-        }
+    public void applyToVirtual(VirtualClosure closure) {
+        closure.apply(this);
     }
 }

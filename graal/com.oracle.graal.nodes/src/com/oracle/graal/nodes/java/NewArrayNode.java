@@ -80,7 +80,12 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
     }
 
     public EscapeOp getEscapeOp() {
-        return ESCAPE;
+        Constant constantLength = length().asConstant();
+        if (constantLength != null && constantLength.asInt() >= 0 && constantLength.asInt() < MaximumEscapeAnalysisArrayLength) {
+            return ESCAPE;
+        } else {
+            return null;
+        }
     }
 
     @Override
@@ -107,6 +112,12 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
                 fields[i] = new EscapeField(Integer.toString(i), representation, ((NewArrayNode) node).elementType());
             }
             return fields;
+        }
+
+        @Override
+        public ResolvedJavaType type(Node node) {
+            NewArrayNode x = (NewArrayNode) node;
+            return x.elementType.arrayOf();
         }
 
         @Override

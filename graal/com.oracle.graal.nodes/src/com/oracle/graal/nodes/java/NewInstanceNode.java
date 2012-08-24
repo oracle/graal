@@ -67,7 +67,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
     }
 
     public EscapeOp getEscapeOp() {
-        return ESCAPE;
+        return instanceClass == null ? null : ESCAPE;
     }
 
     private static final EscapeOp ESCAPE = new EscapeOp() {
@@ -86,6 +86,12 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
                     escapeFields.add(new EscapeField(field.name(), field, field.type()));
                 }
             }
+        }
+
+        @Override
+        public ResolvedJavaType type(Node node) {
+            NewInstanceNode x = (NewInstanceNode) node;
+            return x.instanceClass();
         }
 
         @Override

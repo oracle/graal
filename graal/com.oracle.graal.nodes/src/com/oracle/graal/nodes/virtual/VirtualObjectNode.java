@@ -30,29 +30,20 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "VirtualObject {p#type}")
 public class VirtualObjectNode extends FloatingNode implements LIRLowerable {
 
-    private ResolvedJavaType type;
-    private EscapeField[] fields;
-    private int fieldsCount;
+    @SuppressWarnings("unused")
+    private final int id;
+    private final ResolvedJavaType type;
+    private final int fieldsCount;
 
-    public VirtualObjectNode(ResolvedJavaType type, EscapeField[] fields) {
+    public VirtualObjectNode(int id, ResolvedJavaType type, int fieldCount) {
         super(StampFactory.virtual());
-        this.type = type;
-        this.fields = fields;
-        this.fieldsCount = fields.length;
-    }
-
-    public VirtualObjectNode(ResolvedJavaType type, int fieldCount) {
-        super(StampFactory.virtual());
+        this.id = id;
         this.type = type;
         this.fieldsCount = fieldCount;
     }
 
     public JavaType type() {
         return type;
-    }
-
-    public EscapeField[] fields() {
-        return fields;
     }
 
     @Override
