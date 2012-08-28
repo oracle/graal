@@ -196,7 +196,7 @@ public class InliningUtil {
             ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
             assert invoke.predecessor() != null;
 
-            ValueNode anchoredReceiver = createAnchoredReceiver(graph, anchor, type, receiver);
+            ValueNode anchoredReceiver = createAnchoredReceiver(graph, anchor, type, receiver, true);
             invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
             graph.addBeforeFixed(invoke.node(), objectClass);
@@ -352,7 +352,8 @@ public class InliningUtil {
 
                 ResolvedJavaType commonType = getLeastCommonType(i);
                 ValueNode receiver = invokeForInlining.callTarget().receiver();
-                PiNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver);
+                boolean exact = getTypeCount(i) == 1;
+                PiNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver, exact);
                 invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
                 ResolvedJavaMethod concrete = concretes.get(i);
@@ -386,6 +387,16 @@ public class InliningUtil {
                     TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacements);
                 }
             }
+        }
+
+        private int getTypeCount(int concreteMethodIndex) {
+            int count = 0;
+            for (int i = 0; i < typesToConcretes.length; i++) {
+                if (typesToConcretes[i] == concreteMethodIndex) {
+                    count++;
+                }
+            }
+            return count;
         }
 
         private ResolvedJavaType getLeastCommonType(int concreteMethodIndex) {
@@ -709,9 +720,9 @@ public class InliningUtil {
         }
     }
 
-    private static PiNode createAnchoredReceiver(StructuredGraph graph, FixedNode anchor, ResolvedJavaType commonType, ValueNode receiver) {
+    private static PiNode createAnchoredReceiver(StructuredGraph graph, FixedNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {
         // to avoid that floating reads on receiver fields float above the type check
-        return graph.unique(new PiNode(receiver, anchor, StampFactory.declaredNonNull(commonType)));
+        return graph.unique(new PiNode(receiver, anchor, exact ? StampFactory.exactNonNull(commonType) : StampFactory.declaredNonNull(commonType)));
     }
 
     private static boolean checkInvokeConditions(Invoke invoke) {
