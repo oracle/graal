@@ -60,10 +60,10 @@ public final class IntegerBelowThanNode extends CompareNode {
         } else {
             IntegerStamp xStamp = x().integerStamp();
             IntegerStamp yStamp = y().integerStamp();
-            if (yStamp.lowerBound() >= 0 && yStamp.upperBound() >= 0) {
-                if (xStamp.lowerBound() >= 0 && xStamp.upperBound() < yStamp.lowerBound()) {
+            if (yStamp.isPositive()) {
+                if (xStamp.isPositive() && xStamp.upperBound() < yStamp.lowerBound()) {
                     return ConstantNode.forBoolean(true, graph());
-                } else if (xStamp.upperBound() < 0 || xStamp.lowerBound() >= yStamp.upperBound()) {
+                } else if (xStamp.isStrictlyNegative() || xStamp.lowerBound() >= yStamp.upperBound()) {
                     return ConstantNode.forBoolean(false, graph());
                 }
             }

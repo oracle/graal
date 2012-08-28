@@ -67,8 +67,8 @@ public final class IntegerDivNode extends IntegerArithmeticNode implements Canon
                 ValueNode dividend = x();
                 IntegerStamp stampX = x().integerStamp();
                 int log2 = CodeUtil.log2(abs);
-                // no rounding if dividend is negative or if its low bits are always 0
-                if (stampX.lowerBound() < 0 || (stampX.mask() & (abs - 1)) != 0) {
+                // no rounding if dividend is positive or if its low bits are always 0
+                if (stampX.canBeNegative() || (stampX.mask() & (abs - 1)) != 0) {
                     int bits;
                     if (kind().isInt()) {
                         bits = 32;

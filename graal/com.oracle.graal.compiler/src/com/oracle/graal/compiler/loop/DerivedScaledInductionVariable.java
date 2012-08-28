@@ -51,9 +51,9 @@ public class DerivedScaledInductionVariable extends InductionVariable {
         Stamp stamp = scale.stamp();
         if (stamp instanceof IntegerStamp) {
             IntegerStamp integerStamp = (IntegerStamp) stamp;
-            if (integerStamp.lowerBound() > 0) {
+            if (integerStamp.isStrictlyPositive()) {
                 return base.direction();
-            } else if (integerStamp.upperBound() < 0) {
+            } else if (integerStamp.isStrictlyNegative()) {
                 return base.direction().opposite();
             }
         }
