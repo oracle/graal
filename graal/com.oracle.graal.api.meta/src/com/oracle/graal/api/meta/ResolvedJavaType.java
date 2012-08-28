@@ -159,6 +159,8 @@ public interface ResolvedJavaType extends JavaType {
 
     /**
      * Returns the instance fields declared in this class sorted by field offset.
+     * A zero-length array is returned for array and primitive classes.
+     *
      * @return an array of instance fields
      */
     ResolvedJavaField[] declaredFields();
