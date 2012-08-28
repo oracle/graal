@@ -81,6 +81,30 @@ public class IntegerStamp extends Stamp {
         return value >= lowerBound && value <= upperBound && (value & mask) == (value & defaultMask(kind()));
     }
 
+    public boolean isPositive() {
+        return lowerBound() >= 0;
+    }
+
+    public boolean isNegative() {
+        return upperBound() <= 0;
+    }
+
+    public boolean isStrictlyPositive() {
+        return lowerBound() > 0;
+    }
+
+    public boolean isStrictlyNegative() {
+        return upperBound() < 0;
+    }
+
+    public boolean canBePositive() {
+        return upperBound() > 0;
+    }
+
+    public boolean canBeNegative() {
+        return lowerBound() < 0;
+    }
+
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
@@ -174,6 +198,10 @@ public class IntegerStamp extends Stamp {
         } else {
             return ((-1L) >>> Long.numberOfLeadingZeros(mask)) & defaultMask(kind);
         }
+    }
+
+    public static boolean sameSign(IntegerStamp s1, IntegerStamp s2) {
+        return s1.isPositive() && s2.isPositive() || s1.isNegative() && s2.isNegative();
     }
 
 }

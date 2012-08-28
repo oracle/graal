@@ -52,7 +52,7 @@ public final class IntegerRemNode extends IntegerArithmeticNode implements Canon
             long c = y().asConstant().asLong();
             if (c == 1 || c == -1) {
                 return ConstantNode.forIntegerKind(kind(), 0, graph());
-            } else if (c > 0 && CodeUtil.isPowerOf2(c) && x().integerStamp().lowerBound() >= 0) {
+            } else if (c > 0 && CodeUtil.isPowerOf2(c) && x().integerStamp().isPositive()) {
                 return graph().unique(new AndNode(kind(), x(), ConstantNode.forIntegerKind(kind(), c - 1, graph())));
             }
         }

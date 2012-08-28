@@ -79,7 +79,7 @@ public class StampTool {
 
     public static Stamp div(IntegerStamp stamp1, IntegerStamp stamp2) {
         Kind kind = stamp1.kind();
-        if (stamp2.lowerBound() > 0) {
+        if (stamp2.isStrictlyPositive()) {
             long lowerBound = stamp1.lowerBound() / stamp2.lowerBound();
             long upperBound = stamp1.upperBound() / stamp2.lowerBound();
             return StampFactory.forInteger(kind, lowerBound, upperBound, IntegerStamp.maskFor(kind, lowerBound, upperBound));
