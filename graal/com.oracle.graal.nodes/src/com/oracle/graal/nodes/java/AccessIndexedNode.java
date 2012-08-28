@@ -24,13 +24,14 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code AccessIndexedNode} class is the base class of instructions that read or write
  * elements of an array.
  */
-public abstract class AccessIndexedNode extends AccessArrayNode {
+public abstract class AccessIndexedNode extends AccessArrayNode implements Lowerable {
 
     @Input private ValueNode index;
     private final Kind elementType;
@@ -64,5 +65,10 @@ public abstract class AccessIndexedNode extends AccessArrayNode {
 
     public long leafGraphId() {
         return leafGraphId;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 }

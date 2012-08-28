@@ -152,7 +152,7 @@ public class DebugInfoBuilder {
             if (state instanceof MaterializedObjectState) {
                 return toValue(((MaterializedObjectState) state).materializedValue());
             } else {
-                assert state instanceof VirtualObjectState;
+                assert obj.fieldsCount() == 0 || state instanceof VirtualObjectState;
                 VirtualObject ciObj = virtualObjects.get(value);
                 if (ciObj == null) {
                     ciObj = VirtualObject.get(obj.type(), null, virtualObjects.size());

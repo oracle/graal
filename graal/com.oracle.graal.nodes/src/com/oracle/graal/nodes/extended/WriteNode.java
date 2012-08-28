@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -30,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain AccessNode memory location}.
  */
-public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable {
+public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable, Simplifiable {
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
 
@@ -60,5 +62,17 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     @Override
     public void generate(LIRGeneratorTool gen) {
         gen.emitStore(gen.makeAddress(location(), object()), gen.operand(value()), getNullCheck());
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (object().isConstant() && object().asConstant().isNull()) {
+            FixedNode successor = next();
+            tool.deleteBranch(successor);
+            if (isAlive()) {
+                replaceAtPredecessor(graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException)));
+                safeDelete();
+            }
+        }
     }
 }

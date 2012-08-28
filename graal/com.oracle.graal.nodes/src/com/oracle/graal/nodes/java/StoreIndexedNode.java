@@ -64,9 +64,4 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
         super(StampFactory.forVoid(), array, index, elementKind, leafGraphId);
         this.value = value;
     }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
-    }
 }

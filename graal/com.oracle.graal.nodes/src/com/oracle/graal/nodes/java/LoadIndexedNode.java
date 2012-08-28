@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code LoadIndexedNode} represents a read from an element of an array.
  */
-public final class LoadIndexedNode extends AccessIndexedNode implements Canonicalizable, Lowerable, Node.IterableNodeType {
+public final class LoadIndexedNode extends AccessIndexedNode implements Canonicalizable, Node.IterableNodeType {
 
     /**
      * Creates a new LoadIndexedNode.
@@ -51,11 +51,6 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
         } else {
             return StampFactory.forKind(kind);
         }
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
     }
 
     @Override
