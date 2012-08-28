@@ -152,7 +152,7 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
 
     @Override
     public ResolvedJavaField[] declaredFields() {
-        return null;
+        return new ResolvedJavaField[0];
     }
 
     @Override
