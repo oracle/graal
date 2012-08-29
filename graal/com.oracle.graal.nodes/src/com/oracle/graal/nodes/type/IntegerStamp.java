@@ -200,8 +200,13 @@ public class IntegerStamp extends Stamp {
         }
     }
 
+    /**
+     * Checks if the 2 stamps represent values of the same sign.
+     * Returns true if the two stamps are both positive of null or if they are both strictly negative
+     * @return true if the two stamps are both positive of null or if they are both strictly negative
+     */
     public static boolean sameSign(IntegerStamp s1, IntegerStamp s2) {
-        return s1.isPositive() && s2.isPositive() || s1.isNegative() && s2.isNegative();
+        return s1.isPositive() && s2.isPositive() || s1.isStrictlyNegative() && s2.isStrictlyNegative();
     }
 
 }
