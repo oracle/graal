@@ -249,39 +249,6 @@ public class InstanceOfSnippets implements SnippetsInterface {
         return trueValue;
     }
 
-    /**
-     * A test against an unknown (at compile time) type with the result being {@linkplain IfNode branched} upon.
-     */
-    @Snippet
-    public static void ifUnknown(
-                    @Parameter("hub") Object hub,
-                    @Parameter("object") Object object,
-                    @VarargsParameter("hints") Object[] hints,
-                    @ConstantParameter("checkNull") boolean checkNull) {
-        if (checkNull && object == null) {
-            isNull.inc();
-            jump(IfNode.FALSE_EDGE);
-            return;
-        }
-        Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
-        // if we get an exact match: succeed immediately
-        ExplodeLoopNode.explodeLoop();
-        for (int i = 0; i < hints.length; i++) {
-            Object hintHub = hints[i];
-            if (hintHub == objectHub) {
-                hintsHit.inc();
-                jump(IfNode.TRUE_EDGE);
-                return;
-            }
-        }
-        if (!checkUnknownSubType(hub, objectHub)) {
-            jump(IfNode.FALSE_EDGE);
-            return;
-        }
-        jump(IfNode.TRUE_EDGE);
-        return;
-    }
-
     static boolean checkSecondarySubType(Object t, Object s) {
         // if (S.cache == T) return true
         if (UnsafeLoadNode.loadObject(s, 0, secondarySuperCacheOffset(), true) == t) {
@@ -309,52 +276,6 @@ public class InstanceOfSnippets implements SnippetsInterface {
         return false;
     }
 
-    static boolean checkUnknownSubType(Object t, Object s) {
-        // int off = T.offset
-        int superCheckOffset = UnsafeLoadNode.load(t, 0, superCheckOffsetOffset(), Kind.Int);
-        boolean primary = superCheckOffset != secondarySuperCacheOffset();
-
-        // if (T = S[off]) return true
-        if (UnsafeLoadNode.loadObject(s, 0, superCheckOffset, true) == t) {
-            if (primary) {
-                cacheHit.inc();
-            } else {
-                displayHit.inc();
-            }
-            return true;
-        }
-
-        // if (off != &cache) return false
-        if (primary) {
-            displayMiss.inc();
-            return false;
-        }
-
-        // if (T == S) return true
-        if (s == t) {
-            T_equals_S.inc();
-            return true;
-        }
-
-        // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
-        Object[] secondarySupers = UnsafeCastNode.cast(UnsafeLoadNode.loadObject(s, 0, secondarySupersOffset(), true), Object[].class);
-        for (int i = 0; i < secondarySupers.length; i++) {
-            if (t == loadNonNullObjectElement(secondarySupers, i)) {
-                DirectObjectStoreNode.storeObject(s, secondarySuperCacheOffset(), 0, t);
-                secondariesHit.inc();
-                return true;
-            }
-        }
-
-        secondariesMiss.inc();
-        return false;
-    }
-
-    @Fold
-    private static int superCheckOffsetOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().superCheckOffsetOffset;
-    }
-
     @Fold
     private static int secondarySuperCacheOffset() {
         return HotSpotGraalRuntime.getInstance().getConfig().secondarySuperCacheOffset;
@@ -376,23 +297,19 @@ public class InstanceOfSnippets implements SnippetsInterface {
         private final ResolvedJavaMethod ifExact;
         private final ResolvedJavaMethod ifPrimary;
         private final ResolvedJavaMethod ifSecondary;
-        private final ResolvedJavaMethod ifUnknown;
         private final ResolvedJavaMethod materializeExact;
         private final ResolvedJavaMethod materializePrimary;
         private final ResolvedJavaMethod materializeSecondary;
-        private final ResolvedJavaMethod materializeUnknown;
 
         public Templates(CodeCacheProvider runtime) {
             super(runtime, InstanceOfSnippets.class);
             ifExact = snippet("ifExact", Object.class, Object.class, boolean.class);
             ifPrimary = snippet("ifPrimary", Object.class, Object.class, boolean.class, int.class);
             ifSecondary = snippet("ifSecondary", Object.class, Object.class, Object[].class, boolean.class);
-            ifUnknown = snippet("ifUnknown", Object.class, Object.class, Object[].class, boolean.class);
 
             materializeExact = snippet("materializeExact", Object.class, Object.class, Object.class, Object.class, boolean.class);
             materializePrimary = snippet("materializePrimary", Object.class, Object.class, Object.class, Object.class, boolean.class, int.class);
             materializeSecondary = snippet("materializeSecondary", Object.class, Object.class, Object.class, Object.class, Object[].class, boolean.class);
-            materializeUnknown = snippet("materializeUnknown", Object.class, Object.class, Object.class, Object.class, Object[].class, boolean.class);
         }
 
         public void lower(InstanceOfNode instanceOf, LoweringTool tool) {
@@ -414,11 +331,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
                 if (usage instanceof IfNode) {
 
                     IfNode ifNode = (IfNode) usage;
-                    if (target == null) {
-                        HotSpotKlassOop[] hints = createHints(hintInfo);
-                        key = new Key(ifUnknown).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
-                        arguments = arguments("hub", hub).add("object", object).add("hints", hints);
-                    } else if (hintInfo.exact) {
+                    if (hintInfo.exact) {
                         HotSpotKlassOop[] hints = createHints(hintInfo);
                         assert hints.length == 1;
                         key = new Key(ifExact).add("checkNull", checkNull);
@@ -448,11 +361,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
                     assert materialize.usages().isEmpty();
                     GraphUtil.killWithUnusedFloatingInputs(materialize);
 
-                    if (target == null) {
-                        HotSpotKlassOop[] hints = createHints(hintInfo);
-                        key = new Key(materializeUnknown).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
-                        arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
-                    } else if (hintInfo.exact) {
+                    if (hintInfo.exact) {
                         HotSpotKlassOop[] hints = createHints(hintInfo);
                         assert hints.length == 1;
                         key = new Key(materializeExact).add("checkNull", checkNull);
