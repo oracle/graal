@@ -34,6 +34,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -59,7 +60,7 @@ import com.oracle.graal.snippets.nodes.*;
 public class InstanceOfSnippets implements SnippetsInterface {
 
     /**
-     * A test against a final type with the result being {@linkplain MaterializeNode materialized}.
+     * A test against a final type with the result being {@linkplain ConditionalNode materialized}.
      */
     @Snippet
     public static Object materializeExact(
@@ -105,7 +106,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
     }
 
     /**
-     * A test against a primary type with the result being {@linkplain MaterializeNode materialized}.
+     * A test against a primary type with the result being {@linkplain ConditionalNode materialized}.
      */
     @Snippet
     public static Object materializePrimary(
@@ -154,7 +155,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
     }
 
     /**
-     * A test against a restricted secondary type type with the result being {@linkplain MaterializeNode materialized}.
+     * A test against a restricted secondary type type with the result being {@linkplain ConditionalNode materialized}.
      */
     @Snippet
     public static Object materializeSecondary(
@@ -218,7 +219,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
     }
 
     /**
-     * A test against an unknown (at compile time) type with the result being {@linkplain MaterializeNode materialized}.
+     * A test against an unknown (at compile time) type with the result being {@linkplain ConditionalNode materialized}.
      */
     @Snippet
     public static Object materializeUnknown(
@@ -435,9 +436,9 @@ public class InstanceOfSnippets implements SnippetsInterface {
                     template.instantiate(runtime, duplicate, ifNode, arguments);
                     assert ifNode.isDeleted();
 
-                } else if (usage instanceof MaterializeNode) {
+                } else if (usage instanceof ConditionalNode) {
 
-                    MaterializeNode materialize = (MaterializeNode) usage;
+                    ConditionalNode materialize = (ConditionalNode) usage;
                     materialize.replaceAtUsages(duplicate);
                     ValueNode falseValue = materialize.falseValue();
                     ValueNode trueValue = materialize.trueValue();
