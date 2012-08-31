@@ -119,17 +119,25 @@ public @interface Snippet {
          * The name of this parameter.
          */
         String value();
+    }
 
+    /**
+     * Denotes a snippet parameter representing 0 or more arguments that will be bound during snippet
+     * template {@linkplain SnippetTemplate#instantiate instantiation}. During snippet template creation,
+     * its value must be an array whose length specifies the number of arguments (the contents
+     * of the array are ignored) bound to the parameter during {@linkplain SnippetTemplate#instantiate instantiation}.
+     *
+     * Such a parameter must be used in a counted loop in the snippet preceded by a call
+     * to {@link ExplodeLoopNode#explodeLoop()}. The counted looped must be a
+     * standard iteration over all the loop's elements (i.e. {@code for (T e : arr) ... }).
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    public @interface VarargsParameter {
         /**
-         * Determines if this parameter represents 0 or more arguments. During snippet template creation,
-         * its value must be an array whose length specifies the number of arguments (the contents
-         * of the array are ignored) bound to the parameter during {@linkplain SnippetTemplate#instantiate instantiation}.
-         *
-         * Such a parameter must be used in a counted loop in the snippet preceded by a call
-         * to {@link ExplodeLoopNode#explodeLoop()}. The counted looped must be a
-         * standard iteration over all the loop's elements (i.e. {@code for (T e : arr) ... }).
+         * The name of this parameter.
          */
-        boolean multiple() default false;
+        String value();
     }
 
     /**
@@ -146,18 +154,18 @@ public @interface Snippet {
     }
 
     /**
-     * Wrapper for the prototype value of a {@linkplain Parameter#multiple() multiple} parameter.
+     * Wrapper for the prototype value of a {@linkplain VarargsParameter varargs} parameter.
      */
-    public static class Multiple {
+    public static class Varargs {
         public final Object array;
         private final Class componentType;
         private final int length;
 
-        public static Multiple multiple(Class componentType, int length) {
-            return new Multiple(Array.newInstance(componentType, length));
+        public static Varargs vargargs(Class componentType, int length) {
+            return new Varargs(Array.newInstance(componentType, length));
         }
 
-        public Multiple(Object array) {
+        public Varargs(Object array) {
             assert array != null;
             this.componentType = array.getClass().getComponentType();
             assert this.componentType != null;
@@ -167,8 +175,8 @@ public @interface Snippet {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof Multiple) {
-                Multiple other = (Multiple) obj;
+            if (obj instanceof Varargs) {
+                Varargs other = (Varargs) obj;
                 return other.componentType == componentType &&
                         other.length == length;
             }

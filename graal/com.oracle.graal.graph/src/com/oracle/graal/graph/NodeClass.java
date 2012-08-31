@@ -606,7 +606,7 @@ public class NodeClass extends FieldIntrospection {
         while (index < directInputCount) {
             Node input = getNode(node, inputOffsets[index]);
             if (input == old) {
-                assert other == null || fieldTypes.get(inputOffsets[index]).isAssignableFrom(other.getClass()); // : "Can not assign " + other.getClass() + " to " + inputTypes[index] + " in " + node;
+                assert other == null || fieldTypes.get(inputOffsets[index]).isAssignableFrom(other.getClass()) : "Can not assign " + other.getClass() + " to " + fieldTypes.get(inputOffsets[index]) + " in " + node;
                 putNode(node, inputOffsets[index], other);
                 return true;
             }
@@ -830,7 +830,7 @@ public class NodeClass extends FieldIntrospection {
         // create node duplicates
         for (Node node : nodes) {
             if (node != null) {
-                assert !node.isDeleted() : "trying to duplicate deleted node";
+                assert !node.isDeleted() : "trying to duplicate deleted node: " + node;
                 Node replacement = replacements.replacement(node);
                 if (replacement != node) {
                     assert replacement != null;

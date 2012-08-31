@@ -28,10 +28,14 @@ import com.oracle.graal.nodes.*;
 
 public interface LoweringTool {
     GraalCodeCacheProvider getRuntime();
-    ValueNode getGuardAnchor();
     ValueNode createNullCheckGuard(ValueNode object, long leafGraphId);
     ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, long leafGraphId);
     ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated, long leafGraphId);
     Assumptions assumptions();
+
+    /**
+     * Gets the closest fixed node preceding the node currently being lowered.
+     */
+    FixedWithNextNode lastFixedNode();
 }
 

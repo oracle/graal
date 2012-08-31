@@ -83,7 +83,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             }
             TTY.println("Dumping IGV graphs to %s", fileName);
         } catch (IOException e) {
-            TTY.println("Faild to open %s to dump IGV graphs : %s", fileName, e);
+            TTY.println("Failed to open %s to dump IGV graphs : %s", fileName, e);
             failuresCount++;
             printer = null;
         }

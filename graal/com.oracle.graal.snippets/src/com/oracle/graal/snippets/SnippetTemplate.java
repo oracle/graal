@@ -35,13 +35,15 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
-import com.oracle.graal.snippets.Snippet.Multiple;
 import com.oracle.graal.snippets.Snippet.Parameter;
+import com.oracle.graal.snippets.Snippet.Varargs;
+import com.oracle.graal.snippets.Snippet.VarargsParameter;
 import com.oracle.graal.snippets.nodes.*;
 
 /**
@@ -109,6 +111,10 @@ public class SnippetTemplate {
         public String toString() {
             return MetaUtil.format("%h.%n", method) + map.toString();
         }
+
+        public Set<String> names() {
+            return map.keySet();
+        }
     }
 
     /**
@@ -172,8 +178,28 @@ public class SnippetTemplate {
             }
             return template;
         }
-
     }
+
+    public abstract static class AbstractTemplates<T extends SnippetsInterface> {
+        protected final Cache cache;
+        protected final CodeCacheProvider runtime;
+        protected Class<T> snippetsClass;
+        public AbstractTemplates(CodeCacheProvider runtime, Class<T> snippetsClass) {
+            this.runtime = runtime;
+            this.snippetsClass = snippetsClass;
+            this.cache = new Cache(runtime);
+        }
+
+        protected ResolvedJavaMethod snippet(String name, Class<?>... parameterTypes) {
+            try {
+                ResolvedJavaMethod snippet = runtime.getResolvedJavaMethod(snippetsClass.getDeclaredMethod(name, parameterTypes));
+                assert snippet.getAnnotation(Snippet.class) != null : "snippet is not annotated with @" + Snippet.class.getSimpleName();
+                return snippet;
+            } catch (NoSuchMethodException e) {
+                throw new GraalInternalError(e);
+            }
+        }
+}
 
     /**
      * Determines if any parameter of a given method is annotated with {@link ConstantParameter}.
@@ -202,7 +228,10 @@ public class SnippetTemplate {
         replacements.put(snippetGraph.start(), snippetCopy.start());
 
         int parameterCount = signature.argumentCount(false);
+        assert checkTemplate(key, parameterCount, method, signature);
+
         Parameter[] parameterAnnotations = new Parameter[parameterCount];
+        VarargsParameter[] varargsParameterAnnotations = new VarargsParameter[parameterCount];
         ConstantNode[] placeholders = new ConstantNode[parameterCount];
         for (int i = 0; i < parameterCount; i++) {
             ConstantParameter c = MetaUtil.getParameterAnnotation(ConstantParameter.class, i, method);
@@ -210,23 +239,19 @@ public class SnippetTemplate {
                 String name = c.value();
                 Object arg = key.get(name);
                 Kind kind = signature.argumentKindAt(i);
-                assert checkConstantArgument(method, signature, i, name, arg, kind);
                 replacements.put(snippetGraph.getLocal(i), ConstantNode.forConstant(Constant.forBoxed(kind, arg), runtime, snippetCopy));
             } else {
-                Parameter p = MetaUtil.getParameterAnnotation(Parameter.class, i, method);
-                assert p != null : method + ": parameter " + i + " must be annotated with either @" + ConstantParameter.class.getSimpleName() +
-                                " or @" + Parameter.class.getSimpleName();
-                String name = p.value();
-                if (p.multiple()) {
-                    Object multiple = key.get(name);
-                    assert multiple != null : method + ": requires a Multiple named " + name;
-                    assert checkMultipleArgument(method, signature, i, name, multiple);
-                    Object array = ((Multiple) multiple).array;
+                VarargsParameter vp = MetaUtil.getParameterAnnotation(VarargsParameter.class, i, method);
+                if (vp != null) {
+                    String name = vp.value();
+                    Object array = ((Varargs) key.get(name)).array;
                     ConstantNode placeholder = ConstantNode.forObject(array, runtime, snippetCopy);
                     replacements.put(snippetGraph.getLocal(i), placeholder);
                     placeholders[i] = placeholder;
+                    varargsParameterAnnotations[i] = vp;
+                } else {
+                    parameterAnnotations[i] = MetaUtil.getParameterAnnotation(Parameter.class, i, method);
                 }
-                parameterAnnotations[i] = p;
             }
         }
         snippetCopy.addDuplicates(snippetGraph.getNodes(), replacements);
@@ -242,34 +267,35 @@ public class SnippetTemplate {
         // Gather the template parameters
         parameters = new HashMap<>();
         for (int i = 0; i < parameterCount; i++) {
-            Parameter p = parameterAnnotations[i];
-            if (p != null) {
-                if (p.multiple()) {
-                    assert snippetCopy.getLocal(i) == null;
-                    Object array = ((Multiple) key.get(p.value())).array;
-                    int length = Array.getLength(array);
-                    LocalNode[] locals = new LocalNode[length];
-                    Stamp stamp = StampFactory.forKind(runtime.getResolvedJavaType(array.getClass().getComponentType()).kind());
-                    for (int j = 0; j < length; j++) {
-                        assert (parameterCount & 0xFFFF) == parameterCount;
-                        int idx = i << 16 | j;
-                        LocalNode local = snippetCopy.unique(new LocalNode(idx, stamp));
-                        locals[j] = local;
-                    }
-                    parameters.put(p.value(), locals);
+            VarargsParameter vp = varargsParameterAnnotations[i];
+            if (vp != null) {
+                assert snippetCopy.getLocal(i) == null;
+                Object array = ((Varargs) key.get(vp.value())).array;
+                int length = Array.getLength(array);
+                LocalNode[] locals = new LocalNode[length];
+                Stamp stamp = StampFactory.forKind(runtime.getResolvedJavaType(array.getClass().getComponentType()).kind());
+                for (int j = 0; j < length; j++) {
+                    assert (parameterCount & 0xFFFF) == parameterCount;
+                    int idx = i << 16 | j;
+                    LocalNode local = snippetCopy.unique(new LocalNode(idx, stamp));
+                    locals[j] = local;
+                }
+                parameters.put(vp.value(), locals);
 
-                    ConstantNode placeholder = placeholders[i];
-                    assert placeholder != null;
-                    for (Node usage : placeholder.usages().snapshot()) {
-                        if (usage instanceof LoadIndexedNode) {
-                            LoadIndexedNode loadIndexed = (LoadIndexedNode) usage;
-                            Debug.dump(snippetCopy, "Before replacing %s", loadIndexed);
-                            LoadSnippetParameterNode loadSnippetParameter = snippetCopy.add(new LoadSnippetParameterNode(locals, loadIndexed.index(), loadIndexed.stamp()));
-                            snippetCopy.replaceFixedWithFixed(loadIndexed, loadSnippetParameter);
-                            Debug.dump(snippetCopy, "After replacing %s", loadIndexed);
-                        }
+                ConstantNode placeholder = placeholders[i];
+                assert placeholder != null;
+                for (Node usage : placeholder.usages().snapshot()) {
+                    if (usage instanceof LoadIndexedNode) {
+                        LoadIndexedNode loadIndexed = (LoadIndexedNode) usage;
+                        Debug.dump(snippetCopy, "Before replacing %s", loadIndexed);
+                        LoadSnippetVarargParameterNode loadSnippetParameter = snippetCopy.add(new LoadSnippetVarargParameterNode(locals, loadIndexed.index(), loadIndexed.stamp()));
+                        snippetCopy.replaceFixedWithFixed(loadIndexed, loadSnippetParameter);
+                        Debug.dump(snippetCopy, "After replacing %s", loadIndexed);
                     }
-                } else {
+                }
+            } else {
+                Parameter p = parameterAnnotations[i];
+                if (p != null) {
                     LocalNode local = snippetCopy.getLocal(i);
                     assert local != null;
                     parameters.put(p.value(), local);
@@ -314,26 +340,56 @@ public class SnippetTemplate {
 
         new DeadCodeEliminationPhase().apply(snippetCopy);
 
-        assert checkAllMultipleParameterPlaceholdersAreDeleted(parameterCount, placeholders);
+        assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
-        this.graph = snippetCopy;
-        nodes = new ArrayList<>(graph.getNodeCount());
+        this.snippet = snippetCopy;
         ReturnNode retNode = null;
-        StartNode entryPointNode = graph.start();
-        for (Node node : graph.getNodes()) {
+        StartNode entryPointNode = snippet.start();
+
+        Map<Integer, JumpNode[]> jumpsMap = new HashMap<>();
+        for (JumpNode jump : snippet.getNodes().filter(JumpNode.class).snapshot()) {
+            FixedNode next = jump.next();
+
+            // Remove the nodes after the jump
+            jump.setNext(null);
+            GraphUtil.killCFG(next);
+            JumpNode[] jumpsForIndex = jumpsMap.get(jump.successorIndex());
+            if (jumpsForIndex == null) {
+                jumpsMap.put(jump.successorIndex(), new JumpNode[] {jump});
+            } else {
+                jumpsForIndex = Arrays.copyOf(jumpsForIndex, jumpsForIndex.length + 1);
+                jumpsForIndex[jumpsForIndex.length - 1] = jump;
+                jumpsMap.put(jump.successorIndex(), jumpsForIndex);
+            }
+        }
+
+        this.jumps = new JumpNode[jumpsMap.size()][];
+        for (Map.Entry<Integer, JumpNode[]> e : jumpsMap.entrySet()) {
+            int successorIndex = e.getKey();
+            assert successorIndex >= 0 && successorIndex < this.jumps.length;
+            assert this.jumps[successorIndex] == null;
+            this.jumps[successorIndex] = e.getValue();
+        }
+
+        new DeadCodeEliminationPhase().apply(snippetCopy);
+
+        nodes = new ArrayList<>(snippet.getNodeCount());
+        for (Node node : snippet.getNodes()) {
             if (node == entryPointNode || node == entryPointNode.stateAfter()) {
                 // Do nothing.
             } else {
                 nodes.add(node);
                 if (node instanceof ReturnNode) {
+                    assert this.jumps.length == 0 : "snippet with Jump node(s) cannot have a return node";
                     retNode = (ReturnNode) node;
                 }
             }
         }
+
         this.returnNode = retNode;
     }
 
-    private static boolean checkAllMultipleParameterPlaceholdersAreDeleted(int parameterCount, ConstantNode[] placeholders) {
+    private static boolean checkAllVarargPlaceholdersAreDeleted(int parameterCount, ConstantNode[] placeholders) {
         for (int i = 0; i < parameterCount; i++) {
             if (placeholders[i] != null) {
                 assert placeholders[i].isDeleted() : placeholders[i];
@@ -354,12 +410,11 @@ public class SnippetTemplate {
         return true;
     }
 
-    private static boolean checkMultipleArgument(final ResolvedJavaMethod method, Signature signature, int i, String name, Object multiple) {
-        assert multiple instanceof Multiple;
-        Object arg = ((Multiple) multiple).array;
+    private static boolean checkVarargs(final ResolvedJavaMethod method, Signature signature, int i, String name, Varargs varargs) {
+        Object arg = varargs.array;
         ResolvedJavaType type = (ResolvedJavaType) signature.argumentTypeAt(i, method.holder());
         Class< ? > javaType = type.toJava();
-        assert javaType.isArray() : "multiple parameter must be an array type";
+        assert javaType.isArray() : "varargs parameter must be an array type";
         assert javaType.isInstance(arg) : "value for " + name + " is not a " + javaType.getName() + " instance: " + arg;
         return true;
     }
@@ -367,7 +422,7 @@ public class SnippetTemplate {
     /**
      * The graph built from the snippet method.
      */
-    private final StructuredGraph graph;
+    private final StructuredGraph snippet;
 
     /**
      * The named parameters of this template that must be bound to values during instantiation.
@@ -384,6 +439,12 @@ public class SnippetTemplate {
      * The nodes to be inlined when this specialization is instantiated.
      */
     private final ArrayList<Node> nodes;
+
+    /**
+     * The {@link JumpNode}s in the snippet, indexed by {@linkplain ControlSplitNode#blockSuccessor(int) successor} indexes.
+     * There may be more than one jump per successor index which explains why this is a 2-dimensional array.
+     */
+    private final JumpNode[][] jumps;
 
     /**
      * Gets the instantiation-time bindings to this template's parameters.
@@ -427,32 +488,30 @@ public class SnippetTemplate {
     }
 
     /**
-     * Replaces a given node with this specialized snippet.
+     * Replaces a given fixed node with this specialized snippet.
      *
      * @param runtime
      * @param replacee the node that will be replaced
-     * @param anchor the control flow replacee
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      */
     public void instantiate(CodeCacheProvider runtime,
-                    Node replacee,
-                    FixedWithNextNode anchor, SnippetTemplate.Arguments args) {
+                    FixedWithNextNode replacee, SnippetTemplate.Arguments args) {
 
         // Inline the snippet nodes, replacing parameters with the given args in the process
-        String name = graph.name == null ? "{copy}" : graph.name + "{copy}";
-        StructuredGraph graphCopy = new StructuredGraph(name, graph.method());
-        StartNode entryPointNode = graph.start();
+        String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
+        StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method());
+        StartNode entryPointNode = snippet.start();
         FixedNode firstCFGNode = entryPointNode.next();
         StructuredGraph replaceeGraph = (StructuredGraph) replacee.graph();
         IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
         Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, replacements);
-        Debug.dump(replaceeGraph, "After inlining snippet %s", graphCopy.method());
+        Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
 
         // Re-wire the control flow graph around the replacee
         FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
-        anchor.replaceAtPredecessor(firstCFGNodeDuplicate);
-        FixedNode next = anchor.next();
-        anchor.setNext(null);
+        replacee.replaceAtPredecessor(firstCFGNodeDuplicate);
+        FixedNode next = replacee.next();
+        replacee.setNext(null);
 
         // Replace all usages of the replacee with the value returned by the snippet
         Node returnValue = null;
@@ -473,21 +532,120 @@ public class SnippetTemplate {
         // Remove the replacee from its graph
         replacee.clearInputs();
         replacee.replaceAtUsages(null);
-        if (replacee instanceof FixedNode) {
-            GraphUtil.killCFG((FixedNode) replacee);
-        } else {
-            GraphUtil.killWithUnusedFloatingInputs(replacee);
-        }
-        if (anchor != replacee) {
-            GraphUtil.killCFG(anchor);
-        }
+            GraphUtil.killCFG(replacee);
 
         Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
     }
 
+    /**
+     * Replaces a given floating node with this specialized snippet.
+     *
+     * @param runtime
+     * @param replacee the node that will be replaced
+     * @param lastFixedNode the CFG of the snippet is inserted after this node
+     * @param args the arguments to be bound to the flattened positional parameters of the snippet
+     */
+    public void instantiate(CodeCacheProvider runtime,
+                    FloatingNode replacee,
+                    FixedWithNextNode lastFixedNode, SnippetTemplate.Arguments args) {
+
+        // Inline the snippet nodes, replacing parameters with the given args in the process
+        String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
+        StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method());
+        StartNode entryPointNode = snippet.start();
+        FixedNode firstCFGNode = entryPointNode.next();
+        StructuredGraph replaceeGraph = (StructuredGraph) replacee.graph();
+        IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
+        Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, replacements);
+        Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
+
+        assert lastFixedNode != null : replaceeGraph;
+        FixedNode next = lastFixedNode.next();
+        lastFixedNode.setNext(null);
+        FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
+        replaceeGraph.addAfterFixed(lastFixedNode, firstCFGNodeDuplicate);
+
+        // Replace all usages of the replacee with the value returned by the snippet
+        assert returnNode != null : replaceeGraph;
+        Node returnValue = null;
+        if (returnNode.result() instanceof LocalNode) {
+            returnValue = replacements.get(returnNode.result());
+        } else {
+            returnValue = duplicates.get(returnNode.result());
+        }
+        assert returnValue != null || replacee.usages().isEmpty();
+        replacee.replaceAtUsages(returnValue);
+
+        Node returnDuplicate = duplicates.get(returnNode);
+        returnDuplicate.clearInputs();
+        returnDuplicate.replaceAndDelete(next);
+
+        Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
+    }
+
+    /**
+     * Replaces a given floating node that is an input to a {@link ControlSplitNode} with this specialized snippet.
+     * The {@linkplain JumpNode jumps} in the snippet are connected to the successors of the control split node.
+     *
+     * @param replacee the node that will be replaced
+     * @param controlSplitNode the node replaced by this wheCFG of the snippet is inserted after this node
+     * @param args the arguments to be bound to the flattened positional parameters of the snippet
+     */
+    public void instantiate(CodeCacheProvider runtime,
+                    FloatingNode replacee,
+                    ControlSplitNode controlSplitNode,
+                    SnippetTemplate.Arguments args) {
+
+        // Inline the snippet nodes, replacing parameters with the given args in the process
+        String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
+        StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method());
+        StartNode entryPointNode = snippet.start();
+        FixedNode firstCFGNode = entryPointNode.next();
+        StructuredGraph replaceeGraph = (StructuredGraph) replacee.graph();
+        IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
+        Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, replacements);
+        Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
+
+
+        int successorIndex = 0;
+        for (JumpNode[] jumpsForIndex : jumps) {
+            fixEdge(controlSplitNode, jumpsForIndex, successorIndex++, duplicates);
+        }
+
+        FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
+        controlSplitNode.replaceAtPredecessor(firstCFGNodeDuplicate);
+        controlSplitNode.replaceAtUsages(null);
+
+        assert returnNode == null : replaceeGraph;
+        GraphUtil.killCFG(controlSplitNode);
+
+        Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
+    }
+
+    private static void fixEdge(ControlSplitNode splitAnchor, JumpNode[] jumpsForIndex, int successorIndex, Map<Node, Node> duplicates) {
+        BeginNode blockSuccessor = splitAnchor.blockSuccessor(successorIndex);
+        splitAnchor.setBlockSuccessor(successorIndex, null);
+        if (jumpsForIndex.length == 1) {
+            JumpNode jump = (JumpNode) duplicates.get(jumpsForIndex[0]);
+            jump.replaceAtPredecessor(blockSuccessor);
+            GraphUtil.killCFG(jump);
+        } else {
+            StructuredGraph graph = (StructuredGraph) splitAnchor.graph();
+            MergeNode merge = graph.add(new MergeNode());
+            for (int i = 0; i < jumpsForIndex.length; i++) {
+                EndNode end = graph.add(new EndNode());
+                JumpNode jump = (JumpNode) duplicates.get(jumpsForIndex[i]);
+                jump.replaceAtPredecessor(end);
+                merge.addForwardEnd(end);
+                GraphUtil.killCFG(jump);
+            }
+            merge.setNext(blockSuccessor);
+        }
+    }
+
     @Override
     public String toString() {
-        StringBuilder buf = new StringBuilder(graph.toString()).append('(');
+        StringBuilder buf = new StringBuilder(snippet.toString()).append('(');
         String sep = "";
         for (Map.Entry<String, Object> e : parameters.entrySet()) {
             String name = e.getKey();
@@ -505,5 +663,45 @@ public class SnippetTemplate {
         }
         return buf.append(')').toString();
     }
-}
 
+    private static boolean checkTemplate(SnippetTemplate.Key key, int parameterCount, ResolvedJavaMethod method, Signature signature) {
+        Set<String> expected = new HashSet<>();
+        for (int i = 0; i < parameterCount; i++) {
+            ConstantParameter c = MetaUtil.getParameterAnnotation(ConstantParameter.class, i, method);
+            VarargsParameter vp = MetaUtil.getParameterAnnotation(VarargsParameter.class, i, method);
+            Parameter p = MetaUtil.getParameterAnnotation(Parameter.class, i, method);
+            if (c != null) {
+                assert vp == null && p == null;
+                String name = c.value();
+                expected.add(name);
+                Kind kind = signature.argumentKindAt(i);
+                assert key.names().contains(name) : "key for " + method + " is missing \"" + name + "\": " + key;
+                assert checkConstantArgument(method, signature, i, c.value(), key.get(name), kind);
+            } else if (vp != null) {
+                assert p == null;
+                String name = vp.value();
+                expected.add(name);
+                assert key.names().contains(name) : "key for " + method + " is missing \"" + name + "\": " + key;
+                assert key.get(name) instanceof Varargs;
+                Varargs varargs = (Varargs) key.get(name);
+                assert checkVarargs(method, signature, i, name, varargs);
+            } else {
+                assert p != null : method + ": parameter " + i + " must be annotated with exactly one of " +
+                    "@" + ConstantParameter.class.getSimpleName() + " or " +
+                    "@" + VarargsParameter.class.getSimpleName() + " or " +
+                    "@" + Parameter.class.getSimpleName();
+            }
+        }
+        if (!key.names().containsAll(expected)) {
+            expected.removeAll(key.names());
+            assert false : expected + " missing from key " + key;
+        }
+        if (!expected.containsAll(key.names())) {
+            Set<String> namesCopy = new HashSet<>(key.names());
+            namesCopy.removeAll(expected);
+            assert false : "parameter(s) " + namesCopy + " should be annotated with @" + ConstantParameter.class.getSimpleName() +
+                " or @" + VarargsParameter.class.getSimpleName() + " in " + MetaUtil.format("%H.%n(%p)", method);
+        }
+        return true;
+    }
+}

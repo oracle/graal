@@ -61,6 +61,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
     private final HotSpotRegisterConfig globalStubRegConfig;
     private final HotSpotGraalRuntime graalRuntime;
     private CheckCastSnippets.Templates checkcastSnippets;
+    private InstanceOfSnippets.Templates instanceofSnippets;
     private NewObjectSnippets.Templates newObjectSnippets;
 
     public HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
@@ -77,8 +78,10 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
         installer.install(UnsafeSnippets.class);
         installer.install(ArrayCopySnippets.class);
         installer.install(CheckCastSnippets.class);
+        installer.install(InstanceOfSnippets.class);
         installer.install(NewObjectSnippets.class);
         checkcastSnippets = new CheckCastSnippets.Templates(this);
+        instanceofSnippets = new InstanceOfSnippets.Templates(this);
         newObjectSnippets = new NewObjectSnippets.Templates(this, graalRuntime.getTarget(), config.useTLAB);
     }
 
@@ -406,6 +409,10 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
         } else if (n instanceof CheckCastNode) {
             if (matches(graph, GraalOptions.HIRLowerCheckcast)) {
                 checkcastSnippets.lower((CheckCastNode) n, tool);
+            }
+        } else if (n instanceof InstanceOfNode) {
+            if (matches(graph, GraalOptions.HIRLowerInstanceOf)) {
+                instanceofSnippets.lower((InstanceOfNode) n, tool);
             }
         } else if (n instanceof NewInstanceNode) {
             if (matches(graph, GraalOptions.HIRLowerNewInstance)) {

@@ -25,18 +25,18 @@ package com.oracle.graal.snippets.nodes;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.Snippet.Parameter;
+import com.oracle.graal.snippets.Snippet.VarargsParameter;
 
 /**
- * Implements the semantics of a snippet {@link Parameter} whose {@link Parameter#multiple()} element is {@code true}.
+ * Implements the semantics of {@link VarargsParameter}.
  */
-public final class LoadSnippetParameterNode extends FixedWithNextNode implements Canonicalizable {
+public final class LoadSnippetVarargParameterNode extends FixedWithNextNode implements Canonicalizable {
 
     @Input private ValueNode index;
 
     private final LocalNode[] locals;
 
-    public LoadSnippetParameterNode(LocalNode[] locals, ValueNode index, Stamp stamp) {
+    public LoadSnippetVarargParameterNode(LocalNode[] locals, ValueNode index, Stamp stamp) {
         super(stamp);
         this.index = index;
         this.locals = locals;
