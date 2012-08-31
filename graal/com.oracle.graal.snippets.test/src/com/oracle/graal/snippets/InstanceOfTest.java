@@ -30,6 +30,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.snippets.CheckCastTest.*;
 
 /**
  * Tests the implementation of instanceof, allowing profiling information to
@@ -135,6 +136,32 @@ public class InstanceOfTest extends TypeCheckTest {
         test("isMapInt",    profile(TreeMap.class, HashMap.class), Object.class);
     }
 
+    @Test
+    public void test7() {
+        Object o = new Depth13();
+        test("isDepth12",   profile(), o);
+        test("isDepth12",   profile(Depth13.class), o);
+        test("isDepth12",   profile(Depth13.class, Depth14.class), o);
+
+        o = "not a depth";
+        test("isDepth12",   profile(), o);
+        test("isDepth12",   profile(Depth13.class), o);
+        test("isDepth12",   profile(Depth13.class, Depth14.class), o);
+    }
+
+    @Test
+    public void test8() {
+        Object o = new Depth13();
+        test("isDepth12Int",   profile(), o);
+        test("isDepth12Int",   profile(Depth13.class), o);
+        test("isDepth12Int",   profile(Depth13.class, Depth14.class), o);
+
+        o = "not a depth";
+        test("isDepth12Int",   profile(), o);
+        test("isDepth12Int",   profile(Depth13.class), o);
+        test("isDepth12Int",   profile(Depth13.class, Depth14.class), o);
+    }
+
     public static boolean isString(Object o) {
         return o instanceof String;
     }
@@ -188,5 +215,16 @@ public class InstanceOfTest extends TypeCheckTest {
             return 1;
         }
         return 0;
+    }
+
+    public static boolean isDepth12(Object o) {
+        return o instanceof Depth12;
+    }
+
+    public static int isDepth12Int(Object o) {
+        if (o instanceof Depth12) {
+            return id(0);
+        }
+        return id(0);
     }
 }
