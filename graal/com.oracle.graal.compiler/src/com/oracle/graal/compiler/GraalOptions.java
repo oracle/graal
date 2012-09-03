@@ -271,6 +271,7 @@ public final class GraalOptions {
      * Only instructions in methods whose fully qualified name contains this option will be HIR lowered.
      */
     public static String HIRLowerCheckcast = "";
+    public static String HIRLowerInstanceOf = "";
     public static String HIRLowerNewInstance = "";
     public static String HIRLowerNewArray = "";
 

@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
-public final class InstanceOfNode extends BooleanNode implements Canonicalizable, LIRLowerable {
+public final class InstanceOfNode extends BooleanNode implements Canonicalizable, Lowerable, LIRLowerable {
 
     @Input private ValueNode object;
     @Input private ValueNode targetClassInstruction;
@@ -60,6 +60,11 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
 
     @Override
     public void generate(LIRGeneratorTool gen) {
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 
     @Override

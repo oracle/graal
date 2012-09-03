@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.hotspot.snippets.ArrayCopySnippets.*;
-import static com.oracle.graal.snippets.Snippet.Multiple.*;
+import static com.oracle.graal.snippets.Snippet.Varargs.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
@@ -40,16 +39,16 @@ import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
 import com.oracle.graal.snippets.Snippet.Fold;
 import com.oracle.graal.snippets.Snippet.Parameter;
+import com.oracle.graal.snippets.Snippet.VarargsParameter;
+import com.oracle.graal.snippets.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.snippets.SnippetTemplate.Arguments;
-import com.oracle.graal.snippets.SnippetTemplate.Cache;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 import com.oracle.graal.snippets.nodes.*;
 
 /**
  * Snippets used for implementing the type test of a checkcast instruction.
  *
- * The test first checks against the profiled types (if any) and then implements the
- * checks described in the paper <a href="http://dl.acm.org/citation.cfm?id=583821">
+ * The type tests implemented are described in the paper <a href="http://dl.acm.org/citation.cfm?id=583821">
  * Fast subtype checking in the HotSpot JVM</a> by Cliff Click and John Rose.
  */
 public class CheckCastSnippets implements SnippetsInterface {
@@ -58,7 +57,10 @@ public class CheckCastSnippets implements SnippetsInterface {
      * Type test used when the type being tested against is a final type.
      */
     @Snippet
-    public static Object checkcastExact(@Parameter("object") Object object, @Parameter("exactHub") Object exactHub, @ConstantParameter("checkNull") boolean checkNull) {
+    public static Object checkcastExact(
+                    @Parameter("object") Object object,
+                    @Parameter("exactHub") Object exactHub,
+                    @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
             isNull.inc();
             return object;
@@ -80,7 +82,11 @@ public class CheckCastSnippets implements SnippetsInterface {
      * first.
      */
     @Snippet
-    public static Object checkcastPrimary(@Parameter("hub") Object hub, @Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull, @ConstantParameter("superCheckOffset") int superCheckOffset) {
+    public static Object checkcastPrimary(
+                    @Parameter("hub") Object hub,
+                    @Parameter("object") Object object,
+                    @ConstantParameter("checkNull") boolean checkNull,
+                    @ConstantParameter("superCheckOffset") int superCheckOffset) {
         if (checkNull && object == null) {
             isNull.inc();
             return object;
@@ -98,7 +104,11 @@ public class CheckCastSnippets implements SnippetsInterface {
      * Type test used when the type being tested against is a restricted secondary type.
      */
     @Snippet
-    public static Object checkcastSecondary(@Parameter("hub") Object hub, @Parameter("object") Object object, @Parameter(value = "hints", multiple = true) Object[] hints, @ConstantParameter("checkNull") boolean checkNull) {
+    public static Object checkcastSecondary(
+                    @Parameter("hub") Object hub,
+                    @Parameter("object") Object object,
+                    @VarargsParameter("hints") Object[] hints,
+                    @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
             isNull.inc();
             return object;
@@ -124,7 +134,11 @@ public class CheckCastSnippets implements SnippetsInterface {
      * in an object array store check).
      */
     @Snippet
-    public static Object checkcastUnknown(@Parameter("hub") Object hub, @Parameter("object") Object object, @Parameter(value = "hints", multiple = true) Object[] hints, @ConstantParameter("checkNull") boolean checkNull) {
+    public static Object checkcastUnknown(
+                    @Parameter("hub") Object hub,
+                    @Parameter("object") Object object,
+                    @VarargsParameter("hints") Object[] hints,
+                    @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
             isNull.inc();
             return object;
@@ -238,26 +252,19 @@ public class CheckCastSnippets implements SnippetsInterface {
         return HotSpotGraalRuntime.getInstance().getConfig().hubOffset;
     }
 
-    public static class Templates {
+    public static class Templates extends AbstractTemplates<CheckCastSnippets> {
 
-        private final Cache cache;
         private final ResolvedJavaMethod exact;
         private final ResolvedJavaMethod primary;
         private final ResolvedJavaMethod secondary;
         private final ResolvedJavaMethod unknown;
-        private final CodeCacheProvider runtime;
 
         public Templates(CodeCacheProvider runtime) {
-            this.runtime = runtime;
-            this.cache = new Cache(runtime);
-            try {
-                exact = runtime.getResolvedJavaMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastExact", Object.class, Object.class, boolean.class));
-                primary = runtime.getResolvedJavaMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastPrimary", Object.class, Object.class, boolean.class, int.class));
-                secondary = runtime.getResolvedJavaMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastSecondary", Object.class, Object.class, Object[].class, boolean.class));
-                unknown = runtime.getResolvedJavaMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastUnknown", Object.class, Object.class, Object[].class, boolean.class));
-            } catch (NoSuchMethodException e) {
-                throw new GraalInternalError(e);
-            }
+            super(runtime, CheckCastSnippets.class);
+            exact = snippet("checkcastExact", Object.class, Object.class, boolean.class);
+            primary = snippet("checkcastPrimary", Object.class, Object.class, boolean.class, int.class);
+            secondary = snippet("checkcastSecondary", Object.class, Object.class, Object[].class, boolean.class);
+            unknown = snippet("checkcastUnknown", Object.class, Object.class, Object[].class, boolean.class);
         }
 
         /**
@@ -275,7 +282,7 @@ public class CheckCastSnippets implements SnippetsInterface {
 
             if (target == null) {
                 HotSpotKlassOop[] hints = createHints(hintInfo);
-                key = new Key(unknown).add("hints", multiple(Object.class, hints.length)).add("checkNull", checkNull);
+                key = new Key(unknown).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
                 arguments = arguments("hub", hub).add("object", object).add("hints", hints);
             } else if (hintInfo.exact) {
                 HotSpotKlassOop[] hints = createHints(hintInfo);
@@ -287,16 +294,16 @@ public class CheckCastSnippets implements SnippetsInterface {
                 arguments = arguments("hub", hub).add("object", object);
             } else {
                 HotSpotKlassOop[] hints = createHints(hintInfo);
-                key = new Key(secondary).add("hints", multiple(Object.class, hints.length)).add("checkNull", checkNull);
+                key = new Key(secondary).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
                 arguments = arguments("hub", hub).add("object", object).add("hints", hints);
             }
 
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, arguments);
-            template.instantiate(runtime, checkcast, checkcast, arguments);
+            template.instantiate(runtime, checkcast, arguments);
         }
 
-        private static HotSpotKlassOop[] createHints(TypeCheckHints hints) {
+        static HotSpotKlassOop[] createHints(TypeCheckHints hints) {
             HotSpotKlassOop[] hintHubs = new HotSpotKlassOop[hints.types.length];
             for (int i = 0; i < hintHubs.length; i++) {
                 hintHubs[i] = ((HotSpotJavaType) hints.types[i]).klassOop();

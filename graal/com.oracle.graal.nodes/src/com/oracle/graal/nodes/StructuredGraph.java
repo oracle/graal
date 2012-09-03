@@ -298,13 +298,17 @@ public class StructuredGraph extends Graph {
         node.safeDelete();
     }
 
-    public void addAfterFixed(FixedWithNextNode node, FixedWithNextNode newNode) {
+    public void addAfterFixed(FixedWithNextNode node, FixedNode newNode) {
         assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " after " + node;
-        assert newNode.next() == null;
         newNode.setProbability(node.probability());
         FixedNode next = node.next();
         node.setNext(newNode);
-        newNode.setNext(next);
+        if (next != null) {
+            assert newNode instanceof FixedWithNextNode;
+            FixedWithNextNode newFixedWithNext = (FixedWithNextNode) newNode;
+            assert newFixedWithNext.next() == null;
+            newFixedWithNext.setNext(next);
+        }
     }
 
     public void addBeforeFixed(FixedNode node, FixedWithNextNode newNode) {

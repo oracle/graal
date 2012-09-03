@@ -22,47 +22,46 @@
  */
 package com.oracle.graal.snippets.nodes;
 
-import java.util.*;
-
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.Snippet.VarargsParameter;
 
 /**
- * Placeholder node to denote to snippet preparation that the following loop
- * must be completely unrolled.
- *
- * @see VarargsParameter
+ * Delimits a control flow path in a snippet that will be connected to a
+ * {@link ControlSplitNode} successor upon snippet instantiation.
+ * This node can only appear in snippets with a void return type.
  */
-public final class ExplodeLoopNode extends FixedWithNextNode {
+public class JumpNode extends FixedWithNextNode {
 
-    public ExplodeLoopNode() {
+    /**
+     * Index of {@link ControlSplitNode} successor to which this label will be connected.
+     */
+    private final int successorIndex;
+
+    public JumpNode(int successorIndex) {
         super(StampFactory.forVoid());
+        this.successorIndex = successorIndex;
     }
 
-    public LoopBeginNode findLoopBegin() {
-        Node next = next();
-        ArrayList<Node> succs = new ArrayList<>();
-        while (!(next instanceof LoopBeginNode)) {
-            assert next != null : "cannot find loop after " + this;
-            for (Node n : next.cfgSuccessors()) {
-                succs.add(n);
-            }
-            if (succs.size() == 1) {
-                next = succs.get(0);
-            } else {
-                return null;
-            }
+    public int successorIndex() {
+        return successorIndex;
+    }
+
+    @Override
+    public String toString(Verbosity verbosity) {
+        if (verbosity == Verbosity.Name) {
+            return super.toString(Verbosity.Name) + "{" + successorIndex() + "}";
+        } else {
+            return super.toString(verbosity);
         }
-        return (LoopBeginNode) next;
     }
 
     /**
-     * A call to this method must be placed immediately prior to the loop that is to be exploded.
+     * There must be a return statement immediately following a call to this method.
+     *
+     * @param successorIndex e.g. {@link IfNode#TRUE_EDGE}
      */
     @NodeIntrinsic
-    public static void explodeLoop() {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
+    public static void jump(@ConstantNodeParameter int successorIndex) {
+        throw new UnsupportedOperationException();
     }
 }
