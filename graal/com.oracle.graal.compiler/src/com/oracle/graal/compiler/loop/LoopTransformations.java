@@ -94,6 +94,7 @@ public abstract class LoopTransformations {
 
     public static void unswitch(LoopEx loop, IfNode ifNode) {
         // duplicate will be true case, original will be false case
+        loop.loopBegin().incUnswitches();
         LoopFragmentWhole originalLoop = loop.whole();
         LoopFragmentWhole duplicateLoop = originalLoop.duplicate();
         StructuredGraph graph = (StructuredGraph) ifNode.graph();

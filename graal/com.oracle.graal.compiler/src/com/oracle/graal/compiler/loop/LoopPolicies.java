@@ -52,9 +52,8 @@ public abstract class LoopPolicies {
         return size * exactTrips <= maxNodes;
     }
 
-    public static boolean shouldTryUnswitch(@SuppressWarnings("unused") LoopEx loop) {
-        // TODO (gd) maybe there should be a max number of unswitching per loop
-        return true;
+    public static boolean shouldTryUnswitch(LoopEx loop) {
+        return loop.loopBegin().unswitches() <= GraalOptions.LoopMaxUnswitch;
     }
 
     public static boolean shouldUnswitch(LoopEx loop, IfNode ifNode) {

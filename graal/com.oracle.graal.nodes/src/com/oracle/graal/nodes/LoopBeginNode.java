@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, LIRLowerable {
     private double loopFrequency;
     private int nextEndIndex;
+    private int unswitches;
 
     public LoopBeginNode() {
         loopFrequency = 1;
@@ -142,6 +143,14 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
 
     public int nextEndIndex() {
         return nextEndIndex++;
+    }
+
+    public int unswitches() {
+        return unswitches;
+    }
+
+    public void incUnswitches() {
+        unswitches++;
     }
 
     @Override
