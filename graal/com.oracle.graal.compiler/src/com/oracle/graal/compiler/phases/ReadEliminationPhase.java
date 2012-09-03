@@ -84,7 +84,6 @@ public class ReadEliminationPhase extends Phase {
         if (lastLocationAccess instanceof ValueProxyNode) {
             ValueProxyNode proxy = (ValueProxyNode) lastLocationAccess;
             ValueNode value = getValue(n, proxy.value(), nodeMap);
-            assert proxy.type() == PhiType.Value;
             return lastLocationAccess.graph().add(new ValueProxyNode(value, proxy.proxyPoint(), PhiType.Value));
         }
         if (lastLocationAccess instanceof WriteNode) {
