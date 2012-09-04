@@ -42,10 +42,10 @@ public class ArrayCopySnippets implements SnippetsInterface{
     public static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter("baseKind") Kind baseKind) {
         int header = arrayBaseOffset(baseKind);
         int elementSize = arrayIndexScale(baseKind);
-        long byteLength = length * elementSize;
+        long byteLength = (long) length * elementSize;
         long nonVectorBytes = byteLength % VECTOR_SIZE;
-        long srcOffset = srcPos * elementSize;
-        long destOffset = destPos * elementSize;
+        long srcOffset = (long) srcPos * elementSize;
+        long destOffset = (long) destPos * elementSize;
         if (src == dest && srcPos < destPos) { // bad aliased case
             for (long i = byteLength - elementSize; i >= byteLength - nonVectorBytes; i -= elementSize) {
                 UnsafeStoreNode.store(dest, header, i + destOffset, UnsafeLoadNode.load(src, header, i + srcOffset, baseKind), baseKind);
@@ -131,9 +131,9 @@ public class ArrayCopySnippets implements SnippetsInterface{
         }
         Kind baseKind = Kind.Long;
         int header = arrayBaseOffset(baseKind);
-        long byteLength = length * arrayIndexScale(baseKind);
-        long srcOffset = srcPos * arrayIndexScale(baseKind);
-        long destOffset = destPos * arrayIndexScale(baseKind);
+        long byteLength = (long) length * arrayIndexScale(baseKind);
+        long srcOffset = (long) srcPos * arrayIndexScale(baseKind);
+        long destOffset = (long) destPos * arrayIndexScale(baseKind);
         if (src == dest && srcPos < destPos) { // bad aliased case
             for (long i = byteLength - VECTOR_SIZE; i >= 0; i -= VECTOR_SIZE) {
                 Long a = UnsafeLoadNode.load(src, header, i + srcOffset, VECTOR_KIND);
@@ -157,9 +157,9 @@ public class ArrayCopySnippets implements SnippetsInterface{
         }
         Kind baseKind = Kind.Double;
         int header = arrayBaseOffset(baseKind);
-        long byteLength = length * arrayIndexScale(baseKind);
-        long srcOffset = srcPos * arrayIndexScale(baseKind);
-        long destOffset = destPos * arrayIndexScale(baseKind);
+        long byteLength = (long) length * arrayIndexScale(baseKind);
+        long srcOffset = (long) srcPos * arrayIndexScale(baseKind);
+        long destOffset = (long) destPos * arrayIndexScale(baseKind);
         if (src == dest && srcPos < destPos) { // bad aliased case
             for (long i = byteLength - VECTOR_SIZE; i >= 0; i -= VECTOR_SIZE) {
                 Long a = UnsafeLoadNode.load(src, header, i + srcOffset, VECTOR_KIND);
@@ -185,12 +185,14 @@ public class ArrayCopySnippets implements SnippetsInterface{
         final int scale = arrayIndexScale(Kind.Object);
         int header = arrayBaseOffset(Kind.Object);
         if (src == dest && srcPos < destPos) { // bad aliased case
-            for (long i = (length - 1) * scale; i >= 0; i -= scale) {
+            long start = (long) (length - 1) * scale;
+            for (long i = start; i >= 0; i -= scale) {
                 Object a = UnsafeLoadNode.load(src, header, i + (long) srcPos * scale, Kind.Object);
                 DirectObjectStoreNode.storeObject(dest, header, i + (long) destPos * scale, a);
             }
         } else {
-            for (long i = 0; i < length * scale; i += scale) {
+            long end = (long) length * scale;
+            for (long i = 0; i < end; i += scale) {
                 Object a = UnsafeLoadNode.load(src, header, i + (long) srcPos * scale, Kind.Object);
                 DirectObjectStoreNode.storeObject(dest, header, i + (long) destPos * scale, a);
             }

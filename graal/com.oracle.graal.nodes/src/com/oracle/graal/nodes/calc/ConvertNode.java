@@ -114,6 +114,20 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
     }
 
     @Override
+    public boolean inferStamp() {
+        Stamp newStamp;
+        switch (opcode) {
+            case I2L: newStamp = StampTool.intToLong(value().integerStamp()); break;
+            case L2I: newStamp = StampTool.longToInt(value().integerStamp()); break;
+            case I2B: newStamp = StampTool.intToByte(value().integerStamp()); break;
+            case I2C: newStamp = StampTool.intToChar(value().integerStamp()); break;
+            case I2S: newStamp = StampTool.intToShort(value().integerStamp()); break;
+            default: return false;
+        }
+        return updateStamp(newStamp);
+    }
+
+    @Override
     public void generate(LIRGeneratorTool gen) {
         gen.setResult(this, gen.emitConvert(opcode, gen.operand(value())));
     }
