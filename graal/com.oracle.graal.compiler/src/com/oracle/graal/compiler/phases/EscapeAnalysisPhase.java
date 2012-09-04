@@ -214,7 +214,6 @@ public class EscapeAnalysisPhase extends Phase {
 
         public final Node node;
         public final ArrayList<Node> escapesThrough = new ArrayList<>();
-        public final ArrayList<Invoke> invokes = new ArrayList<>();
         public double localWeight;
 
         public EscapeRecord(Node node) {
