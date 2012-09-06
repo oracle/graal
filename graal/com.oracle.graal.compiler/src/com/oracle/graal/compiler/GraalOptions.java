@@ -117,7 +117,6 @@ public final class GraalOptions {
     // debugging settings
     public static int     MethodEndBreakpointGuards          = 0;
     public static boolean ZapStackOnMethodEntry              = ____;
-    public static boolean StressLinearScan                   = ____;
     public static boolean DeoptALot                          = ____;
     public static boolean VerifyPhases                       = true;
     public static boolean CreateDeoptInfo                    = ____;

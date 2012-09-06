@@ -26,6 +26,7 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.*;
@@ -218,7 +219,7 @@ public class GraalCompiler {
 
             @Override
             public LIR call() {
-                ComputeLinearScanOrder clso = new ComputeLinearScanOrder(blocks.length, schedule.getCFG().getLoops().length, startBlock);
+                ComputeBlockOrder clso = new ComputeBlockOrder(blocks.length, schedule.getCFG().getLoops().length, startBlock, GraalOptions.OptReorderLoops);
                 List<Block> linearScanOrder = clso.linearScanOrder();
                 List<Block> codeEmittingOrder = clso.codeEmittingOrder();
 
