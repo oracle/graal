@@ -1783,18 +1783,8 @@ public final class LinearScan {
         }
 
         if (hasDead) {
-            // iterate all instructions of the block and remove all null-values.
-            int insertPoint = 0;
-            for (int j = 0; j < numInst; j++) {
-                LIRInstruction op = instructions.get(j);
-                if (op != null) {
-                    if (insertPoint != j) {
-                        instructions.set(insertPoint, op);
-                    }
-                    insertPoint++;
-                }
-            }
-            Util.truncate(instructions, insertPoint);
+            // Remove null values from the list.
+            instructions.removeAll(Collections.singleton(null));
         }
     }
 
@@ -1861,7 +1851,7 @@ public final class LinearScan {
             public void run() {
                 printLir("After register number assignment", true);
                 EdgeMoveOptimizer.optimize(ir.linearScanOrder());
-                ControlFlowOptimizer.optimize(ir);
+                ControlFlowOptimizer.optimize(ir.codeEmittingOrder());
                 printLir("After control flow optimization", false);
             }
         });

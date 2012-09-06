@@ -51,16 +51,6 @@ public class Util {
         return false;
     }
 
-    public static <T> boolean replaceAllInList(T a, T b, List<T> list) {
-        final int max = list.size();
-        for (int i = 0; i < max; i++) {
-            if (list.get(i) == a) {
-                list.set(i, b);
-            }
-        }
-        return false;
-    }
-
     /**
      * Statically cast an object to an arbitrary Object type. Dynamically checked.
      */
@@ -201,12 +191,6 @@ public class Util {
 
     public static int roundUp(int number, int mod) {
         return ((number + mod - 1) / mod) * mod;
-    }
-
-    public static void truncate(List<?> list, int length) {
-        while (list.size() > length) {
-            list.remove(list.size() - 1);
-        }
     }
 
     public static void printSection(String name, char sectionCharacter) {
