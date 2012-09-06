@@ -22,17 +22,18 @@
  */
 package com.oracle.graal.compiler.alloc;
 
-import static com.oracle.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.criutils.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.max.criutils.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 
 /**
  * Represents an interval in the {@linkplain LinearScan linear scan register allocator}.

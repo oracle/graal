@@ -42,8 +42,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.ParametersOp;
-import com.oracle.graal.lir.StandardOp.PhiJumpOp;
-import com.oracle.graal.lir.StandardOp.PhiLabelOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.asm.TargetMethodAssembler.CallPositionListener;
 import com.oracle.graal.lir.cfg.*;
@@ -319,21 +317,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         assert block.lir == null : "LIR list already computed for this block";
         block.lir = new ArrayList<>();
 
-        if (GraalOptions.AllocSSA && block.getBeginNode() instanceof MergeNode) {
-            assert phiValues.isEmpty();
-            MergeNode merge = (MergeNode) block.getBeginNode();
-            for (PhiNode phi : merge.phis()) {
-                if (phi.type() == PhiType.Value) {
-                    Value phiValue = newVariable(phi.kind());
-                    setResult(phi, phiValue);
-                    phiValues.add(phiValue);
-                }
-            }
-            append(new PhiLabelOp(new Label(), block.align, phiValues.toArray(new Value[phiValues.size()])));
-            phiValues.clear();
-        } else {
-            append(new LabelOp(new Label(), block.align));
-        }
+        append(new LabelOp(new Label(), block.align));
 
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
             TTY.println("BEGIN Generating LIR for block B" + block.getId());
@@ -644,21 +628,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public void visitLoopEnd(LoopEndNode x) {
     }
 
-    private ArrayList<Value> phiValues = new ArrayList<>();
-
     private void moveToPhi(MergeNode merge, EndNode pred) {
-        if (GraalOptions.AllocSSA) {
-            assert phiValues.isEmpty();
-            for (PhiNode phi : merge.phis()) {
-                if (phi.type() == PhiType.Value) {
-                    phiValues.add(operand(phi.valueAt(pred)));
-                }
-            }
-            append(new PhiJumpOp(getLIRBlock(merge), phiValues.toArray(new Value[phiValues.size()])));
-            phiValues.clear();
-            return;
-        }
-
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }

@@ -230,11 +230,6 @@ public final class GraalOptions {
     public static int     MethodEntryCountersCallers        = 20;
 
     /**
-     * Flag to turn on SSA-based register allocation, which is currently under development.
-     */
-    public static boolean AllocSSA                           = false;
-
-    /**
      * Prints all the available GraalOptions.
      */
     public static boolean PrintFlags                           = false;

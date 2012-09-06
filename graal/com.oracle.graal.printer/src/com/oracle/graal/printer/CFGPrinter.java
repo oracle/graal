@@ -27,7 +27,6 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.graal.alloc.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.*;
@@ -532,34 +531,6 @@ class CFGPrinter extends CompilationPrinter {
         }
 
         out.printf(" \"%s\"", interval.spillState());
-        out.println();
-    }
-
-    public void printIntervals(String label, IntervalPrinter.Interval[] intervals) {
-        begin("intervals");
-        out.println(String.format("name \"%s\"", label));
-
-        for (IntervalPrinter.Interval interval : intervals) {
-            printInterval(interval);
-        }
-
-        end("intervals");
-    }
-
-    private void printInterval(IntervalPrinter.Interval interval) {
-        out.printf("%s %s \"%s\" %s %s ", interval.name, interval.type, interval.description, interval.variable, "no");
-        if (interval.ranges.size() == 0) {
-            // One range is required in the spec, so output a dummy range.
-            out.printf("[0, 0[ ");
-        } else {
-            for (IntervalPrinter.Range range : interval.ranges) {
-                out.printf("[%d, %d[ ", range.from, range.to);
-            }
-        }
-        for (IntervalPrinter.UsePosition usePos : interval.uses) {
-            out.printf("%d %s ", usePos.pos, usePos.kind);
-        }
-        out.printf("\"%s\"", "no");
         out.println();
     }
 }
