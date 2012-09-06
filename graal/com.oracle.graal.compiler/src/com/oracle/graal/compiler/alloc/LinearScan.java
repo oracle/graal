@@ -28,6 +28,7 @@ import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
@@ -579,7 +580,7 @@ public final class LinearScan {
     }
 
     /**
-     * Numbers all instructions in all blocks. The numbering follows the {@linkplain ComputeLinearScanOrder linear scan order}.
+     * Numbers all instructions in all blocks. The numbering follows the {@linkplain ComputeBlockOrder linear scan order}.
      */
     void numberInstructions() {
         ValueProcedure setVariableProc = new ValueProcedure() {

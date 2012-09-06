@@ -117,7 +117,6 @@ public final class GraalOptions {
     // debugging settings
     public static int     MethodEndBreakpointGuards          = 0;
     public static boolean ZapStackOnMethodEntry              = ____;
-    public static boolean StressLinearScan                   = ____;
     public static boolean DeoptALot                          = ____;
     public static boolean VerifyPhases                       = true;
     public static boolean CreateDeoptInfo                    = ____;
@@ -228,11 +227,6 @@ public final class GraalOptions {
      * Number of caller program counters to distinguish when counting methods.
      */
     public static int     MethodEntryCountersCallers        = 20;
-
-    /**
-     * Flag to turn on SSA-based register allocation, which is currently under development.
-     */
-    public static boolean AllocSSA                           = false;
 
     /**
      * Prints all the available GraalOptions.

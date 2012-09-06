@@ -26,7 +26,6 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
-import com.oracle.graal.alloc.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
@@ -172,8 +171,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);
 
-        } else if (object instanceof IntervalPrinter.Interval[]) {
-            cfgPrinter.printIntervals(message, (IntervalPrinter.Interval[]) object);
         }
 
         cfgPrinter.target = null;

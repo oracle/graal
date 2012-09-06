@@ -48,7 +48,7 @@ import com.oracle.graal.lir.cfg.*;
  * a few moves, it has a huge impact on the number of blocks that are totally
  * empty.
  */
-final class EdgeMoveOptimizer {
+public final class EdgeMoveOptimizer {
 
     /**
      * Optimizes moves on block edges.
