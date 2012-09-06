@@ -75,12 +75,7 @@ public class GraphUtil {
                     loopend.predecessor().replaceFirstSuccessor(loopend, null);
                     loopend.safeDelete();
                 }
-                for (LoopExitNode loopexit : begin.loopExits().snapshot()) {
-                    for (ValueProxyNode vpn : loopexit.proxies().snapshot()) {
-                        graph.replaceFloating(vpn, vpn.value());
-                    }
-                    graph.replaceFixedWithFixed(loopexit, graph.add(new BeginNode()));
-                }
+                begin.removeExits();
                 killCFG(begin.next());
                 begin.safeDelete();
             } else if (merge instanceof LoopBeginNode && ((LoopBeginNode) merge).loopEnds().isEmpty()) { // not a loop anymore
