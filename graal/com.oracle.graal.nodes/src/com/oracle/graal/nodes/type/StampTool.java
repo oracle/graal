@@ -165,4 +165,55 @@ public class StampTool {
         }
         return StampFactory.forKind(kind);
     }
+
+    public static Stamp intToLong(IntegerStamp intStamp) {
+        long mask;
+        if (intStamp.isPositive()) {
+            mask = intStamp.mask();
+        } else {
+            mask = 0xffffffff00000000L | intStamp.mask();
+        }
+        return StampFactory.forInteger(Kind.Long, intStamp.lowerBound(), intStamp.upperBound(), mask);
+    }
+
+    private static Stamp narrowingKindConvertion(IntegerStamp fromStamp, Kind toKind) {
+        long mask = fromStamp.mask() & IntegerStamp.defaultMask(toKind);
+        long lowerBound = saturate(fromStamp.lowerBound(), toKind);
+        long upperBound = saturate(fromStamp.upperBound(), toKind);
+        if (fromStamp.lowerBound() < toKind.minValue()) {
+            upperBound = toKind.maxValue();
+        }
+        if (fromStamp.upperBound() > toKind.maxValue()) {
+            lowerBound = toKind.minValue();
+        }
+        return StampFactory.forInteger(toKind.stackKind(), lowerBound, upperBound, mask);
+    }
+
+    public static Stamp intToByte(IntegerStamp intStamp) {
+        return narrowingKindConvertion(intStamp, Kind.Byte);
+    }
+
+    public static Stamp intToShort(IntegerStamp intStamp) {
+        return narrowingKindConvertion(intStamp, Kind.Short);
+    }
+
+    public static Stamp intToChar(IntegerStamp intStamp) {
+        return narrowingKindConvertion(intStamp, Kind.Char);
+    }
+
+    public static Stamp longToInt(IntegerStamp longStamp) {
+        return narrowingKindConvertion(longStamp, Kind.Int);
+    }
+
+    public static long saturate(long v, Kind kind) {
+        long max = kind.maxValue();
+        if (v > max) {
+            return max;
+        }
+        long min = kind.minValue();
+        if (v < min) {
+            return min;
+        }
+        return v;
+    }
 }

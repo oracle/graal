@@ -445,7 +445,6 @@ public enum Kind {
             case Byte:
                 return 8;
             case Char:
-                return 16;
             case Short:
                 return 16;
             case Jsr:

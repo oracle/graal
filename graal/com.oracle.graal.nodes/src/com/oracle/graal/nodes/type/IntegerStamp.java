@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -184,10 +185,15 @@ public class IntegerStamp extends Stamp {
     }
 
     public static long defaultMask(Kind kind) {
-        if (kind == Kind.Int) {
-            return 0xFFFFFFFFL;
-        } else {
-            return 0xFFFFFFFFFFFFFFFFL;
+        switch (kind) {
+            case Boolean: return 0x01L;
+            case Byte: return 0xffL;
+            case Char: return 0xffffL;
+            case Short: return 0xffffL;
+            case Jsr:
+            case Int: return 0xffffffffL;
+            case Long: return 0xffffffffffffffffL;
+            default: throw GraalInternalError.shouldNotReachHere();
         }
     }
 
