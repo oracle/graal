@@ -285,10 +285,8 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
         return klassOopCache;
     }
 
-    private static final int SECONDARY_SUPER_CACHE_OFFSET = HotSpotGraalRuntime.getInstance().getConfig().secondarySuperCacheOffset;
-
     public boolean isPrimaryType() {
-        return SECONDARY_SUPER_CACHE_OFFSET != superCheckOffset;
+        return HotSpotGraalRuntime.getInstance().getConfig().secondarySuperCacheOffset != superCheckOffset;
     }
 
     public int superCheckOffset() {
