@@ -77,11 +77,6 @@ public final class HotSpotCompilationResult extends CompilerObject {
                 return s1.pcOffset - s2.pcOffset;
             }
         });
-        if (Logger.ENABLED) {
-            for (Site site : result) {
-                Logger.log(site.pcOffset + ": " + site);
-            }
-        }
         return result;
     }
 }
