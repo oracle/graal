@@ -161,4 +161,12 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     public boolean isLoopExit(BeginNode begin) {
         return begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == this;
     }
+
+    public void removeExits() {
+        StructuredGraph graph = (StructuredGraph) graph();
+        for (LoopExitNode loopexit : loopExits().snapshot()) {
+            loopexit.removeProxies();
+            graph.replaceFixedWithFixed(loopexit, graph.add(new BeginNode()));
+        }
+    }
 }

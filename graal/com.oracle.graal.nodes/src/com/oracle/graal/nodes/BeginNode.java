@@ -107,9 +107,10 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
     }
 
     public void removeProxies() {
-        StructuredGraph graph = (StructuredGraph) graph();
         for (ValueProxyNode vpn : proxies().snapshot()) {
-            graph.replaceFloating(vpn, vpn.value());
+            // can not use graph.replaceFloating because vpn.value may be null during killCFG
+            vpn.replaceAtUsages(vpn.value());
+            vpn.safeDelete();
         }
     }
 
