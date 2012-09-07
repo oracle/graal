@@ -37,7 +37,7 @@ public class ReverseBytesNode extends FloatingNode implements LIRGenLowerable, C
 
     public ReverseBytesNode(ValueNode value) {
         super(StampFactory.forKind(value.kind()));
-        assert kind().isInt() || kind().isLong();
+        assert kind().isStackInt() || kind().isLong();
         this.value = value;
     }
 
@@ -45,7 +45,7 @@ public class ReverseBytesNode extends FloatingNode implements LIRGenLowerable, C
     public ValueNode canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
             long v = value.asConstant().asLong();
-            if (kind().isInt()) {
+            if (kind().isStackInt()) {
                 return ConstantNode.forInt(Integer.reverseBytes((int) v), graph());
             } else if (kind().isLong()) {
                 return ConstantNode.forLong(Long.reverseBytes(v), graph());

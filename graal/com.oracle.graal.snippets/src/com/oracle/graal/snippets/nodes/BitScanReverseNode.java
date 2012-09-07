@@ -39,7 +39,7 @@ public class BitScanReverseNode extends FloatingNode implements LIRGenLowerable,
     @Input private ValueNode value;
 
     public BitScanReverseNode(ValueNode value) {
-        super(StampFactory.forInteger(Kind.Int, 0, value.kind().bits()));
+        super(StampFactory.forInteger(Kind.Int, 0, value.kind().getBitCount()));
         this.value = value;
     }
 
@@ -47,7 +47,7 @@ public class BitScanReverseNode extends FloatingNode implements LIRGenLowerable,
     public ValueNode canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
             long v = value.asConstant().asLong();
-            if (value.kind().isInt()) {
+            if (value.kind().isStackInt()) {
                 return ConstantNode.forInt(31 - Integer.numberOfLeadingZeros((int) v), graph());
             } else if (value.kind().isLong()) {
                 return ConstantNode.forInt(63 - Long.numberOfLeadingZeros(v), graph());
@@ -70,7 +70,7 @@ public class BitScanReverseNode extends FloatingNode implements LIRGenLowerable,
     public void generate(LIRGenerator gen) {
         Variable result = gen.newVariable(Kind.Int);
         IntrinsicOpcode opcode;
-        if (value.kind().isInt()) {
+        if (value.kind().isStackInt()) {
             opcode = IntrinsicOpcode.IBSR;
         } else if (value.kind().isLong()) {
             opcode = IntrinsicOpcode.LBSR;

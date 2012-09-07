@@ -179,7 +179,7 @@ public final class Constant extends Value {
      * @return the int value of this constant
      */
     public int asInt() {
-        if (kind.stackKind().isInt() || kind.isJsr()) {
+        if (kind.stackKind().isStackInt() || kind.isJsr()) {
             return (int) primitive;
         }
         throw new Error("Constant is not int: " + this);

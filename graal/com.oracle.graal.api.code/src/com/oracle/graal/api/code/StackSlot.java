@@ -162,7 +162,7 @@ public final class StackSlot extends Value {
     private static final StackSlot[][] OUT_CACHE = makeCache(PARAM_CACHE_PER_KIND_SIZE, 1, false);
 
     private static StackSlot[][] makeCache(int cachePerKindSize, int sign, boolean addFrameSize) {
-        StackSlot[][] cache = new StackSlot[Kind.VALUES.length][];
+        StackSlot[][] cache = new StackSlot[Kind.values().length][];
         for (Kind kind : new Kind[] {Illegal, Int, Long, Float, Double, Object, Jsr}) {
             StackSlot[] slots = new StackSlot[cachePerKindSize];
             for (int i = 0; i < cachePerKindSize; i++) {

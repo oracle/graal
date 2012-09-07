@@ -41,6 +41,11 @@ public interface MetaAccessProvider {
     ResolvedJavaType getTypeOf(Constant constant);
 
 
+    /**
+     * Returns the resolved Java type representing a given Java class.
+     * @param clazz the Java class object
+     * @return the resolved Java type object
+     */
     ResolvedJavaType getResolvedJavaType(Class<?> clazz);
 
     /**

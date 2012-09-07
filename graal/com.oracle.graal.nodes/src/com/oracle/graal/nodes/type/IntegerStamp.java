@@ -38,14 +38,14 @@ public class IntegerStamp extends Stamp {
     private final long mask;
 
     public IntegerStamp(Kind kind) {
-        this(kind, kind.minValue(), kind.maxValue(), defaultMask(kind));
+        this(kind, kind.getMinValue(), kind.getMaxValue(), defaultMask(kind));
     }
 
     public IntegerStamp(Kind kind, long lowerBound, long upperBound, long mask) {
         super(kind);
         assert lowerBound <= upperBound;
-        assert lowerBound >= kind.minValue();
-        assert upperBound <= kind.maxValue();
+        assert lowerBound >= kind.getMinValue();
+        assert upperBound <= kind.getMaxValue();
         assert (mask & defaultMask(kind)) == mask;
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
@@ -75,7 +75,7 @@ public class IntegerStamp extends Stamp {
     }
 
     public boolean isUnrestricted() {
-        return lowerBound == kind().minValue() && upperBound == kind().maxValue() && mask == defaultMask(kind());
+        return lowerBound == kind().getMinValue() && upperBound == kind().getMaxValue() && mask == defaultMask(kind());
     }
 
     public boolean contains(long value) {
@@ -112,7 +112,7 @@ public class IntegerStamp extends Stamp {
         str.append(kind().typeChar);
         if (lowerBound == upperBound) {
             str.append(" [").append(lowerBound).append(']');
-        } else if (lowerBound != kind().minValue() || upperBound != kind().maxValue()) {
+        } else if (lowerBound != kind().getMinValue() || upperBound != kind().getMaxValue()) {
             str.append(" [").append(lowerBound).append(" - ").append(upperBound).append(']');
         }
         if (mask != defaultMask(kind())) {

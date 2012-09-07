@@ -212,12 +212,12 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Fold
     static int arrayBaseOffset(Kind elementKind) {
-        return elementKind.arrayBaseOffset();
+        return elementKind.getArrayBaseOffset();
     }
 
     @Fold
     static int arrayIndexScale(Kind elementKind) {
-        return elementKind.arrayIndexScale();
+        return elementKind.getArrayIndexScale();
     }
 
     static {

@@ -116,7 +116,7 @@ public class MetaUtil {
         return (type == null) ? null : internalNameToJava(type.name(), true);
     }
 
-    public static String internalNameToJava(String name, boolean qualified) {
+    private static String internalNameToJava(String name, boolean qualified) {
         switch (name.charAt(0)) {
             case 'L': {
                 String result = name.substring(1, name.length() - 1).replace('/', '.');

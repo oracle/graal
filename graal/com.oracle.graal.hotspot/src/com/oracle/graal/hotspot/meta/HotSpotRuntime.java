@@ -445,7 +445,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
     }
 
     private static IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {
-        return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, elementKind.arrayBaseOffset(), index, graph, true);
+        return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, elementKind.getArrayBaseOffset(), index, graph, true);
     }
 
     private SafeReadNode safeReadArrayLength(ValueNode array, long leafGraphId) {

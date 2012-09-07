@@ -37,15 +37,15 @@ public final class MaterializeNode extends ConditionalNode {
             if (x.kind().isObject()) {
                 comparison = new ObjectEqualsNode(x, y);
             } else {
-                assert x.kind().stackKind().isInt() || x.kind().isLong();
+                assert x.kind().stackKind().isStackInt() || x.kind().isLong();
                 comparison = new IntegerEqualsNode(x, y);
             }
         } else if (condition == Condition.LT) {
-            assert x.kind().stackKind().isInt() || x.kind().isLong();
+            assert x.kind().stackKind().isStackInt() || x.kind().isLong();
             comparison = new IntegerLessThanNode(x, y);
         } else {
             assert condition == Condition.BT;
-            assert x.kind().stackKind().isInt() || x.kind().isLong();
+            assert x.kind().stackKind().isStackInt() || x.kind().isLong();
             comparison = new IntegerBelowThanNode(x, y);
         }
 

@@ -265,7 +265,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             ResolvedJavaType arrayType = elementType.arrayOf();
             Kind elementKind = elementType.kind();
             final int alignment = target.wordSize;
-            final int headerSize = elementKind.arrayBaseOffset();
+            final int headerSize = elementKind.getArrayBaseOffset();
             final Integer length = lengthNode.isConstant() ? Integer.valueOf(lengthNode.asConstant().asInt()) : null;
             int log2ElementSize = CodeUtil.log2(target.sizeInBytes(elementKind));
             if (!useTLAB) {
@@ -333,7 +333,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             assert elementType != null;
             HotSpotKlassOop hub = type.klassOop();
             Kind elementKind = elementType.kind();
-            final int headerSize = elementKind.arrayBaseOffset();
+            final int headerSize = elementKind.getArrayBaseOffset();
             Key key = new Key(elementKind.isObject() ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize);
             ValueNode memory = initializeNode.memory();
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("initialMarkWord", type.initialMarkWord()).add("size", initializeNode.size()).add("length", initializeNode.length());
