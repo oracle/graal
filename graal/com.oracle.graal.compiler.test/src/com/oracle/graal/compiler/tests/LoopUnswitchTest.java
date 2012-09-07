@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.tests;
 import org.junit.*;
 
 import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
