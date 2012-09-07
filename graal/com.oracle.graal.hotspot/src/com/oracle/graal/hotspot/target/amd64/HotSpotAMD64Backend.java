@@ -158,6 +158,8 @@ public class HotSpotAMD64Backend extends Backend {
 
             LIRFrameState callState = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
             Value result = resultOperandFor(x.node().kind());
+            // HotSpot needs the methodOop to be passed around in rbx for direct (inline cache patching) or indirect calls (C2I : the interpreter needs the methodOop)
+            // for the direct call the methodOop is patched in by the code installer
             if (!inlineVirtualCall) {
                 assert methodOopNode == null;
                 append(new AMD64DirectCallOp(callTarget.targetMethod(), result, parameters, callState, invokeKind, lir));
