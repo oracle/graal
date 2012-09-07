@@ -24,7 +24,7 @@ package com.oracle.graal.snippets;
 
 import org.junit.*;
 
-import com.oracle.graal.compiler.tests.*;
+import com.oracle.graal.compiler.test.*;
 
 /**
  * Tests the implementation of {@code [A]NEWARRAY}.

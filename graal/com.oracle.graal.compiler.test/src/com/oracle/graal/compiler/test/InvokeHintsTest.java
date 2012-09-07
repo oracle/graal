@@ -20,75 +20,62 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.tests;
+package com.oracle.graal.compiler.test;
+
+import java.util.*;
 
 import org.junit.*;
 
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 
-public class StraighteningTest extends GraalCompilerTest {
+public class InvokeHintsTest extends GraalCompilerTest {
 
-    private static final String REFERENCE_SNIPPET = "ref";
+    private static final String REFERENCE_SNIPPET = "referenceSnippet";
 
-    public static boolean ref(int a, int b) {
-        return a == b;
+    public static int const1() {
+        return 1;
     }
 
-    public static boolean test1Snippet(int a, int b) {
-        int c = a;
-        if (c == b) {
-            c = 0x55;
-        }
-        if (c != 0x55) {
-            return false;
-        }
-        return true;
+    public static int const7() {
+        return 7;
     }
 
-    public static boolean test3Snippet(int a, int b) {
-        int val = (int) System.currentTimeMillis();
-        int c = val + 1;
-        if (a == b) {
-            c = val;
-        }
-        if (c != val) {
-            return false;
-        }
-        return true;
+    @SuppressWarnings("all")
+    public static int referenceSnippet() {
+        return 7;
     }
 
-    public static boolean test2Snippet(int a, int b) {
-        int c;
-        if (a == b) {
-            c = 1;
-        } else {
-            c = 0;
-        }
-        return c == 1;
-    }
-
-    @Test(expected = AssertionError.class)
+    @Test
     public void test1() {
         test("test1Snippet");
     }
 
-    @Test(expected = AssertionError.class)
+    @SuppressWarnings("all")
+    public static int test1Snippet() {
+        return const7();
+    }
+
+    @Test
     public void test2() {
         test("test2Snippet");
     }
 
-    @Test(expected = AssertionError.class)
-    public void test3() {
-        test("test3Snippet");
+    @SuppressWarnings("all")
+    public static int test2Snippet() {
+        return const1() + const1() + const1() + const1() + const1() + const1() + const1();
     }
 
-    private void test(final String snippet) {
-        // No debug scope to reduce console noise for @Test(expected = ...) tests
+    private void test(String snippet) {
         StructuredGraph graph = parse(snippet);
-        Debug.dump(graph, "Graph");
+        Collection<Invoke> hints = new ArrayList<>();
+        for (Invoke invoke : graph.getInvokes()) {
+            hints.add(invoke);
+        }
+        new InliningPhase(null, runtime(), hints, null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
+        new DeadCodeEliminationPhase().apply(graph);
         StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);
     }

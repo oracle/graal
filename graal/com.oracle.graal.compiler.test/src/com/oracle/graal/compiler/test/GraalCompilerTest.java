@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.tests;
+package com.oracle.graal.compiler.test;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -66,8 +66,8 @@ public abstract class GraalCompilerTest {
 
     public GraalCompilerTest() {
         Debug.enable();
-        this.runtime = Graal.getRuntime().getCapability(GraalCodeCacheProvider.class);
-        this.graalCompiler = Graal.getRuntime().getCapability(GraalCompiler.class);
+        this.runtime = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
+        this.graalCompiler = Graal.getRequiredCapability(GraalCompiler.class);
     }
 
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph) {

@@ -20,85 +20,130 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.tests;
+package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
-import java.util.*;
-
 import org.junit.*;
 
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant 0.
  * Then canonicalization is applied and it is verified that the resulting graph is equal to the
  * graph of the method that just has a "return 1" statement in it.
  */
-public class MonitorTest extends GraalCompilerTest {
+public class IfCanonicalizerTest extends GraalCompilerTest {
 
     private static final String REFERENCE_SNIPPET = "referenceSnippet";
 
     @SuppressWarnings("all")
-    public static synchronized int referenceSnippet(int a) {
+    public static int referenceSnippet(int a) {
         return 1;
     }
 
-    public static int const1() {
-        return 1;
-    }
-
-    @Test(expected = AssertionError.class)
+    @Test
     public void test1() {
         test("test1Snippet");
     }
 
     @SuppressWarnings("all")
-    public static synchronized int test1Snippet(int a) {
-        return const1();
+    public static int test1Snippet(int a) {
+        if (a == 0) {
+            return 1;
+        } else {
+            return 2;
+        }
     }
 
     @Test
     public void test2() {
-        StructuredGraph graph = parseAndProcess("test2Snippet");
-        NodeIterable<MonitorExitNode> monitors = graph.getNodes(MonitorExitNode.class);
-        Assert.assertEquals(1, monitors.count());
-        Assert.assertEquals(monitors.first().stateAfter().bci, 3);
+        test("test2Snippet");
     }
 
     @SuppressWarnings("all")
     public static int test2Snippet(int a) {
-        return const2();
+        if (a == 0) {
+            if (a == 0) {
+                if (a == 0) {
+                    return 1;
+                }
+            }
+        } else {
+            return 2;
+        }
+        return 3;
     }
 
-    public static synchronized int const2() {
+    @Test
+    public void test3() {
+        test("test3Snippet");
+    }
+
+    @SuppressWarnings("all")
+    public static int test3Snippet(int a) {
+        if (a == 0) {
+            if (a != 1) {
+                if (a == 1) {
+                    return 3;
+                } else {
+                    if (a >= 0) {
+                        if (a <= 0) {
+                            if (a > -1) {
+                                if (a < 1) {
+                                    return 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            return 2;
+        }
+        return 3;
+    }
+
+    @Test
+    public void test4() {
+        test("test4Snippet");
+    }
+
+    public static int test4Snippet(int a) {
+        if (a == 0) {
+            return 1;
+        }
         return 1;
     }
 
-    private StructuredGraph parseAndProcess(String snippet) {
+    @Test
+    public void test5() {
+        test("test5Snippet");
+    }
+
+    public static int test5Snippet(int a) {
+        int val = 2;
+        if (a == 0) {
+            val = 1;
+        }
+        if (a * (3 + val) == 0) {
+            return 1;
+        }
+        return 1;
+    }
+
+    private void test(String snippet) {
         StructuredGraph graph = parse(snippet);
-        LocalNode local = graph.getNodes(LocalNode.class).first();
+        LocalNode local = graph.getNodes(LocalNode.class).iterator().next();
         ConstantNode constant = ConstantNode.forInt(0, graph);
         for (Node n : local.usages().filter(isNotA(FrameState.class)).snapshot()) {
             n.replaceFirstInput(local, constant);
         }
-        Collection<Invoke> hints = new ArrayList<>();
-        for (Invoke invoke : graph.getInvokes()) {
-            hints.add(invoke);
-        }
-        new InliningPhase(null, runtime(), hints, null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+        Debug.dump(graph, "Graph");
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
-        new DeadCodeEliminationPhase().apply(graph);
-        return graph;
-    }
-
-    private void test(String snippet) {
-        StructuredGraph graph = parseAndProcess(snippet);
         StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);
     }
