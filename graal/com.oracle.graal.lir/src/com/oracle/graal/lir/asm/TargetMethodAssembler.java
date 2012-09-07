@@ -197,7 +197,7 @@ public class TargetMethodAssembler {
      * including long constants that fit into the 32-bit range.
      */
     public int asIntConst(Value value) {
-        assert (value.kind.stackKind() == Kind.Int || value.kind == Kind.Jsr || value.kind == Kind.Long) && isConstant(value);
+        assert (value.getKind().stackKind() == Kind.Int || value.getKind() == Kind.Jsr || value.getKind() == Kind.Long) && isConstant(value);
         long c = ((Constant) value).asLong();
         if (!(NumUtil.isInt(c))) {
             throw GraalInternalError.shouldNotReachHere();
@@ -213,7 +213,7 @@ public class TargetMethodAssembler {
     }
 
     public Address asFloatConstRef(Value value, int alignment) {
-        assert value.kind == Kind.Float && isConstant(value);
+        assert value.getKind() == Kind.Float && isConstant(value);
         return recordDataReferenceInCode((Constant) value, alignment);
     }
 
@@ -225,7 +225,7 @@ public class TargetMethodAssembler {
     }
 
     public Address asDoubleConstRef(Value value, int alignment) {
-        assert value.kind == Kind.Double && isConstant(value);
+        assert value.getKind() == Kind.Double && isConstant(value);
         return recordDataReferenceInCode((Constant) value, alignment);
     }
 
@@ -233,39 +233,39 @@ public class TargetMethodAssembler {
      * Returns the address of a long constant that is embedded as a data references into the code.
      */
     public Address asLongConstRef(Value value) {
-        assert value.kind == Kind.Long && isConstant(value);
+        assert value.getKind() == Kind.Long && isConstant(value);
         return recordDataReferenceInCode((Constant) value, 8);
     }
 
     public Address asIntAddr(Value value) {
-        assert value.kind == Kind.Int;
+        assert value.getKind() == Kind.Int;
         return asAddress(value);
     }
 
     public Address asLongAddr(Value value) {
-        assert value.kind == Kind.Long;
+        assert value.getKind() == Kind.Long;
         return asAddress(value);
     }
 
     public Address asObjectAddr(Value value) {
-        assert value.kind == Kind.Object;
+        assert value.getKind() == Kind.Object;
         return asAddress(value);
     }
 
     public Address asFloatAddr(Value value) {
-        assert value.kind == Kind.Float;
+        assert value.getKind() == Kind.Float;
         return asAddress(value);
     }
 
     public Address asDoubleAddr(Value value) {
-        assert value.kind == Kind.Double;
+        assert value.getKind() == Kind.Double;
         return asAddress(value);
     }
 
     public Address asAddress(Value value) {
         if (isStackSlot(value)) {
             StackSlot slot = (StackSlot) value;
-            return new Address(slot.kind, frameMap.registerConfig.getFrameRegister().asValue(), frameMap.offsetForStackSlot(slot));
+            return new Address(slot.getKind(), frameMap.registerConfig.getFrameRegister().asValue(), frameMap.offsetForStackSlot(slot));
         }
         return (Address) value;
     }

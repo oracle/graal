@@ -28,9 +28,9 @@ package com.oracle.graal.api.meta;
  */
 public class UnresolvedField implements JavaField {
 
-    public final String name;
-    public final JavaType holder;
-    public final JavaType type;
+    private final String name;
+    private final JavaType holder;
+    private final JavaType type;
 
     public UnresolvedField(JavaType holder, String name, JavaType type) {
         this.name = name;
@@ -52,16 +52,6 @@ public class UnresolvedField implements JavaField {
 
     public JavaType holder() {
         return holder;
-    }
-
-    @Override
-    public int hashCode() {
-        return System.identityHashCode(this);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        return o == this;
     }
 
     /**

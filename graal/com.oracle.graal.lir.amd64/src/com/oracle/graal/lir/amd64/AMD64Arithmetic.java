@@ -190,7 +190,7 @@ public enum AMD64Arithmetic {
             assert isConstant(y) || asRegister(y) == AMD64.rcx;
             assert differentRegisters(result, y) || sameRegister(x, y);
             verifyKind(opcode, result, x, x);
-            assert y.kind.stackKind() == Kind.Int;
+            assert y.getKind().stackKind() == Kind.Int;
         }
     }
 
@@ -207,7 +207,7 @@ public enum AMD64Arithmetic {
             this.result = result;
             this.x = x;
             this.y = y;
-            this.temp = asRegister(result) == AMD64.rax ? AMD64.rdx.asValue(result.kind) : AMD64.rax.asValue(result.kind);
+            this.temp = asRegister(result) == AMD64.rax ? AMD64.rdx.asValue(result.getKind()) : AMD64.rax.asValue(result.getKind());
             this.state = state;
         }
 
@@ -429,7 +429,7 @@ public enum AMD64Arithmetic {
     private static void emitConvertFixup(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value x) {
         ConvertSlowPath slowPath = new ConvertSlowPath(result, x);
         tasm.stubs.add(slowPath);
-        switch (result.kind) {
+        switch (result.getKind()) {
             case Int:  masm.cmpl(asIntReg(result),  Integer.MIN_VALUE); break;
             case Long: masm.cmpq(asLongReg(result), tasm.asLongConstRef(Constant.forLong(java.lang.Long.MIN_VALUE))); break;
             default:   throw GraalInternalError.shouldNotReachHere();
@@ -452,7 +452,7 @@ public enum AMD64Arithmetic {
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             masm.bind(start);
-            switch (x.kind) {
+            switch (x.getKind()) {
                 case Float:  masm.ucomiss(asFloatReg(x),  tasm.asFloatConstRef(Constant.FLOAT_0)); break;
                 case Double: masm.ucomisd(asDoubleReg(x), tasm.asDoubleConstRef(Constant.DOUBLE_0)); break;
                 default:     throw GraalInternalError.shouldNotReachHere();
@@ -463,7 +463,7 @@ public enum AMD64Arithmetic {
 
             // input is > 0 -> return maxInt
             // result register already contains 0x80000000, so subtracting 1 gives 0x7fffffff
-            switch (result.kind) {
+            switch (result.getKind()) {
                 case Int:  masm.decrementl(asIntReg(result),  1); break;
                 case Long: masm.decrementq(asLongReg(result), 1); break;
                 default:   throw GraalInternalError.shouldNotReachHere();
@@ -484,9 +484,9 @@ public enum AMD64Arithmetic {
 
 
     private static void verifyKind(AMD64Arithmetic opcode, Value result, Value x, Value y) {
-        assert (opcode.name().startsWith("I") && result.kind == Kind.Int && x.kind.stackKind() == Kind.Int && y.kind.stackKind() == Kind.Int)
-            || (opcode.name().startsWith("L") && result.kind == Kind.Long && x.kind == Kind.Long && y.kind == Kind.Long)
-            || (opcode.name().startsWith("F") && result.kind == Kind.Float && x.kind == Kind.Float && y.kind == Kind.Float)
-            || (opcode.name().startsWith("D") && result.kind == Kind.Double && x.kind == Kind.Double && y.kind == Kind.Double);
+        assert (opcode.name().startsWith("I") && result.getKind() == Kind.Int && x.getKind().stackKind() == Kind.Int && y.getKind().stackKind() == Kind.Int)
+            || (opcode.name().startsWith("L") && result.getKind() == Kind.Long && x.getKind() == Kind.Long && y.getKind() == Kind.Long)
+            || (opcode.name().startsWith("F") && result.getKind() == Kind.Float && x.getKind() == Kind.Float && y.getKind() == Kind.Float)
+            || (opcode.name().startsWith("D") && result.getKind() == Kind.Double && x.getKind() == Kind.Double && y.getKind() == Kind.Double);
     }
 }

@@ -291,6 +291,10 @@ public class CompilationResult implements Serializable {
         }
     }
 
+    /**
+     * Represents a mark in the machine code that can be used by the runtime for its own purposes. A mark
+     * can reference other marks.
+     */
     public static final class Mark extends Site {
         private static final long serialVersionUID = 3612943150662354844L;
         public final Object id;

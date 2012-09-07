@@ -57,7 +57,7 @@ public final class Variable extends Value {
 
     @Override
     public int hashCode() {
-        return (index << 4) | kind.ordinal();
+        return (index << 4) | getKind().ordinal();
     }
 
     @Override

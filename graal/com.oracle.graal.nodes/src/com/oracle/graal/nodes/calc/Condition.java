@@ -248,7 +248,7 @@ public enum Condition {
      * {@link Boolean#FALSE} if the comparison is known to be false
      */
     public boolean foldCondition(Constant lt, Constant rt, CodeCacheProvider runtime) {
-        assert !lt.kind.isFloatOrDouble() && !rt.kind.isFloatOrDouble();
+        assert !lt.getKind().isFloatOrDouble() && !rt.getKind().isFloatOrDouble();
         return foldCondition(lt, rt, runtime, false);
     }
 
@@ -262,7 +262,7 @@ public enum Condition {
      * @return true if the comparison is known to be true, false if the comparison is known to be false
      */
     public boolean foldCondition(Constant lt, Constant rt, MetaAccessProvider runtime, boolean unorderedIsTrue) {
-        switch (lt.kind) {
+        switch (lt.getKind()) {
             case Boolean:
             case Byte:
             case Char:
@@ -341,7 +341,7 @@ public enum Condition {
                     default: throw new GraalInternalError("expected condition: %s", this);
                 }
             }
-            default: throw new GraalInternalError("expected value kind %s while folding condition: %s", lt.kind, this);
+            default: throw new GraalInternalError("expected value kind %s while folding condition: %s", lt.getKind(), this);
         }
     }
 

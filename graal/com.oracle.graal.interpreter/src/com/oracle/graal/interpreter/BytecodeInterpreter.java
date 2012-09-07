@@ -1216,7 +1216,7 @@ public final class BytecodeInterpreter implements Interpreter {
 
         if (constant instanceof Constant) {
             Constant c = ((Constant) constant);
-            switch (c.kind) {
+            switch (c.getKind()) {
                 case Int:
                     frame.pushInt(c.asInt());
                     break;

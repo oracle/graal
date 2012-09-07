@@ -166,7 +166,7 @@ public class ReplacingStreams {
             // is the object a constant of object type?
             if (obj.getClass() == Constant.class) {
                 Constant constant = (Constant) obj;
-                if (constant.kind != Kind.Object) {
+                if (constant.getKind() != Kind.Object) {
                     return obj;
                 }
                 Object contents = constant.asObject();

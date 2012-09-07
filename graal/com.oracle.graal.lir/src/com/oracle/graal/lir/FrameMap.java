@@ -324,7 +324,7 @@ public final class FrameMap {
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
     public void setReference(Value location, BitSet registerRefMap, BitSet frameRefMap) {
-        if (location.kind == Kind.Object) {
+        if (location.getKind() == Kind.Object) {
             if (isRegister(location)) {
                 registerRefMap.set(asRegister(location).number);
             } else if (isStackSlot(location)) {
@@ -346,7 +346,7 @@ public final class FrameMap {
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
     public void clearReference(Value location, BitSet registerRefMap, BitSet frameRefMap) {
-        if (location.kind == Kind.Object) {
+        if (location.getKind() == Kind.Object) {
             if (location instanceof RegisterValue) {
                 registerRefMap.clear(asRegister(location).number);
             } else if (isStackSlot(location)) {

@@ -151,13 +151,13 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            if (key.kind == Kind.Int) {
+            if (key.getKind() == Kind.Int) {
                 Register intKey = asIntReg(key);
                 for (int i = 0; i < keyConstants.length; i++) {
                     masm.cmpl(intKey, tasm.asIntConst(keyConstants[i]));
                     masm.jcc(ConditionFlag.equal, keyTargets[i].label());
                 }
-            } else if (key.kind == Kind.Object) {
+            } else if (key.getKind() == Kind.Object) {
                 Register intKey = asObjectReg(key);
                 Register temp = asObjectReg(scratch);
                 for (int i = 0; i < keyConstants.length; i++) {
@@ -235,7 +235,7 @@ public class AMD64ControlFlow {
             super.verify();
             assert lowKeys.length == keyTargets.length;
             assert highKeys.length == keyTargets.length;
-            assert key.kind == Kind.Int;
+            assert key.getKind() == Kind.Int;
         }
 
         @Override
@@ -381,13 +381,13 @@ public class AMD64ControlFlow {
     private static void cmove(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, ConditionFlag cond, Value other) {
         if (isRegister(other)) {
             assert asRegister(other) != asRegister(result) : "other already overwritten by previous move";
-            switch (other.kind) {
+            switch (other.getKind()) {
                 case Int:  masm.cmovl(cond, asRegister(result), asRegister(other)); break;
                 case Long: masm.cmovq(cond, asRegister(result), asRegister(other)); break;
                 default:   throw GraalInternalError.shouldNotReachHere();
             }
         } else {
-            switch (other.kind) {
+            switch (other.getKind()) {
                 case Int:  masm.cmovl(cond, asRegister(result), tasm.asAddress(other)); break;
                 case Long: masm.cmovq(cond, asRegister(result), tasm.asAddress(other)); break;
                 default:   throw GraalInternalError.shouldNotReachHere();

@@ -24,9 +24,19 @@ package com.oracle.graal.api.meta;
 
 import java.lang.reflect.*;
 
-
+/**
+ * Interface implemented by the runtime to allow access to its meta data.
+ *
+ */
 public interface MetaAccessProvider {
 
+    /**
+     * Returns the resolved Java type representing a given Java class.
+     *
+     * @param clazz the Java class object
+     * @return the resolved Java type object
+     */
+    ResolvedJavaType getResolvedJavaType(Class< ? > clazz);
 
     /**
      * Returns the JavaType object representing the base type for the given kind.
@@ -40,16 +50,9 @@ public interface MetaAccessProvider {
      */
     ResolvedJavaType getTypeOf(Constant constant);
 
-
     /**
-     * Returns the resolved Java type representing a given Java class.
-     * @param clazz the Java class object
-     * @return the resolved Java type object
-     */
-    ResolvedJavaType getResolvedJavaType(Class<?> clazz);
-
-    /**
-     * Used by the canonicalizer to compare objects, since a given runtime might not want to expose the real objects to the compiler.
+     * Used by the canonicalizer to compare objects, since a given runtime might not want to expose the real objects to
+     * the compiler.
      *
      * @return true if the two parameters represent the same runtime object, false otherwise
      */

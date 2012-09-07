@@ -95,7 +95,7 @@ public final class VirtualObject extends Value {
 
     @Override
     public int hashCode() {
-        return kind.ordinal() + type.hashCode();
+        return getKind().ordinal() + type.hashCode();
     }
 
     @Override

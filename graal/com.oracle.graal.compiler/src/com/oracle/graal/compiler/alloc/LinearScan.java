@@ -1021,7 +1021,7 @@ public final class LinearScan {
     static RegisterPriority registerPriorityOfOutputOperand(LIRInstruction op) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
-            if (isStackSlot(move.getInput()) && move.getInput().kind != Kind.Object) {
+            if (isStackSlot(move.getInput()) && move.getInput().getKind() != Kind.Object) {
                 // method argument (condition must be equal to handleMethodArguments)
                 return RegisterPriority.None;
             }
@@ -1051,7 +1051,7 @@ public final class LinearScan {
     void handleMethodArguments(LIRInstruction op) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
-            if (isStackSlot(move.getInput()) && move.getInput().kind != Kind.Object) {
+            if (isStackSlot(move.getInput()) && move.getInput().getKind() != Kind.Object) {
                 StackSlot slot = (StackSlot) move.getInput();
                 if (GraalOptions.DetailedAsserts) {
                     assert op.id() > 0 : "invalid id";
@@ -1154,7 +1154,7 @@ public final class LinearScan {
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
-                            addDef(operand, opId, registerPriorityOfOutputOperand(op), operand.kind.stackKind());
+                            addDef(operand, opId, registerPriorityOfOutputOperand(op), operand.getKind().stackKind());
                             addRegisterHint(op, operand, mode, flags);
                         }
                         return operand;
@@ -1164,7 +1164,7 @@ public final class LinearScan {
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
-                            addTemp(operand, opId, RegisterPriority.MustHaveRegister, operand.kind.stackKind());
+                            addTemp(operand, opId, RegisterPriority.MustHaveRegister, operand.getKind().stackKind());
                             addRegisterHint(op, operand, mode, flags);
                         }
                         return operand;
@@ -1175,7 +1175,7 @@ public final class LinearScan {
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
-                            addUse(operand, blockFrom, opId + 1, p, operand.kind.stackKind());
+                            addUse(operand, blockFrom, opId + 1, p, operand.getKind().stackKind());
                             addRegisterHint(op, operand, mode, flags);
                         }
                         return operand;
@@ -1186,7 +1186,7 @@ public final class LinearScan {
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
-                            addUse(operand, blockFrom, opId, p, operand.kind.stackKind());
+                            addUse(operand, blockFrom, opId, p, operand.getKind().stackKind());
                             addRegisterHint(op, operand, mode, flags);
                         }
                         return operand;
@@ -1200,7 +1200,7 @@ public final class LinearScan {
                 op.forEachState(new ValueProcedure() {
                     @Override
                     public Value doValue(Value operand) {
-                        addUse(operand, blockFrom, opId + 1, RegisterPriority.None, operand.kind.stackKind());
+                        addUse(operand, blockFrom, opId + 1, RegisterPriority.None, operand.getKind().stackKind());
                         return operand;
                     }
                 });

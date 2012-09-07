@@ -71,7 +71,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
                 ArithmeticNode arithmeticNode = (ArithmeticNode) node;
                 if (arithmeticNode.y().isConstant()) {
                     Constant constant = arithmeticNode.y().asConstant();
-                    assert constant.kind == arithmeticNode.kind() : constant.kind + " != " + arithmeticNode.kind();
+                    assert constant.getKind() == arithmeticNode.kind() : constant.getKind() + " != " + arithmeticNode.kind();
                     if (constant.asLong() != 0) {
                         continue;
                     }

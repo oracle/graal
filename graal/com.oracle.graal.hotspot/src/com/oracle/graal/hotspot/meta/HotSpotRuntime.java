@@ -554,7 +554,6 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
         return graalRuntime.getCompilerToVM().installMethod(new HotSpotCompilationResult((HotSpotResolvedJavaMethod) method, compResult), false, hsInfo);
     }
 
-    @Override
     public RegisterConfig getGlobalStubRegisterConfig() {
         return globalStubRegConfig;
     }

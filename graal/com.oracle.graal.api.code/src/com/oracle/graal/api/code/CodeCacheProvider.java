@@ -31,6 +31,17 @@ s */
 public interface CodeCacheProvider extends MetaAccessProvider {
 
     /**
+     * Adds the given compilation result as an implementation of the given method without making it the default implementation.
+     *
+     * @param method a method to which the executable code is begin added
+     * @param compResult the compilation result to be added
+     * @param info the object into which details of the installed code will be written.
+     *        Ignored if null, otherwise the info is written to index 0 of this array.
+     * @return a reference to the compiled and ready-to-run code
+     */
+    InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, CodeInfo[] info);
+
+    /**
      * Get the size in bytes for locking information on the stack.
      */
     int sizeOfLockData();
@@ -49,8 +60,6 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      * @param method the top level method of a compilation
      */
     RegisterConfig getRegisterConfig(JavaMethod method);
-
-    RegisterConfig getGlobalStubRegisterConfig();
 
     /**
      * Custom area on the stack of each compiled method that the VM can use for its own purposes.
@@ -75,17 +84,6 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      * when not known or not applicable. Intended for determining the required size of address/offset fields.
      */
     long getMaxCallTargetOffset(RuntimeCall rtcall);
-
-    /**
-     * Adds the given compilation result as an implementation of the given method without making it the default implementation.
-     *
-     * @param method a method to which the executable code is begin added
-     * @param compResult the compilation result to be added
-     * @param info the object into which details of the installed code will be written.
-     *        Ignored if null, otherwise the info is written to index 0 of this array.
-     * @return a reference to the compiled and ready-to-run code
-     */
-    InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, CodeInfo[] info);
 
     /**
      * Encodes a deoptimization action and a deoptimization reason in an integer value.

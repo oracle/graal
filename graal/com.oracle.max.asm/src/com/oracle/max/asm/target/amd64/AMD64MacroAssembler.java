@@ -305,7 +305,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * if the address might be a volatile field!
      */
     public void movlong(Address dst, long src) {
-        Address high = new Address(dst.kind, dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4);
+        Address high = new Address(dst.getKind(), dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4);
         movl(dst, (int) (src & 0xFFFFFFFF));
         movl(high, (int) (src >> 32));
     }

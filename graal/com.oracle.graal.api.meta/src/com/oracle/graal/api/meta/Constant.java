@@ -102,7 +102,7 @@ public final class Constant extends Value {
      * @return {@code true} if this constant is a primitive, or an object constant that is not null
      */
     public boolean isNonNull() {
-        return !kind.isObject() || object != null;
+        return !getKind().isObject() || object != null;
     }
 
     /**
@@ -110,12 +110,12 @@ public final class Constant extends Value {
      * @return {@code true} if this constant is the null constant
      */
     public boolean isNull() {
-        return kind.isObject() && object == null;
+        return getKind().isObject() && object == null;
     }
 
     @Override
     public String toString() {
-        return kind.javaName + "[" + kind.format(boxedValue()) + (kind != Kind.Object ? "|0x" + Long.toHexString(primitive) : "") + "]";
+        return getKind().javaName + "[" + getKind().format(boxedValue()) + (getKind() != Kind.Object ? "|0x" + Long.toHexString(primitive) : "") + "]";
     }
 
     /**
@@ -124,17 +124,17 @@ public final class Constant extends Value {
      * @return this constant's value as a string
      */
     public String valueString() {
-        if (kind.isPrimitive()) {
+        if (getKind().isPrimitive()) {
             return boxedValue().toString();
-        } else if (kind.isObject()) {
+        } else if (getKind().isObject()) {
             if (object == null) {
                 return "null";
             } else if (object instanceof String) {
                 return "\"" + object + "\"";
             } else {
-                return "<object: " + kind.format(object) + ">";
+                return "<object: " + getKind().format(object) + ">";
             }
-        } else if (kind.isJsr()) {
+        } else if (getKind().isJsr()) {
             return "bci:" + boxedValue().toString();
         } else {
             return "???";
@@ -147,7 +147,7 @@ public final class Constant extends Value {
      */
     public Object boxedValue() {
         // Checkstyle: stop
-        switch (kind) {
+        switch (getKind()) {
             case Byte: return (byte) asInt();
             case Boolean: return asInt() == 0 ? Boolean.FALSE : Boolean.TRUE;
             case Short: return (short) asInt();
@@ -165,10 +165,10 @@ public final class Constant extends Value {
 
     private boolean valueEqual(Constant other, boolean ignoreKind) {
         // must have equivalent kinds to be equal
-        if (!ignoreKind && kind != other.kind) {
+        if (!ignoreKind && getKind() != other.getKind()) {
             return false;
         }
-        if (kind.isObject()) {
+        if (getKind().isObject()) {
             return object == other.object;
         }
         return primitive == other.primitive;
@@ -179,7 +179,7 @@ public final class Constant extends Value {
      * @return the int value of this constant
      */
     public int asInt() {
-        if (kind.stackKind().isStackInt() || kind.isJsr()) {
+        if (getKind().stackKind().isStackInt() || getKind().isJsr()) {
             return (int) primitive;
         }
         throw new Error("Constant is not int: " + this);
@@ -190,7 +190,7 @@ public final class Constant extends Value {
      * @return the boolean value of this constant
      */
     public boolean asBoolean() {
-        if (kind == Kind.Boolean) {
+        if (getKind() == Kind.Boolean) {
             return primitive != 0L;
         }
         throw new Error("Constant is not boolean: " + this);
@@ -202,7 +202,7 @@ public final class Constant extends Value {
      */
     public long asLong() {
         // Checkstyle: stop
-        switch (kind.stackKind()) {
+        switch (getKind().stackKind()) {
             case Jsr:
             case Int:
             case Long: return primitive;
@@ -218,7 +218,7 @@ public final class Constant extends Value {
      * @return the float value of this constant
      */
     public float asFloat() {
-        if (kind.isFloat()) {
+        if (getKind().isFloat()) {
             return Float.intBitsToFloat((int) primitive);
         }
         throw new Error("Constant is not float: " + this);
@@ -229,10 +229,10 @@ public final class Constant extends Value {
      * @return the double value of this constant
      */
     public double asDouble() {
-        if (kind.isFloat()) {
+        if (getKind().isFloat()) {
             return Float.intBitsToFloat((int) primitive);
         }
-        if (kind.isDouble()) {
+        if (getKind().isDouble()) {
             return Double.longBitsToDouble(primitive);
         }
         throw new Error("Constant is not double: " + this);
@@ -243,7 +243,7 @@ public final class Constant extends Value {
      * @return the object which this constant represents
      */
     public Object asObject() {
-        if (kind.isObject()) {
+        if (getKind().isObject()) {
             return object;
         }
         throw new Error("Constant is not object: " + this);
@@ -254,7 +254,7 @@ public final class Constant extends Value {
      * @return the object which this constant represents
      */
     public int asJsr() {
-        if (kind.isJsr()) {
+        if (getKind().isJsr()) {
             return (int) primitive;
         }
         throw new Error("Constant is not jsr: " + this);
@@ -264,7 +264,7 @@ public final class Constant extends Value {
      * Unchecked access to a primitive value.
      */
     public long asPrimitive() {
-        if (kind.isObject()) {
+        if (getKind().isObject()) {
             throw new Error("Constant is not primitive: " + this);
         }
         return primitive;
@@ -276,7 +276,7 @@ public final class Constant extends Value {
      */
     @Override
     public int hashCode() {
-        if (kind.isObject()) {
+        if (getKind().isObject()) {
             return System.identityHashCode(object);
         }
         return (int) primitive;
