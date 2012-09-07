@@ -26,7 +26,7 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.compiler.tests.*;
+import com.oracle.graal.compiler.test.*;
 
 /**
  * Tests the implementation of {@code NEW}.
