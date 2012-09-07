@@ -64,7 +64,7 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
                 int length = Array.getLength(array);
                 if (index >= 0 && index < length) {
                     return ConstantNode.forConstant(elementKind().readUnsafeConstant(array,
-                                    elementKind().arrayBaseOffset() + index * elementKind().arrayIndexScale()), runtime, graph());
+                                    elementKind().getArrayBaseOffset() + index * elementKind().getArrayIndexScale()), runtime, graph());
                 }
             }
         }

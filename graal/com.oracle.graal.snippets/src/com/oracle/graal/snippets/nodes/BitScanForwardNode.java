@@ -38,7 +38,7 @@ public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable,
     @Input private ValueNode value;
 
     public BitScanForwardNode(ValueNode value) {
-        super(StampFactory.forInteger(Kind.Int, 0, value.kind().bits()));
+        super(StampFactory.forInteger(Kind.Int, 0, value.kind().getBitCount()));
         this.value = value;
     }
 
@@ -46,7 +46,7 @@ public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable,
     public ValueNode canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
             long v = value.asConstant().asLong();
-            if (value.kind().isInt()) {
+            if (value.kind().isStackInt()) {
                 return ConstantNode.forInt(Integer.numberOfTrailingZeros((int) v), graph());
             } else if (value.kind().isLong()) {
                 return ConstantNode.forInt(Long.numberOfTrailingZeros(v), graph());

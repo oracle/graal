@@ -56,7 +56,7 @@ public final class IntegerLessThanNode extends CompareNode {
     @Override
     protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         assert condition() == Condition.LT;
-        if (constant.kind == Kind.Int && constant.asInt() == 0) {
+        if (constant.getKind() == Kind.Int && constant.asInt() == 0) {
             ValueNode a = mirrored ? normalizeNode.y() : normalizeNode.x();
             ValueNode b = mirrored ? normalizeNode.x() : normalizeNode.y();
 

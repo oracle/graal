@@ -67,7 +67,7 @@ public class XirSnippet {
                 return false;
             }
             if (arg.constant != null) {
-                if (arg.constant.kind != param.kind) {
+                if (arg.constant.getKind() != param.kind) {
                     return false;
                 }
             }

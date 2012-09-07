@@ -117,26 +117,26 @@ public class StampFactory {
     }
 
     public static Stamp forConstant(Constant value) {
-        assert value.kind != Kind.Object;
-        if (value.kind == Kind.Object) {
-            throw new GraalInternalError("unexpected kind: %s", value.kind);
+        assert value.getKind() != Kind.Object;
+        if (value.getKind() == Kind.Object) {
+            throw new GraalInternalError("unexpected kind: %s", value.getKind());
         } else {
-            if (value.kind == Kind.Int || value.kind == Kind.Long) {
-                return forInteger(value.kind, value.asLong(), value.asLong(), value.asLong() & IntegerStamp.defaultMask(value.kind));
-            } else if (value.kind == Kind.Float || value.kind == Kind.Double) {
-                return forFloat(value.kind, value.asDouble(), value.asDouble(), !Double.isNaN(value.asDouble()));
+            if (value.getKind() == Kind.Int || value.getKind() == Kind.Long) {
+                return forInteger(value.getKind(), value.asLong(), value.asLong(), value.asLong() & IntegerStamp.defaultMask(value.getKind()));
+            } else if (value.getKind() == Kind.Float || value.getKind() == Kind.Double) {
+                return forFloat(value.getKind(), value.asDouble(), value.asDouble(), !Double.isNaN(value.asDouble()));
             }
-            return forKind(value.kind.stackKind());
+            return forKind(value.getKind().stackKind());
         }
     }
 
     public static Stamp forConstant(Constant value, MetaAccessProvider runtime) {
-        assert value.kind == Kind.Object;
-        if (value.kind == Kind.Object) {
+        assert value.getKind() == Kind.Object;
+        if (value.getKind() == Kind.Object) {
             ResolvedJavaType type = value.isNull() ? null : runtime.getTypeOf(value);
             return new ObjectStamp(type, value.isNonNull(), value.isNonNull(), value.isNull());
         } else {
-            throw new GraalInternalError(Kind.Object + " expected, actual kind: %s", value.kind);
+            throw new GraalInternalError(Kind.Object + " expected, actual kind: %s", value.getKind());
         }
     }
 

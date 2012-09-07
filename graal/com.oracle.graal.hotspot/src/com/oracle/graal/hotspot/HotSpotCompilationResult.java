@@ -25,9 +25,7 @@ package com.oracle.graal.hotspot;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.ExceptionHandler;
-import com.oracle.graal.api.code.CompilationResult.Mark;
-import com.oracle.graal.api.code.CompilationResult.Site;
+import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.hotspot.meta.*;
 
 /**

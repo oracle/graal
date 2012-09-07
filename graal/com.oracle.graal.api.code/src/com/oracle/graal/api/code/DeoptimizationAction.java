@@ -22,11 +22,32 @@
  */
 package com.oracle.graal.api.code;
 
-
+/**
+ * Specifies the action that should be taken by the runtime in case a certain deoptimization is triggered.
+ */
 public enum DeoptimizationAction {
-    None,                           // just interpret, do not invalidate nmethod
-    RecompileIfTooManyDeopts,       // recompile the nmethod; need not invalidate
-    InvalidateReprofile,            // invalidate the nmethod, reset IC, maybe recompile
-    InvalidateRecompile,            // invalidate the nmethod, recompile (probably)
-    InvalidateStopCompiling;        // invalidate the nmethod and do not compile
+    /**
+     * Do not invalidate the machine code.
+     */
+    None,
+
+    /**
+     * Do not invalidate the machine code, but schedule a recompilation if this deoptimization is triggered too often.
+     */
+    RecompileIfTooManyDeopts,
+
+    /**
+     * Invalidate the machine code and reset the profiling information.
+     */
+    InvalidateReprofile,
+
+    /**
+     * Invalidate the machine code and immediately schedule a recompilation.
+     */
+    InvalidateRecompile,
+
+    /**
+     * Invalidate the machine code and stop compiling the outermost method of this compilation.
+     */
+    InvalidateStopCompiling;
 }

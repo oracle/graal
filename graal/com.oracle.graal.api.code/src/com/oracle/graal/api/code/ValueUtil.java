@@ -24,7 +24,10 @@ package com.oracle.graal.api.code;
 
 import com.oracle.graal.api.meta.*;
 
-public class ValueUtil {
+/**
+ * Utility class for working with the {@link Value} class and its subclasses.
+ */
+public final class ValueUtil {
     public static boolean isIllegal(Value value) {
         assert value != null;
         return value == Value.IllegalValue;
@@ -54,7 +57,6 @@ public class ValueUtil {
         return (Constant) value;
     }
 
-
     public static boolean isStackSlot(Value value) {
         assert value != null;
         return value instanceof StackSlot;
@@ -75,7 +77,6 @@ public class ValueUtil {
         return (Address) value;
     }
 
-
     public static boolean isRegister(Value value) {
         assert value != null;
         return value instanceof RegisterValue;
@@ -87,30 +88,29 @@ public class ValueUtil {
     }
 
     public static Register asIntReg(Value value) {
-        assert value.kind == Kind.Int || value.kind == Kind.Jsr;
+        assert value.getKind() == Kind.Int || value.getKind() == Kind.Jsr;
         return asRegister(value);
     }
 
     public static Register asLongReg(Value value) {
-        assert value.kind == Kind.Long : value.kind;
+        assert value.getKind() == Kind.Long : value.getKind();
         return asRegister(value);
     }
 
     public static Register asObjectReg(Value value) {
-        assert value.kind == Kind.Object;
+        assert value.getKind() == Kind.Object;
         return asRegister(value);
     }
 
     public static Register asFloatReg(Value value) {
-        assert value.kind == Kind.Float;
+        assert value.getKind() == Kind.Float;
         return asRegister(value);
     }
 
     public static Register asDoubleReg(Value value) {
-        assert value.kind == Kind.Double;
+        assert value.getKind() == Kind.Double;
         return asRegister(value);
     }
-
 
     public static boolean sameRegister(Value v1, Value v2) {
         return isRegister(v1) && isRegister(v2) && asRegister(v1) == asRegister(v2);

@@ -44,7 +44,7 @@ public final class RegisterValue extends Value {
 
     @Override
     public int hashCode() {
-        return (getRegister().number << 4) ^ kind.ordinal();
+        return (getRegister().number << 4) ^ getKind().ordinal();
     }
 
     @Override

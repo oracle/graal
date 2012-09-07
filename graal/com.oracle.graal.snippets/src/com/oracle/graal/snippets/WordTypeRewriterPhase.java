@@ -219,10 +219,10 @@ public class WordTypeRewriterPhase extends Phase {
         if (value.kind() != wordKind) {
             Op op;
             if (wordKind.isLong()) {
-                assert value.kind().isInt();
+                assert value.kind().isStackInt();
                 op = Op.I2L;
             } else {
-                assert wordKind.isInt();
+                assert wordKind.isStackInt();
                 assert value.kind().isLong();
                 op = Op.L2I;
             }
@@ -238,7 +238,7 @@ public class WordTypeRewriterPhase extends Phase {
             if (from.isLong()) {
                 op = Op.L2I;
             } else {
-                assert from.isInt();
+                assert from.isStackInt();
                 op = Op.I2L;
             }
             return graph.unique(new ConvertNode(op, value));

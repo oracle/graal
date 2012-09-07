@@ -503,10 +503,10 @@ class CFGPrinter extends CompilationPrinter {
     private void printInterval(Interval interval) {
         out.printf("%s %s ", interval.operand, (isRegister(interval.operand) ? "fixed" : interval.kind().name()));
         if (isRegister(interval.operand)) {
-            out.printf("\"[%s|%c]\"", interval.operand, interval.operand.kind.typeChar);
+            out.printf("\"[%s|%c]\"", interval.operand, interval.operand.getKind().typeChar);
         } else {
             if (interval.location() != null) {
-                out.printf("\"[%s|%c]\"", interval.location(), interval.location().kind.typeChar);
+                out.printf("\"[%s|%c]\"", interval.location(), interval.location().getKind().typeChar);
             }
         }
 

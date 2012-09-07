@@ -227,7 +227,7 @@ public abstract class XirAssembler {
         public final Constant value;
 
         XirConstant(XirAssembler asm, Constant value) {
-            super(asm, value, value.kind);
+            super(asm, value, value.getKind());
             this.value = value;
         }
 
@@ -249,7 +249,7 @@ public abstract class XirAssembler {
         public final Value register;
 
         XirRegister(XirAssembler asm, String name, RegisterValue register, boolean reserve) {
-            super(asm, name, register.kind, reserve);
+            super(asm, name, register.getKind(), reserve);
             this.register = register;
         }
     }

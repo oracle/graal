@@ -119,8 +119,8 @@ public final class Register implements Comparable<Register>, Serializable {
         this.flags = createMask(flags);
         this.encoding = encoding;
 
-        values = new RegisterValue[Kind.VALUES.length];
-        for (Kind kind : Kind.VALUES) {
+        values = new RegisterValue[Kind.values().length];
+        for (Kind kind : Kind.values()) {
             values[kind.ordinal()] = new RegisterValue(kind, this);
         }
     }

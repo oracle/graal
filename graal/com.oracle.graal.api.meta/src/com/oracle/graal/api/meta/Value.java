@@ -41,7 +41,7 @@ public abstract class Value implements Serializable {
     /**
      * The kind of this value.
      */
-    public final Kind kind;
+    private final Kind kind;
 
     /**
      * Initializes a new value of the specified kind.
@@ -55,6 +55,14 @@ public abstract class Value implements Serializable {
      * String representation of the kind, which should be the end of all {@link #toString()} implementation of subclasses.
      */
     protected final String kindSuffix() {
-        return "|" + kind.typeChar;
+        return "|" + getKind().typeChar;
+    }
+
+    /**
+     * Gets the kind of the value.
+     * @return the kind
+     */
+    public final Kind getKind() {
+        return kind;
     }
 }

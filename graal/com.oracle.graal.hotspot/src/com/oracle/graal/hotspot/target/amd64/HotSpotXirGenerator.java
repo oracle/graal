@@ -358,7 +358,7 @@ public class HotSpotXirGenerator implements XirGenerator {
 
             final int aligning = target.wordSize;
             final int arrayLengthOffset = target.wordSize * 2;
-            final int arrayElementOffset = kind.arrayBaseOffset();
+            final int arrayElementOffset = kind.getArrayBaseOffset();
 
             // Calculate aligned size
             asm.mov(size, length);
@@ -978,7 +978,7 @@ public class HotSpotXirGenerator implements XirGenerator {
 
         @Override
         protected final XirTemplate create(XirAssembler asm, long flags) {
-            return create(asm, flags & FLAGS_MASK, Kind.VALUES[(int) (flags & INDEX_MASK)]);
+            return create(asm, flags & FLAGS_MASK, Kind.values()[(int) (flags & INDEX_MASK)]);
         }
 
         protected abstract XirTemplate create(XirAssembler asm, long flags, Kind kind);

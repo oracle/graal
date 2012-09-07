@@ -128,7 +128,7 @@ public final class Address extends Value {
         }
 
         StringBuilder s = new StringBuilder();
-        s.append(kind.javaName).append("[");
+        s.append(getKind().javaName).append("[");
         String sep = "";
         if (isLegal(getBase())) {
             s.append(getBase());
@@ -151,14 +151,14 @@ public final class Address extends Value {
     public boolean equals(Object obj) {
         if (obj instanceof Address) {
             Address addr = (Address) obj;
-            return kind == addr.kind && getDisplacement() == addr.getDisplacement() && getBase().equals(addr.getBase()) && getScale() == addr.getScale() && getIndex().equals(addr.getIndex());
+            return getKind() == addr.getKind() && getDisplacement() == addr.getDisplacement() && getBase().equals(addr.getBase()) && getScale() == addr.getScale() && getIndex().equals(addr.getIndex());
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return getBase().hashCode() ^ getIndex().hashCode() ^ (getDisplacement() << 4) ^ (getScale().value << 8) ^ (kind.ordinal() << 12);
+        return getBase().hashCode() ^ getIndex().hashCode() ^ (getDisplacement() << 4) ^ (getScale().value << 8) ^ (getKind().ordinal() << 12);
     }
 
     /**

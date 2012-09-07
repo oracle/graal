@@ -490,15 +490,15 @@ public final class Interval {
     void assignLocation(Value newLocation) {
         if (isRegister(newLocation)) {
             assert this.location == null : "cannot re-assign location for " + this;
-            if (newLocation.kind == Kind.Illegal && kind != Kind.Illegal) {
+            if (newLocation.getKind() == Kind.Illegal && kind != Kind.Illegal) {
                 this.location = asRegister(newLocation).asValue(kind);
                 return;
             }
         } else {
             assert this.location == null || isRegister(this.location) : "cannot re-assign location for " + this;
             assert isStackSlot(newLocation);
-            assert newLocation.kind != Kind.Illegal;
-            assert newLocation.kind == this.kind;
+            assert newLocation.getKind() != Kind.Illegal;
+            assert newLocation.getKind() == this.kind;
         }
         this.location = newLocation;
     }

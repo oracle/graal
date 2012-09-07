@@ -213,12 +213,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public Value setResult(ValueNode x, Value operand) {
-        assert (isVariable(operand) && x.kind() == operand.kind) ||
+        assert (isVariable(operand) && x.kind() == operand.getKind()) ||
                (isRegister(operand) && !attributes(asRegister(operand)).isAllocatable()) ||
-               (isConstant(operand) && x.kind() == operand.kind.stackKind()) : operand.kind + " for node " + x;
+               (isConstant(operand) && x.kind() == operand.getKind().stackKind()) : operand.getKind() + " for node " + x;
         assert operand(x) == null : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
-        assert operand.kind.stackKind() == x.kind();
+        assert operand.getKind().stackKind() == x.kind();
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
         return operand;
@@ -246,7 +246,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             return value;
         }
         if (storeKind == Kind.Byte || storeKind == Kind.Boolean) {
-            Variable tempVar = new Variable(value.kind, lir.nextVariable(), Register.RegisterFlag.Byte);
+            Variable tempVar = new Variable(value.getKind(), lir.nextVariable(), Register.RegisterFlag.Byte);
             emitMove(value, tempVar);
             return tempVar;
         }
@@ -513,7 +513,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         for (LocalNode local : graph.getNodes(LocalNode.class)) {
             Value param = params[local.index()];
-            assert param.kind == local.kind().stackKind();
+            assert param.getKind() == local.kind().stackKind();
             setResult(local, emitMove(param));
         }
     }
@@ -896,12 +896,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
 
     private static Value toStackKind(Value value) {
-        if (value.kind.stackKind() != value.kind) {
+        if (value.getKind().stackKind() != value.getKind()) {
             // We only have stack-kinds in the LIR, so convert the operand kind for values from the calling convention.
             if (isRegister(value)) {
-                return asRegister(value).asValue(value.kind.stackKind());
+                return asRegister(value).asValue(value.getKind().stackKind());
             } else if (isStackSlot(value)) {
-                return StackSlot.get(value.kind.stackKind(), asStackSlot(value).rawOffset(), asStackSlot(value).rawAddFrameSize());
+                return StackSlot.get(value.getKind().stackKind(), asStackSlot(value).rawOffset(), asStackSlot(value).rawAddFrameSize());
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -1012,7 +1012,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         } else {
             Variable value = load(operand(x.value()));
             LabelRef defaultTarget = x.defaultSuccessor() == null ? null : getLIRBlock(x.defaultSuccessor());
-            if (value.kind == Kind.Object || keyCount < GraalOptions.SequentialSwitchLimit) {
+            if (value.getKind() == Kind.Object || keyCount < GraalOptions.SequentialSwitchLimit) {
                 // only a few entries
                 emitSequentialSwitch(x, value, defaultTarget);
             } else {
@@ -1166,7 +1166,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         Variable variable = load(value);
         if (var.kind == Kind.Byte || var.kind == Kind.Boolean) {
-            Variable tempVar = new Variable(value.kind, lir.nextVariable(), Register.RegisterFlag.Byte);
+            Variable tempVar = new Variable(value.getKind(), lir.nextVariable(), Register.RegisterFlag.Byte);
             emitMove(variable, tempVar);
             variable = tempVar;
         }

@@ -115,7 +115,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public boolean canStoreConstant(Constant c) {
         // there is no immediate move of 64-bit constants on Intel
-        switch (c.kind) {
+        switch (c.getKind()) {
             case Long:   return Util.isInt(c.asLong());
             case Double: return false;
             case Object: return c.isNull();
@@ -125,7 +125,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public boolean canInlineConstant(Constant c) {
-        switch (c.kind) {
+        switch (c.getKind()) {
             case Long:   return NumUtil.isInt(c.asLong());
             case Object: return c.isNull();
             default:     return true;
@@ -142,7 +142,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         if (isConstant(base)) {
             if (asConstant(base).isNull()) {
                 base = Value.IllegalValue;
-            } else if (asConstant(base).kind != Kind.Object) {
+            } else if (asConstant(base).getKind() != Kind.Object) {
                 long newDisplacement = displacement + asConstant(base).asLong();
                 if (NumUtil.isInt(newDisplacement)) {
                     displacement = (int) newDisplacement;
@@ -178,7 +178,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitMove(Value input) {
-        Variable result = newVariable(input.kind);
+        Variable result = newVariable(input.getKind());
         emitMove(input, result);
         return result;
     }
@@ -194,14 +194,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitLoad(Value loadAddress, boolean canTrap) {
-        Variable result = newVariable(loadAddress.kind);
+        Variable result = newVariable(loadAddress.getKind());
         append(new LoadOp(result, loadAddress, canTrap ? state() : null));
         return result;
     }
 
     @Override
     public void emitStore(Value storeAddress, Value inputVal, boolean canTrap) {
-        Value input = loadForStore(inputVal, storeAddress.kind);
+        Value input = loadForStore(inputVal, storeAddress.getKind());
         append(new StoreOp(storeAddress, input, canTrap ? state() : null));
     }
 
@@ -226,13 +226,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public void emitBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info) {
         boolean mirrored = emitCompare(left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
-        switch (left.kind.stackKind()) {
+        switch (left.getKind().stackKind()) {
             case Int:
             case Long:
             case Object: append(new BranchOp(finalCondition, label, info)); break;
             case Float:
             case Double: append(new FloatBranchOp(finalCondition, unorderedIsTrue, label, info)); break;
-            default: throw GraalInternalError.shouldNotReachHere("" + left.kind);
+            default: throw GraalInternalError.shouldNotReachHere("" + left.getKind());
         }
     }
 
@@ -241,8 +241,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         boolean mirrored = emitCompare(left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
 
-        Variable result = newVariable(trueValue.kind);
-        switch (left.kind.stackKind()) {
+        Variable result = newVariable(trueValue.getKind());
+        switch (left.getKind().stackKind()) {
             case Int:
             case Long:
             case Object: append(new CondMoveOp(result, finalCondition, load(trueValue), loadNonConst(falseValue))); break;
@@ -273,7 +273,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             right = loadNonConst(b);
             mirrored = false;
         }
-        switch (left.kind.stackKind()) {
+        switch (left.getKind().stackKind()) {
             case Jsr:
             case Int: append(new CompareOp(ICMP, left, right)); break;
             case Long: append(new CompareOp(LCMP, left, right)); break;
@@ -287,8 +287,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitNegate(Value input) {
-        Variable result = newVariable(input.kind);
-        switch (input.kind) {
+        Variable result = newVariable(input.getKind());
+        switch (input.getKind()) {
             case Int:    append(new Op1Stack(INEG, result, input)); break;
             case Long:   append(new Op1Stack(LNEG, result, input)); break;
             case Float:  append(new Op2Reg(FXOR, result, input, Constant.forFloat(Float.intBitsToFloat(0x80000000)))); break;
@@ -300,8 +300,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitAdd(Value a, Value b) {
-        Variable result = newVariable(a.kind);
-        switch(a.kind) {
+        Variable result = newVariable(a.getKind());
+        switch(a.getKind()) {
             case Int:    append(new Op2Stack(IADD, result, a, loadNonConst(b))); break;
             case Long:   append(new Op2Stack(LADD, result, a, loadNonConst(b))); break;
             case Float:  append(new Op2Stack(FADD, result, a, loadNonConst(b))); break;
@@ -313,8 +313,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitSub(Value a, Value b) {
-        Variable result = newVariable(a.kind);
-        switch(a.kind) {
+        Variable result = newVariable(a.getKind());
+        switch(a.getKind()) {
             case Int:    append(new Op2Stack(ISUB, result, a, loadNonConst(b))); break;
             case Long:   append(new Op2Stack(LSUB, result, a, loadNonConst(b))); break;
             case Float:  append(new Op2Stack(FSUB, result, a, loadNonConst(b))); break;
@@ -326,8 +326,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitMul(Value a, Value b) {
-        Variable result = newVariable(a.kind);
-        switch(a.kind) {
+        Variable result = newVariable(a.getKind());
+        switch(a.getKind()) {
             case Int:    append(new Op2Reg(IMUL, result, a, loadNonConst(b))); break;
             case Long:   append(new Op2Reg(LMUL, result, a, loadNonConst(b))); break;
             case Float:  append(new Op2Stack(FMUL, result, a, loadNonConst(b))); break;
@@ -339,7 +339,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitDiv(Value a, Value b) {
-        switch(a.kind) {
+        switch(a.getKind()) {
             case Int:
                 emitMove(a, RAX_I);
                 append(new DivOp(IDIV, RAX_I, RAX_I, load(b), state()));
@@ -349,12 +349,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new DivOp(LDIV, RAX_L, RAX_L, load(b), state()));
                 return emitMove(RAX_L);
             case Float: {
-                Variable result = newVariable(a.kind);
+                Variable result = newVariable(a.getKind());
                 append(new Op2Stack(FDIV, result, a, loadNonConst(b)));
                 return result;
             }
             case Double: {
-                Variable result = newVariable(a.kind);
+                Variable result = newVariable(a.getKind());
                 append(new Op2Stack(DDIV, result, a, loadNonConst(b)));
                 return result;
             }
@@ -365,7 +365,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitRem(Value a, Value b) {
-        switch(a.kind) {
+        switch(a.getKind()) {
             case Int:
                 emitMove(a, RAX_I);
                 append(new DivOp(IREM, RDX_I, RAX_I, load(b), state()));
@@ -385,7 +385,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitUDiv(Value a, Value b) {
-        switch(a.kind) {
+        switch(a.getKind()) {
             case Int:
                 emitMove(a, RAX_I);
                 append(new DivOp(IUDIV, RAX_I, RAX_I, load(b), state()));
@@ -401,7 +401,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitURem(Value a, Value b) {
-        switch(a.kind) {
+        switch(a.getKind()) {
             case Int:
                 emitMove(a, RAX_I);
                 append(new DivOp(IUREM, RDX_I, RAX_I, load(b), state()));
@@ -418,8 +418,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitAnd(Value a, Value b) {
-        Variable result = newVariable(a.kind);
-        switch(a.kind) {
+        Variable result = newVariable(a.getKind());
+        switch(a.getKind()) {
             case Int:    append(new Op2Stack(IAND, result, a, loadNonConst(b))); break;
             case Long:   append(new Op2Stack(LAND, result, a, loadNonConst(b))); break;
             default:     throw GraalInternalError.shouldNotReachHere();
@@ -429,8 +429,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitOr(Value a, Value b) {
-        Variable result = newVariable(a.kind);
-        switch(a.kind) {
+        Variable result = newVariable(a.getKind());
+        switch(a.getKind()) {
             case Int:    append(new Op2Stack(IOR, result, a, loadNonConst(b))); break;
             case Long:   append(new Op2Stack(LOR, result, a, loadNonConst(b))); break;
             default:     throw GraalInternalError.shouldNotReachHere();
@@ -440,8 +440,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitXor(Value a, Value b) {
-        Variable result = newVariable(a.kind);
-        switch(a.kind) {
+        Variable result = newVariable(a.getKind());
+        switch(a.getKind()) {
             case Int:    append(new Op2Stack(IXOR, result, a, loadNonConst(b))); break;
             case Long:   append(new Op2Stack(LXOR, result, a, loadNonConst(b))); break;
             default:     throw GraalInternalError.shouldNotReachHere();
@@ -452,8 +452,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitShl(Value a, Value b) {
-        Variable result = newVariable(a.kind);
-        switch (a.kind) {
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
             case Int:    append(new ShiftOp(ISHL, result, a, loadShiftCount(b))); break;
             case Long:   append(new ShiftOp(LSHL, result, a, loadShiftCount(b))); break;
             default: GraalInternalError.shouldNotReachHere();
@@ -463,8 +463,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitShr(Value a, Value b) {
-        Variable result = newVariable(a.kind);
-        switch (a.kind) {
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
             case Int:    append(new ShiftOp(ISHR, result, a, loadShiftCount(b))); break;
             case Long:   append(new ShiftOp(LSHR, result, a, loadShiftCount(b))); break;
             default: GraalInternalError.shouldNotReachHere();
@@ -474,8 +474,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitUShr(Value a, Value b) {
-        Variable result = newVariable(a.kind);
-        switch (a.kind) {
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
             case Int:    append(new ShiftOp(IUSHR, result, a, loadShiftCount(b))); break;
             case Long:   append(new ShiftOp(LUSHR, result, a, loadShiftCount(b))); break;
             default: GraalInternalError.shouldNotReachHere();
@@ -569,10 +569,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     protected void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
         // Making a copy of the switch value is necessary because jump table destroys the input value
-        if (key.kind == Kind.Int) {
+        if (key.getKind() == Kind.Int) {
             append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, Value.IllegalValue));
         } else {
-            assert key.kind == Kind.Object;
+            assert key.getKind() == Kind.Object;
             append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, newVariable(Kind.Object)));
         }
     }

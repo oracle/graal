@@ -36,7 +36,7 @@ public class StampTool {
         Kind kind = stamp.kind();
         if (stamp instanceof IntegerStamp) {
             IntegerStamp integerStamp = (IntegerStamp) stamp;
-            if (integerStamp.lowerBound() != kind.minValue()) {
+            if (integerStamp.lowerBound() != kind.getMinValue()) {
                 // TODO(ls) check if the mask calculation is correct...
                 return new IntegerStamp(kind, -integerStamp.upperBound(), -integerStamp.lowerBound(), IntegerStamp.defaultMask(kind) & (integerStamp.mask() | -integerStamp.mask()));
             }
@@ -180,11 +180,11 @@ public class StampTool {
         long mask = fromStamp.mask() & IntegerStamp.defaultMask(toKind);
         long lowerBound = saturate(fromStamp.lowerBound(), toKind);
         long upperBound = saturate(fromStamp.upperBound(), toKind);
-        if (fromStamp.lowerBound() < toKind.minValue()) {
-            upperBound = toKind.maxValue();
+        if (fromStamp.lowerBound() < toKind.getMinValue()) {
+            upperBound = toKind.getMaxValue();
         }
-        if (fromStamp.upperBound() > toKind.maxValue()) {
-            lowerBound = toKind.minValue();
+        if (fromStamp.upperBound() > toKind.getMaxValue()) {
+            lowerBound = toKind.getMinValue();
         }
         return StampFactory.forInteger(toKind.stackKind(), lowerBound, upperBound, mask);
     }
@@ -206,11 +206,11 @@ public class StampTool {
     }
 
     public static long saturate(long v, Kind kind) {
-        long max = kind.maxValue();
+        long max = kind.getMaxValue();
         if (v > max) {
             return max;
         }
-        long min = kind.minValue();
+        long min = kind.getMinValue();
         if (v < min) {
             return min;
         }

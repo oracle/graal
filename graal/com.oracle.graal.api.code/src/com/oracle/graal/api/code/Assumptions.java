@@ -34,6 +34,9 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
     private static final long serialVersionUID = 5152062717588239131L;
 
+    /**
+     * Abstract base class for assumptions.
+     */
     public abstract static class Assumption implements Serializable {
 
         private static final long serialVersionUID = -1936652569665112915L;

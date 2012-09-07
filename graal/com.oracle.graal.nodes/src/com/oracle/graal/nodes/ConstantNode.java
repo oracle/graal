@@ -67,7 +67,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
     }
 
     public static ConstantNode forConstant(Constant constant, MetaAccessProvider runtime, Graph graph) {
-        if (constant.kind == Kind.Object) {
+        if (constant.getKind() == Kind.Object) {
             return graph.unique(new ConstantNode(constant, runtime));
         } else {
             return graph.unique(new ConstantNode(constant));
@@ -223,14 +223,14 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> properties = super.getDebugProperties(map);
-        properties.put("rawvalue", value.kind.isObject() ? value.kind.format(value.boxedValue()) : value.boxedValue());
+        properties.put("rawvalue", value.getKind().isObject() ? value.getKind().format(value.boxedValue()) : value.boxedValue());
         return properties;
     }
 
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
-            return super.toString(Verbosity.Name) + "(" + value.kind.format(value.boxedValue()) + ")";
+            return super.toString(Verbosity.Name) + "(" + value.getKind().format(value.boxedValue()) + ")";
         } else {
             return super.toString(verbosity);
         }

@@ -253,19 +253,19 @@ public class AMD64Move {
         if (input.equals(result)) {
             return;
         }
-        switch (input.kind) {
+        switch (input.getKind()) {
             case Jsr:
             case Int:    masm.movl(asRegister(result),    asRegister(input)); break;
             case Long:   masm.movq(asRegister(result),    asRegister(input)); break;
             case Float:  masm.movflt(asFloatReg(result),  asFloatReg(input)); break;
             case Double: masm.movdbl(asDoubleReg(result), asDoubleReg(input)); break;
             case Object: masm.movq(asRegister(result),    asRegister(input)); break;
-            default:     throw GraalInternalError.shouldNotReachHere("kind=" + result.kind);
+            default:     throw GraalInternalError.shouldNotReachHere("kind=" + result.getKind());
         }
     }
 
     private static void reg2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value input) {
-        switch (input.kind) {
+        switch (input.getKind()) {
             case Jsr:
             case Int:    masm.movl(tasm.asAddress(result),   asRegister(input)); break;
             case Long:   masm.movq(tasm.asAddress(result),   asRegister(input)); break;
@@ -277,7 +277,7 @@ public class AMD64Move {
     }
 
     private static void stack2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value input) {
-        switch (input.kind) {
+        switch (input.getKind()) {
             case Jsr:
             case Int:    masm.movl(asRegister(result),    tasm.asAddress(input)); break;
             case Long:   masm.movq(asRegister(result),    tasm.asAddress(input)); break;
@@ -292,7 +292,7 @@ public class AMD64Move {
         // Note: we use the kind of the input operand (and not the kind of the result operand) because they don't match
         // in all cases. For example, an object constant can be loaded to a long register when unsafe casts occurred (e.g.,
         // for a write barrier where arithmetic operations are then performed on the pointer).
-        switch (input.kind.stackKind()) {
+        switch (input.getKind().stackKind()) {
             case Jsr:
             case Int:
                 // Do not optimize with an XOR as this instruction may be between
@@ -341,7 +341,7 @@ public class AMD64Move {
     }
 
     private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Constant input) {
-        switch (input.kind.stackKind()) {
+        switch (input.getKind().stackKind()) {
             case Jsr:
             case Int:    masm.movl(tasm.asAddress(result), input.asInt()); break;
             case Long:   masm.movlong(tasm.asAddress(result), input.asLong()); break;
@@ -364,7 +364,7 @@ public class AMD64Move {
         if (info != null) {
             tasm.recordImplicitException(masm.codeBuffer.position(), info);
         }
-        switch (loadAddr.kind) {
+        switch (loadAddr.getKind()) {
             case Boolean:
             case Byte:   masm.movsxb(asRegister(result),  loadAddr); break;
             case Char:   masm.movzxl(asRegister(result),  loadAddr); break;
@@ -384,7 +384,7 @@ public class AMD64Move {
         }
 
         if (isRegister(input)) {
-            switch (storeAddr.kind) {
+            switch (storeAddr.getKind()) {
                 case Boolean:
                 case Byte:   masm.movb(storeAddr,   asRegister(input)); break;
                 case Char:
@@ -398,7 +398,7 @@ public class AMD64Move {
             }
         } else if (isConstant(input)) {
             Constant c = (Constant) input;
-            switch (storeAddr.kind) {
+            switch (storeAddr.getKind()) {
                 case Boolean:
                 case Byte:   masm.movb(storeAddr, c.asInt() & 0xFF); break;
                 case Char:
@@ -436,7 +436,7 @@ public class AMD64Move {
         if (tasm.target.isMP) {
             masm.lock();
         }
-        switch (cmpValue.kind) {
+        switch (cmpValue.getKind()) {
             case Int:    masm.cmpxchgl(asRegister(newValue), address); break;
             case Long:
             case Object: masm.cmpxchgq(asRegister(newValue), address); break;

@@ -194,7 +194,7 @@ public class AMD64XirOp extends LIRXirInstruction {
 
                     Address src;
                     if (isConstant(index)) {
-                        assert index.kind == Kind.Int;
+                        assert index.getKind() == Kind.Int;
                         Constant constantIndex = (Constant) index;
                         src = new Address(inst.kind, pointer, constantIndex.asInt() * scale.value + displacement);
                     } else {
@@ -238,7 +238,7 @@ public class AMD64XirOp extends LIRXirInstruction {
 
                     Address dst;
                     if (isConstant(index)) {
-                        assert index.kind == Kind.Int;
+                        assert index.getKind() == Kind.Int;
                         Constant constantIndex = (Constant) index;
                         dst = new Address(inst.kind, pointer, IllegalValue, scale, constantIndex.asInt() * scale.value + displacement);
                     } else {
@@ -315,10 +315,10 @@ public class AMD64XirOp extends LIRXirInstruction {
                 case DecAndJumpNotZero: {
                     Label label = labels[((XirLabel) inst.extra).index];
                     Value value = operands[inst.x().index];
-                    if (value.kind == Kind.Long) {
+                    if (value.getKind() == Kind.Long) {
                         masm.decq(asRegister(value));
                     } else {
-                        assert value.kind == Kind.Int;
+                        assert value.getKind() == Kind.Int;
                         masm.decl(asRegister(value));
                     }
                     masm.jcc(ConditionFlag.notZero, label);
@@ -442,7 +442,7 @@ public class AMD64XirOp extends LIRXirInstruction {
     private static void emitXirViaLir(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Arithmetic intOp, AMD64Arithmetic longOp, AMD64Arithmetic floatOp,
                     AMD64Arithmetic doubleOp, Value left, Value right, Value result) {
         AMD64Arithmetic code;
-        switch (result.kind) {
+        switch (result.getKind()) {
             case Int: code = intOp; break;
             case Long: code = longOp; break;
             case Float: code = floatOp; break;
@@ -450,9 +450,9 @@ public class AMD64XirOp extends LIRXirInstruction {
             default: throw GraalInternalError.shouldNotReachHere();
         }
         assert left == result;
-        if (isRegister(right) && right.kind != result.kind) {
+        if (isRegister(right) && right.getKind() != result.getKind()) {
             // XIR is not strongly typed, so we can have a type mismatch that we have to fix here.
-            AMD64Arithmetic.emit(tasm, masm, code, result, asRegister(right).asValue(result.kind), null);
+            AMD64Arithmetic.emit(tasm, masm, code, result, asRegister(right).asValue(result.getKind()), null);
         } else {
             AMD64Arithmetic.emit(tasm, masm, code, result, right, null);
         }
@@ -462,7 +462,7 @@ public class AMD64XirOp extends LIRXirInstruction {
         Value x = ops[inst.x().index];
         Value y = ops[inst.y().index];
         AMD64Compare code;
-        switch (x.kind) {
+        switch (x.getKind()) {
             case Int: code = AMD64Compare.ICMP; break;
             case Long: code = AMD64Compare.LCMP; break;
             case Object: code = AMD64Compare.ACMP; break;
@@ -475,8 +475,8 @@ public class AMD64XirOp extends LIRXirInstruction {
     }
 
     private static Value assureNot64BitConstant(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value value) {
-        if (isConstant(value) && (value.kind == Kind.Long || value.kind == Kind.Object)) {
-            RegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(value.kind);
+        if (isConstant(value) && (value.getKind() == Kind.Long || value.getKind() == Kind.Object)) {
+            RegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(value.getKind());
             AMD64Move.move(tasm, masm, register, value);
             return register;
         }
@@ -485,7 +485,7 @@ public class AMD64XirOp extends LIRXirInstruction {
 
     private static RegisterValue assureInRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value pointer) {
         if (isConstant(pointer)) {
-            RegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(pointer.kind);
+            RegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(pointer.getKind());
             AMD64Move.move(tasm, masm, register, pointer);
             return register;
         }

@@ -79,11 +79,11 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
 
     public static boolean isIntegerAddition(ValueNode result, ValueNode a, ValueNode b) {
         Kind kind = result.kind();
-        if (kind != a.kind() || kind != b.kind() || !(kind.isInt() || kind.isLong())) {
+        if (kind != a.kind() || kind != b.kind() || !(kind.isStackInt() || kind.isLong())) {
             return false;
         }
         if (result.isConstant() && a.isConstant() && b.isConstant()) {
-            if (kind.isInt()) {
+            if (kind.isStackInt()) {
                 return result.asConstant().asInt() == a.asConstant().asInt() + b.asConstant().asInt();
             } else if (kind.isLong()) {
                 return result.asConstant().asLong() == a.asConstant().asLong() + b.asConstant().asLong();

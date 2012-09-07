@@ -42,7 +42,7 @@ public class AMD64ByteSwapOp extends AMD64LIRInstruction {
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         AMD64Move.move(tasm, masm, result, input);
-        switch(input.kind) {
+        switch(input.getKind()) {
             case Int:
                 masm.bswapl(ValueUtil.asIntReg(result));
                 break;

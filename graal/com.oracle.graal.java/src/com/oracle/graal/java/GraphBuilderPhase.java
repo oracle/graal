@@ -292,7 +292,7 @@ public final class GraphBuilderPhase extends Phase {
             }
         } else if (con instanceof Constant) {
             Constant constant = (Constant) con;
-            frameState.push(constant.kind.stackKind(), appendConstant(constant));
+            frameState.push(constant.getKind().stackKind(), appendConstant(constant));
         } else {
             throw new Error("lookupConstant returned an object of incorrect type");
         }
@@ -827,7 +827,7 @@ public final class GraphBuilderPhase extends Phase {
             constantValue = ((ResolvedJavaField) field).constantValue(null);
         }
         if (constantValue != null) {
-            frameState.push(constantValue.kind.stackKind(), appendConstant(constantValue));
+            frameState.push(constantValue.getKind().stackKind(), appendConstant(constantValue));
         } else {
             ValueNode container = genTypeOrDeopt(JavaType.Representation.StaticFields, holder, isInitialized);
             Kind kind = field.kind();

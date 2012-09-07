@@ -28,9 +28,9 @@ package com.oracle.graal.api.meta;
  */
 public class UnresolvedMethod implements JavaMethod {
 
-    public final String name;
-    public final JavaType holder;
-    public final Signature signature;
+    private final String name;
+    private final JavaType holder;
+    private final Signature signature;
 
     public UnresolvedMethod(JavaType holder, String name, Signature signature) {
         this.name = name;
@@ -48,16 +48,6 @@ public class UnresolvedMethod implements JavaMethod {
 
     public Signature signature() {
         return signature;
-    }
-
-    @Override
-    public int hashCode() {
-        return System.identityHashCode(this);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        return o == this;
     }
 
     @Override

@@ -65,7 +65,7 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
         if (objectClass().isConstant()) {
             Constant constant = objectClass().asConstant();
             Constant typeHub = type.getEncoding(Representation.ObjectHub);
-            assert constant.kind == typeHub.kind;
+            assert constant.getKind() == typeHub.getKind();
             return ConstantNode.forBoolean(tool.runtime().areConstantObjectsEqual(constant, typeHub), graph());
         }
         // TODO(ls) since a ReadHubNode with an exactType should canonicalize itself to a constant this should actually never happen, maybe turn into an assertion?

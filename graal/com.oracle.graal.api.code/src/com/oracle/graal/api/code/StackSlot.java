@@ -63,7 +63,7 @@ public final class StackSlot extends Value {
             StackSlot[] slots = cache[kind.ordinal()];
             if (index < slots.length) {
                 StackSlot slot = slots[index];
-                assert slot.kind == kind && slot.offset == offset && slot.addFrameSize == addFrameSize;
+                assert slot.getKind() == kind && slot.offset == offset && slot.addFrameSize == addFrameSize;
                 return slot;
             }
         }
@@ -104,7 +104,7 @@ public final class StackSlot extends Value {
 
     @Override
     public int hashCode() {
-        return kind.ordinal() ^ (offset << 4) ^ (addFrameSize ? 15 : 0);
+        return getKind().ordinal() ^ (offset << 4) ^ (addFrameSize ? 15 : 0);
     }
 
     @Override
@@ -114,7 +114,7 @@ public final class StackSlot extends Value {
         }
         if (o instanceof StackSlot) {
             StackSlot l = (StackSlot) o;
-            return l.kind == kind && l.offset == offset && l.addFrameSize == addFrameSize;
+            return l.getKind() == getKind() && l.offset == offset && l.addFrameSize == addFrameSize;
         }
         return false;
     }
@@ -136,7 +136,7 @@ public final class StackSlot extends Value {
     public StackSlot asOutArg() {
         assert offset >= 0;
         if (addFrameSize) {
-            return get(kind, offset, false);
+            return get(getKind(), offset, false);
         }
         return this;
     }
@@ -147,7 +147,7 @@ public final class StackSlot extends Value {
     public StackSlot asInArg() {
         assert offset >= 0;
         if (!addFrameSize) {
-            return get(kind, offset, true);
+            return get(getKind(), offset, true);
         }
         return this;
     }
@@ -162,7 +162,7 @@ public final class StackSlot extends Value {
     private static final StackSlot[][] OUT_CACHE = makeCache(PARAM_CACHE_PER_KIND_SIZE, 1, false);
 
     private static StackSlot[][] makeCache(int cachePerKindSize, int sign, boolean addFrameSize) {
-        StackSlot[][] cache = new StackSlot[Kind.VALUES.length][];
+        StackSlot[][] cache = new StackSlot[Kind.values().length][];
         for (Kind kind : new Kind[] {Illegal, Int, Long, Float, Double, Object, Jsr}) {
             StackSlot[] slots = new StackSlot[cachePerKindSize];
             for (int i = 0; i < cachePerKindSize; i++) {

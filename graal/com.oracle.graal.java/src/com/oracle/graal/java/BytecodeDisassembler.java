@@ -109,7 +109,7 @@ public class BytecodeDisassembler {
                         String desc = null;
                         if (constant instanceof Constant) {
                             Constant c = ((Constant) constant);
-                            switch (c.kind) {
+                            switch (c.getKind()) {
                                 case Int :
                                     desc = String.valueOf(c.asInt());
                                     break;
