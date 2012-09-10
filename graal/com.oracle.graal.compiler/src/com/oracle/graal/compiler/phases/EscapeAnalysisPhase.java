@@ -43,7 +43,7 @@ public class EscapeAnalysisPhase extends Phase {
     /**
      * Encapsulates the state of the virtual object, which is updated while traversing the control flow graph.
      */
-    private static class BlockExitState implements MergeableState<BlockExitState> {
+    public static class BlockExitState implements MergeableState<BlockExitState> {
 
         public final ValueNode[] fieldState;
         public final VirtualObjectNode virtualObject;
