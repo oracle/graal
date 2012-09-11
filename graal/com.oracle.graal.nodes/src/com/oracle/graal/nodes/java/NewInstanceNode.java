@@ -78,11 +78,6 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
 
     private static final EscapeOp ESCAPE = new EscapeOp() {
 
-        @Override
-        public boolean canAnalyze(Node node) {
-            return true;
-        }
-
         private void fillEscapeFields(ResolvedJavaType type, List<EscapeField> escapeFields) {
             if (type != null) {
                 fillEscapeFields(type.superType(), escapeFields);

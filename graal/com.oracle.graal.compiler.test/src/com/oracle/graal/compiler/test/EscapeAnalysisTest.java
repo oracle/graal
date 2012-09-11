@@ -127,7 +127,7 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
                 new InliningPhase(null, runtime(), null, null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
                 Debug.dump(graph, "Graph");
-                new EscapeAnalysisPhase(null, runtime(), null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+                new EscapeAnalysisPhase(null, runtime(), null).apply(graph);
                 Debug.dump(graph, "Graph");
                 int retCount = 0;
                 for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {

@@ -102,13 +102,6 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
     private static final EscapeOp ESCAPE = new EscapeOp() {
 
         @Override
-        public boolean canAnalyze(Node node) {
-            NewArrayNode x = (NewArrayNode) node;
-            Constant length = x.dimension(0).asConstant();
-            return length != null && length.asInt() >= 0 && length.asInt() < MaximumEscapeAnalysisArrayLength;
-        }
-
-        @Override
         public EscapeField[] fields(Node node) {
             NewArrayNode x = (NewArrayNode) node;
             assert x.elementType.arrayOf().isArrayClass();
