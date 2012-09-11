@@ -861,15 +861,19 @@ public final class LinearScan {
         TTY.print("affected registers:");
         TTY.println(blockData.get(ir.cfg.getStartBlock()).liveIn.toString());
 
+
         // print some additional information to simplify debugging
         for (int operandNum = 0; operandNum < blockData.get(ir.cfg.getStartBlock()).liveIn.size(); operandNum++) {
             if (blockData.get(ir.cfg.getStartBlock()).liveIn.get(operandNum)) {
                 Value operand = operandFor(operandNum);
                 TTY.println(" var %d; operand=%s; node=%s", operandNum, operand.toString(), gen.valueForOperand(operand));
 
+                Deque<Block> definedIn = new ArrayDeque<>();
+                HashSet<Block> usedIn = new HashSet<>();
                 for (int j = 0; j < numBlocks; j++) {
                     Block block = blockAt(j);
                     if (blockData.get(block).liveGen.get(operandNum)) {
+                        usedIn.add(block);
                         TTY.println("  used in block B%d", block.getId());
                         for (LIRInstruction ins : block.lir) {
                             TTY.println(ins.id() + ": " + ins.toString());
@@ -883,12 +887,36 @@ public final class LinearScan {
                         }
                     }
                     if (blockData.get(block).liveKill.get(operandNum)) {
+                        definedIn.add(block);
                         TTY.println("  defined in block B%d", block.getId());
                         for (LIRInstruction ins : block.lir) {
                             TTY.println(ins.id() + ": " + ins.toString());
                         }
                     }
                 }
+
+                int[] hitCount = new int[numBlocks];
+
+                while (!definedIn.isEmpty()) {
+                    Block block = definedIn.removeFirst();
+                    usedIn.remove(block);
+                    for (Block successor : block.getSuccessors()) {
+                        if (successor.isLoopHeader()) {
+                            if (!block.isLoopEnd()) {
+                                definedIn.add(successor);
+                            }
+                        } else {
+                            if (++hitCount[successor.getId()] == successor.getPredecessors().size()) {
+                                definedIn.add(successor);
+                            }
+                        }
+                    }
+                }
+                TTY.print("  offending usages are in: ");
+                for (Block block : usedIn) {
+                    TTY.print("B%d ", block.getId());
+                }
+                TTY.println();
             }
         }
     }
