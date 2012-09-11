@@ -183,42 +183,36 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     @Override
     public StructuredGraph buildGraph(final ResolvedJavaMethod method) {
-
-        return Debug.scope("buildInlineGraph", this, new Callable<StructuredGraph>() {
-
-            public StructuredGraph call() {
-                metricInliningRuns.increment();
-                if (GraalOptions.CacheGraphs && cache != null) {
-                    StructuredGraph cachedGraph = cache.get(method);
-                    if (cachedGraph != null) {
-                        return cachedGraph;
-                    }
-                }
-                StructuredGraph newGraph = new StructuredGraph(method);
-                if (plan != null) {
-                    plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
-                }
-                assert newGraph.start().next() != null : "graph needs to be populated during PhasePosition.AFTER_PARSING";
-
-                if (GraalOptions.ProbabilityAnalysis) {
-                    new DeadCodeEliminationPhase().apply(newGraph);
-                    new ComputeProbabilityPhase().apply(newGraph);
-                }
-                if (GraalOptions.OptCanonicalizer) {
-                    new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
-                }
-                if (GraalOptions.Intrinsify) {
-                    new IntrinsificationPhase(runtime).apply(newGraph);
-                }
-                if (GraalOptions.CullFrameStates) {
-                    new CullFrameStatesPhase().apply(newGraph);
-                }
-                if (GraalOptions.CacheGraphs && cache != null) {
-                    cache.put(newGraph);
-                }
-                return newGraph;
+        metricInliningRuns.increment();
+        if (GraalOptions.CacheGraphs && cache != null) {
+            StructuredGraph cachedGraph = cache.get(method);
+            if (cachedGraph != null) {
+                return cachedGraph;
             }
-        });
+        }
+        StructuredGraph newGraph = new StructuredGraph(method);
+        if (plan != null) {
+            plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
+        }
+        assert newGraph.start().next() != null : "graph needs to be populated during PhasePosition.AFTER_PARSING";
+
+        if (GraalOptions.ProbabilityAnalysis) {
+            new DeadCodeEliminationPhase().apply(newGraph);
+            new ComputeProbabilityPhase().apply(newGraph);
+        }
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
+        }
+        if (GraalOptions.Intrinsify) {
+            new IntrinsificationPhase(runtime).apply(newGraph);
+        }
+        if (GraalOptions.CullFrameStates) {
+            new CullFrameStatesPhase().apply(newGraph);
+        }
+        if (GraalOptions.CacheGraphs && cache != null) {
+            cache.put(newGraph);
+        }
+        return newGraph;
     }
 
     @Override

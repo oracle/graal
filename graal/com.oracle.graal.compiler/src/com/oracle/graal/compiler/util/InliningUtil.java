@@ -109,7 +109,7 @@ public class InliningUtil {
         }
 
         protected static StructuredGraph getGraph(final ResolvedJavaMethod concrete, final InliningCallback callback) {
-            return Debug.scope("Inlining", concrete, new Callable<StructuredGraph>() {
+            return Debug.scope("GetInliningGraph", concrete, new Callable<StructuredGraph>() {
                 @Override
                 public StructuredGraph call() throws Exception {
                     return callback.buildGraph(concrete);
