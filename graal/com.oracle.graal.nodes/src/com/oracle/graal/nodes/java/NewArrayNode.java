@@ -38,6 +38,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
 
     @Input private ValueNode length;
     private final ResolvedJavaType elementType;
+    private final boolean fillContents;
 
     public static final int MaximumEscapeAnalysisArrayLength = 32;
 
@@ -50,10 +51,15 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
      * Constructs a new NewArrayNode.
      * @param length the node that produces the length for this allocation
      */
-    protected NewArrayNode(ResolvedJavaType elementType, ValueNode length) {
+    protected NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
         super(StampFactory.exactNonNull(elementType.arrayOf()));
         this.length = length;
         this.elementType = elementType;
+        this.fillContents = fillContents;
+    }
+
+    public boolean fillContents() {
+        return fillContents;
     }
 
     /**
@@ -105,6 +111,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
         @Override
         public EscapeField[] fields(Node node) {
             NewArrayNode x = (NewArrayNode) node;
+            assert x.elementType.arrayOf().isArrayClass();
             int length = x.dimension(0).asConstant().asInt();
             EscapeField[] fields = new EscapeField[length];
             for (int i = 0; i < length; i++) {

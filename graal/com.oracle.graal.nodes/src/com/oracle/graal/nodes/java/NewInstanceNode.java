@@ -38,14 +38,16 @@ import com.oracle.graal.nodes.util.*;
 public final class NewInstanceNode extends FixedWithNextNode implements EscapeAnalyzable, Lowerable, LIRLowerable, Node.IterableNodeType {
 
     private final ResolvedJavaType instanceClass;
+    private final boolean fillContents;
 
     /**
      * Constructs a NewInstanceNode.
      * @param type the class being allocated
      */
-    public NewInstanceNode(ResolvedJavaType type) {
+    public NewInstanceNode(ResolvedJavaType type, boolean fillContents) {
         super(StampFactory.exactNonNull(type));
         this.instanceClass = type;
+        this.fillContents = fillContents;
     }
 
     /**
@@ -54,6 +56,10 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
      */
     public ResolvedJavaType instanceClass() {
         return instanceClass;
+    }
+
+    public boolean fillContents() {
+        return fillContents;
     }
 
     @Override
@@ -97,6 +103,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
         @Override
         public EscapeField[] fields(Node node) {
             NewInstanceNode x = (NewInstanceNode) node;
+            assert !x.instanceClass().isArrayClass();
             List<EscapeField> escapeFields = new ArrayList<>();
             fillEscapeFields(x.instanceClass(), escapeFields);
             return escapeFields.toArray(new EscapeField[escapeFields.size()]);

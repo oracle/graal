@@ -31,10 +31,10 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code NewPrimitiveArrayNode} class definition.
  */
 @NodeInfo(nameTemplate = "NewArray {p#elementType}")
-public final class NewPrimitiveArrayNode extends NewArrayNode implements LIRLowerable {
+public final class NewPrimitiveArrayNode extends NewArrayNode implements LIRLowerable, Node.IterableNodeType {
 
-    public NewPrimitiveArrayNode(ResolvedJavaType elementType, ValueNode length) {
-        super(elementType, length);
+    public NewPrimitiveArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
+        super(elementType, length, fillContents);
     }
 
     @Override

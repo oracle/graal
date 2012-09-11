@@ -29,17 +29,17 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(nameTemplate = "Materialize {p#type/s}")
-public final class MaterializeObjectNode extends FixedWithNextNode implements Lowerable, Node.IterableNodeType {
+public final class MaterializeObjectNode extends FixedWithNextNode implements Lowerable, Node.IterableNodeType, Canonicalizable {
 
     @Input private final NodeInputList<ValueNode> values;
     private final ResolvedJavaType type;
     private final EscapeField[] fields;
 
-    public MaterializeObjectNode(ResolvedJavaType type, EscapeField[] fields, ValueNode[] values) {
+    public MaterializeObjectNode(ResolvedJavaType type, EscapeField[] fields) {
         super(StampFactory.exactNonNull(type));
         this.type = type;
         this.fields = fields;
-        this.values = new NodeInputList<>(this, values);
+        this.values = new NodeInputList<>(this, fields.length);
     }
 
     public ResolvedJavaType type() {
@@ -50,7 +50,7 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Lo
         return fields;
     }
 
-    public NodeInputList<ValueNode> getValues() {
+    public NodeInputList<ValueNode> values() {
         return values;
     }
 
@@ -61,9 +61,9 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Lo
             ResolvedJavaType element = type.componentType();
             NewArrayNode newArray;
             if (element.kind() == Kind.Object) {
-                newArray = graph.add(new NewObjectArrayNode(element, ConstantNode.forInt(fields.length, graph)));
+                newArray = graph.add(new NewObjectArrayNode(element, ConstantNode.forInt(fields.length, graph), false));
             } else {
-                newArray = graph.add(new NewPrimitiveArrayNode(element, ConstantNode.forInt(fields.length, graph)));
+                newArray = graph.add(new NewPrimitiveArrayNode(element, ConstantNode.forInt(fields.length, graph), false));
             }
             this.replaceAtUsages(newArray);
             graph.addAfterFixed(this, newArray);
@@ -77,7 +77,7 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Lo
 
             graph.removeFixed(this);
         } else {
-            NewInstanceNode newInstance = graph.add(new NewInstanceNode(type));
+            NewInstanceNode newInstance = graph.add(new NewInstanceNode(type, false));
             this.replaceAtUsages(newInstance);
             graph.addAfterFixed(this, newInstance);
 
@@ -89,6 +89,15 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Lo
             }
 
             graph.removeFixed(this);
+        }
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (usages().isEmpty()) {
+            return null;
+        } else {
+            return this;
         }
     }
 }

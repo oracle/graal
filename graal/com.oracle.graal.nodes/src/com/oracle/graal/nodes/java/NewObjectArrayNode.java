@@ -38,8 +38,8 @@ public final class NewObjectArrayNode extends NewArrayNode implements LIRLowerab
      * @param elementClass the class of elements in this array
      * @param length the node producing the length of the array
      */
-    public NewObjectArrayNode(ResolvedJavaType elementClass, ValueNode length) {
-        super(elementClass, length);
+    public NewObjectArrayNode(ResolvedJavaType elementClass, ValueNode length, boolean fillContents) {
+        super(elementClass, length, fillContents);
     }
 
     @Override

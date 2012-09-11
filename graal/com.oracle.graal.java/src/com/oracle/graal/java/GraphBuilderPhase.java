@@ -663,7 +663,7 @@ public final class GraphBuilderPhase extends Phase {
     void genNewInstance(int cpi) {
         JavaType type = lookupType(cpi, NEW);
         if (type instanceof ResolvedJavaType && ((ResolvedJavaType) type).isInitialized()) {
-            NewInstanceNode n = currentGraph.add(new NewInstanceNode((ResolvedJavaType) type));
+            NewInstanceNode n = currentGraph.add(new NewInstanceNode((ResolvedJavaType) type, true));
             frameState.apush(append(n));
         } else {
             append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved, graphId)));
@@ -696,7 +696,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genNewPrimitiveArray(int typeCode) {
         Kind kind = arrayTypeCodeToKind(typeCode);
         ResolvedJavaType elementType = runtime.getResolvedJavaType(kind);
-        NewPrimitiveArrayNode nta = currentGraph.add(new NewPrimitiveArrayNode(elementType, frameState.ipop()));
+        NewPrimitiveArrayNode nta = currentGraph.add(new NewPrimitiveArrayNode(elementType, frameState.ipop(), true));
         frameState.apush(append(nta));
     }
 
@@ -704,7 +704,7 @@ public final class GraphBuilderPhase extends Phase {
         JavaType type = lookupType(cpi, ANEWARRAY);
         ValueNode length = frameState.ipop();
         if (type instanceof ResolvedJavaType) {
-            NewArrayNode n = currentGraph.add(new NewObjectArrayNode((ResolvedJavaType) type, length));
+            NewArrayNode n = currentGraph.add(new NewObjectArrayNode((ResolvedJavaType) type, length, true));
             frameState.apush(append(n));
         } else {
             append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved, graphId)));
