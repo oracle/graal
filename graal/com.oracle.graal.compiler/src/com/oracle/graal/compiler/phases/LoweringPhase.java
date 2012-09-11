@@ -118,7 +118,7 @@ public class LoweringPhase extends Phase {
         while (true) {
             int mark = graph.getMark();
             final SchedulePhase schedule = new SchedulePhase();
-            schedule.apply(graph);
+            schedule.apply(graph, false);
 
             processBlock(schedule.getCFG().getStartBlock(), graph.createNodeBitMap(), null, schedule, processed);
             Debug.dump(graph, "Lowering iteration %d", i++);
