@@ -72,13 +72,14 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @Parameter("memory") Word memory,
                     @Parameter("hub") Object hub,
                     @Parameter("initialMarkWord") Word initialMarkWord,
-                    @ConstantParameter("size") int size) {
+                    @ConstantParameter("size") int size,
+                    @ConstantParameter("fillContents") boolean fillContents) {
 
         if (memory == Word.zero()) {
             new_stub.inc();
             return NewInstanceStubCall.call(hub);
         }
-        formatObject(hub, size, memory, initialMarkWord);
+        formatObject(hub, size, memory, initialMarkWord, fillContents);
         Object instance = memory.toObject();
         return castFromHub(verifyOop(instance), hub);
     }
@@ -90,8 +91,9 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @Parameter("length") int length,
                     @Parameter("size") int size,
                     @Parameter("initialMarkWord") Word initialMarkWord,
-                    @ConstantParameter("headerSize") int headerSize) {
-        return initializeArray(memory, hub, length, size, initialMarkWord, headerSize, true);
+                    @ConstantParameter("headerSize") int headerSize,
+                    @ConstantParameter("fillContents") boolean fillContents) {
+        return initializeArray(memory, hub, length, size, initialMarkWord, headerSize, true, fillContents);
     }
 
     @Snippet
@@ -101,11 +103,12 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @Parameter("length") int length,
                     @Parameter("size") int size,
                     @Parameter("initialMarkWord") Word initialMarkWord,
-                    @ConstantParameter("headerSize") int headerSize) {
-        return initializeArray(memory, hub, length, size, initialMarkWord, headerSize, false);
+                    @ConstantParameter("headerSize") int headerSize,
+                    @ConstantParameter("fillContents") boolean fillContents) {
+        return initializeArray(memory, hub, length, size, initialMarkWord, headerSize, false, fillContents);
     }
 
-    private static Object initializeArray(Word memory, Object hub, int length, int size, Word initialMarkWord, int headerSize, boolean isObjectArray) {
+    private static Object initializeArray(Word memory, Object hub, int length, int size, Word initialMarkWord, int headerSize, boolean isObjectArray, boolean fillContents) {
         if (memory == Word.zero()) {
             if (isObjectArray) {
                 anewarray_stub.inc();
@@ -119,7 +122,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         } else {
             newarray_loopInit.inc();
         }
-        formatArray(hub, size, length, headerSize, memory, initialMarkWord);
+        formatArray(hub, size, length, headerSize, memory, initialMarkWord, fillContents);
         Object instance = memory.toObject();
         return castFromHub(verifyOop(instance), hub);
     }
@@ -143,7 +146,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         }
         int size = getArraySize(length, alignment, headerSize, log2ElementSize);
         Word memory = TLABAllocateNode.allocateVariableSize(size, wordKind);
-        return InitializeArrayNode.initialize(memory, length, size, type);
+        return InitializeArrayNode.initialize(memory, length, size, type, true);
     }
 
     public static int getArraySize(int length, int alignment, int headerSize, int log2ElementSize) {
@@ -178,19 +181,21 @@ public class NewObjectSnippets implements SnippetsInterface {
     /**
      * Formats some allocated memory with an object header zeroes out the rest.
      */
-    private static void formatObject(Object hub, int size, Word memory, Word headerPrototype) {
+    private static void formatObject(Object hub, int size, Word memory, Word headerPrototype, boolean fillContents) {
         storeObject(memory, 0, markOffset(), headerPrototype);
         storeObject(memory, 0, hubOffset(), hub);
-        if (size <= MAX_UNROLLED_OBJECT_ZEROING_SIZE) {
-            new_seqInit.inc();
-            explodeLoop();
-            for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
-                storeWord(memory, 0, offset, Word.zero());
-            }
-        } else {
-            new_loopInit.inc();
-            for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
-                storeWord(memory, 0, offset, Word.zero());
+        if (fillContents) {
+            if (size <= MAX_UNROLLED_OBJECT_ZEROING_SIZE) {
+                new_seqInit.inc();
+                explodeLoop();
+                for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
+                    storeWord(memory, 0, offset, Word.zero());
+                }
+            } else {
+                new_loopInit.inc();
+                for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
+                    storeWord(memory, 0, offset, Word.zero());
+                }
             }
         }
     }
@@ -198,12 +203,14 @@ public class NewObjectSnippets implements SnippetsInterface {
     /**
      * Formats some allocated memory with an object header zeroes out the rest.
      */
-    private static void formatArray(Object hub, int size, int length, int headerSize, Word memory, Word headerPrototype) {
+    private static void formatArray(Object hub, int size, int length, int headerSize, Word memory, Word headerPrototype, boolean fillContents) {
         storeObject(memory, 0, markOffset(), headerPrototype);
         storeObject(memory, 0, hubOffset(), hub);
         storeInt(memory, 0, arrayLengthOffset(), length);
-        for (int offset = headerSize; offset < size; offset += wordSize()) {
-            storeWord(memory, 0, offset, Word.zero());
+        if (fillContents) {
+            for (int offset = headerSize; offset < size; offset += wordSize()) {
+                storeWord(memory, 0, offset, Word.zero());
+            }
         }
     }
 
@@ -222,9 +229,9 @@ public class NewObjectSnippets implements SnippetsInterface {
             this.target = target;
             this.useTLAB = useTLAB;
             allocate = snippet("allocate", int.class);
-            initializeObject = snippet("initializeObject", Word.class, Object.class, Word.class, int.class);
-            initializeObjectArray = snippet("initializeObjectArray", Word.class, Object.class, int.class, int.class, Word.class, int.class);
-            initializePrimitiveArray = snippet("initializePrimitiveArray", Word.class, Object.class, int.class, int.class, Word.class, int.class);
+            initializeObject = snippet("initializeObject", Word.class, Object.class, Word.class, int.class, boolean.class);
+            initializeObjectArray = snippet("initializeObjectArray", Word.class, Object.class, int.class, int.class, Word.class, int.class, boolean.class);
+            initializePrimitiveArray = snippet("initializePrimitiveArray", Word.class, Object.class, int.class, int.class, Word.class, int.class, boolean.class);
             allocateArrayAndInitialize = snippet("allocateArrayAndInitialize", int.class, int.class, int.class, int.class, ResolvedJavaType.class, Kind.class);
         }
 
@@ -249,7 +256,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 graph.addBeforeFixed(newInstanceNode, tlabAllocateNode);
                 memory = tlabAllocateNode;
             }
-            InitializeObjectNode initializeNode = graph.add(new InitializeObjectNode(memory, type));
+            InitializeObjectNode initializeNode = graph.add(new InitializeObjectNode(memory, type, newInstanceNode.fillContents()));
             graph.replaceFixedWithFixed(newInstanceNode, initializeNode);
         }
 
@@ -273,7 +280,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 // value for 'size' doesn't matter as it isn't used since a stub call will be made anyway
                 // for both allocation and initialization - it just needs to be non-null
                 ConstantNode size = ConstantNode.forInt(-1, graph);
-                InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(zero, lengthNode, size, arrayType));
+                InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(zero, lengthNode, size, arrayType, newArrayNode.fillContents()));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
             } else if (length != null && belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
                 // Calculate aligned size
@@ -281,7 +288,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 ConstantNode sizeNode = ConstantNode.forInt(size, graph);
                 tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode, target.wordKind));
                 graph.addBeforeFixed(newArrayNode, tlabAllocateNode);
-                InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(tlabAllocateNode, lengthNode, sizeNode, arrayType));
+                InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(tlabAllocateNode, lengthNode, sizeNode, arrayType, newArrayNode.fillContents()));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
             } else {
                 Key key = new Key(allocateArrayAndInitialize).
@@ -317,7 +324,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             int size = type.instanceSize();
             assert (size % wordSize()) == 0;
             assert size >= 0;
-            Key key = new Key(initializeObject).add("size", size);
+            Key key = new Key(initializeObject).add("size", size).add("fillContents", initializeNode.fillContents());
             ValueNode memory = initializeNode.memory();
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("initialMarkWord", type.initialMarkWord());
             SnippetTemplate template = cache.get(key);
@@ -334,7 +341,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             HotSpotKlassOop hub = type.klassOop();
             Kind elementKind = elementType.kind();
             final int headerSize = elementKind.getArrayBaseOffset();
-            Key key = new Key(elementKind.isObject() ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize);
+            Key key = new Key(elementKind.isObject() ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents());
             ValueNode memory = initializeNode.memory();
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("initialMarkWord", type.initialMarkWord()).add("size", initializeNode.size()).add("length", initializeNode.length());
             SnippetTemplate template = cache.get(key);

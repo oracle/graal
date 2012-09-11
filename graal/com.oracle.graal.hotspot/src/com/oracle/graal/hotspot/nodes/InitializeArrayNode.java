@@ -39,13 +39,15 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
     @Input private final ValueNode length;
     @Input private final ValueNode size;
     private final ResolvedJavaType type;
+    private final boolean fillContents;
 
-    public InitializeArrayNode(ValueNode memory, ValueNode length, ValueNode size, ResolvedJavaType type) {
+    public InitializeArrayNode(ValueNode memory, ValueNode length, ValueNode size, ResolvedJavaType type, boolean fillContents) {
         super(StampFactory.exactNonNull(type));
         this.memory = memory;
         this.type = type;
         this.length = length;
         this.size = size;
+        this.fillContents = fillContents;
     }
 
     public ValueNode memory() {
@@ -65,6 +67,10 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
         return type;
     }
 
+    public boolean fillContents() {
+        return fillContents;
+    }
+
     @Override
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
@@ -72,7 +78,7 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object initialize(Object memory, int length, int size, @ConstantNodeParameter ResolvedJavaType type) {
+    public static Object initialize(Object memory, int length, int size, @ConstantNodeParameter ResolvedJavaType type, @ConstantNodeParameter boolean fillContents) {
         throw new UnsupportedOperationException();
     }
 }
