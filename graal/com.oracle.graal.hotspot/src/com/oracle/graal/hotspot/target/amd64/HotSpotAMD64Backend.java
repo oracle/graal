@@ -110,7 +110,7 @@ public class HotSpotAMD64Backend extends Backend {
         @Override
         public void visitExceptionObject(ExceptionObjectNode x) {
             HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
-            RegisterValue thread = r15.asValue();
+            RegisterValue thread = config.threadRegister.asValue();
             Address exceptionAddress = new Address(Kind.Object, thread, config.threadExceptionOopOffset);
             Address pcAddress = new Address(Kind.Long, thread, config.threadExceptionPcOffset);
             Value exception = emitLoad(exceptionAddress, false);

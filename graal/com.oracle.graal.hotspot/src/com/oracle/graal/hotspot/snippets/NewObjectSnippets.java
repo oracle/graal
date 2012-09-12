@@ -55,7 +55,7 @@ public class NewObjectSnippets implements SnippetsInterface {
 
     @Snippet
     public static Word allocate(@Parameter("size") int size) {
-        Word thread = asWord(register(r15, wordKind()));
+        Word thread = asWord(register(threadReg(), wordKind()));
         Word top = loadWord(thread, threadTlabTopOffset());
         Word end = loadWord(thread, threadTlabEndOffset());
         Word newTop = top.plus(size);

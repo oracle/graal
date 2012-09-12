@@ -284,7 +284,7 @@ public class HotSpotXirGenerator implements XirGenerator {
             asm.pload(Kind.Int, temp2i, hub, asm.i(config.klassStateOffset), false);
             asm.jneq(tlabFull, temp2i, asm.i(config.klassStateFullyInitialized));
 
-            XirOperand thread = asm.createRegisterTemp("thread", target.wordKind, AMD64.r15);
+            XirOperand thread = asm.createRegisterTemp("thread", target.wordKind, config.threadRegister);
             asm.pload(target.wordKind, result, thread, asm.i(config.threadTlabTopOffset), false);
             asm.add(temp1, result, wordConst(asm, size));
             asm.pload(target.wordKind, temp2, thread, asm.i(config.threadTlabEndOffset), false);
@@ -372,7 +372,7 @@ public class HotSpotXirGenerator implements XirGenerator {
             asm.and(size, size, asm.i((int) mask));
 
             // Try tlab allocation
-            XirOperand thread = asm.createRegisterTemp("thread", target.wordKind, AMD64.r15);
+            XirOperand thread = asm.createRegisterTemp("thread", target.wordKind, config.threadRegister);
             asm.pload(target.wordKind, result, thread, asm.i(config.threadTlabTopOffset), false);
             asm.add(temp1, result, size);
             asm.pload(target.wordKind, temp2, thread, asm.i(config.threadTlabEndOffset), false);
@@ -426,7 +426,7 @@ public class HotSpotXirGenerator implements XirGenerator {
             XirOperand hub = asm.createRegisterTemp("hub", Kind.Object, AMD64.rax);
             XirOperand rank = asm.createRegisterTemp("rank", Kind.Int, AMD64.rbx);
             XirOperand sizes = asm.createRegisterTemp("sizes", Kind.Long, AMD64.rcx);
-            XirOperand thread = asm.createRegisterTemp("thread", Kind.Long, AMD64.r15);
+            XirOperand thread = asm.createRegisterTemp("thread", Kind.Long, config.threadRegister);
             asm.add(sizes, thread, asm.l(config.threadMultiNewArrayStorageOffset));
             for (int i = 0; i < dimensions; i++) {
                 XirParameter length = asm.createInputParameter("length" + i, Kind.Int, true);

@@ -62,6 +62,11 @@ public class HotSpotSnippetUtils {
     }
 
     @Fold
+    static Register threadReg() {
+        return HotSpotGraalRuntime.getInstance().getConfig().threadRegister;
+    }
+
+    @Fold
     static Register stackPointerReg() {
         return AMD64.rsp;
     }
