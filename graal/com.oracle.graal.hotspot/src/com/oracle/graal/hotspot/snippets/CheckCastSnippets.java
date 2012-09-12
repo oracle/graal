@@ -21,7 +21,7 @@
  * questions.
  */
 package com.oracle.graal.hotspot.snippets;
-import static com.oracle.graal.hotspot.snippets.ArrayCopySnippets.*;
+import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.Snippet.Varargs.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 
@@ -37,7 +37,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
-import com.oracle.graal.snippets.Snippet.Fold;
 import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.Snippet.VarargsParameter;
 import com.oracle.graal.snippets.SnippetTemplate.AbstractTemplates;
@@ -65,7 +64,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             isNull.inc();
             return object;
         }
-        Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
+        Object objectHub = loadHub(object);
         if (objectHub != exactHub) {
             exactMiss.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
@@ -91,7 +90,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             isNull.inc();
             return object;
         }
-        Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
+        Object objectHub = loadHub(object);
         if (UnsafeLoadNode.loadObject(objectHub, 0, superCheckOffset, true) != hub) {
             displayMiss.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
@@ -113,7 +112,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             isNull.inc();
             return object;
         }
-        Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
+        Object objectHub = loadHub(object);
         // if we get an exact match: succeed immediately
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < hints.length; i++) {
@@ -143,7 +142,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             isNull.inc();
             return object;
         }
-        Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
+        Object objectHub = loadHub(object);
         // if we get an exact match: succeed immediately
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < hints.length; i++) {
@@ -230,26 +229,6 @@ public class CheckCastSnippets implements SnippetsInterface {
 
         secondariesMiss.inc();
         return false;
-    }
-
-    @Fold
-    private static int superCheckOffsetOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().superCheckOffsetOffset;
-    }
-
-    @Fold
-    private static int secondarySuperCacheOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().secondarySuperCacheOffset;
-    }
-
-    @Fold
-    private static int secondarySupersOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().secondarySupersOffset;
-    }
-
-    @Fold
-    private static int hubOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().hubOffset;
     }
 
     public static class Templates extends AbstractTemplates<CheckCastSnippets> {
