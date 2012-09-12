@@ -60,6 +60,11 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int hubOffset;
 
     /**
+     * The offset of the _prototype_header field in a Klass.
+     */
+    public int initialMarkWordOffset;
+
+    /**
      * The offset of an the array length in an array's header.
      */
     public int arrayLengthOffset;
@@ -105,8 +110,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int threadTlabEndOffset;
 
     public int threadObjectOffset;
-
-    public int instanceHeaderPrototypeOffset;
 
     public int threadExceptionOopOffset;
     public int threadExceptionPcOffset;
