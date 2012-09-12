@@ -32,6 +32,7 @@ import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -213,7 +214,8 @@ public class TypeSystemTest extends GraalCompilerTest {
         }
     }
 
-    public static void outputGraph(StructuredGraph graph) {
+    public static void outputGraph(StructuredGraph graph, String message) {
+        System.out.println("========================= " + message);
         SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
         for (Block block : schedule.getCFG().getBlocks()) {
@@ -227,7 +229,20 @@ public class TypeSystemTest extends GraalCompilerTest {
             }
             System.out.println();
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
-                System.out.println("  " + node + "    (" + node.usages().size() + ")");
+                outputNode(node);
+            }
+        }
+    }
+
+    private static void outputNode(Node node) {
+        System.out.print("  " + node + "    (usage count: " + node.usages().size() + ") (inputs:");
+        for (Node input : node.inputs()) {
+            System.out.print(" " + input.toString(Verbosity.Id));
+        }
+        System.out.println(")");
+        if (node instanceof MergeNode) {
+            for (PhiNode phi : ((MergeNode) node).phis()) {
+                outputNode(phi);
             }
         }
     }
