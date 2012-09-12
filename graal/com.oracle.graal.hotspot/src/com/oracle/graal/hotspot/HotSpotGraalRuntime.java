@@ -83,7 +83,8 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
         // set the final fields
         compilerToVm = toVM;
         vmToCompiler = toCompiler;
-        config = compilerToVm.getConfiguration();
+        config = new HotSpotVMConfig();
+        compilerToVm.initializeConfiguration(config);
         config.check();
 
         if (Boolean.valueOf(System.getProperty("graal.printconfig"))) {

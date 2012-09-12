@@ -80,7 +80,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native HotSpotCompiledMethod installMethod(HotSpotCompilationResult comp, boolean makeDefault, HotSpotCodeInfo info);
 
     @Override
-    public native HotSpotVMConfig getConfiguration();
+    public native void initializeConfiguration(HotSpotVMConfig config);
 
     @Override
     public native JavaMethod JavaType_resolveMethodImpl(HotSpotResolvedJavaType klass, String name, String signature);

@@ -65,7 +65,7 @@ public interface CompilerToVM {
 
     HotSpotCompiledMethod installMethod(HotSpotCompilationResult compResult, boolean makeDefault, HotSpotCodeInfo info);
 
-    HotSpotVMConfig getConfiguration();
+    void initializeConfiguration(HotSpotVMConfig config);
 
     JavaMethod JavaType_resolveMethodImpl(HotSpotResolvedJavaType klass, String name, String signature);
 
