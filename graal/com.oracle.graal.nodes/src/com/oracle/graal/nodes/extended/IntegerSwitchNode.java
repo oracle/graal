@@ -91,7 +91,10 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
 
     @Override
     public void simplify(SimplifierTool tool) {
-        if (value() instanceof ConstantNode) {
+        if (blockSuccessorCount() == 1) {
+            tool.addToWorkList(defaultSuccessor());
+            ((StructuredGraph) graph()).removeSplitPropagate(this, defaultSuccessorIndex());
+        } else if (value() instanceof ConstantNode) {
             int constant = value().asConstant().asInt();
 
             int survivingEdge = keySuccessorIndex(keyCount());
@@ -107,8 +110,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             }
             tool.addToWorkList(blockSuccessor(survivingEdge));
             ((StructuredGraph) graph()).removeSplitPropagate(this, survivingEdge);
-        }
-        if (value() != null) {
+        } else if (value() != null) {
             IntegerStamp stamp = value().integerStamp();
             if (!stamp.isUnrestricted()) {
                 int validKeys = 0;
