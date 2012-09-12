@@ -279,7 +279,15 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return canBeInlined;
     }
 
+    /**
+     * Returns the offset of this method into the v-table.
+     * If the holder is not initialized, returns -1
+     * @return the offset of this method into the v-table
+     */
     public int vtableEntryOffset() {
+        if (!holder.isInitialized()) {
+            return -1;
+        }
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_vtableEntryOffset(this);
     }
 
