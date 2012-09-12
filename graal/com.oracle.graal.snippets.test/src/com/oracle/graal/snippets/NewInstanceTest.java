@@ -38,7 +38,16 @@ public class NewInstanceTest extends GraalCompilerTest {
         Assert.assertTrue(expected != null);
         Assert.assertTrue(actual != null);
         super.assertEquals(expected.getClass(), actual.getClass());
-        if (expected.getClass() != Object.class) {
+
+        if (expected instanceof Object[]) {
+            Assert.assertTrue(actual instanceof Object[]);
+            Object[] eArr = (Object[]) expected;
+            Object[] aArr = (Object[]) actual;
+            Assert.assertTrue(eArr.length == aArr.length);
+            for (int i = 0; i < eArr.length; i++) {
+                assertEquals(eArr[i], aArr[i]);
+            }
+        } else if (expected.getClass() != Object.class) {
             try {
                 expected.getClass().getDeclaredMethod("equals", Object.class);
                 super.assertEquals(expected, actual);
@@ -50,16 +59,63 @@ public class NewInstanceTest extends GraalCompilerTest {
     @Test
     public void test1() {
         test("newObject");
-        test("newBigObject");
-        test("newSomeObject");
-        test("newEmptyString");
-        test("newString", "value");
-        test("newHashMap", 31);
-        test("newRegression", true);
+    }
+
+    @Test
+    public void test2() {
+        test("newObjectTwice");
     }
 
     public static Object newObject() {
         return new Object();
+    }
+
+    @Test
+    public void test3() {
+        test("newObjectLoop", 100);
+    }
+
+    @Test
+    public void test4() {
+        test("newBigObject");
+    }
+
+    @Test
+    public void test5() {
+        test("newSomeObject");
+    }
+
+    @Test
+    public void test6() {
+        test("newEmptyString");
+    }
+
+    @Test
+    public void test7() {
+        test("newString", "value");
+    }
+
+    @Test
+    public void test8() {
+        test("newHashMap", 31);
+    }
+
+    @Test
+    public void test9() {
+        test("newRegression", true);
+    }
+
+    public static Object[] newObjectTwice() {
+        Object[] res = {new Object(), new Object()};
+        return res;
+    }
+
+    public static Object[] newObjectLoop(int n) {
+        Object[] res = new Object[n];
+        for (int i = 0; i < n; i++) {
+            res[i] = new Object();
+        }
+        return res;
     }
 
     public static BigObject newBigObject() {
