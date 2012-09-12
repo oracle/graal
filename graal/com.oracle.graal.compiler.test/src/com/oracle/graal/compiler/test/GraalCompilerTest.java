@@ -163,29 +163,78 @@ public abstract class GraalCompilerTest {
         Assert.assertEquals(expected, actual);
     }
 
+    protected void testN(int n, final String name, final Object... args) {
+        final Throwable[] errors = new Throwable[n];
+        Thread[] threads = new Thread[n];
+        for (int i = 0; i < n; i++) {
+            final int idx = i;
+            Thread t = new Thread(i + ":" + name) {
+                @Override
+                public void run() {
+                    try {
+                        test(name, args);
+                    } catch (Throwable e) {
+                        errors[idx] = e;
+                    }
+                }
+            };
+            threads[i] = t;
+            t.start();
+        }
+        int failed = 0;
+        for (int i = 0; i < n; i++) {
+            try {
+                threads[i].join();
+            } catch (InterruptedException e) {
+                errors[i] = e;
+            }
+            if (errors[i] != null) {
+                errors[i].printStackTrace();
+                failed++;
+            }
+        }
+        Assert.assertTrue(failed + " of " + n + " failed", failed == 0);
+    }
+
     protected void test(String name, Object... args) {
         Method method = getMethod(name);
         Object expect = null;
+        Object receiver = Modifier.isStatic(method.getModifiers()) ? null : this;
         Throwable exception = null;
         try {
             // This gives us both the expected return value as well as ensuring that the method to be compiled is fully resolved
-            expect = method.invoke(null, args);
+            expect = method.invoke(this, args);
         } catch (InvocationTargetException e) {
             exception = e.getTargetException();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+
+        if (runtime == null) {
+            return;
+        }
+
         InstalledCode compiledMethod = getCode(runtime.getResolvedJavaMethod(method), parse(method));
+        Object[] executeArgs;
+        if (receiver == null) {
+            executeArgs = args;
+        } else {
+            executeArgs = new Object[args.length + 1];
+            executeArgs[0] = receiver;
+            for (int i = 0; i < args.length; i++) {
+                executeArgs[i + 1] = args[i];
+            }
+        }
 
         if (exception != null) {
             try {
-                compiledMethod.executeVarargs(args);
+                compiledMethod.executeVarargs(executeArgs);
                 Assert.fail("expected " + exception);
             } catch (Throwable e) {
                 Assert.assertEquals(exception.getClass(), e.getClass());
             }
         } else {
-            Object actual = compiledMethod.executeVarargs(args);
+            Object actual = compiledMethod.executeVarargs(executeArgs);
             assertEquals(expect, actual);
         }
     }
