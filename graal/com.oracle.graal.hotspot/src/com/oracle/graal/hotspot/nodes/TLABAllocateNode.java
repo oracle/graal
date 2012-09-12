@@ -53,9 +53,6 @@ public final class TLABAllocateNode extends FixedWithNextNode implements Lowerab
     /**
      * @return null if allocation fails
      */
-    /**
-     * @return null if allocation fails
-     */
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static Word allocateVariableSize(int size, @ConstantNodeParameter Kind wordKind) {
