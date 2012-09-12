@@ -69,9 +69,8 @@ public final class GraalOptions {
     public static float   ProbabilityCapForInlining          = 1f;
 
     // escape analysis settings
-    public static boolean EscapeAnalysis                     = true;
-    public static int     ForcedInlineEscapeWeight           = 10;
-    public static boolean PrintEscapeAnalysis                = ____;
+    public static boolean EscapeAnalysis                     = ____;
+    public static boolean PartialEscapeAnalysis              = true;
 
     public static double TailDuplicationProbability          = 0.5;
     public static int    TailDuplicationTrivialSize          = 1;
