@@ -29,6 +29,9 @@ import com.oracle.graal.nodes.*;
 
 public class DeadCodeEliminationPhase extends Phase {
 
+    // Metrics
+    private static final DebugMetric metricNodesRemoved = Debug.metric("NodesRemoved");
+
     private NodeFlood flood;
 
     @Override
@@ -101,6 +104,7 @@ public class DeadCodeEliminationPhase extends Phase {
         }
         for (Node node : graph.getNodes()) {
             if (!flood.isMarked(node)) {
+                metricNodesRemoved.increment();
                 node.safeDelete();
             }
         }
