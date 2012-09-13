@@ -29,14 +29,28 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.virtual.*;
 
 public abstract class EscapeOp {
 
-    public abstract EscapeField[] fields(Node node);
+    /**
+     * Returns the type of object that is created by the associated node.
+     */
+    public abstract ResolvedJavaType type();
 
-    public abstract ResolvedJavaType type(Node node);
+    /**
+     * Returns all the fields that the objects create by the associated node have.
+     */
+    public abstract EscapeField[] fields();
 
-    public void beforeUpdate(Node node, Node usage) {
+    /**
+     * Returns the initial value of all fields, in the same order as {@link #fields()}.
+     */
+    public abstract ValueNode[] fieldState();
+
+    public abstract void beforeUpdate(Node usage);
+
+    protected static void beforeUpdate(Node node, Node usage) {
         // IsNullNode and IsTypeNode should have been eliminated by the CanonicalizerPhase, but we can't rely on this
         if (usage instanceof IsNullNode) {
             IsNullNode x = (IsNullNode) usage;
@@ -50,7 +64,6 @@ public abstract class EscapeOp {
         }
     }
 
-    public abstract int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, ValueNode[] fieldState);
-
+    public abstract int updateState(VirtualObjectNode virtualObject, Node current, Map<Object, Integer> fieldIndex, ValueNode[] fieldState);
 
 }

@@ -30,6 +30,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code NewArrayNode} class is the base of all instructions that allocate arrays.
@@ -85,58 +86,65 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
         return 1;
     }
 
-    public EscapeOp getEscapeOp() {
-        Constant constantLength = length().asConstant();
-        if (constantLength != null && constantLength.asInt() >= 0 && constantLength.asInt() < MaximumEscapeAnalysisArrayLength) {
-            return ESCAPE;
-        } else {
-            return null;
-        }
-    }
-
     @Override
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 
-    private static final EscapeOp ESCAPE = new EscapeOp() {
+    @Override
+    public EscapeOp getEscapeOp() {
+        Constant constantLength = length().asConstant();
+        if (constantLength != null && constantLength.asInt() >= 0 && constantLength.asInt() < MaximumEscapeAnalysisArrayLength) {
+            return new EscapeOpImpl();
+        } else {
+            return null;
+        }
+    }
+
+    private final class EscapeOpImpl extends EscapeOp {
 
         @Override
-        public EscapeField[] fields(Node node) {
-            NewArrayNode x = (NewArrayNode) node;
-            assert x.elementType.arrayOf().isArrayClass();
-            int length = x.dimension(0).asConstant().asInt();
-            EscapeField[] fields = new EscapeField[length];
-            for (int i = 0; i < length; i++) {
+        public ResolvedJavaType type() {
+            return elementType.arrayOf();
+        }
+
+        @Override
+        public EscapeField[] fields() {
+            int constantLength = dimension(0).asConstant().asInt();
+            EscapeField[] fields = new EscapeField[constantLength];
+            for (int i = 0; i < constantLength; i++) {
                 Integer representation = i;
-                fields[i] = new EscapeField(Integer.toString(i), representation, ((NewArrayNode) node).elementType());
+                fields[i] = new EscapeField(Integer.toString(i), representation, elementType());
             }
             return fields;
         }
 
         @Override
-        public ResolvedJavaType type(Node node) {
-            NewArrayNode x = (NewArrayNode) node;
-            return x.elementType.arrayOf();
+        public ValueNode[] fieldState() {
+            ValueNode[] state = new ValueNode[dimension(0).asConstant().asInt()];
+            for (int i = 0; i < state.length; i++) {
+                state[i] = ConstantNode.defaultForKind(elementType().kind(), graph());
+            }
+            return state;
         }
 
         @Override
-        public void beforeUpdate(Node node, Node usage) {
+        public void beforeUpdate(Node usage) {
             if (usage instanceof ArrayLengthNode) {
                 ArrayLengthNode x = (ArrayLengthNode) usage;
-                StructuredGraph graph = (StructuredGraph) node.graph();
-                x.replaceAtUsages(((NewArrayNode) node).dimension(0));
+                StructuredGraph graph = (StructuredGraph) graph();
+                x.replaceAtUsages(dimension(0));
                 graph.removeFixed(x);
             } else {
-                super.beforeUpdate(node, usage);
+                beforeUpdate(NewArrayNode.this, usage);
             }
         }
 
         @Override
-        public int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, ValueNode[] fieldState) {
+        public int updateState(VirtualObjectNode virtualObject, Node current, Map<Object, Integer> fieldIndex, ValueNode[] fieldState) {
             if (current instanceof AccessIndexedNode) {
                 AccessIndexedNode x = (AccessIndexedNode) current;
-                if (GraphUtil.unProxify(x.array()) == node) {
+                if (GraphUtil.unProxify(x.array()) == virtualObject) {
                     int index = ((AccessIndexedNode) current).index().asConstant().asInt();
                     StructuredGraph graph = (StructuredGraph) x.graph();
                     if (current instanceof LoadIndexedNode) {
@@ -151,5 +159,6 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
             }
             return -1;
         }
-    };
+
+    }
 }

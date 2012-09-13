@@ -143,12 +143,12 @@ public class EscapeAnalysisPhase extends Phase {
 
         private void process() {
             for (Node usage : node.usages().snapshot()) {
-                op.beforeUpdate(node, usage);
+                op.beforeUpdate(usage);
             }
         }
 
         public void removeAllocation() {
-            escapeFields = op.fields(node);
+            escapeFields = op.fields();
             for (int i = 0; i < escapeFields.length; i++) {
                 fields.put(escapeFields[i].representation(), i);
             }

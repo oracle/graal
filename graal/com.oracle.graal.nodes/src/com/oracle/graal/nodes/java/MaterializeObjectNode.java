@@ -22,14 +22,17 @@
  */
 package com.oracle.graal.nodes.java;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 @NodeInfo(nameTemplate = "Materialize {p#type/s}")
-public final class MaterializeObjectNode extends FixedWithNextNode implements Lowerable, Node.IterableNodeType, Canonicalizable {
+public final class MaterializeObjectNode extends FixedWithNextNode implements EscapeAnalyzable, Lowerable, Node.IterableNodeType, Canonicalizable {
 
     @Input private final NodeInputList<ValueNode> values;
     private final ResolvedJavaType type;
@@ -98,6 +101,39 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Lo
             return null;
         } else {
             return this;
+        }
+    }
+
+    @Override
+    public EscapeOp getEscapeOp() {
+        return new EscapeOpImpl();
+    }
+
+    private final class EscapeOpImpl extends EscapeOp {
+
+        @Override
+        public ResolvedJavaType type() {
+            return type;
+        }
+
+        @Override
+        public EscapeField[] fields() {
+            return fields;
+        }
+
+        @Override
+        public ValueNode[] fieldState() {
+            return values.toArray(new ValueNode[values.size()]);
+        }
+
+        @Override
+        public void beforeUpdate(Node usage) {
+            throw new UnsupportedOperationException("MaterializeNode can only be escape analyzed using partial escape analysis");
+        }
+
+        @Override
+        public int updateState(VirtualObjectNode node, Node current, Map<Object, Integer> fieldIndex, ValueNode[] fieldState) {
+            throw new UnsupportedOperationException("MaterializeNode can only be escape analyzed using partial escape analysis");
         }
     }
 }

@@ -30,6 +30,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code NewInstanceNode} represents the allocation of an instance class object.
@@ -72,11 +73,17 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
         gen.visitNewInstance(this);
     }
 
+    @Override
     public EscapeOp getEscapeOp() {
-        return instanceClass == null ? null : ESCAPE;
+        return instanceClass == null ? null : new EscapeOpImpl();
     }
 
-    private static final EscapeOp ESCAPE = new EscapeOp() {
+    private final class EscapeOpImpl extends EscapeOp {
+
+        @Override
+        public ResolvedJavaType type() {
+            return instanceClass();
+        }
 
         private void fillEscapeFields(ResolvedJavaType type, List<EscapeField> escapeFields) {
             if (type != null) {
@@ -90,32 +97,35 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
         }
 
         @Override
-        public ResolvedJavaType type(Node node) {
-            NewInstanceNode x = (NewInstanceNode) node;
-            return x.instanceClass();
-        }
-
-        @Override
-        public EscapeField[] fields(Node node) {
-            NewInstanceNode x = (NewInstanceNode) node;
-            assert !x.instanceClass().isArrayClass();
+        public EscapeField[] fields() {
+            assert !instanceClass().isArrayClass();
             List<EscapeField> escapeFields = new ArrayList<>();
-            fillEscapeFields(x.instanceClass(), escapeFields);
+            fillEscapeFields(instanceClass(), escapeFields);
             return escapeFields.toArray(new EscapeField[escapeFields.size()]);
         }
 
         @Override
-        public void beforeUpdate(Node node, Node usage) {
+        public ValueNode[] fieldState() {
+            EscapeField[] fields = fields();
+            ValueNode[] state = new ValueNode[fields.length];
+            for (int i = 0; i < state.length; i++) {
+                state[i] = ConstantNode.defaultForKind(fields[i].type().kind(), graph());
+            }
+            return state;
+        }
+
+        @Override
+        public void beforeUpdate(Node usage) {
             if (usage instanceof RegisterFinalizerNode) {
                 RegisterFinalizerNode x = (RegisterFinalizerNode) usage;
                 ((StructuredGraph) x.graph()).removeFixed(x);
             } else {
-                super.beforeUpdate(node, usage);
+                super.beforeUpdate(NewInstanceNode.this, usage);
             }
         }
 
         @Override
-        public int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, ValueNode[] fieldState) {
+        public int updateState(VirtualObjectNode node, Node current, Map<Object, Integer> fieldIndex, ValueNode[] fieldState) {
             if (current instanceof AccessFieldNode) {
                 AccessFieldNode x = (AccessFieldNode) current;
                 if (GraphUtil.unProxify(x.object()) == node) {
@@ -134,5 +144,5 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
             }
             return -1;
         }
-    };
+    }
 }
