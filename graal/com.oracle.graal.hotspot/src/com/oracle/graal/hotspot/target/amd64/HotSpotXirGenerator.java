@@ -294,7 +294,7 @@ public class HotSpotXirGenerator implements XirGenerator {
 
             asm.bindInline(resume);
 
-            asm.pload(target.wordKind, temp1, hub, asm.i(config.initialMarkWordOffset), false);
+            asm.pload(target.wordKind, temp1, hub, asm.i(config.prototypeMarkWordOffset), false);
             asm.pstore(target.wordKind, result, asm.i(config.markOffset), temp1, false);
             asm.mov(temp1o, hub); // need a temporary register since Intel cannot store 64-bit constants to memory
             asm.pstore(Kind.Object, result, asm.i(config.hubOffset), temp1o, false);
@@ -380,7 +380,7 @@ public class HotSpotXirGenerator implements XirGenerator {
             asm.pstore(target.wordKind, thread, asm.i(config.threadTlabTopOffset), temp1, false);
 
             // Now the new object is in result, store mark word and klass
-            asm.pload(target.wordKind, temp1, hub, asm.i(config.initialMarkWordOffset), false);
+            asm.pload(target.wordKind, temp1, hub, asm.i(config.prototypeMarkWordOffset), false);
             asm.pstore(target.wordKind, result, asm.i(config.markOffset), temp1, false);
             asm.mov(temp1o, hub); // need a temporary register since Intel cannot store 64-bit constants to memory
             asm.pstore(Kind.Object, result, asm.i(config.hubOffset), temp1o, false);

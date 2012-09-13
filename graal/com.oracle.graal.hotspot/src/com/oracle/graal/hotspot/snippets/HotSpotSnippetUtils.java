@@ -82,8 +82,8 @@ public class HotSpotSnippetUtils {
     }
 
     @Fold
-    static int initialMarkWordOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().initialMarkWordOffset;
+    static int prototypeMarkWordOffset() {
+        return HotSpotGraalRuntime.getInstance().getConfig().prototypeMarkWordOffset;
     }
 
     @Fold

@@ -69,7 +69,7 @@ public class NewObjectSnippets implements SnippetsInterface {
     public static Object initializeObject(
                     @Parameter("memory") Word memory,
                     @Parameter("hub") Object hub,
-                    @Parameter("initialMarkWord") Word initialMarkWord,
+                    @Parameter("prototypeMarkWord") Word prototypeMarkWord,
                     @ConstantParameter("size") int size,
                     @ConstantParameter("fillContents") boolean fillContents) {
 
@@ -77,7 +77,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             new_stub.inc();
             return NewInstanceStubCall.call(hub);
         }
-        formatObject(hub, size, memory, initialMarkWord, fillContents);
+        formatObject(hub, size, memory, prototypeMarkWord, fillContents);
         Object instance = memory.toObject();
         return castFromHub(verifyOop(instance), hub);
     }
@@ -88,10 +88,10 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @Parameter("hub") Object hub,
                     @Parameter("length") int length,
                     @Parameter("size") int size,
-                    @Parameter("initialMarkWord") Word initialMarkWord,
+                    @Parameter("prototypeMarkWord") Word prototypeMarkWord,
                     @ConstantParameter("headerSize") int headerSize,
                     @ConstantParameter("fillContents") boolean fillContents) {
-        return initializeArray(memory, hub, length, size, initialMarkWord, headerSize, true, fillContents);
+        return initializeArray(memory, hub, length, size, prototypeMarkWord, headerSize, true, fillContents);
     }
 
     @Snippet
@@ -100,13 +100,13 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @Parameter("hub") Object hub,
                     @Parameter("length") int length,
                     @Parameter("size") int size,
-                    @Parameter("initialMarkWord") Word initialMarkWord,
+                    @Parameter("prototypeMarkWord") Word prototypeMarkWord,
                     @ConstantParameter("headerSize") int headerSize,
                     @ConstantParameter("fillContents") boolean fillContents) {
-        return initializeArray(memory, hub, length, size, initialMarkWord, headerSize, false, fillContents);
+        return initializeArray(memory, hub, length, size, prototypeMarkWord, headerSize, false, fillContents);
     }
 
-    private static Object initializeArray(Word memory, Object hub, int length, int size, Word initialMarkWord, int headerSize, boolean isObjectArray, boolean fillContents) {
+    private static Object initializeArray(Word memory, Object hub, int length, int size, Word prototypeMarkWord, int headerSize, boolean isObjectArray, boolean fillContents) {
         if (memory == Word.zero()) {
             if (isObjectArray) {
                 anewarray_stub.inc();
@@ -120,7 +120,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         } else {
             newarray_loopInit.inc();
         }
-        formatArray(hub, size, length, headerSize, memory, initialMarkWord, fillContents);
+        formatArray(hub, size, length, headerSize, memory, prototypeMarkWord, fillContents);
         Object instance = memory.toObject();
         return castFromHub(verifyOop(instance), hub);
     }
@@ -163,14 +163,14 @@ public class NewObjectSnippets implements SnippetsInterface {
     /**
      * Setting this to false causes (as yet inexplicable) crashes on lusearch.
      */
-    private static final boolean USE_STATIC_INITIAL_MARK_WORD = true;
+    private static final boolean USE_COMPILE_TIME_PROTOTYPE_MARK_WORD = true;
 
     /**
      * Formats some allocated memory with an object header zeroes out the rest.
      */
-    private static void formatObject(Object hub, int size, Word memory, Word staticInitialMarkWord, boolean fillContents) {
-        Word initialMarkWord = USE_STATIC_INITIAL_MARK_WORD ? staticInitialMarkWord : loadWord(asWord(hub), initialMarkWordOffset());
-        storeObject(memory, 0, markOffset(), initialMarkWord);
+    private static void formatObject(Object hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents) {
+        Word prototypeMarkWord = USE_COMPILE_TIME_PROTOTYPE_MARK_WORD ? compileTimePrototypeMarkWord : loadWord(asWord(hub), prototypeMarkWordOffset());
+        storeObject(memory, 0, markOffset(), prototypeMarkWord);
         storeObject(memory, 0, hubOffset(), hub);
         if (fillContents) {
             if (size <= MAX_UNROLLED_OBJECT_ZEROING_SIZE) {
@@ -191,8 +191,8 @@ public class NewObjectSnippets implements SnippetsInterface {
     /**
      * Formats some allocated memory with an object header zeroes out the rest.
      */
-    private static void formatArray(Object hub, int size, int length, int headerSize, Word memory, Word initialMarkWord, boolean fillContents) {
-        storeObject(memory, 0, markOffset(), initialMarkWord);
+    private static void formatArray(Object hub, int size, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents) {
+        storeObject(memory, 0, markOffset(), prototypeMarkWord);
         storeObject(memory, 0, hubOffset(), hub);
         storeInt(memory, 0, arrayLengthOffset(), length);
         if (fillContents) {
@@ -314,7 +314,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             assert size >= 0;
             Key key = new Key(initializeObject).add("size", size).add("fillContents", initializeNode.fillContents());
             ValueNode memory = initializeNode.memory();
-            Arguments arguments = arguments("memory", memory).add("hub", hub).add("initialMarkWord", type.initialMarkWord());
+            Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord());
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering initializeObject in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, arguments);
             template.instantiate(runtime, initializeNode, arguments);
@@ -331,7 +331,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             final int headerSize = elementKind.getArrayBaseOffset();
             Key key = new Key(elementKind.isObject() ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents());
             ValueNode memory = initializeNode.memory();
-            Arguments arguments = arguments("memory", memory).add("hub", hub).add("initialMarkWord", type.initialMarkWord()).add("size", initializeNode.size()).add("length", initializeNode.length());
+            Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord()).add("size", initializeNode.size()).add("length", initializeNode.length());
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering initializeObjectArray in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, arguments);
             template.instantiate(runtime, initializeNode, arguments);
