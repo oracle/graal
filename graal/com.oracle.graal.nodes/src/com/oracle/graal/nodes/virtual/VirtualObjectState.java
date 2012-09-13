@@ -41,13 +41,13 @@ public final class VirtualObjectState extends EscapeObjectState implements Node.
 
     public VirtualObjectState(VirtualObjectNode object, ValueNode[] fieldValues) {
         super(object);
-        assert object.fieldsCount() == fieldValues.length;
+        assert object.fields().length == fieldValues.length;
         this.fieldValues = new NodeInputList<>(this, fieldValues);
     }
 
     private VirtualObjectState(VirtualObjectNode object, List<ValueNode> fieldValues) {
         super(object);
-        assert object.fieldsCount() == fieldValues.size();
+        assert object.fields().length == fieldValues.size();
         this.fieldValues = new NodeInputList<>(this, fieldValues);
     }
 

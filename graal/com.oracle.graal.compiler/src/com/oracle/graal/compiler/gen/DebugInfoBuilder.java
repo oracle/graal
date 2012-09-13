@@ -57,7 +57,9 @@ public class DebugInfoBuilder {
                     objectStates = new IdentityHashMap<>();
                 }
                 if (!objectStates.containsKey(state.object())) {
-                    objectStates.put(state.object(), state);
+                    if (!(state instanceof MaterializedObjectState) || ((MaterializedObjectState) state).materializedValue() != state.object()) {
+                        objectStates.put(state.object(), state);
+                    }
                 }
             }
             current = current.outerFrameState();
@@ -80,13 +82,13 @@ public class DebugInfoBuilder {
                             BoxedVirtualObjectNode boxedVirtualObjectNode = (BoxedVirtualObjectNode) vobj;
                             entry.getValue().setValues(new Value[]{toValue(boxedVirtualObjectNode.getUnboxedValue())});
                         } else {
-                            Value[] values = new Value[vobj.fieldsCount()];
+                            Value[] values = new Value[vobj.fields().length];
                             entry.getValue().setValues(values);
                             if (values.length > 0) {
                                 changed = true;
                                 VirtualObjectState currentField = (VirtualObjectState) objectStates.get(vobj);
                                 assert currentField != null;
-                                for (int i = 0; i < vobj.fieldsCount(); i++) {
+                                for (int i = 0; i < vobj.fields().length; i++) {
                                     values[i] = toValue(currentField.fieldValues().get(i));
                                 }
                             }
@@ -145,14 +147,14 @@ public class DebugInfoBuilder {
         if (value instanceof VirtualObjectNode) {
             VirtualObjectNode obj = (VirtualObjectNode) value;
             EscapeObjectState state = objectStates.get(obj);
-            if (state == null && obj.fieldsCount() > 0) {
+            if (state == null && obj.fields().length > 0) {
                 // null states occur for objects with 0 fields
                 throw new GraalInternalError("no mapping found for virtual object %s", obj);
             }
             if (state instanceof MaterializedObjectState) {
                 return toValue(((MaterializedObjectState) state).materializedValue());
             } else {
-                assert obj.fieldsCount() == 0 || state instanceof VirtualObjectState;
+                assert obj.fields().length == 0 || state instanceof VirtualObjectState;
                 VirtualObject ciObj = virtualObjects.get(value);
                 if (ciObj == null) {
                     ciObj = VirtualObject.get(obj.type(), null, virtualObjects.size());
