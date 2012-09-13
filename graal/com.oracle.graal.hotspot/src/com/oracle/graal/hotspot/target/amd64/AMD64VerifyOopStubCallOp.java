@@ -36,7 +36,7 @@ import com.oracle.max.asm.target.amd64.*;
 /**
  * A call to HotSpot's object pointer verification stub.
  */
-@Opcode("VERIFY_OOP")
+@Opcode("VERIFY_OOP_STUB")
 public class AMD64VerifyOopStubCallOp extends AMD64LIRInstruction {
 
     /**
