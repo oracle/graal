@@ -53,7 +53,11 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
 
         @Override
         public String toString() {
-            return method + "@" + context;
+            try {
+                return method + "@" + context;
+            } catch (Exception e) {
+                return super.toString();
+            }
         }
     }
 
