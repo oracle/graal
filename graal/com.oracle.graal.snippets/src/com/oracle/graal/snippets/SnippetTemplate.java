@@ -493,8 +493,9 @@ public class SnippetTemplate {
      * @param runtime
      * @param replacee the node that will be replaced
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
+     * @return the map of duplicated nodes (original -> duplicate)
      */
-    public void instantiate(CodeCacheProvider runtime,
+    public Map<Node, Node> instantiate(CodeCacheProvider runtime,
                     FixedWithNextNode replacee, SnippetTemplate.Arguments args) {
 
         // Inline the snippet nodes, replacing parameters with the given args in the process
@@ -535,6 +536,7 @@ public class SnippetTemplate {
             GraphUtil.killCFG(replacee);
 
         Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
+        return duplicates;
     }
 
     /**

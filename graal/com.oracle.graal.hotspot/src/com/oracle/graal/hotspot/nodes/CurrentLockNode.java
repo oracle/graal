@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.java;
+package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.snippets.*;
+
 
 /**
- * The {@code MonitorEnterNode} represents the acquisition of a monitor.
+ * Intrinsic for getting the lock in the current {@linkplain BeginLockScopeNode lock scope}.
  */
-public final class MonitorEnterNode extends AccessMonitorNode implements LIRLowerable, Lowerable, MonitorEnter {
+public final class CurrentLockNode extends FixedWithNextNode implements LIRGenLowerable {
 
-    /**
-     * Creates a new MonitorEnterNode.
-     *
-     * @param object the instruction producing the object
-     */
-    public MonitorEnterNode(ValueNode object) {
-        super(object);
+    public CurrentLockNode(Kind wordKind) {
+        super(StampFactory.forWord(wordKind, true));
     }
 
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitMonitorEnter(this);
+    @Override
+    public void generate(LIRGenerator gen) {
+        // The register allocator cannot handle stack -> register moves so we use an LEA here
+        Value result = gen.emitMove(gen.emitLea(gen.peekLock()));
+        gen.setResult(this, result);
     }
 
-    public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    public static Word currentLock(@ConstantNodeParameter Kind wordKind) {
+        throw new UnsupportedOperationException();
     }
 }

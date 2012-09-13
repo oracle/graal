@@ -29,7 +29,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
 
 public class FloatingReadTest extends GraphScheduleTest {
 
@@ -59,23 +58,25 @@ public class FloatingReadTest extends GraphScheduleTest {
                 new FloatingReadPhase().apply(graph);
 
                 ReturnNode returnNode = null;
-                MonitorExitNode monitor = null;
+                MonitorExit monitorexit = null;
 
                 for (Node n : graph.getNodes()) {
                     if (n instanceof ReturnNode) {
                         returnNode = (ReturnNode) n;
-                    } else if (n instanceof MonitorExitNode) {
-                        monitor = (MonitorExitNode) n;
+                    } else if (n instanceof MonitorExit) {
+                        monitorexit = (MonitorExit) n;
                     }
                 }
 
+                Debug.dump(graph, "After lowering");
+
                 Assert.assertNotNull(returnNode);
-                Assert.assertNotNull(monitor);
+                Assert.assertNotNull(monitorexit);
                 Assert.assertTrue(returnNode.result() instanceof FloatingReadNode);
 
                 FloatingReadNode read = (FloatingReadNode) returnNode.result();
 
-                assertOrderedAfterSchedule(graph, read, monitor);
+                assertOrderedAfterSchedule(graph, read, (Node) monitorexit);
             }
         });
     }

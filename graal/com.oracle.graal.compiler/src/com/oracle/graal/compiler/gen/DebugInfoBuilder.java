@@ -122,9 +122,9 @@ public class DebugInfoBuilder {
         for (int i = numLocks - 1; i >= 0; i--) {
             assert locks != null && nextLock.inliningIdentifier == state.inliningIdentifier() && nextLock.stateDepth == i;
 
-            Value owner = toValue(nextLock.monitor.object());
-            Value lockData = nextLock.lockData;
-            boolean eliminated = nextLock.monitor.eliminated();
+            Value owner = toValue(nextLock.object);
+            StackSlot lockData = nextLock.lockData;
+            boolean eliminated = nextLock.eliminated;
             values[numLocals + numStack + nextLock.stateDepth] = new MonitorValue(owner, lockData, eliminated);
 
             nextLock = nextLock.outer;

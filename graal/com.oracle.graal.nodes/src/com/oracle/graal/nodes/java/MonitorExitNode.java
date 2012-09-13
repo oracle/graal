@@ -23,13 +23,14 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.graph.*;
 
 /**
  * The {@code MonitorEnterNode} represents a monitor release.
  */
-public final class MonitorExitNode extends AccessMonitorNode implements LIRLowerable, Node.IterableNodeType {
+public final class MonitorExitNode extends AccessMonitorNode implements Lowerable, LIRLowerable, Node.IterableNodeType, MonitorExit {
 
     /**
      * Creates a new MonitorExitNode.
@@ -43,5 +44,9 @@ public final class MonitorExitNode extends AccessMonitorNode implements LIRLower
     @Override
     public void generate(LIRGeneratorTool gen) {
         gen.visitMonitorExit(this);
+    }
+
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 }
