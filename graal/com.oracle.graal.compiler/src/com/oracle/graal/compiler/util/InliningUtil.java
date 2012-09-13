@@ -802,7 +802,7 @@ public class InliningUtil {
      * @param receiverNullCheck true if a null check needs to be generated for non-static inlinings, false if no such check is required
      */
     public static void inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck) {
-        InliningIdentifier identifier = new InliningIdentifier(inlineGraph.method(), invoke.toString());
+        InliningIdentifier identifier = new InliningIdentifier(inlineGraph.method(), invoke);
         NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
         StructuredGraph graph = (StructuredGraph) invoke.node().graph();
 
