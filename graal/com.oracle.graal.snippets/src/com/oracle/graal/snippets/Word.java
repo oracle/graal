@@ -53,6 +53,9 @@ public final class Word {
         W2I,
         PLUS,
         MINUS,
+        OR,
+        AND,
+        XOR,
         BELOW,
         BELOW_EQUAL,
         ABOVE,
@@ -177,4 +180,59 @@ public final class Word {
         assert object == null;
         return new Word(value - addend.value, null);
     }
+
+    @Operation(OR)
+    public Word or(int other) {
+        assert object == null;
+        return new Word(value | other, null);
+    }
+
+    @Operation(OR)
+    public Word or(long other) {
+        assert object == null;
+        return new Word(value | other, null);
+    }
+
+    @Operation(OR)
+    public Word or(Word other) {
+        assert object == null;
+        return new Word(value | other.value, null);
+    }
+
+    @Operation(AND)
+    public Word and(int other) {
+        assert object == null;
+        return new Word(value & other, null);
+    }
+
+    @Operation(AND)
+    public Word and(long other) {
+        assert object == null;
+        return new Word(value & other, null);
+    }
+
+    @Operation(AND)
+    public Word and(Word other) {
+        assert object == null;
+        return new Word(value & other.value, null);
+    }
+
+    @Operation(XOR)
+    public Word xor(int other) {
+        assert object == null;
+        return new Word(value | other, null);
+    }
+
+    @Operation(XOR)
+    public Word xor(long other) {
+        assert object == null;
+        return new Word(value | other, null);
+    }
+
+    @Operation(XOR)
+    public Word xor(Word other) {
+        assert object == null;
+        return new Word(value | other.value, null);
+    }
+
 }
