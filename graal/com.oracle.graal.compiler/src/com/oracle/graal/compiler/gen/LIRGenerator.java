@@ -107,25 +107,48 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         public final int stateDepth;
 
         /**
-         * The monitor enter node, with information about the object that is locked and the elimination status.
+         * The object that is locked.
          */
-        public final MonitorEnterNode monitor;
+        public final ValueNode object;
+
+        /**
+         * Whether or not the lock is eliminated.
+         */
+        public final boolean eliminated;
 
         /**
          * Space in the stack frame needed by the VM to perform the locking.
          */
         public final StackSlot lockData;
 
-        public LockScope(LockScope outer, InliningIdentifier inliningIdentifier, MonitorEnterNode monitor, StackSlot lockData) {
+        public LockScope(LockScope outer, InliningIdentifier inliningIdentifier, ValueNode object, boolean eliminated, StackSlot lockData) {
             this.outer = outer;
             this.inliningIdentifier = inliningIdentifier;
-            this.monitor = monitor;
+            this.object = object;
+            this.eliminated = eliminated;
             this.lockData = lockData;
             if (outer != null && outer.inliningIdentifier == inliningIdentifier) {
                 this.stateDepth = outer.stateDepth + 1;
             } else {
                 this.stateDepth = 0;
             }
+        }
+
+        @Override
+        public String toString() {
+            InliningIdentifier identifier = inliningIdentifier;
+            StringBuilder sb = new StringBuilder().append(identifier).append(": ");
+            for (LockScope scope = this; scope != null; scope = scope.outer) {
+                if (scope.inliningIdentifier != identifier) {
+                    identifier = scope.inliningIdentifier;
+                    sb.append('\n').append(identifier).append(": ");
+                }
+                if (scope.eliminated) {
+                    sb.append('!');
+                }
+                sb.append(scope.object).append(' ');
+            }
+            return sb.toString();
         }
     }
 
@@ -526,13 +549,30 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         setResult(x, operand(x.object()));
     }
 
+    public void lock(ValueNode object, boolean eliminated, StackSlot lock, InliningIdentifier inliningIdentifier) {
+        assert lastState != null : "must have state before instruction";
+        curLocks = new LockScope(curLocks, inliningIdentifier, object, eliminated, lock);
+    }
+
+    public StackSlot peekLock() {
+        assert curLocks.lockData != null;
+        return curLocks.lockData;
+    }
+
+    public void unlock(ValueNode object, boolean eliminated) {
+        if (curLocks == null || curLocks.object != object || curLocks.eliminated != eliminated) {
+            throw new BailoutException("unbalanced monitors: attempting to unlock an object that is not on top of the locking stack");
+        }
+        curLocks = curLocks.outer;
+    }
+
     @Override
     public void visitMonitorEnter(MonitorEnterNode x) {
         StackSlot lockData = frameMap.allocateStackBlock(runtime.sizeOfLockData(), false);
         if (x.eliminated()) {
             // No code is emitted for eliminated locks, but for proper debug information generation we need to
             // register the monitor and its lock data.
-            curLocks = new LockScope(curLocks, x.stateAfter().inliningIdentifier(), x, lockData);
+            lock(x.object(), true, lockData, x.stateAfter().inliningIdentifier());
             return;
         }
 
@@ -541,7 +581,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         LIRFrameState stateBefore = state();
         // The state before the monitor enter is used for null checks, so it must not contain the newly locked object.
-        curLocks = new LockScope(curLocks, x.stateAfter().inliningIdentifier(), x, lockData);
+        lock(x.object(), false, lockData, x.stateAfter().inliningIdentifier());
         // The state after the monitor enter is used for deoptimization, after the monitor has blocked, so it must contain the newly locked object.
         LIRFrameState stateAfter = stateFor(x.stateAfter(), -1);
 
@@ -551,20 +591,17 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void visitMonitorExit(MonitorExitNode x) {
-        if (curLocks == null || curLocks.monitor.object() != x.object() || curLocks.monitor.eliminated() != x.eliminated()) {
-            throw new BailoutException("unbalanced monitors: attempting to unlock an object that is not on top of the locking stack");
-        }
         if (x.eliminated()) {
-            curLocks = curLocks.outer;
+            unlock(x.object(), true);
             return;
         }
 
-        StackSlot lockData = curLocks.lockData;
+        Value lockData = peekLock();
         XirArgument obj = toXirArgument(x.object());
         XirArgument lockAddress = lockData == null ? null : toXirArgument(emitLea(lockData));
 
         LIRFrameState stateBefore = state();
-        curLocks = curLocks.outer;
+        unlock(x.object(), false);
 
         XirSnippet snippet = xir.genMonitorExit(site(x, x.object()), obj, lockAddress);
         emitXir(snippet, x, stateBefore, true);
