@@ -92,6 +92,31 @@ public class HotSpotSnippetUtils {
     }
 
     @Fold
+    static int unlockedMask() {
+        return HotSpotGraalRuntime.getInstance().getConfig().unlockedMask;
+    }
+
+    @Fold
+    static int biasedLockMaskInPlace() {
+        return HotSpotGraalRuntime.getInstance().getConfig().biasedLockMaskInPlace;
+    }
+
+    @Fold
+    static int epochMaskInPlace() {
+        return HotSpotGraalRuntime.getInstance().getConfig().epochMaskInPlace;
+    }
+
+    @Fold
+    static int biasedLockPattern() {
+        return HotSpotGraalRuntime.getInstance().getConfig().biasedLockPattern;
+    }
+
+    @Fold
+    static int ageMaskInPlace() {
+        return HotSpotGraalRuntime.getInstance().getConfig().ageMaskInPlace;
+    }
+
+    @Fold
     static int hubOffset() {
         return HotSpotGraalRuntime.getInstance().getConfig().hubOffset;
     }
@@ -134,6 +159,16 @@ public class HotSpotSnippetUtils {
     @Fold
     static int secondarySupersOffset() {
         return HotSpotGraalRuntime.getInstance().getConfig().secondarySupersOffset;
+    }
+
+    @Fold
+    static int lockDisplacedMarkOffset() {
+        return HotSpotGraalRuntime.getInstance().getConfig().basicLockDisplacedHeaderOffset;
+    }
+
+    @Fold
+    static boolean useBiasedLocking() {
+        return HotSpotGraalRuntime.getInstance().getConfig().useBiasedLocking;
     }
 
     /**

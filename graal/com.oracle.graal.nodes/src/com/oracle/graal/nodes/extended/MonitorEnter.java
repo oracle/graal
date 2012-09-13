@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.java;
+package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
 
 /**
- * The {@code MonitorEnterNode} represents the acquisition of a monitor.
+ * Denotes monitor locking transition.
  */
-public final class MonitorEnterNode extends AccessMonitorNode implements LIRLowerable, Lowerable, MonitorEnter {
+public interface MonitorEnter extends MemoryCheckpoint {
 
-    /**
-     * Creates a new MonitorEnterNode.
-     *
-     * @param object the instruction producing the object
-     */
-    public MonitorEnterNode(ValueNode object) {
-        super(object);
-    }
-
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitMonitorEnter(this);
-    }
-
-    public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
-    }
 }

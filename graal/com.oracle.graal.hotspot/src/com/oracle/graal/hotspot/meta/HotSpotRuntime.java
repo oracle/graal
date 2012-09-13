@@ -63,6 +63,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
     private CheckCastSnippets.Templates checkcastSnippets;
     private InstanceOfSnippets.Templates instanceofSnippets;
     private NewObjectSnippets.Templates newObjectSnippets;
+    private MonitorSnippets.Templates monitorSnippets;
 
     public HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
         this.config = config;
@@ -77,12 +78,16 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
         installer.install(SystemSnippets.class);
         installer.install(UnsafeSnippets.class);
         installer.install(ArrayCopySnippets.class);
+
         installer.install(CheckCastSnippets.class);
         installer.install(InstanceOfSnippets.class);
         installer.install(NewObjectSnippets.class);
+        installer.install(MonitorSnippets.class);
+
         checkcastSnippets = new CheckCastSnippets.Templates(this);
         instanceofSnippets = new InstanceOfSnippets.Templates(this);
         newObjectSnippets = new NewObjectSnippets.Templates(this, graalRuntime.getTarget(), config.useTLAB);
+        monitorSnippets = new MonitorSnippets.Templates(this, config.useFastLocking);
     }
 
 
@@ -195,8 +200,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
 
     @Override
     public int sizeOfLockData() {
-        // TODO shouldn't be hard coded
-        return 8;
+        return config.basicLockSize;
     }
 
     @Override
@@ -421,6 +425,14 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
         } else if (n instanceof NewArrayNode) {
             if (matches(graph, GraalOptions.HIRLowerNewArray)) {
                 newObjectSnippets.lower((NewArrayNode) n, tool);
+            }
+        } else if (n instanceof MonitorEnterNode) {
+            if (matches(graph, GraalOptions.HIRLowerMonitors)) {
+                monitorSnippets.lower((MonitorEnterNode) n, tool);
+            }
+        } else if (n instanceof MonitorExitNode) {
+            if (matches(graph, GraalOptions.HIRLowerMonitors)) {
+                monitorSnippets.lower((MonitorExitNode) n, tool);
             }
         } else if (n instanceof TLABAllocateNode) {
             newObjectSnippets.lower((TLABAllocateNode) n, tool);

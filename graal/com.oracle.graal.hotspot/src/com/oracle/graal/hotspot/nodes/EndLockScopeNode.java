@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.java;
+package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
+
 
 /**
- * The {@code MonitorEnterNode} represents the acquisition of a monitor.
+ * Intrinsic for closing a {@linkplain BeginLockScopeNode scope} binding a stack-based lock with an object.
  */
-public final class MonitorEnterNode extends AccessMonitorNode implements LIRLowerable, Lowerable, MonitorEnter {
+public final class EndLockScopeNode extends AbstractStateSplit implements LIRGenLowerable, MonitorExit {
 
-    /**
-     * Creates a new MonitorEnterNode.
-     *
-     * @param object the instruction producing the object
-     */
-    public MonitorEnterNode(ValueNode object) {
-        super(object);
+    @Input private ValueNode object;
+    private final boolean eliminated;
+
+    public EndLockScopeNode(ValueNode object, boolean eliminated) {
+        super(StampFactory.forVoid());
+        this.object = object;
+        this.eliminated = eliminated;
     }
 
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitMonitorEnter(this);
+    @Override
+    public boolean hasSideEffect() {
+        return false;
     }
 
-    public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+    @Override
+    public void generate(LIRGenerator gen) {
+        gen.unlock(object, eliminated);
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    public static void endLockScope(Object object, @ConstantNodeParameter boolean eliminated) {
+        throw new UnsupportedOperationException();
     }
 }

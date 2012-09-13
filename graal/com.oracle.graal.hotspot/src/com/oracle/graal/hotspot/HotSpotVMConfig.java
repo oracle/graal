@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot;
 import com.oracle.graal.api.code.*;
 import com.oracle.max.asm.target.amd64.*;
 
-
 /**
  * Used to communicate configuration details, runtime offsets, etc. to graal upon compileMethod.
  */
@@ -44,6 +43,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public boolean useFastNewObjectArray;
     public boolean useFastNewTypeArray;
     public boolean useTLAB;
+    public boolean useBiasedLocking;
 
     // offsets, ...
     public int vmPageSize;
@@ -111,6 +111,31 @@ public final class HotSpotVMConfig extends CompilerObject {
 
     public int threadObjectOffset;
 
+    /**
+     * The value of markOopDesc::unlocked_value.
+     */
+    public int unlockedMask;
+
+    /**
+     * The value of markOopDesc::biased_lock_mask_in_place.
+     */
+    public int biasedLockMaskInPlace;
+
+    /**
+     * The value of markOopDesc::age_mask_in_place.
+     */
+    public int ageMaskInPlace;
+
+    /**
+     * The value of markOopDesc::epoch_mask_in_place.
+     */
+    public int epochMaskInPlace;
+
+    /**
+     * The value of markOopDesc::biased_lock_pattern.
+     */
+    public int biasedLockPattern;
+
     public int threadExceptionOopOffset;
     public int threadExceptionPcOffset;
     public int threadMultiNewArrayStorageOffset;
@@ -125,6 +150,8 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int graalMirrorKlassOffset;
     public int nmethodEntryOffset;
     public int methodCompiledEntryOffset;
+    public int basicLockSize;
+    public int basicLockDisplacedHeaderOffset;
 
     // methodData information
     public int methodDataOopDataOffset;
