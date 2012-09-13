@@ -37,7 +37,7 @@ import com.oracle.max.asm.target.amd64.*;
  * LIR instruction for calling HotSpot's {@code new_[object|type]_array} stub. This stub is declared in c1_Runtime1.hpp
  * and implemented in Runtime1::generate_code_for() which is located in c1_Runtime1_x86.cpp.
  */
-@Opcode("NEW_ARRAY")
+@Opcode("NEW_ARRAY_STUB")
 public class AMD64NewArrayStubCallOp extends AMD64LIRInstruction {
 
     /**

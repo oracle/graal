@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.graal.hotspot.snippets;
+import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
@@ -208,36 +210,5 @@ public class ArrayCopySnippets implements SnippetsInterface{
                 DirectStoreNode.store((start + cardStart) + count, false);
             }
         }
-    }
-
-    @Fold
-    static int arrayBaseOffset(Kind elementKind) {
-        return elementKind.getArrayBaseOffset();
-    }
-
-    @Fold
-    static int arrayIndexScale(Kind elementKind) {
-        return elementKind.getArrayIndexScale();
-    }
-
-    static {
-        assert arrayIndexScale(Kind.Byte) == 1;
-        assert arrayIndexScale(Kind.Boolean) == 1;
-        assert arrayIndexScale(Kind.Char) == 2;
-        assert arrayIndexScale(Kind.Short) == 2;
-        assert arrayIndexScale(Kind.Int) == 4;
-        assert arrayIndexScale(Kind.Long) == 8;
-        assert arrayIndexScale(Kind.Float) == 4;
-        assert arrayIndexScale(Kind.Double) == 8;
-    }
-
-    @Fold
-    private static int cardTableShift() {
-        return HotSpotGraalRuntime.getInstance().getConfig().cardtableShift;
-    }
-
-    @Fold
-    private static long cardTableStart() {
-        return HotSpotGraalRuntime.getInstance().getConfig().cardtableStartAddress;
     }
 }

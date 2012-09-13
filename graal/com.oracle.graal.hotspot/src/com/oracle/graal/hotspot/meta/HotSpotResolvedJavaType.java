@@ -55,11 +55,6 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     private boolean isInitialized;
     private ResolvedJavaType arrayOfType;
 
-    /**
-     * Initial value for the mark word in a new object of this type.
-     */
-    private long initialMarkWord;
-
     private HotSpotResolvedJavaType() {
         throw new GraalInternalError(HotSpotResolvedJavaType.class + " should only be created from C++ code");
     }
@@ -293,7 +288,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
         return superCheckOffset;
     }
 
-    public long initialMarkWord() {
-        return initialMarkWord;
+    public long prototypeMarkWord() {
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_prototypeMarkWord(this);
     }
 }

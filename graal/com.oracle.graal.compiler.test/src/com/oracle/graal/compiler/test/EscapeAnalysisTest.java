@@ -94,6 +94,7 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
         return x.intValue();
     }
 
+    @Test
     public void testMonitor2() {
         test("testMonitor2Snippet", Constant.forInt(0));
     }

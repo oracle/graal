@@ -284,7 +284,7 @@ public class HotSpotXirGenerator implements XirGenerator {
             asm.pload(Kind.Int, temp2i, hub, asm.i(config.klassStateOffset), false);
             asm.jneq(tlabFull, temp2i, asm.i(config.klassStateFullyInitialized));
 
-            XirOperand thread = asm.createRegisterTemp("thread", target.wordKind, AMD64.r15);
+            XirOperand thread = asm.createRegisterTemp("thread", target.wordKind, config.threadRegister);
             asm.pload(target.wordKind, result, thread, asm.i(config.threadTlabTopOffset), false);
             asm.add(temp1, result, wordConst(asm, size));
             asm.pload(target.wordKind, temp2, thread, asm.i(config.threadTlabEndOffset), false);
@@ -294,7 +294,7 @@ public class HotSpotXirGenerator implements XirGenerator {
 
             asm.bindInline(resume);
 
-            asm.pload(target.wordKind, temp1, hub, asm.i(config.instanceHeaderPrototypeOffset), false);
+            asm.pload(target.wordKind, temp1, hub, asm.i(config.prototypeMarkWordOffset), false);
             asm.pstore(target.wordKind, result, asm.i(config.markOffset), temp1, false);
             asm.mov(temp1o, hub); // need a temporary register since Intel cannot store 64-bit constants to memory
             asm.pstore(Kind.Object, result, asm.i(config.hubOffset), temp1o, false);
@@ -372,7 +372,7 @@ public class HotSpotXirGenerator implements XirGenerator {
             asm.and(size, size, asm.i((int) mask));
 
             // Try tlab allocation
-            XirOperand thread = asm.createRegisterTemp("thread", target.wordKind, AMD64.r15);
+            XirOperand thread = asm.createRegisterTemp("thread", target.wordKind, config.threadRegister);
             asm.pload(target.wordKind, result, thread, asm.i(config.threadTlabTopOffset), false);
             asm.add(temp1, result, size);
             asm.pload(target.wordKind, temp2, thread, asm.i(config.threadTlabEndOffset), false);
@@ -380,7 +380,7 @@ public class HotSpotXirGenerator implements XirGenerator {
             asm.pstore(target.wordKind, thread, asm.i(config.threadTlabTopOffset), temp1, false);
 
             // Now the new object is in result, store mark word and klass
-            asm.pload(target.wordKind, temp1, hub, asm.i(config.instanceHeaderPrototypeOffset), false);
+            asm.pload(target.wordKind, temp1, hub, asm.i(config.prototypeMarkWordOffset), false);
             asm.pstore(target.wordKind, result, asm.i(config.markOffset), temp1, false);
             asm.mov(temp1o, hub); // need a temporary register since Intel cannot store 64-bit constants to memory
             asm.pstore(Kind.Object, result, asm.i(config.hubOffset), temp1o, false);
@@ -426,7 +426,7 @@ public class HotSpotXirGenerator implements XirGenerator {
             XirOperand hub = asm.createRegisterTemp("hub", Kind.Object, AMD64.rax);
             XirOperand rank = asm.createRegisterTemp("rank", Kind.Int, AMD64.rbx);
             XirOperand sizes = asm.createRegisterTemp("sizes", Kind.Long, AMD64.rcx);
-            XirOperand thread = asm.createRegisterTemp("thread", Kind.Long, AMD64.r15);
+            XirOperand thread = asm.createRegisterTemp("thread", Kind.Long, config.threadRegister);
             asm.add(sizes, thread, asm.l(config.threadMultiNewArrayStorageOffset));
             for (int i = 0; i < dimensions; i++) {
                 XirParameter length = asm.createInputParameter("length" + i, Kind.Int, true);
