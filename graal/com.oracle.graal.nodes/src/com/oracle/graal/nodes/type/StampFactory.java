@@ -37,7 +37,7 @@ public class StampFactory {
     private static final Stamp virtualStamp = new GenericStamp(GenericStampType.Virtual);
     private static final Stamp conditionStamp = new GenericStamp(GenericStampType.Condition);
     private static final Stamp voidStamp = new GenericStamp(GenericStampType.Void);
-
+    private static final Stamp nodeIntrinsicStamp = new ObjectStamp(null, false, false, false);
     private static final Stamp positiveInt = forInteger(Kind.Int, 0, Integer.MAX_VALUE, Integer.MAX_VALUE);
 
     private static void setCache(Kind kind, Stamp stamp) {
@@ -72,6 +72,14 @@ public class StampFactory {
 
     public static Stamp forVoid() {
         return voidStamp;
+    }
+
+    /**
+     * A stamp used only in the graph of intrinsics, e.g., snippets. It is then replaced by an actual stamp when the
+     * intrinsic is used, i.e., when the snippet template is instantiated.
+     */
+    public static Stamp forNodeIntrinsic() {
+        return nodeIntrinsicStamp;
     }
 
     public static Stamp intValue() {

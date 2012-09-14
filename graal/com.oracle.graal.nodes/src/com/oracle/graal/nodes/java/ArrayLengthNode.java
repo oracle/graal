@@ -64,4 +64,10 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    public static int arrayLength(Object array) {
+        throw new UnsupportedOperationException();
+    }
 }

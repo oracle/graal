@@ -54,7 +54,7 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
         return value;
     }
 
-    public WriteNode(ValueNode object, ValueNode value, LocationNode location) {
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location) {
         super(object, location, StampFactory.forVoid());
         this.value = value;
     }
@@ -74,5 +74,11 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
                 safeDelete();
             }
         }
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    public static void writeMemory(Object object, Object value, Object location) {
+        throw new UnsupportedOperationException();
     }
 }

@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class ReadNode extends AccessNode implements Node.IterableNodeType, LIRLowerable, Simplifiable/*, Canonicalizable*/ {
 
-    public ReadNode(ValueNode object, LocationNode location, Stamp stamp) {
+    public ReadNode(ValueNode object, ValueNode location, Stamp stamp) {
         super(object, location, stamp);
     }
 
@@ -76,5 +76,16 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
                 safeDelete();
             }
         }
+    }
+
+    @SuppressWarnings("unused")
+    private ReadNode(ValueNode object, ValueNode location) {
+        this(object, location, StampFactory.forNodeIntrinsic());
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    public static <T> T readMemory(Object object, Object location) {
+        throw new UnsupportedOperationException();
     }
 }

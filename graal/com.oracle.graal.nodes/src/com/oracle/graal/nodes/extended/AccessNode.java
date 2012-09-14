@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 public abstract class AccessNode extends FixedWithNextNode implements Access {
 
     @Input private ValueNode object;
-    @Input private LocationNode location;
+    @Input private ValueNode location;
     private boolean nullCheck;
 
     public ValueNode object() {
@@ -42,7 +42,7 @@ public abstract class AccessNode extends FixedWithNextNode implements Access {
     }
 
     public LocationNode location() {
-        return location;
+        return (LocationNode) location;
     }
 
     public boolean getNullCheck() {
@@ -53,7 +53,7 @@ public abstract class AccessNode extends FixedWithNextNode implements Access {
         this.nullCheck = check;
     }
 
-    public AccessNode(ValueNode object, LocationNode location, Stamp stamp) {
+    public AccessNode(ValueNode object, ValueNode location, Stamp stamp) {
         super(stamp);
         this.object = object;
         this.location = location;
