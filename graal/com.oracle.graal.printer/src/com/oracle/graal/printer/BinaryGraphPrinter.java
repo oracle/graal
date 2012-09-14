@@ -241,6 +241,13 @@ public class BinaryGraphPrinter implements GraphPrinter{
         }
     }
 
+    private static String getClassName(Class<?> klass) {
+        if (!klass.isArray()) {
+            return klass.getName();
+        }
+        return getClassName(klass.getComponentType()) + "[]";
+    }
+
     private void addPoolEntry(Object object) throws IOException {
         int index = constantPool.add(object);
         writeByte(POOL_NEW);
@@ -248,7 +255,7 @@ public class BinaryGraphPrinter implements GraphPrinter{
         if (object instanceof Class<?>) {
             Class<?> klass = (Class< ? >) object;
             writeByte(POOL_CLASS);
-            writeString(klass.getName());
+            writeString(getClassName(klass));
             if (klass.isEnum()) {
                 writeByte(ENUM_KLASS);
                 Object[] enumConstants = klass.getEnumConstants();

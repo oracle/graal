@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.snippets;
+package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
  * of the returned value must be atomic. The only exception to this is
  * if the usage is not an attempt to dereference the value.
  */
-class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
+public class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
     @Input private ValueNode object;
 
     public GetObjectAddressNode(ValueNode obj) {

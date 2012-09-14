@@ -41,7 +41,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.Snippet.*;
+import com.oracle.graal.snippets.Snippet.ConstantParameter;
+import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
@@ -55,18 +56,21 @@ import com.oracle.graal.snippets.SnippetTemplate.Key;
  */
 public class MonitorSnippets implements SnippetsInterface {
 
-    private static final boolean LOG = Boolean.getBoolean("graal.monitorsnippets.log");
+    /**
+     * Monitor operations on objects whose type contains this substring will be logged.
+     */
+    private static final String LOG_TYPE = System.getProperty("graal.monitorsnippets.log");
 
-    private static void log(String action, Object object) {
-        if (LOG) {
+    private static void log(boolean enabled, String action, Object object) {
+        if (enabled) {
             Log.print(action);
             Log.print(' ');
-            Log.printlnAddress(object);
+            Log.printlnObject(object);
         }
     }
 
     @Snippet
-    public static void monitorenter(@Parameter("object") Object object) {
+    public static void monitorenter(@Parameter("object") Object object, @ConstantParameter("logEnabled") boolean logEnabled) {
         verifyOop(object);
 
         // Load the mark word - this includes a null-check on object
@@ -79,10 +83,10 @@ public class MonitorSnippets implements SnippetsInterface {
             // whether the epoch is still valid.
             // Note that the runtime guarantees sufficient alignment of JavaThread
             // pointers to allow age to be placed into low bits.
-            final Word biasedLockMark = mark.and(biasedLockMaskInPlace());
+            final Word biasableLockBits = mark.and(biasedLockMaskInPlace());
 
             // First check to see whether biasing is enabled for this object
-            if (biasedLockMark.toLong() != biasedLockPattern()) {
+            if (biasableLockBits.toLong() != biasedLockPattern()) {
                 // Biasing not enabled -> fall through to lightweight locking
             } else {
                 // The bias pattern is present in the object's mark word. Need to check
@@ -93,7 +97,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 final Word tmp = prototypeMarkWord.or(thread).xor(mark).and(~ageMaskInPlace());
                 if (tmp == Word.zero()) {
                     // Object is already biased to current thread -> done
-                    log("+lock{bias}", object);
+                    log(logEnabled, "+lock{bias}", object);
                     return;
                 }
 
@@ -123,14 +127,14 @@ public class MonitorSnippets implements SnippetsInterface {
                         Word biasedMark = unbiasedMark.or(thread);
                         if (compareAndSwap(object, markOffset(), unbiasedMark, biasedMark) == unbiasedMark) {
                             // Object is now biased to current thread -> done
-                            log("+lock{bias}", object);
+                            log(logEnabled, "+lock{bias}", object);
                             return;
                         }
                         // If the biasing toward our thread failed, this means that
                         // another thread succeeded in biasing it toward itself and we
                         // need to revoke that bias. The revocation will occur in the
                         // interpreter runtime in the slow case.
-                        log("+lock{stub}", object);
+                        log(logEnabled, "+lock{stub}", object);
                         MonitorEnterStubCall.call(object, lock);
                         return;
                     } else {
@@ -143,13 +147,13 @@ public class MonitorSnippets implements SnippetsInterface {
                         Word biasedMark = prototypeMarkWord.or(thread);
                         if (compareAndSwap(object, markOffset(), mark, biasedMark) == mark) {
                             // Object is now biased to current thread -> done
-                            log("+lock{bias}", object);
+                            log(logEnabled, "+lock{bias}", object);
                             return;
                         }
                         // If the biasing toward our thread failed, then another thread
                         // succeeded in biasing it toward itself and we need to revoke that
                         // bias. The revocation will occur in the runtime in the slow case.
-                        log("+lock{stub}", object);
+                        log(logEnabled, "+lock{stub}", object);
                         MonitorEnterStubCall.call(object, lock);
                         return;
                     }
@@ -200,16 +204,16 @@ public class MonitorSnippets implements SnippetsInterface {
             final Word stackPointer = asWord(register(stackPointerReg(), wordKind()));
             if (currentMark.minus(stackPointer).and(alignedMask.minus(pageSize())) != Word.zero()) {
                 // Most likely not a recursive lock, go into a slow runtime call
-                log("+lock{stub}", object);
+                log(logEnabled, "+lock{stub}", object);
                 MonitorEnterStubCall.call(object, lock);
                 return;
             } else {
                 // Recursively locked => write 0 to the lock slot
                 storeWord(lock, lockDisplacedMarkOffset(), 0, Word.zero());
-                log("+lock{recursive}", object);
+                log(logEnabled, "+lock{recursive}", object);
             }
         } else {
-            log("+lock{cas}", object);
+            log(logEnabled, "+lock{cas}", object);
         }
     }
 
@@ -222,7 +226,7 @@ public class MonitorSnippets implements SnippetsInterface {
      * Calls straight out to the monitorenter stub.
      */
     @Snippet
-    public static void monitorenterStub(@Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull) {
+    public static void monitorenterStub(@Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull, @ConstantParameter("logEnabled") boolean logEnabled) {
         verifyOop(object);
         if (checkNull && object == null) {
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
@@ -230,12 +234,12 @@ public class MonitorSnippets implements SnippetsInterface {
         // BeginLockScope nodes do not read from object so a use of object
         // cannot float about the null check above
         final Word lock = beginLockScope(object, false, wordKind());
-        log("+lock{stub}", object);
+        log(logEnabled, "+lock{stub}", object);
         MonitorEnterStubCall.call(object, lock);
     }
 
     @Snippet
-    public static void monitorexit(@Parameter("object") Object object) {
+    public static void monitorexit(@Parameter("object") Object object, @ConstantParameter("logEnabled") boolean logEnabled) {
         if (useBiasedLocking()) {
             // Check for biased locking unlock case, which is a no-op
             // Note: we do not have to check the thread ID for two reasons.
@@ -246,7 +250,7 @@ public class MonitorSnippets implements SnippetsInterface {
             final Word mark = asWord(loadObject(object, 0, markOffset(), true));
             if (mark.and(biasedLockMaskInPlace()).toLong() == biasedLockPattern()) {
                 endLockScope(object, false);
-                log("-lock{bias}", object);
+                log(logEnabled, "-lock{bias}", object);
                 return;
             }
         }
@@ -258,19 +262,19 @@ public class MonitorSnippets implements SnippetsInterface {
 
         if (displacedMark == Word.zero()) {
             // Recursive locking => done
-            log("-lock{recursive}", object);
+            log(logEnabled, "-lock{recursive}", object);
         } else {
             verifyOop(object);
             // Test if object's mark word is pointing to the displaced mark word, and if so, restore
             // the displaced mark in the object - if the object's mark word is not pointing to
-            // the displaced mark word, get the object mark word instead
+            // the displaced mark word, do unlocking via runtime call.
             if (DirectCompareAndSwapNode.compareAndSwap(object, markOffset(), lock, displacedMark) != lock) {
               // The object's mark word was not pointing to the displaced header,
-              // we do unlocking via runtime call
-                log("-lock{stub}", object);
+              // we do unlocking via runtime call.
+                log(logEnabled, "-lock{stub}", object);
                 MonitorExitStubCall.call(object);
             } else {
-                log("-lock{cas}", object);
+                log(logEnabled, "-lock{cas}", object);
             }
         }
         endLockScope(object, false);
@@ -280,9 +284,9 @@ public class MonitorSnippets implements SnippetsInterface {
      * Calls straight out to the monitorexit stub.
      */
     @Snippet
-    public static void monitorexitStub(@Parameter("object") Object object) {
+    public static void monitorexitStub(@Parameter("object") Object object, @ConstantParameter("logEnabled") boolean logEnabled) {
         verifyOop(object);
-        log("-lock{stub}", object);
+        log(logEnabled, "-lock{stub}", object);
         MonitorExitStubCall.call(object);
         endLockScope(object, false);
     }
@@ -304,13 +308,28 @@ public class MonitorSnippets implements SnippetsInterface {
 
         public Templates(CodeCacheProvider runtime, boolean useFastLocking) {
             super(runtime, MonitorSnippets.class);
-            monitorenter = snippet("monitorenter", Object.class);
-            monitorexit = snippet("monitorexit", Object.class);
-            monitorenterStub = snippet("monitorenterStub", Object.class, boolean.class);
-            monitorexitStub = snippet("monitorexitStub", Object.class);
+            monitorenter = snippet("monitorenter", Object.class, boolean.class);
+            monitorexit = snippet("monitorexit", Object.class, boolean.class);
+            monitorenterStub = snippet("monitorenterStub", Object.class, boolean.class, boolean.class);
+            monitorexitStub = snippet("monitorexitStub", Object.class, boolean.class);
             monitorenterEliminated = snippet("monitorenterEliminated", Object.class);
             monitorexitEliminated = snippet("monitorexitEliminated", Object.class);
             this.useFastLocking = useFastLocking;
+        }
+
+        static boolean isLoggingEnabledFor(ValueNode object) {
+            ResolvedJavaType type = object.objectStamp().type();
+            if (LOG_TYPE == null) {
+                return false;
+            } else {
+                if (LOG_TYPE.length() == 0) {
+                    return true;
+                }
+                if (type == null) {
+                    return false;
+                }
+                return (type.name().contains(LOG_TYPE));
+            }
         }
 
         public void lower(MonitorEnterNode monitorenterNode, @SuppressWarnings("unused") LoweringTool tool) {
@@ -320,6 +339,9 @@ public class MonitorSnippets implements SnippetsInterface {
             Key key = new Key(method);
             if (method == monitorenterStub) {
                 key.add("checkNull", checkNull);
+            }
+            if (!monitorenterNode.eliminated()) {
+                key.add("logEnabled", isLoggingEnabledFor(monitorenterNode.object()));
             }
             Arguments arguments = arguments("object", monitorenterNode.object());
             SnippetTemplate template = cache.get(key);
@@ -336,6 +358,9 @@ public class MonitorSnippets implements SnippetsInterface {
             FrameState stateAfter = monitorexitNode.stateAfter();
             ResolvedJavaMethod method = monitorexitNode.eliminated() ? monitorexitEliminated : useFastLocking ? monitorexit : monitorexitStub;
             Key key = new Key(method);
+            if (!monitorexitNode.eliminated()) {
+                key.add("logEnabled", isLoggingEnabledFor(monitorexitNode.object()));
+            }
             Arguments arguments = arguments("object", monitorexitNode.object());
             SnippetTemplate template = cache.get(key);
             Map<Node, Node> nodes = template.instantiate(runtime, monitorexitNode, arguments);

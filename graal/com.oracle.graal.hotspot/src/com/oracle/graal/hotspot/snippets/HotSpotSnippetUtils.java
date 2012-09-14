@@ -96,6 +96,15 @@ public class HotSpotSnippetUtils {
         return HotSpotGraalRuntime.getInstance().getConfig().unlockedMask;
     }
 
+    /**
+     * Mask for a biasable, locked or unlocked mark word.
+     * <pre>
+     * +----------------------------------+-+-+
+     * |                                 1|1|1|
+     * +----------------------------------+-+-+
+     * </pre>
+     *
+     */
     @Fold
     static int biasedLockMaskInPlace() {
         return HotSpotGraalRuntime.getInstance().getConfig().biasedLockMaskInPlace;
@@ -106,6 +115,15 @@ public class HotSpotSnippetUtils {
         return HotSpotGraalRuntime.getInstance().getConfig().epochMaskInPlace;
     }
 
+    /**
+     * Pattern for a biasable, unlocked mark word.
+     * <pre>
+     * +----------------------------------+-+-+
+     * |                                 1|0|1|
+     * +----------------------------------+-+-+
+     * </pre>
+     *
+     */
     @Fold
     static int biasedLockPattern() {
         return HotSpotGraalRuntime.getInstance().getConfig().biasedLockPattern;

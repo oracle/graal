@@ -33,9 +33,14 @@ import com.oracle.graal.nodes.extended.*;
  */
 public final class Log {
 
+    // Note: Must be kept in sync with constants in c1_Runtime1.hpp
+    private static final int LOG_OBJECT_NEWLINE = 0x01;
+    private static final int LOG_OBJECT_STRING  = 0x02;
+    private static final int LOG_OBJECT_ADDRESS = 0x04;
+
     @SuppressWarnings("unused")
     @NodeIntrinsic(RuntimeCallNode.class)
-    private static void log(@ConstantNodeParameter RuntimeCall logObject, Object object, boolean newline, boolean string) {
+    private static void log(@ConstantNodeParameter RuntimeCall logObject, Object object, int flags) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 
@@ -94,11 +99,15 @@ public final class Log {
     }
 
     public static void print(String value) {
-        log(RuntimeCall.LogObject, value, false, true);
+        log(RuntimeCall.LogObject, value, LOG_OBJECT_STRING);
     }
 
     public static void printAddress(Object o) {
-        log(RuntimeCall.LogObject, o, false, false);
+        log(RuntimeCall.LogObject, o, LOG_OBJECT_ADDRESS);
+    }
+
+    public static void printObject(Object o) {
+        log(RuntimeCall.LogObject, o, 0);
     }
 
     public static void println(boolean value) {
@@ -150,11 +159,15 @@ public final class Log {
     }
 
     public static void println(String value) {
-        log(RuntimeCall.LogObject, value, true, true);
+        log(RuntimeCall.LogObject, value, LOG_OBJECT_NEWLINE | LOG_OBJECT_STRING);
     }
 
     public static void printlnAddress(Object o) {
-        log(RuntimeCall.LogObject, o, true, false);
+        log(RuntimeCall.LogObject, o, LOG_OBJECT_NEWLINE | LOG_OBJECT_ADDRESS);
+    }
+
+    public static void printlnObject(Object o) {
+        log(RuntimeCall.LogObject, o, LOG_OBJECT_NEWLINE);
     }
 
     public static void println() {

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.snippets;
+package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that
  * it is not a {@link StateSplit} and takes a computed address instead of an object.
  */
-class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
+public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
     @Input private ValueNode address;
     @Input private ValueNode value;
 
