@@ -25,6 +25,7 @@ import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
