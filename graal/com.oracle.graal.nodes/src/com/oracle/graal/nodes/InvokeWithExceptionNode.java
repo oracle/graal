@@ -35,7 +35,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     public static final int NORMAL_EDGE = 0;
     public static final int EXCEPTION_EDGE = 1;
 
-    @Input private final MethodCallTargetNode callTarget;
+    @Input private final CallTargetNode callTarget;
     @Input private FrameState stateAfter;
     private final int bci;
     // megamorph should only be true when the compiler is sure that the call site is megamorph, and false when in doubt
@@ -43,7 +43,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     private boolean useForInlining;
     private final long leafGraphId;
 
-    public InvokeWithExceptionNode(MethodCallTargetNode callTarget, DispatchBeginNode exceptionEdge, int bci, long leafGraphId) {
+    public InvokeWithExceptionNode(CallTargetNode callTarget, DispatchBeginNode exceptionEdge, int bci, long leafGraphId) {
         super(callTarget.returnStamp(), new BeginNode[]{null, exceptionEdge}, new double[]{1.0, 0.0});
         this.bci = bci;
         this.callTarget = callTarget;
@@ -68,8 +68,12 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         setBlockSuccessor(NORMAL_EDGE, x);
     }
 
-    public MethodCallTargetNode callTarget() {
+    public CallTargetNode callTarget() {
         return callTarget;
+    }
+
+    public MethodCallTargetNode methodCallTarget() {
+        return (MethodCallTargetNode) callTarget;
     }
 
     @Override
@@ -102,7 +106,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         if (verbosity == Verbosity.Long) {
             return super.toString(Verbosity.Short) + "(bci=" + bci() + ")";
         } else if (verbosity == Verbosity.Name) {
-            return "Invoke!#" + callTarget.targetMethod().name();
+            return "Invoke#" + callTarget().targetName();
         } else {
             return super.toString(verbosity);
         }
@@ -151,7 +155,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
 
     public FrameState stateDuring() {
         FrameState tempStateAfter = stateAfter();
-        FrameState stateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), this.callTarget.targetMethod().signature().returnKind());
+        FrameState stateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), kind());
         stateDuring.setDuringCall(true);
         return stateDuring;
     }
@@ -159,8 +163,8 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
-        if (callTarget != null && callTarget.targetMethod() != null) {
-            debugProperties.put("targetMethod", callTarget.targetMethod());
+        if (callTarget instanceof MethodCallTargetNode && methodCallTarget().targetMethod() != null) {
+            debugProperties.put("targetMethod", methodCallTarget().targetMethod());
         }
         return debugProperties;
     }
@@ -174,7 +178,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     @Override
     public void intrinsify(Node node) {
         assert !(node instanceof ValueNode) || ((ValueNode) node).kind().isVoid() == kind().isVoid();
-        MethodCallTargetNode call = callTarget;
+        CallTargetNode call = callTarget;
         FrameState state = stateAfter();
         killExceptionEdge();
         if (node instanceof StateSplit) {

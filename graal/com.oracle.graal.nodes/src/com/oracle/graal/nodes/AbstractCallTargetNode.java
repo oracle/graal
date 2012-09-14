@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,37 +24,39 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
+public abstract class AbstractCallTargetNode extends CallTargetNode {
 
-    @Input protected final NodeInputList<ValueNode> arguments;
+    private final Stamp returnStamp;
+    private final Kind[] signature;
+    private final Object target;
+    private final CallingConvention.Type callType;
 
-    public CallTargetNode(ValueNode[] arguments) {
-        super(StampFactory.extension());
-        this.arguments = new NodeInputList<>(this, arguments);
+    public AbstractCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, Kind[] signature, Object target, CallingConvention.Type callType) {
+        super(arguments);
+        this.returnStamp = returnStamp;
+        this.signature = signature;
+        this.target = target;
+        this.callType = callType;
     }
-
-    public CallTargetNode(List<ValueNode> arguments) {
-        super(StampFactory.extension());
-        this.arguments = new NodeInputList<>(this, arguments);
-    }
-
-    public NodeInputList<ValueNode> arguments() {
-        return arguments;
-    }
-
-    public abstract Stamp returnStamp();
-
-    /**
-     * A human-readable representation of the target, used for debug printing only.
-     */
-    public abstract String targetName();
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        // nop
+    public Stamp returnStamp() {
+        return returnStamp;
+    }
+
+    public Kind[] signature() {
+        return signature;
+    }
+
+    public Object target() {
+        return target;
+    }
+
+    public CallingConvention.Type callType() {
+        return callType;
     }
 }

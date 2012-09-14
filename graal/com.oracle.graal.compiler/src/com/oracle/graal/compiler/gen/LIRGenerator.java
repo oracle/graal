@@ -829,7 +829,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public abstract Variable emitCMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
 
     protected FrameState stateBeforeCallWithArguments(FrameState stateAfter, MethodCallTargetNode call, int bci) {
-        return stateAfter.duplicateModified(bci, stateAfter.rethrowException(), call.returnKind(), toJVMArgumentStack(call.targetMethod().signature(), call.isStatic(), call.arguments()));
+        return stateAfter.duplicateModified(bci, stateAfter.rethrowException(), call.returnStamp().kind(), toJVMArgumentStack(call.targetMethod().signature(), call.isStatic(), call.arguments()));
     }
 
     private static ValueNode[] toJVMArgumentStack(Signature signature, boolean isStatic, NodeInputList<ValueNode> arguments) {
@@ -863,7 +863,41 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void emitInvoke(Invoke x) {
-        MethodCallTargetNode callTarget = x.callTarget();
+        if (GraalOptions.XIRLowerInvokes) {
+            emitInvokeXIR(x);
+            return;
+        }
+
+        AbstractCallTargetNode callTarget = (AbstractCallTargetNode) x.callTarget();
+        Kind[] signature = callTarget.signature();
+        CallingConvention cc = frameMap.registerConfig.getCallingConvention(callTarget.callType(), signature, target(), false);
+        frameMap.callsMethod(cc, callTarget.callType());
+
+        List<Value> argList = visitInvokeArguments(cc, callTarget.arguments());
+        Value[] parameters = argList.toArray(new Value[argList.size()]);
+
+        LIRFrameState callState = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
+        Value result = resultOperandFor(x.node().kind());
+
+        if (callTarget instanceof DirectCallTargetNode) {
+            emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, callState);
+        } else if (callTarget instanceof IndirectCallTargetNode) {
+            emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, callState);
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+
+        if (isLegal(result)) {
+            setResult(x.node(), emitMove(result));
+        }
+    }
+
+    protected abstract void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState);
+
+    protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState);
+
+    public void emitInvokeXIR(Invoke x) {
+        MethodCallTargetNode callTarget = x.methodCallTarget();
         JavaMethod targetMethod = callTarget.targetMethod();
 
         XirSnippet snippet = null;

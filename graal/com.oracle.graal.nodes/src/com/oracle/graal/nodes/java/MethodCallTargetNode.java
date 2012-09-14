@@ -50,11 +50,6 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         this.targetMethod = targetMethod;
     }
 
-    @Override
-    public JavaType returnType() {
-        return returnType;
-    }
-
     /**
      * Gets the target method for this invocation instruction.
      * @return the target method
@@ -92,7 +87,6 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         return invokeKind() == InvokeKind.Static;
     }
 
-    @Override
     public Kind returnKind() {
         return targetMethod().signature().returnKind();
     }
@@ -137,6 +131,7 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         return this;
     }
 
+    @Override
     public Stamp returnStamp() {
         Kind returnKind = targetMethod.signature().returnKind();
         if (returnKind == Kind.Object && returnType instanceof ResolvedJavaType) {
@@ -144,5 +139,13 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         } else {
             return StampFactory.forKind(returnKind);
         }
+    }
+
+    @Override
+    public String targetName() {
+        if (targetMethod() == null) {
+            return "??Invalid!";
+        }
+        return targetMethod().name();
     }
 }

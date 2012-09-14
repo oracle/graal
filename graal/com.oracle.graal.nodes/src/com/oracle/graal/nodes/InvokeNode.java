@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}")
 public final class InvokeNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, Invoke, LIRLowerable, MemoryCheckpoint  {
 
-    @Input private final MethodCallTargetNode callTarget;
+    @Input private final CallTargetNode callTarget;
     private final int bci;
     private boolean megamorphic;
     private boolean useForInlining;
@@ -58,8 +58,14 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
         this.useForInlining = true;
     }
 
-    public MethodCallTargetNode callTarget() {
+    @Override
+    public CallTargetNode callTarget() {
         return callTarget;
+    }
+
+    @Override
+    public MethodCallTargetNode methodCallTarget() {
+        return (MethodCallTargetNode) callTarget;
     }
 
     @Override
@@ -89,8 +95,8 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
-        if (callTarget != null && callTarget.targetMethod() != null) {
-            debugProperties.put("targetMethod", callTarget.targetMethod());
+        if (callTarget instanceof MethodCallTargetNode && methodCallTarget().targetMethod() != null) {
+            debugProperties.put("targetMethod", methodCallTarget().targetMethod());
         }
         return debugProperties;
     }
@@ -110,10 +116,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
         if (verbosity == Verbosity.Long) {
             return super.toString(Verbosity.Short) + "(bci=" + bci() + ")";
         } else if (verbosity == Verbosity.Name) {
-            if (callTarget == null || callTarget.targetMethod() == null) {
-                return "Invoke#??Invalid!";
-            }
-            return "Invoke#" + callTarget.targetMethod().name();
+            return "Invoke#" + callTarget().targetName();
         } else {
             return super.toString(verbosity);
         }
@@ -131,7 +134,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     @Override
     public FrameState stateDuring() {
         FrameState stateAfter = stateAfter();
-        FrameState stateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), this.callTarget.targetMethod().signature().returnKind());
+        FrameState stateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), kind());
         stateDuring.setDuringCall(true);
         return stateDuring;
     }
@@ -139,7 +142,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     @Override
     public void intrinsify(Node node) {
         assert !(node instanceof ValueNode) || ((ValueNode) node).kind().isVoid() == kind().isVoid();
-        MethodCallTargetNode call = callTarget;
+        CallTargetNode call = callTarget;
         FrameState stateAfter = stateAfter();
         if (node instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) node;

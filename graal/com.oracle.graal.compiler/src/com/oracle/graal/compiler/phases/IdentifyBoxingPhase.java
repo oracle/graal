@@ -46,7 +46,10 @@ public class IdentifyBoxingPhase extends Phase {
     }
 
     public void tryIntrinsify(Invoke invoke) {
-        MethodCallTargetNode callTarget = invoke.callTarget();
+        if (!(invoke.callTarget() instanceof MethodCallTargetNode)) {
+            return;
+        }
+        MethodCallTargetNode callTarget = invoke.methodCallTarget();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
         if (pool.isSpecialMethod(targetMethod)) {
             assert callTarget.arguments().size() == 1 : "boxing/unboxing method must have exactly one argument";

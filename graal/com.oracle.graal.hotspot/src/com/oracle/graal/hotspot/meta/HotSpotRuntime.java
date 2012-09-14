@@ -237,15 +237,17 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             SafeReadNode safeReadArrayLength = safeReadArrayLength(arrayLengthNode.array(), StructuredGraph.INVALID_GRAPH_ID);
             graph.replaceFixedWithFixed(arrayLengthNode, safeReadArrayLength);
         } else if (n instanceof Invoke) {
-            if (!GraalOptions.XIRLowerInvokes) {
-                Invoke invoke = (Invoke) n;
-                MethodCallTargetNode callTarget = invoke.callTarget();
+            Invoke invoke = (Invoke) n;
+            if (!GraalOptions.XIRLowerInvokes && invoke.callTarget() instanceof MethodCallTargetNode) {
+                MethodCallTargetNode callTarget = invoke.methodCallTarget();
                 NodeInputList<ValueNode> parameters = callTarget.arguments();
                 ValueNode receiver = parameters.size() <= 0 ? null : parameters.get(0);
                 if (!callTarget.isStatic() && receiver.kind() == Kind.Object && !receiver.objectStamp().nonNull()) {
                     invoke.node().dependencies().add(tool.createNullCheckGuard(receiver, invoke.leafGraphId()));
                 }
+                Kind[] signature = MetaUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind());
 
+                AbstractCallTargetNode loweredCallTarget = null;
                 if (callTarget.invokeKind() == InvokeKind.Virtual &&
                     GraalOptions.InlineVTableStubs &&
                     (GraalOptions.AlwaysInlineVTableStubs || invoke.isMegamorphic())) {
@@ -261,17 +263,19 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
                         Stamp nonNullWordStamp = StampFactory.forWord(wordKind, true);
                         ReadNode methodOop = graph.add(new ReadNode(hub, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, vtableEntryOffset, graph), nonNullWordStamp));
                         ReadNode compiledEntry = graph.add(new ReadNode(methodOop, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph), nonNullWordStamp));
-                        callTarget.setComputedAddress(compiledEntry);
 
-                        // Append the methodOop to the arguments so that it can be explicitly passed in RBX as
-                        // is required for all compiled calls in HotSpot.
-                        callTarget.arguments().add(methodOop);
+                        loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(methodOop, compiledEntry, parameters, invoke.node().stamp(), signature, callTarget.targetMethod(), CallingConvention.Type.JavaCall));
 
                         graph.addBeforeFixed(invoke.node(), hub);
                         graph.addAfterFixed(hub, methodOop);
                         graph.addAfterFixed(methodOop, compiledEntry);
                     }
                 }
+
+                if (loweredCallTarget == null) {
+                    loweredCallTarget = graph.add(new HotSpotDirectCallTargetNode(parameters, invoke.node().stamp(), signature, callTarget.targetMethod(), CallingConvention.Type.JavaCall, callTarget.invokeKind()));
+                }
+                callTarget.replaceAndDelete(loweredCallTarget);
             }
         } else if (n instanceof LoadFieldNode) {
             LoadFieldNode field = (LoadFieldNode) n;

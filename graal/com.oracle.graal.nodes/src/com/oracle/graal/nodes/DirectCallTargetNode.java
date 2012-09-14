@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,51 +22,26 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
+import java.util.*;
 
-public interface Invoke extends StateSplit, Lowerable {
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.type.*;
 
-    FixedNode next();
+public class DirectCallTargetNode extends AbstractCallTargetNode {
 
-    void setNext(FixedNode x);
+    public DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, Kind[] signature, Object target, CallingConvention.Type callType) {
+        super(arguments, returnStamp, signature, target, callType);
+    }
 
-    CallTargetNode callTarget();
-
-    /**
-     * Utility method that returns the {@link #callTarget()} cast to a {@link MethodCallTargetNode}.
-     */
-    MethodCallTargetNode methodCallTarget();
-
-    int bci();
-
-    FixedNode node();
-
-    FrameState stateDuring();
-
-    FrameState stateAfter();
-
-    Node predecessor();
-
-    void intrinsify(Node node);
-
-    Graph graph();
-
-    double probability();
-
-    void setProbability(double value);
-
-    boolean useForInlining();
-
-    void setUseForInlining(boolean value);
-
-    /**
-     * True if this invocation is almost certainly megamorphic, false when in doubt.
-     */
-    boolean isMegamorphic();
-
-    void setMegamorphic(boolean value);
-
-    long leafGraphId();
+    @Override
+    public String targetName() {
+        if (target() instanceof JavaMethod) {
+            return "Direct#" + ((JavaMethod) target()).name();
+        } else if (target() != null) {
+            return "Direct#" + target().getClass().getSimpleName();
+        } else {
+            return "Direct#null";
+        }
+    }
 }

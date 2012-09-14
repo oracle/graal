@@ -169,7 +169,7 @@ public class SnippetInstaller {
                 new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
 
                 for (Invoke invoke : graph.getInvokes()) {
-                    MethodCallTargetNode callTarget = invoke.callTarget();
+                    MethodCallTargetNode callTarget = invoke.methodCallTarget();
                     ResolvedJavaMethod callee = callTarget.targetMethod();
                     if (policy.shouldInline(callee, method)) {
                         StructuredGraph targetGraph = parseGraph(callee, policy);

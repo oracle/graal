@@ -56,7 +56,9 @@ public class SnippetIntrinsificationPhase extends Phase {
     protected void run(StructuredGraph graph) {
         for (Invoke i : graph.getInvokes()) {
             try {
-                tryIntrinsify(i);
+                if (i.callTarget() instanceof MethodCallTargetNode) {
+                    tryIntrinsify(i);
+                }
             } catch (NonConstantParameterError t) {
                 if (!intrinsificationOrFoldingCanBeDeferred) {
                     throw t;
@@ -78,7 +80,7 @@ public class SnippetIntrinsificationPhase extends Phase {
     }
 
     private void tryIntrinsify(Invoke invoke) {
-        ResolvedJavaMethod target = invoke.callTarget().targetMethod();
+        ResolvedJavaMethod target = invoke.methodCallTarget().targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         if (intrinsic != null) {
             assert target.getAnnotation(Fold.class) == null;
@@ -104,7 +106,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             // Prepare the arguments for the reflective method call
             Object[] arguments = prepareArguments(invoke, parameterTypes, target, true);
             Object receiver = null;
-            if (!invoke.callTarget().isStatic()) {
+            if (!invoke.methodCallTarget().isStatic()) {
                 receiver = arguments[0];
                 arguments = Arrays.asList(arguments).subList(1, arguments.length).toArray();
             }
@@ -137,13 +139,13 @@ public class SnippetIntrinsificationPhase extends Phase {
         Object[] reflectionCallArguments = new Object[arguments.size()];
         for (int i = 0; i < reflectionCallArguments.length; ++i) {
             int parameterIndex = i;
-            if (!invoke.callTarget().isStatic()) {
+            if (!invoke.methodCallTarget().isStatic()) {
                 parameterIndex--;
             }
             ValueNode argument = tryBoxingElimination(parameterIndex, target, arguments.get(i));
             if (folding || MetaUtil.getParameterAnnotation(ConstantNodeParameter.class, parameterIndex, target) != null) {
                 if (!(argument instanceof ConstantNode)) {
-                    throw new NonConstantParameterError("parameter " + parameterIndex + " must be a compile time constant for calling " + invoke.callTarget().targetMethod() + " at " + sourceLocation(invoke.node()) + ": " + argument);
+                    throw new NonConstantParameterError("parameter " + parameterIndex + " must be a compile time constant for calling " + invoke.methodCallTarget().targetMethod() + " at " + sourceLocation(invoke.node()) + ": " + argument);
                 }
                 ConstantNode constantNode = (ConstantNode) argument;
                 Constant constant = constantNode.asConstant();
@@ -193,7 +195,7 @@ public class SnippetIntrinsificationPhase extends Phase {
                         if (node.usages().size() == 2) {
                             if (node instanceof Invoke) {
                                 Invoke invokeNode = (Invoke) node;
-                                MethodCallTargetNode callTarget = invokeNode.callTarget();
+                                MethodCallTargetNode callTarget = invokeNode.methodCallTarget();
                                 if (pool.isBoxingMethod(callTarget.targetMethod())) {
                                     FrameState stateAfter = invokeNode.stateAfter();
                                     assert stateAfter.usages().size() == 1;

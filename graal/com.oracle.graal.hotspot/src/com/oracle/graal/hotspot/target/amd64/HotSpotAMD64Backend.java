@@ -24,11 +24,9 @@ package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 
 import java.lang.reflect.*;
-import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -40,12 +38,12 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
@@ -126,55 +124,17 @@ public class HotSpotAMD64Backend extends Backend {
         }
 
         @Override
-        public void emitInvoke(Invoke x) {
-            if (GraalOptions.XIRLowerInvokes) {
-                super.emitInvoke(x);
-                return;
-            }
-            final MethodCallTargetNode callTarget = x.callTarget();
-            final InvokeKind invokeKind = callTarget.invokeKind();
-            Kind[] signature = MetaUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind());
-            CallingConvention cc = frameMap.registerConfig.getCallingConvention(JavaCall, signature, target(), false);
-            frameMap.callsMethod(cc, JavaCall);
+        protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState) {
+            append(new AMD64DirectCallOp(callTarget.target(), result, parameters, callState, ((HotSpotDirectCallTargetNode) callTarget).invokeKind(), lir));
+        }
 
-            ValueNode methodOopNode = null;
-            boolean inlineVirtualCall = false;
-            if (callTarget.computedAddress() != null) {
-                // If a virtual dispatch address was computed, then an extra argument
-                // was append for passing the methodOop in RBX
-                methodOopNode = callTarget.arguments().remove(callTarget.arguments().size() - 1);
-
-                if (invokeKind == Virtual) {
-                    inlineVirtualCall = true;
-                } else {
-                    // An invokevirtual may have been canonicalized into an invokespecial;
-                    // the methodOop argument is ignored in this case
-                    methodOopNode = null;
-                }
-            }
-
-            List<Value> argList = visitInvokeArguments(cc, callTarget.arguments());
-            Value[] parameters = argList.toArray(new Value[argList.size()]);
-
-            LIRFrameState callState = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
-            Value result = resultOperandFor(x.node().kind());
-            // HotSpot needs the methodOop to be passed around in rbx for direct (inline cache patching) or indirect calls (C2I : the interpreter needs the methodOop)
-            // for the direct call the methodOop is patched in by the code installer
-            if (!inlineVirtualCall) {
-                assert methodOopNode == null;
-                append(new AMD64DirectCallOp(callTarget.targetMethod(), result, parameters, callState, invokeKind, lir));
-            } else {
-                assert methodOopNode != null;
-                Value methodOop = AMD64.rbx.asValue();
-                emitMove(operand(methodOopNode), methodOop);
-                Value targetAddress = AMD64.rax.asValue();
-                emitMove(operand(callTarget.computedAddress()), targetAddress);
-                append(new AMD64IndirectCallOp(callTarget.targetMethod(), result, parameters, methodOop, targetAddress, callState));
-            }
-
-            if (isLegal(result)) {
-                setResult(x.node(), emitMove(result));
-            }
+        @Override
+        protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState) {
+            Value methodOop = AMD64.rbx.asValue();
+            emitMove(operand(((HotSpotIndirectCallTargetNode) callTarget).methodOop()), methodOop);
+            Value targetAddress = AMD64.rax.asValue();
+            emitMove(operand(callTarget.computedAddress()), targetAddress);
+            append(new AMD64IndirectCallOp(callTarget.target(), result, parameters, methodOop, targetAddress, callState));
         }
     }
 

@@ -359,8 +359,8 @@ public class InliningPhase extends Phase implements InliningCallback {
 
             double maxSize = GraalOptions.MaximumGreedyInlineSize;
             if (GraalOptions.InliningBonusPerTransferredValue != 0) {
-                Signature signature = info.invoke.callTarget().targetMethod().signature();
-                int transferredValues = signature.argumentCount(!Modifier.isStatic(info.invoke.callTarget().targetMethod().accessFlags()));
+                Signature signature = info.invoke.methodCallTarget().targetMethod().signature();
+                int transferredValues = signature.argumentCount(!Modifier.isStatic(info.invoke.methodCallTarget().targetMethod().accessFlags()));
                 if (signature.returnKind() != Kind.Void) {
                     transferredValues++;
                 }

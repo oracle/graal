@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,41 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.hotspot.nodes;
 
 import java.util.*;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.api.code.CallingConvention.Type;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
+public class HotSpotDirectCallTargetNode extends DirectCallTargetNode {
 
-    @Input protected final NodeInputList<ValueNode> arguments;
+    private final InvokeKind invokeKind;
 
-    public CallTargetNode(ValueNode[] arguments) {
-        super(StampFactory.extension());
-        this.arguments = new NodeInputList<>(this, arguments);
+    public HotSpotDirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, Kind[] signature, Object target, Type callType, InvokeKind invokeKind) {
+        super(arguments, returnStamp, signature, target, callType);
+        this.invokeKind = invokeKind;
     }
 
-    public CallTargetNode(List<ValueNode> arguments) {
-        super(StampFactory.extension());
-        this.arguments = new NodeInputList<>(this, arguments);
-    }
-
-    public NodeInputList<ValueNode> arguments() {
-        return arguments;
-    }
-
-    public abstract Stamp returnStamp();
-
-    /**
-     * A human-readable representation of the target, used for debug printing only.
-     */
-    public abstract String targetName();
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        // nop
+    public InvokeKind invokeKind() {
+        return invokeKind;
     }
 }

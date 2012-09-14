@@ -189,7 +189,7 @@ public class InliningUtil {
         public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback) {
             // receiver null check must be before the type check
             InliningUtil.receiverNullCheck(invoke);
-            ValueNode receiver = invoke.callTarget().receiver();
+            ValueNode receiver = invoke.methodCallTarget().receiver();
             ReadHubNode objectClass = graph.add(new ReadHubNode(receiver));
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClass, type));
             FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, invoke.leafGraphId()));
@@ -272,7 +272,7 @@ public class InliningUtil {
         private void inlineMultipleMethods(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
             FixedNode continuation = invoke.next();
 
-            ValueNode originalReceiver = invoke.callTarget().receiver();
+            ValueNode originalReceiver = invoke.methodCallTarget().receiver();
             // setup merge and phi nodes for results and exceptions
             MergeNode returnMerge = graph.add(new MergeNode());
             returnMerge.setProbability(invoke.probability());
@@ -333,7 +333,7 @@ public class InliningUtil {
             }
 
             // replace the invoke with a switch on the type of the actual receiver
-            ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.callTarget().receiver()));
+            ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.methodCallTarget().receiver()));
             graph.addBeforeFixed(invoke.node(), objectClassNode);
             FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, calleeEntryNodes, unknownTypeNode);
 
@@ -351,7 +351,7 @@ public class InliningUtil {
                 Invoke invokeForInlining = (Invoke) node.next();
 
                 ResolvedJavaType commonType = getLeastCommonType(i);
-                ValueNode receiver = invokeForInlining.callTarget().receiver();
+                ValueNode receiver = invokeForInlining.methodCallTarget().receiver();
                 boolean exact = getTypeCount(i) == 1;
                 PiNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver, exact);
                 invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
@@ -374,7 +374,7 @@ public class InliningUtil {
                 FixedNode current = returnMerge;
                 int opportunities = 0;
                 do {
-                    if (current instanceof InvokeNode && ((InvokeNode) current).callTarget().receiver() == originalReceiver) {
+                    if (current instanceof InvokeNode && ((InvokeNode) current).methodCallTarget().receiver() == originalReceiver) {
                         opportunities++;
                     } else if (current.inputs().contains(originalReceiver)) {
                         opportunities++;
@@ -419,7 +419,7 @@ public class InliningUtil {
 
             MergeNode calleeEntryNode = graph.add(new MergeNode());
             calleeEntryNode.setProbability(invoke.probability());
-            ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.callTarget().receiver()));
+            ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.methodCallTarget().receiver()));
             graph.addBeforeFixed(invoke.node(), objectClassNode);
 
             FixedNode unknownTypeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
@@ -555,11 +555,11 @@ public class InliningUtil {
         @Override
         public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback) {
             if (Debug.isLogEnabled()) {
-                String targetName = MetaUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod());
+                String targetName = MetaUtil.format("%H.%n(%p):%r", invoke.methodCallTarget().targetMethod());
                 String concreteName = MetaUtil.format("%H.%n(%p):%r", concrete);
                 Debug.log("recording concrete method assumption: %s on receiver type %s -> %s", targetName, context, concreteName);
             }
-            callback.recordConcreteMethodAssumption(invoke.callTarget().targetMethod(), context, concrete);
+            callback.recordConcreteMethodAssumption(invoke.methodCallTarget().targetMethod(), context, concrete);
 
             super.inline(graph, runtime, callback);
         }
@@ -584,8 +584,12 @@ public class InliningUtil {
      * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
      */
     public static InlineInfo getInlineInfo(Invoke invoke, int level, GraalCodeCacheProvider runtime, Assumptions assumptions, InliningCallback callback, OptimisticOptimizations optimisticOpts) {
+        if (!(invoke.callTarget() instanceof MethodCallTargetNode)) {
+            // The invoke has already been lowered , or has been created as a low-level node. We have no method information.
+            return null;
+        }
         ResolvedJavaMethod parent = invoke.stateAfter().method();
-        MethodCallTargetNode callTarget = invoke.callTarget();
+        MethodCallTargetNode callTarget = invoke.methodCallTarget();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
         if (targetMethod == null) {
             return null;
@@ -727,15 +731,15 @@ public class InliningUtil {
 
     private static boolean checkInvokeConditions(Invoke invoke) {
         if (invoke.stateAfter() == null) {
-            Debug.log("not inlining %s because the invoke has no after state", methodName(invoke.callTarget().targetMethod(), invoke));
+            Debug.log("not inlining %s because the invoke has no after state", methodName(invoke.methodCallTarget().targetMethod(), invoke));
             return false;
         }
         if (invoke.predecessor() == null) {
-            Debug.log("not inlining %s because the invoke is dead code", methodName(invoke.callTarget().targetMethod(), invoke));
+            Debug.log("not inlining %s because the invoke is dead code", methodName(invoke.methodCallTarget().targetMethod(), invoke));
             return false;
         }
         if (!invoke.useForInlining()) {
-            Debug.log("not inlining %s because invoke is marked to be not used for inlining", methodName(invoke.callTarget().targetMethod(), invoke));
+            Debug.log("not inlining %s because invoke is marked to be not used for inlining", methodName(invoke.methodCallTarget().targetMethod(), invoke));
             return false;
         }
         return true;
@@ -939,7 +943,7 @@ public class InliningUtil {
     }
 
     public static void receiverNullCheck(Invoke invoke) {
-        MethodCallTargetNode callTarget = invoke.callTarget();
+        MethodCallTargetNode callTarget = invoke.methodCallTarget();
         StructuredGraph graph = (StructuredGraph) invoke.graph();
         NodeInputList<ValueNode> parameters = callTarget.arguments();
         ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);

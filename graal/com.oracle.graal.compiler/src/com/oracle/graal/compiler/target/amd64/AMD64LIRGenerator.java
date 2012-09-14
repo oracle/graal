@@ -547,6 +547,19 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState) {
+        append(new DirectCallOp(callTarget.target(), result, parameters, callState, null));
+    }
+
+    @Override
+    protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState) {
+        // The current register allocator cannot handle variables at call sites, need a fixed register.
+        Value targetAddress = AMD64.rax.asValue();
+        emitMove(operand(callTarget.computedAddress()), targetAddress);
+        append(new IndirectCallOp(callTarget.target(), result, parameters, targetAddress, callState, null));
+    }
+
+    @Override
     protected void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRFrameState info, CallPositionListener cpl) {
         if (isConstant(targetAddress)) {
             append(new DirectCallOp(targetMethod, result, arguments.toArray(new Value[arguments.size()]), info, cpl));

@@ -27,6 +27,7 @@ import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 
 public class IntrinsificationPhase extends Phase {
@@ -52,9 +53,8 @@ public class IntrinsificationPhase extends Phase {
     }
 
     private static void tryIntrinsify(Invoke invoke, GraalCodeCacheProvider runtime) {
-        ResolvedJavaMethod target = invoke.callTarget().targetMethod();
-        if (target != null) {
-            tryIntrinsify(invoke, target, runtime);
+        if (invoke.callTarget() instanceof MethodCallTargetNode && invoke.methodCallTarget().targetMethod() != null) {
+            tryIntrinsify(invoke, invoke.methodCallTarget().targetMethod(), runtime);
         }
     }
 
