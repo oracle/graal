@@ -49,7 +49,7 @@ public class MembarNode extends AbstractStateSplit implements StateSplit, LIRLow
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void get(@ConstantNodeParameter int barriers) {
+    public static void memoryBarrier(@ConstantNodeParameter int barriers) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 }
