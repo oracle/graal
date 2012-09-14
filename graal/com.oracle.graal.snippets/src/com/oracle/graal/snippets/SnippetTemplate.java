@@ -154,10 +154,10 @@ public class SnippetTemplate {
     public static class Cache {
 
         private final ConcurrentHashMap<SnippetTemplate.Key, SnippetTemplate> templates = new ConcurrentHashMap<>();
-        private final CodeCacheProvider runtime;
+        private final MetaAccessProvider runtime;
 
 
-        public Cache(CodeCacheProvider runtime) {
+        public Cache(MetaAccessProvider runtime) {
             this.runtime = runtime;
         }
 
@@ -216,7 +216,7 @@ public class SnippetTemplate {
     /**
      * Creates a snippet template.
      */
-    public SnippetTemplate(CodeCacheProvider runtime, SnippetTemplate.Key key) {
+    public SnippetTemplate(MetaAccessProvider runtime, SnippetTemplate.Key key) {
         ResolvedJavaMethod method = key.method;
         assert Modifier.isStatic(method.accessFlags()) : "snippet method must be static: " + method;
         Signature signature = method.signature();
@@ -451,7 +451,7 @@ public class SnippetTemplate {
      *
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
-    private IdentityHashMap<Node, Node> bind(StructuredGraph replaceeGraph, CodeCacheProvider runtime, SnippetTemplate.Arguments args) {
+    private IdentityHashMap<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider runtime, SnippetTemplate.Arguments args) {
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
 
         for (Map.Entry<String, Object> e : args) {
@@ -495,7 +495,7 @@ public class SnippetTemplate {
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      * @return the map of duplicated nodes (original -> duplicate)
      */
-    public Map<Node, Node> instantiate(CodeCacheProvider runtime,
+    public Map<Node, Node> instantiate(MetaAccessProvider runtime,
                     FixedWithNextNode replacee, SnippetTemplate.Arguments args) {
 
         // Inline the snippet nodes, replacing parameters with the given args in the process
@@ -547,7 +547,7 @@ public class SnippetTemplate {
      * @param lastFixedNode the CFG of the snippet is inserted after this node
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      */
-    public void instantiate(CodeCacheProvider runtime,
+    public void instantiate(MetaAccessProvider runtime,
                     FloatingNode replacee,
                     FixedWithNextNode lastFixedNode, SnippetTemplate.Arguments args) {
 
@@ -593,7 +593,7 @@ public class SnippetTemplate {
      * @param controlSplitNode the node replaced by this wheCFG of the snippet is inserted after this node
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      */
-    public void instantiate(CodeCacheProvider runtime,
+    public void instantiate(MetaAccessProvider runtime,
                     FloatingNode replacee,
                     ControlSplitNode controlSplitNode,
                     SnippetTemplate.Arguments args) {
