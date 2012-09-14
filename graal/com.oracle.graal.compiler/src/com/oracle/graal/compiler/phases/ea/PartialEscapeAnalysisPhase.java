@@ -713,6 +713,7 @@ class EscapeAnalysisIteration {
                     graph.replaceFixedWithFloating(x, ConstantNode.forInt(((ArrayEscapeRecord) obj.record).length, graph));
                     metricOtherRemoved.increment();
                 }
+                changed = true;
                 usageFound = true;
             } else if (node instanceof ReadHubNode) {
                 ReadHubNode x = (ReadHubNode) node;
@@ -723,6 +724,7 @@ class EscapeAnalysisIteration {
                     graph.replaceFixedWithFloating(x, hub);
                     metricOtherRemoved.increment();
                 }
+                changed = true;
                 usageFound = true;
             } else if (node instanceof ReturnNode) {
                 ReturnNode x = (ReturnNode) node;
