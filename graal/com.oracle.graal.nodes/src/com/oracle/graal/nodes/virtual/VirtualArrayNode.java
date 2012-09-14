@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,38 +24,50 @@ package com.oracle.graal.nodes.virtual;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo(nameTemplate = "VirtualArray {p#componentType/s}[{p#length}]")
+public class VirtualArrayNode extends VirtualObjectNode {
 
-public class BoxedVirtualObjectNode extends VirtualObjectNode implements LIRLowerable, Node.ValueNumberable {
+    private final ResolvedJavaType componentType;
+    private final int length;
 
-    @Input ValueNode unboxedValue;
-    private final ResolvedJavaType type;
-
-    public BoxedVirtualObjectNode(int virtualId, ResolvedJavaType type, ValueNode unboxedValue) {
+    public VirtualArrayNode(int virtualId, ResolvedJavaType componentType, int length) {
         super(virtualId);
-        this.type = type;
-        this.unboxedValue = unboxedValue;
-    }
-
-    public ValueNode getUnboxedValue() {
-        return unboxedValue;
+        this.componentType = componentType;
+        this.length = length;
     }
 
     @Override
     public ResolvedJavaType type() {
-        return type;
+        return componentType.arrayOf();
+    }
+
+    public ResolvedJavaType componentType() {
+        return componentType;
     }
 
     @Override
     public int entryCount() {
-        return 1;
+        return length;
+    }
+
+    @Override
+    public void generate(LIRGeneratorTool gen) {
+        // nothing to do...
+    }
+
+    @Override
+    public String toString(Verbosity verbosity) {
+        if (verbosity == Verbosity.Name) {
+            return super.toString(Verbosity.Name) + " " + componentType.name() + "[" + length + "]";
+        } else {
+            return super.toString(verbosity);
+        }
     }
 
     @Override
     public Object fieldName(int index) {
-        assert index == 0;
-        return "value";
+        return "[" + index + "]";
     }
 }

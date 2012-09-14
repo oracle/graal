@@ -211,7 +211,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         return virtualObjectMappings.size();
     }
 
-    public Node virtualObjectMappingAt(int i) {
+    public EscapeObjectState virtualObjectMappingAt(int i) {
         return virtualObjectMappings.get(i);
     }
 

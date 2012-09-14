@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,22 +29,21 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(nameTemplate = "VirtualObject {p#type}")
-public class VirtualObjectNode extends FloatingNode implements LIRLowerable {
+public abstract class VirtualObjectNode extends FloatingNode implements LIRLowerable {
 
-    @SuppressWarnings("unused")
-    private final int id;
-    private final ResolvedJavaType type;
-    private final EscapeField[] fields;
+    private final int virtualId;
 
-    public VirtualObjectNode(int id, ResolvedJavaType type, EscapeField[] fields) {
+    public VirtualObjectNode(int virtualId) {
         super(StampFactory.virtual());
-        this.id = id;
-        this.type = type;
-        this.fields = fields;
+        this.virtualId = virtualId;
     }
 
-    public ResolvedJavaType type() {
-        return type;
+    public abstract ResolvedJavaType type();
+
+    public abstract int entryCount();
+
+    public int virtualId() {
+        return virtualId;
     }
 
     @Override
@@ -52,16 +51,5 @@ public class VirtualObjectNode extends FloatingNode implements LIRLowerable {
         // nothing to do...
     }
 
-    @Override
-    public String toString(Verbosity verbosity) {
-        if (verbosity == Verbosity.Name) {
-            return super.toString(Verbosity.Name) + " " + type.name();
-        } else {
-            return super.toString(verbosity);
-        }
-    }
-
-    public EscapeField[] fields() {
-        return fields;
-    }
+    public abstract Object fieldName(int i);
 }

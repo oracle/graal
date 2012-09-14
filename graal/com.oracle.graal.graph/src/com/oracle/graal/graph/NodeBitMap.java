@@ -111,7 +111,7 @@ public final class NodeBitMap extends AbstractNodeIterable<Node> {
 
     private boolean check(Node node) {
         assert node.graph() == graph : "this node is not part of the graph";
-        assert !isNew(node) : "node was added to the graph after creating the node bitmap";
+        assert !isNew(node) : "node was added to the graph after creating the node bitmap: " + node;
         assert node.isAlive() : "node is deleted!";
         return true;
     }

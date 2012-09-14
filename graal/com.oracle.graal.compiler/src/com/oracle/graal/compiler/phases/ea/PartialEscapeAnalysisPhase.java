@@ -42,77 +42,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 
-abstract class EscapeRecord {
-
-    public final int id;
-    public final ResolvedJavaType type;
-    public final VirtualObjectNode virtualObject;
-
-    public EscapeRecord(int id, ResolvedJavaType type, VirtualObjectNode virtualObject) {
-        this.id = id;
-        this.type = type;
-        this.virtualObject = virtualObject;
-    }
-
-    public abstract String fieldName(int index);
-
-    public abstract int fieldCount();
-}
-
-class InstanceEscapeRecord extends EscapeRecord {
-
-    public final EscapeField[] fields;
-    public final HashMap<Object, Integer> fieldMap = new HashMap<>();
-
-    public InstanceEscapeRecord(int id, ResolvedJavaType type, VirtualObjectNode virtualObject, EscapeField[] fields) {
-        super(id, type, virtualObject);
-        this.fields = fields;
-        for (int i = 0; i < fields.length; i++) {
-            fieldMap.put(fields[i].representation(), i);
-        }
-    }
-
-    @Override
-    public String toString() {
-        return MetaUtil.toJavaName(type, false) + "@" + id;
-    }
-
-    @Override
-    public String fieldName(int index) {
-        return fields[index].name();
-    }
-
-    @Override
-    public int fieldCount() {
-        return fields.length;
-    }
-}
-
-class ArrayEscapeRecord extends EscapeRecord {
-
-    public final int length;
-
-    public ArrayEscapeRecord(int id, ResolvedJavaType type, VirtualObjectNode virtualObject, int length) {
-        super(id, type, virtualObject);
-        this.length = length;
-    }
-
-    @Override
-    public String toString() {
-        return MetaUtil.toJavaName(type.componentType(), false) + "[" + length + "]@" + id;
-    }
-
-    @Override
-    public String fieldName(int index) {
-        return "[" + index + "]";
-    }
-
-    @Override
-    public int fieldCount() {
-        return length;
-    }
-}
-
 class EscapeAnalysisIteration {
 
     // Metrics
@@ -145,11 +74,11 @@ class EscapeAnalysisIteration {
     private final MetaAccessProvider runtime;
     private final SchedulePhase schedule;
     private final NodeBitMap usages;
-    private final NodeBitMap visitedNodes;
     boolean changed = false;
 
     private final boolean changeGraph;
 
+    private final HashSet<VirtualObjectNode> reusedVirtualObjects = new HashSet<>();
     private final HashSet<ValueNode> allocations;
     private final ArrayList<ValueNode> obsoleteNodes = new ArrayList<>();
     private int virtualIds = 0;
@@ -160,7 +89,6 @@ class EscapeAnalysisIteration {
         this.runtime = runtime;
         this.allocations = allocations;
         this.changeGraph = changeGraph;
-        this.visitedNodes = graph.createNodeBitMap();
         this.usages = graph.createNodeBitMap();
     }
 
@@ -183,41 +111,33 @@ class EscapeAnalysisIteration {
             if (changed) {
                 Debug.log("escape analysis on %s\n", graph.method());
             }
-
-            if (GraalOptions.TraceEscapeAnalysis) {
-                for (Node node : graph.getNodes()) {
-                    if (!visitedNodes.isMarked(node) && !(node instanceof VirtualState) && !(node instanceof VirtualObjectNode)) {
-                        trace("unvisited node: %s", node);
-                    }
-                }
-            }
         }
     }
 
     private static class ObjectState {
 
-        public final EscapeRecord record;
+        public final VirtualObjectNode virtual;
         public ValueNode[] fieldState;
         public ValueNode materializedValue;
         public int lockCount;
         public boolean initialized;
 
-        public ObjectState(EscapeRecord record, ValueNode[] fieldState, int lockCount) {
-            this.record = record;
+        public ObjectState(VirtualObjectNode virtual, ValueNode[] fieldState, int lockCount) {
+            this.virtual = virtual;
             this.fieldState = fieldState;
             this.lockCount = lockCount;
             this.initialized = false;
         }
 
-        public ObjectState(EscapeRecord record, ValueNode materializedValue, int lockCount) {
-            this.record = record;
+        public ObjectState(VirtualObjectNode virtual, ValueNode materializedValue, int lockCount) {
+            this.virtual = virtual;
             this.materializedValue = materializedValue;
             this.lockCount = lockCount;
             this.initialized = true;
         }
 
         private ObjectState(ObjectState other) {
-            record = other.record;
+            virtual = other.virtual;
             fieldState = other.fieldState == null ? null : other.fieldState.clone();
             materializedValue = other.materializedValue;
             lockCount = other.lockCount;
@@ -237,7 +157,7 @@ class EscapeAnalysisIteration {
             }
             if (fieldState != null) {
                 for (int i = 0; i < fieldState.length; i++) {
-                    str.append(record.fieldName(i)).append('=').append(fieldState[i]).append(' ');
+                    str.append(virtual.fieldName(i)).append('=').append(fieldState[i]).append(' ');
                 }
             }
             if (materializedValue != null) {
@@ -250,29 +170,29 @@ class EscapeAnalysisIteration {
 
     private class BlockState implements MergeableBlockState<BlockState> {
 
-        private final HashMap<EscapeRecord, ObjectState> recordStates = new HashMap<>();
-        private final HashMap<ValueNode, EscapeRecord> recordAliases = new HashMap<>();
+        private final HashMap<VirtualObjectNode, ObjectState> objectStates = new HashMap<>();
+        private final HashMap<ValueNode, VirtualObjectNode> objectAliases = new HashMap<>();
 
         public BlockState() {
         }
 
         public BlockState(BlockState other) {
-            for (Map.Entry<EscapeRecord, ObjectState> entry : other.recordStates.entrySet()) {
-                recordStates.put(entry.getKey(), entry.getValue().clone());
+            for (Map.Entry<VirtualObjectNode, ObjectState> entry : other.objectStates.entrySet()) {
+                objectStates.put(entry.getKey(), entry.getValue().clone());
             }
-            for (Map.Entry<ValueNode, EscapeRecord> entry : other.recordAliases.entrySet()) {
-                recordAliases.put(entry.getKey(), entry.getValue());
+            for (Map.Entry<ValueNode, VirtualObjectNode> entry : other.objectAliases.entrySet()) {
+                objectAliases.put(entry.getKey(), entry.getValue());
             }
         }
 
-        public ObjectState objectState(EscapeRecord record) {
-            assert recordStates.containsKey(record);
-            return recordStates.get(record);
+        public ObjectState objectState(VirtualObjectNode object) {
+            assert objectStates.containsKey(object);
+            return objectStates.get(object);
         }
 
         public ObjectState objectState(ValueNode value) {
-            EscapeRecord record = recordAliases.get(value);
-            return record == null ? null : objectState(record);
+            VirtualObjectNode object = objectAliases.get(value);
+            return object == null ? null : objectState(object);
         }
 
         @Override
@@ -280,26 +200,26 @@ class EscapeAnalysisIteration {
             return new BlockState(this);
         }
 
-        public void materializeBefore(FixedNode fixed, EscapeRecord record) {
+        public void materializeBefore(FixedNode fixed, VirtualObjectNode virtual) {
             if (changeGraph) {
-                HashSet<EscapeRecord> deferred = new HashSet<>();
+                HashSet<VirtualObjectNode> deferred = new HashSet<>();
                 ArrayList<FixedWithNextNode> deferredStores = new ArrayList<>();
-                materializeChangedBefore(fixed, record, deferred, deferredStores);
+                materializeChangedBefore(fixed, virtual, deferred, deferredStores);
                 for (FixedWithNextNode write : deferredStores) {
                     write.setProbability(fixed.probability());
                     graph.addBeforeFixed(fixed, write);
                 }
             } else {
-                materializeUnchangedBefore(record);
+                materializeUnchangedBefore(virtual);
             }
         }
 
-        private void materializeUnchangedBefore(EscapeRecord record) {
-            trace("materializing %s", record);
-            ObjectState obj = objectState(record);
+        private void materializeUnchangedBefore(VirtualObjectNode virtual) {
+            trace("materializing %s", virtual);
+            ObjectState obj = objectState(virtual);
             if (obj.lockCount > 0) {
                 if (changeGraph) {
-                    error("object materialized with lock: %s\n", record);
+                    error("object materialized with lock: %s\n", virtual);
                 }
                 metricMonitorBailouts.increment();
                 throw new BailoutException("object materialized with lock");
@@ -312,75 +232,75 @@ class EscapeAnalysisIteration {
                 ObjectState valueObj = objectState(fieldState[i]);
                 if (valueObj != null) {
                     if (valueObj.materializedValue == null) {
-                        materializeUnchangedBefore(valueObj.record);
+                        materializeUnchangedBefore(valueObj.virtual);
                     }
                 }
             }
             obj.initialized = true;
         }
 
-        private void materializeChangedBefore(FixedNode fixed, EscapeRecord record, HashSet<EscapeRecord> deferred, ArrayList<FixedWithNextNode> deferredStores) {
-            trace("materializing %s at %s", record, fixed);
-            ObjectState obj = objectState(record);
+        private void materializeChangedBefore(FixedNode fixed, VirtualObjectNode virtual, HashSet<VirtualObjectNode> deferred, ArrayList<FixedWithNextNode> deferredStores) {
+            trace("materializing %s at %s", virtual, fixed);
+            ObjectState obj = objectState(virtual);
             if (obj.lockCount > 0) {
-                error("object materialized with lock: %s\n", record);
+                error("object materialized with lock: %s\n", virtual);
                 metricMonitorBailouts.increment();
                 throw new BailoutException("object materialized with lock");
             }
 
-            MaterializeObjectNode materialize = graph.add(new MaterializeObjectNode(record.type, record.virtualObject));
+            MaterializeObjectNode materialize = graph.add(new MaterializeObjectNode(virtual));
             materialize.setProbability(fixed.probability());
             ValueNode[] fieldState = obj.fieldState;
             metricMaterializations.increment();
             metricMaterializationFields.add(fieldState.length);
             obj.fieldState = null;
             obj.materializedValue = materialize;
-            deferred.add(record);
+            deferred.add(virtual);
             for (int i = 0; i < fieldState.length; i++) {
                 ObjectState valueObj = objectState(fieldState[i]);
                 if (valueObj != null) {
                     if (valueObj.materializedValue == null) {
-                        materializeChangedBefore(fixed, valueObj.record, deferred, deferredStores);
+                        materializeChangedBefore(fixed, valueObj.virtual, deferred, deferredStores);
                     }
-                    if (deferred.contains(valueObj.record)) {
+                    if (deferred.contains(valueObj.virtual)) {
                         Kind fieldKind;
-                        if (record.type.isArrayClass()) {
+                        if (virtual instanceof VirtualArrayNode) {
                             deferredStores.add(graph.add(new CyclicMaterializeStoreNode(materialize, valueObj.materializedValue, i)));
-                            fieldKind = record.type.componentType().kind();
+                            fieldKind = ((VirtualArrayNode) virtual).componentType().kind();
                         } else {
-                            InstanceEscapeRecord instanceRecord = (InstanceEscapeRecord) record;
-                            deferredStores.add(graph.add(new CyclicMaterializeStoreNode(materialize, valueObj.materializedValue, (ResolvedJavaField) instanceRecord.fields[i].representation())));
-                            fieldKind = instanceRecord.fields[i].type().kind();
+                            VirtualInstanceNode instanceObject = (VirtualInstanceNode) virtual;
+                            deferredStores.add(graph.add(new CyclicMaterializeStoreNode(materialize, valueObj.materializedValue, instanceObject.field(i))));
+                            fieldKind = instanceObject.field(i).type().kind();
                         }
                         materialize.values().set(i, ConstantNode.defaultForKind(fieldKind, graph));
                     } else {
-                        assert valueObj.initialized : "should be initialized: " + record + " at " + fixed;
+                        assert valueObj.initialized : "should be initialized: " + virtual + " at " + fixed;
                         materialize.values().set(i, valueObj.materializedValue);
                     }
                 } else {
                     materialize.values().set(i, fieldState[i]);
                 }
             }
-            deferred.remove(record);
+            deferred.remove(virtual);
 
             obj.initialized = true;
             graph.addBeforeFixed(fixed, materialize);
         }
 
-        private void addAndMarkAlias(EscapeRecord record, ValueNode node) {
-            addAlias(record, node);
+        private void addAndMarkAlias(VirtualObjectNode virtual, ValueNode node, boolean remove) {
+            objectAliases.put(node, virtual);
             for (Node usage : node.usages()) {
-                assert !visitedNodes.isMarked(usage) : "used by already visited node: " + node + " -> " + usage;
-                usages.mark(usage);
-                if (usage instanceof VirtualState) {
-                    markVirtualUsages(usage);
-                }
+                markVirtualUsages(usage);
             }
-            obsoleteNodes.add(node);
+            if (remove) {
+                obsoleteNodes.add(node);
+            }
         }
 
         private void markVirtualUsages(Node node) {
-            usages.mark(node);
+            if (!usages.isNew(node)) {
+                usages.mark(node);
+            }
             if (node instanceof VirtualState) {
                 for (Node usage : node.usages()) {
                     markVirtualUsages(usage);
@@ -388,21 +308,17 @@ class EscapeAnalysisIteration {
             }
         }
 
-        public void addAlias(EscapeRecord record, ValueNode alias) {
-            recordAliases.put(alias, record);
-        }
-
-        public void addRecord(EscapeRecord record, ObjectState state) {
-            recordStates.put(record, state);
+        public void addObject(VirtualObjectNode virtual, ObjectState state) {
+            objectStates.put(virtual, state);
         }
 
         public Iterable<ObjectState> states() {
-            return recordStates.values();
+            return objectStates.values();
         }
 
         @Override
         public String toString() {
-            return recordStates.toString();
+            return objectStates.toString();
         }
     }
 
@@ -432,23 +348,26 @@ class EscapeAnalysisIteration {
 
                 if (op != null) {
                     trace("{{%s}} ", node);
-                    ResolvedJavaType type = op.type();
-                    EscapeField[] fields = op.fields();
-                    VirtualObjectNode virtualObject = changeGraph ? graph.add(new VirtualObjectNode(virtualIds, type, fields)) : null;
-                    EscapeRecord record = type.isArrayClass() ? new ArrayEscapeRecord(virtualIds, type, virtualObject, fields.length) : new InstanceEscapeRecord(virtualIds, type, virtualObject, fields);
-                    ValueNode[] fieldState = changeGraph ? op.fieldState() : new ValueNode[fields.length];
+                    VirtualObjectNode virtualObject = op.virtualObject(virtualIds);
+                    if (virtualObject.isAlive()) {
+                        reusedVirtualObjects.add(virtualObject);
+                        state.addAndMarkAlias(virtualObject, virtualObject, false);
+                    } else {
+                        if (changeGraph) {
+                            virtualObject = graph.add(virtualObject);
+                        }
+                    }
+                    ValueNode[] fieldState = changeGraph ? op.fieldState() : new ValueNode[virtualObject.entryCount()];
                     if (changeGraph) {
                         metricAllocationRemoved.increment();
                         metricAllocationFieldsRemoved.add(fieldState.length);
                     } else {
                         allocations.add((ValueNode) node);
                     }
-                    state.addRecord(record, new ObjectState(record, fieldState, 0));
-                    state.addAndMarkAlias(record, (ValueNode) node);
+                    state.addObject(virtualObject, new ObjectState(virtualObject, fieldState, 0));
+                    state.addAndMarkAlias(virtualObject, (ValueNode) node, true);
                     virtualIds++;
                 } else {
-                    visitedNodes.mark(node);
-
                     if (changeGraph && node instanceof LoopExitNode) {
                         for (ObjectState obj : state.states()) {
                             if (obj.fieldState != null) {
@@ -487,7 +406,7 @@ class EscapeAnalysisIteration {
                 ObjectState obj = state.objectState(value);
                 assert obj != null : node;
                 if (obj.materializedValue == null) {
-                    state.addAndMarkAlias(obj.record, node);
+                    state.addAndMarkAlias(obj.virtual, node, true);
                 } else {
                     if (changeGraph) {
                         node.replaceFirstInput(value, obj.materializedValue);
@@ -499,9 +418,9 @@ class EscapeAnalysisIteration {
                 ObjectState obj = state.objectState(x.object());
                 assert obj != null : x;
                 if (obj.materializedValue == null) {
-                    if (x.targetClass() != null && obj.record.type.isSubtypeOf(x.targetClass())) {
+                    if (x.targetClass() != null && obj.virtual.type().isSubtypeOf(x.targetClass())) {
                         metricOtherRemoved.increment();
-                        state.addAndMarkAlias(obj.record, x);
+                        state.addAndMarkAlias(obj.virtual, x, true);
                         // throw new UnsupportedOperationException("probably incorrect - losing dependency");
                     } else {
                         replaceWithMaterialized(x.object(), x, state, obj);
@@ -527,7 +446,7 @@ class EscapeAnalysisIteration {
                 AccessMonitorNode x = (AccessMonitorNode) node;
                 ObjectState obj = state.objectState(x.object());
                 if (obj != null) {
-                    Debug.log("monitor operation %s on %s\n", x, obj.record);
+                    Debug.log("monitor operation %s on %s\n", x, obj.virtual);
                     if (node instanceof MonitorEnterNode) {
                         obj.lockCount++;
                     } else {
@@ -538,7 +457,7 @@ class EscapeAnalysisIteration {
                         changed = true;
                         if (obj.materializedValue == null) {
                             metricLockRemoved.increment();
-                            node.replaceFirstInput(x.object(), obj.record.virtualObject);
+                            node.replaceFirstInput(x.object(), obj.virtual);
                             x.eliminate();
                         } else {
                             node.replaceFirstInput(x.object(), obj.materializedValue);
@@ -550,11 +469,11 @@ class EscapeAnalysisIteration {
                 CyclicMaterializeStoreNode x = (CyclicMaterializeStoreNode) node;
                 ObjectState obj = state.objectState(x.object());
                 assert obj != null : x;
-                if (obj.record.type.isArrayClass()) {
+                if (obj.virtual instanceof VirtualArrayNode) {
                     obj.fieldState[x.targetIndex()] = x.value();
                 } else {
-                    InstanceEscapeRecord record = (InstanceEscapeRecord) obj.record;
-                    int index = record.fieldMap.get(x.targetField());
+                    VirtualInstanceNode instance = (VirtualInstanceNode) obj.virtual;
+                    int index = instance.fieldIndex(x.targetField());
                     obj.fieldState[index] = x.value();
                 }
                 if (changeGraph) {
@@ -565,17 +484,17 @@ class EscapeAnalysisIteration {
                 LoadFieldNode x = (LoadFieldNode) node;
                 ObjectState obj = state.objectState(x.object());
                 assert obj != null : x;
-                InstanceEscapeRecord record = (InstanceEscapeRecord) obj.record;
-                if (!record.fieldMap.containsKey(x.field())) {
+                VirtualInstanceNode virtual = (VirtualInstanceNode) obj.virtual;
+                int fieldIndex = virtual.fieldIndex(x.field());
+                if (fieldIndex == -1) {
                     // the field does not exist in the virtual object
                     ensureMaterialized(state, obj, x);
                 }
                 if (obj.materializedValue == null) {
-                    int index = record.fieldMap.get(x.field());
-                    ValueNode result = obj.fieldState[index];
+                    ValueNode result = obj.fieldState[fieldIndex];
                     ObjectState resultObj = state.objectState(result);
                     if (resultObj != null) {
-                        state.addAndMarkAlias(resultObj.record, x);
+                        state.addAndMarkAlias(resultObj.virtual, x, true);
                     } else {
                         if (changeGraph) {
                             x.replaceAtUsages(result);
@@ -598,14 +517,14 @@ class EscapeAnalysisIteration {
                 ValueNode value = x.value();
                 ObjectState obj = state.objectState(object);
                 if (obj != null) {
-                    InstanceEscapeRecord record = (InstanceEscapeRecord) obj.record;
-                    if (!record.fieldMap.containsKey(x.field())) {
+                    VirtualInstanceNode virtual = (VirtualInstanceNode) obj.virtual;
+                    int fieldIndex = virtual.fieldIndex(x.field());
+                    if (fieldIndex == -1) {
                         // the field does not exist in the virtual object
                         ensureMaterialized(state, obj, x);
                     }
                     if (obj.materializedValue == null) {
-                        int index = record.fieldMap.get(x.field());
-                        obj.fieldState[index] = value;
+                        obj.fieldState[fieldIndex] = value;
                         if (changeGraph) {
                             graph.removeFixed(x);
                             metricStoreRemoved.increment();
@@ -642,7 +561,7 @@ class EscapeAnalysisIteration {
                             ValueNode result = arrayObj.fieldState[index];
                             ObjectState resultObj = state.objectState(result);
                             if (resultObj != null) {
-                                state.addAndMarkAlias(resultObj.record, x);
+                                state.addAndMarkAlias(resultObj.virtual, x, true);
                             } else {
                                 if (changeGraph) {
                                     x.replaceAtUsages(result);
@@ -710,7 +629,7 @@ class EscapeAnalysisIteration {
                 ObjectState obj = state.objectState(x.array());
                 assert obj != null : x;
                 if (changeGraph) {
-                    graph.replaceFixedWithFloating(x, ConstantNode.forInt(((ArrayEscapeRecord) obj.record).length, graph));
+                    graph.replaceFixedWithFloating(x, ConstantNode.forInt(((VirtualArrayNode) obj.virtual).entryCount(), graph));
                     metricOtherRemoved.increment();
                 }
                 changed = true;
@@ -720,7 +639,7 @@ class EscapeAnalysisIteration {
                 ObjectState obj = state.objectState(x.object());
                 assert obj != null : x;
                 if (changeGraph) {
-                    ConstantNode hub = ConstantNode.forConstant(obj.record.type.getEncoding(Representation.ObjectHub), runtime, graph);
+                    ConstantNode hub = ConstantNode.forConstant(obj.virtual.type().getEncoding(Representation.ObjectHub), runtime, graph);
                     graph.replaceFixedWithFloating(x, hub);
                     metricOtherRemoved.increment();
                 }
@@ -800,11 +719,11 @@ class EscapeAnalysisIteration {
                                 ObjectState valueObj = state.objectState(value);
                                 if (valueObj != null) {
                                     virtual.add(valueObj);
-                                    usage.replaceFirstInput(value, valueObj.record.virtualObject);
+                                    usage.replaceFirstInput(value, valueObj.virtual);
                                 } else if (value instanceof VirtualObjectNode) {
                                     ObjectState virtualObj = null;
                                     for (ObjectState obj : state.states()) {
-                                        if (value == obj.record.virtualObject) {
+                                        if (value == obj.virtual) {
                                             virtualObj = obj;
                                             break;
                                         }
@@ -844,19 +763,23 @@ class EscapeAnalysisIteration {
                                     ObjectState valueObj = state.objectState(fieldState[i]);
                                     if (valueObj != null) {
                                         if (valueObj.materializedValue == null) {
-                                            fieldState[i] = valueObj.record.virtualObject;
+                                            fieldState[i] = valueObj.virtual;
                                         } else {
                                             fieldState[i] = valueObj.materializedValue;
                                         }
                                     }
                                 }
-                                v = graph.add(new VirtualObjectState(obj.record.virtualObject, fieldState));
+                                v = graph.add(new VirtualObjectState(obj.virtual, fieldState));
                             } else {
-                                v = graph.add(new MaterializedObjectState(obj.record.virtualObject, obj.materializedValue));
+                                v = graph.add(new MaterializedObjectState(obj.virtual, obj.materializedValue));
                             }
-                            for (EscapeObjectState s : stateAfter.virtualObjectMappings()) {
-                                if (s.object() == v.object()) {
-                                    throw new GraalInternalError("unexpected duplicate virtual state at: %s for %s", node, v.object());
+                            for (int i = 0; i < stateAfter.virtualObjectMappingCount(); i++) {
+                                if (stateAfter.virtualObjectMappingAt(i).object() == v.object()) {
+                                    if (reusedVirtualObjects.contains(v.object())) {
+                                        stateAfter.virtualObjectMappings().remove(i);
+                                    } else {
+                                        throw new GraalInternalError("unexpected duplicate virtual state at: %s for %s", node, v.object());
+                                    }
                                 }
                             }
                             stateAfter.addVirtualObjectMapping(v);
@@ -880,7 +803,7 @@ class EscapeAnalysisIteration {
         private void ensureMaterialized(BlockState state, ObjectState obj, FixedNode materializeBefore) {
             assert obj != null;
             if (obj.materializedValue == null) {
-                state.materializeBefore(materializeBefore, obj.record);
+                state.materializeBefore(materializeBefore, obj.virtual);
             }
             assert obj.materializedValue != null;
         }
@@ -903,14 +826,14 @@ class EscapeAnalysisIteration {
         protected BlockState merge(MergeNode merge, List<BlockState> states) {
             BlockState newState = new BlockState();
 
-            newState.recordAliases.putAll(states.get(0).recordAliases);
+            newState.objectAliases.putAll(states.get(0).objectAliases);
             for (int i = 1; i < states.size(); i++) {
                 BlockState state = states.get(i);
-                for (Map.Entry<ValueNode, EscapeRecord> entry : states.get(0).recordAliases.entrySet()) {
-                    if (state.recordAliases.containsKey(entry.getKey())) {
-                        assert state.recordAliases.get(entry.getKey()) == entry.getValue();
+                for (Map.Entry<ValueNode, VirtualObjectNode> entry : states.get(0).objectAliases.entrySet()) {
+                    if (state.objectAliases.containsKey(entry.getKey())) {
+                        assert state.objectAliases.get(entry.getKey()) == entry.getValue();
                     } else {
-                        newState.recordAliases.remove(entry.getKey());
+                        newState.objectAliases.remove(entry.getKey());
                     }
                 }
             }
@@ -923,13 +846,13 @@ class EscapeAnalysisIteration {
             do {
                 materialized = false;
                 // use a hash set to make the values distinct...
-                for (EscapeRecord record : new HashSet<>(newState.recordAliases.values())) {
-                    ObjectState resultState = newState.recordStates.get(record);
+                for (VirtualObjectNode object : new HashSet<>(newState.objectAliases.values())) {
+                    ObjectState resultState = newState.objectStates.get(object);
                     if (resultState == null || resultState.materializedValue == null) {
                         int virtual = 0;
-                        int lockCount = states.get(0).objectState(record).lockCount;
+                        int lockCount = states.get(0).objectState(object).lockCount;
                         for (BlockState state : states) {
-                            ObjectState obj = state.objectState(record);
+                            ObjectState obj = state.objectState(object);
                             if (obj.materializedValue == null) {
                                 virtual++;
                             }
@@ -940,23 +863,23 @@ class EscapeAnalysisIteration {
                             ValueNode materializedValuePhi = changeGraph ? graph.add(new PhiNode(Kind.Object, merge)) : DUMMY_NODE;
                             for (int i = 0; i < states.size(); i++) {
                                 BlockState state = states.get(i);
-                                ObjectState obj = state.objectState(record);
+                                ObjectState obj = state.objectState(object);
                                 materialized |= obj.materializedValue == null;
                                 ensureMaterialized(state, obj, merge.forwardEndAt(i));
                                 if (changeGraph) {
                                     ((PhiNode) materializedValuePhi).addInput(obj.materializedValue);
                                 }
                             }
-                            newState.addRecord(record, new ObjectState(record, materializedValuePhi, lockCount));
+                            newState.addObject(object, new ObjectState(object, materializedValuePhi, lockCount));
                         } else {
                             assert virtual == states.size();
-                            ValueNode[] values = states.get(0).objectState(record).fieldState.clone();
+                            ValueNode[] values = states.get(0).objectState(object).fieldState.clone();
                             PhiNode[] phis = new PhiNode[values.length];
                             boolean[] phiCreated = new boolean[values.length];
                             int mismatch = 0;
                             for (int i = 1; i < states.size(); i++) {
                                 BlockState state = states.get(i);
-                                ValueNode[] fields = state.objectState(record).fieldState;
+                                ValueNode[] fields = state.objectState(object).fieldState;
                                 for (int index = 0; index < values.length; index++) {
                                     if (!phiCreated[index] && values[index] != fields[index]) {
                                         mismatch++;
@@ -970,7 +893,7 @@ class EscapeAnalysisIteration {
                             if (mismatch > 0) {
                                 for (int i = 0; i < states.size(); i++) {
                                     BlockState state = states.get(i);
-                                    ValueNode[] fields = state.objectState(record).fieldState;
+                                    ValueNode[] fields = state.objectState(object).fieldState;
                                     for (int index = 0; index < values.length; index++) {
                                         if (phiCreated[index]) {
                                             ObjectState obj = state.objectState(fields[index]);
@@ -991,14 +914,13 @@ class EscapeAnalysisIteration {
                                     }
                                 }
                             }
-                            newState.addRecord(record, new ObjectState(record, values, lockCount));
+                            newState.addObject(object, new ObjectState(object, values, lockCount));
                         }
                     }
                 }
 
                 for (PhiNode phi : merge.phis().snapshot()) {
                     if (usages.isMarked(phi) && phi.type() == PhiType.Value) {
-                        visitedNodes.mark(phi);
                         materialized |= processPhi(newState, merge, phi, states);
                     }
                 }
@@ -1011,9 +933,9 @@ class EscapeAnalysisIteration {
             assert states.size() == phi.valueCount();
             int virtualInputs = 0;
             boolean materialized = false;
-            EscapeRecord sameRecord = null;
+            VirtualObjectNode sameObject = null;
             ResolvedJavaType sameType = null;
-            int sameFieldCount = -1;
+            int sameEntryCount = -1;
             for (int i = 0; i < phi.valueCount(); i++) {
                 ValueNode value = phi.valueAt(i);
                 ObjectState obj = states.get(i).objectState(value);
@@ -1021,18 +943,18 @@ class EscapeAnalysisIteration {
                     if (obj.materializedValue == null) {
                         virtualInputs++;
                         if (i == 0) {
-                            sameRecord = obj.record;
-                            sameType = obj.record.type;
-                            sameFieldCount = obj.record.fieldCount();
+                            sameObject = obj.virtual;
+                            sameType = obj.virtual.type();
+                            sameEntryCount = obj.virtual.entryCount();
                         } else {
-                            if (sameRecord != obj.record) {
-                                sameRecord = null;
+                            if (sameObject != obj.virtual) {
+                                sameObject = null;
                             }
-                            if (sameType != obj.record.type) {
+                            if (sameType != obj.virtual.type()) {
                                 sameType = null;
                             }
-                            if (sameFieldCount != obj.record.fieldCount()) {
-                                sameFieldCount = -1;
+                            if (sameEntryCount != obj.virtual.entryCount()) {
+                                sameEntryCount = -1;
                             }
                         }
                     } else {
@@ -1046,9 +968,9 @@ class EscapeAnalysisIteration {
             if (virtualInputs == 0) {
                 // nothing to do...
             } else if (virtualInputs == phi.valueCount()) {
-                if (sameRecord != null) {
-                    newState.addAndMarkAlias(sameRecord, phi);
-                } else if (sameType != null && sameFieldCount != -1) {
+                if (sameObject != null) {
+                    newState.addAndMarkAlias(sameObject, phi, true);
+                } else if (sameType != null && sameEntryCount != -1) {
                     materialize = true;
                     // throw new GraalInternalError("merge required for %s", sameType);
                 } else {
@@ -1124,10 +1046,10 @@ class EscapeAnalysisIteration {
                     Iterator<LoopEndNode> iter = loopEnds.iterator();
                     for (BlockState loopEndState : loopEndStates) {
                         LoopEndNode loopEnd = iter.next();
-                        ObjectState endObj = loopEndState.objectState(obj.record);
+                        ObjectState endObj = loopEndState.objectState(obj.virtual);
                         if (endObj.fieldState == null) {
                             if (changeGraph) {
-                                error("object materialized within loop: %s\n", obj.record);
+                                error("object materialized within loop: %s\n", obj.virtual);
                             }
                             metricLoopBailouts.increment();
                             throw new BailoutException("object materialized within loop");

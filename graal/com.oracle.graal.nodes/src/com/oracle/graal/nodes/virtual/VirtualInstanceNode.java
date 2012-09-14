@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,25 @@
  */
 package com.oracle.graal.nodes.virtual;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo(nameTemplate = "VirtualInstance {p#type}")
+public class VirtualInstanceNode extends VirtualObjectNode {
 
-public class BoxedVirtualObjectNode extends VirtualObjectNode implements LIRLowerable, Node.ValueNumberable {
-
-    @Input ValueNode unboxedValue;
     private final ResolvedJavaType type;
+    private final ResolvedJavaField[] fields;
+    private final HashMap<ResolvedJavaField, Integer> fieldMap = new HashMap<>();
 
-    public BoxedVirtualObjectNode(int virtualId, ResolvedJavaType type, ValueNode unboxedValue) {
+    public VirtualInstanceNode(int virtualId, ResolvedJavaType type, ResolvedJavaField[] fields) {
         super(virtualId);
         this.type = type;
-        this.unboxedValue = unboxedValue;
-    }
-
-    public ValueNode getUnboxedValue() {
-        return unboxedValue;
+        this.fields = fields;
+        for (int i = 0; i < fields.length; i++) {
+            fieldMap.put(fields[i], i);
+        }
     }
 
     @Override
@@ -50,12 +50,29 @@ public class BoxedVirtualObjectNode extends VirtualObjectNode implements LIRLowe
 
     @Override
     public int entryCount() {
-        return 1;
+        return fields.length;
+    }
+
+    public ResolvedJavaField field(int index) {
+        return fields[index];
+    }
+
+    @Override
+    public String toString(Verbosity verbosity) {
+        if (verbosity == Verbosity.Name) {
+            return super.toString(Verbosity.Name) + " " + type.name();
+        } else {
+            return super.toString(verbosity);
+        }
     }
 
     @Override
     public Object fieldName(int index) {
-        assert index == 0;
-        return "value";
+        return fields[index].name();
+    }
+
+    public int fieldIndex(ResolvedJavaField field) {
+        Integer index = fieldMap.get(field);
+        return index == null ? -1 : index;
     }
 }

@@ -22,14 +22,10 @@
  */
 package com.oracle.graal.nodes.java;
 
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
@@ -50,6 +46,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
 
     /**
      * Constructs a new NewArrayNode.
+     *
      * @param length the node that produces the length for this allocation
      */
     protected NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
@@ -73,6 +70,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
 
     /**
      * Gets the element type of the array.
+     *
      * @return the element type of the array
      */
     public ResolvedJavaType elementType() {
@@ -93,72 +91,27 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
 
     @Override
     public EscapeOp getEscapeOp() {
-        Constant constantLength = length().asConstant();
-        if (constantLength != null && constantLength.asInt() >= 0 && constantLength.asInt() < MaximumEscapeAnalysisArrayLength) {
-            return new EscapeOpImpl();
-        } else {
-            return null;
-        }
-    }
+        if (length().asConstant() != null) {
+            final int constantLength = length().asConstant().asInt();
+            if (constantLength >= 0 && constantLength < MaximumEscapeAnalysisArrayLength) {
+                return new EscapeOp() {
 
-    private final class EscapeOpImpl extends EscapeOp {
-
-        @Override
-        public ResolvedJavaType type() {
-            return elementType.arrayOf();
-        }
-
-        @Override
-        public EscapeField[] fields() {
-            int constantLength = dimension(0).asConstant().asInt();
-            EscapeField[] fields = new EscapeField[constantLength];
-            for (int i = 0; i < constantLength; i++) {
-                Integer representation = i;
-                fields[i] = new EscapeField(Integer.toString(i), representation, elementType());
-            }
-            return fields;
-        }
-
-        @Override
-        public ValueNode[] fieldState() {
-            ValueNode[] state = new ValueNode[dimension(0).asConstant().asInt()];
-            for (int i = 0; i < state.length; i++) {
-                state[i] = ConstantNode.defaultForKind(elementType().kind(), graph());
-            }
-            return state;
-        }
-
-        @Override
-        public void beforeUpdate(Node usage) {
-            if (usage instanceof ArrayLengthNode) {
-                ArrayLengthNode x = (ArrayLengthNode) usage;
-                StructuredGraph graph = (StructuredGraph) graph();
-                x.replaceAtUsages(dimension(0));
-                graph.removeFixed(x);
-            } else {
-                beforeUpdate(NewArrayNode.this, usage);
-            }
-        }
-
-        @Override
-        public int updateState(VirtualObjectNode virtualObject, Node current, Map<Object, Integer> fieldIndex, ValueNode[] fieldState) {
-            if (current instanceof AccessIndexedNode) {
-                AccessIndexedNode x = (AccessIndexedNode) current;
-                if (GraphUtil.unProxify(x.array()) == virtualObject) {
-                    int index = ((AccessIndexedNode) current).index().asConstant().asInt();
-                    StructuredGraph graph = (StructuredGraph) x.graph();
-                    if (current instanceof LoadIndexedNode) {
-                        x.replaceAtUsages(fieldState[index]);
-                        graph.removeFixed(x);
-                    } else if (current instanceof StoreIndexedNode) {
-                        fieldState[index] = ((StoreIndexedNode) x).value();
-                        graph.removeFixed(x);
-                        return index;
+                    @Override
+                    public ValueNode[] fieldState() {
+                        ValueNode[] state = new ValueNode[constantLength];
+                        for (int i = 0; i < constantLength; i++) {
+                            state[i] = ConstantNode.defaultForKind(elementType().kind(), graph());
+                        }
+                        return state;
                     }
-                }
-            }
-            return -1;
-        }
 
+                    @Override
+                    public VirtualObjectNode virtualObject(int virtualId) {
+                        return new VirtualArrayNode(virtualId, elementType, constantLength);
+                    }
+                };
+            }
+        }
+        return null;
     }
 }
