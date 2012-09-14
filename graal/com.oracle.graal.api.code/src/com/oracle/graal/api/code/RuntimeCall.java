@@ -48,7 +48,7 @@ public enum RuntimeCall {
     ArithmeticSin(Double, Double),
     GenericCallback(Object, Object, Object),
     LogPrimitive(Void, Int, Long, Boolean),
-    LogObject(Void, Object, Boolean, Boolean);
+    LogObject(Void, Object, Int);
 
     public final Kind resultKind;
     public final Kind[] arguments;
