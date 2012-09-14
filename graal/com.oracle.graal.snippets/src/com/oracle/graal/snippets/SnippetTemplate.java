@@ -33,7 +33,6 @@ import com.oracle.graal.compiler.loop.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -327,11 +326,20 @@ public class SnippetTemplate {
 
         // Remove all frame states from inlined snippet graph. Snippets must be atomic (i.e. free
         // of side-effects that prevent deoptimizing to a point before the snippet).
+        Node curSideEffectNode = null;
+        Node curStampNode = null;
         for (Node node : snippetCopy.getNodes()) {
+            if (node instanceof ValueNode && ((ValueNode) node).stamp() == StampFactory.forNodeIntrinsic()) {
+                assert curStampNode == null : "Currently limited to stamp node (but this can be converted to a List if necessary)";
+                curStampNode = node;
+            }
             if (node instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) node;
                 FrameState frameState = stateSplit.stateAfter();
-                assert !stateSplit.hasSideEffect() : "snippets cannot contain side-effecting node " + node + "\n    " + frameState.toString(Verbosity.Debugger);
+                if (stateSplit.hasSideEffect()) {
+                    assert curSideEffectNode == null : "Currently limited to one side-effecting node (but this can be converted to a List if necessary)";
+                    curSideEffectNode = node;
+                }
                 if (frameState != null) {
                     stateSplit.setStateAfter(null);
                 }
@@ -386,6 +394,8 @@ public class SnippetTemplate {
             }
         }
 
+        this.sideEffectNode = curSideEffectNode;
+        this.stampNode = curStampNode;
         this.returnNode = retNode;
     }
 
@@ -434,6 +444,16 @@ public class SnippetTemplate {
      * The return node (if any) of the snippet.
      */
     private final ReturnNode returnNode;
+
+    /**
+     * Node that inherits the {@link StateSplit#stateAfter()} from the replacee during instantiation.
+     */
+    private final Node sideEffectNode;
+
+    /**
+     * Node that inherits the {@link ValueNode#stamp()} from the replacee during instantiation.
+     */
+    private final Node stampNode;
 
     /**
      * The nodes to be inlined when this specialization is instantiated.
@@ -514,6 +534,16 @@ public class SnippetTemplate {
         FixedNode next = replacee.next();
         replacee.setNext(null);
 
+        if (sideEffectNode != null) {
+            assert ((StateSplit) replacee).hasSideEffect();
+            Node sideEffectDup = duplicates.get(sideEffectNode);
+            ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
+        }
+        if (stampNode != null) {
+            Node stampDup = duplicates.get(stampNode);
+            ((ValueNode) stampDup).setStamp(((ValueNode) replacee).stamp());
+        }
+
         // Replace all usages of the replacee with the value returned by the snippet
         Node returnValue = null;
         if (returnNode != null) {
@@ -567,6 +597,16 @@ public class SnippetTemplate {
         FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
         replaceeGraph.addAfterFixed(lastFixedNode, firstCFGNodeDuplicate);
 
+        if (sideEffectNode != null) {
+            assert ((StateSplit) replacee).hasSideEffect();
+            Node sideEffectDup = duplicates.get(sideEffectNode);
+            ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
+        }
+        if (stampNode != null) {
+            Node stampDup = duplicates.get(stampNode);
+            ((ValueNode) stampDup).setStamp(((ValueNode) replacee).stamp());
+        }
+
         // Replace all usages of the replacee with the value returned by the snippet
         assert returnNode != null : replaceeGraph;
         Node returnValue = null;
@@ -618,6 +658,8 @@ public class SnippetTemplate {
         controlSplitNode.replaceAtPredecessor(firstCFGNodeDuplicate);
         controlSplitNode.replaceAtUsages(null);
 
+        assert sideEffectNode == null;
+        assert stampNode == null;
         assert returnNode == null : replaceeGraph;
         GraphUtil.killCFG(controlSplitNode);
 

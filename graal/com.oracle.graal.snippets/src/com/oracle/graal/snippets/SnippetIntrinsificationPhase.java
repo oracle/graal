@@ -33,6 +33,7 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.snippets.Snippet.Fold;
 
@@ -334,7 +335,7 @@ public class SnippetIntrinsificationPhase extends Phase {
     }
 
     public void cleanUpReturnCheckCast(Node newInstance) {
-        if (newInstance instanceof ValueNode && ((ValueNode) newInstance).kind() != Kind.Object) {
+        if (newInstance instanceof ValueNode && (((ValueNode) newInstance).kind() != Kind.Object || ((ValueNode) newInstance).stamp() == StampFactory.forNodeIntrinsic())) {
             StructuredGraph graph = (StructuredGraph) newInstance.graph();
             for (CheckCastNode checkCastNode : newInstance.usages().filter(CheckCastNode.class).snapshot()) {
                 for (ValueProxyNode vpn : checkCastNode.usages().filter(ValueProxyNode.class).snapshot()) {
@@ -363,6 +364,8 @@ public class SnippetIntrinsificationPhase extends Phase {
                         checkCastCallTarget.safeDelete();
                     } else if (checkCastUsage instanceof FrameState) {
                         checkCastUsage.replaceFirstInput(checkCastNode, null);
+                    } else if (checkCastUsage instanceof ReturnNode && checkCastNode.object().stamp() == StampFactory.forNodeIntrinsic()) {
+                        checkCastUsage.replaceFirstInput(checkCastNode, checkCastNode.object());
                     } else {
                         assert false : sourceLocation(checkCastUsage) + " has unexpected usage " + checkCastUsage + " of checkcast at " + sourceLocation(checkCastNode);
                     }
