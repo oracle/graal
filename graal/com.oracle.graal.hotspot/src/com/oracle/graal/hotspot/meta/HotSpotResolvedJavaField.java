@@ -85,7 +85,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         if (receiver == null) {
             assert Modifier.isStatic(accessFlags);
             if (holder.isInitialized()) {
-                Constant encoding = holder.getEncoding(Representation.StaticFields);
+                Constant encoding = holder.getEncoding(kind() == Kind.Object ? Representation.StaticObjectFields : Representation.StaticPrimitiveFields);
                 return this.kind().readUnsafeConstant(encoding.asObject(), offset);
             }
             return null;

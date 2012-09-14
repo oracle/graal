@@ -829,7 +829,7 @@ public final class GraphBuilderPhase extends Phase {
         if (constantValue != null) {
             frameState.push(constantValue.getKind().stackKind(), appendConstant(constantValue));
         } else {
-            ValueNode container = genTypeOrDeopt(JavaType.Representation.StaticFields, holder, isInitialized);
+            ValueNode container = genTypeOrDeopt(field.kind() == Kind.Object ? JavaType.Representation.StaticObjectFields : JavaType.Representation.StaticPrimitiveFields, holder, isInitialized);
             Kind kind = field.kind();
             if (container != null) {
                 LoadFieldNode load = currentGraph.add(new LoadFieldNode(container, (ResolvedJavaField) field, graphId));
@@ -843,7 +843,8 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genPutStatic(JavaField field) {
         JavaType holder = field.holder();
-        ValueNode container = genTypeOrDeopt(JavaType.Representation.StaticFields, holder, field instanceof ResolvedJavaField && ((ResolvedJavaType) holder).isInitialized());
+        boolean isInitialized = (field instanceof ResolvedJavaField) && ((ResolvedJavaType) holder).isInitialized();
+        ValueNode container = genTypeOrDeopt(field.kind() == Kind.Object ? JavaType.Representation.StaticObjectFields : JavaType.Representation.StaticPrimitiveFields, holder, isInitialized);
         ValueNode value = frameState.pop(field.kind().stackKind());
         if (container != null) {
             StoreFieldNode store = currentGraph.add(new StoreFieldNode(container, (ResolvedJavaField) field, value, graphId));

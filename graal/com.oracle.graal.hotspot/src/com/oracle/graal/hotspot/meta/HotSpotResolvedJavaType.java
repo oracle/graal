@@ -122,7 +122,8 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
                 return Constant.forObject(javaMirror);
             case ObjectHub:
                 return Constant.forObject(klassOop());
-            case StaticFields:
+            case StaticPrimitiveFields:
+            case StaticObjectFields:
                 return Constant.forObject(javaMirror);
             default:
                 assert false : "Should not reach here.";
