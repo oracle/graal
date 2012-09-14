@@ -36,7 +36,6 @@ import com.oracle.graal.api.code.CompilationResult.Safepoint;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaType.Representation;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -70,8 +69,6 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
         this.graalRuntime = graalRuntime;
         regConfig = new HotSpotRegisterConfig(config, false);
         globalStubRegConfig = new HotSpotRegisterConfig(config, true);
-
-        System.setProperty(Backend.BACKEND_CLASS_PROPERTY, HotSpotAMD64Backend.class.getName());
     }
 
     public void installSnippets(SnippetInstaller installer) {

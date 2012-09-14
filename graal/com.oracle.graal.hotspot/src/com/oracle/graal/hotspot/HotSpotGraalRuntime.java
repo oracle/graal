@@ -123,7 +123,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
                 generator = LoggingProxy.getProxy(XirGenerator.class, generator);
             }
 
-            Backend backend = Backend.create(runtime, target);
+            Backend backend = new HotSpotAMD64Backend(runtime, target);
             generator.initialize(backend.newXirAssembler());
 
             compiler = new GraalCompiler(getRuntime(), getTarget(), backend, generator);
