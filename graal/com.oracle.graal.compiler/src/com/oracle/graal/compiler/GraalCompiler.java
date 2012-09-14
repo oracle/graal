@@ -153,9 +153,6 @@ public class GraalCompiler {
             }
         }
 
-        if (GraalOptions.EscapeAnalysis && !plan.isPhaseDisabled(EscapeAnalysisPhase.class)) {
-            new EscapeAnalysisPhase(target, runtime, assumptions).apply(graph);
-        }
         if (GraalOptions.PartialEscapeAnalysis && !plan.isPhaseDisabled(PartialEscapeAnalysisPhase.class)) {
             new PartialEscapeAnalysisPhase(target, runtime, assumptions).apply(graph);
         }

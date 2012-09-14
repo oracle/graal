@@ -24,7 +24,7 @@ package com.oracle.graal.snippets;
 
 import org.junit.*;
 
-import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.compiler.phases.ea.*;
 import com.oracle.graal.compiler.test.*;
 
 public class MonitorTest extends GraalCompilerTest {
@@ -60,7 +60,7 @@ public class MonitorTest extends GraalCompilerTest {
     }
 
     /**
-     * Tests monitor operations on {@link EscapeAnalysisPhase virtual objects}.
+     * Tests monitor operations on {@link PartialEscapeAnalysisPhase virtual objects}.
      */
     @Test
     public void test3() {
