@@ -119,15 +119,15 @@ public class HotSpotRegisterConfig implements RegisterConfig {
         return allParameterRegisters;
     }
 
-    private CallingConvention callingConvention(Kind[] types, Type type, TargetDescription target, boolean stackOnly) {
-        Value[] locations = new Value[types.length];
+    private CallingConvention callingConvention(Kind[] kinds, Type type, TargetDescription target, boolean stackOnly) {
+        Value[] locations = new Value[kinds.length];
 
         int currentGeneral = 0;
         int currentXMM = 0;
         int currentStackOffset = 0;
 
-        for (int i = 0; i < types.length; i++) {
-            final Kind kind = types[i];
+        for (int i = 0; i < kinds.length; i++) {
+            final Kind kind = kinds[i];
 
             switch (kind) {
                 case Byte:
