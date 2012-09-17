@@ -66,7 +66,6 @@ public class NodeClass extends FieldIntrospection {
     private final String shortName;
     private final String nameTemplate;
     private final int iterableId;
-    private final boolean hasOutgoingEdges;
 
 
     public NodeClass(Class<?> clazz) {
@@ -120,7 +119,6 @@ public class NodeClass extends FieldIntrospection {
         } else {
             this.iterableId = NOT_ITERABLE;
         }
-        this.hasOutgoingEdges = this.inputOffsets.length > 0 || this.successorOffsets.length > 0;
     }
 
     @Override
@@ -141,11 +139,6 @@ public class NodeClass extends FieldIntrospection {
         fieldNames.putAll(scanner.fieldNames);
         fieldTypes.clear();
         fieldTypes.putAll(scanner.fieldTypes);
-    }
-
-
-    public boolean hasOutgoingEdges() {
-        return hasOutgoingEdges;
     }
 
     public String shortName() {
