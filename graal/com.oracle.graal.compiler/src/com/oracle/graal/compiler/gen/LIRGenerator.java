@@ -281,7 +281,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         int suxIndex = currentBlock.getSuccessors().indexOf(result);
         assert suxIndex != -1 : "Block not in successor list of current block";
 
-        return LabelRef.forSuccessor(currentBlock, suxIndex);
+        return LabelRef.forSuccessor(lir, currentBlock, suxIndex);
     }
 
     public LIRFrameState state() {
@@ -327,7 +327,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();
         }
-        currentBlock.lir.add(op);
+        lir.lir(currentBlock).add(op);
     }
 
     public void doBlock(Block block) {
@@ -337,8 +337,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         currentBlock = block;
         // set up the list of LIR instructions
-        assert block.lir == null : "LIR list already computed for this block";
-        block.lir = new ArrayList<>();
+        assert lir.lir(block) == null : "LIR list already computed for this block";
+        lir.setLir(block, new ArrayList<LIRInstruction>());
 
         append(new LabelOp(new Label(), block.align));
 
@@ -486,11 +486,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return true;
     }
 
-    private static boolean endsWithJump(Block block) {
-        if (block.lir.size() == 0) {
+    private boolean endsWithJump(Block block) {
+        List<LIRInstruction> instructions = lir.lir(block);
+        if (instructions.size() == 0) {
             return false;
         }
-        LIRInstruction lirInstruction = block.lir.get(block.lir.size() - 1);
+        LIRInstruction lirInstruction = instructions.get(instructions.size() - 1);
         if (lirInstruction instanceof LIRXirInstruction) {
             LIRXirInstruction lirXirInstruction = (LIRXirInstruction) lirInstruction;
             return (lirXirInstruction.falseSuccessor != null) && (lirXirInstruction.trueSuccessor != null);

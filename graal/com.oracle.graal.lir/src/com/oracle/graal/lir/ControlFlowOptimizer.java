@@ -34,11 +34,11 @@ public final class ControlFlowOptimizer {
 
     /**
      * Performs control flow optimizations on the given LIR graph.
-     * @param blocks the blocks that should be optimized
      */
-    public static void optimize(List<Block> blocks) {
-        ControlFlowOptimizer.deleteEmptyBlocks(blocks);
-        ControlFlowOptimizer.deleteUnnecessaryJumps(blocks);
+    public static void optimize(LIR ir) {
+        List<Block> blocks = ir.codeEmittingOrder();
+        ControlFlowOptimizer.deleteEmptyBlocks(ir, blocks);
+        ControlFlowOptimizer.deleteUnnecessaryJumps(ir, blocks);
     }
 
     private ControlFlowOptimizer() {
@@ -50,30 +50,30 @@ public final class ControlFlowOptimizer {
      * @param block the block checked for deletion
      * @return whether the block can be deleted
      */
-    private static boolean canDeleteBlock(Block block) {
+    private static boolean canDeleteBlock(LIR ir, Block block) {
         if (block.numberOfSux() != 1 ||
             block.numberOfPreds() == 0 ||
             block.suxAt(0) == block) {
             return false;
         }
 
-        List<LIRInstruction> instructions = block.lir;
+        List<LIRInstruction> instructions = ir.lir(block);
 
         assert instructions.size() >= 2 : "block must have label and branch";
         assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
         assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "last instruction must always be a branch";
-        assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) block.suxAt(0).lir.get(0)).getLabel() : "branch target must be the successor";
+        assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) ir.lir(block.suxAt(0)).get(0)).getLabel() : "branch target must be the successor";
 
         // Block must have exactly one successor.
         return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState();
     }
 
-    private static void deleteEmptyBlocks(List<Block> blocks) {
+    private static void deleteEmptyBlocks(LIR ir, List<Block> blocks) {
         assert verify(blocks);
         Iterator<Block> iterator = blocks.iterator();
         while (iterator.hasNext()) {
             Block block = iterator.next();
-            if (canDeleteBlock(block)) {
+            if (canDeleteBlock(ir, block)) {
                 // adjust successor and predecessor lists
                 Block other = block.suxAt(0);
                 for (Block pred : block.getPredecessors()) {
@@ -94,18 +94,18 @@ public final class ControlFlowOptimizer {
         assert verify(blocks);
     }
 
-    private static void deleteUnnecessaryJumps(List<Block> blocks) {
+    private static void deleteUnnecessaryJumps(LIR ir, List<Block> blocks) {
         // skip the last block because there a branch is always necessary
         for (int i = blocks.size() - 2; i >= 0; i--) {
             Block block = blocks.get(i);
-            List<LIRInstruction> instructions = block.lir;
+            List<LIRInstruction> instructions = ir.lir(block);
 
             LIRInstruction lastOp = instructions.get(instructions.size() - 1);
             if (lastOp instanceof StandardOp.JumpOp) {
                 StandardOp.JumpOp lastJump = (StandardOp.JumpOp) lastOp;
 
                 if (!lastOp.hasState()) {
-                    if (lastJump.destination().label() == ((StandardOp.LabelOp) blocks.get(i + 1).lir.get(0)).getLabel()) {
+                    if (lastJump.destination().label() == ((StandardOp.LabelOp) ir.lir(blocks.get(i + 1)).get(0)).getLabel()) {
                         // delete last branch instruction
                         instructions.remove(instructions.size() - 1);
                     } else {
@@ -113,7 +113,7 @@ public final class ControlFlowOptimizer {
                         if (prevOp instanceof StandardOp.BranchOp) {
                             StandardOp.BranchOp prevBranch = (StandardOp.BranchOp) prevOp;
 
-                            if (prevBranch.destination().label() == ((StandardOp.LabelOp) blocks.get(i + 1).lir.get(0)).getLabel() && !prevOp.hasState()) {
+                            if (prevBranch.destination().label() == ((StandardOp.LabelOp) ir.lir(blocks.get(i + 1)).get(0)).getLabel() && !prevOp.hasState()) {
                                 // eliminate a conditional branch to the immediate successor
                                 prevBranch.negate(lastJump.destination());
                                 instructions.remove(instructions.size() - 1);

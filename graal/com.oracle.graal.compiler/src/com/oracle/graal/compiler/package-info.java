@@ -22,9 +22,7 @@
  */
 
 /**
- * The top-level package in Graal containing options, metrics, timers and the main compiler class
- * {@link com.oracle.graal.compiler.GraalCompiler}.
- *
- * Graal is intended to be used with multiple JVM's so makes no use of or reference to classes for a specific JVM.
+ * The top-level package in Graal containing the main compiler class {@link com.oracle.graal.compiler.GraalCompiler}.
  */
 package com.oracle.graal.compiler;
+

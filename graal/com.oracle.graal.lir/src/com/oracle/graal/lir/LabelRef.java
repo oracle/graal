@@ -68,11 +68,11 @@ public abstract class LabelRef {
      * @param suxIndex The index of the successor.
      * @return The newly created label reference.
      */
-    public static LabelRef forSuccessor(final Block block, final int suxIndex) {
+    public static LabelRef forSuccessor(final LIR lir, final Block block, final int suxIndex) {
         return new LabelRef() {
             @Override
             public Label label() {
-                return ((StandardOp.LabelOp) block.suxAt(suxIndex).lir.get(0)).getLabel();
+                return ((StandardOp.LabelOp) lir.lir(block.suxAt(suxIndex)).get(0)).getLabel();
             }
 
             @Override

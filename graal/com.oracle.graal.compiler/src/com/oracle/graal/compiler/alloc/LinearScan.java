@@ -170,6 +170,19 @@ public final class LinearScan {
         this.blockData = new BlockMap<>(ir.cfg);
     }
 
+    public int getFirstLirInstructionId(Block block) {
+        int result = ir.lir(block).get(0).id();
+        assert result >= 0;
+        return result;
+    }
+
+    public int getLastLirInstructionId(Block block) {
+        List<LIRInstruction> instructions = ir.lir(block);
+        int result = instructions.get(instructions.size() - 1).id();
+        assert result >= 0;
+        return result;
+    }
+
     public static boolean isVariableOrRegister(Value value) {
         return isVariable(value) || isRegister(value);
     }
@@ -494,7 +507,7 @@ public final class LinearScan {
         int numBlocks = blockCount();
         for (int i = 0; i < numBlocks; i++) {
             Block block = blockAt(i);
-            List<LIRInstruction> instructions = block.lir;
+            List<LIRInstruction> instructions = ir.lir(block);
             int numInst = instructions.size();
 
             // iterate all instructions of the block. skip the first because it is always a label
@@ -526,7 +539,7 @@ public final class LinearScan {
                     while (interval != Interval.EndMarker && interval.spillDefinitionPos() == opId) {
                         if (!insertionBuffer.initialized()) {
                             // prepare insertion buffer (appended when all instructions of the block are processed)
-                            insertionBuffer.init(block.lir);
+                            insertionBuffer.init(instructions);
                         }
 
                         Value fromLocation = interval.location();
@@ -601,7 +614,7 @@ public final class LinearScan {
         int numBlocks = blockCount();
         int numInstructions = 0;
         for (int i = 0; i < numBlocks; i++) {
-            numInstructions += blockAt(i).lir.size();
+            numInstructions += ir.lir(blockAt(i)).size();
         }
 
         // initialize with correct length
@@ -615,7 +628,7 @@ public final class LinearScan {
             Block block = blockAt(i);
             blockData.put(block, new BlockData());
 
-            List<LIRInstruction> instructions = block.lir;
+            List<LIRInstruction> instructions = ir.lir(block);
 
             int numInst = instructions.size();
             for (int j = 0; j < numInst; j++) {
@@ -659,7 +672,7 @@ public final class LinearScan {
             final BitSet liveGen = new BitSet(liveSize);
             final BitSet liveKill = new BitSet(liveSize);
 
-            List<LIRInstruction> instructions = block.lir;
+            List<LIRInstruction> instructions = ir.lir(block);
             int numInst = instructions.size();
 
             // iterate all instructions of the block. skip the first because it is always a label
@@ -875,7 +888,7 @@ public final class LinearScan {
                     if (blockData.get(block).liveGen.get(operandNum)) {
                         usedIn.add(block);
                         TTY.println("  used in block B%d", block.getId());
-                        for (LIRInstruction ins : block.lir) {
+                        for (LIRInstruction ins : ir.lir(block)) {
                             TTY.println(ins.id() + ": " + ins.toString());
                             ins.forEachState(new ValueProcedure() {
                                 @Override
@@ -889,7 +902,7 @@ public final class LinearScan {
                     if (blockData.get(block).liveKill.get(operandNum)) {
                         definedIn.add(block);
                         TTY.println("  defined in block B%d", block.getId());
-                        for (LIRInstruction ins : block.lir) {
+                        for (LIRInstruction ins : ir.lir(block)) {
                             TTY.println(ins.id() + ": " + ins.toString());
                         }
                     }
@@ -1131,9 +1144,9 @@ public final class LinearScan {
         // iterate all blocks in reverse order
         for (int i = blockCount() - 1; i >= 0; i--) {
             Block block = blockAt(i);
-            List<LIRInstruction> instructions = block.lir;
-            final int blockFrom = block.getFirstLirInstructionId();
-            int blockTo = block.getLastLirInstructionId();
+            List<LIRInstruction> instructions = ir.lir(block);
+            final int blockFrom = getFirstLirInstructionId(block);
+            int blockTo = getLastLirInstructionId(block);
 
             assert blockFrom == instructions.get(0).id();
             assert blockTo == instructions.get(instructions.size() - 1).id();
@@ -1432,14 +1445,14 @@ public final class LinearScan {
         assert isVariable(operand) : "register number out of bounds";
         assert intervalFor(operand) != null : "no interval found";
 
-        return splitChildAtOpId(intervalFor(operand), block.getFirstLirInstructionId(), LIRInstruction.OperandMode.DEF);
+        return splitChildAtOpId(intervalFor(operand), getFirstLirInstructionId(block), LIRInstruction.OperandMode.DEF);
     }
 
     Interval intervalAtBlockEnd(Block block, Value operand) {
         assert isVariable(operand) : "register number out of bounds";
         assert intervalFor(operand) != null : "no interval found";
 
-        return splitChildAtOpId(intervalFor(operand), block.getLastLirInstructionId() + 1, LIRInstruction.OperandMode.DEF);
+        return splitChildAtOpId(intervalFor(operand), getLastLirInstructionId(block) + 1, LIRInstruction.OperandMode.DEF);
     }
 
     Interval intervalAtOpId(Value operand, int opId) {
@@ -1471,19 +1484,19 @@ public final class LinearScan {
         }
     }
 
-    static void resolveFindInsertPos(Block fromBlock, Block toBlock, MoveResolver moveResolver) {
+    void resolveFindInsertPos(Block fromBlock, Block toBlock, MoveResolver moveResolver) {
         if (fromBlock.numberOfSux() <= 1) {
             if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("inserting moves at end of fromBlock B%d", fromBlock.getId());
             }
 
-            List<LIRInstruction> instructions = fromBlock.lir;
+            List<LIRInstruction> instructions = ir.lir(fromBlock);
             LIRInstruction instr = instructions.get(instructions.size() - 1);
             if (instr instanceof StandardOp.JumpOp) {
                 // insert moves before branch
-                moveResolver.setInsertPosition(fromBlock.lir, instructions.size() - 1);
+                moveResolver.setInsertPosition(instructions, instructions.size() - 1);
             } else {
-                moveResolver.setInsertPosition(fromBlock.lir, instructions.size());
+                moveResolver.setInsertPosition(instructions, instructions.size());
             }
 
         } else {
@@ -1492,7 +1505,7 @@ public final class LinearScan {
             }
 
             if (GraalOptions.DetailedAsserts) {
-                assert fromBlock.lir.get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
+                assert ir.lir(fromBlock).get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
 
                 // because the number of predecessor edges matches the number of
                 // successor edges, blocks which are reached by switch statements
@@ -1503,7 +1516,7 @@ public final class LinearScan {
                 }
             }
 
-            moveResolver.setInsertPosition(toBlock.lir, 1);
+            moveResolver.setInsertPosition(ir.lir(toBlock), 1);
         }
     }
 
@@ -1523,7 +1536,7 @@ public final class LinearScan {
 
             // check if block has only one predecessor and only one successor
             if (block.numberOfPreds() == 1 && block.numberOfSux() == 1) {
-                List<LIRInstruction> instructions = block.lir;
+                List<LIRInstruction> instructions = ir.lir(block);
                 assert instructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
                 assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
 
@@ -1542,7 +1555,7 @@ public final class LinearScan {
                         // directly resolve between pred and sux (without looking at the empty block between)
                         resolveCollectMappings(pred, sux, moveResolver);
                         if (moveResolver.hasMappings()) {
-                            moveResolver.setInsertPosition(block.lir, 1);
+                            moveResolver.setInsertPosition(instructions, 1);
                             moveResolver.resolveAndAppendMoves();
                         }
                     }
@@ -1645,11 +1658,11 @@ public final class LinearScan {
         if (opId != -1) {
             if (GraalOptions.DetailedAsserts) {
                 Block block = blockForId(opId);
-                if (block.numberOfSux() <= 1 && opId == block.getLastLirInstructionId()) {
+                if (block.numberOfSux() <= 1 && opId == getLastLirInstructionId(block)) {
                     // check if spill moves could have been appended at the end of this block, but
                     // before the branch instruction. So the split child information for this branch would
                     // be incorrect.
-                    LIRInstruction instr = block.lir.get(block.lir.size() - 1);
+                    LIRInstruction instr = ir.lir(block).get(ir.lir(block).size() - 1);
                     if (instr instanceof StandardOp.JumpOp) {
                         if (blockData.get(block).liveOut.get(operandNumber(operand))) {
                             assert false : "can't get split child for the last branch of a block because the information would be incorrect (moves are inserted before the branch in resolveDataFlow)";
@@ -1739,16 +1752,16 @@ public final class LinearScan {
                 int tempOpId = op.id();
                 OperandMode mode = OperandMode.USE;
                 Block block = blockForId(tempOpId);
-                if (block.numberOfSux() == 1 && tempOpId == block.getLastLirInstructionId()) {
+                if (block.numberOfSux() == 1 && tempOpId == getLastLirInstructionId(block)) {
                     // generating debug information for the last instruction of a block.
                     // if this instruction is a branch, spill moves are inserted before this branch
                     // and so the wrong operand would be returned (spill moves at block boundaries are not
                     // considered in the live ranges of intervals)
                     // Solution: use the first opId of the branch target block instead.
-                    final LIRInstruction instr = block.lir.get(block.lir.size() - 1);
+                    final LIRInstruction instr = ir.lir(block).get(ir.lir(block).size() - 1);
                     if (instr instanceof StandardOp.JumpOp) {
                         if (blockData.get(block).liveOut.get(operandNumber(operand))) {
-                            tempOpId = block.suxAt(0).getFirstLirInstructionId();
+                            tempOpId = getFirstLirInstructionId(block.suxAt(0));
                             mode = OperandMode.DEF;
                         }
                     }
@@ -1819,7 +1832,7 @@ public final class LinearScan {
     private void assignLocations() {
         IntervalWalker iw = initComputeOopMaps();
         for (Block block : sortedBlocks) {
-            assignLocations(block.lir, iw);
+            assignLocations(ir.lir(block), iw);
         }
     }
 
@@ -1878,8 +1891,8 @@ public final class LinearScan {
 
             public void run() {
                 printLir("After register number assignment", true);
-                EdgeMoveOptimizer.optimize(ir.linearScanOrder());
-                ControlFlowOptimizer.optimize(ir.codeEmittingOrder());
+                EdgeMoveOptimizer.optimize(ir);
+                ControlFlowOptimizer.optimize(ir);
                 printLir("After control flow optimization", false);
             }
         });
@@ -1901,7 +1914,7 @@ public final class LinearScan {
             TTY.println("--- Basic Blocks ---");
             for (i = 0; i < blockCount(); i++) {
                 Block block = blockAt(i);
-                TTY.print("B%d [%d, %d, %s] ", block.getId(), block.getFirstLirInstructionId(), block.getLastLirInstructionId(), block.getLoop());
+                TTY.print("B%d [%d, %d, %s] ", block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
             }
             TTY.println();
             TTY.println();
@@ -2055,7 +2068,7 @@ public final class LinearScan {
         for (int i = 0; i < blockCount(); i++) {
             Block block = blockAt(i);
 
-            List<LIRInstruction> instructions = block.lir;
+            List<LIRInstruction> instructions = ir.lir(block);
 
             for (int j = 0; j < instructions.size(); j++) {
                 LIRInstruction op = instructions.get(j);

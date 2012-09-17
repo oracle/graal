@@ -42,11 +42,14 @@ public final class ComputeBlockOrder {
     private final BitSet activeBlocks; // used for recursive processing of blocks
     private final int[] forwardBranches; // number of incoming forward branches for each block
     private final List<Block> workList; // temporary list (used in markLoops and computeOrder)
-    private final Block[] loopHeaders;
+    private final List<Block> loopHeaders;
     private final boolean reorderLoops;
 
     public ComputeBlockOrder(int maxBlockId, int loopCount, Block startBlock, boolean reorderLoops) {
-        loopHeaders = new Block[loopCount];
+        loopHeaders = new ArrayList<>(loopCount);
+        while (loopHeaders.size() < loopCount) {
+            loopHeaders.add(null);
+        }
         visitedBlocks = new BitSet(maxBlockId);
         activeBlocks = new BitSet(maxBlockId);
         forwardBranches = new int[maxBlockId];
@@ -225,7 +228,7 @@ public final class ComputeBlockOrder {
                 codeEmittingOrder.add(cur);
 
                 if (cur.isLoopEnd() && reorderLoops) {
-                    Block loopHeader = loopHeaders[cur.getLoop().index];
+                    Block loopHeader = loopHeaders.get(cur.getLoop().index);
                     if (loopHeader != null) {
                         codeEmittingOrder.add(loopHeader);
 
@@ -238,7 +241,7 @@ public final class ComputeBlockOrder {
                     }
                 }
             } else {
-                loopHeaders[cur.getLoop().index] = cur;
+                loopHeaders.set(cur.getLoop().index, cur);
             }
         }
     }

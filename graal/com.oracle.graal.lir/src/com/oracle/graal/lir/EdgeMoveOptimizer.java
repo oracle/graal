@@ -51,12 +51,11 @@ public final class EdgeMoveOptimizer {
 
     /**
      * Optimizes moves on block edges.
-     *
-     * @param blockList a list of blocks whose moves should be optimized
      */
-    public static void optimize(List<Block> blockList) {
-        EdgeMoveOptimizer optimizer = new EdgeMoveOptimizer();
+    public static void optimize(LIR ir) {
+        EdgeMoveOptimizer optimizer = new EdgeMoveOptimizer(ir);
 
+        List<Block> blockList = ir.linearScanOrder();
         // ignore the first block in the list (index 0 is not processed)
         for (int i = blockList.size() - 1; i >= 1; i--) {
             Block block = blockList.get(i);
@@ -71,8 +70,10 @@ public final class EdgeMoveOptimizer {
     }
 
     private final List<List<LIRInstruction>> edgeInstructionSeqences;
+    private LIR ir;
 
-    private EdgeMoveOptimizer() {
+    public EdgeMoveOptimizer(LIR ir) {
+        this.ir = ir;
         edgeInstructionSeqences = new ArrayList<>(4);
     }
 
@@ -120,8 +121,8 @@ public final class EdgeMoveOptimizer {
         // setup a list with the LIR instructions of all predecessors
         for (Block pred : block.getPredecessors()) {
             assert pred != null;
-            assert pred.lir != null;
-            List<LIRInstruction> predInstructions = pred.lir;
+            assert ir.lir(pred) != null;
+            List<LIRInstruction> predInstructions = ir.lir(pred);
 
             if (pred.numberOfSux() != 1) {
                 // this can happen with switch-statements where multiple edges are between
@@ -162,7 +163,7 @@ public final class EdgeMoveOptimizer {
             }
 
             // insert the instruction at the beginning of the current block
-            block.lir.add(1, op);
+            ir.lir(block).add(1, op);
 
             // delete the instruction at the end of all predecessors
             for (int i = 0; i < numPreds; i++) {
@@ -182,7 +183,7 @@ public final class EdgeMoveOptimizer {
         edgeInstructionSeqences.clear();
         int numSux = block.numberOfSux();
 
-        List<LIRInstruction> instructions = block.lir;
+        List<LIRInstruction> instructions = ir.lir(block);
 
         assert numSux == 2 : "method should not be called otherwise";
 
@@ -213,7 +214,7 @@ public final class EdgeMoveOptimizer {
         // setup a list with the lir-instructions of all successors
         for (int i = 0; i < numSux; i++) {
             Block sux = block.suxAt(i);
-            List<LIRInstruction> suxInstructions = sux.lir;
+            List<LIRInstruction> suxInstructions = ir.lir(sux);
 
             assert suxInstructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
 
@@ -247,7 +248,7 @@ public final class EdgeMoveOptimizer {
             }
 
             // insert instruction at end of current block
-            block.lir.add(insertIdx, op);
+            ir.lir(block).add(insertIdx, op);
             insertIdx++;
 
             // delete the instructions at the beginning of all successors

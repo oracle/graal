@@ -65,6 +65,8 @@ public class LIR {
 
     public SpillMoveFactory spillMoveFactory;
 
+    public final BlockMap<List<LIRInstruction>> lirInstructions;
+
     public interface SpillMoveFactory {
         LIRInstruction createMove(Value result, Value input);
         LIRInstruction createExchange(Value input1, Value input2);
@@ -91,6 +93,7 @@ public class LIR {
         this.blockToNodesMap = blockToNodesMap;
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
+        this.lirInstructions = new BlockMap<>(cfg);
 
         stubs = new ArrayList<>();
     }
@@ -107,13 +110,22 @@ public class LIR {
      */
     public boolean hasDebugInfo() {
         for (Block b : linearScanOrder()) {
-            for (LIRInstruction op : b.lir) {
+            for (LIRInstruction op : lir(b)) {
                 if (op.hasState()) {
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    public List<LIRInstruction> lir(Block block) {
+        return lirInstructions.get(block);
+    }
+
+    public void setLir(Block block, List<LIRInstruction> list) {
+        assert lir(block) == null : "lir instruction list should only be initialized once";
+        lirInstructions.put(block, list);
     }
 
     /**
@@ -151,12 +163,12 @@ public class LIR {
         }
     }
 
-    private static void emitBlock(TargetMethodAssembler tasm, Block block) {
+    private void emitBlock(TargetMethodAssembler tasm, Block block) {
         if (Debug.isDumpEnabled()) {
             tasm.blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }
 
-        for (LIRInstruction op : block.lir) {
+        for (LIRInstruction op : lir(block)) {
             if (Debug.isDumpEnabled()) {
                 tasm.blockComment(String.format("%d %s", op.id(), op));
             }

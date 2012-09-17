@@ -36,6 +36,7 @@ public class ControlFlowGraph {
     private Block[] reversePostOrder;
     private Loop[] loops;
 
+
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
         ControlFlowGraph cfg = new ControlFlowGraph(graph);
         cfg.identifyBlocks();
@@ -175,8 +176,9 @@ public class ControlFlowGraph {
         numBlocks = postOrder.size();
         reversePostOrder = new Block[numBlocks];
         for (int i = 0; i < numBlocks; i++) {
-            reversePostOrder[i] = postOrder.get(numBlocks - i - 1);
-            reversePostOrder[i].id = i;
+            Block block = postOrder.get(numBlocks - i - 1);
+            block.id = i;
+            reversePostOrder[i] = block;
         }
     }
 
@@ -216,7 +218,7 @@ public class ControlFlowGraph {
     }
 
     private void computeLoopInformation() {
-        List<Loop> loopsList = new ArrayList<>();
+        ArrayList<Loop> loopsList = new ArrayList<>();
         for (Block block : reversePostOrder) {
             Node beginNode = block.getBeginNode();
             if (beginNode instanceof LoopBeginNode) {

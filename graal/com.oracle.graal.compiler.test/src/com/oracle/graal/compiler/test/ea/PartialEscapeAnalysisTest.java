@@ -36,6 +36,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * In these test cases the probability of all invokes is set to a high value, such that an InliningPhase should inline

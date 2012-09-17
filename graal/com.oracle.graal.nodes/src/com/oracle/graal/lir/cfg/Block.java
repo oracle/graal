@@ -24,11 +24,11 @@ package com.oracle.graal.lir.cfg;
 
 import java.util.*;
 
-import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 
 public class Block {
+
     protected int id;
 
     protected BeginNode beginNode;
@@ -44,11 +44,10 @@ public class Block {
     protected Block postdominator;
 
     // Fields that still need to be worked on, try to remove them later.
-    public List<LIRInstruction> lir;
     public boolean align;
     public int linearScanNumber;
 
-    public Block() {
+    protected Block() {
         id = ControlFlowGraph.BLOCK_ID_INITIAL;
     }
 
@@ -169,18 +168,6 @@ public class Block {
                 return str.append(']').toString();
             }
         };
-    }
-
-    public int getFirstLirInstructionId() {
-        int result = lir.get(0).id();
-        assert result >= 0;
-        return result;
-    }
-
-    public int getLastLirInstructionId() {
-        int result = lir.get(lir.size() - 1).id();
-        assert result >= 0;
-        return result;
     }
 
     @Override

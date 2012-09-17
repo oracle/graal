@@ -242,19 +242,19 @@ final class LinearScanWalker extends IntervalWalker {
         // numbering of instructions is known.
         // When the block already contains spill moves, the index must be increased until the
         // correct index is reached.
-        List<LIRInstruction> list = opBlock.lir;
-        int index = (opId - list.get(0).id()) >> 1;
-        assert list.get(index).id() <= opId : "error in calculation";
+        List<LIRInstruction> instructions = allocator.ir.lir(opBlock);
+        int index = (opId - instructions.get(0).id()) >> 1;
+        assert instructions.get(index).id() <= opId : "error in calculation";
 
-        while (list.get(index).id() != opId) {
+        while (instructions.get(index).id() != opId) {
             index++;
-            assert 0 <= index && index < list.size() : "index out of bounds";
+            assert 0 <= index && index < instructions.size() : "index out of bounds";
         }
-        assert 1 <= index && index < list.size() : "index out of bounds";
-        assert list.get(index).id() == opId : "error in calculation";
+        assert 1 <= index && index < instructions.size() : "index out of bounds";
+        assert instructions.get(index).id() == opId : "error in calculation";
 
         // insert new instruction before instruction at position index
-        moveResolver.moveInsertPosition(opBlock.lir, index);
+        moveResolver.moveInsertPosition(instructions, index);
         moveResolver.addMapping(srcIt, dstIt);
     }
 
@@ -268,9 +268,9 @@ final class LinearScanWalker extends IntervalWalker {
 
         // Try to split at end of maxBlock. If this would be after
         // maxSplitPos, then use the begin of maxBlock
-        int optimalSplitPos = maxBlock.getLastLirInstructionId() + 2;
+        int optimalSplitPos = allocator.getLastLirInstructionId(maxBlock) + 2;
         if (optimalSplitPos > maxSplitPos) {
-            optimalSplitPos = maxBlock.getFirstLirInstructionId();
+            optimalSplitPos = allocator.getFirstLirInstructionId(maxBlock);
         }
 
         int minLoopDepth = maxBlock.getLoopDepth();
@@ -280,7 +280,7 @@ final class LinearScanWalker extends IntervalWalker {
             if (cur.getLoopDepth() < minLoopDepth) {
                 // block with lower loop-depth found . split at the end of this block
                 minLoopDepth = cur.getLoopDepth();
-                optimalSplitPos = cur.getLastLirInstructionId() + 2;
+                optimalSplitPos = allocator.getLastLirInstructionId(cur) + 2;
             }
         }
         assert optimalSplitPos > allocator.maxOpId() || allocator.isBlockBegin(optimalSplitPos) : "algorithm must move split pos to block boundary";
@@ -340,7 +340,7 @@ final class LinearScanWalker extends IntervalWalker {
                     if (doLoopOptimization) {
                         // Loop optimization: if a loop-end marker is found between min- and max-position :
                         // then split before this loop
-                        int loopEndPos = interval.nextUsageExact(RegisterPriority.LiveAtLoopEnd, minBlock.getLastLirInstructionId() + 2);
+                        int loopEndPos = interval.nextUsageExact(RegisterPriority.LiveAtLoopEnd, allocator.getLastLirInstructionId(minBlock) + 2);
                         if (GraalOptions.TraceLinearScanLevel >= 4) {
                             TTY.println("      loop optimization: loop end found at pos %d", loopEndPos);
                         }
@@ -359,8 +359,8 @@ final class LinearScanWalker extends IntervalWalker {
                             }
                             assert loopBlock != minBlock : "loopBlock and minBlock must be different because block boundary is needed between";
 
-                            optimalSplitPos = findOptimalSplitPos(minBlock, loopBlock, loopBlock.getLastLirInstructionId() + 2);
-                            if (optimalSplitPos == loopBlock.getLastLirInstructionId() + 2) {
+                            optimalSplitPos = findOptimalSplitPos(minBlock, loopBlock, allocator.getLastLirInstructionId(loopBlock) + 2);
+                            if (optimalSplitPos == allocator.getLastLirInstructionId(loopBlock) + 2) {
                                 optimalSplitPos = -1;
                                 if (GraalOptions.TraceLinearScanLevel >= 4) {
                                     TTY.println("      loop optimization not necessary");
