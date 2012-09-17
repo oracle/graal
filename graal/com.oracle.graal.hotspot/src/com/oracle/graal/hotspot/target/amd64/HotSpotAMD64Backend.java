@@ -27,6 +27,7 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -103,6 +104,20 @@ public class HotSpotAMD64Backend extends Backend {
         public void visitSafepointNode(SafepointNode i) {
             LIRFrameState info = state();
             append(new AMD64SafepointOp(info, ((HotSpotRuntime) runtime).config));
+        }
+
+        @Override
+        public void visitBreakpointNode(BreakpointNode i) {
+            Kind[] sig = new Kind[i.arguments.size()];
+            int pos = 0;
+            for (ValueNode arg : i.arguments) {
+                sig[pos++] = arg.kind();
+            }
+
+            CallingConvention cc = frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, sig, target(), false);
+            List<Value> argList = visitInvokeArguments(cc, i.arguments);
+            Value[] parameters = argList.toArray(new Value[argList.size()]);
+            append(new AMD64BreakpointOp(parameters));
         }
 
         @Override
