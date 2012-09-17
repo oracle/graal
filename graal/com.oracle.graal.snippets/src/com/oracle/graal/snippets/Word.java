@@ -26,6 +26,8 @@ import static com.oracle.graal.snippets.Word.Opcode.*;
 
 import java.lang.annotation.*;
 
+//JaCoCo Exclude
+
 /**
  * Special type for use in snippets to represent machine word sized data.
  */

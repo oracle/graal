@@ -28,6 +28,8 @@ import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.extended.*;
 
+//JaCoCo Exclude
+
 /**
  * Provides printf-like debug facility. This should only be used in {@linkplain Snippet snippets}.
  */
