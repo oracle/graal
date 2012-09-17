@@ -34,6 +34,7 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.phases.ea.*;
+import com.oracle.graal.compiler.phases.loop.*;
 import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
