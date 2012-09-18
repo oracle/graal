@@ -419,6 +419,9 @@ class CFGPrinter extends CompilationPrinter {
      * @param block the block to print
      */
     private void printLIR(Block block) {
+        if (lir == null) {
+            return;
+        }
         List<LIRInstruction> lirInstructions = lir.lir(block);
         if (lirInstructions == null) {
             return;
