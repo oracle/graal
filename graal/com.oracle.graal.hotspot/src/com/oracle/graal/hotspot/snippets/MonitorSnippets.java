@@ -25,9 +25,7 @@ package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.hotspot.nodes.BeginLockScopeNode.*;
 import static com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode.*;
 import static com.oracle.graal.hotspot.nodes.EndLockScopeNode.*;
-import static com.oracle.graal.hotspot.nodes.RegisterNode.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
-import static com.oracle.graal.nodes.extended.UnsafeLoadNode.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.snippets.nodes.DirectObjectStoreNode.*;
 
@@ -74,7 +72,7 @@ public class MonitorSnippets implements SnippetsInterface {
         verifyOop(object);
 
         // Load the mark word - this includes a null-check on object
-        final Word mark = asWord(loadObject(object, 0, markOffset(), false));
+        final Word mark = loadWordFromObject(object, markOffset());
 
         final Word lock = beginLockScope(object, false, wordKind());
 
@@ -92,8 +90,8 @@ public class MonitorSnippets implements SnippetsInterface {
                 // The bias pattern is present in the object's mark word. Need to check
                 // whether the bias owner and the epoch are both still current.
                 Object hub = loadHub(object);
-                final Word prototypeMarkWord = asWord(loadObject(hub, 0, prototypeMarkWordOffset(), true));
-                final Word thread = asWord(register(threadReg(), wordKind()));
+                final Word prototypeMarkWord = loadWordFromObject(hub, prototypeMarkWordOffset());
+                final Word thread = thread();
                 final Word tmp = prototypeMarkWord.or(thread).xor(mark).and(~ageMaskInPlace());
                 if (tmp == Word.zero()) {
                     // Object is already biased to current thread -> done
@@ -201,7 +199,7 @@ public class MonitorSnippets implements SnippetsInterface {
             // assuming both the stack pointer and page_size have their least
             // significant 2 bits cleared and page_size is a power of 2
             final Word alignedMask = Word.fromInt(wordSize() - 1);
-            final Word stackPointer = asWord(register(stackPointerReg(), wordKind()));
+            final Word stackPointer = stackPointer();
             if (currentMark.minus(stackPointer).and(alignedMask.minus(pageSize())) != Word.zero()) {
                 // Most likely not a recursive lock, go into a slow runtime call
                 log(logEnabled, "+lock{stub}", object);
@@ -247,7 +245,7 @@ public class MonitorSnippets implements SnippetsInterface {
             // a higher level. Second, if the bias was revoked while we held the
             // lock, the object could not be rebiased toward another thread, so
             // the bias bit would be clear.
-            final Word mark = asWord(loadObject(object, 0, markOffset(), true));
+            final Word mark = loadWordFromObject(object, markOffset());
             if (mark.and(biasedLockMaskInPlace()).toLong() == biasedLockPattern()) {
                 endLockScope(object, false);
                 log(logEnabled, "-lock{bias}", object);
@@ -258,7 +256,7 @@ public class MonitorSnippets implements SnippetsInterface {
         final Word lock = CurrentLockNode.currentLock(wordKind());
 
         // Load displaced mark
-        final Word displacedMark = loadWord(lock, lockDisplacedMarkOffset());
+        final Word displacedMark = loadWordFromWord(lock, lockDisplacedMarkOffset());
 
         if (displacedMark == Word.zero()) {
             // Recursive locking => done

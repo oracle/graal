@@ -89,6 +89,12 @@ public abstract class Node implements Cloneable, Formattable {
          * (and is assumed to be a {@link Node} subclass).
          */
         Class value() default NodeIntrinsic.class;
+
+        /**
+         * Determines if the stamp of the instantiated intrinsic node has its stamp set
+         * from the return type of the annotated method.
+         */
+        boolean setStampFromReturnType() default false;
     }
 
     public interface ValueNumberable {}

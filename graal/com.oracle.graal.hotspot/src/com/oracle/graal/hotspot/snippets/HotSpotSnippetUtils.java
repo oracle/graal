@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
-import static com.oracle.graal.nodes.extended.UnsafeLoadNode.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -62,12 +62,12 @@ public class HotSpotSnippetUtils {
     }
 
     @Fold
-    static Register threadReg() {
+    static Register threadRegister() {
         return HotSpotGraalRuntime.getInstance().getConfig().threadRegister;
     }
 
     @Fold
-    static Register stackPointerReg() {
+    static Register stackPointerRegister() {
         return AMD64.rsp;
     }
 
@@ -204,13 +204,44 @@ public class HotSpotSnippetUtils {
         return object;
     }
 
-    static Word asWord(Object object) {
-        return Word.fromObject(object);
+    /**
+     * Gets the value of the stack pointer register as a Word.
+     */
+    static Word stackPointer() {
+        return HotSpotSnippetUtils.registerAsWord(stackPointerRegister()/*, wordKind()*/);
     }
 
-    static Word loadWord(Word address, int offset) {
-        Object value = loadObject(address, 0, offset, true);
-        return asWord(value);
+    /**
+     * Gets the value of the thread register as a Word.
+     */
+    static Word thread() {
+        return HotSpotSnippetUtils.registerAsWord(threadRegister()/*, wordKind()*/);
+    }
+
+    static Word loadWordFromWord(Word address, int offset) {
+        return loadWordFromWordIntrinsic(address, 0, offset, wordKind());
+    }
+
+    static Word loadWordFromObject(Object object, int offset) {
+        return loadWordFromObjectIntrinsic(object, 0, offset, wordKind());
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic(value = RegisterNode.class, setStampFromReturnType = true)
+    public static Word registerAsWord(@ConstantNodeParameter Register register) {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
+    private static Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind) {
+        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
+    private static Word loadWordFromWordIntrinsic(Word address, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind) {
+        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 
     static {

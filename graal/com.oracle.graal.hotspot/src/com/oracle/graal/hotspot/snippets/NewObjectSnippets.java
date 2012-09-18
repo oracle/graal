@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.snippets;
 
 import static com.oracle.graal.hotspot.nodes.CastFromHub.*;
-import static com.oracle.graal.hotspot.nodes.RegisterNode.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.snippets.nodes.DirectObjectStoreNode.*;
@@ -54,9 +53,9 @@ public class NewObjectSnippets implements SnippetsInterface {
 
     @Snippet
     public static Word allocate(@Parameter("size") int size) {
-        Word thread = asWord(register(threadReg(), wordKind()));
-        Word top = loadWord(thread, threadTlabTopOffset());
-        Word end = loadWord(thread, threadTlabEndOffset());
+        Word thread = thread();
+        Word top = loadWordFromWord(thread, threadTlabTopOffset());
+        Word end = loadWordFromWord(thread, threadTlabEndOffset());
         Word newTop = top.plus(size);
         if (newTop.belowOrEqual(end)) {
             storeObject(thread, 0, threadTlabTopOffset(), newTop);
@@ -169,7 +168,7 @@ public class NewObjectSnippets implements SnippetsInterface {
      * Formats some allocated memory with an object header zeroes out the rest.
      */
     private static void formatObject(Object hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents) {
-        Word prototypeMarkWord = USE_COMPILE_TIME_PROTOTYPE_MARK_WORD ? compileTimePrototypeMarkWord : loadWord(asWord(hub), prototypeMarkWordOffset());
+        Word prototypeMarkWord = USE_COMPILE_TIME_PROTOTYPE_MARK_WORD ? compileTimePrototypeMarkWord : loadWordFromObject(hub, prototypeMarkWordOffset());
         storeObject(memory, 0, markOffset(), prototypeMarkWord);
         storeObject(memory, 0, hubOffset(), hub);
         if (fillContents) {

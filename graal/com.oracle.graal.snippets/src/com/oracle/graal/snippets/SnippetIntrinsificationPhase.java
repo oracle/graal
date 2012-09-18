@@ -86,13 +86,14 @@ public class SnippetIntrinsificationPhase extends Phase {
             assert target.getAnnotation(Fold.class) == null;
 
             Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.signature(), target.holder());
+            ResolvedJavaType returnType = (ResolvedJavaType) target.signature().returnType(target.holder());
 
             // Prepare the arguments for the reflective constructor call on the node class.
             Object[] nodeConstructorArguments = prepareArguments(invoke, parameterTypes, target, false);
 
             // Create the new node instance.
             Class< ? > c = getNodeClass(target, intrinsic);
-            Node newInstance = createNodeInstance(c, parameterTypes, nodeConstructorArguments);
+            Node newInstance = createNodeInstance(c, parameterTypes, returnType, intrinsic.setStampFromReturnType(), nodeConstructorArguments);
 
             // Replace the invoke with the new node.
             invoke.node().graph().add(newInstance);
@@ -256,7 +257,7 @@ public class SnippetIntrinsificationPhase extends Phase {
 
     static final int VARARGS = 0x00000080;
 
-    private static Node createNodeInstance(Class< ? > nodeClass, Class< ? >[] parameterTypes, Object[] nodeConstructorArguments) {
+    private static Node createNodeInstance(Class< ? > nodeClass, Class< ? >[] parameterTypes, ResolvedJavaType returnType, boolean setStampFromReturnType, Object[] nodeConstructorArguments) {
         Object[] arguments = null;
         Constructor< ? > constructor = null;
         nextConstructor:
@@ -303,7 +304,15 @@ public class SnippetIntrinsificationPhase extends Phase {
         }
         constructor.setAccessible(true);
         try {
-            return (ValueNode) constructor.newInstance(arguments);
+            ValueNode intrinsicNode = (ValueNode) constructor.newInstance(arguments);
+            if (setStampFromReturnType) {
+                if (returnType.kind().isObject()) {
+                    intrinsicNode.setStamp(StampFactory.declared(returnType));
+                } else {
+                    intrinsicNode.setStamp(StampFactory.forKind(returnType.kind()));
+                }
+            }
+            return intrinsicNode;
         } catch (Exception e) {
             throw new RuntimeException(constructor + Arrays.toString(nodeConstructorArguments), e);
         }

@@ -42,6 +42,11 @@ public final class RegisterNode extends FixedWithNextNode implements LIRLowerabl
         this.register = register;
     }
 
+    public RegisterNode(Register register) {
+        super(StampFactory.object());
+        this.register = register;
+    }
+
     @Override
     public void generate(LIRGeneratorTool generator) {
         Value result;
@@ -63,11 +68,5 @@ public final class RegisterNode extends FixedWithNextNode implements LIRLowerabl
         } else {
             return super.toString(verbosity);
         }
-    }
-
-    @SuppressWarnings("unused")
-    @NodeIntrinsic
-    public static <T> T register(@ConstantNodeParameter Register register, @ConstantNodeParameter Kind kind) {
-        throw new UnsupportedOperationException();
     }
 }
