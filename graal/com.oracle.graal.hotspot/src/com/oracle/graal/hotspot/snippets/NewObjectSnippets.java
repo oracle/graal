@@ -160,15 +160,10 @@ public class NewObjectSnippets implements SnippetsInterface {
     private static final int MAX_UNROLLED_OBJECT_ZEROING_SIZE = 10 * wordSize();
 
     /**
-     * Setting this to false causes (as yet inexplicable) crashes on lusearch.
-     */
-    private static final boolean USE_COMPILE_TIME_PROTOTYPE_MARK_WORD = true;
-
-    /**
      * Formats some allocated memory with an object header zeroes out the rest.
      */
     private static void formatObject(Object hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents) {
-        Word prototypeMarkWord = USE_COMPILE_TIME_PROTOTYPE_MARK_WORD ? compileTimePrototypeMarkWord : loadWordFromObject(hub, prototypeMarkWordOffset());
+        Word prototypeMarkWord = useBiasedLocking() ? loadWordFromObject(hub, prototypeMarkWordOffset()) : compileTimePrototypeMarkWord;
         storeObject(memory, 0, markOffset(), prototypeMarkWord);
         storeObject(memory, 0, hubOffset(), hub);
         if (fillContents) {
