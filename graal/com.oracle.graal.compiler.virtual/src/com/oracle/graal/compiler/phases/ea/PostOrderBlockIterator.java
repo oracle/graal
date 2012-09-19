@@ -74,8 +74,14 @@ public abstract class PostOrderBlockIterator<T extends MergeableBlockState<T>> {
                         current = successor;
                         continue;
                     } else {
-                        assert successor.getPredecessors().size() > 1 : "invalid block schedule at " + successor.getBeginNode();
-                        queueMerge((EndNode) current.getEndNode(), successor);
+                        if (current.getEndNode() instanceof EndNode) {
+                            assert successor.getPredecessors().size() > 1 : "invalid block schedule at " + successor.getBeginNode();
+                            queueMerge((EndNode) current.getEndNode(), successor);
+                        } else {
+                            assert successor.getPredecessors().size() == 1 : "invalid block schedule at " + successor.getBeginNode();
+                            current = successor;
+                            continue;
+                        }
                     }
                 }
             } else {
