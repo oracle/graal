@@ -34,6 +34,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -65,6 +66,18 @@ public class MonitorSnippets implements SnippetsInterface {
             Log.print(' ');
             Log.printlnObject(object);
         }
+    }
+
+    /**
+     * Leaving the breakpoint code in provides a good example of how to use
+     * {@link BreakpointNode} as an intrinsic.
+     */
+    private static final boolean ENABLE_BREAKPOINT = false;
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic(BreakpointNode.class)
+    static void bkpt(Object object, Word mark, Word tmp, Word value) {
+        throw new GraalInternalError("");
     }
 
     @Snippet
@@ -132,7 +145,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         // another thread succeeded in biasing it toward itself and we
                         // need to revoke that bias. The revocation will occur in the
                         // interpreter runtime in the slow case.
-                        log(logEnabled, "+lock{stub}", object);
+                        log(logEnabled, "+lock{stub:revoke}", object);
                         MonitorEnterStubCall.call(object, lock);
                         return;
                     } else {
@@ -151,7 +164,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         // If the biasing toward our thread failed, then another thread
                         // succeeded in biasing it toward itself and we need to revoke that
                         // bias. The revocation will occur in the runtime in the slow case.
-                        log(logEnabled, "+lock{stub}", object);
+                        log(logEnabled, "+lock{stub:epoch-expired}", object);
                         MonitorEnterStubCall.call(object, lock);
                         return;
                     }
@@ -164,11 +177,15 @@ public class MonitorSnippets implements SnippetsInterface {
                     // that another thread raced us for the privilege of revoking the
                     // bias of this particular object, so it's okay to continue in the
                     // normal locking code.
-                    compareAndSwap(object, markOffset(), mark, tmp);
+                    Word result = compareAndSwap(object, markOffset(), mark, prototypeMarkWord);
 
                     // Fall through to the normal CAS-based lock, because no matter what
                     // the result of the above CAS, some thread must have succeeded in
                     // removing the bias bit from the object's header.
+
+                    if (ENABLE_BREAKPOINT) {
+                        bkpt(object, mark, tmp, result);
+                    }
                 }
             }
         }
@@ -202,7 +219,7 @@ public class MonitorSnippets implements SnippetsInterface {
             final Word stackPointer = stackPointer();
             if (currentMark.minus(stackPointer).and(alignedMask.minus(pageSize())) != Word.zero()) {
                 // Most likely not a recursive lock, go into a slow runtime call
-                log(logEnabled, "+lock{stub}", object);
+                log(logEnabled, "+lock{stub:failed-cas}", object);
                 MonitorEnterStubCall.call(object, lock);
                 return;
             } else {
