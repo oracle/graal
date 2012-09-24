@@ -123,16 +123,8 @@ public interface ResolvedJavaType extends JavaType {
      */
     ResolvedJavaType uniqueConcreteSubtype();
 
-    /**
-     * For array types, gets the type of the components.
-     * @return the component type of this array type
-     */
     ResolvedJavaType componentType();
 
-    /**
-     * Gets the type representing an array with elements of this type.
-     * @return a new compiler interface type representing an array of this type
-     */
     ResolvedJavaType arrayOf();
 
     /**
