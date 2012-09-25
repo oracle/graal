@@ -95,8 +95,13 @@ public class TailDuplicationPhase extends Phase {
             while (current instanceof FixedWithNextNode) {
                 current = ((FixedWithNextNode) current).next();
                 for (PhiNode phi : improvements) {
-                    if (current.inputs().contains(phi)) {
-                        opportunities++;
+                    for (Node input : current.inputs()) {
+                        if (input == phi) {
+                            opportunities++;
+                        }
+                        if (input.inputs().contains(phi)) {
+                            opportunities++;
+                        }
                     }
                 }
             }
