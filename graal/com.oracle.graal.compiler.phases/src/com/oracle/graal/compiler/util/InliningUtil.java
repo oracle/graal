@@ -908,12 +908,16 @@ public class InliningUtil {
                         assert stateAtExceptionEdge == null;
                     }
                 } else {
-                    if (outerFrameState == null) {
-                        outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invoke.node().kind());
-                        outerFrameState.setDuringCall(true);
+                    // only handle the outermost frame states
+                    if (frameState.outerFrameState() == null) {
+                        assert frameState.method() == inlineGraph.method();
+                        if (outerFrameState == null) {
+                            outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invoke.node().kind());
+                            outerFrameState.setDuringCall(true);
+                        }
+                        frameState.setOuterFrameState(outerFrameState);
+                        frameState.setInliningIdentifier(identifier);
                     }
-                    frameState.setOuterFrameState(outerFrameState);
-                    frameState.setInliningIdentifier(identifier);
                 }
             }
         }
