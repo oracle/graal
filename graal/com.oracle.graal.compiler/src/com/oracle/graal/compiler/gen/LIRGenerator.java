@@ -832,7 +832,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         List<Value> argList = visitInvokeArguments(cc, callTarget.arguments());
         Value[] parameters = argList.toArray(new Value[argList.size()]);
 
-        LIRFrameState callState = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
+        LIRFrameState callState = null;
+        if (x.stateAfter() != null) {
+            callState = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
+        }
+
         Value result = resultOperandFor(x.node().kind());
 
         if (callTarget instanceof DirectCallTargetNode) {
