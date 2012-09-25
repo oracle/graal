@@ -49,7 +49,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
      * @param bci the bytecode index of the original invoke (used for debug infos)
      * @param callTarget the target method being called
      */
-    public InvokeNode(MethodCallTargetNode callTarget, int bci, long leafGraphId) {
+    public InvokeNode(CallTargetNode callTarget, int bci, long leafGraphId) {
         super(callTarget.returnStamp());
         this.callTarget = callTarget;
         this.bci = bci;
