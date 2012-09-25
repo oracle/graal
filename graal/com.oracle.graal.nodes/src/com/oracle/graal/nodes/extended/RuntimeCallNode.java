@@ -76,4 +76,10 @@ public final class RuntimeCallNode extends AbstractCallNode implements LIRLowera
     public static long callLong(@ConstantNodeParameter RuntimeCall call) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    public static void runtimeCall(@ConstantNodeParameter RuntimeCall call) {
+        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
+    }
 }
