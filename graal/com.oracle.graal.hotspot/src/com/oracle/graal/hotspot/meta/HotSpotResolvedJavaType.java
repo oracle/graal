@@ -74,8 +74,10 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
 
     @Override
     public ResolvedJavaType componentType() {
-        assert isArrayClass();
-        return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_componentType(this);
+        if (isArrayClass) {
+            return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_componentType(this);
+        }
+        return null;
     }
 
     @Override
