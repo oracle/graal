@@ -101,6 +101,8 @@ public interface CompilerToVM {
 
     JavaMethod getJavaMethod(Method reflectionMethod);
 
+    ResolvedJavaField getJavaField(Field reflectionField);
+
     long getMaxCallTargetOffset(RuntimeCall rtcall);
 
     String disassembleNative(byte[] code, long address);

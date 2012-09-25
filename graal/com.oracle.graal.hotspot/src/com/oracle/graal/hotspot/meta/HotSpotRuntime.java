@@ -551,6 +551,11 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
         return (ResolvedJavaMethod) graalRuntime.getCompilerToVM().getJavaMethod(reflectionMethod);
     }
 
+    @Override
+    public ResolvedJavaField getResolvedJavaField(Field reflectionField) {
+        return graalRuntime.getCompilerToVM().getJavaField(reflectionField);
+    }
+
     private static HotSpotCodeInfo makeInfo(ResolvedJavaMethod method, CompilationResult compResult, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = null;
         if (info != null && info.length > 0) {

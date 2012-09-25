@@ -59,9 +59,14 @@ public interface MetaAccessProvider {
     boolean areConstantObjectsEqual(Constant x, Constant y);
 
     /**
-     * Provides the {@link JavaMethod} for a {@link Method} obtained via reflection.
+     * Provides the {@link ResolvedJavaMethod} for a {@link Method} obtained via reflection.
      */
     ResolvedJavaMethod getResolvedJavaMethod(Method reflectionMethod);
+
+    /**
+     * Provides the {@link ResolvedJavaField} for a {@link Field} obtained via reflection.
+     */
+    ResolvedJavaField getResolvedJavaField(Field reflectionField);
 
     /**
      * Gets the length of the array that is wrapped in a Constant object.

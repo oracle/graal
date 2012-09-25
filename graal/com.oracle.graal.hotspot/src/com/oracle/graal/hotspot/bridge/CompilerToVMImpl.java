@@ -41,6 +41,9 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native JavaMethod getJavaMethod(Method reflectionMethod);
 
     @Override
+    public native ResolvedJavaField getJavaField(Field reflectionMethod);
+
+    @Override
     public native byte[] JavaMethod_code(HotSpotResolvedJavaMethod method);
 
     @Override
