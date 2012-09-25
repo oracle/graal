@@ -996,7 +996,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     @Override
     public void emitRuntimeCall(RuntimeCallNode x) {
         Value resultOperand = resultOperandFor(x.kind());
-        CallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, x.call().arguments, target(), false);
+        CallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, x.call().getArgumentKinds(), target(), false);
         frameMap.callsMethod(cc, RuntimeCall);
         List<Value> argList = visitInvokeArguments(cc, x.arguments());
 
@@ -1320,8 +1320,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected final Value callRuntime(RuntimeCall runtimeCall, LIRFrameState info, Value... args) {
         // get a result register
-        Kind result = runtimeCall.resultKind;
-        Kind[] arguments = runtimeCall.arguments;
+        Kind result = runtimeCall.getResultKind();
+        Kind[] arguments = runtimeCall.getArgumentKinds();
 
         Value physReg = result.isVoid() ? IllegalValue : resultOperandFor(result);
 

@@ -27,43 +27,50 @@ import static com.oracle.graal.api.meta.Kind.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Enumerates the calls that must be provided by the runtime system. The compiler
- * may generate code that calls the runtime services for unresolved and slow cases of some
- * bytecodes.
+ * Enumerates the calls that must be provided by the runtime system. The compiler may generate code that calls the
+ * runtime services for unresolved and slow cases of some bytecodes.
  */
-public enum RuntimeCall {
-    UnwindException(Void, Object),
-    Deoptimize(Void),
-    RegisterFinalizer(Void, Object),
-    SetDeoptInfo(Void, Object),
-    CreateNullPointerException(Object),
-    CreateOutOfBoundsException(Object, Int),
-    JavaTimeMillis(Long),
-    JavaTimeNanos(Long),
-    Debug(Void),
-    ArithmeticFrem(Float, Float, Float),
-    ArithmeticDrem(Double, Double, Double),
-    ArithmeticCos(Double, Double),
-    ArithmeticTan(Double, Double),
-    ArithmeticSin(Double, Double),
-    GenericCallback(Object, Object, Object),
-    LogPrimitive(Void, Int, Long, Boolean),
-    LogObject(Void, Object, Int);
+public class RuntimeCall {
 
-    public final Kind resultKind;
-    public final Kind[] arguments;
+    // TODO Move the singletons to projects where they are actually used. A couple of them
+    // are HotSpot-specific.
+    public static final RuntimeCall UnwindException = new RuntimeCall(Void, true, Object);
+    public static final RuntimeCall Deoptimize = new RuntimeCall(Void, true);
+    public static final RuntimeCall RegisterFinalizer = new RuntimeCall(Void, true, Object);
+    public static final RuntimeCall SetDeoptInfo = new RuntimeCall(Void, true, Object);
+    public static final RuntimeCall CreateNullPointerException = new RuntimeCall(Object, true);
+    public static final RuntimeCall CreateOutOfBoundsException = new RuntimeCall(Object, true, Int);
+    public static final RuntimeCall JavaTimeMillis = new RuntimeCall(Long, false);
+    public static final RuntimeCall JavaTimeNanos = new RuntimeCall(Long, false);
+    public static final RuntimeCall Debug = new RuntimeCall(Void, true);
+    public static final RuntimeCall ArithmeticFrem = new RuntimeCall(Float, false, Float, Float);
+    public static final RuntimeCall ArithmeticDrem = new RuntimeCall(Double, false, Double, Double);
+    public static final RuntimeCall ArithmeticCos = new RuntimeCall(Double, false, Double);
+    public static final RuntimeCall ArithmeticTan = new RuntimeCall(Double, false, Double);
+    public static final RuntimeCall ArithmeticSin = new RuntimeCall(Double, false, Double);
+    public static final RuntimeCall GenericCallback = new RuntimeCall(Object, true, Object, Object);
+    public static final RuntimeCall LogPrimitive = new RuntimeCall(Void, false, Int, Long, Boolean);
+    public static final RuntimeCall LogObject = new RuntimeCall(Void, false, Object, Int);
 
-    private RuntimeCall(Kind resultKind, Kind... args) {
+    private final Kind resultKind;
+    private final Kind[] argumentKinds;
+    private final boolean hasSideEffect;
+
+    public RuntimeCall(Kind resultKind, boolean hasSideEffect, Kind... args) {
         this.resultKind = resultKind;
-        this.arguments = args;
+        this.argumentKinds = args;
+        this.hasSideEffect = hasSideEffect;
+    }
+
+    public Kind getResultKind() {
+        return resultKind;
+    }
+
+    public Kind[] getArgumentKinds() {
+        return argumentKinds;
     }
 
     public boolean hasSideEffect() {
-        switch (this) {
-            case LogObject:
-            case LogPrimitive:
-                return false;
-        }
-        return true;
+        return hasSideEffect;
     }
 }

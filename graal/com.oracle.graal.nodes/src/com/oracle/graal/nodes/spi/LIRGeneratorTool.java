@@ -85,7 +85,7 @@ public abstract class LIRGeneratorTool {
     public abstract void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo, long leafGraphId);
     public abstract Value emitCall(Object target, Kind result, Kind[] arguments, boolean canTrap, Value... args);
     public final Value emitCall(RuntimeCall runtimeCall, boolean canTrap, Value... args) {
-        return emitCall(runtimeCall, runtimeCall.resultKind, runtimeCall.arguments, canTrap, args);
+        return emitCall(runtimeCall, runtimeCall.getResultKind(), runtimeCall.getArgumentKinds(), canTrap, args);
     }
 
     public abstract void emitIf(IfNode i);
