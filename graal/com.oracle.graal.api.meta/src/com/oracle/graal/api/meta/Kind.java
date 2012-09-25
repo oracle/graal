@@ -166,6 +166,36 @@ public enum Kind {
     }
 
     /**
+     * Returns the Kind representing the given Java class.
+     *
+     * @param klass the class
+     * @return the kind
+     */
+    public static Kind fromJavaClass(Class< ? > klass) {
+        if (klass == java.lang.Boolean.TYPE) {
+            return Boolean;
+        } else if (klass == java.lang.Byte.TYPE) {
+            return Byte;
+        } else if (klass == java.lang.Short.TYPE) {
+            return Short;
+        } else if (klass == java.lang.Character.TYPE) {
+            return Char;
+        } else if (klass == java.lang.Integer.TYPE) {
+            return Int;
+        } else if (klass == java.lang.Long.TYPE) {
+            return Long;
+        } else if (klass == java.lang.Float.TYPE) {
+            return Float;
+        } else if (klass == java.lang.Double.TYPE) {
+            return Double;
+        } else if (klass == java.lang.Void.TYPE) {
+            return Void;
+        } else {
+            return Object;
+        }
+    }
+
+    /**
      * Returns the Java class representing this kind.
      *
      * @return the Java class
