@@ -121,12 +121,12 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
      * @param stackSize size of the stack
      * @param rethrowException if true the VM should re-throw the exception on top of the stack when deopt'ing using this framestate
      */
-    public FrameState(ResolvedJavaMethod method, int bci, List<ValueNode> values, int stackSize, boolean rethrowException, boolean duringCall, InliningIdentifier inliningIdentifier, List<EscapeObjectState> virtualObjectMappings) {
+    public FrameState(ResolvedJavaMethod method, int bci, List<ValueNode> values, int localsSize, int stackSize, boolean rethrowException, boolean duringCall, InliningIdentifier inliningIdentifier, List<EscapeObjectState> virtualObjectMappings) {
         assert stackSize >= 0;
         assert (bci >= 0 && method != null) || (bci < 0 && method == null && values.isEmpty());
         this.method = method;
         this.bci = bci;
-        this.localsSize = values.size() - stackSize;
+        this.localsSize = localsSize;
         this.stackSize = stackSize;
         this.values = new NodeInputList<>(this, values);
         this.virtualObjectMappings = new NodeInputList<>(this, virtualObjectMappings);
@@ -141,22 +141,28 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
      * @param bci marker bci, needs to be < 0
      */
     public FrameState(int bci) {
-        this(null, bci, Collections.<ValueNode>emptyList(), 0, false, false, null, Collections.<EscapeObjectState>emptyList());
+        this(null, bci, Collections.<ValueNode>emptyList(), 0, 0, false, false, null, Collections.<EscapeObjectState>emptyList());
     }
 
-    public FrameState(ResolvedJavaMethod method, int bci, ValueNode[] locals, ValueNode[] stack, int stackSize, boolean rethrowException, boolean duringCall, InliningIdentifier inliningIdentifier) {
+    public FrameState(ResolvedJavaMethod method, int bci, ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks, boolean rethrowException, boolean duringCall,
+                    InliningIdentifier inliningIdentifier) {
         this.method = method;
         this.bci = bci;
         this.localsSize = locals.length;
-        this.stackSize = stackSize;
-        final ValueNode[] newValues = new ValueNode[locals.length + stackSize];
-        for (int i = 0; i < locals.length; i++) {
-            assert locals[i] == null || !locals[i].isDeleted();
-            newValues[i] = locals[i];
+        this.stackSize = stack.size();
+        final ValueNode[] newValues = new ValueNode[locals.length + stack.size() + locks.length];
+        int pos = 0;
+        for (ValueNode value : locals) {
+            newValues[pos++] = value;
         }
-        for (int i = 0; i < stackSize; i++) {
-            assert stack[i] == null || !stack[i].isDeleted();
-            newValues[localsSize + i] = stack[i];
+        for (ValueNode value : stack) {
+            newValues[pos++] = value;
+        }
+        for (ValueNode value : locks) {
+            newValues[pos++] = value;
+        }
+        for (ValueNode value : newValues) {
+            assert value == null || value.isAlive();
         }
         this.values = new NodeInputList<>(this, newValues);
         this.virtualObjectMappings = new NodeInputList<>(this);
@@ -223,7 +229,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
      * Gets a copy of this frame state.
      */
     public FrameState duplicate(int newBci) {
-        FrameState other = graph().add(new FrameState(method, newBci, values, stackSize, rethrowException, duringCall, inliningIdentifier, virtualObjectMappings));
+        FrameState other = graph().add(new FrameState(method, newBci, values, localsSize, stackSize, rethrowException, duringCall, inliningIdentifier, virtualObjectMappings));
         other.setOuterFrameState(outerFrameState());
         return other;
     }
@@ -249,7 +255,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         for (EscapeObjectState state : virtualObjectMappings) {
             newVirtualMappings.add(state.duplicateWithVirtualState());
         }
-        FrameState other = graph().add(new FrameState(method, bci, values, stackSize, rethrowException, duringCall, inliningIdentifier, newVirtualMappings));
+        FrameState other = graph().add(new FrameState(method, bci, values, localsSize, stackSize, rethrowException, duringCall, inliningIdentifier, newVirtualMappings));
         other.setOuterFrameState(newOuterFrameState);
         return other;
     }
@@ -260,7 +266,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
      * or double is followed by a null slot.
      */
     public FrameState duplicateModified(int newBci, boolean newRethrowException, Kind popKind, ValueNode... pushedValues) {
-        ArrayList<ValueNode> copy = new ArrayList<>(values);
+        ArrayList<ValueNode> copy = new ArrayList<>(values.subList(0, localsSize + stackSize));
         if (popKind != Kind.Void) {
             if (stackAt(stackSize() - 1) == null) {
                 copy.remove(copy.size() - 1);
@@ -270,8 +276,10 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
             copy.remove(copy.size() - 1);
         }
         Collections.addAll(copy, pushedValues);
+        int newStackSize = copy.size() - localsSize;
+        copy.addAll(values.subList(localsSize + stackSize, values.size()));
 
-        FrameState other = graph().add(new FrameState(method, newBci, copy, copy.size() - localsSize, newRethrowException, false, inliningIdentifier, virtualObjectMappings));
+        FrameState other = graph().add(new FrameState(method, newBci, copy, localsSize, newStackSize, newRethrowException, false, inliningIdentifier, virtualObjectMappings));
         other.setOuterFrameState(outerFrameState());
         return other;
     }
@@ -288,6 +296,13 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
      */
     public int stackSize() {
         return stackSize;
+    }
+
+    /**
+     * Gets the number of locked monitors in this frame state.
+     */
+    public int locksSize() {
+        return values.size() - localsSize - stackSize;
     }
 
     /**
@@ -310,6 +325,17 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
     public ValueNode stackAt(int i) {
         assert i >= 0 && i < stackSize;
         return values.get(localsSize + i);
+    }
+
+    /**
+     * Get the monitor owner at the specified index.
+     *
+     * @param i the index into the list of locked monitors.
+     * @return the lock owner at the given index.
+     */
+    public ValueNode lockAt(int i) {
+        assert i >= 0 && i < locksSize();
+        return values.get(localsSize + stackSize + i);
     }
 
     public MergeNode block() {
@@ -339,7 +365,11 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
             for (int i = 0; i < fs.stackSize(); i++) {
                 sb.append(i == 0 ? "" : ", ").append(fs.stackAt(i) == null ? "_" : fs.stackAt(i).toString(Verbosity.Id));
             }
-            sb.append(nl);
+            sb.append("]").append(nl).append("locks: ");
+            for (int i = 0; i < fs.locksSize(); i++) {
+                sb.append(i == 0 ? "" : ", ").append(fs.lockAt(i) == null ? "_" : fs.lockAt(i).toString(Verbosity.Id));
+            }
+            sb.append(']').append(nl);
             fs = fs.outerFrameState();
         }
         return sb.toString();
@@ -367,6 +397,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
                 properties.put("sourceLine", ste.getLineNumber());
             }
         }
+        properties.put("locksSize", values.size() - stackSize - localsSize);
         return properties;
     }
 

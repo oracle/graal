@@ -35,13 +35,19 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 public class FrameStateBuilder {
+
+    private static final ValueNode[] EMPTY_ARRAY = new ValueNode[0];
+
     private final ResolvedJavaMethod method;
     private final StructuredGraph graph;
 
     private final ValueNode[] locals;
     private final ValueNode[] stack;
+    private ValueNode[] locks;
+
     private int stackSize;
     private boolean rethrowException;
 
@@ -52,6 +58,7 @@ public class FrameStateBuilder {
         this.locals = new ValueNode[method.maxLocals()];
         // we always need at least one stack slot (for exceptions)
         this.stack = new ValueNode[Math.max(1, method.maxStackSize())];
+        this.locks = EMPTY_ARRAY;
 
         int javaIndex = 0;
         int index = 0;
@@ -84,16 +91,17 @@ public class FrameStateBuilder {
         }
     }
 
-    private FrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph, ValueNode[] locals, ValueNode[] stack, int stackSize, boolean rethrowException) {
+    private FrameStateBuilder(FrameStateBuilder other) {
+        method = other.method;
+        graph = other.graph;
+        locals = other.locals.clone();
+        stack = other.stack.clone();
+        locks = other.locks == EMPTY_ARRAY ? EMPTY_ARRAY : other.locks.clone();
+        stackSize = other.stackSize;
+        rethrowException = other.rethrowException;
+
         assert locals.length == method.maxLocals();
         assert stack.length == Math.max(1, method.maxStackSize());
-
-        this.method = method;
-        this.graph = graph;
-        this.locals = locals;
-        this.stack = stack;
-        this.stackSize = stackSize;
-        this.rethrowException = rethrowException;
     }
 
     @Override
@@ -107,6 +115,10 @@ public class FrameStateBuilder {
         for (int i = 0; i < stackSize; i++) {
             sb.append(i == 0 ? "" : ",").append(stack[i] == null ? "_" : stack[i].toString(Verbosity.Id));
         }
+        sb.append("] locks: [");
+        for (int i = 0; i < locks.length; i++) {
+            sb.append(i == 0 ? "" : ",").append(locks[i] == null ? "_" : locks[i].toString(Verbosity.Id));
+        }
         sb.append("]");
         if (rethrowException) {
             sb.append(" rethrowException");
@@ -116,11 +128,11 @@ public class FrameStateBuilder {
     }
 
     public FrameState create(int bci) {
-        return graph.add(new FrameState(method, bci, locals, stack, stackSize, rethrowException, false, null));
+        return graph.add(new FrameState(method, bci, locals, Arrays.asList(stack).subList(0, stackSize), locks, rethrowException, false, null));
     }
 
     public FrameStateBuilder copy() {
-        return new FrameStateBuilder(method, graph, Arrays.copyOf(locals, locals.length), Arrays.copyOf(stack, stack.length), stackSize, rethrowException);
+        return new FrameStateBuilder(this);
     }
 
     public boolean isCompatibleWith(FrameStateBuilder other) {
@@ -133,6 +145,15 @@ public class FrameStateBuilder {
             ValueNode x = stackAt(i);
             ValueNode y = other.stackAt(i);
             if (x != y && ValueNodeUtil.typeMismatch(x, y)) {
+                return false;
+            }
+        }
+        if (locks.length != other.locks.length) {
+            return false;
+        }
+        for (int i = 0; i < locks.length; i++) {
+            if (GraphUtil.originalValue(locks[i]) != GraphUtil.originalValue(other.locks[i])) {
+                System.out.println("unbalanced monitors");
                 return false;
             }
         }
@@ -186,7 +207,7 @@ public class FrameStateBuilder {
         if (node.isDeleted()) {
             return;
         }
-        // Collect all phi functions that use this phi so that we can delete them recursively (after we delete ourselfs to avoid circles).
+        // Collect all phi functions that use this phi so that we can delete them recursively (after we delete ourselves to avoid circles).
         List<FloatingNode> propagateUsages = node.usages().filter(FloatingNode.class).filter(isA(PhiNode.class).or(ValueProxyNode.class)).snapshot();
 
         // Remove the phi function from all FrameStates where it is used and then delete it.
@@ -221,6 +242,13 @@ public class FrameStateBuilder {
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 Debug.log(" inserting proxy for %s", value);
                 storeStack(i, graph.unique(new ValueProxyNode(value, loopExit, PhiType.Value)));
+            }
+        }
+        for (int i = 0; i < locks.length; i++) {
+            ValueNode value = locks[i];
+            if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
+                Debug.log(" inserting proxy for %s", value);
+                locks[i] = graph.unique(new ValueProxyNode(value, loopExit, PhiType.Value));
             }
         }
     }
@@ -299,6 +327,36 @@ public class FrameStateBuilder {
      */
     protected final ValueNode stackAt(int i) {
         return stack[i];
+    }
+
+    /**
+     * Adds a locked monitor to this frame state.
+     *
+     * @param object the object whose monitor will be locked.
+     */
+    public void pushLock(ValueNode object) {
+        locks = Arrays.copyOf(locks, locks.length + 1);
+        locks[locks.length - 1] = object;
+    }
+
+    /**
+     * Removes a locked monitor from this frame state.
+     *
+     * @return the object whose monitor was removed from the locks list.
+     */
+    public ValueNode popLock() {
+        try {
+            return locks[locks.length - 1];
+        } finally {
+            locks = locks.length == 1 ? EMPTY_ARRAY : Arrays.copyOf(locks, locks.length - 1);
+        }
+    }
+
+    /**
+     * @return true if there are no locks within this frame state.
+     */
+    public boolean locksEmpty() {
+        return locks.length == 0;
     }
 
     /**
@@ -557,6 +615,11 @@ public class FrameStateBuilder {
         }
         for (int i = 0; i < stackSize(); i++) {
             if (stackAt(i) == value) {
+                return true;
+            }
+        }
+        for (int i = 0; i < locks.length; i++) {
+            if (locks[i] == value) {
                 return true;
             }
         }

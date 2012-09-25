@@ -27,7 +27,6 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.LIRGenerator.LockScope;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
@@ -45,7 +44,7 @@ public class DebugInfoBuilder {
     private HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
     private IdentityHashMap<VirtualObjectNode, EscapeObjectState> objectStates = new IdentityHashMap<>();
 
-    public LIRFrameState build(FrameState topState, LockScope locks, List<StackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
+    public LIRFrameState build(FrameState topState, List<StackSlot> lockData, List<StackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
         assert virtualObjects.size() == 0;
         assert objectStates.size() == 0;
 
@@ -65,7 +64,7 @@ public class DebugInfoBuilder {
             current = current.outerFrameState();
         } while (current != null);
 
-        BytecodeFrame frame = computeFrameForState(topState, locks, leafGraphId);
+        BytecodeFrame frame = computeFrameForState(topState, lockData, leafGraphId);
 
         VirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
@@ -105,10 +104,10 @@ public class DebugInfoBuilder {
         return new LIRFrameState(frame, virtualObjectsArray, pointerSlots, exceptionEdge);
     }
 
-    private BytecodeFrame computeFrameForState(FrameState state, LockScope locks, long leafGraphId) {
+    private BytecodeFrame computeFrameForState(FrameState state, List<StackSlot> lockDataSlots, long leafGraphId) {
         int numLocals = state.localsSize();
         int numStack = state.stackSize();
-        int numLocks = (locks != null && locks.inliningIdentifier == state.inliningIdentifier()) ? locks.stateDepth + 1 : 0;
+        int numLocks = state.locksSize();
 
         Value[] values = new Value[numLocals + numStack + numLocks];
         for (int i = 0; i < numLocals; i++) {
@@ -117,30 +116,24 @@ public class DebugInfoBuilder {
         for (int i = 0; i < numStack; i++) {
             values[numLocals + i] = toValue(state.stackAt(i));
         }
-
-        LockScope nextLock = locks;
-        for (int i = numLocks - 1; i >= 0; i--) {
-            assert locks != null && nextLock.inliningIdentifier == state.inliningIdentifier() && nextLock.stateDepth == i;
-
-            Value owner = toValue(nextLock.object);
-            StackSlot lockData = nextLock.lockData;
-            boolean eliminated = nextLock.eliminated;
-            values[numLocals + numStack + nextLock.stateDepth] = new MonitorValue(owner, lockData, eliminated);
-
-            nextLock = nextLock.outer;
+        for (int i = 0; i < numLocks; i++) {
+            // frames are traversed from the outside in, so the locks for the current frame are at the end of the lockDataSlot list
+            StackSlot lockData = lockDataSlots.get(lockDataSlots.size() - numLocks + i);
+            values[numLocals + numStack + i] = new MonitorValue(toValue(state.lockAt(i)), lockData, state.lockAt(i) instanceof VirtualObjectNode);
         }
 
         BytecodeFrame caller = null;
         if (state.outerFrameState() != null) {
-            caller = computeFrameForState(state.outerFrameState(), nextLock, -1);
+            // remove the locks that were used for this frame from the list
+            List<StackSlot> nextLockDataSlots = lockDataSlots.subList(0, lockDataSlots.size() - numLocks);
+            caller = computeFrameForState(state.outerFrameState(), nextLockDataSlots, -1);
         } else {
-            if (nextLock != null) {
-                throw new BailoutException("unbalanced monitors: found monitor for unknown frame");
+            if (lockDataSlots.size() != numLocks) {
+                throw new BailoutException("unbalanced monitors: found monitor for unknown frame (%d != %d) at %s", lockDataSlots.size(), numLocks, state);
             }
         }
         assert state.bci >= 0 || state.bci == FrameState.BEFORE_BCI;
-        BytecodeFrame frame = new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, state.localsSize(), state.stackSize(), numLocks, leafGraphId);
-        return frame;
+        return new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, numLocals, numStack, numLocks, leafGraphId);
     }
 
     private Value toValue(ValueNode value) {

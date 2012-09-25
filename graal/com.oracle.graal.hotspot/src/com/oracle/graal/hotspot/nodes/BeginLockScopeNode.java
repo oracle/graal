@@ -26,12 +26,10 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
-
 
 /**
  * Intrinsic for opening a scope binding a stack-based lock with an object.
@@ -42,12 +40,10 @@ import com.oracle.graal.snippets.*;
  */
 public final class BeginLockScopeNode extends AbstractStateSplit implements LIRGenLowerable, MonitorEnter {
 
-    @Input private ValueNode object;
     private final boolean eliminated;
 
-    public BeginLockScopeNode(ValueNode object, boolean eliminated, Kind wordKind) {
+    public BeginLockScopeNode(boolean eliminated, Kind wordKind) {
         super(StampFactory.forWord(wordKind, true));
-        this.object = object;
         this.eliminated = eliminated;
     }
 
@@ -58,18 +54,17 @@ public final class BeginLockScopeNode extends AbstractStateSplit implements LIRG
 
     @Override
     public void generate(LIRGenerator gen) {
-        int size = HotSpotGraalRuntime.getInstance().getConfig().basicLockSize;
-        StackSlot lock = gen.frameMap().allocateStackBlock(size, false);
-        Value result = eliminated ? new Constant(gen.target().wordKind, 0L) : gen.emitLea(lock);
+        gen.lock();
+        StackSlot lockData = gen.peekLock();
+        Value result = eliminated ? new Constant(gen.target().wordKind, 0L) : gen.emitLea(lockData);
         FrameState stateAfter = stateAfter();
         assert stateAfter != null;
-        gen.lock(object, eliminated, lock, stateAfter.inliningIdentifier());
         gen.setResult(this, result);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Word beginLockScope(Object object, @ConstantNodeParameter boolean eliminated, @ConstantNodeParameter Kind wordKind) {
+    public static Word beginLockScope(@ConstantNodeParameter boolean eliminated, @ConstantNodeParameter Kind wordKind) {
         throw new UnsupportedOperationException();
     }
 }

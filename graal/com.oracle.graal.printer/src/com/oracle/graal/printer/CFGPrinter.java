@@ -396,6 +396,12 @@ class CFGPrinter extends CompilationPrinter {
             }
             buf.append("\n");
 
+            buf.append("locks: ");
+            for (int i = 0; i < curState.locksSize(); i++) {
+                buf.append(stateValueToString(curState.lockAt(i))).append(' ');
+            }
+            buf.append("\n");
+
             curState = curState.outerFrameState();
         } while (curState != null);
 

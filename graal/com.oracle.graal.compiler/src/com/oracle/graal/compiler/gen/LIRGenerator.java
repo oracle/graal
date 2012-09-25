@@ -46,7 +46,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.asm.TargetMethodAssembler.CallPositionListener;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.FrameState.InliningIdentifier;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -87,82 +86,24 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     private FrameState lastState;
 
     /**
-     * Class used to reconstruct the nesting of locks that is required for debug information.
+     * Mapping from blocks to the last encountered frame state at the end of the block.
      */
-    public static class LockScope {
-        /**
-         * Linked list of locks. {@link LIRGenerator#curLocks} is the head of the list.
-         */
-        public final LockScope outer;
-
-        /**
-         * The identifier of the actual inlined method instance performing the lock, or null if the outermost method
-         * performs the lock. This information is used to compute the {@link BytecodeFrame} that this lock belongs to.
-         */
-        public final InliningIdentifier inliningIdentifier;
-
-        /**
-         * The number of locks already found for this frame state.
-         */
-        public final int stateDepth;
-
-        /**
-         * The object that is locked.
-         */
-        public final ValueNode object;
-
-        /**
-         * Whether or not the lock is eliminated.
-         */
-        public final boolean eliminated;
-
-        /**
-         * Space in the stack frame needed by the VM to perform the locking.
-         */
-        public final StackSlot lockData;
-
-        public LockScope(LockScope outer, InliningIdentifier inliningIdentifier, ValueNode object, boolean eliminated, StackSlot lockData) {
-            this.outer = outer;
-            this.inliningIdentifier = inliningIdentifier;
-            this.object = object;
-            this.eliminated = eliminated;
-            this.lockData = lockData;
-            if (outer != null && outer.inliningIdentifier == inliningIdentifier) {
-                this.stateDepth = outer.stateDepth + 1;
-            } else {
-                this.stateDepth = 0;
-            }
-        }
-
-        @Override
-        public String toString() {
-            InliningIdentifier identifier = inliningIdentifier;
-            StringBuilder sb = new StringBuilder().append(identifier).append(": ");
-            for (LockScope scope = this; scope != null; scope = scope.outer) {
-                if (scope.inliningIdentifier != identifier) {
-                    identifier = scope.inliningIdentifier;
-                    sb.append('\n').append(identifier).append(": ");
-                }
-                if (scope.eliminated) {
-                    sb.append('!');
-                }
-                sb.append(scope.object).append(' ');
-            }
-            return sb.toString();
-        }
-    }
+    private final BlockMap<FrameState> blockLastState;
 
     /**
-     * Mapping from blocks to the lock state at the end of the block, indexed by the id number of the block.
+     * The number of currently locked monitors.
      */
-    private BlockMap<LockScope> blockLocks;
-
-    private BlockMap<FrameState> blockLastState;
+    private int currentLockCount;
 
     /**
-     * The list of currently locked monitors.
+     * Mapping from blocks to the number of locked monitors at the end of the block.
      */
-    private LockScope curLocks;
+    private final BlockMap<Integer> blockLastLockCount;
+
+    /**
+     * Contains the lock data slot for each lock depth (so these may be reused within a compiled method).
+     */
+    private final ArrayList<StackSlot> lockDataSlots;
 
 
     public LIRGenerator(Graph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, XirGenerator xir, Assumptions assumptions) {
@@ -176,7 +117,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         this.xir = xir;
         this.xirSupport = new XirSupport(assumptions);
         this.debugInfoBuilder = new DebugInfoBuilder(nodeOperands);
-        this.blockLocks = new BlockMap<>(lir.cfg);
+        this.blockLastLockCount = new BlockMap<>(lir.cfg);
+        this.lockDataSlots = new ArrayList<>();
         this.blockLastState = new BlockMap<>(lir.cfg);
     }
 
@@ -299,7 +241,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     public LIRFrameState stateFor(FrameState state, List<StackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
-        return debugInfoBuilder.build(state, curLocks, pointerSlots, exceptionEdge, leafGraphId);
+        return debugInfoBuilder.build(state, lockDataSlots.subList(0, currentLockCount), pointerSlots, exceptionEdge, leafGraphId);
     }
 
     /**
@@ -346,23 +288,24 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             TTY.println("BEGIN Generating LIR for block B" + block.getId());
         }
 
-        curLocks = null;
-        for (Block pred : block.getPredecessors()) {
-            LockScope predLocks = blockLocks.get(pred);
-            if (curLocks == null) {
-                curLocks = predLocks;
-            } else if (curLocks != predLocks && (!pred.isLoopEnd() || predLocks != null)) {
-//                throw new GraalInternalError("cause: %s", predLocks);
-                throw new BailoutException("unbalanced monitors: predecessor blocks have different monitor states");
-            }
-        }
-
         if (block == lir.cfg.getStartBlock()) {
             assert block.getPredecessors().size() == 0;
+            currentLockCount = 0;
             emitPrologue();
 
         } else {
             assert block.getPredecessors().size() > 0;
+
+            currentLockCount = -1;
+            for (Block pred : block.getPredecessors()) {
+                Integer predLocks = blockLastLockCount.get(pred);
+                if (currentLockCount == -1) {
+                    currentLockCount = predLocks;
+                } else {
+                    assert (predLocks == null && pred.isLoopEnd()) || currentLockCount == predLocks;
+                }
+            }
+
             FrameState fs = null;
 
             for (Block pred : block.getPredecessors()) {
@@ -464,7 +407,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         // share the frame state that flowed into the loop
         assert blockLastState.get(block) == null || blockLastState.get(block) == lastState;
 
-        blockLocks.put(currentBlock, curLocks);
+        blockLastLockCount.put(currentBlock, currentLockCount);
         blockLastState.put(block, lastState);
         currentBlock = null;
 
@@ -550,62 +493,74 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         setResult(x, operand(x.object()));
     }
 
-    public void lock(ValueNode object, boolean eliminated, StackSlot lock, InliningIdentifier inliningIdentifier) {
-        assert lastState != null : "must have state before instruction";
-        curLocks = new LockScope(curLocks, inliningIdentifier, object, eliminated, lock);
-    }
-
-    public StackSlot peekLock() {
-        assert curLocks.lockData != null;
-        return curLocks.lockData;
-    }
-
-    public void unlock(ValueNode object, boolean eliminated) {
-        if (curLocks == null || curLocks.object != object || curLocks.eliminated != eliminated) {
-            throw new BailoutException("unbalanced monitors: attempting to unlock an object that is not on top of the locking stack");
+    /**
+     * Increases the number of currently locked monitors and makes sure that a lock data slot is available for the new lock.
+     */
+    public void lock() {
+        if (lockDataSlots.size() == currentLockCount) {
+            lockDataSlots.add(frameMap.allocateStackBlock(runtime.sizeOfLockData(), false));
         }
-        curLocks = curLocks.outer;
+        currentLockCount++;
+    }
+
+    /**
+     * Decreases the number of currently locked monitors.
+     *
+     * @throws GraalInternalError if the number of currently locked monitors is already zero.
+     */
+    public void unlock() {
+        if (currentLockCount == 0) {
+            throw new GraalInternalError("unmatched locks");
+        }
+        currentLockCount--;
+    }
+
+    /**
+     * @return The lock data slot for the topmost locked monitor.
+     */
+    public StackSlot peekLock() {
+        return lockDataSlots.get(currentLockCount - 1);
     }
 
     @Override
     public void visitMonitorEnter(MonitorEnterNode x) {
-        StackSlot lockData = frameMap.allocateStackBlock(runtime.sizeOfLockData(), false);
         if (x.eliminated()) {
-            // No code is emitted for eliminated locks, but for proper debug information generation we need to
-            // register the monitor and its lock data.
-            lock(x.object(), true, lockData, x.stateAfter().inliningIdentifier());
-            return;
+            // No code is emitted for eliminated locks.
+            lock();
+        } else {
+
+            // The state before the monitor enter is used for null checks, so it must not contain the newly locked object.
+            LIRFrameState stateBefore = state();
+            lock();
+
+            XirArgument obj = toXirArgument(x.object());
+            XirArgument lockAddress = toXirArgument(emitLea(peekLock()));
+
+            // The state after the monitor enter is used for deoptimization, after the monitor has blocked, so it must contain the newly locked object.
+            LIRFrameState stateAfter = stateFor(x.stateAfter(), -1);
+
+            XirSnippet snippet = xir.genMonitorEnter(site(x, x.object()), obj, lockAddress);
+            emitXir(snippet, x, stateBefore, stateAfter, true, null, null);
         }
-
-        XirArgument obj = toXirArgument(x.object());
-        XirArgument lockAddress = lockData == null ? null : toXirArgument(emitLea(lockData));
-
-        LIRFrameState stateBefore = state();
-        // The state before the monitor enter is used for null checks, so it must not contain the newly locked object.
-        lock(x.object(), false, lockData, x.stateAfter().inliningIdentifier());
-        // The state after the monitor enter is used for deoptimization, after the monitor has blocked, so it must contain the newly locked object.
-        LIRFrameState stateAfter = stateFor(x.stateAfter(), -1);
-
-        XirSnippet snippet = xir.genMonitorEnter(site(x, x.object()), obj, lockAddress);
-        emitXir(snippet, x, stateBefore, stateAfter, true, null, null);
     }
 
     @Override
     public void visitMonitorExit(MonitorExitNode x) {
         if (x.eliminated()) {
-            unlock(x.object(), true);
-            return;
+            // No code is emitted for eliminated locks.
+            unlock();
+        } else {
+            // The state before the monitor exit is used for null checks, so it must contain the locked object.
+            LIRFrameState stateBefore = state();
+
+            XirArgument obj = toXirArgument(x.object());
+            XirArgument lockAddress = toXirArgument(emitLea(peekLock()));
+
+            unlock();
+
+            XirSnippet snippet = xir.genMonitorExit(site(x, x.object()), obj, lockAddress);
+            emitXir(snippet, x, stateBefore, true);
         }
-
-        Value lockData = peekLock();
-        XirArgument obj = toXirArgument(x.object());
-        XirArgument lockAddress = lockData == null ? null : toXirArgument(emitLea(lockData));
-
-        LIRFrameState stateBefore = state();
-        unlock(x.object(), false);
-
-        XirSnippet snippet = xir.genMonitorExit(site(x, x.object()), obj, lockAddress);
-        emitXir(snippet, x, stateBefore, true);
     }
 
     @Override

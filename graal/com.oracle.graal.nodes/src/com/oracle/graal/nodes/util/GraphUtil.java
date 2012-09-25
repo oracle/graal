@@ -236,4 +236,23 @@ public class GraphUtil {
         str.append("]");
         return str.toString();
     }
+
+    public static ValueNode originalValue(ValueNode proxy) {
+        ValueNode v = proxy;
+        do {
+            if (v instanceof ValueProxyNode) {
+                v = ((ValueProxyNode) v).value();
+                continue;
+            }
+            if (v instanceof PhiNode) {
+                ValueNode singleValue = ((PhiNode) v).singleValue();
+                if (singleValue != null) {
+                    v = singleValue;
+                    continue;
+                }
+            }
+            break;
+        } while (true);
+        return v;
+    }
 }

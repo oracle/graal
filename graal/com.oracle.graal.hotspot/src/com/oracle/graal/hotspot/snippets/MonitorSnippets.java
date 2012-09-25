@@ -87,7 +87,7 @@ public class MonitorSnippets implements SnippetsInterface {
         // Load the mark word - this includes a null-check on object
         final Word mark = loadWordFromObject(object, markOffset());
 
-        final Word lock = beginLockScope(object, false, wordKind());
+        final Word lock = beginLockScope(false, wordKind());
 
         if (useBiasedLocking()) {
             // See whether the lock is currently biased toward our thread and
@@ -233,8 +233,8 @@ public class MonitorSnippets implements SnippetsInterface {
     }
 
     @Snippet
-    public static void monitorenterEliminated(@Parameter("object") Object object) {
-        beginLockScope(object, true, wordKind());
+    public static void monitorenterEliminated() {
+        beginLockScope(true, wordKind());
     }
 
     /**
@@ -248,7 +248,7 @@ public class MonitorSnippets implements SnippetsInterface {
         }
         // BeginLockScope nodes do not read from object so a use of object
         // cannot float about the null check above
-        final Word lock = beginLockScope(object, false, wordKind());
+        final Word lock = beginLockScope(false, wordKind());
         log(logEnabled, "+lock{stub}", object);
         MonitorEnterStubCall.call(object, lock);
     }
@@ -264,7 +264,7 @@ public class MonitorSnippets implements SnippetsInterface {
             // the bias bit would be clear.
             final Word mark = loadWordFromObject(object, markOffset());
             if (mark.and(biasedLockMaskInPlace()).toLong() == biasedLockPattern()) {
-                endLockScope(object, false);
+                endLockScope();
                 log(logEnabled, "-lock{bias}", object);
                 return;
             }
@@ -292,7 +292,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 log(logEnabled, "-lock{cas}", object);
             }
         }
-        endLockScope(object, false);
+        endLockScope();
     }
 
     /**
@@ -303,12 +303,12 @@ public class MonitorSnippets implements SnippetsInterface {
         verifyOop(object);
         log(logEnabled, "-lock{stub}", object);
         MonitorExitStubCall.call(object);
-        endLockScope(object, false);
+        endLockScope();
     }
 
     @Snippet
-    public static void monitorexitEliminated(@Parameter("object") Object object) {
-        endLockScope(object, true);
+    public static void monitorexitEliminated() {
+        endLockScope();
     }
 
     public static class Templates extends AbstractTemplates<MonitorSnippets> {
@@ -327,8 +327,8 @@ public class MonitorSnippets implements SnippetsInterface {
             monitorexit = snippet("monitorexit", Object.class, boolean.class);
             monitorenterStub = snippet("monitorenterStub", Object.class, boolean.class, boolean.class);
             monitorexitStub = snippet("monitorexitStub", Object.class, boolean.class);
-            monitorenterEliminated = snippet("monitorenterEliminated", Object.class);
-            monitorexitEliminated = snippet("monitorexitEliminated", Object.class);
+            monitorenterEliminated = snippet("monitorenterEliminated");
+            monitorexitEliminated = snippet("monitorexitEliminated");
             this.useFastLocking = useFastLocking;
         }
 

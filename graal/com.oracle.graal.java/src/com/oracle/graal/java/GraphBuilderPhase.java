@@ -1005,12 +1005,17 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private MonitorEnterNode genMonitorEnter(ValueNode x) {
+        frameState.pushLock(GraphUtil.originalValue(x));
         MonitorEnterNode monitorEnter = currentGraph.add(new MonitorEnterNode(x));
         appendWithBCI(monitorEnter);
         return monitorEnter;
     }
 
     private MonitorExitNode genMonitorExit(ValueNode x) {
+        ValueNode lockedObject = frameState.popLock();
+        if (lockedObject != GraphUtil.originalValue(x)) {
+            throw new BailoutException("unbalanced monitors: mismatch at monitorexit %s %s", GraphUtil.originalValue(x), lockedObject);
+        }
         MonitorExitNode monitorExit = currentGraph.add(new MonitorExitNode(x));
         appendWithBCI(monitorExit);
         return monitorExit;
@@ -1360,7 +1365,12 @@ public final class GraphBuilderPhase extends Phase {
         }
 
         synchronizedEpilogue(FrameState.AFTER_BCI);
+        if (!frameState.locksEmpty()) {
+            System.out.println("unbalanced monitors");
+            throw new BailoutException("unbalanced monitors");
+        }
         ReturnNode returnNode = currentGraph.add(new ReturnNode(x));
+
         append(returnNode);
     }
 
