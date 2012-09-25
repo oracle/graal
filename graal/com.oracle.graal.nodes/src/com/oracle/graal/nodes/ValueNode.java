@@ -43,7 +43,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
      */
     private Stamp stamp;
 
-    @Input(notDataflow = true) private NodeInputList<ValueNode> dependencies;
+    @Input(notDataflow = true) private final NodeInputList<ValueNode> dependencies;
 
     /**
      * This collection keeps dependencies that should be observed while scheduling (guards, etc.).

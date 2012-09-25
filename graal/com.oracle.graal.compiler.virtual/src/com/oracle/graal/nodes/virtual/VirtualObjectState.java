@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 public final class VirtualObjectState extends EscapeObjectState implements Node.IterableNodeType, LIRLowerable {
 
-    @Input private NodeInputList<ValueNode> fieldValues;
+    @Input private final NodeInputList<ValueNode> fieldValues;
 
     public NodeInputList<ValueNode> fieldValues() {
         return fieldValues;
