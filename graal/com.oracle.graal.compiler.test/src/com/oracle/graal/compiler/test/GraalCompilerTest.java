@@ -196,6 +196,10 @@ public abstract class GraalCompilerTest {
         Assert.assertTrue(failed + " of " + n + " failed", failed == 0);
     }
 
+    protected Object referenceInvoke(Method method, Object receiver, Object... args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        return method.invoke(receiver, args);
+    }
+
     protected void test(String name, Object... args) {
         Method method = getMethod(name);
         Object expect = null;
@@ -203,7 +207,7 @@ public abstract class GraalCompilerTest {
         Throwable exception = null;
         try {
             // This gives us both the expected return value as well as ensuring that the method to be compiled is fully resolved
-            expect = method.invoke(this, args);
+            expect = referenceInvoke(method, receiver, args);
         } catch (InvocationTargetException e) {
             exception = e.getTargetException();
         } catch (Exception e) {

@@ -268,6 +268,7 @@ public final class GraalOptions {
     public static String HIRLowerNewInstance = "";
     public static String HIRLowerNewArray = "";
     public static String HIRLowerMonitors = "MonitorTest";
+    public static String HIRLowerNewMultiArray = "";
 
     /**
      * Use XIR to lower {@link Invoke} nodes.

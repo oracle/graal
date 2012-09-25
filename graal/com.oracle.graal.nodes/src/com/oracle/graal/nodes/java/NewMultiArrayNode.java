@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
  * The {@code NewMultiArrayNode} represents an allocation of a multi-dimensional object
  * array.
  */
-public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLowerable {
+public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLowerable, Lowerable {
 
     @Input private final NodeInputList<ValueNode> dimensions;
     private final ResolvedJavaType type;
@@ -55,6 +55,11 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLow
         this.type = type;
         this.dimensions = new NodeInputList<>(this, dimensions);
         assert dimensions.length > 0 && type.isArrayClass();
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 
     @Override

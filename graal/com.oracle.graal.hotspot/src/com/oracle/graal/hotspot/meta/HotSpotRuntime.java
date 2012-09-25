@@ -441,6 +441,10 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             newObjectSnippets.lower((InitializeObjectNode) n, tool);
         } else if (n instanceof InitializeArrayNode) {
             newObjectSnippets.lower((InitializeArrayNode) n, tool);
+        } else if (n instanceof NewMultiArrayNode) {
+            if (matches(graph, GraalOptions.HIRLowerNewMultiArray)) {
+                newObjectSnippets.lower((NewMultiArrayNode) n, tool);
+            }
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
         }

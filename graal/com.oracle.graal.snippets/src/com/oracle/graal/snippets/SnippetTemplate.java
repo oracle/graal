@@ -498,9 +498,14 @@ public class SnippetTemplate {
                 for (int j = 0; j < length; j++) {
                     LocalNode local = locals[j];
                     assert local != null;
-                    Constant constant = Constant.forBoxed(local.kind(), Array.get(array, j));
-                    ConstantNode element = ConstantNode.forConstant(constant, runtime, replaceeGraph);
-                    replacements.put(local, element);
+                    Object value = Array.get(array, j);
+                    if (value instanceof ValueNode) {
+                        replacements.put(local, (ValueNode) value);
+                    } else {
+                        Constant constant = Constant.forBoxed(local.kind(), value);
+                        ConstantNode element = ConstantNode.forConstant(constant, runtime, replaceeGraph);
+                        replacements.put(local, element);
+                    }
                 }
             }
         }
