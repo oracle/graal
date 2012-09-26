@@ -31,12 +31,14 @@ public class MonitorTest extends GraalCompilerTest {
 
     @Test
     public void test0() {
-        test("lockObjectSimple", new Object(), "test1");
+        test("lockObjectSimple", new Object(), new Object());
+        test("lockObjectSimple", new Object(), null);
     }
 
     @Test
     public void test0_1() {
-        test("lockThisSimple", "test1");
+        test("lockThisSimple", "test1", new Object());
+        test("lockThisSimple", "test1", null);
     }
 
     @Test
@@ -123,15 +125,19 @@ public class MonitorTest extends GraalCompilerTest {
         return box[0];
     }
 
-    public static String lockObjectSimple(Object o, String value) {
+    public static Object lockObjectSimple(Object o, Object value) {
         synchronized (o) {
+            value.hashCode();
             return value;
         }
     }
 
-    public String lockThisSimple(String value) {
+    public String lockThisSimple(String value, Object o) {
         synchronized (this) {
-            return value;
+            synchronized (value) {
+                o.hashCode();
+                return value;
+            }
         }
     }
 
