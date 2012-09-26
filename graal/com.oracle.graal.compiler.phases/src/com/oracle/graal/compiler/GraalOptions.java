@@ -267,7 +267,7 @@ public final class GraalOptions {
     public static String HIRLowerInstanceOf = "";
     public static String HIRLowerNewInstance = "";
     public static String HIRLowerNewArray = "";
-    public static String HIRLowerMonitors = "MonitorTest";
+    public static String HIRLowerMonitors = "";
     public static String HIRLowerNewMultiArray = "";
 
     /**
