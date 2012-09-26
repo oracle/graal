@@ -200,25 +200,27 @@ public abstract class GraalCompilerTest {
         return method.invoke(receiver, args);
     }
 
-    protected void test(String name, Object... args) {
-        Method method = getMethod(name);
-        Object expect = null;
-        Object receiver = Modifier.isStatic(method.getModifiers()) ? null : this;
-        Throwable exception = null;
+    static class Result {
+        final Object returnValue;
+        final Throwable exception;
+        public Result(Object returnValue, Throwable exception) {
+            this.returnValue = returnValue;
+            this.exception = exception;
+        }
+    }
+
+    protected Result executeExpected(Method method, Object receiver, Object... args) {
         try {
             // This gives us both the expected return value as well as ensuring that the method to be compiled is fully resolved
-            expect = referenceInvoke(method, receiver, args);
+            return new Result(referenceInvoke(method, receiver, args), null);
         } catch (InvocationTargetException e) {
-            exception = e.getTargetException();
+            return new Result(null, e.getTargetException());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
 
-        if (runtime == null) {
-            return;
-        }
-
-        InstalledCode compiledMethod = getCode(runtime.getResolvedJavaMethod(method), parse(method));
+    protected Result executeActual(Method method, Object receiver, Object... args) {
         Object[] executeArgs;
         if (receiver == null) {
             executeArgs = args;
@@ -230,16 +232,29 @@ public abstract class GraalCompilerTest {
             }
         }
 
-        if (exception != null) {
-            try {
-                compiledMethod.executeVarargs(executeArgs);
-                Assert.fail("expected " + exception);
-            } catch (Throwable e) {
-                Assert.assertEquals(exception.getClass(), e.getClass());
-            }
+        InstalledCode compiledMethod = getCode(runtime.getResolvedJavaMethod(method), parse(method));
+        try {
+            return new Result(compiledMethod.executeVarargs(executeArgs), null);
+        } catch (Throwable e) {
+            return new Result(null, e);
+        }
+    }
+
+    protected void test(String name, Object... args) {
+        Method method = getMethod(name);
+        Object receiver = Modifier.isStatic(method.getModifiers()) ? null : this;
+
+        Result expect = executeExpected(method, receiver, args);
+        if (runtime == null) {
+            return;
+        }
+        Result actual = executeActual(method, receiver, args);
+
+        if (expect.exception != null) {
+            Assert.assertTrue("expected " + expect.exception, actual.exception != null);
+            Assert.assertEquals(expect.exception.getClass(), actual.exception.getClass());
         } else {
-            Object actual = compiledMethod.executeVarargs(executeArgs);
-            assertEquals(expect, actual);
+            assertEquals(expect.returnValue, actual.returnValue);
         }
     }
 
