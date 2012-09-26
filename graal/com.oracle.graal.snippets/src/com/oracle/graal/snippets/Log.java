@@ -52,6 +52,12 @@ public final class Log {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 
+    @SuppressWarnings("unused")
+    @NodeIntrinsic(RuntimeCallNode.class)
+    private static void printf(@ConstantNodeParameter RuntimeCall logPrintf, String format, long value) {
+        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
+    }
+
     public static void print(boolean value) {
         log(RuntimeCall.LogPrimitive, Kind.Boolean.typeChar, value ? 1L : 0L, false);
     }
@@ -74,6 +80,13 @@ public final class Log {
 
     public static void print(long value) {
         log(RuntimeCall.LogPrimitive, Kind.Long.typeChar, value, false);
+    }
+
+    /**
+     * @param format a C style printf format value - must be between 0 and 1024 characters
+     */
+    public static void printf(String format, long value) {
+        printf(RuntimeCall.LogPrintf, format, value);
     }
 
     public static void print(float value) {

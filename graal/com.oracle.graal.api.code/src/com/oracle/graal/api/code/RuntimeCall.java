@@ -49,6 +49,7 @@ public class RuntimeCall {
     public static final RuntimeCall ArithmeticTan = new RuntimeCall("ArithmeticTan", Double, false, Double);
     public static final RuntimeCall ArithmeticSin = new RuntimeCall("ArithmeticSin", Double, false, Double);
     public static final RuntimeCall GenericCallback = new RuntimeCall("GenericCallback", Object, true, Object, Object);
+    public static final RuntimeCall LogPrintf = new RuntimeCall("LogPrintf", Void, false, Object, Long);
     public static final RuntimeCall LogPrimitive = new RuntimeCall("LogPrimitive", Void, false, Int, Long, Boolean);
     public static final RuntimeCall LogObject = new RuntimeCall("LogObject", Void, false, Object, Int);
 
