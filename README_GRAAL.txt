@@ -1,6 +1,6 @@
 Building Graal
 --------------
-There is a Python script in graal/mxtool/mx.py that simplifies working with the code
+There is a Python script in mxtool/mx.py that simplifies working with the code
 base. It requires Python 2.7. While you can run this script by using an absolute path,
 it's more convenient to add graal/mxtool to your PATH environment variable so that the
 'mx' helper script can be used. The following instructions in this file assume this
