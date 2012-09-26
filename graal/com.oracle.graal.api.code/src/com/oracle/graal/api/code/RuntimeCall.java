@@ -34,32 +34,38 @@ public class RuntimeCall {
 
     // TODO Move the singletons to projects where they are actually used. A couple of them
     // are HotSpot-specific.
-    public static final RuntimeCall UnwindException = new RuntimeCall(Void, true, Object);
-    public static final RuntimeCall Deoptimize = new RuntimeCall(Void, true);
-    public static final RuntimeCall RegisterFinalizer = new RuntimeCall(Void, true, Object);
-    public static final RuntimeCall SetDeoptInfo = new RuntimeCall(Void, true, Object);
-    public static final RuntimeCall CreateNullPointerException = new RuntimeCall(Object, true);
-    public static final RuntimeCall CreateOutOfBoundsException = new RuntimeCall(Object, true, Int);
-    public static final RuntimeCall JavaTimeMillis = new RuntimeCall(Long, false);
-    public static final RuntimeCall JavaTimeNanos = new RuntimeCall(Long, false);
-    public static final RuntimeCall Debug = new RuntimeCall(Void, true);
-    public static final RuntimeCall ArithmeticFrem = new RuntimeCall(Float, false, Float, Float);
-    public static final RuntimeCall ArithmeticDrem = new RuntimeCall(Double, false, Double, Double);
-    public static final RuntimeCall ArithmeticCos = new RuntimeCall(Double, false, Double);
-    public static final RuntimeCall ArithmeticTan = new RuntimeCall(Double, false, Double);
-    public static final RuntimeCall ArithmeticSin = new RuntimeCall(Double, false, Double);
-    public static final RuntimeCall GenericCallback = new RuntimeCall(Object, true, Object, Object);
-    public static final RuntimeCall LogPrimitive = new RuntimeCall(Void, false, Int, Long, Boolean);
-    public static final RuntimeCall LogObject = new RuntimeCall(Void, false, Object, Int);
+    public static final RuntimeCall UnwindException = new RuntimeCall("UnwindException", Void, true, Object);
+    public static final RuntimeCall Deoptimize = new RuntimeCall("Deoptimize", Void, true);
+    public static final RuntimeCall RegisterFinalizer = new RuntimeCall("RegisterFinalizer", Void, true, Object);
+    public static final RuntimeCall SetDeoptInfo = new RuntimeCall("SetDeoptInfo", Void, true, Object);
+    public static final RuntimeCall CreateNullPointerException = new RuntimeCall("CreateNullPointerException", Object, true);
+    public static final RuntimeCall CreateOutOfBoundsException = new RuntimeCall("CreateOutOfBoundsException", Object, true, Int);
+    public static final RuntimeCall JavaTimeMillis = new RuntimeCall("JavaTimeMillis", Long, false);
+    public static final RuntimeCall JavaTimeNanos = new RuntimeCall("JavaTimeNanos", Long, false);
+    public static final RuntimeCall Debug = new RuntimeCall("Debug", Void, true);
+    public static final RuntimeCall ArithmeticFrem = new RuntimeCall("ArithmeticFrem", Float, false, Float, Float);
+    public static final RuntimeCall ArithmeticDrem = new RuntimeCall("ArithmeticDrem", Double, false, Double, Double);
+    public static final RuntimeCall ArithmeticCos = new RuntimeCall("ArithmeticCos", Double, false, Double);
+    public static final RuntimeCall ArithmeticTan = new RuntimeCall("ArithmeticTan", Double, false, Double);
+    public static final RuntimeCall ArithmeticSin = new RuntimeCall("ArithmeticSin", Double, false, Double);
+    public static final RuntimeCall GenericCallback = new RuntimeCall("GenericCallback", Object, true, Object, Object);
+    public static final RuntimeCall LogPrimitive = new RuntimeCall("LogPrimitive", Void, false, Int, Long, Boolean);
+    public static final RuntimeCall LogObject = new RuntimeCall("LogObject", Void, false, Object, Int);
 
+    private final String name;
     private final Kind resultKind;
     private final Kind[] argumentKinds;
     private final boolean hasSideEffect;
 
-    public RuntimeCall(Kind resultKind, boolean hasSideEffect, Kind... args) {
+    public RuntimeCall(String name, Kind resultKind, boolean hasSideEffect, Kind... args) {
+        this.name = name;
         this.resultKind = resultKind;
         this.argumentKinds = args;
         this.hasSideEffect = hasSideEffect;
+    }
+
+    public String getName() {
+        return name;
     }
 
     public Kind getResultKind() {
@@ -72,5 +78,10 @@ public class RuntimeCall {
 
     public boolean hasSideEffect() {
         return hasSideEffect;
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 }
