@@ -473,7 +473,7 @@ public class SnippetTemplate {
      */
     private IdentityHashMap<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider runtime, SnippetTemplate.Arguments args) {
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
-
+        assert args.length() == parameters.size() : "number of args (" + args.length() + ") != number of parameters (" + parameters.size() + ")";
         for (Map.Entry<String, Object> e : args) {
             String name = e.getKey();
             Object parameter = parameters.get(name);
