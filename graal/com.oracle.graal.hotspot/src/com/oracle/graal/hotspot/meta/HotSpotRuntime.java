@@ -215,8 +215,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
      */
     @Override
     public int getCustomStackAreaSize() {
-        // TODO shouldn't be hard coded
-        return 8;
+        return graalRuntime.getTarget().wordSize;
     }
 
     @Override
