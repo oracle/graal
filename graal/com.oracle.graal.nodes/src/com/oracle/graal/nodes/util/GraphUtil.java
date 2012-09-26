@@ -237,22 +237,42 @@ public class GraphUtil {
         return str.toString();
     }
 
+    /**
+     * Tries to find an original value of the given node by traversing through proxies and unambiguous phis.
+     *
+     * @param proxy The node whose original value should be determined.
+     */
     public static ValueNode originalValue(ValueNode proxy) {
         ValueNode v = proxy;
         do {
             if (v instanceof ValueProxyNode) {
                 v = ((ValueProxyNode) v).value();
-                continue;
+            } else if (v instanceof PhiNode) {
+                v = ((PhiNode) v).singleValue();
+            } else {
+                break;
             }
-            if (v instanceof PhiNode) {
-                ValueNode singleValue = ((PhiNode) v).singleValue();
-                if (singleValue != null) {
-                    v = singleValue;
-                    continue;
+        } while (v != null);
+
+        // if the simple check fails (this can happen for complicated phi/proxy/phi constructs), we do an exhaustive search
+        if (v == null) {
+            NodeWorkList worklist = proxy.graph().createNodeWorkList();
+            worklist.add(proxy);
+            for (Node node : worklist) {
+                if (node instanceof ValueProxyNode) {
+                    worklist.add(((ValueProxyNode) node).value());
+                } else if (node instanceof PhiNode) {
+                    worklist.addAll(((PhiNode) node).values());
+                } else {
+                    if (v == null) {
+                        v = (ValueNode) node;
+                    } else {
+                        return null;
+                    }
                 }
             }
-            break;
-        } while (true);
+        }
         return v;
     }
+
 }
