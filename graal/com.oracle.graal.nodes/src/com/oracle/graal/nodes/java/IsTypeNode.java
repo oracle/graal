@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class IsTypeNode extends BooleanNode implements Canonicalizable, LIRLowerable {
+public final class IsTypeNode extends BooleanNode implements Canonicalizable, Lowerable, LIRLowerable {
 
     @Input private ValueNode objectClass;
     private final ResolvedJavaType type;
@@ -53,6 +53,11 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
 
     public ResolvedJavaType type() {
         return type;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 
     @Override

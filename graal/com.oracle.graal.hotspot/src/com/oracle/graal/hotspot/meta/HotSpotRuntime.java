@@ -418,6 +418,12 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             if (matches(graph, GraalOptions.HIRLowerInstanceOf)) {
                 instanceofSnippets.lower((InstanceOfNode) n, tool);
             }
+        } else if (n instanceof IsTypeNode) {
+            IsTypeNode isType = (IsTypeNode) n;
+            ValueNode objectHub = isType.objectClass();
+            ConstantNode hub = ConstantNode.forObject(new HotSpotKlassOop(isType.type()), this, graph);
+            ObjectEqualsNode typeCheck = graph.unique(new ObjectEqualsNode(objectHub, hub));
+            graph.replaceFloating(isType, typeCheck);
         } else if (n instanceof NewInstanceNode) {
             if (matches(graph, GraalOptions.HIRLowerNewInstance)) {
                 newObjectSnippets.lower((NewInstanceNode) n, tool);

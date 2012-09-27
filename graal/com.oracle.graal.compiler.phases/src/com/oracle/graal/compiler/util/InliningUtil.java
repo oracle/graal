@@ -190,8 +190,8 @@ public class InliningUtil {
             // receiver null check must be before the type check
             InliningUtil.receiverNullCheck(invoke);
             ValueNode receiver = invoke.methodCallTarget().receiver();
-            ReadHubNode objectClass = graph.add(new ReadHubNode(receiver));
-            IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClass, type));
+            ReadHubNode receiverHub = graph.add(new ReadHubNode(receiver));
+            IsTypeNode isTypeNode = graph.unique(new IsTypeNode(receiverHub, type));
             FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, invoke.leafGraphId()));
             ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
             assert invoke.predecessor() != null;
@@ -199,7 +199,7 @@ public class InliningUtil {
             ValueNode anchoredReceiver = createAnchoredReceiver(graph, anchor, type, receiver, true);
             invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
-            graph.addBeforeFixed(invoke.node(), objectClass);
+            graph.addBeforeFixed(invoke.node(), receiverHub);
             graph.addBeforeFixed(invoke.node(), guard);
             graph.addBeforeFixed(invoke.node(), anchor);
 
