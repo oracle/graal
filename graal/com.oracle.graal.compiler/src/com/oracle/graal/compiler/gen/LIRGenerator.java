@@ -33,7 +33,6 @@ import java.util.Map.Entry;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaType.Representation;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
@@ -689,8 +688,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             emitInstanceOfBranch((InstanceOfNode) node, trueSuccessor, falseSuccessor, info);
         } else if (node instanceof ConstantNode) {
             emitConstantBranch(((ConstantNode) node).asConstant().asBoolean(), trueSuccessor, falseSuccessor, info);
-        } else if (node instanceof IsTypeNode) {
-            emitTypeBranch((IsTypeNode) node, trueSuccessor, falseSuccessor, info);
         } else {
             throw GraalInternalError.unimplemented(node.toString());
         }
@@ -728,16 +725,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         LabelRef block = value ? trueSuccessorBlock : falseSuccessorBlock;
         if (block != null) {
             emitJump(block, info);
-        }
-    }
-
-    public void emitTypeBranch(IsTypeNode x, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
-        XirArgument thisClass = toXirArgument(x.objectClass());
-        XirArgument otherClass = toXirArgument(x.type().getEncoding(Representation.ObjectHub));
-        XirSnippet snippet = xir.genTypeBranch(site(x), thisClass, otherClass, x.type());
-        emitXir(snippet, x, info, null, false, trueSuccessor, falseSuccessor);
-        if (trueSuccessor != null) {
-            emitJump(trueSuccessor, null);
         }
     }
 

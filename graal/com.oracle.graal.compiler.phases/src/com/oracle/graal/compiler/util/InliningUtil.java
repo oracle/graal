@@ -28,6 +28,7 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.JavaType.Representation;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
@@ -191,8 +192,9 @@ public class InliningUtil {
             InliningUtil.receiverNullCheck(invoke);
             ValueNode receiver = invoke.methodCallTarget().receiver();
             ReadHubNode receiverHub = graph.add(new ReadHubNode(receiver));
-            IsTypeNode isTypeNode = graph.unique(new IsTypeNode(receiverHub, type));
-            FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, invoke.leafGraphId()));
+            ConstantNode typeHub = ConstantNode.forConstant(type.getEncoding(Representation.ObjectHub), runtime, graph);
+            ObjectEqualsNode typeCheck = graph.unique(new ObjectEqualsNode(receiverHub, typeHub));
+            FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, invoke.leafGraphId()));
             ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
             assert invoke.predecessor() != null;
 

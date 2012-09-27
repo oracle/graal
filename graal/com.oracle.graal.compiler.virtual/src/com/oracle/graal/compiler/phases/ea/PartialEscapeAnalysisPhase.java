@@ -440,8 +440,6 @@ class EscapeAnalysisIteration {
                     metricOtherRemoved.increment();
                 }
                 usageFound = true;
-            } else if (node instanceof IsTypeNode) {
-                throw new GraalInternalError("a newly created object can never be an object hub");
             } else if (node instanceof AccessMonitorNode) {
                 AccessMonitorNode x = (AccessMonitorNode) node;
                 ObjectState obj = state.objectState(x.object());

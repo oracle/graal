@@ -30,7 +30,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
@@ -38,7 +37,6 @@ import com.oracle.graal.nodes.util.*;
 public class CheckCastEliminationPhase extends Phase {
 
     private static final DebugMetric metricInstanceOfRegistered = Debug.metric("InstanceOfRegistered");
-    private static final DebugMetric metricIsTypeRegistered = Debug.metric("IsTypeRegistered");
     private static final DebugMetric metricNullCheckRegistered = Debug.metric("NullCheckRegistered");
     private static final DebugMetric metricCheckCastRemoved = Debug.metric("CheckCastRemoved");
     private static final DebugMetric metricInstanceOfRemoved = Debug.metric("InstanceOfRemoved");
@@ -290,15 +288,6 @@ public class CheckCastEliminationPhase extends Phase {
                             state.knownNotNull.add(nullCheck.object());
                         }
                         metricNullCheckRegistered.increment();
-                    } else if (ifNode.compare() instanceof IsTypeNode) {
-                        IsTypeNode isType = (IsTypeNode) ifNode.compare();
-                        if (isType.objectClass() instanceof ReadHubNode && (node == ifNode.trueSuccessor())) {
-                            ReadHubNode readHub = (ReadHubNode) isType.objectClass();
-                            ValueNode object = readHub.object();
-                            state.knownNotNull.add(object);
-                            state.knownTypes.put(object, tighten(isType.type(), state.getNodeType(object)));
-                            metricIsTypeRegistered.increment();
-                        }
                     }
                 }
                 for (GuardNode guard : begin.guards().snapshot()) {
