@@ -51,11 +51,17 @@ public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowera
     @Override
     public void generate(LIRGenerator gen) {
         long vmErrorStub = HotSpotGraalRuntime.getInstance().getConfig().vmErrorStub;
-        LIRFrameState state = gen.state();
-        BytecodePosition pos = state.topFrame;
-        String where = CodeUtil.append(new StringBuilder(100), pos).toString();
+        String where;
+        try {
+            LIRFrameState state = gen.state();
+            BytecodePosition pos = state.topFrame;
+            where = "near or " + CodeUtil.append(new StringBuilder(100), pos).toString().replace(CodeUtil.NEW_LINE, CodeUtil.NEW_LINE + "\t");
+        } catch (Throwable t) {
+            // Report a less accurate location when debug info cannot be obtained
+            where = "in compiled code for " + MetaUtil.format("%H.%n(%p)", gen.method());
+        }
         Kind[] signature = new Kind[] {Kind.Object, Kind.Object, Kind.Long};
-        gen.emitCall(vmErrorStub, Kind.Void, signature, true, Constant.forObject(where), gen.operand(format), gen.operand(value));
+        gen.emitCall(vmErrorStub, Kind.Void, signature, false, Constant.forObject(where), gen.operand(format), gen.operand(value));
     }
 
     @SuppressWarnings("unused")

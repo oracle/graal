@@ -127,6 +127,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return target;
     }
 
+    public ResolvedJavaMethod method() {
+        return method;
+    }
+
     /**
      * Returns the operand that has been previously initialized by {@link #setResult(ValueNode, Value)}
      * with the result of an instruction.
