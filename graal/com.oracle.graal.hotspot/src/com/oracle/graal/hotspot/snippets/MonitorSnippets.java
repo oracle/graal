@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.hotspot.nodes.BeginLockScopeNode.*;
 import static com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode.*;
 import static com.oracle.graal.hotspot.nodes.EndLockScopeNode.*;
+import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.nodes.DirectObjectStoreNode.*;
 
@@ -69,7 +70,7 @@ public class MonitorSnippets implements SnippetsInterface {
      */
     private static final String TRACE_METHOD_FILTER = System.getProperty("graal.monitors.trace.methodFilter");
 
-    public static final boolean CHECK_BALANCED_MONITORS = Boolean.getBoolean("graal.monitors.checkBalance");
+    public static final boolean CHECK_BALANCED_MONITORS = Boolean.getBoolean("graal.monitors.checkBalanced");
 
     @Snippet
     public static void monitorenter(@Parameter("object") Object object, @ConstantParameter("trace") boolean trace) {
@@ -380,9 +381,7 @@ public class MonitorSnippets implements SnippetsInterface {
         final Word counter = MonitorCounterNode.counter(wordKind());
         final int count = UnsafeLoadNode.load(counter, 0, 0, Kind.Int);
         if (count != 0) {
-            Log.print(errMsg);
-            Log.println(count);
-            DirectObjectStoreNode.storeInt(Word.zero(), 0, 0, count + 1);
+            vmError(errMsg, count);
         }
     }
 
@@ -519,7 +518,7 @@ public class MonitorSnippets implements SnippetsInterface {
                     List<ReturnNode> rets = graph.getNodes().filter(ReturnNode.class).snapshot();
                     for (ReturnNode ret : rets) {
                         returnType = checkCounter.signature().returnType(checkCounter.holder());
-                        ConstantNode errMsg = ConstantNode.forObject("unbalanced monitors in " + MetaUtil.format("%H.%n(%p)", graph.method()), runtime, graph);
+                        ConstantNode errMsg = ConstantNode.forObject("unbalanced monitors in " + MetaUtil.format("%H.%n(%p)", graph.method()) + ", count = %d", runtime, graph);
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter, new ValueNode[] {errMsg}, returnType));
                         invoke = graph.add(new InvokeNode(callTarget, 0, -1));
                         List<ValueNode> stack = Collections.emptyList();

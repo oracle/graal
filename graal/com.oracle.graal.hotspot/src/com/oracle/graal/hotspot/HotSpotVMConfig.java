@@ -180,6 +180,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long fastMonitorEnterStub;
     public long fastMonitorExitStub;
     public long verifyOopStub;
+    public long vmErrorStub;
 
     // special registers
     public final Register threadRegister = AMD64.r15;

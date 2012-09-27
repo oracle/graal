@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.snippets;
 
+import java.io.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -31,7 +33,7 @@ import com.oracle.graal.nodes.extended.*;
 //JaCoCo Exclude
 
 /**
- * Provides printf-like debug facility. This should only be used in {@linkplain Snippet snippets}.
+ * Provides {@link PrintStream}-like logging facility. This should only be used in {@linkplain Snippet snippets}.
  */
 public final class Log {
 
@@ -83,7 +85,10 @@ public final class Log {
     }
 
     /**
-     * @param format a C style printf format value - must be between 0 and 1024 characters
+     * Prints a formatted string to the log stream.
+     *
+     * @param format a C style printf format value that can contain at most one conversion specifier (i.e., a sequence
+     *            of characters starting with '%').
      */
     public static void printf(String format, long value) {
         printf(RuntimeCall.LogPrintf, format, value);
