@@ -259,7 +259,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
                         assert vtableEntryOffset > 0;
                         // Cannot use 'unique' here as we don't want to common out with a hub load that is scheduled
                         // below the invoke we are lowering.
-                        ReadHubNode hub = graph.add(new ReadHubNode(receiver));
+                        LoadHubNode hub = graph.add(new LoadHubNode(receiver));
                         Kind wordKind = graalRuntime.getTarget().wordKind;
                         Stamp nonNullWordStamp = StampFactory.forWord(wordKind, true);
                         ReadNode methodOop = graph.add(new ReadNode(hub, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, vtableEntryOffset, graph), nonNullWordStamp));
@@ -359,7 +359,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
                         assert elementType.name().equals("Ljava/lang/Object;") : elementType.name();
                     }
                 } else {
-                    ReadHubNode arrayClass = graph.add(new ReadHubNode(array));
+                    LoadHubNode arrayClass = graph.add(new LoadHubNode(array));
                     FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Object, config.arrayClassElementOffset, graph), null, StampFactory.objectNonNull()));
                     checkcast = graph.add(new CheckCastNode(arrayElementKlass, null, value));
                     graph.addBeforeFixed(storeIndexed, checkcast);
@@ -403,12 +403,12 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
                 }
                 graph.addAfterFixed(write, writeBarrier);
             }
-        } else if (n instanceof ReadHubNode) {
-            ReadHubNode readHub = (ReadHubNode) n;
-            ValueNode object = readHub.object();
+        } else if (n instanceof LoadHubNode) {
+            LoadHubNode loadHub = (LoadHubNode) n;
+            ValueNode object = loadHub.object();
             ValueNode guard = tool.createNullCheckGuard(object, StructuredGraph.INVALID_GRAPH_ID);
             FloatingReadNode hub = graph.add(new FloatingReadNode(object, LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Object, config.hubOffset, graph), null, StampFactory.objectNonNull(), guard));
-            graph.replaceFloating(readHub, hub);
+            graph.replaceFloating(loadHub, hub);
         } else if (n instanceof CheckCastNode) {
             if (matches(graph, GraalOptions.HIRLowerCheckcast)) {
                 checkcastSnippets.lower((CheckCastNode) n, tool);
@@ -494,7 +494,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
                 }
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
-                ReadHubNode hub = graph.add(new ReadHubNode(receiver));
+                LoadHubNode hub = graph.add(new LoadHubNode(receiver));
                 Stamp resultStamp = StampFactory.declaredNonNull(getResolvedJavaType(Class.class));
                 FloatingReadNode result = graph.unique(new FloatingReadNode(hub, LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Object, config.classMirrorOffset, graph), null, resultStamp));
                 ReturnNode ret = graph.add(new ReturnNode(result));

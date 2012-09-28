@@ -193,7 +193,7 @@ public class HotSpotSnippetUtils {
      * Loads the hub from a object, null checking it first.
      */
     static Object loadHub(Object object) {
-        return ReadHubNode.loadHub(object);
+        return LoadHubNode.loadHub(object);
     }
 
 

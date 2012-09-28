@@ -32,14 +32,14 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Loads an object's {@linkplain Representation#ObjectHub hub}, null-checking the object first.
  */
-public final class ReadHubNode extends FloatingNode implements Lowerable, Canonicalizable {
+public final class LoadHubNode extends FloatingNode implements Lowerable, Canonicalizable {
     @Input private ValueNode object;
 
     public ValueNode object() {
         return object;
     }
 
-    public ReadHubNode(ValueNode object) {
+    public LoadHubNode(ValueNode object) {
         super(StampFactory.objectNonNull());
         this.object = object;
     }

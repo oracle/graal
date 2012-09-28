@@ -191,7 +191,7 @@ public class InliningUtil {
             // receiver null check must be before the type check
             InliningUtil.receiverNullCheck(invoke);
             ValueNode receiver = invoke.methodCallTarget().receiver();
-            ReadHubNode receiverHub = graph.unique(new ReadHubNode(receiver));
+            LoadHubNode receiverHub = graph.unique(new LoadHubNode(receiver));
             ConstantNode typeHub = ConstantNode.forConstant(type.getEncoding(Representation.ObjectHub), runtime, graph);
             ObjectEqualsNode typeCheck = graph.unique(new ObjectEqualsNode(receiverHub, typeHub));
             FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, invoke.leafGraphId()));
@@ -334,7 +334,7 @@ public class InliningUtil {
             }
 
             // replace the invoke with a switch on the type of the actual receiver
-            ReadHubNode receiverHub = graph.unique(new ReadHubNode(invoke.methodCallTarget().receiver()));
+            LoadHubNode receiverHub = graph.unique(new LoadHubNode(invoke.methodCallTarget().receiver()));
             FixedNode dispatchOnType = createDispatchOnType(graph, receiverHub, calleeEntryNodes, unknownTypeNode);
 
             assert invoke.next() == continuation;
@@ -419,7 +419,7 @@ public class InliningUtil {
 
             MergeNode calleeEntryNode = graph.add(new MergeNode());
             calleeEntryNode.setProbability(invoke.probability());
-            ReadHubNode receiverHub = graph.unique(new ReadHubNode(invoke.methodCallTarget().receiver()));
+            LoadHubNode receiverHub = graph.unique(new LoadHubNode(invoke.methodCallTarget().receiver()));
 
             FixedNode unknownTypeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
             FixedNode dispatchOnType = createDispatchOnType(graph, receiverHub, new BeginNode[] {calleeEntryNode}, unknownTypeNode);
@@ -435,7 +435,7 @@ public class InliningUtil {
             InliningUtil.inline(invoke, calleeGraph, false);
         }
 
-        private FixedNode createDispatchOnType(StructuredGraph graph, ReadHubNode objectClassNode, BeginNode[] calleeEntryNodes, FixedNode unknownTypeSux) {
+        private FixedNode createDispatchOnType(StructuredGraph graph, LoadHubNode objectClassNode, BeginNode[] calleeEntryNodes, FixedNode unknownTypeSux) {
             assert ptypes.length > 1;
 
             ResolvedJavaType[] types = new ResolvedJavaType[ptypes.length];

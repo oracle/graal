@@ -632,8 +632,8 @@ class EscapeAnalysisIteration {
                 }
                 changed = true;
                 usageFound = true;
-            } else if (node instanceof ReadHubNode) {
-                ReadHubNode x = (ReadHubNode) node;
+            } else if (node instanceof LoadHubNode) {
+                LoadHubNode x = (LoadHubNode) node;
                 ObjectState obj = state.objectState(x.object());
                 assert obj != null : x;
                 if (changeGraph) {
