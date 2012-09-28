@@ -193,7 +193,7 @@ public class HotSpotSnippetUtils {
      * Loads the hub from a object, null checking it first.
      */
     static Object loadHub(Object object) {
-        return UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
+        return ReadHubNode.loadHub(object);
     }
 
 
@@ -208,14 +208,14 @@ public class HotSpotSnippetUtils {
      * Gets the value of the stack pointer register as a Word.
      */
     static Word stackPointer() {
-        return HotSpotSnippetUtils.registerAsWord(stackPointerRegister()/*, wordKind()*/);
+        return HotSpotSnippetUtils.registerAsWord(stackPointerRegister());
     }
 
     /**
      * Gets the value of the thread register as a Word.
      */
     static Word thread() {
-        return HotSpotSnippetUtils.registerAsWord(threadRegister()/*, wordKind()*/);
+        return HotSpotSnippetUtils.registerAsWord(threadRegister());
     }
 
     static Word loadWordFromWord(Word address, int offset) {

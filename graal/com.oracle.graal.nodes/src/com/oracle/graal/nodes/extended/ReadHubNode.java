@@ -25,11 +25,14 @@ package com.oracle.graal.nodes.extended;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaType.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-// TODO (chaeubl) this should be a FloatingNode but Lowering is not possible in that case
-public final class ReadHubNode extends FixedWithNextNode implements Lowerable, Canonicalizable {
+/**
+ * Loads an object's {@linkplain Representation#ObjectHub hub}, null-checking the object first.
+ */
+public final class ReadHubNode extends FloatingNode implements Lowerable, Canonicalizable {
     @Input private ValueNode object;
 
     public ValueNode object() {
@@ -70,4 +73,7 @@ public final class ReadHubNode extends FixedWithNextNode implements Lowerable, C
         }
         return this;
     }
+
+    @NodeIntrinsic
+    public static native Object loadHub(Object object);
 }

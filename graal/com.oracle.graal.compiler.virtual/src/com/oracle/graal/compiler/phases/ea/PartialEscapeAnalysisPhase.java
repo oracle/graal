@@ -638,7 +638,7 @@ class EscapeAnalysisIteration {
                 assert obj != null : x;
                 if (changeGraph) {
                     ConstantNode hub = ConstantNode.forConstant(obj.virtual.type().getEncoding(Representation.ObjectHub), runtime, graph);
-                    graph.replaceFixedWithFloating(x, hub);
+                    graph.replaceFloating(x, hub);
                     metricOtherRemoved.increment();
                 }
                 changed = true;

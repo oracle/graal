@@ -191,7 +191,7 @@ public class InliningUtil {
             // receiver null check must be before the type check
             InliningUtil.receiverNullCheck(invoke);
             ValueNode receiver = invoke.methodCallTarget().receiver();
-            ReadHubNode receiverHub = graph.add(new ReadHubNode(receiver));
+            ReadHubNode receiverHub = graph.unique(new ReadHubNode(receiver));
             ConstantNode typeHub = ConstantNode.forConstant(type.getEncoding(Representation.ObjectHub), runtime, graph);
             ObjectEqualsNode typeCheck = graph.unique(new ObjectEqualsNode(receiverHub, typeHub));
             FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, invoke.leafGraphId()));
@@ -201,7 +201,6 @@ public class InliningUtil {
             ValueNode anchoredReceiver = createAnchoredReceiver(graph, anchor, type, receiver, true);
             invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
-            graph.addBeforeFixed(invoke.node(), receiverHub);
             graph.addBeforeFixed(invoke.node(), guard);
             graph.addBeforeFixed(invoke.node(), anchor);
 
@@ -335,9 +334,8 @@ public class InliningUtil {
             }
 
             // replace the invoke with a switch on the type of the actual receiver
-            ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.methodCallTarget().receiver()));
-            graph.addBeforeFixed(invoke.node(), objectClassNode);
-            FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, calleeEntryNodes, unknownTypeNode);
+            ReadHubNode receiverHub = graph.unique(new ReadHubNode(invoke.methodCallTarget().receiver()));
+            FixedNode dispatchOnType = createDispatchOnType(graph, receiverHub, calleeEntryNodes, unknownTypeNode);
 
             assert invoke.next() == continuation;
             invoke.setNext(null);
@@ -421,11 +419,10 @@ public class InliningUtil {
 
             MergeNode calleeEntryNode = graph.add(new MergeNode());
             calleeEntryNode.setProbability(invoke.probability());
-            ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.methodCallTarget().receiver()));
-            graph.addBeforeFixed(invoke.node(), objectClassNode);
+            ReadHubNode receiverHub = graph.unique(new ReadHubNode(invoke.methodCallTarget().receiver()));
 
             FixedNode unknownTypeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
-            FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, new BeginNode[] {calleeEntryNode}, unknownTypeNode);
+            FixedNode dispatchOnType = createDispatchOnType(graph, receiverHub, new BeginNode[] {calleeEntryNode}, unknownTypeNode);
 
             FixedWithNextNode pred = (FixedWithNextNode) invoke.node().predecessor();
             pred.setNext(dispatchOnType);
