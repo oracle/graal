@@ -58,9 +58,6 @@ public class MonitorEnterStubCall extends FixedWithNextNode implements LIRGenLow
         gen.append(new AMD64MonitorEnterStubCallOp(objectFixed, lockFixed, gen.state()));
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void call(Object hub, Word lock) {
-        throw new UnsupportedOperationException();
-    }
+    public static native void call(Object hub, Word lock);
 }

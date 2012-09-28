@@ -78,14 +78,10 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
         }
     }
 
-    @SuppressWarnings("unused")
     private ReadNode(ValueNode object, ValueNode location) {
         this(object, location, StampFactory.forNodeIntrinsic());
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static <T> T readMemory(Object object, Object location) {
-        throw new UnsupportedOperationException();
-    }
+    public static native <T> T readMemory(Object object, Object location);
 }

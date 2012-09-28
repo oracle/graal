@@ -47,9 +47,6 @@ public class MembarNode extends FixedWithNextNode implements LIRLowerable, Memor
         generator.emitMembar(barriers);
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void memoryBarrier(@ConstantNodeParameter int barriers) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    public static native void memoryBarrier(@ConstantNodeParameter int barriers);
 }

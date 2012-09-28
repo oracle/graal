@@ -56,9 +56,7 @@ public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable,
     }
 
     @NodeIntrinsic
-    public static int scan(@SuppressWarnings("unused") long v) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    public static native int scan(long v);
 
     @Override
     public void generate(LIRGenerator gen) {

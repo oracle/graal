@@ -62,7 +62,5 @@ public final class ExplodeLoopNode extends FixedWithNextNode {
      * A call to this method must be placed immediately prior to the loop that is to be exploded.
      */
     @NodeIntrinsic
-    public static void explodeLoop() {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    public static native void explodeLoop();
 }

@@ -77,9 +77,6 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
         gen.setResult(this, result);
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object call(@ConstantNodeParameter boolean isObjectArray, Object hub, int length) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Object call(@ConstantNodeParameter boolean isObjectArray, Object hub, int length);
 }

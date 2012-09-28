@@ -26,7 +26,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
@@ -64,9 +63,6 @@ public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowera
         gen.emitCall(vmErrorStub, Kind.Void, signature, false, Constant.forObject(where), gen.operand(format), gen.operand(value));
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void vmError(String format, long value) {
-        throw new GraalInternalError("");
-    }
+    public static native void vmError(String format, long value);
 }

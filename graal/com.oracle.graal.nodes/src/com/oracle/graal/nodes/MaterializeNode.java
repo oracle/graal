@@ -72,14 +72,8 @@ public final class MaterializeNode extends ConditionalNode {
     }
 
     @NodeIntrinsic
-    @SuppressWarnings("unused")
-    public static boolean materialize(@ConstantNodeParameter Condition condition, int x, int y) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    public static native boolean materialize(@ConstantNodeParameter Condition condition, int x, int y);
 
     @NodeIntrinsic
-    @SuppressWarnings("unused")
-    public static boolean materialize(@ConstantNodeParameter Condition condition, long x, long y) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    public static native boolean materialize(@ConstantNodeParameter Condition condition, long x, long y);
 }

@@ -76,9 +76,6 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
         }
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void writeMemory(Object object, Object value, Object location) {
-        throw new UnsupportedOperationException();
-    }
+    public static native void writeMemory(Object object, Object value, Object location);
 }

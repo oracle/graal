@@ -74,15 +74,9 @@ public class UnsafeLoadNode extends FixedWithNextNode implements Lowerable {
         tool.getRuntime().lower(this, tool);
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static <T> T load(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind kind) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    public static native <T> T load(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind kind);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object loadObject(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter boolean nonNull) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    public static native Object loadObject(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter boolean nonNull);
 }

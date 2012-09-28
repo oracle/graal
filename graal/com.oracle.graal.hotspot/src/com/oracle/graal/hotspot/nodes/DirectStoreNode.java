@@ -43,17 +43,11 @@ public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
         this.value = value;
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(long address, long value) {
-        throw new UnsupportedOperationException();
-    }
+    public static native void store(long address, long value);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(long address, boolean value) {
-        throw new UnsupportedOperationException();
-    }
+    public static native void store(long address, boolean value);
 
     @Override
     public void generate(LIRGeneratorTool gen) {

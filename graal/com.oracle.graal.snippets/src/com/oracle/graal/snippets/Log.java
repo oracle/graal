@@ -42,23 +42,14 @@ public final class Log {
     private static final int LOG_OBJECT_STRING  = 0x02;
     private static final int LOG_OBJECT_ADDRESS = 0x04;
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic(RuntimeCallNode.class)
-    private static void log(@ConstantNodeParameter RuntimeCall logObject, Object object, int flags) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    private static native void log(@ConstantNodeParameter RuntimeCall logObject, Object object, int flags);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic(RuntimeCallNode.class)
-    private static void log(@ConstantNodeParameter RuntimeCall logPrimitive, int typeChar, long value, boolean newline) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    private static native void log(@ConstantNodeParameter RuntimeCall logPrimitive, int typeChar, long value, boolean newline);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic(RuntimeCallNode.class)
-    private static void printf(@ConstantNodeParameter RuntimeCall logPrintf, String format, long value) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    private static native void printf(@ConstantNodeParameter RuntimeCall logPrintf, String format, long value);
 
     public static void print(boolean value) {
         log(RuntimeCall.LogPrimitive, Kind.Boolean.typeChar, value ? 1L : 0L, false);

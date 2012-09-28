@@ -55,14 +55,10 @@ public class ReverseBytesNode extends FloatingNode implements LIRGenLowerable, C
     }
 
     @NodeIntrinsic
-    public static int reverse(@SuppressWarnings("unused") int v) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    public static native int reverse(int v);
 
     @NodeIntrinsic
-    public static long reverse(@SuppressWarnings("unused") long v) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    public static native long reverse(long v);
 
     @Override
     public void generate(LIRGenerator gen) {

@@ -41,11 +41,8 @@ public class GetObjectAddressNode extends FixedWithNextNode implements LIRLowera
         this.object = obj;
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static long get(Object array) {
-        throw new UnsupportedOperationException();
-    }
+    public static native long get(Object array);
 
     @Override
     public void generate(LIRGeneratorTool gen) {

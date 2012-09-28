@@ -61,9 +61,6 @@ public final class CastFromHub extends FloatingNode implements Canonicalizable {
         return this;
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static <T> T castFromHub(Object object, Object hub) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    public static native <T> T castFromHub(Object object, Object hub);
 }

@@ -85,17 +85,11 @@ public final class UnsafeCastNode extends FloatingNode implements Canonicalizabl
         return false;
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static <T> T cast(Object object, @ConstantNodeParameter Class<?> toType) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    public static native <T> T cast(Object object, @ConstantNodeParameter Class<?> toType);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static <T> T cast(Object object, @ConstantNodeParameter Class<?> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    public static native <T> T cast(Object object, @ConstantNodeParameter Class<?> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull);
 
     @Override
     public void generate(LIRGeneratorTool generator) {

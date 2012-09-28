@@ -55,9 +55,6 @@ public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowera
         gen.append(new AMD64VerifyOopStubCallOp(objectFixed, info));
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object call(Object object) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Object call(Object object);
 }

@@ -226,23 +226,14 @@ public class HotSpotSnippetUtils {
         return loadWordFromObjectIntrinsic(object, 0, offset, wordKind());
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic(value = RegisterNode.class, setStampFromReturnType = true)
-    public static Word registerAsWord(@ConstantNodeParameter Register register) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Word registerAsWord(@ConstantNodeParameter Register register);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
-    private static Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    private static native Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
-    private static Word loadWordFromWordIntrinsic(Word address, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind) {
-        throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
-    }
+    private static native Word loadWordFromWordIntrinsic(Word address, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind);
 
     static {
         assert arrayIndexScale(Kind.Byte) == 1;

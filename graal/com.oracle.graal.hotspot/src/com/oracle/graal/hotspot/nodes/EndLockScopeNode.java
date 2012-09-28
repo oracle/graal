@@ -49,7 +49,5 @@ public final class EndLockScopeNode extends AbstractStateSplit implements LIRGen
     }
 
     @NodeIntrinsic
-    public static void endLockScope() {
-        throw new UnsupportedOperationException();
-    }
+    public static native void endLockScope();
 }

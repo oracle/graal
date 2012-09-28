@@ -61,7 +61,5 @@ public class JumpNode extends FixedWithNextNode {
      * @param successorIndex e.g. {@link IfNode#TRUE_EDGE}
      */
     @NodeIntrinsic
-    public static void jump(@ConstantNodeParameter int successorIndex) {
-        throw new UnsupportedOperationException();
-    }
+    public static native void jump(@ConstantNodeParameter int successorIndex);
 }

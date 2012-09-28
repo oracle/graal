@@ -62,9 +62,6 @@ public final class BeginLockScopeNode extends AbstractStateSplit implements LIRG
         gen.setResult(this, result);
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Word beginLockScope(@ConstantNodeParameter boolean eliminated, @ConstantNodeParameter Kind wordKind) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Word beginLockScope(@ConstantNodeParameter boolean eliminated, @ConstantNodeParameter Kind wordKind);
 }

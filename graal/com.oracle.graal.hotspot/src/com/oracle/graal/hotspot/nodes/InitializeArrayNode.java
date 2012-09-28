@@ -76,9 +76,6 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
         tool.getRuntime().lower(this, tool);
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object initialize(Object memory, int length, int size, @ConstantNodeParameter ResolvedJavaType type, @ConstantNodeParameter boolean fillContents) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Object initialize(Object memory, int length, int size, @ConstantNodeParameter ResolvedJavaType type, @ConstantNodeParameter boolean fillContents);
 }

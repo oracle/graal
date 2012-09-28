@@ -81,21 +81,12 @@ public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit
     }
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, Object expected, Object newValue) {
-        throw new UnsupportedOperationException();
-    }
+    public static native boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, Object expected, Object newValue);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, long expected, long newValue) {
-        throw new UnsupportedOperationException();
-    }
+    public static native boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, long expected, long newValue);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, int expected, int newValue) {
-        throw new UnsupportedOperationException();
-    }
+    public static native boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, int expected, int newValue);
 }

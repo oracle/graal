@@ -348,11 +348,8 @@ public class MonitorSnippets implements SnippetsInterface {
      */
     private static final boolean ENABLE_BREAKPOINT = false;
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic(BreakpointNode.class)
-    static void bkpt(Object object, Word mark, Word tmp, Word value) {
-        throw new GraalInternalError("");
-    }
+    static native void bkpt(Object object, Word mark, Word tmp, Word value);
 
     private static void incCounter() {
         if (CHECK_BALANCED_MONITORS) {

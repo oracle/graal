@@ -96,7 +96,5 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGe
      * @return either {@code expectedValue} or the actual value
      */
     @NodeIntrinsic
-    public static Word compareAndSwap(Object object, long offset, Word expectedValue, Word newValue) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Word compareAndSwap(Object object, long offset, Word expectedValue, Word newValue);
 }

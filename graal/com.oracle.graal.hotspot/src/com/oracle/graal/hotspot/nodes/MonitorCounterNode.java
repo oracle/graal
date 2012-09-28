@@ -48,11 +48,6 @@ public final class MonitorCounterNode extends FloatingNode implements LIRGenLowe
         gen.setResult(this, result);
     }
 
-
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Word counter(@ConstantNodeParameter Kind wordKind) {
-        throw new UnsupportedOperationException();
-    }
-
+    public static native Word counter(@ConstantNodeParameter Kind wordKind);
 }

@@ -56,9 +56,6 @@ public class MonitorExitStubCall extends FixedWithNextNode implements LIRGenLowe
         gen.append(new AMD64MonitorExitStubCallOp(objectFixed, lockFixed, gen.state()));
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void call(Object hub) {
-        throw new UnsupportedOperationException();
-    }
+    public static native void call(Object hub);
 }

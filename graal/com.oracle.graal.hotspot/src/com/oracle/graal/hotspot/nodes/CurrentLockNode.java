@@ -45,9 +45,6 @@ public final class CurrentLockNode extends FixedWithNextNode implements LIRGenLo
         gen.setResult(this, result);
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Word currentLock(@ConstantNodeParameter Kind wordKind) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Word currentLock(@ConstantNodeParameter Kind wordKind);
 }

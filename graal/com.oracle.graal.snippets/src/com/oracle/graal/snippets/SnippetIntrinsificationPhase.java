@@ -84,6 +84,7 @@ public class SnippetIntrinsificationPhase extends Phase {
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         if (intrinsic != null) {
             assert target.getAnnotation(Fold.class) == null;
+            assert Modifier.isNative(target.accessFlags()) : "node intrinsic " + target + " should be native";
 
             Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.signature(), target.holder());
             ResolvedJavaType returnType = (ResolvedJavaType) target.signature().returnType(target.holder());

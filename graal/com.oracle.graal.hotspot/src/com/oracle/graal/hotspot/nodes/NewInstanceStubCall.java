@@ -71,11 +71,6 @@ public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowe
         gen.setResult(this, result);
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object call(Object hub) {
-        throw new UnsupportedOperationException();
-    }
-
-
+    public static native Object call(Object hub);
 }

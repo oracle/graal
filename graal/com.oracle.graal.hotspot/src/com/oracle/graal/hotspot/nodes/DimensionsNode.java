@@ -53,9 +53,6 @@ public final class DimensionsNode extends FixedWithNextNode implements LIRGenLow
         gen.setResult(this, result);
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Word allocaDimsArray(@ConstantNodeParameter int rank, @ConstantNodeParameter Kind wordKind) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Word allocaDimsArray(@ConstantNodeParameter int rank, @ConstantNodeParameter Kind wordKind);
 }

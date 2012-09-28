@@ -44,9 +44,6 @@ public final class CurrentThread extends FloatingNode implements LIRLowerable {
         gen.setResult(this, gen.emitLoad(new Address(Kind.Object, thread.asValue(gen.target().wordKind), threadObjectOffset), false));
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object get(@ConstantNodeParameter int threadObjectOffset) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Object get(@ConstantNodeParameter int threadObjectOffset);
 }

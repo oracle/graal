@@ -46,29 +46,17 @@ public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerabl
         this.displacement = displacement;
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void storeObject(Object obj, @ConstantNodeParameter int displacement, long offset, Object value) {
-        throw new UnsupportedOperationException();
-    }
+    public static native void storeObject(Object obj, @ConstantNodeParameter int displacement, long offset, Object value);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void storeLong(Object obj, @ConstantNodeParameter int displacement, long offset, long value) {
-        throw new UnsupportedOperationException();
-    }
+    public static native void storeLong(Object obj, @ConstantNodeParameter int displacement, long offset, long value);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void storeWord(Object obj, @ConstantNodeParameter int displacement, long offset, Word value) {
-        throw new UnsupportedOperationException();
-    }
+    public static native void storeWord(Object obj, @ConstantNodeParameter int displacement, long offset, Word value);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void storeInt(Object obj, @ConstantNodeParameter int displacement, long offset, int value) {
-        throw new UnsupportedOperationException();
-    }
+    public static native void storeInt(Object obj, @ConstantNodeParameter int displacement, long offset, int value);
 
     @Override
     public void lower(LoweringTool tool) {

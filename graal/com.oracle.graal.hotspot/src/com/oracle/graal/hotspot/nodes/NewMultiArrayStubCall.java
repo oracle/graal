@@ -78,9 +78,6 @@ public class NewMultiArrayStubCall extends FixedWithNextNode implements LIRGenLo
         gen.setResult(this, result);
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object call(Object hub, @ConstantNodeParameter int rank, Word dims) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Object call(Object hub, @ConstantNodeParameter int rank, Word dims);
 }
