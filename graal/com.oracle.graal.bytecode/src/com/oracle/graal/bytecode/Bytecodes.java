@@ -24,9 +24,7 @@ package com.oracle.graal.bytecode;
 
 import static com.oracle.graal.bytecode.Bytecodes.Flags.*;
 
-import java.io.*;
 import java.lang.reflect.*;
-import java.util.regex.*;
 
 /**
  * The definitions of the bytecodes that are valid input to the compiler and
@@ -290,11 +288,6 @@ public class Bytecodes {
          * Denotes an instruction that writes the value of a static or instance field.
          */
         static final int FIELD_WRITE = 0x00000010;
-
-        /**
-         * Denotes an instruction that is not defined in the JVM specification.
-         */
-        static final int EXTENSION = 0x00000020;
 
         /**
          * Denotes an instruction that can cause a trap.
@@ -726,37 +719,6 @@ public class Bytecodes {
     }
 
     /**
-     * Determines if a given opcode denotes a standard bytecode. A standard bytecode is
-     * defined in the JVM specification.
-     *
-     * @param opcode an opcode to test
-     * @return {@code true} iff {@code opcode} is a standard bytecode
-     */
-    public static boolean isStandard(int opcode) {
-        return (flagsArray[opcode & 0xff] & EXTENSION) == 0;
-    }
-
-    /**
-     * Determines if a given opcode denotes an extended bytecode.
-     *
-     * @param opcode an opcode to test
-     * @return {@code true} if {@code opcode} is an extended bytecode
-     */
-    public static boolean isExtended(int opcode) {
-        return (flagsArray[opcode & 0xff] & EXTENSION) != 0;
-    }
-
-    /**
-     * Determines if a given opcode is a three-byte extended bytecode.
-     *
-     * @param opcode an opcode to test
-     * @return {@code true} if {@code (opcode & ~0xff) != 0}
-     */
-    public static boolean isThreeByteExtended(int opcode) {
-        return (opcode & ~0xff) != 0;
-    }
-
-    /**
      * Gets the arithmetic operator name for a given opcode. If {@code opcode} does not denote an
      * arithmetic instruction, then the {@linkplain #nameOf(int) name} of the opcode is returned
      * instead.
@@ -833,107 +795,5 @@ public class Bytecodes {
         Bytecodes.flagsArray[opcode] = flags;
 
         assert !isConditionalBranch(opcode) || isBranch(opcode) : "a conditional branch must also be a branch";
-    }
-
-    /**
-     * Utility for ensuring that the extended opcodes are contiguous and follow on directly
-     * from the standard JVM opcodes. If these conditions do not hold for the input source
-     * file, then it is modified 'in situ' to fix the problem.
-     *
-     * @param args {@code args[0]} is the path to this source file
-     */
-    public static void main(String[] args) throws Exception {
-        Method findWorkspaceDirectory = Class.forName("com.sun.max.ide.JavaProject").getDeclaredMethod("findWorkspaceDirectory");
-        File base = new File((File) findWorkspaceDirectory.invoke(null), "com.oracle.max.cri/src");
-        File file = new File(base, Bytecodes.class.getName().replace('.', File.separatorChar) + ".java").getAbsoluteFile();
-
-        Pattern opcodeDecl = Pattern.compile("(\\s*public static final int )(\\w+)(\\s*=\\s*)(\\d+)(;.*)");
-
-        BufferedReader br = new BufferedReader(new FileReader(file));
-        CharArrayWriter buffer = new CharArrayWriter((int) file.length());
-        PrintWriter out = new PrintWriter(buffer);
-        String line;
-        int lastExtendedOpcode = BREAKPOINT;
-        boolean modified = false;
-        int section = 0;
-        while ((line = br.readLine()) != null) {
-            if (section == 0) {
-                if (line.equals("    // Start extended bytecodes")) {
-                    section = 1;
-                }
-            } else if (section == 1) {
-                if (line.equals("    // End extended bytecodes")) {
-                    section = 2;
-                } else {
-                    Matcher matcher = opcodeDecl.matcher(line);
-                    if (matcher.matches()) {
-                        String name = matcher.group(2);
-                        String value = matcher.group(4);
-                        int opcode = Integer.parseInt(value);
-                        if (nameArray[opcode] == null || !nameArray[opcode].equalsIgnoreCase(name)) {
-                            throw new RuntimeException("Missing definition of name and flags for " + opcode + ":" + name + " -- " + nameArray[opcode]);
-                        }
-                        if (opcode != lastExtendedOpcode + 1) {
-                            System.err.println("Fixed declaration of opcode " + name + " to be " + (lastExtendedOpcode + 1) + " (was " + value + ")");
-                            opcode = lastExtendedOpcode + 1;
-                            line = line.substring(0, matcher.start(4)) + opcode + line.substring(matcher.end(4));
-                            modified = true;
-                        }
-
-                        if (opcode >= 256) {
-                            throw new RuntimeException("Exceeded maximum opcode value with " + name);
-                        }
-
-                        lastExtendedOpcode = opcode;
-                    }
-                }
-            }
-
-            out.println(line);
-        }
-        if (section == 0) {
-            throw new RuntimeException("Did not find line starting extended bytecode declarations:\n\n    // Start extended bytecodes");
-        } else if (section == 1) {
-            throw new RuntimeException("Did not find line ending extended bytecode declarations:\n\n    // End extended bytecodes");
-        }
-
-        if (modified) {
-            out.flush();
-            FileWriter fileWriter = new FileWriter(file);
-            fileWriter.write(buffer.toCharArray());
-            fileWriter.close();
-
-            System.out.println("Modified: " + file);
-        }
-
-
-        // Uncomment to print out visitor method declarations:
-//        for (int opcode = 0; opcode < flags.length; ++opcode) {
-//            if (isExtension(opcode)) {
-//                String visitorParams = length(opcode) == 1 ? "" : "int index";
-//                System.out.println("@Override");
-//                System.out.println("protected void " + name(opcode) + "(" + visitorParams + ") {");
-//                System.out.println("}");
-//                System.out.println();
-//            }
-//        }
-
-        // Uncomment to print out visitor method declarations:
-//        for (int opcode = 0; opcode < flags.length; ++opcode) {
-//            if (isExtension(opcode)) {
-//                System.out.println("case " + name(opcode).toUpperCase() + ": {");
-//                String arg = "";
-//                int length = length(opcode);
-//                if (length == 2) {
-//                    arg = "readUnsigned1()";
-//                } else if (length == 3) {
-//                    arg = "readUnsigned2()";
-//                }
-//                System.out.println("    bytecodeVisitor." + name(opcode) + "(" + arg + ");");
-//                System.out.println("    break;");
-//                System.out.println("}");
-//            }
-//        }
-
     }
 }
