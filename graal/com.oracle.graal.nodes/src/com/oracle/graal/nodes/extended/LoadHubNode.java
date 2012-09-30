@@ -22,17 +22,16 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.meta.JavaType.Representation;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaType.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * Loads an object's {@linkplain Representation#ObjectHub hub}, null-checking the object first.
  */
-public final class LoadHubNode extends FloatingNode implements Lowerable, Canonicalizable {
+public final class LoadHubNode extends FixedWithNextNode implements Lowerable, Canonicalizable {
     @Input private ValueNode object;
 
     public ValueNode object() {

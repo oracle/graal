@@ -191,7 +191,7 @@ public class InliningUtil {
             // receiver null check must be before the type check
             InliningUtil.receiverNullCheck(invoke);
             ValueNode receiver = invoke.methodCallTarget().receiver();
-            LoadHubNode receiverHub = graph.unique(new LoadHubNode(receiver));
+            LoadHubNode receiverHub = graph.add(new LoadHubNode(receiver));
             ConstantNode typeHub = ConstantNode.forConstant(type.getEncoding(Representation.ObjectHub), runtime, graph);
             ObjectEqualsNode typeCheck = graph.unique(new ObjectEqualsNode(receiverHub, typeHub));
             FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, invoke.leafGraphId()));
@@ -201,6 +201,7 @@ public class InliningUtil {
             ValueNode anchoredReceiver = createAnchoredReceiver(graph, anchor, type, receiver, true);
             invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
+            graph.addBeforeFixed(invoke.node(), receiverHub);
             graph.addBeforeFixed(invoke.node(), guard);
             graph.addBeforeFixed(invoke.node(), anchor);
 
@@ -334,7 +335,8 @@ public class InliningUtil {
             }
 
             // replace the invoke with a switch on the type of the actual receiver
-            LoadHubNode receiverHub = graph.unique(new LoadHubNode(invoke.methodCallTarget().receiver()));
+            LoadHubNode receiverHub = graph.add(new LoadHubNode(invoke.methodCallTarget().receiver()));
+            graph.addBeforeFixed(invoke.node(), receiverHub);
             FixedNode dispatchOnType = createDispatchOnType(graph, receiverHub, calleeEntryNodes, unknownTypeNode);
 
             assert invoke.next() == continuation;
@@ -419,7 +421,8 @@ public class InliningUtil {
 
             MergeNode calleeEntryNode = graph.add(new MergeNode());
             calleeEntryNode.setProbability(invoke.probability());
-            LoadHubNode receiverHub = graph.unique(new LoadHubNode(invoke.methodCallTarget().receiver()));
+            LoadHubNode receiverHub = graph.add(new LoadHubNode(invoke.methodCallTarget().receiver()));
+            graph.addBeforeFixed(invoke.node(), receiverHub);
 
             FixedNode unknownTypeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
             FixedNode dispatchOnType = createDispatchOnType(graph, receiverHub, new BeginNode[] {calleeEntryNode}, unknownTypeNode);
