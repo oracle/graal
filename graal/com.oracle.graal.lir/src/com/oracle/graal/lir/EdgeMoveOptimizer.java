@@ -130,10 +130,6 @@ public final class EdgeMoveOptimizer {
                 return;
             }
 
-            if (predInstructions.get(predInstructions.size() - 1) instanceof LIRXirInstruction) {
-                return;
-            }
-
             assert pred.suxAt(0) == block : "invalid control flow";
             assert predInstructions.get(predInstructions.size() - 1) instanceof StandardOp.JumpOp : "block must end with unconditional jump";
 
@@ -186,11 +182,6 @@ public final class EdgeMoveOptimizer {
         List<LIRInstruction> instructions = ir.lir(block);
 
         assert numSux == 2 : "method should not be called otherwise";
-
-        if (instructions.get(instructions.size() - 1) instanceof LIRXirInstruction) {
-            // cannot optimize when last instruction is Xir.
-            return;
-        }
 
         assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block must end with unconditional jump";
 

@@ -109,13 +109,6 @@ public abstract class LIRGeneratorTool {
     // Functionality that is currently implemented in XIR.
     // Some of these methods will go away when lowering is done via snippets in the front end.
     // The remainder will define the contract a runtime specific backend must provide.
-    public abstract void visitCheckCast(CheckCastNode i);
-    public abstract void visitMonitorEnter(MonitorEnterNode i);
-    public abstract void visitMonitorExit(MonitorExitNode i);
-    public abstract void visitNewInstance(NewInstanceNode i);
-    public abstract void visitNewPrimitiveArray(NewPrimitiveArrayNode i);
-    public abstract void visitNewObjectArray(NewObjectArrayNode i);
-    public abstract void visitNewMultiArray(NewMultiArrayNode i);
     public abstract void visitExceptionObject(ExceptionObjectNode i);
     public abstract void visitReturn(ReturnNode i);
 }

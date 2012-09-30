@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * Extension of a {@linkplain LocationNode location} to include a scaled index or an additional offset.
  */
-public final class IndexedLocationNode extends LocationNode implements LIRLowerable, Canonicalizable {
+public final class IndexedLocationNode extends LocationNode implements Canonicalizable {
 
     /**
      * An offset or index depending on whether {@link #indexScalingEnabled} is true or false respectively.

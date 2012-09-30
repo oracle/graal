@@ -29,7 +29,6 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.max.cri.xir.*;
 
 /**
  * The {@code Backend} class represents a compiler backend for Graal.
@@ -48,11 +47,9 @@ public abstract class Backend {
         return new FrameMap(runtime, target, registerConfig);
     }
 
-    public abstract LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, XirGenerator xir, Assumptions assumptions);
+    public abstract LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir);
 
     public abstract TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir);
-
-    public abstract XirAssembler newXirAssembler();
 
     /**
      * Emits code to do stack overflow checking.

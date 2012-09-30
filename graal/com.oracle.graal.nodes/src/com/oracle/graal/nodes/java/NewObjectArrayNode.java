@@ -25,13 +25,12 @@ package com.oracle.graal.nodes.java;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 
 /**
  * The {@code NewObjectArrayNode} represents an allocation of an object array.
  */
 @NodeInfo(nameTemplate = "NewArray {p#elementType}")
-public final class NewObjectArrayNode extends NewArrayNode implements LIRLowerable, Node.IterableNodeType {
+public final class NewObjectArrayNode extends NewArrayNode implements Node.IterableNodeType {
 
     /**
      * Constructs a new NewObjectArrayNode.
@@ -40,10 +39,5 @@ public final class NewObjectArrayNode extends NewArrayNode implements LIRLowerab
      */
     public NewObjectArrayNode(ResolvedJavaType elementClass, ValueNode length, boolean fillContents) {
         super(elementClass, length, fillContents);
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitNewObjectArray(this);
     }
 }

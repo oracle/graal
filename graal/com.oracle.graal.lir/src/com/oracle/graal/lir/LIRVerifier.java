@@ -131,7 +131,7 @@ public final class LIRVerifier {
 
             if (block.numberOfSux() > 0) {
                 LIRInstruction last = lir.lir(block).get(lir.lir(block).size() - 1);
-                assert last instanceof StandardOp.JumpOp || last instanceof LIRXirInstruction : "block with successor must end with unconditional jump";
+                assert last instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
             }
 
             for (LIRInstruction op : lir.lir(block)) {

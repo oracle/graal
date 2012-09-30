@@ -37,6 +37,7 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.target.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -48,56 +49,25 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
-import com.oracle.max.cri.xir.*;
 
 /**
  * HotSpot AMD64 specific backend.
  */
 public class HotSpotAMD64Backend extends Backend {
 
-    // this needs to correspond to graal_CodeInstaller.hpp
-    // @formatter:off
-    public static final Integer MARK_VERIFIED_ENTRY            = 0x0001;
-    public static final Integer MARK_UNVERIFIED_ENTRY          = 0x0002;
-    public static final Integer MARK_OSR_ENTRY                 = 0x0003;
-    public static final Integer MARK_UNWIND_ENTRY              = 0x0004;
-    public static final Integer MARK_EXCEPTION_HANDLER_ENTRY   = 0x0005;
-    public static final Integer MARK_DEOPT_HANDLER_ENTRY       = 0x0006;
-
-    public static final Integer MARK_STATIC_CALL_STUB          = 0x1000;
-
-    public static final Integer MARK_INVOKEINTERFACE           = 0x2001;
-    public static final Integer MARK_INVOKESTATIC              = 0x2002;
-    public static final Integer MARK_INVOKESPECIAL             = 0x2003;
-    public static final Integer MARK_INVOKEVIRTUAL             = 0x2004;
-    public static final Integer MARK_INLINE_INVOKEVIRTUAL      = 0x2005;
-
-    public static final Integer MARK_IMPLICIT_NULL             = 0x3000;
-    public static final Integer MARK_POLL_NEAR                 = 0x3001;
-    public static final Integer MARK_POLL_RETURN_NEAR          = 0x3002;
-    public static final Integer MARK_POLL_FAR                  = 0x3003;
-    public static final Integer MARK_POLL_RETURN_FAR           = 0x3004;
-
-    // @formatter:on
     public HotSpotAMD64Backend(CodeCacheProvider runtime, TargetDescription target) {
         super(runtime, target);
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, XirGenerator xir, Assumptions assumptions) {
-        return new HotSpotAMD64LIRGenerator(graph, runtime, target, frameMap, method, lir, xir, assumptions);
-    }
-
-    @Override
-    public AMD64XirAssembler newXirAssembler() {
-        return new AMD64XirAssembler(target);
+    public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
+        return new HotSpotAMD64LIRGenerator(graph, runtime, target, frameMap, method, lir);
     }
 
     static final class HotSpotAMD64LIRGenerator extends AMD64LIRGenerator {
 
-        private HotSpotAMD64LIRGenerator(Graph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, XirGenerator xir,
-                        Assumptions assumptions) {
-            super(graph, runtime, target, frameMap, method, lir, xir, assumptions);
+        private HotSpotAMD64LIRGenerator(Graph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
+            super(graph, runtime, target, frameMap, method, lir);
         }
 
         @Override
@@ -206,10 +176,10 @@ public class HotSpotAMD64Backend extends Backend {
                 Register scratch = regConfig.getScratchRegister();
                 if (config.isPollingPageFar) {
                     asm.movq(scratch, config.safepointPollingAddress);
-                    tasm.recordMark(MARK_POLL_RETURN_FAR);
+                    tasm.recordMark(Marks.MARK_POLL_RETURN_FAR);
                     asm.movq(scratch, new Address(tasm.target.wordKind, scratch.asValue()));
                 } else {
-                    tasm.recordMark(MARK_POLL_RETURN_NEAR);
+                    tasm.recordMark(Marks.MARK_POLL_RETURN_NEAR);
                     asm.movq(scratch, new Address(tasm.target.wordKind, rip.asValue()));
                 }
             }
@@ -246,11 +216,11 @@ public class HotSpotAMD64Backend extends Backend {
         Label unverifiedStub = new Label();
 
         // Emit the prefix
-        tasm.recordMark(MARK_OSR_ENTRY);
+        tasm.recordMark(Marks.MARK_OSR_ENTRY);
 
         boolean isStatic = Modifier.isStatic(method.accessFlags());
         if (!isStatic) {
-            tasm.recordMark(MARK_UNVERIFIED_ENTRY);
+            tasm.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
             CallingConvention cc = regConfig.getCallingConvention(JavaCallee, new Kind[] {Kind.Object}, target, false);
             Register inlineCacheKlass = rax; // see definition of IC_Klass in c1_LIRAssembler_x86.cpp
             Register receiver = asRegister(cc.locations[0]);
@@ -261,18 +231,18 @@ public class HotSpotAMD64Backend extends Backend {
         }
 
         asm.align(config.codeEntryAlignment);
-        tasm.recordMark(MARK_VERIFIED_ENTRY);
+        tasm.recordMark(Marks.MARK_VERIFIED_ENTRY);
 
         // Emit code for the LIR
         lir.emitCode(tasm);
 
         boolean frameOmitted = tasm.frameContext == null;
         if (!frameOmitted) {
-            tasm.recordMark(MARK_EXCEPTION_HANDLER_ENTRY);
+            tasm.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
             AMD64Call.directCall(tasm, asm, config.handleExceptionStub, null);
             AMD64Call.shouldNotReachHere(tasm, asm);
 
-            tasm.recordMark(MARK_DEOPT_HANDLER_ENTRY);
+            tasm.recordMark(Marks.MARK_DEOPT_HANDLER_ENTRY);
             AMD64Call.directCall(tasm, asm, config.handleDeoptStub, null);
             AMD64Call.shouldNotReachHere(tasm, asm);
         } else {

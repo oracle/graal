@@ -38,9 +38,9 @@ import com.oracle.graal.api.meta.JavaType.Representation;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.snippets.*;
-import com.oracle.graal.hotspot.target.amd64.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -149,7 +149,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
      * Decodes a mark to a mnemonic if possible.
      */
     private static String getMarkName(Mark mark) {
-        Field[] fields = HotSpotXirGenerator.class.getDeclaredFields();
+        Field[] fields = Marks.class.getDeclaredFields();
         for (Field f : fields) {
             if (Modifier.isStatic(f.getModifiers()) && f.getName().startsWith("MARK_")) {
                 f.setAccessible(true);
@@ -237,7 +237,7 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             graph.replaceFixedWithFixed(arrayLengthNode, safeReadArrayLength);
         } else if (n instanceof Invoke) {
             Invoke invoke = (Invoke) n;
-            if (!GraalOptions.XIRLowerInvokes && invoke.callTarget() instanceof MethodCallTargetNode) {
+            if (invoke.callTarget() instanceof MethodCallTargetNode) {
                 MethodCallTargetNode callTarget = invoke.methodCallTarget();
                 NodeInputList<ValueNode> parameters = callTarget.arguments();
                 ValueNode receiver = parameters.size() <= 0 ? null : parameters.get(0);
@@ -410,29 +410,17 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             FloatingReadNode hub = graph.add(new FloatingReadNode(object, LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Object, config.hubOffset, graph), null, StampFactory.objectNonNull(), guard));
             graph.replaceFloating(loadHub, hub);
         } else if (n instanceof CheckCastNode) {
-            if (matches(graph, GraalOptions.HIRLowerCheckcast)) {
-                checkcastSnippets.lower((CheckCastNode) n, tool);
-            }
+            checkcastSnippets.lower((CheckCastNode) n, tool);
         } else if (n instanceof InstanceOfNode) {
-            if (matches(graph, GraalOptions.HIRLowerInstanceOf)) {
-                instanceofSnippets.lower((InstanceOfNode) n, tool);
-            }
+            instanceofSnippets.lower((InstanceOfNode) n, tool);
         } else if (n instanceof NewInstanceNode) {
-            if (matches(graph, GraalOptions.HIRLowerNewInstance)) {
-                newObjectSnippets.lower((NewInstanceNode) n, tool);
-            }
+            newObjectSnippets.lower((NewInstanceNode) n, tool);
         } else if (n instanceof NewArrayNode) {
-            if (matches(graph, GraalOptions.HIRLowerNewArray)) {
-                newObjectSnippets.lower((NewArrayNode) n, tool);
-            }
+            newObjectSnippets.lower((NewArrayNode) n, tool);
         } else if (n instanceof MonitorEnterNode) {
-            if (matches(graph, GraalOptions.HIRLowerMonitors)) {
-                monitorSnippets.lower((MonitorEnterNode) n, tool);
-            }
+            monitorSnippets.lower((MonitorEnterNode) n, tool);
         } else if (n instanceof MonitorExitNode) {
-            if (matches(graph, GraalOptions.HIRLowerMonitors)) {
-                monitorSnippets.lower((MonitorExitNode) n, tool);
-            }
+            monitorSnippets.lower((MonitorExitNode) n, tool);
         } else if (n instanceof TLABAllocateNode) {
             newObjectSnippets.lower((TLABAllocateNode) n, tool);
         } else if (n instanceof InitializeObjectNode) {
@@ -440,23 +428,10 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
         } else if (n instanceof InitializeArrayNode) {
             newObjectSnippets.lower((InitializeArrayNode) n, tool);
         } else if (n instanceof NewMultiArrayNode) {
-            if (matches(graph, GraalOptions.HIRLowerNewMultiArray)) {
-                newObjectSnippets.lower((NewMultiArrayNode) n, tool);
-            }
+            newObjectSnippets.lower((NewMultiArrayNode) n, tool);
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
         }
-    }
-
-    private static boolean matches(StructuredGraph graph, String filter) {
-        if (filter != null) {
-            if (filter.length() == 0) {
-                return true;
-            }
-            ResolvedJavaMethod method = graph.method();
-            return method != null && MetaUtil.format("%H.%n", method).contains(filter);
-        }
-        return false;
     }
 
     private static IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {

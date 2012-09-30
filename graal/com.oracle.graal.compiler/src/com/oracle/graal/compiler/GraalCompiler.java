@@ -43,7 +43,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.max.cri.xir.*;
 
 public class GraalCompiler {
 
@@ -58,19 +57,13 @@ public class GraalCompiler {
     public final GraalCodeCacheProvider runtime;
 
     /**
-     * The XIR generator that lowers Java operations to machine operations.
-     */
-    public final XirGenerator xir;
-
-    /**
      * The backend that this compiler has been configured for.
      */
     public final Backend backend;
 
-    public GraalCompiler(GraalCodeCacheProvider runtime, TargetDescription target, Backend backend, XirGenerator xirGen) {
+    public GraalCompiler(GraalCodeCacheProvider runtime, TargetDescription target, Backend backend) {
         this.runtime = runtime;
         this.target = target;
-        this.xir = xirGen;
         this.backend = backend;
     }
 
@@ -94,7 +87,7 @@ public class GraalCompiler {
                 final FrameMap frameMap = Debug.scope("BackEnd", lir, new Callable<FrameMap>() {
 
                     public FrameMap call() {
-                        return emitLIR(lir, graph, method, assumptions);
+                        return emitLIR(lir, graph, method);
                     }
                 });
                 return Debug.scope("CodeGen", frameMap, new Callable<CompilationResult>() {
@@ -238,9 +231,9 @@ public class GraalCompiler {
         });
     }
 
-    public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method, Assumptions assumptions) {
+    public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method) {
         final FrameMap frameMap = backend.newFrameMap(runtime.getRegisterConfig(method));
-        final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir, xir, assumptions);
+        final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir);
 
         Debug.scope("LIRGen", lirGenerator, new Runnable() {
 

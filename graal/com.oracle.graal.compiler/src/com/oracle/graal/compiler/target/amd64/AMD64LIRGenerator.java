@@ -72,7 +72,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
-import com.oracle.max.cri.xir.*;
 
 /**
  * This class implements the X86-specific portion of the LIR generator.
@@ -98,8 +97,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    public AMD64LIRGenerator(Graph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir, XirGenerator xir, Assumptions assumptions) {
-        super(graph, runtime, target, frameMap, method, lir, xir, assumptions);
+    public AMD64LIRGenerator(Graph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
+        super(graph, runtime, target, frameMap, method, lir);
         lir.spillMoveFactory = new AMD64SpillMoveFactory();
     }
 
@@ -571,12 +570,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     protected void emitReturn(Value input) {
         append(new ReturnOp(input));
-    }
-
-    @Override
-    protected void emitXir(XirSnippet snippet, Value[] operands, Value outputOperand, Value[] inputs, Value[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
-                    LIRFrameState info, LIRFrameState infoAfter, LabelRef trueSuccessor, LabelRef falseSuccessor) {
-        append(new AMD64XirOp(snippet, operands, outputOperand, inputs, temps, inputOperandIndices, tempOperandIndices, outputOperandIndex, info, infoAfter, trueSuccessor, falseSuccessor));
     }
 
     @Override

@@ -25,20 +25,14 @@ package com.oracle.graal.nodes.java;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 
 /**
  * The {@code NewPrimitiveArrayNode} class definition.
  */
 @NodeInfo(nameTemplate = "NewArray {p#elementType}")
-public final class NewPrimitiveArrayNode extends NewArrayNode implements LIRLowerable, Node.IterableNodeType {
+public final class NewPrimitiveArrayNode extends NewArrayNode implements Node.IterableNodeType {
 
     public NewPrimitiveArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
         super(elementType, length, fillContents);
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitNewPrimitiveArray(this);
     }
 }

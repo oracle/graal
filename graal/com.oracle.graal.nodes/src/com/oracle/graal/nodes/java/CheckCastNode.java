@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Implements a type check that results in a {@link ClassCastException} if it fails.
  */
-public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Lowerable, Node.IterableNodeType {
+public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Lowerable, Node.IterableNodeType {
 
     @Input private ValueNode object;
     @Input private ValueNode targetClassInstruction;
@@ -59,11 +59,6 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     @Override
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitCheckCast(this);
     }
 
     @Override

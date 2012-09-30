@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot.target.amd64;
 
-import static com.oracle.graal.hotspot.target.amd64.HotSpotAMD64Backend.*;
 import static com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind.*;
 
 import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.amd64.*;
@@ -70,7 +70,7 @@ final class AMD64DirectCallOp extends DirectCallOp {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
                     assert callsiteMark != null : "static call site has not yet been emitted";
-                    tasm.recordMark(MARK_STATIC_CALL_STUB, callsiteMark);
+                    tasm.recordMark(Marks.MARK_STATIC_CALL_STUB, callsiteMark);
                     masm.movq(AMD64.rbx, 0L);
                     Label dummy = new Label();
                     masm.jmp(dummy);
@@ -84,13 +84,13 @@ final class AMD64DirectCallOp extends DirectCallOp {
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         if (invokeKind == Static || invokeKind == Special) {
-            tasm.recordMark(invokeKind == Static ? MARK_INVOKESTATIC : MARK_INVOKESPECIAL);
+            tasm.recordMark(invokeKind == Static ? Marks.MARK_INVOKESTATIC : Marks.MARK_INVOKESPECIAL);
         } else {
             assert invokeKind == Virtual || invokeKind == Interface;
             // The mark for an invocation that uses an inline cache must be placed at the instruction
             // that loads the klassOop from the inline cache so that the C++ code can find it
             // and replace the inline null value with Universe::non_oop_word()
-            tasm.recordMark(invokeKind == Virtual ? MARK_INVOKEVIRTUAL : MARK_INVOKEINTERFACE);
+            tasm.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
             AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Object), Constant.NULL_OBJECT);
         }
 

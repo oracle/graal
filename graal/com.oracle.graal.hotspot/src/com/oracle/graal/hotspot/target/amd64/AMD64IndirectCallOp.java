@@ -23,11 +23,11 @@
 package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.hotspot.target.amd64.HotSpotAMD64Backend.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
@@ -58,7 +58,7 @@ final class AMD64IndirectCallOp extends IndirectCallOp {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        tasm.recordMark(MARK_INLINE_INVOKEVIRTUAL);
+        tasm.recordMark(Marks.MARK_INLINE_INVOKEVIRTUAL);
         Register callReg = asRegister(targetAddress);
         assert callReg != METHOD_OOP;
         AMD64Call.indirectCall(tasm, masm, callReg, targetMethod, state);

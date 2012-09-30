@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import java.lang.reflect.*;
+
 import com.oracle.graal.api.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.interpreter.*;
@@ -35,7 +36,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.target.amd64.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.xir.*;
 
 /**
  * Singleton class holding the instance of the GraalCompiler.
@@ -118,15 +118,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
             // these options are important - graal will not generate correct code without them
             GraalOptions.StackShadowPages = config.stackShadowPages;
 
-            XirGenerator generator = new HotSpotXirGenerator(config, getTarget(), getRuntime().getGlobalStubRegisterConfig(), this);
-            if (Logger.ENABLED) {
-                generator = LoggingProxy.getProxy(XirGenerator.class, generator);
-            }
+            Backend backend = new HotSpotAMD64Backend(getRuntime(), getTarget());
 
-            Backend backend = new HotSpotAMD64Backend(runtime, target);
-            generator.initialize(backend.newXirAssembler());
-
-            compiler = new GraalCompiler(getRuntime(), getTarget(), backend, generator);
+            compiler = new GraalCompiler(getRuntime(), getTarget(), backend);
             if (GraalOptions.CacheGraphs) {
                 cache = new HotSpotGraphCache();
             }

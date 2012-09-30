@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code NewInstanceNode} represents the allocation of an instance class object.
  */
 @NodeInfo(nameTemplate = "New {p#instanceClass/s}")
-public final class NewInstanceNode extends FixedWithNextNode implements EscapeAnalyzable, Lowerable, LIRLowerable, Node.IterableNodeType {
+public final class NewInstanceNode extends FixedWithNextNode implements EscapeAnalyzable, Lowerable, Node.IterableNodeType {
 
     private final ResolvedJavaType instanceClass;
     private final boolean fillContents;
@@ -67,11 +67,6 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
     @Override
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitNewInstance(this);
     }
 
     private void fillEscapeFields(ResolvedJavaType type, List<ResolvedJavaField> escapeFields) {
