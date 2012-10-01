@@ -108,18 +108,18 @@ public class HotSpotRegisterConfig implements RegisterConfig {
     }
 
     @Override
-    public CallingConvention getCallingConvention(Type type, Kind[] parameters, TargetDescription target, boolean stackOnly) {
+    public CallingConvention getCallingConvention(Type type, Kind returnKind, Kind[] parameters, TargetDescription target, boolean stackOnly) {
         if (type == Type.NativeCall) {
             throw new UnsupportedOperationException();
         }
-        return callingConvention(parameters, type, target, stackOnly);
+        return callingConvention(returnKind, parameters, type, target, stackOnly);
     }
 
     public Register[] getCallingConventionRegisters(Type type, RegisterFlag flag) {
         return allParameterRegisters;
     }
 
-    private CallingConvention callingConvention(Kind[] kinds, Type type, TargetDescription target, boolean stackOnly) {
+    private CallingConvention callingConvention(Kind returnKind, Kind[] kinds, Type type, TargetDescription target, boolean stackOnly) {
         Value[] locations = new Value[kinds.length];
 
         int currentGeneral = 0;
@@ -159,7 +159,8 @@ public class HotSpotRegisterConfig implements RegisterConfig {
             }
         }
 
-        return new CallingConvention(locations, currentStackOffset);
+        Value returnLocation = returnKind.isVoid() ? Value.IllegalValue : getReturnRegister(returnKind).asValue(returnKind);
+        return new CallingConvention(currentStackOffset, returnLocation, locations);
     }
 
     @Override

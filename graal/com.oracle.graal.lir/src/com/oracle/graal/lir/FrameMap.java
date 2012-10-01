@@ -229,7 +229,7 @@ public final class FrameMap {
     public void callsMethod(CallingConvention cc, Type type) {
         // TODO look at the actual stack offsets?
         assert type.out;
-        reserveOutgoing(cc.stackSize);
+        reserveOutgoing(cc.getStackSize());
     }
 
     /**

@@ -28,7 +28,8 @@ import com.oracle.graal.api.meta.*;
 
 
 /**
- * A calling convention describes the locations in which the arguments for a call are placed.
+ * A calling convention describes the locations in which the arguments for a call are placed
+ * and the location in which the return value is placed if the call is not void.
  */
 public class CallingConvention {
 
@@ -72,33 +73,69 @@ public class CallingConvention {
     /**
      * The amount of stack space (in bytes) required for the stack-based arguments of the call.
      */
-    public final int stackSize;
+    private final int stackSize;
+
+    private final Value returnLocation;
 
     /**
      * The locations in which the arguments are placed. This array ordered by argument index.
      */
-    public final Value[] locations;
+    private final Value[] argumentLocations;
 
-    public CallingConvention(Value[] locations, int stackSize) {
-        this.locations = locations;
+    public CallingConvention(int stackSize, Value returnLocation, Value... locations) {
+        this.argumentLocations = locations;
         this.stackSize = stackSize;
+        this.returnLocation = returnLocation;
         assert verify();
+    }
+
+    /**
+     * @return the location for the return value or {@link Value#IllegalValue} if a void call
+     */
+    public Value getReturn() {
+        return returnLocation;
+    }
+
+    /**
+     * @return the location for the {@code index}'th argument
+     */
+    public Value getArgument(int index) {
+        return argumentLocations[index];
+    }
+
+    /**
+     * @return the amount of stack space (in bytes) required for the stack-based arguments of the call.
+     */
+    public int getStackSize() {
+        return stackSize;
+    }
+
+    /**
+     * @return the number of locations required for the arguments
+     */
+    public int getArgumentCount() {
+        return argumentLocations.length;
     }
 
     @Override
     public String toString() {
         StringBuilder result = new StringBuilder();
         result.append("CallingConvention[");
-        for (Value op : locations) {
-            result.append(op.toString()).append(" ");
+        String sep = "";
+        for (Value op : argumentLocations) {
+            result.append(sep).append(op);
+            sep = ", ";
+        }
+        if (returnLocation != Value.IllegalValue) {
+            result.append(" -> ").append(returnLocation);
         }
         result.append("]");
         return result.toString();
     }
 
     private boolean verify() {
-        for (int i = 0; i < locations.length; i++) {
-            Value location = locations[i];
+        for (int i = 0; i < argumentLocations.length; i++) {
+            Value location = argumentLocations[i];
             assert isStackSlot(location) || isRegister(location);
         }
         return true;

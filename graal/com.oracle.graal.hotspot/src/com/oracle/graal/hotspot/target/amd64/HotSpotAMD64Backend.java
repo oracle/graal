@@ -84,7 +84,7 @@ public class HotSpotAMD64Backend extends Backend {
                 sig[pos++] = arg.kind();
             }
 
-            CallingConvention cc = frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, sig, target(), false);
+            CallingConvention cc = frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, Kind.Void, sig, target(), false);
             List<Value> argList = visitInvokeArguments(cc, i.arguments);
             Value[] parameters = argList.toArray(new Value[argList.size()]);
             append(new AMD64BreakpointOp(parameters));
@@ -221,9 +221,9 @@ public class HotSpotAMD64Backend extends Backend {
         boolean isStatic = Modifier.isStatic(method.accessFlags());
         if (!isStatic) {
             tasm.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
-            CallingConvention cc = regConfig.getCallingConvention(JavaCallee, new Kind[] {Kind.Object}, target, false);
+            CallingConvention cc = regConfig.getCallingConvention(JavaCallee, Kind.Void, new Kind[] {Kind.Object}, target, false);
             Register inlineCacheKlass = rax; // see definition of IC_Klass in c1_LIRAssembler_x86.cpp
-            Register receiver = asRegister(cc.locations[0]);
+            Register receiver = asRegister(cc.getArgument(0));
             Address src = new Address(target.wordKind, receiver.asValue(), config.hubOffset);
 
             asm.cmpq(inlineCacheKlass, src);
