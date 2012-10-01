@@ -175,8 +175,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long inlineCacheMissStub;
     public long handleExceptionStub;
     public long handleDeoptStub;
-    public long monitorEnterStub;
-    public long monitorExitStub;
     public long fastMonitorEnterStub;
     public long fastMonitorExitStub;
     public long verifyOopStub;
