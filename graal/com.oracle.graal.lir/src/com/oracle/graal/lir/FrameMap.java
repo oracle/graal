@@ -27,7 +27,6 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.max.asm.*;
 
@@ -224,11 +223,8 @@ public final class FrameMap {
      * Informs the frame map that the compiled code calls a particular method, which
      * may need stack space for outgoing arguments.
      * @param cc The calling convention for the called method.
-     * @param type The type of calling convention.
      */
-    public void callsMethod(CallingConvention cc, Type type) {
-        // TODO look at the actual stack offsets?
-        assert type.out;
+    public void callsMethod(CallingConvention cc) {
         reserveOutgoing(cc.getStackSize());
     }
 

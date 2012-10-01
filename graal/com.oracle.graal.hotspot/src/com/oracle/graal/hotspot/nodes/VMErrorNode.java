@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.api.code.CallingConvention.Type.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
@@ -60,7 +62,8 @@ public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowera
             where = "in compiled code for " + MetaUtil.format("%H.%n(%p)", gen.method());
         }
         Kind[] signature = new Kind[] {Kind.Object, Kind.Object, Kind.Long};
-        gen.emitCall(vmErrorStub, Kind.Void, signature, false, Constant.forObject(where), gen.operand(format), gen.operand(value));
+        CallingConvention cc = gen.frameMap().registerConfig.getCallingConvention(RuntimeCall, Kind.Void, signature, gen.target(), false);
+        gen.emitCall(vmErrorStub, cc, false, Constant.forObject(where), gen.operand(format), gen.operand(value));
     }
 
     @NodeIntrinsic

@@ -696,7 +696,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         AbstractCallTargetNode callTarget = (AbstractCallTargetNode) x.callTarget();
         Kind[] signature = callTarget.signature();
         CallingConvention cc = frameMap.registerConfig.getCallingConvention(callTarget.callType(), x.node().kind(), signature, target(), false);
-        frameMap.callsMethod(cc, callTarget.callType());
+        frameMap.callsMethod(cc);
 
         List<Value> argList = visitInvokeArguments(cc, callTarget.arguments());
         Value[] parameters = argList.toArray(new Value[argList.size()]);
@@ -762,12 +762,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected abstract LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info, Object deoptInfo);
 
     @Override
-    public Variable emitCall(@SuppressWarnings("hiding") Object target, Kind result, Kind[] arguments, boolean canTrap, Value... args) {
+    public Variable emitCall(@SuppressWarnings("hiding") Object target, CallingConvention cc, boolean canTrap, Value... args) {
         LIRFrameState info = canTrap ? state() : null;
 
         // move the arguments into the correct location
-        CallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, result, arguments, target(), false);
-        frameMap.callsMethod(cc, RuntimeCall);
+        frameMap.callsMethod(cc);
         assert cc.getArgumentCount() == args.length : "argument count mismatch";
         Value[] argLocations = new Value[args.length];
         for (int i = 0; i < args.length; i++) {
@@ -788,9 +787,15 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
+    public Value emitCall(RuntimeCall runtimeCall, boolean canTrap, Value... args) {
+        CallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, runtimeCall.getResultKind(), runtimeCall.getArgumentKinds(), target, false);
+        return emitCall(runtimeCall, cc, canTrap, args);
+    }
+
+    @Override
     public void emitRuntimeCall(RuntimeCallNode x) {
         CallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, x.kind(), x.call().getArgumentKinds(), target(), false);
-        frameMap.callsMethod(cc, RuntimeCall);
+        frameMap.callsMethod(cc);
         Value resultOperand = cc.getReturn();
         List<Value> argList = visitInvokeArguments(cc, x.arguments());
 
@@ -957,7 +962,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         // move the arguments into the correct location
         CallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, runtimeCall.getResultKind(), arguments, target(), false);
-        frameMap.callsMethod(cc, RuntimeCall);
+        frameMap.callsMethod(cc);
         assert cc.getArgumentCount() == args.length : "argument count mismatch";
         Value[] argLocations = new Value[args.length];
         for (int i = 0; i < args.length; i++) {
