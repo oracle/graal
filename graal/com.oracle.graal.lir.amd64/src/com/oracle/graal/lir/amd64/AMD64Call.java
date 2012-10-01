@@ -30,7 +30,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.asm.TargetMethodAssembler.CallPositionListener;
 import com.oracle.max.asm.target.amd64.*;
 
 public class AMD64Call {
@@ -42,29 +41,17 @@ public class AMD64Call {
         @State protected LIRFrameState state;
 
         protected final Object targetMethod;
-        protected final CallPositionListener callPositionListener;
 
-        public DirectCallOp(Object targetMethod, Value result, Value[] parameters, LIRFrameState state, CallPositionListener callPositionListener) {
+        public DirectCallOp(Object targetMethod, Value result, Value[] parameters, LIRFrameState state) {
             this.targetMethod = targetMethod;
             this.result = result;
             this.parameters = parameters;
             this.state = state;
-            this.callPositionListener = callPositionListener;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            if (callPositionListener != null) {
-                callPositionListener.beforeCall(tasm);
-            }
-
             emitAlignmentForDirectCall(tasm, masm);
-
-            if (callPositionListener != null) {
-                int pos = masm.codeBuffer.position();
-                callPositionListener.atCall(tasm);
-                assert pos == masm.codeBuffer.position() : "call position listener inserted code before an aligned call";
-            }
             directCall(tasm, masm, targetMethod, state);
         }
 
@@ -86,23 +73,17 @@ public class AMD64Call {
         @State protected LIRFrameState state;
 
         protected final Object targetMethod;
-        protected final CallPositionListener callPositionListener;
 
-        public IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value targetAddress, LIRFrameState state, CallPositionListener callPositionListener) {
+        public IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value targetAddress, LIRFrameState state) {
             this.targetMethod = targetMethod;
             this.result = result;
             this.parameters = parameters;
             this.targetAddress = targetAddress;
             this.state = state;
-            this.callPositionListener = callPositionListener;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            if (callPositionListener != null) {
-                callPositionListener.beforeCall(tasm);
-                callPositionListener.atCall(tasm);
-            }
             indirectCall(tasm, masm, asRegister(targetAddress), targetMethod, state);
         }
 

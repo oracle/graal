@@ -59,7 +59,7 @@ final class AMD64DirectCallOp extends DirectCallOp {
     private final InvokeKind invokeKind;
 
     AMD64DirectCallOp(Object targetMethod, Value result, Value[] parameters, LIRFrameState state, InvokeKind invokeKind, LIR lir) {
-        super(targetMethod, result, parameters, state, null);
+        super(targetMethod, result, parameters, state);
         this.invokeKind = invokeKind;
 
         if (invokeKind == Static || invokeKind == Special) {

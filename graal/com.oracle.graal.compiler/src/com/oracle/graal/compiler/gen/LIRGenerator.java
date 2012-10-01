@@ -40,7 +40,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.ParametersOp;
-import com.oracle.graal.lir.asm.TargetMethodAssembler.CallPositionListener;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
@@ -725,7 +724,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState);
 
-    protected abstract void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRFrameState info, CallPositionListener ecl);
+    protected abstract void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRFrameState info);
 
     private static Value toStackKind(Value value) {
         if (value.getKind().stackKind() != value.getKind()) {
@@ -777,7 +776,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         List<Value> argumentList = Arrays.asList(argLocations);
 
-        emitCall(target, cc.getReturn(), argumentList, Constant.forLong(0), info, null);
+        emitCall(target, cc.getReturn(), argumentList, Constant.forLong(0), info);
 
         if (isLegal(cc.getReturn())) {
             return emitMove(cc.getReturn());
@@ -821,7 +820,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             info = state();
         }
 
-        emitCall(x.call(), resultOperand, argList, Constant.forLong(0), info, null);
+        emitCall(x.call(), resultOperand, argList, Constant.forLong(0), info);
 
         if (isLegal(resultOperand)) {
             setResult(x, emitMove(resultOperand));
@@ -973,7 +972,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         List<Value> argumentList = Arrays.asList(argLocations);
 
-        emitCall(runtimeCall, cc.getReturn(), argumentList, Constant.forLong(0), info, null);
+        emitCall(runtimeCall, cc.getReturn(), argumentList, Constant.forLong(0), info);
 
         return cc.getReturn();
     }

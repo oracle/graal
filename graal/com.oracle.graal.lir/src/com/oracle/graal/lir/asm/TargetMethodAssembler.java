@@ -36,25 +36,6 @@ import com.oracle.max.asm.*;
 
 public class TargetMethodAssembler {
 
-    /**
-     * A client interested in knowing the position(s) associated with a call instruction.
-     */
-    public interface CallPositionListener {
-        /**
-         * Notifies this listener that the code buffer is at the position before any alignment
-         * instructions are emitted for a call. This listener can safely emit instructions into
-         * the code buffer as the alignment has not yet been computed.
-         */
-        void beforeCall(TargetMethodAssembler tasm);
-
-        /**
-         * Notifies this listener that the code buffer is at the position after alignment
-         * instruction have been emitted but before the call instruction has been emitted.
-         * This listener must not emit instructions at this position.
-         */
-        void atCall(TargetMethodAssembler tasm);
-    }
-
     private static class ExceptionInfo {
         public final int codeOffset;
         public final LabelRef exceptionEdge;

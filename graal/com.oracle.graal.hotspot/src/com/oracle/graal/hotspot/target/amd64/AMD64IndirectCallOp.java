@@ -52,7 +52,7 @@ final class AMD64IndirectCallOp extends IndirectCallOp {
     @Use({REG}) protected Value methodOop;
 
     AMD64IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value methodOop, Value targetAddress, LIRFrameState state) {
-        super(targetMethod, result, parameters, targetAddress, state, null);
+        super(targetMethod, result, parameters, targetAddress, state);
         this.methodOop = methodOop;
     }
 
