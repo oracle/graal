@@ -113,6 +113,11 @@ public class CheckCastTest extends TypeCheckTest {
 
     @Test
     public void test8() {
+        test("arrayStore", profile(), new Object[100], "111");
+    }
+
+    @Test
+    public void test8_1() {
         test("arrayFill", profile(), new Object[100], "111");
     }
 
@@ -140,6 +145,11 @@ public class CheckCastTest extends TypeCheckTest {
     public static String asStringExt(Object o) {
         String s = (String) o;
         return "#" + s;
+    }
+
+    public static Object[] arrayStore(Object[] arr, Object value) {
+        arr[15] = value;
+        return arr;
     }
 
     public static Object[] arrayFill(Object[] arr, Object value) {
