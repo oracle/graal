@@ -135,8 +135,9 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
             if (f.getName().endsWith("Stub")) {
                 f.setAccessible(true);
                 try {
-                    if (f.get(config).equals(call.target)) {
-                        return f.getName();
+                    Object address = f.get(config);
+                    if (address.equals(call.target)) {
+                        return f.getName() + ":0x" + Long.toHexString((Long) address);
                     }
                 } catch (Exception e) {
                 }
