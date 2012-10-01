@@ -102,17 +102,17 @@ public class FloatingReadPhase extends Phase {
                     keys.add(key);
                 }
             }
+            @SuppressWarnings("unchecked")
+            IdentityHashMap<Object, ValueNode> newMemorySnapshot = (IdentityHashMap<Object, ValueNode>) lastMemorySnapshot.clone();
 
             for (Object key : keys) {
                 ValueNode merged = lastMemorySnapshot.get(key);
                 if (merged == null) {
                     merged = lastMemorySnapshot.get(LocationNode.ANY_LOCATION);
                 }
-                Iterator<MemoryMap> it = withStates.iterator();
-                int i = 1;
+                int mergedStatesCount = 1;
                 boolean isPhi = false;
-                while (it.hasNext()) {
-                    MemoryMap other = it.next();
+                for (MemoryMap other : withStates) {
                     ValueNode otherValue = other.lastMemorySnapshot.get(key);
                     if (otherValue == null) {
                         otherValue = other.lastMemorySnapshot.get(LocationNode.ANY_LOCATION);
@@ -121,17 +121,19 @@ public class FloatingReadPhase extends Phase {
                         ((PhiNode) merged).addInput(otherValue);
                     } else if (merged != otherValue) {
                         PhiNode phi = merge.graph().add(new PhiNode(PhiType.Memory, merge));
-                        for (int j = 0; j < i; j++) {
+                        for (int j = 0; j < mergedStatesCount; j++) {
                             phi.addInput(merged);
                         }
                         phi.addInput(otherValue);
                         merged = phi;
                         isPhi = true;
-                        lastMemorySnapshot.put(key, phi);
+                        newMemorySnapshot.put(key, phi);
                     }
-                    i++;
+                    mergedStatesCount++;
                 }
             }
+
+            lastMemorySnapshot = newMemorySnapshot;
             return true;
         }
 
