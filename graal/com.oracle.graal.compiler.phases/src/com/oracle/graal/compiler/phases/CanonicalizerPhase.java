@@ -242,7 +242,11 @@ public class CanonicalizerPhase extends Phase {
         } else if (node instanceof Simplifiable) {
             Debug.log("Canonicalizer: simplifying %s", node);
             METRIC_SIMPLIFICATION_CONSIDERED_NODES.increment();
-            ((Simplifiable) node).simplify(tool);
+            Debug.scope("SimplifyNode", node, new Runnable() {
+                public void run() {
+                    ((Simplifiable) node).simplify(tool);
+                }
+            });
         }
         return node.isDeleted();
     }
