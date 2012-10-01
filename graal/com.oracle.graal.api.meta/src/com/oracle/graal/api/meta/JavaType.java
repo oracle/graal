@@ -51,7 +51,8 @@ public interface JavaType {
 
         /**
          * The runtime representation of the "hub" of this type--that is, the closest part of the type
-         * representation which is typically stored in the object header.
+         * representation which is typically stored in the object header. For example, in the HotSpot
+         * VM the hub correlates with the C++ <code>klassOop</code> type.
          */
         ObjectHub
     }
