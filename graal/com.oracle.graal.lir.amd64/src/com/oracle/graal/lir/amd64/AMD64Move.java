@@ -250,7 +250,7 @@ public class AMD64Move {
     }
 
     private static void reg2reg(AMD64MacroAssembler masm, Value result, Value input) {
-        if (input.equals(result)) {
+        if (asRegister(input).equals(asRegister(result))) {
             return;
         }
         switch (input.getKind()) {
