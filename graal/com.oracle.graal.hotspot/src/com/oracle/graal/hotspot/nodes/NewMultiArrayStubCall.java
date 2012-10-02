@@ -22,14 +22,11 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.target.amd64.AMD64NewMultiArrayStubCallOp.*;
-
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.target.amd64.*;
+import com.oracle.graal.hotspot.target.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
@@ -65,16 +62,9 @@ public class NewMultiArrayStubCall extends FixedWithNextNode implements LIRGenLo
 
     @Override
     public void generate(LIRGenerator gen) {
-        RegisterValue hubFixed = HUB.asValue(Kind.Object);
-        RegisterValue resultFixed = RESULT.asValue(Kind.Object);
-        RegisterValue rankFixed = RANK.asValue(Kind.Int);
-        RegisterValue dimsFixed = DIMS.asValue(gen.target().wordKind);
-        gen.emitMove(gen.operand(hub), hubFixed);
-        gen.emitMove(gen.operand(dims), dimsFixed);
-        gen.emitMove(Constant.forInt(rank), rankFixed);
-        LIRFrameState state = gen.state();
-        gen.append(new AMD64NewMultiArrayStubCallOp(resultFixed, hubFixed, rankFixed, dimsFixed, state));
-        Variable result = gen.emitMove(resultFixed);
+        HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
+        HotSpotStub stub = backend.getStub("new_multi_array");
+        Variable result = gen.emitCall(stub.address, stub.cc, true, gen.operand(hub), Constant.forInt(rank), gen.operand(dims));
         gen.setResult(this, result);
     }
 
