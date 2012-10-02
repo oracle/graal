@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.target;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -39,4 +40,6 @@ public interface HotSpotLIRGenerator {
      * @param address the target address of the call
      */
     void emitTailcall(Value[] args, Value address);
+
+    void visitDirectCompareAndSwap(DirectCompareAndSwapNode x);
 }

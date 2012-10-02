@@ -44,6 +44,7 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.target.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.amd64.AMD64Move.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -156,6 +157,34 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
             emitStore(exceptionAddress, Constant.NULL_OBJECT, false);
             emitStore(pcAddress, Constant.LONG_0, false);
             setResult(x, exception);
+        }
+
+        @SuppressWarnings("hiding")
+        @Override
+        public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {
+            Kind kind = x.newValue().kind();
+            assert kind == x.expectedValue().kind();
+
+            Value expected = loadNonConst(operand(x.expectedValue()));
+            Variable newVal = load(operand(x.newValue()));
+
+            int disp = 0;
+            Address address;
+            Value index = operand(x.offset());
+            if (ValueUtil.isConstant(index) && NumUtil.isInt(ValueUtil.asConstant(index).asLong() + disp)) {
+                disp += (int) ValueUtil.asConstant(index).asLong();
+                address = new Address(kind, load(operand(x.object())), disp);
+            } else {
+                address = new Address(kind, load(operand(x.object())), load(index), Address.Scale.Times1, disp);
+            }
+
+            RegisterValue rax = AMD64.rax.asValue(kind);
+            emitMove(expected, rax);
+            append(new CompareAndSwapOp(rax, address, rax, newVal));
+
+            Variable result = newVariable(x.kind());
+            emitMove(rax, result);
+            setResult(x, result);
         }
 
         @Override
