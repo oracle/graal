@@ -38,13 +38,12 @@ import com.oracle.graal.compiler.target.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
-import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.target.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.amd64.AMD64Move.*;
+import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -191,12 +190,6 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
         public void emitTailcall(Value[] args, Value address) {
             append(new AMD64TailcallOp(args, address));
 
-        }
-
-        @Override
-        protected void emitPrologue() {
-            super.emitPrologue();
-            MethodEntryCounters.emitCounter(this, method);
         }
 
         @Override

@@ -36,7 +36,6 @@ import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
@@ -220,7 +219,6 @@ public class VMToCompilerImpl implements VMToCompiler {
         }
         System.gc();
         CompilationStatistics.clear("bootstrap2");
-        MethodEntryCounters.printCounters(graalRuntime);
     }
 
     private void enqueue(Method m) throws Throwable {
@@ -286,7 +284,6 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
         CompilationStatistics.clear("final");
-        MethodEntryCounters.printCounters(graalRuntime);
         SnippetCounter.printGroups(TTY.out().out());
     }
 

@@ -31,7 +31,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.counters.*;
 
 /**
  * Implementation of {@link JavaMethod} for resolved HotSpot methods.
@@ -169,12 +168,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     public int compiledCodeSize() {
-        int result = HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_getCompiledCodeSize(this);
-        if (result > 0) {
-            assert result > MethodEntryCounters.getCodeSize();
-            result =  result - MethodEntryCounters.getCodeSize();
-        }
-        return result;
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_getCompiledCodeSize(this);
     }
 
     @Override
