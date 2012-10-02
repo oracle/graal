@@ -22,22 +22,16 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.target.amd64.AMD64NewInstanceStubCallOp.*;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.target.amd64.*;
+import com.oracle.graal.hotspot.target.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * Node implementing a call to HotSpot's {@code new_instance} stub.
- *
- * @see AMD64NewInstanceStubCallOp
  */
 public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
@@ -62,12 +56,9 @@ public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowe
 
     @Override
     public void generate(LIRGenerator gen) {
-        RegisterValue hubFixed = HUB.asValue(Kind.Object);
-        RegisterValue resultFixed = RESULT.asValue(Kind.Object);
-        gen.emitMove(gen.operand(hub), hubFixed);
-        LIRFrameState info = gen.state();
-        gen.append(new AMD64NewInstanceStubCallOp(resultFixed, hubFixed, info));
-        Variable result = gen.emitMove(resultFixed);
+        HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
+        HotSpotStub stub = backend.getStub("new_instance");
+        Variable result = gen.emitCall(stub.address, stub.cc, true, gen.operand(hub));
         gen.setResult(this, result);
     }
 

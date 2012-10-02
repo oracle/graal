@@ -84,7 +84,12 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(Kind.Object),
                 /* arg1: length */ rbx.asValue(Kind.Int));
-}
+
+        addStub("new_instance", c.newInstanceStub,
+                /*        temps */ null,
+                /*          ret */ rax.asValue(Kind.Object),
+                /* arg0:    hub */ rdx.asValue(Kind.Object));
+    }
 
     @Override
     public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
