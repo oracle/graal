@@ -22,21 +22,15 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.target.amd64.AMD64VerifyOopStubCallOp.*;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.target.amd64.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.target.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * Node implementing a call to HotSpot's object pointer verification stub.
- *
- * @see AMD64VerifyOopStubCallOp
  */
 public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
@@ -49,10 +43,9 @@ public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowera
 
     @Override
     public void generate(LIRGenerator gen) {
-        RegisterValue objectFixed = OBJECT.asValue(Kind.Object);
-        gen.emitMove(gen.operand(object), objectFixed);
-        LIRFrameState info = gen.state();
-        gen.append(new AMD64VerifyOopStubCallOp(objectFixed, info));
+        HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
+        HotSpotStub stub = backend.getStub("verify_oop");
+        gen.emitCall(stub.address, stub.cc, true, gen.operand(object));
     }
 
     @NodeIntrinsic

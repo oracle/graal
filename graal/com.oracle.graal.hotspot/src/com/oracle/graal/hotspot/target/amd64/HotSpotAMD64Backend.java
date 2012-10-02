@@ -91,11 +91,16 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
                 /* arg0:    hub */ rdx.asValue(Kind.Object));
 
         addStub("new_multi_array", c.newMultiArrayStub,
-                        /*        temps */ null,
-                        /*          ret */ rax.asValue(Kind.Object),
-                        /* arg0:    hub */ rax.asValue(Kind.Object),
-                        /* arg1:   rank */ rbx.asValue(Kind.Int),
-                        /* arg2:   dims */ rcx.asValue(word));
+                /*        temps */ null,
+                /*          ret */ rax.asValue(Kind.Object),
+                /* arg0:    hub */ rax.asValue(Kind.Object),
+                /* arg1:   rank */ rbx.asValue(Kind.Int),
+                /* arg2:   dims */ rcx.asValue(word));
+
+        addStub("verify_oop", c.verifyOopStub,
+                /*        temps */ null,
+                /*          ret */ IllegalValue,
+                /* arg0: object */ r13.asValue(Kind.Object));
     }
 
     @Override
