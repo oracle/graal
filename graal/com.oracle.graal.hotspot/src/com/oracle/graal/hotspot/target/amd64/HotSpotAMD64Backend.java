@@ -30,6 +30,7 @@ import static com.oracle.max.asm.target.amd64.AMD64.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
@@ -61,17 +62,22 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
         HotSpotVMConfig c = hs.config;
         Kind word = target.wordKind;
 
+        Register[] jargs = hs.getGlobalStubRegisterConfig().getCallingConventionRegisters(RuntimeCall, RegisterFlag.CPU);
+        Register jarg0 = jargs[0];
+        Register jarg1 = jargs[1];
+        Register jarg2 = jargs[2];
+
         addStub("monitorenter", c.fastMonitorEnterStub,
                 /*        temps */ new Register[] {rax, rbx},
                 /*          ret */ IllegalValue,
-                /* arg0: object */ rsi.asValue(Kind.Object),
-                /* arg1:   lock */ rdx.asValue(word));
+                /* arg0: object */ jarg0.asValue(Kind.Object),
+                /* arg1:   lock */ jarg1.asValue(word));
 
         addStub("monitorexit", c.fastMonitorExitStub,
                 /*        temps */ new Register[] {rax, rbx},
                 /*          ret */ IllegalValue,
-                /* arg0: object */ rsi.asValue(Kind.Object),
-                /* arg1:   lock */ rdx.asValue(word));
+                /* arg0: object */ jarg0.asValue(Kind.Object),
+                /* arg1:   lock */ jarg1.asValue(word));
 
         addStub("new_object_array", c.newObjectArrayStub,
                 /*        temps */ new Register[] {rcx, rdi, rsi},
@@ -101,6 +107,13 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
                 /*        temps */ null,
                 /*          ret */ IllegalValue,
                 /* arg0: object */ r13.asValue(Kind.Object));
+
+        addStub("vm_error", c.vmErrorStub,
+                /*        temps */ null,
+                /*          ret */ IllegalValue,
+                /* arg0:  where */ jarg0.asValue(Kind.Object),
+                /* arg1: format */ jarg1.asValue(Kind.Object),
+                /* arg2:  value */ jarg2.asValue(Kind.Object));
     }
 
     @Override
