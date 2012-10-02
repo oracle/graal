@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 
 import java.lang.reflect.*;
@@ -33,7 +32,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.target.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -41,6 +39,7 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.target.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
@@ -53,7 +52,7 @@ import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 /**
  * HotSpot AMD64 specific backend.
  */
-public class HotSpotAMD64Backend extends Backend {
+public class HotSpotAMD64Backend extends HotSpotBackend {
 
     public HotSpotAMD64Backend(CodeCacheProvider runtime, TargetDescription target) {
         super(runtime, target);
