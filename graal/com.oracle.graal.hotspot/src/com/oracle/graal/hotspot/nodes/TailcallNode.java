@@ -29,7 +29,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.target.amd64.*;
+import com.oracle.graal.hotspot.target.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -68,10 +68,9 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
         for (int i = 0, slot = 0; i < cc.getArgumentCount(); i++, slot += FrameStateBuilder.stackSlots(frameState.localAt(slot).kind())) {
             parameters.add(frameState.localAt(slot));
         }
-        Value[] argList = gen.visitInvokeArguments(cc, parameters);
-
+        Value[] args = gen.visitInvokeArguments(cc, parameters);
         Value entry = gen.emitLoad(new Address(Kind.Long, gen.operand(target), config.nmethodEntryOffset), false);
-
-        gen.append(new AMD64TailcallOp(argList, entry));
+        HotSpotLIRGenerator hsgen = (HotSpotLIRGenerator) gen;
+        hsgen.emitTailcall(args, entry);
     }
 }

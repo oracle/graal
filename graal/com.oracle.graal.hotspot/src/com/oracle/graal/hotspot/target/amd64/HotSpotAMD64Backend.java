@@ -121,7 +121,7 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
         return new HotSpotAMD64LIRGenerator(graph, runtime, target, frameMap, method, lir);
     }
 
-    static final class HotSpotAMD64LIRGenerator extends AMD64LIRGenerator {
+    static final class HotSpotAMD64LIRGenerator extends AMD64LIRGenerator implements HotSpotLIRGenerator {
 
         private HotSpotAMD64LIRGenerator(Graph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
             super(graph, runtime, target, frameMap, method, lir);
@@ -156,6 +156,12 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
             emitStore(exceptionAddress, Constant.NULL_OBJECT, false);
             emitStore(pcAddress, Constant.LONG_0, false);
             setResult(x, exception);
+        }
+
+        @Override
+        public void emitTailcall(Value[] args, Value address) {
+            append(new AMD64TailcallOp(args, address));
+
         }
 
         @Override
