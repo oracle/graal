@@ -28,8 +28,9 @@ import com.oracle.graal.api.meta.*;
 
 
 /**
- * A calling convention describes the locations in which the arguments for a call are placed
- * and the location in which the return value is placed if the call is not void.
+ * A calling convention describes the locations in which the arguments for a call are placed,
+ * the location in which the return value is placed if the call is not void and any
+ * temporary locations used (and killed) by the call.
  */
 public class CallingConvention {
 
@@ -82,10 +83,24 @@ public class CallingConvention {
      */
     private final Value[] argumentLocations;
 
-    public CallingConvention(int stackSize, Value returnLocation, Value... locations) {
-        this.argumentLocations = locations;
+    /**
+     * The locations used by the call in addition to the arguments are placed.
+     * From the perspective of register allocation, these locations are killed by the call.
+     */
+    private final Value[] temporaryLocations;
+
+    public CallingConvention(int stackSize, Value returnLocation, Value... argumentLocations) {
+        this(Value.NONE, stackSize, returnLocation, argumentLocations);
+    }
+
+    public CallingConvention(Value[] temporaryLocations, int stackSize, Value returnLocation, Value... argumentLocations) {
+        assert argumentLocations != null;
+        assert temporaryLocations != null;
+        assert returnLocation != null;
+        this.argumentLocations = argumentLocations;
         this.stackSize = stackSize;
         this.returnLocation = returnLocation;
+        this.temporaryLocations = temporaryLocations;
         assert verify();
     }
 
@@ -117,20 +132,55 @@ public class CallingConvention {
         return argumentLocations.length;
     }
 
+    /**
+     * Gets a location used by the call in addition to the arguments are placed.
+     * From the perspective of register allocation, these locations are killed by the call.
+     *
+     * @return the {@code index}'th temporary location used by the call
+     */
+    public Value getTemporary(int index) {
+        return temporaryLocations[index];
+    }
+
+    /**
+     * @return the number of temporary locations used by the call
+     */
+    public int getTemporaryCount() {
+        return temporaryLocations.length;
+    }
+
+    /**
+     * Gets the temporary locations used (and killed) by the call.
+     */
+    public Value[] getTemporaries() {
+        if (temporaryLocations.length == 0) {
+            return temporaryLocations;
+        }
+        return temporaryLocations.clone();
+    }
+
     @Override
     public String toString() {
-        StringBuilder result = new StringBuilder();
-        result.append("CallingConvention[");
+        StringBuilder sb = new StringBuilder();
+        sb.append("CallingConvention[");
         String sep = "";
         for (Value op : argumentLocations) {
-            result.append(sep).append(op);
+            sb.append(sep).append(op);
             sep = ", ";
         }
         if (returnLocation != Value.IllegalValue) {
-            result.append(" -> ").append(returnLocation);
+            sb.append(" -> ").append(returnLocation);
         }
-        result.append("]");
-        return result.toString();
+        if (temporaryLocations.length != 0) {
+            sb.append("; temps=");
+            sep = "";
+            for (Value op : temporaryLocations) {
+                sb.append(sep).append(op);
+                sep = ", ";
+            }
+        }
+        sb.append("]");
+        return sb.toString();
     }
 
     private boolean verify() {
