@@ -51,31 +51,19 @@ public abstract class HotSpotBackend extends Backend {
 
     /**
      * Registers the details for linking a global stub.
+     *
+     * @param name name of the stub
+     * @param address address of the stub
+     * @param tempRegs temporary registers used (and killed) by the stub (null if none)
+     * @param ret where the stub returns its result
+     * @param args where arguments are passed to the stub
      */
-    protected HotSpotStub addStub(String name, long address, CallingConvention cc) {
-        HotSpotStub stub = new HotSpotStub(name, address, cc);
-        stubsMap.put(name, stub);
-        return stub;
-    }
-
-    protected static Value reg(@SuppressWarnings("unused") String name, Register reg, Kind kind) {
-        return reg.asValue(kind);
-    }
-
-    protected static Register[] temps(Register... regs) {
-        return regs;
-    }
-
-    protected static CallingConvention cc(Value ret, Value... args) {
-        return new CallingConvention(0, ret, args);
-    }
-
-    protected static CallingConvention cc(Register[] tempRegs, Value ret, Value... args) {
-        Value[] temps = new Value[tempRegs.length];
+    protected void addStub(String name, long address, Register[] tempRegs, Value ret, Value... args) {
+        Value[] temps = tempRegs == null || tempRegs.length == 0 ? Value.NONE : new Value[tempRegs.length];
         for (int i = 0; i < temps.length; i++) {
             temps[i] = tempRegs[i].asValue();
         }
-        return new CallingConvention(temps, 0, ret, args);
+        HotSpotStub stub = new HotSpotStub(name, address, new CallingConvention(temps, 0, ret, args));
+        stubsMap.put(name, stub);
     }
-
 }

@@ -61,9 +61,30 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
         HotSpotVMConfig c = hs.config;
         Kind word = target.wordKind;
 
-        addStub("monitorenter", c.fastMonitorEnterStub, cc(temps(rax, rbx), IllegalValue, reg("object", rsi, Kind.Object), reg("lock", rdx, word)));
-        addStub("monitorexit", c.fastMonitorExitStub, cc(temps(rax, rbx), IllegalValue, reg("object", rsi, Kind.Object), reg("lock", rdx, word)));
-    }
+        addStub("monitorenter", c.fastMonitorEnterStub,
+                /*        temps */ new Register[] {rax, rbx},
+                /*          ret */ IllegalValue,
+                /* arg0: object */ rsi.asValue(Kind.Object),
+                /* arg1:   lock */ rdx.asValue(word));
+
+        addStub("monitorexit", c.fastMonitorExitStub,
+                /*        temps */ new Register[] {rax, rbx},
+                /*          ret */ IllegalValue,
+                /* arg0: object */ rsi.asValue(Kind.Object),
+                /* arg1:   lock */ rdx.asValue(word));
+
+        addStub("new_object_array", c.newObjectArrayStub,
+                /*        temps */ new Register[] {rcx, rdi, rsi},
+                /*          ret */ rax.asValue(Kind.Object),
+                /* arg0:    hub */ rdx.asValue(Kind.Object),
+                /* arg1: length */ rbx.asValue(Kind.Int));
+
+        addStub("new_type_array", c.newTypeArrayStub,
+                /*        temps */ new Register[] {rcx, rdi, rsi},
+                /*          ret */ rax.asValue(Kind.Object),
+                /* arg0:    hub */ rdx.asValue(Kind.Object),
+                /* arg1: length */ rbx.asValue(Kind.Int));
+}
 
     @Override
     public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
