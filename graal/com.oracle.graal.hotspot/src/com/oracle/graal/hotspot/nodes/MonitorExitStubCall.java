@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.target.HotSpotBackend.*;
+
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
@@ -44,7 +46,7 @@ public class MonitorExitStubCall extends FixedWithNextNode implements LIRGenLowe
     @Override
     public void generate(LIRGenerator gen) {
         HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
-        HotSpotStub stub = backend.getStub("monitorexit");
+        HotSpotStub stub = backend.getStub(MONITOREXIT_STUB_NAME);
         gen.emitCall(stub.address, stub.cc, true, gen.operand(object), gen.emitLea(gen.peekLock()));
     }
 

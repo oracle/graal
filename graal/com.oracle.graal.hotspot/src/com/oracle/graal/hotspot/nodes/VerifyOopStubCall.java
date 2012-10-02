@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.target.HotSpotBackend.*;
+
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
@@ -44,7 +46,7 @@ public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowera
     @Override
     public void generate(LIRGenerator gen) {
         HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
-        HotSpotStub stub = backend.getStub("verify_oop");
+        HotSpotStub stub = backend.getStub(VERIFY_OOP_STUB_NAME);
         gen.emitCall(stub.address, stub.cc, true, gen.operand(object));
     }
 

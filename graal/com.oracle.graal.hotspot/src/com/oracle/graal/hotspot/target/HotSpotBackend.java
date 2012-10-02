@@ -34,6 +34,15 @@ import com.oracle.graal.hotspot.*;
  */
 public abstract class HotSpotBackend extends Backend {
 
+    public static final String VM_ERROR_STUB_NAME = "vm_error";
+    public static final String VERIFY_OOP_STUB_NAME = "verify_oop";
+    public static final String NEW_MULTI_ARRAY_STUB_NAME = "new_multi_array";
+    public static final String NEW_INSTANCE_STUB_NAME = "new_instance";
+    public static final String NEW_TYPE_ARRAY_STUB_NAME = "new_type_array";
+    public static final String NEW_OBJECT_ARRAY_STUB_NAME = "new_object_array";
+    public static final String MONITOREXIT_STUB_NAME = "monitorexit";
+    public static final String MONITORENTER_STUB_NAME = "monitorenter";
+
     private final Map<String, HotSpotStub> stubsMap = new HashMap<>();
 
     public HotSpotBackend(CodeCacheProvider runtime, TargetDescription target) {

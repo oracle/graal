@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.target.HotSpotBackend.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
@@ -61,7 +63,7 @@ public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowera
         }
 
         HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
-        HotSpotStub stub = backend.getStub("vm_error");
+        HotSpotStub stub = backend.getStub(VM_ERROR_STUB_NAME);
         gen.emitCall(stub.address, stub.cc, false, Constant.forObject(where), gen.operand(format), gen.operand(value));
     }
 

@@ -67,48 +67,48 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
         Register jarg1 = jargs[1];
         Register jarg2 = jargs[2];
 
-        addStub("monitorenter", c.fastMonitorEnterStub,
+        addStub(MONITORENTER_STUB_NAME, c.fastMonitorEnterStub,
                 /*        temps */ new Register[] {rax, rbx},
                 /*          ret */ IllegalValue,
                 /* arg0: object */ jarg0.asValue(Kind.Object),
                 /* arg1:   lock */ jarg1.asValue(word));
 
-        addStub("monitorexit", c.fastMonitorExitStub,
+        addStub(MONITOREXIT_STUB_NAME, c.fastMonitorExitStub,
                 /*        temps */ new Register[] {rax, rbx},
                 /*          ret */ IllegalValue,
                 /* arg0: object */ jarg0.asValue(Kind.Object),
                 /* arg1:   lock */ jarg1.asValue(word));
 
-        addStub("new_object_array", c.newObjectArrayStub,
+        addStub(NEW_OBJECT_ARRAY_STUB_NAME, c.newObjectArrayStub,
                 /*        temps */ new Register[] {rcx, rdi, rsi},
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(Kind.Object),
                 /* arg1: length */ rbx.asValue(Kind.Int));
 
-        addStub("new_type_array", c.newTypeArrayStub,
+        addStub(NEW_TYPE_ARRAY_STUB_NAME, c.newTypeArrayStub,
                 /*        temps */ new Register[] {rcx, rdi, rsi},
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(Kind.Object),
                 /* arg1: length */ rbx.asValue(Kind.Int));
 
-        addStub("new_instance", c.newInstanceStub,
+        addStub(NEW_INSTANCE_STUB_NAME, c.newInstanceStub,
                 /*        temps */ null,
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(Kind.Object));
 
-        addStub("new_multi_array", c.newMultiArrayStub,
+        addStub(NEW_MULTI_ARRAY_STUB_NAME, c.newMultiArrayStub,
                 /*        temps */ null,
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rax.asValue(Kind.Object),
                 /* arg1:   rank */ rbx.asValue(Kind.Int),
                 /* arg2:   dims */ rcx.asValue(word));
 
-        addStub("verify_oop", c.verifyOopStub,
+        addStub(VERIFY_OOP_STUB_NAME, c.verifyOopStub,
                 /*        temps */ null,
                 /*          ret */ IllegalValue,
                 /* arg0: object */ r13.asValue(Kind.Object));
 
-        addStub("vm_error", c.vmErrorStub,
+        addStub(VM_ERROR_STUB_NAME, c.vmErrorStub,
                 /*        temps */ null,
                 /*          ret */ IllegalValue,
                 /* arg0:  where */ jarg0.asValue(Kind.Object),
