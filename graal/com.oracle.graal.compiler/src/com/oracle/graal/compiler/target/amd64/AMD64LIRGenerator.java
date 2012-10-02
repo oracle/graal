@@ -67,8 +67,8 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
+import com.oracle.max.asm.amd64.*;
+import com.oracle.max.asm.amd64.AMD64Assembler.*;
 
 /**
  * This class implements the X86-specific portion of the LIR generator.

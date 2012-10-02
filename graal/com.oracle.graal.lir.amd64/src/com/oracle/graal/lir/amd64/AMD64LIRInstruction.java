@@ -24,7 +24,7 @@ package com.oracle.graal.lir.amd64;
 
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.amd64.*;
 
 /**
  * Convenience class to provide AMD64MacroAssembler for the {@link #emitCode} method.

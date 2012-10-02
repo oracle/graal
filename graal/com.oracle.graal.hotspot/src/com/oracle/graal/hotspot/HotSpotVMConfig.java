@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.amd64.*;
 
 /**
  * Used to communicate configuration details, runtime offsets, etc. to graal upon compileMethod.

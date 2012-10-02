@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.amd64.*;
 
 public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     public enum IntrinsicOpcode  {

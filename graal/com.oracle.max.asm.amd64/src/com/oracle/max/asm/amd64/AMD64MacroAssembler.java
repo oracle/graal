@@ -20,7 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.asm.target.amd64;
+package com.oracle.max.asm.amd64;
+
+import static com.oracle.max.asm.amd64.AMD64AsmOptions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -66,7 +68,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && AsmOptions.UseIncDec) {
+        if (value == 1 && UseIncDec) {
             decq(reg);
         } else {
             subq(reg, value);
@@ -85,7 +87,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && AsmOptions.UseIncDec) {
+        if (value == 1 && UseIncDec) {
             incq(reg);
         } else {
             addq(reg, value);
@@ -180,7 +182,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && AsmOptions.UseIncDec) {
+        if (value == 1 && UseIncDec) {
             decl(reg);
         } else {
             subl(reg, value);
@@ -199,7 +201,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && AsmOptions.UseIncDec) {
+        if (value == 1 && UseIncDec) {
             decl(dst);
         } else {
             subl(dst, value);
@@ -218,7 +220,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && AsmOptions.UseIncDec) {
+        if (value == 1 && UseIncDec) {
             incl(reg);
         } else {
             addl(reg, value);
@@ -237,7 +239,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && AsmOptions.UseIncDec) {
+        if (value == 1 && UseIncDec) {
             incl(dst);
         } else {
             addl(dst, value);
@@ -260,7 +262,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     // Support optimal SSE move instructions.
     public void movflt(Register dst, Register src) {
         assert dst.isFpu() && src.isFpu();
-        if (AsmOptions.UseXmmRegToRegMoveAll) {
+        if (UseXmmRegToRegMoveAll) {
             movaps(dst, src);
         } else {
             movss(dst, src);
@@ -279,7 +281,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public void movdbl(Register dst, Register src) {
         assert dst.isFpu() && src.isFpu();
-        if (AsmOptions.UseXmmRegToRegMoveAll) {
+        if (UseXmmRegToRegMoveAll) {
             movapd(dst, src);
         } else {
             movsd(dst, src);
@@ -288,7 +290,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public void movdbl(Register dst, Address src) {
         assert dst.isFpu();
-        if (AsmOptions.UseXmmLoadAndClearUpper) {
+        if (UseXmmLoadAndClearUpper) {
             movsd(dst, src);
         } else {
             movlpd(dst, src);

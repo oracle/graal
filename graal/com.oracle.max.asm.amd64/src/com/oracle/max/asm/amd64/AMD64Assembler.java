@@ -20,11 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.asm.target.amd64;
+package com.oracle.max.asm.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.max.asm.NumUtil.*;
-import static com.oracle.max.asm.target.amd64.AMD64.*;
+import static com.oracle.max.asm.amd64.AMD64.*;
+import static com.oracle.max.asm.amd64.AMD64AsmOptions.*;
 import static com.oracle.max.criutils.MemoryBarriers.*;
 
 import com.oracle.graal.api.code.*;
@@ -526,7 +527,7 @@ public class AMD64Assembler extends AbstractAssembler {
     // and stores reg into adr if so; otherwise, the value at adr is loaded into X86.rax,.
     // The ZF is set if the compared values were equal, and cleared otherwise.
     public final void cmpxchgl(Register reg, Address adr) { // cmpxchg
-        if ((AsmOptions.Atomics & 2) != 0) {
+        if ((Atomics & 2) != 0) {
             // caveat: no instructionmark, so this isn't relocatable.
             // Emit a synthetic, non-atomic, CAS equivalent.
             // Beware. The synthetic form sets all ICCs, not just ZF.
@@ -854,7 +855,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void lock() {
-        if ((AsmOptions.Atomics & 1) != 0) {
+        if ((Atomics & 1) != 0) {
             // Emit either nothing, a NOP, or a NOP: prefix
             emitByte(0x90);
         } else {
@@ -1322,7 +1323,7 @@ public class AMD64Assembler extends AbstractAssembler {
 
     public void nop(int count) {
         int i = count;
-        if (AsmOptions.UseNormalNop) {
+        if (UseNormalNop) {
             assert i > 0 : " ";
             // The fancy nops aren't currently recognized by debuggers making it a
             // pain to disassemble code while debugging. If assert are on clearly
@@ -1335,7 +1336,7 @@ public class AMD64Assembler extends AbstractAssembler {
             return;
         }
 
-        if (AsmOptions.UseAddressNop) {
+        if (UseAddressNop) {
             //
             // Using multi-bytes nops "0x0F 0x1F [Address]" for AMD.
             // 1: 0x90

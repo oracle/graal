@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.target.amd64;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.Value.*;
-import static com.oracle.max.asm.target.amd64.AMD64.*;
+import static com.oracle.max.asm.amd64.AMD64.*;
 
 import java.lang.reflect.*;
 
@@ -48,8 +48,8 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
+import com.oracle.max.asm.amd64.*;
+import com.oracle.max.asm.amd64.AMD64Assembler.*;
 
 /**
  * HotSpot AMD64 specific backend.

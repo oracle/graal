@@ -30,7 +30,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.amd64.*;
 
 public class AMD64Call {
 

@@ -28,7 +28,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.amd64.*;
 
 public enum AMD64Compare {
     ICMP, LCMP, ACMP, FCMP, DCMP;

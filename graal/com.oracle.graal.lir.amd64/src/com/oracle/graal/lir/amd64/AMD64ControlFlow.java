@@ -36,8 +36,8 @@ import com.oracle.graal.lir.StandardOp.FallThroughOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
+import com.oracle.max.asm.amd64.*;
+import com.oracle.max.asm.amd64.AMD64Assembler.*;
 
 public class AMD64ControlFlow {
 

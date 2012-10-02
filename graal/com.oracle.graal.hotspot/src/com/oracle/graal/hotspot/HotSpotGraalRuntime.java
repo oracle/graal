@@ -35,7 +35,7 @@ import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.target.amd64.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.amd64.*;
 
 /**
  * Singleton class holding the instance of the GraalCompiler.

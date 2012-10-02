@@ -34,7 +34,7 @@ import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.max.asm.*;
-import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.amd64.*;
 
 /**
  * A direct call that complies with the conventions for such calls in HotSpot.

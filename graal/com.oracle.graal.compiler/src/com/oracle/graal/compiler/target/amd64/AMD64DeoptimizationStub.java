@@ -31,7 +31,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.amd64.*;
 
 public class AMD64DeoptimizationStub extends AMD64Code {
     public final Label label = new Label();

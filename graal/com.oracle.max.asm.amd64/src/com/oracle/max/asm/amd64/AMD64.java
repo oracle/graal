@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.asm.target.amd64;
+package com.oracle.max.asm.amd64;
 
 import static com.oracle.graal.api.code.Register.RegisterFlag.*;
 import static com.oracle.graal.api.meta.Kind.*;

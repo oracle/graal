@@ -32,7 +32,7 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.Snippet.Fold;
 import com.oracle.graal.snippets.*;
-import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.amd64.*;
 
 //JaCoCo Exclude
 
