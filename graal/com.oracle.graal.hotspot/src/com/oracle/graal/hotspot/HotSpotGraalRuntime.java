@@ -107,7 +107,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
         if (target == null) {
             final int wordSize = 8;
             final int stackFrameAlignment = 16;
-            target = new TargetDescription(new AMD64(), true, stackFrameAlignment, config.vmPageSize, wordSize, true, true, true);
+            target = new TargetDescription(new AMD64(), true, stackFrameAlignment, config.vmPageSize, wordSize, true, true);
         }
 
         return target;

@@ -99,14 +99,12 @@ public abstract class LIRGeneratorTool {
     public abstract void visitMerge(MergeNode i);
     public abstract void visitEndNode(EndNode i);
     public abstract void visitLoopEnd(LoopEndNode i);
-    public abstract void visitSafepointNode(SafepointNode i);
-    public abstract void visitBreakpointNode(BreakpointNode i);
 
     public abstract void visitCompareAndSwap(CompareAndSwapNode i);
 
-    // Functionality that is currently implemented in XIR.
-    // Some of these methods will go away when lowering is done via snippets in the front end.
-    // The remainder will define the contract a runtime specific backend must provide.
+    // These methods define the contract a runtime specific backend must provide.
     public abstract void visitExceptionObject(ExceptionObjectNode i);
     public abstract void visitReturn(ReturnNode i);
+    public abstract void visitSafepointNode(SafepointNode i);
+    public abstract void visitBreakpointNode(BreakpointNode i);
 }

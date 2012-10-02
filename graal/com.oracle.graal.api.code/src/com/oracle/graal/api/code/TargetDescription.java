@@ -91,20 +91,13 @@ public class TargetDescription {
      */
     public final boolean debugInfoDoubleWordsInSecondSlot;
 
-    /**
-     * Temporary flag to distinguish between the semantics necessary for HotSpot and Maxine.
-     */
-    // TODO This should go away when XIR goes away, and the logic be part of the VM-specific lowering.
-    public final boolean invokeSnippetAfterArguments;
-
     public TargetDescription(Architecture arch,
              boolean isMP,
              int stackAlignment,
              int pageSize,
              int cacheAlignment,
              boolean inlineObjects,
-             boolean debugInfoDoubleWordsInSecondSlot,
-             boolean invokeSnippetAfterArguments) {
+             boolean debugInfoDoubleWordsInSecondSlot) {
         this.arch = arch;
         this.pageSize = pageSize;
         this.isMP = isMP;
@@ -119,7 +112,6 @@ public class TargetDescription {
         this.cacheAlignment = cacheAlignment;
         this.inlineObjects = inlineObjects;
         this.debugInfoDoubleWordsInSecondSlot = debugInfoDoubleWordsInSecondSlot;
-        this.invokeSnippetAfterArguments = invokeSnippetAfterArguments;
     }
 
     /**
