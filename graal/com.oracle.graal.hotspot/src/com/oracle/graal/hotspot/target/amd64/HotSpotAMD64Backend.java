@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 
 import java.lang.reflect.*;
@@ -56,6 +57,12 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
 
     public HotSpotAMD64Backend(CodeCacheProvider runtime, TargetDescription target) {
         super(runtime, target);
+        HotSpotRuntime hs = (HotSpotRuntime) runtime;
+        HotSpotVMConfig c = hs.config;
+        Kind word = target.wordKind;
+
+        addStub("monitorenter", c.fastMonitorEnterStub, cc(temps(rax, rbx), IllegalValue, reg("object", rsi, Kind.Object), reg("lock", rdx, word)));
+        addStub("monitorexit", c.fastMonitorExitStub, cc(temps(rax, rbx), IllegalValue, reg("object", rsi, Kind.Object), reg("lock", rdx, word)));
     }
 
     @Override

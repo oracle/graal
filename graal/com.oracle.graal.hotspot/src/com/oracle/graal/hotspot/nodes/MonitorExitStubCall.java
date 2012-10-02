@@ -22,20 +22,15 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.target.amd64.AMD64MonitorEnterStubCallOp.*;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.target.amd64.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.target.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * Node implementing a call to HotSpot's {@code graal_monitorexit} stub.
- *
- * @see AMD64MonitorExitStubCallOp
  */
 public class MonitorExitStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
@@ -48,12 +43,9 @@ public class MonitorExitStubCall extends FixedWithNextNode implements LIRGenLowe
 
     @Override
     public void generate(LIRGenerator gen) {
-        RegisterValue objectFixed = OBJECT.asValue(Kind.Object);
-        RegisterValue lockFixed = LOCK.asValue(gen.target().wordKind);
-        // The register allocator cannot handle stack -> register moves so we use an LEA here
-        gen.emitMove(gen.emitLea(gen.peekLock()), lockFixed);
-        gen.emitMove(gen.operand(object), objectFixed);
-        gen.append(new AMD64MonitorExitStubCallOp(objectFixed, lockFixed, gen.state()));
+        HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
+        HotSpotStub stub = backend.getStub("monitorexit");
+        gen.emitCall(stub.address, stub.cc, true, gen.operand(object), gen.emitLea(gen.peekLock()));
     }
 
     @NodeIntrinsic
