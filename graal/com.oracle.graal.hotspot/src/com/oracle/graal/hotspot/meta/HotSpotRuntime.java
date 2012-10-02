@@ -52,12 +52,12 @@ import com.oracle.graal.snippets.*;
 import com.oracle.max.criutils.*;
 
 /**
- * CRI runtime implementation for the HotSpot VM.
+ * HotSpot implementation of {@link GraalCodeCacheProvider}.
  */
-public class HotSpotRuntime implements GraalCodeCacheProvider {
+public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     public final HotSpotVMConfig config;
-    final HotSpotRegisterConfig regConfig;
-    private final HotSpotRegisterConfig globalStubRegConfig;
+    private final RegisterConfig regConfig;
+    private final RegisterConfig globalStubRegConfig;
     private final HotSpotGraalRuntime graalRuntime;
     private CheckCastSnippets.Templates checkcastSnippets;
     private InstanceOfSnippets.Templates instanceofSnippets;
@@ -67,9 +67,11 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
     public HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
         this.config = config;
         this.graalRuntime = graalRuntime;
-        regConfig = new HotSpotRegisterConfig(config, false);
-        globalStubRegConfig = new HotSpotRegisterConfig(config, true);
+        regConfig = createRegisterConfig(false);
+        globalStubRegConfig = createRegisterConfig(true);
     }
+
+    protected abstract RegisterConfig createRegisterConfig(boolean globalStubConfig);
 
     public void installSnippets(SnippetInstaller installer) {
         installer.install(SystemSnippets.class);
@@ -91,6 +93,16 @@ public class HotSpotRuntime implements GraalCodeCacheProvider {
     public HotSpotGraalRuntime getGraalRuntime() {
         return graalRuntime;
     }
+
+    /**
+     * Gets the register holding the current thread.
+     */
+    public abstract Register threadRegister();
+
+    /**
+     * Gets the stack pointer register.
+     */
+    public abstract Register stackPointerRegister();
 
     @Override
     public String disassemble(CodeInfo info, CompilationResult tm) {

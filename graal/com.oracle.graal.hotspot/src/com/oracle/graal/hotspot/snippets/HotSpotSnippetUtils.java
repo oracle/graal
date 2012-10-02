@@ -32,7 +32,6 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.Snippet.Fold;
 import com.oracle.graal.snippets.*;
-import com.oracle.max.asm.amd64.*;
 
 //JaCoCo Exclude
 
@@ -63,12 +62,12 @@ public class HotSpotSnippetUtils {
 
     @Fold
     static Register threadRegister() {
-        return HotSpotGraalRuntime.getInstance().getConfig().threadRegister;
+        return HotSpotGraalRuntime.getInstance().getRuntime().threadRegister();
     }
 
     @Fold
     static Register stackPointerRegister() {
-        return AMD64.rsp;
+        return HotSpotGraalRuntime.getInstance().getRuntime().stackPointerRegister();
     }
 
     @Fold

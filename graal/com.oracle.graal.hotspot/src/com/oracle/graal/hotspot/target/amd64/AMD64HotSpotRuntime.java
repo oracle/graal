@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,30 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.target.amd64;
+
+import static com.oracle.max.asm.amd64.AMD64.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.hotspot.meta.*;
 
-public final class CurrentThread extends FloatingNode implements LIRLowerable {
+public class AMD64HotSpotRuntime extends HotSpotRuntime {
 
-    private int threadObjectOffset;
-
-    public CurrentThread(int threadObjectOffset, CodeCacheProvider runtime) {
-        super(StampFactory.declaredNonNull(runtime.getResolvedJavaType(Thread.class)));
-        this.threadObjectOffset = threadObjectOffset;
+    public AMD64HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
+        super(config, graalRuntime);
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        Register thread = HotSpotGraalRuntime.getInstance().getRuntime().threadRegister();
-        gen.setResult(this, gen.emitLoad(new Address(Kind.Object, thread.asValue(gen.target().wordKind), threadObjectOffset), false));
+    public Register threadRegister() {
+        return r15;
     }
 
-    @NodeIntrinsic
-    public static native Object get(@ConstantNodeParameter int threadObjectOffset);
+    @Override
+    public Register stackPointerRegister() {
+        return rsp;
+    }
+
+    @Override
+    protected RegisterConfig createRegisterConfig(boolean globalStubConfig) {
+        return new AMD64HotSpotRegisterConfig(config, globalStubConfig);
+    }
+
 }

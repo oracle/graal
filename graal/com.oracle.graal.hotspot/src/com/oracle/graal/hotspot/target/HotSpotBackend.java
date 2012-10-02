@@ -28,6 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
 
 /**
  * HotSpot specific backend.
@@ -45,8 +46,13 @@ public abstract class HotSpotBackend extends Backend {
 
     private final Map<String, HotSpotStub> stubsMap = new HashMap<>();
 
-    public HotSpotBackend(CodeCacheProvider runtime, TargetDescription target) {
+    public HotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
         super(runtime, target);
+    }
+
+    @Override
+    public HotSpotRuntime runtime() {
+        return (HotSpotRuntime) super.runtime();
     }
 
     /**

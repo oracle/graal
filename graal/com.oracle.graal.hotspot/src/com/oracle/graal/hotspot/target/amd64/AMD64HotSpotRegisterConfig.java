@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.max.asm.amd64.AMD64.*;
 
@@ -34,7 +34,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 
-public class HotSpotRegisterConfig implements RegisterConfig {
+public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     // be careful - the contents of this array are duplicated in graal_CodeInstaller.cpp
     private final Register[] allocatable = {
@@ -68,7 +68,7 @@ public class HotSpotRegisterConfig implements RegisterConfig {
 
     private final CalleeSaveLayout csl;
 
-    public HotSpotRegisterConfig(HotSpotVMConfig config, boolean globalStubConfig) {
+    public AMD64HotSpotRegisterConfig(HotSpotVMConfig config, boolean globalStubConfig) {
         if (config.windowsOs) {
             generalParameterRegisters = new Register[] {rdx, r8, r9, rdi, rsi, rcx};
         } else {

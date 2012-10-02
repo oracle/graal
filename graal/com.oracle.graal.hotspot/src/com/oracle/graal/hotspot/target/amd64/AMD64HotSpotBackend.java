@@ -54,15 +54,14 @@ import com.oracle.max.asm.amd64.AMD64Assembler.*;
 /**
  * HotSpot AMD64 specific backend.
  */
-public class HotSpotAMD64Backend extends HotSpotBackend {
+public class AMD64HotSpotBackend extends HotSpotBackend {
 
-    public HotSpotAMD64Backend(CodeCacheProvider runtime, TargetDescription target) {
+    public AMD64HotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
         super(runtime, target);
-        HotSpotRuntime hs = (HotSpotRuntime) runtime;
-        HotSpotVMConfig c = hs.config;
+        HotSpotVMConfig c = runtime.config;
         Kind word = target.wordKind;
 
-        Register[] jargs = hs.getGlobalStubRegisterConfig().getCallingConventionRegisters(RuntimeCall, RegisterFlag.CPU);
+        Register[] jargs = runtime.getGlobalStubRegisterConfig().getCallingConventionRegisters(RuntimeCall, RegisterFlag.CPU);
         Register jarg0 = jargs[0];
         Register jarg1 = jargs[1];
         Register jarg2 = jargs[2];
@@ -118,10 +117,14 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
 
     @Override
     public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
-        return new HotSpotAMD64LIRGenerator(graph, runtime, target, frameMap, method, lir);
+        return new HotSpotAMD64LIRGenerator(graph, runtime(), target, frameMap, method, lir);
     }
 
     static final class HotSpotAMD64LIRGenerator extends AMD64LIRGenerator implements HotSpotLIRGenerator {
+
+        private HotSpotRuntime runtime() {
+            return (HotSpotRuntime) runtime;
+        }
 
         private HotSpotAMD64LIRGenerator(Graph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
             super(graph, runtime, target, frameMap, method, lir);
@@ -130,7 +133,7 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
         @Override
         public void visitSafepointNode(SafepointNode i) {
             LIRFrameState info = state();
-            append(new AMD64SafepointOp(info, ((HotSpotRuntime) runtime).config));
+            append(new AMD64SafepointOp(info, runtime().config));
         }
 
         @Override
@@ -148,8 +151,8 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
 
         @Override
         public void visitExceptionObject(ExceptionObjectNode x) {
-            HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
-            RegisterValue thread = config.threadRegister.asValue();
+            HotSpotVMConfig config = runtime().config;
+            RegisterValue thread = runtime().threadRegister().asValue();
             Address exceptionAddress = new Address(Kind.Object, thread, config.threadExceptionOopOffset);
             Address pcAddress = new Address(Kind.Long, thread, config.threadExceptionPcOffset);
             Value exception = emitLoad(exceptionAddress, false);
@@ -251,7 +254,7 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
             asm.pop(rbp);
 
             if (GraalOptions.GenSafepoints) {
-                HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
+                HotSpotVMConfig config = runtime().config;
 
                 // If at the return point, then the frame has already been popped
                 // so deoptimization cannot be performed here. The HotSpot runtime
@@ -285,7 +288,7 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
 
         AbstractAssembler masm = new AMD64MacroAssembler(target, frameMap.registerConfig);
         HotSpotFrameContext frameContext = canOmitFrame ? null : new HotSpotFrameContext();
-        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime, frameMap, masm, frameContext, lir.stubs);
+        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, lir.stubs);
         tasm.setFrameSize(frameMap.frameSize());
         tasm.targetMethod.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
         return tasm;
@@ -296,7 +299,7 @@ public class HotSpotAMD64Backend extends HotSpotBackend {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
         FrameMap frameMap = tasm.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
-        HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
+        HotSpotVMConfig config = runtime().config;
         Label unverifiedStub = new Label();
 
         // Emit the prefix

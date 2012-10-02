@@ -29,20 +29,21 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.interpreter.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.target.amd64.*;
+import com.oracle.graal.hotspot.target.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.max.asm.amd64.*;
 
 /**
- * Singleton class holding the instance of the GraalCompiler.
+ * Singleton class holding the instance of the {@link GraalRuntime}.
+ *
+ * The platform specific subclass is created by a call from
+ * the native HotSpot code.
  */
-public final class HotSpotGraalRuntime implements GraalRuntime {
+public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
-    private static final HotSpotGraalRuntime instance = new HotSpotGraalRuntime();
+    private static HotSpotGraalRuntime instance;
 
     public static HotSpotGraalRuntime getInstance() {
         return instance;
@@ -51,19 +52,21 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
     private final CompilerToVM compilerToVm;
     private final VMToCompiler vmToCompiler;
 
-    private HotSpotRuntime runtime;
-    private GraalCompiler compiler;
-    private TargetDescription target;
+    protected final HotSpotRuntime runtime;
+    protected final GraalCompiler compiler;
+    protected final TargetDescription target;
     private HotSpotRuntimeInterpreterInterface runtimeInterpreterInterface;
     private volatile HotSpotGraphCache cache;
 
-    private final HotSpotVMConfig config;
+    protected final HotSpotVMConfig config;
 
     public HotSpotVMConfig getConfig() {
         return config;
     }
 
-    private HotSpotGraalRuntime() {
+    public HotSpotGraalRuntime() {
+        assert instance == null;
+        instance = this;
 
         CompilerToVM toVM = new CompilerToVMImpl();
 
@@ -90,6 +93,16 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
         if (Boolean.valueOf(System.getProperty("graal.printconfig"))) {
             printConfig(config);
         }
+
+        target = createTarget();
+        runtime = createRuntime();
+
+        HotSpotBackend backend = createBackend();
+        GraalOptions.StackShadowPages = config.stackShadowPages;
+        compiler = new GraalCompiler(getRuntime(), getTarget(), backend);
+        if (GraalOptions.CacheGraphs) {
+            cache = new HotSpotGraphCache();
+        }
     }
 
     private static void printConfig(HotSpotVMConfig config) {
@@ -103,28 +116,15 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
         }
     }
 
-    public TargetDescription getTarget() {
-        if (target == null) {
-            final int wordSize = 8;
-            final int stackFrameAlignment = 16;
-            target = new TargetDescription(new AMD64(), true, stackFrameAlignment, config.vmPageSize, wordSize, true, true);
-        }
+    protected abstract TargetDescription createTarget();
+    protected abstract HotSpotBackend createBackend();
+    protected abstract HotSpotRuntime createRuntime();
 
+    public TargetDescription getTarget() {
         return target;
     }
 
     public GraalCompiler getCompiler() {
-        if (compiler == null) {
-            // these options are important - graal will not generate correct code without them
-            GraalOptions.StackShadowPages = config.stackShadowPages;
-
-            Backend backend = new HotSpotAMD64Backend(getRuntime(), getTarget());
-
-            compiler = new GraalCompiler(getRuntime(), getTarget(), backend);
-            if (GraalOptions.CacheGraphs) {
-                cache = new HotSpotGraphCache();
-            }
-        }
         return compiler;
     }
 
@@ -182,9 +182,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
     }
 
     public HotSpotRuntime getRuntime() {
-        if (runtime == null) {
-            runtime = new HotSpotRuntime(config, this);
-        }
         return runtime;
     }
 

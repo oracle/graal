@@ -35,12 +35,16 @@ import com.oracle.graal.lir.asm.*;
  */
 public abstract class Backend {
 
-    public final CodeCacheProvider runtime;
+    private final CodeCacheProvider runtime;
     public final TargetDescription target;
 
     protected Backend(CodeCacheProvider runtime, TargetDescription target) {
         this.runtime = runtime;
         this.target = target;
+    }
+
+    public CodeCacheProvider runtime() {
+        return runtime;
     }
 
     public FrameMap newFrameMap(RegisterConfig registerConfig) {
