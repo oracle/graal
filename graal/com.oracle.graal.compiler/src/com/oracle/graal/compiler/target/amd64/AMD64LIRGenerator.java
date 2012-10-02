@@ -27,8 +27,6 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
 import static com.oracle.graal.lir.amd64.AMD64Compare.*;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
@@ -545,24 +543,24 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState) {
-        append(new DirectCallOp(callTarget.target(), result, parameters, callState));
+    protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
+        append(new DirectCallOp(callTarget.target(), result, parameters, temps, callState));
     }
 
     @Override
-    protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState) {
+    protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
         // The current register allocator cannot handle variables at call sites, need a fixed register.
         Value targetAddress = AMD64.rax.asValue();
         emitMove(operand(callTarget.computedAddress()), targetAddress);
-        append(new IndirectCallOp(callTarget.target(), result, parameters, targetAddress, callState));
+        append(new IndirectCallOp(callTarget.target(), result, parameters, temps, targetAddress, callState));
     }
 
     @Override
-    protected void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRFrameState info) {
+    protected void emitCall(Object targetMethod, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info) {
         if (isConstant(targetAddress)) {
-            append(new DirectCallOp(targetMethod, result, arguments.toArray(new Value[arguments.size()]), info));
+            append(new DirectCallOp(targetMethod, result, arguments, temps, info));
         } else {
-            append(new IndirectCallOp(targetMethod, result, arguments.toArray(new Value[arguments.size()]), targetAddress, info));
+            append(new IndirectCallOp(targetMethod, result, arguments, temps, targetAddress, info));
         }
     }
 

@@ -697,8 +697,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         CallingConvention cc = frameMap.registerConfig.getCallingConvention(callTarget.callType(), x.node().kind(), signature, target(), false);
         frameMap.callsMethod(cc);
 
-        List<Value> argList = visitInvokeArguments(cc, callTarget.arguments());
-        Value[] parameters = argList.toArray(new Value[argList.size()]);
+        Value[] parameters = visitInvokeArguments(cc, callTarget.arguments());
 
         LIRFrameState callState = null;
         if (x.stateAfter() != null) {
@@ -708,9 +707,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         Value result = cc.getReturn();
 
         if (callTarget instanceof DirectCallTargetNode) {
-            emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, callState);
+            emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, cc.getTemporaries(), callState);
         } else if (callTarget instanceof IndirectCallTargetNode) {
-            emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, callState);
+            emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, cc.getTemporaries(), callState);
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -720,11 +719,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    protected abstract void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState);
+    protected abstract void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
-    protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState);
+    protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
-    protected abstract void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRFrameState info);
+    protected abstract void emitCall(Object targetMethod, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info);
 
     private static Value toStackKind(Value value) {
         if (value.getKind().stackKind() != value.getKind()) {
@@ -740,21 +739,21 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return value;
     }
 
-    public List<Value> visitInvokeArguments(CallingConvention cc, Iterable<ValueNode> arguments) {
+    public Value[] visitInvokeArguments(CallingConvention cc, Collection<ValueNode> arguments) {
         // for each argument, load it into the correct location
-        List<Value> argList = new ArrayList<>();
+        Value[] result = new Value[arguments.size()];
         int j = 0;
         for (ValueNode arg : arguments) {
             if (arg != null) {
-                Value operand = toStackKind(cc.getArgument(j++));
+                Value operand = toStackKind(cc.getArgument(j));
                 emitMove(operand(arg), operand);
-                argList.add(operand);
-
+                result[j] = operand;
+                j++;
             } else {
                 throw GraalInternalError.shouldNotReachHere("I thought we no longer have null entries for two-slot types...");
             }
         }
-        return argList;
+        return result;
     }
 
 
@@ -774,9 +773,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             emitMove(arg, loc);
             argLocations[i] = loc;
         }
-        List<Value> argumentList = Arrays.asList(argLocations);
-
-        emitCall(target, cc.getReturn(), argumentList, Constant.forLong(0), info);
+        emitCall(target, cc.getReturn(), argLocations, cc.getTemporaries(), Constant.forLong(0), info);
 
         if (isLegal(cc.getReturn())) {
             return emitMove(cc.getReturn());
@@ -796,7 +793,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         CallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, x.kind(), x.call().getArgumentKinds(), target(), false);
         frameMap.callsMethod(cc);
         Value resultOperand = cc.getReturn();
-        List<Value> argList = visitInvokeArguments(cc, x.arguments());
+        Value[] args = visitInvokeArguments(cc, x.arguments());
 
         LIRFrameState info = null;
         FrameState stateAfter = x.stateAfter();
@@ -820,7 +817,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             info = state();
         }
 
-        emitCall(x.call(), resultOperand, argList, Constant.forLong(0), info);
+        emitCall(x.call(), resultOperand, args, cc.getTemporaries(), Constant.forLong(0), info);
 
         if (isLegal(resultOperand)) {
             setResult(x, emitMove(resultOperand));
@@ -970,9 +967,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             emitMove(arg, loc);
             argLocations[i] = loc;
         }
-        List<Value> argumentList = Arrays.asList(argLocations);
-
-        emitCall(runtimeCall, cc.getReturn(), argumentList, Constant.forLong(0), info);
+        emitCall(runtimeCall, cc.getReturn(), argLocations, cc.getTemporaries(), Constant.forLong(0), info);
 
         return cc.getReturn();
     }

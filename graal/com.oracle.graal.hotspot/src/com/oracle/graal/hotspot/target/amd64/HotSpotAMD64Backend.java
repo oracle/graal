@@ -24,10 +24,10 @@ package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 
 import java.lang.reflect.*;
-import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -85,8 +85,7 @@ public class HotSpotAMD64Backend extends Backend {
             }
 
             CallingConvention cc = frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, Kind.Void, sig, target(), false);
-            List<Value> argList = visitInvokeArguments(cc, i.arguments);
-            Value[] parameters = argList.toArray(new Value[argList.size()]);
+            Value[] parameters = visitInvokeArguments(cc, i.arguments);
             append(new AMD64BreakpointOp(parameters));
         }
 
@@ -109,17 +108,17 @@ public class HotSpotAMD64Backend extends Backend {
         }
 
         @Override
-        protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState) {
-            append(new AMD64DirectCallOp(callTarget.target(), result, parameters, callState, ((HotSpotDirectCallTargetNode) callTarget).invokeKind(), lir));
+        protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
+            append(new AMD64DirectCallOp(callTarget.target(), result, parameters, temps, callState, ((HotSpotDirectCallTargetNode) callTarget).invokeKind(), lir));
         }
 
         @Override
-        protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, LIRFrameState callState) {
+        protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
             Value methodOop = AMD64.rbx.asValue();
             emitMove(operand(((HotSpotIndirectCallTargetNode) callTarget).methodOop()), methodOop);
             Value targetAddress = AMD64.rax.asValue();
             emitMove(operand(callTarget.computedAddress()), targetAddress);
-            append(new AMD64IndirectCallOp(callTarget.target(), result, parameters, methodOop, targetAddress, callState));
+            append(new AMD64IndirectCallOp(callTarget.target(), result, parameters, temps, methodOop, targetAddress, callState));
         }
     }
 

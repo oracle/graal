@@ -28,7 +28,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.Opcode;
+import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 
@@ -38,15 +38,18 @@ public class AMD64Call {
     public static class DirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
+        @Temp protected Value[] temps;
         @State protected LIRFrameState state;
 
         protected final Object targetMethod;
 
-        public DirectCallOp(Object targetMethod, Value result, Value[] parameters, LIRFrameState state) {
+        public DirectCallOp(Object targetMethod, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
             this.targetMethod = targetMethod;
             this.result = result;
             this.parameters = parameters;
             this.state = state;
+            this.temps = temps;
+            assert temps != null;
         }
 
         @Override
@@ -70,16 +73,19 @@ public class AMD64Call {
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
         @Use({REG}) protected Value targetAddress;
+        @Temp protected Value[] temps;
         @State protected LIRFrameState state;
 
         protected final Object targetMethod;
 
-        public IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value targetAddress, LIRFrameState state) {
+        public IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
             this.targetMethod = targetMethod;
             this.result = result;
             this.parameters = parameters;
             this.targetAddress = targetAddress;
             this.state = state;
+            this.temps = temps;
+            assert temps != null;
         }
 
         @Override

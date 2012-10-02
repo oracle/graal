@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
@@ -41,9 +39,9 @@ public class AMD64TailcallOp extends AMD64LIRInstruction {
     @Use protected Value target;
     @Alive protected Value[] parameters;
 
-    public AMD64TailcallOp(List<Value> parameters, Value target) {
+    public AMD64TailcallOp(Value[] parameters, Value target) {
         this.target = target;
-        this.parameters = parameters.toArray(new Value[parameters.size()]);
+        this.parameters = parameters;
     }
 
     @Override
