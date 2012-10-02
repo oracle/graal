@@ -32,7 +32,6 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.target.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**

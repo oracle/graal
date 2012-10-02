@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.target;
+package com.oracle.graal.hotspot.amd64;
+
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
+import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.asm.*;
+import com.oracle.max.asm.amd64.*;
 
 /**
- * This interface defines the contract a HotSpot backend LIR generator needs to fulfill
- * in addition to abstract methods from {@link LIRGenerator} and {@link LIRGeneratorTool}.
+ * Emits a breakpoint.
  */
-public interface HotSpotLIRGenerator {
+@Opcode("BREAKPOINT")
+public class AMD64BreakpointOp extends AMD64LIRInstruction {
 
     /**
-     * Emits an operation to make a tail call.
-     *
-     * @param args the arguments of the call
-     * @param address the target address of the call
+     * A set of values loaded into the Java ABI parameter locations (for inspection by a debugger).
      */
-    void emitTailcall(Value[] args, Value address);
+    @Use({REG, STACK}) protected Value[] parameters;
 
-    void visitDirectCompareAndSwap(DirectCompareAndSwapNode x);
+    public AMD64BreakpointOp(Value[] parameters) {
+        this.parameters = parameters;
+    }
+
+    @Override
+    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm) {
+        asm.int3();
+    }
 }

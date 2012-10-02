@@ -20,33 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.target.amd64;
+package com.oracle.graal.hotspot;
 
-import static com.oracle.max.asm.amd64.AMD64.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
+/**
+ * This interface defines the contract a HotSpot backend LIR generator needs to fulfill
+ * in addition to abstract methods from {@link LIRGenerator} and {@link LIRGeneratorTool}.
+ */
+public interface HotSpotLIRGenerator {
 
-public class AMD64HotSpotRuntime extends HotSpotRuntime {
+    /**
+     * Emits an operation to make a tail call.
+     *
+     * @param args the arguments of the call
+     * @param address the target address of the call
+     */
+    void emitTailcall(Value[] args, Value address);
 
-    public AMD64HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
-        super(config, graalRuntime);
-    }
-
-    @Override
-    public Register threadRegister() {
-        return r15;
-    }
-
-    @Override
-    public Register stackPointerRegister() {
-        return rsp;
-    }
-
-    @Override
-    protected RegisterConfig createRegisterConfig(boolean globalStubConfig) {
-        return new AMD64HotSpotRegisterConfig(config, globalStubConfig);
-    }
-
+    void visitDirectCompareAndSwap(DirectCompareAndSwapNode x);
 }

@@ -20,46 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.target.amd64;
+package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.max.asm.amd64.AMD64.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.bridge.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.amd64.*;
 
 /**
- * Emits a safepoint poll.
+ * Performs a hard-coded tail call to the specified target, which normally should be an {@link InstalledCode} instance.
  */
-@Opcode("SAFEPOINT")
-public class AMD64SafepointOp extends AMD64LIRInstruction {
-    @State protected LIRFrameState state;
+@Opcode("TAILCALL")
+public class AMD64TailcallOp extends AMD64LIRInstruction {
+    @Use protected Value target;
+    @Alive protected Value[] parameters;
 
-    private final HotSpotVMConfig config;
-
-    public AMD64SafepointOp(LIRFrameState state, HotSpotVMConfig config) {
-        this.state = state;
-        this.config = config;
+    public AMD64TailcallOp(Value[] parameters, Value target) {
+        this.target = target;
+        this.parameters = parameters;
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm) {
-        Register scratch = tasm.frameMap.registerConfig.getScratchRegister();
-        int pos = asm.codeBuffer.position();
-        if (config.isPollingPageFar) {
-            asm.movq(scratch, config.safepointPollingAddress);
-            tasm.recordMark(Marks.MARK_POLL_FAR);
-            tasm.recordSafepoint(pos, state);
-            asm.movq(scratch, new Address(tasm.target.wordKind, scratch.asValue()));
-        } else {
-            tasm.recordMark(Marks.MARK_POLL_NEAR);
-            tasm.recordSafepoint(pos, state);
-            asm.movq(scratch, new Address(tasm.target.wordKind, rip.asValue()));
-        }
+    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        // destroy the current frame (now the return address is the top of stack)
+        masm.leave();
+
+        // jump to the target method
+        masm.jmp(asRegister(target));
+        masm.ensureUniquePC();
     }
 }

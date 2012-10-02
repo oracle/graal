@@ -20,38 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.max.asm.amd64.AMD64.*;
 
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.hotspot.meta.*;
 
-/**
- * Node implementing a call to HotSpot's {@code graal_monitorenter} stub.
- */
-public class MonitorEnterStubCall extends FixedWithNextNode implements LIRGenLowerable {
+public class AMD64HotSpotRuntime extends HotSpotRuntime {
 
-    @Input private final ValueNode object;
-    @Input private final ValueNode lock;
-
-    public MonitorEnterStubCall(ValueNode object, ValueNode lock) {
-        super(StampFactory.forVoid());
-        this.object = object;
-        this.lock = lock;
+    public AMD64HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
+        super(config, graalRuntime);
     }
 
     @Override
-    public void generate(LIRGenerator gen) {
-        HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
-        HotSpotStub stub = backend.getStub(MONITORENTER_STUB_NAME);
-        gen.emitCall(stub.address, stub.cc, true, gen.operand(object), gen.operand(lock));
+    public Register threadRegister() {
+        return r15;
     }
 
-    @NodeIntrinsic
-    public static native void call(Object hub, Word lock);
+    @Override
+    public Register stackPointerRegister() {
+        return rsp;
+    }
+
+    @Override
+    protected RegisterConfig createRegisterConfig(boolean globalStubConfig) {
+        return new AMD64HotSpotRegisterConfig(config, globalStubConfig);
+    }
+
 }

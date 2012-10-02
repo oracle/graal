@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.target.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
 
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.target.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
