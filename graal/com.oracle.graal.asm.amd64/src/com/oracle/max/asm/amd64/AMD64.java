@@ -22,9 +22,9 @@
  */
 package com.oracle.max.asm.amd64;
 
+import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.code.Register.RegisterFlag.*;
 import static com.oracle.graal.api.meta.Kind.*;
-import static com.oracle.max.criutils.MemoryBarriers.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Register.*;

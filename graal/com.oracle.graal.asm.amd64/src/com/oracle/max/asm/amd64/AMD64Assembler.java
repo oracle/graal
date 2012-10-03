@@ -22,11 +22,11 @@
  */
 package com.oracle.max.asm.amd64;
 
+import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.max.asm.NumUtil.*;
 import static com.oracle.max.asm.amd64.AMD64.*;
 import static com.oracle.max.asm.amd64.AMD64AsmOptions.*;
-import static com.oracle.max.criutils.MemoryBarriers.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
