@@ -25,14 +25,11 @@ package com.oracle.graal.snippets.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.target.amd64.*;
-import com.oracle.graal.snippets.target.amd64.AMD64BitScanOp.IntrinsicOpcode;
 
 
 public class BitScanReverseNode extends FloatingNode implements LIRGenLowerable, Canonicalizable {
@@ -65,15 +62,7 @@ public class BitScanReverseNode extends FloatingNode implements LIRGenLowerable,
     @Override
     public void generate(LIRGenerator gen) {
         Variable result = gen.newVariable(Kind.Int);
-        IntrinsicOpcode opcode;
-        if (value.kind().isStackInt()) {
-            opcode = IntrinsicOpcode.IBSR;
-        } else if (value.kind().isLong()) {
-            opcode = IntrinsicOpcode.LBSR;
-        } else {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-        gen.append(new AMD64BitScanOp(opcode, result, gen.operand(value)));
+        gen.emitBitScanReverse(result, gen.operand(value));
         gen.setResult(this, result);
     }
 

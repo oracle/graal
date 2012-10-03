@@ -29,7 +29,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.target.amd64.*;
 
 
 public class ReverseBytesNode extends FloatingNode implements LIRGenLowerable, Canonicalizable {
@@ -63,7 +62,7 @@ public class ReverseBytesNode extends FloatingNode implements LIRGenLowerable, C
     @Override
     public void generate(LIRGenerator gen) {
         Variable result = gen.newVariable(value.kind());
-        gen.append(new AMD64ByteSwapOp(result, gen.operand(value)));
+        gen.emitByteSwap(result, gen.operand(value));
         gen.setResult(this, result);
     }
 }

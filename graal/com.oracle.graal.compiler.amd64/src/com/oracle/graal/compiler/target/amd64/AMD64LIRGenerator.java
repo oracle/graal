@@ -42,6 +42,7 @@ import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Stack;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op2Reg;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op2Stack;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.ShiftOp;
+import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
 import com.oracle.graal.lir.amd64.AMD64Call.IndirectCallOp;
 import com.oracle.graal.lir.amd64.AMD64Compare.CompareOp;
@@ -53,6 +54,7 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.SequentialSwitchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.SwitchRangesOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
+import com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
@@ -68,10 +70,10 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.amd64.*;
-import com.oracle.max.asm.amd64.AMD64Assembler.*;
+import com.oracle.max.asm.amd64.AMD64Assembler.ConditionFlag;
 
 /**
- * This class implements the X86-specific portion of the LIR generator.
+ * This class implements the AMD64 specific portion of the LIR generator.
  */
 public abstract class AMD64LIRGenerator extends LIRGenerator {
 
@@ -562,6 +564,56 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         } else {
             append(new IndirectCallOp(targetMethod, result, arguments, temps, targetAddress, info));
         }
+    }
+
+    @Override
+    public void emitBitScanForward(Variable result, Value value) {
+        append(new AMD64BitScanOp(AMD64BitScanOp.IntrinsicOpcode.BSF, result, value));
+    }
+
+    @Override
+    public void emitBitScanReverse(Variable result, Value value) {
+        if (value.getKind().isStackInt()) {
+            append(new AMD64BitScanOp(AMD64BitScanOp.IntrinsicOpcode.IBSR, result, value));
+        } else {
+            append(new AMD64BitScanOp(AMD64BitScanOp.IntrinsicOpcode.LBSR, result, value));
+        }
+    }
+
+    @Override
+    public void emitMathAbs(Variable result, Variable input) {
+        append(new Op2Reg(DAND, result, input, Constant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL))));
+    }
+
+    @Override
+    public void emitMathSqrt(Variable result, Variable input) {
+        append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.SQRT, result, input));
+    }
+
+    @Override
+    public void emitMathLog(Variable result, Variable input, boolean base10) {
+        IntrinsicOpcode opcode = base10 ? AMD64MathIntrinsicOp.IntrinsicOpcode.LOG10 : AMD64MathIntrinsicOp.IntrinsicOpcode.LOG;
+        append(new AMD64MathIntrinsicOp(opcode, result, input));
+    }
+
+    @Override
+    public void emitMathCos(Variable result, Variable input) {
+        append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.COS, result, input));
+    }
+
+    @Override
+    public void emitMathSin(Variable result, Variable input) {
+        append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.SIN, result, input));
+    }
+
+    @Override
+    public void emitMathTan(Variable result, Variable input) {
+        append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.TAN, result, input));
+    }
+
+    @Override
+    public void emitByteSwap(Variable result, Value input) {
+        append(new AMD64ByteSwapOp(result, input));
     }
 
     @Override

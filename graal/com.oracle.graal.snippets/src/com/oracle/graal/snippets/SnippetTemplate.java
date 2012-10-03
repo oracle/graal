@@ -330,7 +330,7 @@ public class SnippetTemplate {
         Node curStampNode = null;
         for (Node node : snippetCopy.getNodes()) {
             if (node instanceof ValueNode && ((ValueNode) node).stamp() == StampFactory.forNodeIntrinsic()) {
-                assert curStampNode == null : "Currently limited to stamp node (but this can be converted to a List if necessary)";
+                assert curStampNode == null : "Currently limited to one stamp node (but this can be converted to a List if necessary)";
                 curStampNode = node;
             }
             if (node instanceof StateSplit) {

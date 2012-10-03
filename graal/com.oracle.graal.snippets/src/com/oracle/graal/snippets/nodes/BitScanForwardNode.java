@@ -30,8 +30,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.target.amd64.*;
-import com.oracle.graal.snippets.target.amd64.AMD64BitScanOp.IntrinsicOpcode;
 
 
 public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable, Canonicalizable {
@@ -61,7 +59,7 @@ public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable,
     @Override
     public void generate(LIRGenerator gen) {
         Variable result = gen.newVariable(Kind.Int);
-        gen.append(new AMD64BitScanOp(IntrinsicOpcode.BSF, result, gen.operand(value)));
+        gen.emitBitScanForward(result, gen.operand(value));
         gen.setResult(this, result);
     }
 }

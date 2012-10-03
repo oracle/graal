@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.snippets.target.amd64;
+package com.oracle.graal.lir.amd64;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.amd64.*;
 
-public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
+
+public class AMD64BitScanOp extends AMD64LIRInstruction {
     public enum IntrinsicOpcode  {
-        SQRT,
-        SIN, COS, TAN,
-        LOG, LOG10;
+        IBSR, LBSR,
+        BSF;
     }
 
     @Opcode private final IntrinsicOpcode opcode;
     @Def protected Value result;
-    @Use protected Value input;
+    @Use({OperandFlag.REG, OperandFlag.ADDR}) protected Value input;
 
-    public AMD64MathIntrinsicOp(IntrinsicOpcode opcode, Value result, Value input) {
+    public AMD64BitScanOp(IntrinsicOpcode opcode, Value result, Value input) {
         this.opcode = opcode;
         this.result = result;
         this.input = input;
@@ -49,14 +46,34 @@ public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        switch (opcode) {
-            case SQRT:  masm.sqrtsd(asDoubleReg(result), asDoubleReg(input)); break;
-            case LOG:   masm.flog(asDoubleReg(result), asDoubleReg(input), false); break;
-            case LOG10: masm.flog(asDoubleReg(result), asDoubleReg(input), true); break;
-            case SIN:   masm.fsin(asDoubleReg(result), asDoubleReg(input)); break;
-            case COS:   masm.fcos(asDoubleReg(result), asDoubleReg(input)); break;
-            case TAN:   masm.ftan(asDoubleReg(result), asDoubleReg(input)); break;
-            default:    throw GraalInternalError.shouldNotReachHere();
+        Register dst = ValueUtil.asIntReg(result);
+        if (ValueUtil.isAddress(input)) {
+            Address src = ValueUtil.asAddress(input);
+            switch(opcode) {
+                case BSF:
+                    masm.bsfq(dst, src);
+                    break;
+                case IBSR:
+                    masm.bsrl(dst, src);
+                    break;
+                case LBSR:
+                    masm.bsrq(dst, src);
+                    break;
+            }
+        } else {
+            Register src = ValueUtil.asRegister(input);
+            switch(opcode) {
+                case BSF:
+                    masm.bsfq(dst, src);
+                    break;
+                case IBSR:
+                    masm.bsrl(dst, src);
+                    break;
+                case LBSR:
+                    masm.bsrq(dst, src);
+                    break;
+            }
         }
     }
+
 }

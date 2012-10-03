@@ -22,19 +22,15 @@
  */
 package com.oracle.graal.snippets.nodes;
 
-import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op2Reg;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.target.amd64.*;
 
 public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, LIRGenLowerable {
 
@@ -65,13 +61,13 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
         Variable input = gen.load(gen.operand(x()));
         Variable result = gen.newVariable(kind());
         switch (operation()) {
-            case ABS:   gen.append(new Op2Reg(DAND, result, input, Constant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL)))); break;
-            case SQRT:  gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.SQRT, result, input)); break;
-            case LOG:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.LOG, result, input)); break;
-            case LOG10: gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.LOG10, result, input)); break;
-            case SIN:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.SIN, result, input)); break;
-            case COS:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.COS, result, input)); break;
-            case TAN:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.TAN, result, input)); break;
+            case ABS:   gen.emitMathAbs(result, input); break;
+            case SQRT:  gen.emitMathSqrt(result, input); break;
+            case LOG:   gen.emitMathLog(result, input, false); break;
+            case LOG10: gen.emitMathLog(result, input, true); break;
+            case SIN:   gen.emitMathSin(result, input); break;
+            case COS:   gen.emitMathCos(result, input); break;
+            case TAN:   gen.emitMathTan(result, input); break;
             default:    throw GraalInternalError.shouldNotReachHere();
         }
         gen.setResult(this, result);
