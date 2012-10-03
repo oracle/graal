@@ -24,7 +24,7 @@ package com.oracle.graal.compiler.gen;
 
 import static com.oracle.graal.compiler.gen.InstructionPrinter.InstructionLineColumn.*;
 
-import com.oracle.max.criutils.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 
 /**

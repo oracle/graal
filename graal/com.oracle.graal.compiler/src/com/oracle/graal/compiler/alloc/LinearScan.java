@@ -46,7 +46,6 @@ import com.oracle.graal.lir.LIRInstruction.StateProcedure;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.cfg.*;
-import com.oracle.max.criutils.*;
 
 /**
  * An implementation of the linear scan register allocator algorithm described

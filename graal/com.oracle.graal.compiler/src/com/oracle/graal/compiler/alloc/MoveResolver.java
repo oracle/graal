@@ -26,10 +26,10 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.criutils.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 
 /**

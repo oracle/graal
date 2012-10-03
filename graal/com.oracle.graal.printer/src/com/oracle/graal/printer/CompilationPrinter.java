@@ -29,7 +29,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.max.criutils.*;
+import com.oracle.graal.debug.*;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases.

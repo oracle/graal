@@ -49,7 +49,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.criutils.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.

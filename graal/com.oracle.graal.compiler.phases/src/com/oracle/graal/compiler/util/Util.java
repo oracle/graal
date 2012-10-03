@@ -25,10 +25,10 @@ package com.oracle.graal.compiler.util;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.max.criutils.*;
 
 /**
  * The {@code Util} class contains a motley collection of utility methods used throughout the compiler.

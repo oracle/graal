@@ -29,7 +29,6 @@ import java.nio.file.*;
 import java.text.*;
 import java.util.*;
 
-import com.oracle.max.criutils.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;

@@ -32,7 +32,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.printer.*;
-import com.oracle.max.criutils.*;
 
 public class HotSpotDebugConfig implements DebugConfig {
 

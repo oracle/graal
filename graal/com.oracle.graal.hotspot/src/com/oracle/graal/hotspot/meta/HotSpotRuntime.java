@@ -49,7 +49,6 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.max.criutils.*;
 
 /**
  * HotSpot implementation of {@link GraalCodeCacheProvider}.

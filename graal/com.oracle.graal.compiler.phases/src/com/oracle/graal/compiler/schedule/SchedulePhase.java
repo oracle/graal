@@ -24,9 +24,9 @@ package com.oracle.graal.compiler.schedule;
 
 import java.util.*;
 
-import com.oracle.max.criutils.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.lir.cfg.*;

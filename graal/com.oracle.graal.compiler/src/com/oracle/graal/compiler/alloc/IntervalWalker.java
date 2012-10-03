@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.compiler.alloc;
 
-import com.oracle.max.criutils.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
 import com.oracle.graal.compiler.alloc.Interval.RegisterBindingLists;
 import com.oracle.graal.compiler.alloc.Interval.State;
+import com.oracle.graal.debug.*;
 
 /**
  */

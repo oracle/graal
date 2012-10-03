@@ -40,7 +40,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.max.criutils.*;
 
 /**
  * Exits from the HotSpot VM into Java code.
