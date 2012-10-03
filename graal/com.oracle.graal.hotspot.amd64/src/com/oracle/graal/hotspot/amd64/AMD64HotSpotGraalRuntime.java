@@ -36,11 +36,13 @@ final class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
     }
 
     /**
-     * Called from native code.
+     * Called from C++ code to retrieve the singleton instance, creating it first if necessary.
      */
-    @SuppressWarnings("unused")
-    private static HotSpotGraalRuntime initialize() {
-        return new AMD64HotSpotGraalRuntime();
+    public static HotSpotGraalRuntime makeInstance() {
+        if (getInstance() == null) {
+            setInstance(new AMD64HotSpotGraalRuntime());
+        }
+        return getInstance();
     }
 
     @Override
@@ -59,6 +61,4 @@ final class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
     protected HotSpotRuntime createRuntime() {
         return new AMD64HotSpotRuntime(config, this);
     }
-
-
 }

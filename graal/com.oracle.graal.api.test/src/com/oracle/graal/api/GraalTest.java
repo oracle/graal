@@ -38,5 +38,6 @@ public class GraalTest {
     @Test
     public void testRuntimeNamed() {
         assertNotNull(Graal.getRuntime().getName());
+        System.out.println(Graal.getRuntime().getName());
     }
 }

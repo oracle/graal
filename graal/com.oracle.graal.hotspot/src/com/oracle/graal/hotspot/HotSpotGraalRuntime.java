@@ -38,35 +38,40 @@ import com.oracle.graal.nodes.spi.*;
  * Singleton class holding the instance of the {@link GraalRuntime}.
  *
  * The platform specific subclass is created by a call from
- * the native HotSpot code.
+ * the C++ HotSpot code.
  */
 public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     private static HotSpotGraalRuntime instance;
 
+    /**
+     * Gets the singleton runtime instance object.
+     */
     public static HotSpotGraalRuntime getInstance() {
         return instance;
     }
 
-    private final CompilerToVM compilerToVm;
-    private final VMToCompiler vmToCompiler;
+    /**
+     * Called by the platform specific class exactly once to register the singleton instance.
+     */
+    protected static void setInstance(HotSpotGraalRuntime runtime) {
+        assert instance == null : "runtime already registered";
+        instance = runtime;
+    }
+
+    protected final CompilerToVM compilerToVm;
+    protected final VMToCompiler vmToCompiler;
 
     protected final HotSpotRuntime runtime;
     protected final GraalCompiler compiler;
     protected final TargetDescription target;
+
     private HotSpotRuntimeInterpreterInterface runtimeInterpreterInterface;
     private volatile HotSpotGraphCache cache;
 
     protected final HotSpotVMConfig config;
 
-    public HotSpotVMConfig getConfig() {
-        return config;
-    }
-
-    public HotSpotGraalRuntime() {
-        assert instance == null;
-        instance = this;
-
+    protected HotSpotGraalRuntime() {
         CompilerToVM toVM = new CompilerToVMImpl();
 
         // initialize VmToCompiler
@@ -118,6 +123,10 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     protected abstract TargetDescription createTarget();
     protected abstract HotSpotBackend createBackend();
     protected abstract HotSpotRuntime createRuntime();
+
+    public HotSpotVMConfig getConfig() {
+        return config;
+    }
 
     public TargetDescription getTarget() {
         return target;
@@ -199,7 +208,7 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     @Override
     public String getName() {
-        return "HotSpotGraalRuntime";
+        return getClass().getSimpleName();
     }
 
     @SuppressWarnings("unchecked")
