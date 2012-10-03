@@ -59,8 +59,9 @@ public class NewObjectSnippets implements SnippetsInterface {
         Word thread = thread();
         Word top = loadWordFromWord(thread, threadTlabTopOffset());
         Word end = loadWordFromWord(thread, threadTlabEndOffset());
-        Word newTop = top.plus(size);
-        if (newTop.belowOrEqual(end)) {
+        Word available = end.minus(top);
+        if (available.aboveOrEqual(Word.fromInt(size))) {
+            Word newTop = top.plus(size);
             storeObject(thread, 0, threadTlabTopOffset(), newTop);
             return top;
         }
