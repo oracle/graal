@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
+import static com.oracle.graal.api.code.UnsignedMath.*;
 import static com.oracle.graal.hotspot.nodes.CastFromHub.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.snippets.nodes.DirectObjectStoreNode.*;
 import static com.oracle.graal.snippets.nodes.ExplodeLoopNode.*;
-import static com.oracle.max.criutils.UnsignedMath.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;

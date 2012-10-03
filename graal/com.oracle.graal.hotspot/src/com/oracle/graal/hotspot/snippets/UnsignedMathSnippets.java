@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.nodes.MaterializeNode.*;
 import static com.oracle.graal.nodes.calc.Condition.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.max.criutils.*;
 
 /**
  * Snippets for {@link UnsignedMath}.

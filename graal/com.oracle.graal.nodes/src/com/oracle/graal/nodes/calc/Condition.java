@@ -25,7 +25,6 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.max.criutils.*;
 
 /**
  * Condition codes used in conditionals.
