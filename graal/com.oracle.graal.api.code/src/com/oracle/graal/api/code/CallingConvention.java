@@ -30,7 +30,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * A calling convention describes the locations in which the arguments for a call are placed,
  * the location in which the return value is placed if the call is not void and any
- * temporary locations used (and killed) by the call.
+ * {@linkplain #getTemporaries() extra} locations used (and killed) by the call.
  */
 public class CallingConvention {
 
@@ -79,20 +79,34 @@ public class CallingConvention {
     private final Value returnLocation;
 
     /**
-     * The locations in which the arguments are placed. This array ordered by argument index.
+     * The ordered locations in which the arguments are placed.
      */
     private final Value[] argumentLocations;
 
     /**
-     * The locations used by the call in addition to the arguments are placed.
-     * From the perspective of register allocation, these locations are killed by the call.
+     * The locations used (and killed) by the call in addition to the arguments.
      */
     private final Value[] temporaryLocations;
 
+    /**
+     * Creates a description of the registers and stack locations used by a call.
+     *
+     * @param stackSize amount of stack space (in bytes) required for the stack-based arguments of the call
+     * @param returnLocation the location for the return value or {@link Value#IllegalValue} if a void call
+     * @param argumentLocations the ordered locations in which the arguments are placed
+     */
     public CallingConvention(int stackSize, Value returnLocation, Value... argumentLocations) {
         this(Value.NONE, stackSize, returnLocation, argumentLocations);
     }
 
+    /**
+     * Creates a description of the registers and stack locations used by a call.
+     *
+     * @param temporaryLocations the locations used (and killed) by the call in addition to {@code arguments}
+     * @param stackSize amount of stack space (in bytes) required for the stack-based arguments of the call
+     * @param returnLocation the location for the return value or {@link Value#IllegalValue} if a void call
+     * @param argumentLocations the ordered locations in which the arguments are placed
+     */
     public CallingConvention(Value[] temporaryLocations, int stackSize, Value returnLocation, Value... argumentLocations) {
         assert argumentLocations != null;
         assert temporaryLocations != null;
@@ -105,52 +119,35 @@ public class CallingConvention {
     }
 
     /**
-     * @return the location for the return value or {@link Value#IllegalValue} if a void call
+     * Gets the location for the return value or {@link Value#IllegalValue} if a void call.
      */
     public Value getReturn() {
         return returnLocation;
     }
 
     /**
-     * @return the location for the {@code index}'th argument
+     * Gets the location for the {@code index}'th argument.
      */
     public Value getArgument(int index) {
         return argumentLocations[index];
     }
 
     /**
-     * @return the amount of stack space (in bytes) required for the stack-based arguments of the call.
+     * Gets the amount of stack space (in bytes) required for the stack-based arguments of the call.
      */
     public int getStackSize() {
         return stackSize;
     }
 
     /**
-     * @return the number of locations required for the arguments
+     * Gets the number of locations required for the arguments.
      */
     public int getArgumentCount() {
         return argumentLocations.length;
     }
 
     /**
-     * Gets a location used by the call in addition to the arguments are placed.
-     * From the perspective of register allocation, these locations are killed by the call.
-     *
-     * @return the {@code index}'th temporary location used by the call
-     */
-    public Value getTemporary(int index) {
-        return temporaryLocations[index];
-    }
-
-    /**
-     * @return the number of temporary locations used by the call
-     */
-    public int getTemporaryCount() {
-        return temporaryLocations.length;
-    }
-
-    /**
-     * Gets the temporary locations used (and killed) by the call.
+     * Gets the locations used (and killed) by the call apart from the {@linkplain #getArgument(int) arguments}.
      */
     public Value[] getTemporaries() {
         if (temporaryLocations.length == 0) {
