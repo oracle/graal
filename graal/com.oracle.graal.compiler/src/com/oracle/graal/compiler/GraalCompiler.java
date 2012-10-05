@@ -147,6 +147,13 @@ public class GraalCompiler {
             }
         }
 
+        if (GraalOptions.OptTailDuplication) {
+            new TailDuplicationPhase().apply(graph);
+            if (GraalOptions.OptCanonicalizer) {
+                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+            }
+        }
+
         if (GraalOptions.PartialEscapeAnalysis && !plan.isPhaseDisabled(PartialEscapeAnalysisPhase.class)) {
             new PartialEscapeAnalysisPhase(target, runtime, assumptions).apply(graph);
         }
@@ -158,13 +165,6 @@ public class GraalCompiler {
         }
 
         new LoweringPhase(runtime, assumptions).apply(graph);
-
-        if (GraalOptions.OptTailDuplication) {
-            new TailDuplicationPhase().apply(graph);
-            if (GraalOptions.OptCanonicalizer) {
-                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-            }
-        }
 
         if (GraalOptions.CullFrameStates) {
             new CullFrameStatesPhase().apply(graph);
