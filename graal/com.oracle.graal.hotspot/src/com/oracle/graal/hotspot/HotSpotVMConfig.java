@@ -177,6 +177,23 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long fastMonitorExitStub;
     public long verifyOopStub;
     public long vmErrorStub;
+    public long deoptimizeStub;
+    public long unwindExceptionStub;
+    public long registerFinalizerStub;
+    public long setDeoptInfoStub;
+    public long createNullPointerExceptionStub;
+    public long createOutOfBoundsExceptionStub;
+    public long javaTimeMillisStub;
+    public long javaTimeNanosStub;
+    public long arithmeticFremStub;
+    public long arithmeticDremStub;
+    public long arithmeticSinStub;
+    public long arithmeticCosStub;
+    public long arithmeticTanStub;
+    public long logPrimitiveStub;
+    public long logObjectStub;
+    public long logPrintfStub;
+
 
     public void check() {
         assert vmPageSize >= 16;

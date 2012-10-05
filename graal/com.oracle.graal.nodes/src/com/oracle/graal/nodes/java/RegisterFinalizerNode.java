@@ -23,6 +23,8 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -31,6 +33,8 @@ import com.oracle.graal.nodes.type.*;
  * This node is used to perform the finalizer registration at the end of the java.lang.Object constructor.
  */
 public final class RegisterFinalizerNode extends AbstractStateSplit implements StateSplit, Canonicalizable, LIRLowerable {
+
+    public static final Descriptor REGISTER_FINALIZER = new Descriptor("registerFinalizer", Kind.Void, Kind.Object);
 
     @Input private ValueNode object;
 
@@ -45,7 +49,8 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements S
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitCall(RuntimeCall.RegisterFinalizer, true, gen.operand(object()));
+        RuntimeCall call = gen.getRuntime().getRuntimeCall(REGISTER_FINALIZER);
+        gen.emitCall(call, call.getCallingConvention(), true, gen.operand(object()));
     }
 
     @Override

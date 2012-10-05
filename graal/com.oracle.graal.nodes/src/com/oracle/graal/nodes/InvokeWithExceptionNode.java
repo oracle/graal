@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
@@ -149,7 +150,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         this.stateAfter = stateAfter;
     }
 
-    public boolean hasSideEffect() {
+    public boolean hasSideEffect(CodeCacheProvider runtime) {
         return true;
     }
 

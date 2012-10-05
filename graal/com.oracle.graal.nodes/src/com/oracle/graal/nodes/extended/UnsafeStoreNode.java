@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -49,7 +50,7 @@ public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lo
         stateAfter = x;
     }
 
-    public boolean hasSideEffect() {
+    public boolean hasSideEffect(CodeCacheProvider runtime) {
         return true;
     }
 

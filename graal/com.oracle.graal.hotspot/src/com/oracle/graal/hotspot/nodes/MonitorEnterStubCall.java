@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
@@ -38,6 +40,7 @@ public class MonitorEnterStubCall extends FixedWithNextNode implements LIRGenLow
 
     @Input private final ValueNode object;
     @Input private final ValueNode lock;
+    public static final Descriptor MONITORENTER = new Descriptor("monitorenter", Kind.Void, Kind.Object, wordKind());
 
     public MonitorEnterStubCall(ValueNode object, ValueNode lock) {
         super(StampFactory.forVoid());
@@ -47,9 +50,8 @@ public class MonitorEnterStubCall extends FixedWithNextNode implements LIRGenLow
 
     @Override
     public void generate(LIRGenerator gen) {
-        HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
-        HotSpotStub stub = backend.getStub(MONITORENTER_STUB_NAME);
-        gen.emitCall(stub.address, stub.cc, true, gen.operand(object), gen.operand(lock));
+        RuntimeCall stub = gen.getRuntime().getRuntimeCall(MonitorEnterStubCall.MONITORENTER);
+        gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object), gen.operand(lock));
     }
 
     @NodeIntrinsic

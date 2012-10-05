@@ -59,6 +59,13 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         instance = runtime;
     }
 
+    private static Kind wordKind;
+
+    public static Kind wordKind() {
+        assert wordKind != null;
+        return wordKind;
+    }
+
     protected final CompilerToVM compilerToVm;
     protected final VMToCompiler vmToCompiler;
 
@@ -99,6 +106,9 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         }
 
         target = createTarget();
+        assert wordKind == null || wordKind.equals(target.wordKind);
+        wordKind = target.wordKind;
+
         runtime = createRuntime();
 
         HotSpotBackend backend = createBackend();

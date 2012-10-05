@@ -108,6 +108,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return target;
     }
 
+    @Override
+    public CodeCacheProvider getRuntime() {
+        return runtime;
+    }
+
     public ResolvedJavaMethod method() {
         return method;
     }
@@ -782,14 +787,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public Value emitCall(RuntimeCall runtimeCall, boolean canTrap, Value... args) {
-        CallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, runtimeCall.getResultKind(), runtimeCall.getArgumentKinds(), target, false);
-        return emitCall(runtimeCall, cc, canTrap, args);
-    }
-
-    @Override
-    public void emitRuntimeCall(RuntimeCallNode x) {
-        CallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, x.kind(), x.call().getArgumentKinds(), target(), false);
+    public void visitRuntimeCall(RuntimeCallNode x) {
+        RuntimeCall call = runtime.getRuntimeCall(x.getDescriptor());
+        CallingConvention cc = call.getCallingConvention();
         frameMap.callsMethod(cc);
         Value resultOperand = cc.getReturn();
         Value[] args = visitInvokeArguments(cc, x.arguments());
@@ -811,12 +811,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             info = stateFor(stateBeforeReturn, -1);
         } else {
             // Every runtime call needs an info
-            // TODO This is conservative. It's not needed for RuntimeCalls that are implemented purely in a stub
+            // TODO This is conservative. It's not needed for calls that are implemented purely in a stub
             //       that does not trash any registers and does not call into the runtime.
             info = state();
         }
 
-        emitCall(x.call(), resultOperand, args, cc.getTemporaries(), Constant.forLong(0), info);
+        emitCall(call, resultOperand, args, cc.getTemporaries(), Constant.forLong(0), info);
 
         if (isLegal(resultOperand)) {
             setResult(x, emitMove(resultOperand));
@@ -949,31 +949,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             assert current == switchRangeCount - 1;
             emitSwitchRanges(lowKeys, highKeys, targets, defaultTarget, keyValue);
         }
-    }
-
-    protected final Value callRuntime(RuntimeCall runtimeCall, LIRFrameState info, Value... args) {
-        // get a result register
-        Kind[] arguments = runtimeCall.getArgumentKinds();
-
-        // move the arguments into the correct location
-        CallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, runtimeCall.getResultKind(), arguments, target(), false);
-        frameMap.callsMethod(cc);
-        assert cc.getArgumentCount() == args.length : "argument count mismatch";
-        Value[] argLocations = new Value[args.length];
-        for (int i = 0; i < args.length; i++) {
-            Value arg = args[i];
-            Value loc = cc.getArgument(i);
-            emitMove(arg, loc);
-            argLocations[i] = loc;
-        }
-        emitCall(runtimeCall, cc.getReturn(), argLocations, cc.getTemporaries(), Constant.forLong(0), info);
-
-        return cc.getReturn();
-    }
-
-    protected final Variable callRuntimeWithResult(RuntimeCall runtimeCall, LIRFrameState info, Value... args) {
-        Value location = callRuntime(runtimeCall, info, args);
-        return emitMove(location);
     }
 
     public FrameMap frameMap() {

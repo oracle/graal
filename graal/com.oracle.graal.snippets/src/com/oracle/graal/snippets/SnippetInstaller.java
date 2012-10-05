@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -98,6 +99,9 @@ public class SnippetInstaller {
 
     private void installSubstitutions(Class< ? extends SnippetsInterface> clazz, Class<?> originalClazz) {
         for (Method method : clazz.getDeclaredMethods()) {
+            if (method.getAnnotation(NodeIntrinsic.class) != null) {
+                continue;
+            }
             try {
                 Method originalMethod = originalClazz.getDeclaredMethod(method.getName(), method.getParameterTypes());
                 if (!originalMethod.getReturnType().isAssignableFrom(method.getReturnType())) {

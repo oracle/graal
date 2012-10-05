@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.target.amd64;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.lir.*;
@@ -34,6 +35,10 @@ import com.oracle.max.asm.*;
 import com.oracle.max.asm.amd64.*;
 
 public class AMD64DeoptimizationStub extends AMD64Code {
+
+    public static final Descriptor DEOPTIMIZE = new Descriptor("deoptimize", Kind.Void);
+    public static final Descriptor SET_DEOPT_INFO = new Descriptor("setDeoptInfo", Kind.Void, Kind.Object);
+
     public final Label label = new Label();
     public final LIRFrameState info;
     public final DeoptimizationAction action;
@@ -60,12 +65,12 @@ public class AMD64DeoptimizationStub extends AMD64Code {
             keepAlive.add(deoptInfo.toString());
             AMD64Move.move(tasm, masm, scratch.asValue(), Constant.forObject(deoptInfo));
             // TODO Make this an explicit calling convention instead of using a scratch register
-            AMD64Call.directCall(tasm, masm, RuntimeCall.SetDeoptInfo, info);
+            AMD64Call.directCall(tasm, masm, tasm.runtime.getRuntimeCall(SET_DEOPT_INFO), info);
         }
 
         masm.movl(scratch, tasm.runtime.encodeDeoptActionAndReason(action, reason));
         // TODO Make this an explicit calling convention instead of using a scratch register
-        AMD64Call.directCall(tasm, masm, RuntimeCall.Deoptimize, info);
+        AMD64Call.directCall(tasm, masm, tasm.runtime.getRuntimeCall(DEOPTIMIZE), info);
         AMD64Call.shouldNotReachHere(tasm, masm);
     }
 

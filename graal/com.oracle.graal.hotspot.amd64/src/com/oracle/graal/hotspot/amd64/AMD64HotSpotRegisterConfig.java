@@ -64,7 +64,6 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     private final Register[] generalParameterRegisters;
     private final Register[] xmmParameterRegisters = {xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7};
-    private final Register[] allParameterRegisters;
 
     private final CalleeSaveLayout csl;
 
@@ -93,8 +92,6 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         }
 
         attributesMap = RegisterAttributes.createMap(this, AMD64.allRegisters);
-        allParameterRegisters = Arrays.copyOf(generalParameterRegisters, generalParameterRegisters.length + xmmParameterRegisters.length);
-        System.arraycopy(xmmParameterRegisters, 0, allParameterRegisters, generalParameterRegisters.length, xmmParameterRegisters.length);
     }
 
     @Override
@@ -116,7 +113,10 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
     }
 
     public Register[] getCallingConventionRegisters(Type type, RegisterFlag flag) {
-        return allParameterRegisters;
+        if (flag == RegisterFlag.FPU) {
+            return xmmParameterRegisters;
+        }
+        return generalParameterRegisters;
     }
 
     private CallingConvention callingConvention(Kind returnKind, Kind[] kinds, Type type, TargetDescription target, boolean stackOnly) {

@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
-
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
@@ -41,6 +42,10 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
     @Input private final ValueNode hub;
     @Input private final ValueNode length;
     private final boolean isObjectArray;
+
+    public static final Descriptor NEW_OBJECT_ARRAY = new Descriptor("new_object_array", Kind.Object, Kind.Object, Kind.Int);
+
+    public static final Descriptor NEW_TYPE_ARRAY = new Descriptor("new_type_array", Kind.Object, Kind.Object, Kind.Int);
 
     public NewArrayStubCall(boolean isObjectArray, ValueNode hub, ValueNode length) {
         super(defaultStamp);
@@ -61,9 +66,8 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
 
     @Override
     public void generate(LIRGenerator gen) {
-        HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
-        HotSpotStub stub = backend.getStub(isObjectArray ? NEW_OBJECT_ARRAY_STUB_NAME : NEW_TYPE_ARRAY_STUB_NAME);
-        Variable result = gen.emitCall(stub.address, stub.cc, true, gen.operand(hub), gen.operand(length));
+        RuntimeCall stub = gen.getRuntime().getRuntimeCall(isObjectArray ? NewArrayStubCall.NEW_OBJECT_ARRAY : NewArrayStubCall.NEW_TYPE_ARRAY);
+        Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub), gen.operand(length));
         gen.setResult(this, result);
     }
 

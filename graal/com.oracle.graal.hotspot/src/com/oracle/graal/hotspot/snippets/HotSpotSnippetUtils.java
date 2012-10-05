@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.snippets;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -243,10 +242,5 @@ public class HotSpotSnippetUtils {
         assert arrayIndexScale(Kind.Long) == 8;
         assert arrayIndexScale(Kind.Float) == 4;
         assert arrayIndexScale(Kind.Double) == 8;
-    }
-
-    public static Register getStubParameterRegister(int index) {
-        RegisterConfig regConfig = HotSpotGraalRuntime.getInstance().getRuntime().getGlobalStubRegisterConfig();
-        return regConfig.getCallingConventionRegisters(CallingConvention.Type.RuntimeCall, RegisterFlag.CPU)[index];
     }
 }

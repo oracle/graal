@@ -26,13 +26,16 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.amd64.*;
 
 public class AMD64Call {
+
+    public static final Descriptor DEBUG = new Descriptor("debug", Kind.Void);
 
     @Opcode("CALL_DIRECT")
     public static class DirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
@@ -103,7 +106,7 @@ public class AMD64Call {
     public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Object target, LIRFrameState info) {
         int before = masm.codeBuffer.position();
         if (target instanceof RuntimeCall) {
-            long maxOffset = tasm.runtime.getMaxCallTargetOffset((RuntimeCall) target);
+            long maxOffset = ((RuntimeCall) target).getMaxCallTargetOffset();
             if (maxOffset != (int) maxOffset) {
                 // offset might not fit a 32-bit immediate, generate an
                 // indirect call with a 64-bit immediate
@@ -114,6 +117,7 @@ public class AMD64Call {
             } else {
                 masm.call();
             }
+
         } else {
             masm.call();
         }
@@ -145,7 +149,7 @@ public class AMD64Call {
         assert (assertions = true) == true;
 
         if (assertions) {
-            directCall(tasm, masm, RuntimeCall.Debug, null);
+            directCall(tasm, masm, tasm.runtime.getRuntimeCall(DEBUG), null);
             masm.hlt();
         }
     }

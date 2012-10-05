@@ -46,7 +46,7 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
         stateAfter = x;
     }
 
-    public boolean hasSideEffect() {
+    public boolean hasSideEffect(CodeCacheProvider runtime) {
         return true;
     }
 

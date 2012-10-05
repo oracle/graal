@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
-
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -36,6 +36,7 @@ import com.oracle.graal.nodes.type.*;
 public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
     @Input private final ValueNode object;
+    public static final Descriptor VERIFY_OOP = new Descriptor("verify_oop", Kind.Void, Kind.Object);
 
     public VerifyOopStubCall(ValueNode object) {
         super(StampFactory.objectNonNull());
@@ -44,9 +45,8 @@ public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowera
 
     @Override
     public void generate(LIRGenerator gen) {
-        HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
-        HotSpotStub stub = backend.getStub(VERIFY_OOP_STUB_NAME);
-        gen.emitCall(stub.address, stub.cc, true, gen.operand(object));
+        RuntimeCall stub = gen.getRuntime().getRuntimeCall(VerifyOopStubCall.VERIFY_OOP);
+        gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object));
     }
 
     @NodeIntrinsic

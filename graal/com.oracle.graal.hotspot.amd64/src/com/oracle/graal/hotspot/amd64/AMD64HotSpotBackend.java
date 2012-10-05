@@ -24,13 +24,11 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.max.asm.amd64.AMD64.*;
 
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
@@ -48,7 +46,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.amd64.*;
-import com.oracle.max.asm.amd64.AMD64Assembler.*;
+import com.oracle.max.asm.amd64.AMD64Assembler.ConditionFlag;
 
 /**
  * HotSpot AMD64 specific backend.
@@ -57,61 +55,6 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
     public AMD64HotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
         super(runtime, target);
-        HotSpotVMConfig c = runtime.config;
-        Kind word = target.wordKind;
-
-        Register[] jargs = runtime.getGlobalStubRegisterConfig().getCallingConventionRegisters(RuntimeCall, RegisterFlag.CPU);
-        Register jarg0 = jargs[0];
-        Register jarg1 = jargs[1];
-        Register jarg2 = jargs[2];
-
-        addStub(MONITORENTER_STUB_NAME, c.fastMonitorEnterStub,
-                /*        temps */ new Register[] {rax, rbx},
-                /*          ret */ IllegalValue,
-                /* arg0: object */ jarg0.asValue(Kind.Object),
-                /* arg1:   lock */ jarg1.asValue(word));
-
-        addStub(MONITOREXIT_STUB_NAME, c.fastMonitorExitStub,
-                /*        temps */ new Register[] {rax, rbx},
-                /*          ret */ IllegalValue,
-                /* arg0: object */ jarg0.asValue(Kind.Object),
-                /* arg1:   lock */ jarg1.asValue(word));
-
-        addStub(NEW_OBJECT_ARRAY_STUB_NAME, c.newObjectArrayStub,
-                /*        temps */ new Register[] {rcx, rdi, rsi},
-                /*          ret */ rax.asValue(Kind.Object),
-                /* arg0:    hub */ rdx.asValue(Kind.Object),
-                /* arg1: length */ rbx.asValue(Kind.Int));
-
-        addStub(NEW_TYPE_ARRAY_STUB_NAME, c.newTypeArrayStub,
-                /*        temps */ new Register[] {rcx, rdi, rsi},
-                /*          ret */ rax.asValue(Kind.Object),
-                /* arg0:    hub */ rdx.asValue(Kind.Object),
-                /* arg1: length */ rbx.asValue(Kind.Int));
-
-        addStub(NEW_INSTANCE_STUB_NAME, c.newInstanceStub,
-                /*        temps */ null,
-                /*          ret */ rax.asValue(Kind.Object),
-                /* arg0:    hub */ rdx.asValue(Kind.Object));
-
-        addStub(NEW_MULTI_ARRAY_STUB_NAME, c.newMultiArrayStub,
-                /*        temps */ null,
-                /*          ret */ rax.asValue(Kind.Object),
-                /* arg0:    hub */ rax.asValue(Kind.Object),
-                /* arg1:   rank */ rbx.asValue(Kind.Int),
-                /* arg2:   dims */ rcx.asValue(word));
-
-        addStub(VERIFY_OOP_STUB_NAME, c.verifyOopStub,
-                /*        temps */ null,
-                /*          ret */ IllegalValue,
-                /* arg0: object */ r13.asValue(Kind.Object));
-
-        addStub(VM_ERROR_STUB_NAME, c.vmErrorStub,
-                /*        temps */ null,
-                /*          ret */ IllegalValue,
-                /* arg0:  where */ jarg0.asValue(Kind.Object),
-                /* arg1: format */ jarg1.asValue(Kind.Object),
-                /* arg2:  value */ jarg2.asValue(Kind.Object));
     }
 
     @Override

@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -45,7 +46,7 @@ public class SafeWriteNode extends SafeAccessNode implements StateSplit, Lowerab
         stateAfter = x;
     }
 
-    public boolean hasSideEffect() {
+    public boolean hasSideEffect(CodeCacheProvider runtime) {
         return true;
     }
 

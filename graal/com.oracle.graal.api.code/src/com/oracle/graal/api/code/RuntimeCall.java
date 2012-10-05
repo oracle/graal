@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,67 +22,91 @@
  */
 package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.meta.Kind.*;
+import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 
 /**
- * Enumerates the calls that must be provided by the runtime system. The compiler may generate code that calls the
- * runtime services for unresolved and slow cases of some bytecodes.
+ * The name, signature and calling convention of a call from compiled code to the runtime.
+ * The target of such a call may be a leaf stub or a call into the runtime code proper.
  */
-public class RuntimeCall {
+public interface RuntimeCall {
 
-    // TODO Move the singletons to projects where they are actually used. A couple of them
-    // are HotSpot-specific.
-    public static final RuntimeCall UnwindException = new RuntimeCall("UnwindException", Void, true, Object);
-    public static final RuntimeCall Deoptimize = new RuntimeCall("Deoptimize", Void, true);
-    public static final RuntimeCall RegisterFinalizer = new RuntimeCall("RegisterFinalizer", Void, true, Object);
-    public static final RuntimeCall SetDeoptInfo = new RuntimeCall("SetDeoptInfo", Void, true, Object);
-    public static final RuntimeCall CreateNullPointerException = new RuntimeCall("CreateNullPointerException", Object, true);
-    public static final RuntimeCall CreateOutOfBoundsException = new RuntimeCall("CreateOutOfBoundsException", Object, true, Int);
-    public static final RuntimeCall JavaTimeMillis = new RuntimeCall("JavaTimeMillis", Long, false);
-    public static final RuntimeCall JavaTimeNanos = new RuntimeCall("JavaTimeNanos", Long, false);
-    public static final RuntimeCall Debug = new RuntimeCall("Debug", Void, true);
-    public static final RuntimeCall ArithmeticFrem = new RuntimeCall("ArithmeticFrem", Float, false, Float, Float);
-    public static final RuntimeCall ArithmeticDrem = new RuntimeCall("ArithmeticDrem", Double, false, Double, Double);
-    public static final RuntimeCall ArithmeticCos = new RuntimeCall("ArithmeticCos", Double, false, Double);
-    public static final RuntimeCall ArithmeticTan = new RuntimeCall("ArithmeticTan", Double, false, Double);
-    public static final RuntimeCall ArithmeticSin = new RuntimeCall("ArithmeticSin", Double, false, Double);
-    public static final RuntimeCall GenericCallback = new RuntimeCall("GenericCallback", Object, true, Object, Object);
-    public static final RuntimeCall LogPrintf = new RuntimeCall("LogPrintf", Void, false, Object, Long);
-    public static final RuntimeCall LogPrimitive = new RuntimeCall("LogPrimitive", Void, false, Int, Long, Boolean);
-    public static final RuntimeCall LogObject = new RuntimeCall("LogObject", Void, false, Object, Int);
+    /**
+     * The name and signature of a runtime call.
+     */
+    public static class Descriptor {
+        private final String name;
+        private final Kind resultKind;
+        private final Kind[] argumentKinds;
 
-    private final String name;
-    private final Kind resultKind;
-    private final Kind[] argumentKinds;
-    private final boolean hasSideEffect;
+        public Descriptor(String name, Kind resultKind, Kind... args) {
+            this.name = name;
+            this.resultKind = resultKind;
+            this.argumentKinds = args;
+        }
 
-    public RuntimeCall(String name, Kind resultKind, boolean hasSideEffect, Kind... args) {
-        this.name = name;
-        this.resultKind = resultKind;
-        this.argumentKinds = args;
-        this.hasSideEffect = hasSideEffect;
+        /**
+         * Gets the name of this runtime call.
+         */
+        public String getName() {
+            return name;
+        }
+
+        /**
+         * Gets the return kind of this runtime call.
+         */
+        public Kind getResultKind() {
+            return resultKind;
+        }
+
+        /**
+         * Gets the argument kinds of this runtime call.
+         */
+        public Kind[] getArgumentKinds() {
+            return argumentKinds.clone();
+        }
+
+        @Override
+        public int hashCode() {
+            return name.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof Descriptor) {
+                Descriptor nas = (Descriptor) obj;
+                return nas.name.equals(name) && nas.resultKind.equals(resultKind) && Arrays.equals(nas.argumentKinds, argumentKinds);
+            }
+            return false;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder(name).append('(');
+            String sep = "";
+            for (Kind arg : argumentKinds) {
+                sb.append(sep).append(arg);
+                sep = ",";
+            }
+            return sb.append(')').append(resultKind).toString();
+        }
     }
 
-    public String getName() {
-        return name;
-    }
+    CallingConvention getCallingConvention();
 
-    public Kind getResultKind() {
-        return resultKind;
-    }
+    /**
+     * Determines if this call changes state visible to other threads.
+     * Such calls denote boundaries across which deoptimization
+     * points cannot be moved.
+     */
+    boolean hasSideEffect();
 
-    public Kind[] getArgumentKinds() {
-        return argumentKinds;
-    }
+    /**
+     * Returns the maximum absolute offset of PC relative call to this stub from any position in the code cache or -1
+     * when not applicable. Intended for determining the required size of address/offset fields.
+     */
+    long getMaxCallTargetOffset();
 
-    public boolean hasSideEffect() {
-        return hasSideEffect;
-    }
-
-    @Override
-    public String toString() {
-        return name;
-    }
+    Descriptor getDescriptor();
 }

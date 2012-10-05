@@ -28,6 +28,7 @@ import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
 import static com.oracle.graal.lir.amd64.AMD64Compare.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -76,6 +77,9 @@ import com.oracle.max.asm.amd64.AMD64Assembler.ConditionFlag;
  * This class implements the AMD64 specific portion of the LIR generator.
  */
 public abstract class AMD64LIRGenerator extends LIRGenerator {
+
+    public static final Descriptor ARITHMETIC_FREM = new Descriptor("arithmeticFrem", Kind.Float, Kind.Float, Kind.Float);
+    public static final Descriptor ARITHMETIC_DREM = new Descriptor("arithmeticDrem", Kind.Double, Kind.Double, Kind.Double);
 
     private static final RegisterValue RAX_I = AMD64.rax.asValue(Kind.Int);
     private static final RegisterValue RAX_L = AMD64.rax.asValue(Kind.Long);
@@ -372,10 +376,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 emitMove(a, RAX_L);
                 append(new DivOp(LREM, RDX_L, RAX_L, load(b), state()));
                 return emitMove(RDX_L);
-            case Float:
-                return emitCall(RuntimeCall.ArithmeticFrem, false, a, b);
-            case Double:
-                return emitCall(RuntimeCall.ArithmeticDrem, false, a, b);
+            case Float: {
+                RuntimeCall stub = runtime.getRuntimeCall(ARITHMETIC_FREM);
+                return emitCall(stub, stub.getCallingConvention(), false, a, b);
+            }
+            case Double: {
+                RuntimeCall stub = runtime.getRuntimeCall(ARITHMETIC_DREM);
+                return emitCall(stub, stub.getCallingConvention(), false, a, b);
+            }
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }

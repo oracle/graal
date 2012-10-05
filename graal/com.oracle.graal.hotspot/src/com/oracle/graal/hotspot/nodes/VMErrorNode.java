@@ -22,13 +22,11 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
-
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
@@ -42,6 +40,7 @@ public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowera
 
     @Input private ValueNode format;
     @Input private ValueNode value;
+    public static final Descriptor VM_ERROR = new Descriptor("vm_error", Kind.Void, Kind.Object, Kind.Object, Kind.Long);
 
     public VMErrorNode(ValueNode format, ValueNode value) {
         super(StampFactory.forVoid());
@@ -61,9 +60,8 @@ public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowera
             where = "in compiled code for " + MetaUtil.format("%H.%n(%p)", gen.method());
         }
 
-        HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
-        HotSpotStub stub = backend.getStub(VM_ERROR_STUB_NAME);
-        gen.emitCall(stub.address, stub.cc, false, Constant.forObject(where), gen.operand(format), gen.operand(value));
+        RuntimeCall stub = gen.getRuntime().getRuntimeCall(VMErrorNode.VM_ERROR);
+        gen.emitCall(stub, stub.getCallingConvention(), false, Constant.forObject(where), gen.operand(format), gen.operand(value));
     }
 
     @NodeIntrinsic

@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.snippets;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.nodes.*;
 import com.oracle.graal.snippets.nodes.MathIntrinsicNode.Operation;
@@ -61,7 +64,7 @@ public class MathSnippetsX86 implements SnippetsInterface {
         if (abs(x) < PI_4) {
             return MathIntrinsicNode.compute(x, Operation.SIN);
         } else {
-            return RuntimeCallNode.callDouble(RuntimeCall.ArithmeticSin, x);
+            return callDouble(ARITHMETIC_SIN, x);
         }
     }
 
@@ -69,7 +72,7 @@ public class MathSnippetsX86 implements SnippetsInterface {
         if (abs(x) < PI_4) {
             return MathIntrinsicNode.compute(x, Operation.COS);
         } else {
-            return RuntimeCallNode.callDouble(RuntimeCall.ArithmeticCos, x);
+            return callDouble(ARITHMETIC_COS, x);
         }
     }
 
@@ -77,8 +80,14 @@ public class MathSnippetsX86 implements SnippetsInterface {
         if (abs(x) < PI_4) {
             return MathIntrinsicNode.compute(x, Operation.TAN);
         } else {
-            return RuntimeCallNode.callDouble(RuntimeCall.ArithmeticTan, x);
+            return callDouble(ARITHMETIC_TAN, x);
         }
     }
 
+    public static final Descriptor ARITHMETIC_SIN = new Descriptor("arithmeticSin", Kind.Double, Kind.Double);
+    public static final Descriptor ARITHMETIC_COS = new Descriptor("arithmeticCos", Kind.Double, Kind.Double);
+    public static final Descriptor ARITHMETIC_TAN = new Descriptor("arithmeticTan", Kind.Double, Kind.Double);
+
+    @NodeIntrinsic(value = RuntimeCallNode.class, setStampFromReturnType = true)
+    public static native double callDouble(@ConstantNodeParameter Descriptor descriptor, double value);
 }

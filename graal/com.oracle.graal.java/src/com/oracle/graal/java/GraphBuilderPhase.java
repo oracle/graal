@@ -29,6 +29,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaType.Representation;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
@@ -52,6 +53,10 @@ import com.oracle.graal.nodes.util.*;
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
 public final class GraphBuilderPhase extends Phase {
+
+    public static final Descriptor CREATE_NULL_POINTER_EXCEPTION = new Descriptor("createNullPointerException", Kind.Object);
+    public static final Descriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new Descriptor("createOutOfBoundsException", Kind.Object, Kind.Int);
+
 
     /**
      * The minimum value to which {@link GraalOptions#TraceBytecodeParserLevel} must be set to trace
@@ -765,7 +770,7 @@ public final class GraphBuilderPhase extends Phase {
             ValueNode exception = ConstantNode.forObject(new NullPointerException(), runtime, currentGraph);
             trueSucc.setNext(handleException(exception, bci()));
         } else {
-            RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(RuntimeCall.CreateNullPointerException));
+            RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(CREATE_NULL_POINTER_EXCEPTION));
             call.setStateAfter(frameState.create(bci()));
             trueSucc.setNext(call);
             call.setNext(handleException(call, bci()));
@@ -784,7 +789,7 @@ public final class GraphBuilderPhase extends Phase {
             ValueNode exception = ConstantNode.forObject(new ArrayIndexOutOfBoundsException(), runtime, currentGraph);
             falseSucc.setNext(handleException(exception, bci()));
         } else {
-            RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(RuntimeCall.CreateOutOfBoundsException, new ValueNode[] {index}));
+            RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
             call.setStateAfter(frameState.create(bci()));
             falseSucc.setNext(call);
             call.setNext(handleException(call, bci()));

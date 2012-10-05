@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -40,7 +41,7 @@ public class InsertStateAfterPlaceholderPhase extends Phase {
         }
 
         @Override
-        public boolean hasSideEffect() {
+        public boolean hasSideEffect(CodeCacheProvider runtime) {
             return false;
         }
 

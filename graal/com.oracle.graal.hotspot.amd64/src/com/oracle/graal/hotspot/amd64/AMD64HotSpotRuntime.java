@@ -22,9 +22,20 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.compiler.target.amd64.AMD64DeoptimizationStub.*;
+import static com.oracle.graal.compiler.target.amd64.AMD64LIRGenerator.*;
+import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
+import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
+import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
+import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
+import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
+import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
+import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
+import static com.oracle.graal.lir.amd64.AMD64Call.*;
 import static com.oracle.max.asm.amd64.AMD64.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
@@ -32,6 +43,83 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
 
     public AMD64HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
         super(config, graalRuntime);
+
+        HotSpotVMConfig c = config;
+        Kind word = graalRuntime.getTarget().wordKind;
+
+        addRuntimeCall(DEOPTIMIZE, config.deoptimizeStub, true,
+                /*           temps */ null,
+                /*             ret */ ret(Kind.Void));
+
+        addRuntimeCall(SET_DEOPT_INFO, config.setDeoptInfoStub, true,
+                /*           temps */ null,
+                /*             ret */ ret(Kind.Void),
+                /* arg0:      info */ scratch(Kind.Object));
+
+        addRuntimeCall(DEBUG, config.debugStub, false,
+                /*           temps */ null,
+                /*             ret */ ret(Kind.Void));
+
+        addRuntimeCall(ARITHMETIC_FREM, config.arithmeticFremStub, false,
+                /*           temps */ null,
+                /*             ret */ ret(Kind.Float),
+                /* arg0:         a */ arg(0, Kind.Float),
+                /* arg1:         b */ arg(1, Kind.Float));
+
+        addRuntimeCall(ARITHMETIC_DREM, config.arithmeticDremStub, false,
+                /*           temps */ null,
+                /*             ret */ ret(Kind.Double),
+                /* arg0:         a */ arg(0, Kind.Double),
+                /* arg1:         b */ arg(1, Kind.Double));
+
+        addRuntimeCall(MONITORENTER, config.fastMonitorEnterStub, true,
+                /*        temps */ new Register[] {rax, rbx},
+                /*          ret */ ret(Kind.Void),
+                /* arg0: object */ arg(0, Kind.Object),
+                /* arg1:   lock */ arg(1, word));
+
+        addRuntimeCall(MONITOREXIT, c.fastMonitorExitStub, true,
+                /*        temps */ new Register[] {rax, rbx},
+                /*          ret */ ret(Kind.Void),
+                /* arg0: object */ arg(0, Kind.Object),
+                /* arg1:   lock */ arg(1, word));
+
+        addRuntimeCall(NEW_OBJECT_ARRAY, c.newObjectArrayStub, false,
+                /*        temps */ new Register[] {rcx, rdi, rsi},
+                /*          ret */ rax.asValue(Kind.Object),
+                /* arg0:    hub */ rdx.asValue(Kind.Object),
+                /* arg1: length */ rbx.asValue(Kind.Int));
+
+        addRuntimeCall(NEW_TYPE_ARRAY, c.newTypeArrayStub, false,
+                /*        temps */ new Register[] {rcx, rdi, rsi},
+                /*          ret */ rax.asValue(Kind.Object),
+                /* arg0:    hub */ rdx.asValue(Kind.Object),
+                /* arg1: length */ rbx.asValue(Kind.Int));
+
+        addRuntimeCall(NEW_INSTANCE, c.newInstanceStub, false,
+                /*        temps */ null,
+                /*          ret */ rax.asValue(Kind.Object),
+                /* arg0:    hub */ rdx.asValue(Kind.Object));
+
+        addRuntimeCall(NEW_MULTI_ARRAY, c.newMultiArrayStub, false,
+                /*        temps */ null,
+                /*          ret */ rax.asValue(Kind.Object),
+                /* arg0:    hub */ rax.asValue(Kind.Object),
+                /* arg1:   rank */ rbx.asValue(Kind.Int),
+                /* arg2:   dims */ rcx.asValue(word));
+
+        addRuntimeCall(VERIFY_OOP, c.verifyOopStub, false,
+                /*        temps */ null,
+                /*          ret */ ret(Kind.Void),
+                /* arg0: object */ r13.asValue(Kind.Object));
+
+        addRuntimeCall(VM_ERROR, c.vmErrorStub, false,
+                /*        temps */ null,
+                /*          ret */ ret(Kind.Void),
+                /* arg0:  where */ arg(0, Kind.Object),
+                /* arg1: format */ arg(1, Kind.Object),
+                /* arg2:  value */ arg(2, Kind.Long));
+
     }
 
     @Override

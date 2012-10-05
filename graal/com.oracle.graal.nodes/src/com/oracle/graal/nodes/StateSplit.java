@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.code.*;
+
 /**
  * A state split is a node that may have a frame state associated with it.
  */
@@ -42,5 +44,5 @@ public interface StateSplit {
      * state visible to other threads. These nodes denote boundaries across which deoptimization
      * points cannot be moved.
      */
-    boolean hasSideEffect();
+    boolean hasSideEffect(CodeCacheProvider runtime);
 }

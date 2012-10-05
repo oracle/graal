@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.bridge;
 
 import java.lang.reflect.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -103,7 +102,7 @@ public interface CompilerToVM {
 
     ResolvedJavaField getJavaField(Field reflectionField);
 
-    long getMaxCallTargetOffset(RuntimeCall rtcall);
+    long getMaxCallTargetOffset(long stub);
 
     String disassembleNative(byte[] code, long address);
 

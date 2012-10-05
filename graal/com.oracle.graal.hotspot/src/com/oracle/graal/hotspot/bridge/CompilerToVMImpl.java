@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.bridge;
 
 import java.lang.reflect.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -147,7 +146,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native int JavaMethod_getCompiledCodeSize(HotSpotResolvedJavaMethod method);
 
     @Override
-    public native long getMaxCallTargetOffset(RuntimeCall rtcall);
+    public native long getMaxCallTargetOffset(long stub);
 
     @Override
     public native String disassembleNative(byte[] code, long address);

@@ -23,16 +23,17 @@
 package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.hotspot.bridge.*;
 
 /**
- * The details required to link a call to a HotSpot stub.
+ * The details required to link a HotSpot runtime or stub call.
  */
-public class HotSpotStub {
+public class HotSpotRuntimeCall implements RuntimeCall {
 
     /**
-     * The name of the stub. This is for informational purposes only.
+     * The descriptor of the stub. This is for informational purposes only.
      */
-    public final String name;
+    public final Descriptor descriptor;
 
     /**
      * The entry point address of the stub.
@@ -44,14 +45,35 @@ public class HotSpotStub {
      */
     public final CallingConvention cc;
 
-    public HotSpotStub(String name, long address, CallingConvention cc) {
+    private final boolean hasSideEffect;
+    private final CompilerToVM vm;
+
+    public HotSpotRuntimeCall(Descriptor descriptor, long address, boolean hasSideEffect, CallingConvention cc, CompilerToVM vm) {
         this.address = address;
-        this.name = name;
+        this.descriptor = descriptor;
         this.cc = cc;
+        this.hasSideEffect = hasSideEffect;
+        this.vm = vm;
     }
 
     @Override
     public String toString() {
-        return name + "@0x" + Long.toHexString(address) + ":" + cc;
+        return descriptor + "@0x" + Long.toHexString(address) + ":" + cc;
+    }
+
+    public CallingConvention getCallingConvention() {
+        return cc;
+    }
+
+    public boolean hasSideEffect() {
+        return hasSideEffect;
+    }
+
+    public long getMaxCallTargetOffset() {
+        return vm.getMaxCallTargetOffset(address);
+    }
+
+    public Descriptor getDescriptor() {
+        return descriptor;
     }
 }

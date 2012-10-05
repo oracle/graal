@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
-
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
@@ -39,6 +40,8 @@ public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowe
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
     @Input private final ValueNode hub;
+
+    public static final Descriptor NEW_INSTANCE = new Descriptor("new_instance", Kind.Object, Kind.Object);
 
     public NewInstanceStubCall(ValueNode hub) {
         super(defaultStamp);
@@ -57,9 +60,8 @@ public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowe
 
     @Override
     public void generate(LIRGenerator gen) {
-        HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
-        HotSpotStub stub = backend.getStub(NEW_INSTANCE_STUB_NAME);
-        Variable result = gen.emitCall(stub.address, stub.cc, true, gen.operand(hub));
+        RuntimeCall stub = gen.getRuntime().getRuntimeCall(NewInstanceStubCall.NEW_INSTANCE);
+        Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub));
         gen.setResult(this, result);
     }
 

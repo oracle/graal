@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -46,7 +47,7 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit 
         stateAfter = x;
     }
 
-    public boolean hasSideEffect() {
+    public boolean hasSideEffect(CodeCacheProvider runtime) {
         return true;
     }
 

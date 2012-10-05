@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.api.code;
 
+import com.oracle.graal.api.code.RuntimeCall.Descriptor;
 import com.oracle.graal.api.meta.*;
 
 /**
@@ -80,10 +81,9 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     Object asCallTarget(Object target);
 
     /**
-     * Returns the maximum absolute offset of a runtime call target from any position in the code cache or -1
-     * when not known or not applicable. Intended for determining the required size of address/offset fields.
+     * Gets the signature and linkage information for a runtime call.
      */
-    long getMaxCallTargetOffset(RuntimeCall rtcall);
+    RuntimeCall getRuntimeCall(Descriptor descriptor);
 
     /**
      * Encodes a deoptimization action and a deoptimization reason in an integer value.

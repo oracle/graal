@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -36,6 +38,7 @@ import com.oracle.graal.nodes.type.*;
 public class MonitorExitStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
     @Input private final ValueNode object;
+    public static final Descriptor MONITOREXIT = new Descriptor("monitorexit", Kind.Void, Kind.Object, wordKind());
 
     public MonitorExitStubCall(ValueNode object) {
         super(StampFactory.forVoid());
@@ -44,9 +47,8 @@ public class MonitorExitStubCall extends FixedWithNextNode implements LIRGenLowe
 
     @Override
     public void generate(LIRGenerator gen) {
-        HotSpotBackend backend = (HotSpotBackend) HotSpotGraalRuntime.getInstance().getCompiler().backend;
-        HotSpotStub stub = backend.getStub(MONITOREXIT_STUB_NAME);
-        gen.emitCall(stub.address, stub.cc, true, gen.operand(object), gen.emitLea(gen.peekLock()));
+        RuntimeCall stub = gen.getRuntime().getRuntimeCall(MonitorExitStubCall.MONITOREXIT);
+        gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object), gen.emitLea(gen.peekLock()));
     }
 
     @NodeIntrinsic

@@ -32,6 +32,8 @@ import com.oracle.graal.nodes.java.*;
 public abstract class LIRGeneratorTool {
     public abstract TargetDescription target();
 
+    public abstract CodeCacheProvider getRuntime();
+
     /**
      * Checks whether the supplied constant can be used without loading it into a register
      * for most operations, i.e., for commonly used arithmetic, logical, and comparison operations.
@@ -84,7 +86,6 @@ public abstract class LIRGeneratorTool {
     public abstract void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo);
     public abstract void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo, long leafGraphId);
     public abstract Value emitCall(Object target, CallingConvention cc, boolean canTrap, Value... args);
-    public abstract Value emitCall(RuntimeCall runtimeCall, boolean canTrap, Value... args);
 
     public abstract void emitIf(IfNode i);
     public abstract void emitConditional(ConditionalNode i);
@@ -93,7 +94,7 @@ public abstract class LIRGeneratorTool {
     public abstract void emitSwitch(SwitchNode i);
 
     public abstract void emitInvoke(Invoke i);
-    public abstract void emitRuntimeCall(RuntimeCallNode i);
+    public abstract void visitRuntimeCall(RuntimeCallNode i);
 
     // Handling of block-end nodes still needs to be unified in the LIRGenerator.
     public abstract void visitMerge(MergeNode i);

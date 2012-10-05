@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.*;
 
@@ -32,12 +35,18 @@ import com.oracle.graal.snippets.*;
 @ClassSubstitution(java.lang.System.class)
 public class SystemSnippets implements SnippetsInterface {
 
+    public static final Descriptor JAVA_TIME_MILLIS = new Descriptor("javaTimeMillis", Kind.Long);
+    public static final Descriptor JAVA_TIME_NANOS = new Descriptor("javaTimeNanos", Kind.Long);
+
     public static long currentTimeMillis() {
-        return RuntimeCallNode.callLong(RuntimeCall.JavaTimeMillis);
+        return callLong(JAVA_TIME_MILLIS);
     }
 
     public static long nanoTime() {
-        return RuntimeCallNode.callLong(RuntimeCall.JavaTimeNanos);
+        return callLong(JAVA_TIME_NANOS);
     }
+
+    @NodeIntrinsic(value = RuntimeCallNode.class, setStampFromReturnType = true)
+    public static native long callLong(@ConstantNodeParameter Descriptor descriptor);
 
 }

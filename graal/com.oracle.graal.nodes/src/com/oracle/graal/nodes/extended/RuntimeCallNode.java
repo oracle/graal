@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.Descriptor;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -31,46 +32,32 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "RuntimeCall#{p#call/s}")
 public final class RuntimeCallNode extends AbstractCallNode implements LIRLowerable {
 
-    private final RuntimeCall call;
+    private final Descriptor descriptor;
 
-    public RuntimeCall call() {
-        return call;
+    public RuntimeCallNode(Descriptor descriptor, ValueNode... arguments) {
+        super(StampFactory.forKind(descriptor.getResultKind()), arguments);
+        this.descriptor = descriptor;
     }
 
-    public RuntimeCallNode(RuntimeCall call) {
-        this(call, new ValueNode[0]);
-    }
-
-    public RuntimeCallNode(RuntimeCall call, ValueNode... arguments) {
-        super(StampFactory.forKind(call.getResultKind()), arguments);
-        this.call = call;
+    public Descriptor getDescriptor() {
+        return descriptor;
     }
 
     @Override
-    public boolean hasSideEffect() {
-        return call.hasSideEffect();
+    public boolean hasSideEffect(CodeCacheProvider runtime) {
+        return runtime.getRuntimeCall(descriptor).hasSideEffect();
     }
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitRuntimeCall(this);
+        gen.visitRuntimeCall(this);
     }
 
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
-            return super.toString(verbosity) + "#" + call;
+            return super.toString(verbosity) + "#" + descriptor;
         }
         return super.toString(verbosity);
     }
-
-    // specialized on return type (instead of public static <T> T performCall) until boxing/unboxing is sorted out in intrinsification
-    @NodeIntrinsic
-    public static native <S> double callDouble(@ConstantNodeParameter RuntimeCall call, S arg1);
-
-    @NodeIntrinsic
-    public static native long callLong(@ConstantNodeParameter RuntimeCall call);
-
-    @NodeIntrinsic
-    public static native void runtimeCall(@ConstantNodeParameter RuntimeCall call);
 }
