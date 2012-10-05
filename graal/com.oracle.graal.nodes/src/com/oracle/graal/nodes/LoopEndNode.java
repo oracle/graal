@@ -81,6 +81,12 @@ public final class LoopEndNode extends EndNode {
         return super.verify();
     }
 
+    /**
+     * Returns the 0-based index of this loop end. This is <b>not</b> the index into {@link PhiNode} values at the loop
+     * begin. Use {@link MergeNode#phiPredecessorIndex(EndNode)} for this purpose.
+     *
+     * @return The 0-based index of this loop end.
+     */
     public int endIndex() {
         return endIndex;
     }

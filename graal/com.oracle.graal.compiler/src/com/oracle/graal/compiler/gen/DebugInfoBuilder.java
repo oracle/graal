@@ -117,14 +117,14 @@ public class DebugInfoBuilder {
             values[numLocals + i] = toValue(state.stackAt(i));
         }
         for (int i = 0; i < numLocks; i++) {
-            // frames are traversed from the outside in, so the locks for the current frame are at the end of the lockDataSlot list
+            // frames are traversed from the outside in, so the locks for the current frame are at the end of the lockDataSlots list
             StackSlot lockData = lockDataSlots.get(lockDataSlots.size() - numLocks + i);
             values[numLocals + numStack + i] = new MonitorValue(toValue(state.lockAt(i)), lockData, state.lockAt(i) instanceof VirtualObjectNode);
         }
 
         BytecodeFrame caller = null;
         if (state.outerFrameState() != null) {
-            // remove the locks that were used for this frame from the list
+            // remove the locks that were used for this frame from the lockDataSlots list
             List<StackSlot> nextLockDataSlots = lockDataSlots.subList(0, lockDataSlots.size() - numLocks);
             caller = computeFrameForState(state.outerFrameState(), nextLockDataSlots, -1);
         } else {

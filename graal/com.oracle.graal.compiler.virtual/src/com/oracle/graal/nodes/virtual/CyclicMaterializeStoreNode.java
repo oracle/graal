@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code StoreFieldNode} represents a write to a static or instance field.
  */
-@NodeInfo(nameTemplate = "MaterializeStore#{p#field/s}")
+@NodeInfo(nameTemplate = "MaterializeStore#{p#target/s}")
 public final class CyclicMaterializeStoreNode extends FixedWithNextNode implements Lowerable {
 
     @Input private ValueNode object;
