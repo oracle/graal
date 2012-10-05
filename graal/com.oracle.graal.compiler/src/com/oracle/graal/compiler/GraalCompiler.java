@@ -34,6 +34,7 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.phases.ea.*;
+import com.oracle.graal.compiler.phases.ea.experimental.*;
 import com.oracle.graal.compiler.phases.loop.*;
 import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.compiler.target.*;
@@ -155,7 +156,7 @@ public class GraalCompiler {
         }
 
         if (GraalOptions.PartialEscapeAnalysis && !plan.isPhaseDisabled(PartialEscapeAnalysisPhase.class)) {
-            new PartialEscapeAnalysisPhase(target, runtime, assumptions).apply(graph);
+            new SplitPartialEscapeAnalysisPhase(runtime).apply(graph);
         }
         if (GraalOptions.OptLoopTransform) {
             new LoopTransformHighPhase().apply(graph);
