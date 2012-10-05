@@ -74,13 +74,18 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @Parameter("hub") Object hub,
                     @Parameter("prototypeMarkWord") Word prototypeMarkWord,
                     @ConstantParameter("size") int size,
-                    @ConstantParameter("fillContents") boolean fillContents) {
+                    @ConstantParameter("fillContents") boolean fillContents,
+                    @ConstantParameter("locked") boolean locked) {
 
         if (memory == Word.zero()) {
             new_stub.inc();
             return NewInstanceStubCall.call(hub);
         }
-        formatObject(hub, size, memory, prototypeMarkWord, fillContents);
+        if (locked) {
+            formatObject(hub, size, memory, thread().or(biasedLockPattern()), fillContents);
+        } else {
+            formatObject(hub, size, memory, prototypeMarkWord, fillContents);
+        }
         Object instance = memory.toObject();
         return castFromHub(verifyOop(instance), hub);
     }
@@ -93,8 +98,13 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @Parameter("size") int size,
                     @Parameter("prototypeMarkWord") Word prototypeMarkWord,
                     @ConstantParameter("headerSize") int headerSize,
-                    @ConstantParameter("fillContents") boolean fillContents) {
-        return initializeArray(memory, hub, length, size, prototypeMarkWord, headerSize, true, fillContents);
+                    @ConstantParameter("fillContents") boolean fillContents,
+                    @ConstantParameter("locked") boolean locked) {
+        if (locked) {
+            return initializeArray(memory, hub, length, size, thread().or(biasedLockPattern()), headerSize, true, fillContents);
+        } else {
+            return initializeArray(memory, hub, length, size, prototypeMarkWord, headerSize, true, fillContents);
+        }
     }
 
     @Snippet
@@ -105,8 +115,13 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @Parameter("size") int size,
                     @Parameter("prototypeMarkWord") Word prototypeMarkWord,
                     @ConstantParameter("headerSize") int headerSize,
-                    @ConstantParameter("fillContents") boolean fillContents) {
-        return initializeArray(memory, hub, length, size, prototypeMarkWord, headerSize, false, fillContents);
+                    @ConstantParameter("fillContents") boolean fillContents,
+                    @ConstantParameter("locked") boolean locked) {
+        if (locked) {
+            return initializeArray(memory, hub, length, size, thread().or(biasedLockPattern()), headerSize, false, fillContents);
+        } else {
+            return initializeArray(memory, hub, length, size, prototypeMarkWord, headerSize, false, fillContents);
+        }
     }
 
     private static Object initializeArray(Word memory, Object hub, int length, int size, Word prototypeMarkWord, int headerSize, boolean isObjectArray, boolean fillContents) {
@@ -147,7 +162,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         }
         int size = getArraySize(length, alignment, headerSize, log2ElementSize);
         Word memory = TLABAllocateNode.allocateVariableSize(size, wordKind);
-        return InitializeArrayNode.initialize(memory, length, size, type, true);
+        return InitializeArrayNode.initialize(memory, length, size, type, true, false);
     }
 
     public static int getArraySize(int length, int alignment, int headerSize, int log2ElementSize) {
@@ -232,9 +247,9 @@ public class NewObjectSnippets implements SnippetsInterface {
             this.target = target;
             this.useTLAB = useTLAB;
             allocate = snippet("allocate", int.class);
-            initializeObject = snippet("initializeObject", Word.class, Object.class, Word.class, int.class, boolean.class);
-            initializeObjectArray = snippet("initializeObjectArray", Word.class, Object.class, int.class, int.class, Word.class, int.class, boolean.class);
-            initializePrimitiveArray = snippet("initializePrimitiveArray", Word.class, Object.class, int.class, int.class, Word.class, int.class, boolean.class);
+            initializeObject = snippet("initializeObject", Word.class, Object.class, Word.class, int.class, boolean.class, boolean.class);
+            initializeObjectArray = snippet("initializeObjectArray", Word.class, Object.class, int.class, int.class, Word.class, int.class, boolean.class, boolean.class);
+            initializePrimitiveArray = snippet("initializePrimitiveArray", Word.class, Object.class, int.class, int.class, Word.class, int.class, boolean.class, boolean.class);
             allocateArrayAndInitialize = snippet("allocateArrayAndInitialize", int.class, int.class, int.class, int.class, ResolvedJavaType.class, Kind.class);
             newmultiarray = snippet("newmultiarray", Object.class, int.class, int[].class);
         }
@@ -260,7 +275,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 graph.addBeforeFixed(newInstanceNode, tlabAllocateNode);
                 memory = tlabAllocateNode;
             }
-            InitializeObjectNode initializeNode = graph.add(new InitializeObjectNode(memory, type, newInstanceNode.fillContents()));
+            InitializeObjectNode initializeNode = graph.add(new InitializeObjectNode(memory, type, newInstanceNode.fillContents(), newInstanceNode.locked()));
             graph.replaceFixedWithFixed(newInstanceNode, initializeNode);
         }
 
@@ -284,7 +299,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 // value for 'size' doesn't matter as it isn't used since a stub call will be made anyway
                 // for both allocation and initialization - it just needs to be non-null
                 ConstantNode size = ConstantNode.forInt(-1, graph);
-                InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(zero, lengthNode, size, arrayType, newArrayNode.fillContents()));
+                InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(zero, lengthNode, size, arrayType, newArrayNode.fillContents(), newArrayNode.locked()));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
             } else if (length != null && belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
                 // Calculate aligned size
@@ -292,7 +307,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 ConstantNode sizeNode = ConstantNode.forInt(size, graph);
                 tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode, target.wordKind));
                 graph.addBeforeFixed(newArrayNode, tlabAllocateNode);
-                InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(tlabAllocateNode, lengthNode, sizeNode, arrayType, newArrayNode.fillContents()));
+                InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(tlabAllocateNode, lengthNode, sizeNode, arrayType, newArrayNode.fillContents(), newArrayNode.locked()));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
             } else {
                 Key key = new Key(allocateArrayAndInitialize).
@@ -328,7 +343,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             int size = type.instanceSize();
             assert (size % wordSize()) == 0;
             assert size >= 0;
-            Key key = new Key(initializeObject).add("size", size).add("fillContents", initializeNode.fillContents());
+            Key key = new Key(initializeObject).add("size", size).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
             ValueNode memory = initializeNode.memory();
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord());
             SnippetTemplate template = cache.get(key);
@@ -345,7 +360,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             HotSpotKlassOop hub = type.klassOop();
             Kind elementKind = elementType.kind();
             final int headerSize = elementKind.getArrayBaseOffset();
-            Key key = new Key(elementKind.isObject() ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents());
+            Key key = new Key(elementKind.isObject() ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
             ValueNode memory = initializeNode.memory();
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord()).add("size", initializeNode.size()).add("length", initializeNode.length());
             SnippetTemplate template = cache.get(key);

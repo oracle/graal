@@ -40,14 +40,16 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
     @Input private final ValueNode size;
     private final ResolvedJavaType type;
     private final boolean fillContents;
+    private final boolean locked;
 
-    public InitializeArrayNode(ValueNode memory, ValueNode length, ValueNode size, ResolvedJavaType type, boolean fillContents) {
+    public InitializeArrayNode(ValueNode memory, ValueNode length, ValueNode size, ResolvedJavaType type, boolean fillContents, boolean locked) {
         super(StampFactory.exactNonNull(type));
         this.memory = memory;
         this.type = type;
         this.length = length;
         this.size = size;
         this.fillContents = fillContents;
+        this.locked = locked;
     }
 
     public ValueNode memory() {
@@ -71,11 +73,15 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
         return fillContents;
     }
 
+    public boolean locked() {
+        return locked;
+    }
+
     @Override
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 
     @NodeIntrinsic
-    public static native Object initialize(Object memory, int length, int size, @ConstantNodeParameter ResolvedJavaType type, @ConstantNodeParameter boolean fillContents);
+    public static native Object initialize(Object memory, int length, int size, @ConstantNodeParameter ResolvedJavaType type, @ConstantNodeParameter boolean fillContents, @ConstantNodeParameter boolean locked);
 }

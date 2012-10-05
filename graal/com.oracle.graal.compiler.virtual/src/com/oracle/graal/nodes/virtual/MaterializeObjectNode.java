@@ -34,10 +34,12 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
 
     @Input private final NodeInputList<ValueNode> values;
     @Input private final VirtualObjectNode virtualObject;
+    private final boolean locked;
 
-    public MaterializeObjectNode(VirtualObjectNode virtualObject) {
+    public MaterializeObjectNode(VirtualObjectNode virtualObject, boolean locked) {
         super(StampFactory.exactNonNull(virtualObject.type()));
         this.virtualObject = virtualObject;
+        this.locked = locked;
         this.values = new NodeInputList<>(this, virtualObject.entryCount());
     }
 
@@ -51,7 +53,7 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
         if (virtualObject instanceof VirtualInstanceNode) {
             VirtualInstanceNode virtual = (VirtualInstanceNode) virtualObject;
 
-            NewInstanceNode newInstance = graph.add(new NewInstanceNode(virtual.type(), false));
+            NewInstanceNode newInstance = graph.add(new NewInstanceNode(virtual.type(), false, locked));
             this.replaceAtUsages(newInstance);
             graph.addAfterFixed(this, newInstance);
 
@@ -70,9 +72,9 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
             ResolvedJavaType element = virtual.componentType();
             NewArrayNode newArray;
             if (element.kind() == Kind.Object) {
-                newArray = graph.add(new NewObjectArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), false));
+                newArray = graph.add(new NewObjectArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), false, locked));
             } else {
-                newArray = graph.add(new NewPrimitiveArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), false));
+                newArray = graph.add(new NewPrimitiveArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), false, locked));
             }
             this.replaceAtUsages(newArray);
             graph.addAfterFixed(this, newArray);

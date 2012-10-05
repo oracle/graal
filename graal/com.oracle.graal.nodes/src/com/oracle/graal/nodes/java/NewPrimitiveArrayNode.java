@@ -32,7 +32,14 @@ import com.oracle.graal.nodes.*;
 @NodeInfo(nameTemplate = "NewArray {p#elementType}")
 public final class NewPrimitiveArrayNode extends NewArrayNode implements Node.IterableNodeType {
 
-    public NewPrimitiveArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
-        super(elementType, length, fillContents);
+    /**
+     * Constructs a new NewPrimitiveArrayNode.
+     * @param elementType the type of elements in this array
+     * @param length the node producing the length of the array
+     * @param fillContents determines whether the array elements should be initialized to zero.
+     * @param locked determines whether the array should be locked immediately.
+     */
+    public NewPrimitiveArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents, boolean locked) {
+        super(elementType, length, fillContents, locked);
     }
 }

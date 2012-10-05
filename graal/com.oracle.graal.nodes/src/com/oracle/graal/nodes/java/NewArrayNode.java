@@ -38,6 +38,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
     private final boolean fillContents;
 
     public static final int MaximumEscapeAnalysisArrayLength = 32;
+    private final boolean locked;
 
     @Override
     public ValueNode length() {
@@ -47,17 +48,31 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
     /**
      * Constructs a new NewArrayNode.
      *
-     * @param length the node that produces the length for this allocation
+     * @param elementType the the type of the elements of the newly created array (not the type of the array itself).
+     * @param length the node that produces the length for this allocation.
+     * @param fillContents determines whether the array elements should be initialized to zero/null.
+     * @param locked determines whether the array should be locked immediately.
      */
-    protected NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
+    protected NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents, boolean locked) {
         super(StampFactory.exactNonNull(elementType.arrayOf()));
         this.length = length;
         this.elementType = elementType;
         this.fillContents = fillContents;
+        this.locked = locked;
     }
 
+    /**
+     * @return <code>true</code> if the elements of the array will be initialized.
+     */
     public boolean fillContents() {
         return fillContents;
+    }
+
+    /**
+     * @return <code>true</code> if the array will be locked immediately.
+     */
+    public boolean locked() {
+        return locked;
     }
 
     /**

@@ -248,7 +248,7 @@ class EscapeAnalysisIteration {
                 throw new BailoutException("object materialized with lock");
             }
 
-            MaterializeObjectNode materialize = graph.add(new MaterializeObjectNode(virtual));
+            MaterializeObjectNode materialize = graph.add(new MaterializeObjectNode(virtual, false));
             materialize.setProbability(fixed.probability());
             ValueNode[] fieldState = obj.fieldState;
             metricMaterializations.increment();
@@ -1144,3 +1144,4 @@ public class PartialEscapeAnalysisPhase extends Phase {
         }
     }
 }
+
