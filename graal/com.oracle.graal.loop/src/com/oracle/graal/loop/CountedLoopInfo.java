@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.loop;
+package com.oracle.graal.loop;
 
-import com.oracle.graal.compiler.loop.InductionVariable.*;
+import com.oracle.graal.loop.InductionVariable.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 

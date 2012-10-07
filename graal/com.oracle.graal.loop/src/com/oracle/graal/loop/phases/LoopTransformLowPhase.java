@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases.loop;
+package com.oracle.graal.loop.phases;
 
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.loop.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 
 public class LoopTransformLowPhase extends Phase {

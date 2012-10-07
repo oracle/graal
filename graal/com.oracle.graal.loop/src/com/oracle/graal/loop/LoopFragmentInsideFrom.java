@@ -20,45 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.loop;
+package com.oracle.graal.loop;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 
 
-public abstract class InductionVariable {
-    public enum Direction {
-        Up,
-        Down;
-        public Direction opposite() {
-            switch(this) {
-                case Up: return Down;
-                case Down: return Up;
-                default: throw GraalInternalError.shouldNotReachHere();
-            }
-        }
+public class LoopFragmentInsideFrom extends LoopFragmentInside {
+    private final FixedNode point;
+
+    public LoopFragmentInsideFrom(LoopEx loop, FixedNode point) {
+        super(loop);
+        this.point = point;
     }
 
-    protected final LoopEx loop;
-
-    public InductionVariable(LoopEx loop) {
-        this.loop = loop;
+    // duplicates lazily
+    public LoopFragmentInsideFrom(LoopFragmentInsideFrom original) {
+        super(original);
+        this.point = original.point();
     }
 
-    public abstract Direction direction();
+    public FixedNode point() {
+        return point;
+    }
 
-    public abstract ValueNode valueNode();
+    @Override
+    public LoopFragmentInsideFrom duplicate() {
+        return new LoopFragmentInsideFrom(this);
+    }
 
-    public abstract ValueNode initNode();
-    public abstract ValueNode strideNode();
-
-    public abstract boolean isConstantInit();
-    public abstract boolean isConstantStride();
-
-    public abstract long constantInit();
-    public abstract long constantStride();
-
-    public abstract ValueNode extremumNode();
-    public abstract boolean isConstantExtremum();
-    public abstract long constantExtremum();
+    @Override
+    public NodeIterable<Node> nodes() {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

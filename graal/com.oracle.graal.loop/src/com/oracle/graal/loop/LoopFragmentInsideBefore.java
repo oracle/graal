@@ -20,29 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases.loop;
+package com.oracle.graal.loop;
 
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.loop.*;
-import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 
-public class LoopTransformHighPhase extends Phase {
+
+public class LoopFragmentInsideBefore extends LoopFragmentInside {
+    private final FixedNode point;
+
+    public LoopFragmentInsideBefore(LoopEx loop, FixedNode point) {
+        super(loop);
+        this.point = point;
+    }
+
+    // duplicates lazily
+    public LoopFragmentInsideBefore(LoopFragmentInsideBefore original) {
+        super(original);
+        this.point = original.point();
+    }
+
+    public FixedNode point() {
+        return point;
+    }
 
     @Override
-    protected void run(StructuredGraph graph) {
-        if (graph.hasLoops()) {
-            if (GraalOptions.LoopPeeling) {
-                LoopsData data = new LoopsData(graph);
-                for (LoopEx loop : data.outterFirst()) {
-                    if (LoopPolicies.shouldPeel(loop)) {
-                        Debug.log("Peeling %s", loop);
-                        LoopTransformations.peel(loop);
-                        Debug.dump(graph, "After peeling %s", loop);
-                    }
-                }
-            }
-        }
+    public LoopFragmentInsideBefore duplicate() {
+        return new LoopFragmentInsideBefore(this);
+    }
+
+    @Override
+    public NodeIterable<Node> nodes() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

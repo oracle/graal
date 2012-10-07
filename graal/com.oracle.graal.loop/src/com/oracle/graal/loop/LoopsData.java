@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.loop;
+package com.oracle.graal.loop;
 
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.graal.compiler.loop.InductionVariable.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.loop.InductionVariable.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
