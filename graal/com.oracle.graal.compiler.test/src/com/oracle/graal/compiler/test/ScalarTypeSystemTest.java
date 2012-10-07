@@ -26,7 +26,7 @@ import org.junit.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.common.*;
 
 /**
  * In the following tests, the scalar type system of the compiler should be complete enough to see the relation between the different conditions.

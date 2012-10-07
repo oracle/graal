@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.phases;
+package com.oracle.graal.phases.common;
 
 import java.util.*;
 
@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 
 public class CheckCastEliminationPhase extends Phase {

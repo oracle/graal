@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop.phases;
+package com.oracle.graal.phases.common;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 
-public class LoopTransformHighPhase extends Phase {
+public class RemoveValueProxyPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        if (graph.hasLoops()) {
-            if (GraalOptions.LoopPeeling) {
-                LoopsData data = new LoopsData(graph);
-                for (LoopEx loop : data.outterFirst()) {
-                    if (LoopPolicies.shouldPeel(loop)) {
-                        Debug.log("Peeling %s", loop);
-                        LoopTransformations.peel(loop);
-                        Debug.dump(graph, "After peeling %s", loop);
-                    }
+        for (ValueProxyNode vpn : graph.getNodes(ValueProxyNode.class)) {
+            graph.replaceFloating(vpn, vpn.value());
+        }
+        for (LoopExitNode exit : graph.getNodes(LoopExitNode.class)) {
+            FrameState stateAfter = exit.stateAfter();
+            if (stateAfter != null) {
+                exit.setStateAfter(null);
+                if (stateAfter.usages().count() == 0) {
+                    stateAfter.safeDelete();
                 }
             }
         }

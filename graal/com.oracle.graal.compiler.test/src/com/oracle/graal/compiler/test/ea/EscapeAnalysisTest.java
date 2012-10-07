@@ -32,7 +32,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.common.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
 /**

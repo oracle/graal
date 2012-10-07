@@ -27,7 +27,8 @@ import org.junit.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
 
 /**
  * Tests the implementation of the snippets for lowering the INVOKE* instructions.

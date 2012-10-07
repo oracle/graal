@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.phases;
+package com.oracle.graal.phases.common;
 
 import java.util.*;
 
@@ -28,6 +28,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.phases.*;
 
 public class ConvertDeoptimizeToGuardPhase extends Phase {
 

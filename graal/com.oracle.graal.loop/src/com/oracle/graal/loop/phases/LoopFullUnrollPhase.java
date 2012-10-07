@@ -26,7 +26,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.*;
 
 
 public class LoopFullUnrollPhase extends Phase {

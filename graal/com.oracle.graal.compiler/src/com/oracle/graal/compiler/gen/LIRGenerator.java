@@ -48,7 +48,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.graal.virtual.nodes.*;
 import com.oracle.max.asm.*;
 
 /**

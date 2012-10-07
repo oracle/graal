@@ -26,7 +26,7 @@ import org.junit.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.common.*;
 
 public class StraighteningTest extends GraalCompilerTest {
 

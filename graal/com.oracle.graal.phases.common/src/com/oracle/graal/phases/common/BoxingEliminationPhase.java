@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.phases;
+package com.oracle.graal.phases.common;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
@@ -33,6 +33,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.phases.*;
 
 public class BoxingEliminationPhase extends Phase {
 

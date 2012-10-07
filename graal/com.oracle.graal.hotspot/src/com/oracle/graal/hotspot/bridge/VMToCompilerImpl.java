@@ -38,8 +38,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.*;
-import com.oracle.graal.phases.phases.PhasePlan.*;
+import com.oracle.graal.phases.PhasePlan.*;
 import com.oracle.graal.snippets.*;
 
 /**

@@ -32,8 +32,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.phases.common.*;
 
 public class IntrinsifyArrayCopyPhase extends Phase {
     private final GraalCodeCacheProvider runtime;

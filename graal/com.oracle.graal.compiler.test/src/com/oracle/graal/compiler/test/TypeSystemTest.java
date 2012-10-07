@@ -34,7 +34,7 @@ import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
 
 /**

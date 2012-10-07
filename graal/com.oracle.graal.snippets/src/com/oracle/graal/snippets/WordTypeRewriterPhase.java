@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.snippets.Word.Opcode;
 import com.oracle.graal.snippets.Word.Operation;
 

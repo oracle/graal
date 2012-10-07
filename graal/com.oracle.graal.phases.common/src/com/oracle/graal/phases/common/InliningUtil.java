@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.util;
+package com.oracle.graal.phases.common;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -42,7 +42,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.*;
 
 public class InliningUtil {
 

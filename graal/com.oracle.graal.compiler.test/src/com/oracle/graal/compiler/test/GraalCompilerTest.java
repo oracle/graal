@@ -40,8 +40,7 @@ import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.*;
-import com.oracle.graal.phases.phases.PhasePlan.*;
+import com.oracle.graal.phases.PhasePlan.*;
 import com.oracle.graal.phases.schedule.*;
 
 /**

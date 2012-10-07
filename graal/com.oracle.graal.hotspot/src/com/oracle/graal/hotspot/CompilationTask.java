@@ -30,7 +30,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.*;
 
 
 public final class CompilationTask implements Runnable, Comparable<CompilationTask> {

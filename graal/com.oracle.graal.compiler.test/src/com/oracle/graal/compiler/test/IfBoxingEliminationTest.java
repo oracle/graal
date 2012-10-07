@@ -30,8 +30,8 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.*;
-import com.oracle.graal.phases.phases.PhasePlan.*;
+import com.oracle.graal.phases.PhasePlan.*;
+import com.oracle.graal.phases.common.*;
 
 public class IfBoxingEliminationTest extends GraalCompilerTest {
 

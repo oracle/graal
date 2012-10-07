@@ -28,7 +28,6 @@ import java.io.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.*;
 
 /**
  * Calls from HotSpot into Java.

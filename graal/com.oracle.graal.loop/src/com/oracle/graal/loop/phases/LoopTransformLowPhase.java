@@ -26,7 +26,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.*;
 
 public class LoopTransformLowPhase extends Phase {
     private static final DebugMetric UNSWITCHED = Debug.metric("Unswitched");

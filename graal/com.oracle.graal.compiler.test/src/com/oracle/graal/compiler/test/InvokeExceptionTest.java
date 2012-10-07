@@ -28,7 +28,7 @@ import org.junit.*;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.common.*;
 
 public class InvokeExceptionTest extends GraalCompilerTest {
 

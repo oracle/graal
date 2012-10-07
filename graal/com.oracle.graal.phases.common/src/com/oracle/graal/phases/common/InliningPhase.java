@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.phases;
+package com.oracle.graal.phases.common;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -34,9 +34,9 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.PhasePlan.*;
+import com.oracle.graal.phases.PhasePlan.*;
+import com.oracle.graal.phases.common.InliningUtil.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.graal.phases.util.InliningUtil.*;
 
 
 public class InliningPhase extends Phase implements InliningCallback {

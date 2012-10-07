@@ -20,36 +20,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.phases;
+package com.oracle.graal.phases.common;
 
-import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.util.*;
 
-/**
- * Adds safepoints to loops.
- */
-public class LoopSafepointInsertionPhase extends Phase {
-
+public class PhiStampPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
-        nextLoop:
-        for (LoopEndNode loopEnd : graph.getNodes(LoopEndNode.class)) {
-            if (!loopEnd.canSafepoint()) {
-                continue;
-            }
-            if (GraalOptions.OptSafepointElimination) {
-                // We 'eliminate' safepoints by simply never placing them into loops that have at least one call
-                NodeIterable<FixedNode> it = NodeIterators.dominators(loopEnd).until(loopEnd.loopBegin());
-                for (FixedNode n : it) {
-                    if (n instanceof Invoke) {
-                        continue nextLoop;
-                    }
+        // Infer phis stopping at loop phis.
+        for (PhiNode phi : graph.getNodes(PhiNode.class)) {
+            inferPhi(phi);
+        }
+
+        // Start iterative inference for loop phis.
+        if (graph.hasLoops()) {
+            for (PhiNode phi : graph.getNodes(PhiNode.class)) {
+                if (phi.isLoopPhi()) {
+                    iterativeInferPhi(phi);
                 }
             }
-            SafepointNode safepoint = graph.add(new SafepointNode());
-            graph.addBeforeFixed(loopEnd, safepoint);
         }
+    }
+
+    private void iterativeInferPhi(PhiNode phi) {
+        if (phi.inferPhiStamp()) {
+            for (PhiNode phiUsage : phi.usages().filter(PhiNode.class)) {
+                iterativeInferPhi(phiUsage);
+            }
+        }
+    }
+
+    private void inferPhi(PhiNode phi) {
+        for (PhiNode phiInput : phi.values().filter(PhiNode.class)) {
+            if (!phiInput.isLoopPhi()) {
+                inferPhi(phiInput);
+            }
+        }
+        phi.inferPhiStamp();
     }
 }

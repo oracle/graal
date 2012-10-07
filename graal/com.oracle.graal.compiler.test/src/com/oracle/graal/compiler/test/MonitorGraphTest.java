@@ -33,7 +33,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.common.*;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant 0.

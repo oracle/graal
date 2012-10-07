@@ -20,42 +20,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.phases;
+package com.oracle.graal.phases.common;
 
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.*;
 
-public class PhiStampPhase extends Phase {
+public class GlobalValueNumberingPhase extends Phase {
+
+    public static final DebugMetric metricGlobalValueNumberingHits = Debug.metric("GlobalValueNumberingHits");
+
     @Override
     protected void run(StructuredGraph graph) {
-        // Infer phis stopping at loop phis.
-        for (PhiNode phi : graph.getNodes(PhiNode.class)) {
-            inferPhi(phi);
+        NodeBitMap visited = graph.createNodeBitMap();
+        for (Node n : graph.getNodes()) {
+            apply(n, visited, graph);
         }
+    }
 
-        // Start iterative inference for loop phis.
-        if (graph.hasLoops()) {
-            for (PhiNode phi : graph.getNodes(PhiNode.class)) {
-                if (phi.isLoopPhi()) {
-                    iterativeInferPhi(phi);
+    private void apply(Node n, NodeBitMap visited, StructuredGraph compilerGraph) {
+        if (!visited.isMarked(n)) {
+            visited.mark(n);
+            for (Node input : n.inputs()) {
+                apply(input, visited, compilerGraph);
+            }
+            if (n.getNodeClass().valueNumberable()) {
+                Node newNode = compilerGraph.findDuplicate(n);
+                if (newNode != null) {
+                    assert !(n instanceof FixedNode || newNode instanceof FixedNode);
+                    n.replaceAtUsages(newNode);
+                    n.safeDelete();
+                    metricGlobalValueNumberingHits.increment();
+                    Debug.log("GVN applied and new node is %1s", newNode);
                 }
             }
         }
-    }
-
-    private void iterativeInferPhi(PhiNode phi) {
-        if (phi.inferPhiStamp()) {
-            for (PhiNode phiUsage : phi.usages().filter(PhiNode.class)) {
-                iterativeInferPhi(phiUsage);
-            }
-        }
-    }
-
-    private void inferPhi(PhiNode phi) {
-        for (PhiNode phiInput : phi.values().filter(PhiNode.class)) {
-            if (!phiInput.isLoopPhi()) {
-                inferPhi(phiInput);
-            }
-        }
-        phi.inferPhiStamp();
     }
 }

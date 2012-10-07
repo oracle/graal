@@ -26,7 +26,7 @@ import org.junit.*;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.common.*;
 
 /**
  * This class tests some specific patterns the stamp system should be able to canonicalize away using

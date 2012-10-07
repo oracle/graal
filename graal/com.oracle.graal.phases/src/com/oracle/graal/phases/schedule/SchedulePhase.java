@@ -32,7 +32,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.phases.*;
 
 public class SchedulePhase extends Phase {
     private ControlFlowGraph cfg;
