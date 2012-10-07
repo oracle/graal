@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases.ea.experimental;
+package com.oracle.graal.virtual.phases.ea.experimental;
 
 import java.util.*;
 
@@ -29,8 +29,6 @@ import com.oracle.graal.api.meta.JavaType.Representation;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.compiler.phases.ea.*;
-import com.oracle.graal.compiler.phases.ea.experimental.EffectList.Effect;
 import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -43,6 +41,9 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.virtual.nodes.*;
+import com.oracle.graal.virtual.phases.ea.*;
+import com.oracle.graal.virtual.phases.ea.experimental.EffectList.*;
 
 class EscapeAnalysisIteration {
 

@@ -33,8 +33,6 @@ import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
-import com.oracle.graal.compiler.phases.ea.*;
-import com.oracle.graal.compiler.phases.ea.experimental.*;
 import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
@@ -44,6 +42,8 @@ import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.virtual.phases.ea.*;
+import com.oracle.graal.virtual.phases.ea.experimental.*;
 
 public class GraalCompiler {
 

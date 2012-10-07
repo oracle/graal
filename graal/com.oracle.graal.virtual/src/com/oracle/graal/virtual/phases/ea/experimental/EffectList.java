@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases.ea.experimental;
+package com.oracle.graal.virtual.phases.ea.experimental;
 
 import java.lang.reflect.*;
 import java.util.*;

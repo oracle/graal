@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.virtual;
+package com.oracle.graal.virtual.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;

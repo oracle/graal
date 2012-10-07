@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases.ea.experimental;
+package com.oracle.graal.virtual.phases.ea.experimental;
 
 import java.util.*;
 
@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.virtual.nodes.*;
 
 public class GraphEffectList extends EffectList {
 

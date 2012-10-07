@@ -24,8 +24,8 @@ package com.oracle.graal.snippets;
 
 import org.junit.*;
 
-import com.oracle.graal.compiler.phases.ea.*;
 import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.virtual.phases.ea.*;
 
 public class MonitorTest extends GraalCompilerTest {
 

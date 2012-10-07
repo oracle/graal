@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases.ea;
+package com.oracle.graal.virtual.phases.ea;
 
 import java.util.*;
 
@@ -41,6 +41,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.virtual.nodes.*;
 
 class EscapeAnalysisIteration {
 

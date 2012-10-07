@@ -32,6 +32,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.virtual.nodes.*;
 
 public class DebugInfoBuilder {
     private final NodeMap<Value> nodeOperands;
