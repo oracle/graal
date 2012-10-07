@@ -24,11 +24,11 @@ package com.oracle.graal.compiler.target;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.phases.*;
 
 /**
  * The {@code Backend} class represents a compiler backend for Graal.

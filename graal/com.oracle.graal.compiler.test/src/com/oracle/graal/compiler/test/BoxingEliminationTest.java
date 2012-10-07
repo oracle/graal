@@ -26,12 +26,12 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.phases.PhasePlan.*;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant 0. Then boxing

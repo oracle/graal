@@ -24,12 +24,12 @@ package com.oracle.graal.loop;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.phases.*;
 
 
 public abstract class LoopTransformations {

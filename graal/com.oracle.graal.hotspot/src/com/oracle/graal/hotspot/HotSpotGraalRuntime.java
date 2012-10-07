@@ -33,6 +33,7 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.*;
 
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.

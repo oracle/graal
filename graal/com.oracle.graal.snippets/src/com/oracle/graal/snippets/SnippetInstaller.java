@@ -28,9 +28,6 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -38,6 +35,9 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.snippets.Snippet.InliningPolicy;
 
 /**

@@ -27,9 +27,9 @@ import static com.oracle.graal.hotspot.MethodFilter.*;
 import java.util.*;
 import java.util.regex.*;
 
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.phases.*;
 
 /**
  * Implements the filter specified by the {@link GraalOptions#Dump},

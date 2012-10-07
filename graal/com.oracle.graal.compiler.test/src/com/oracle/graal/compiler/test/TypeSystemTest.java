@@ -28,14 +28,14 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.schedule.*;
 
 /**
  * In the following tests, the scalar type system of the compiler should be complete enough to see the relation between the different conditions.

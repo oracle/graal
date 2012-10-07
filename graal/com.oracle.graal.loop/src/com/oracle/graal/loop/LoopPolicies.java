@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.loop;
 
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.*;
 
 
 public abstract class LoopPolicies {

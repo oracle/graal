@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.snippets;
 
-import com.oracle.graal.compiler.*;
+import com.oracle.graal.phases.*;
 
 /**
  * Definition of the snippets that are VM-independent and can be intrinsified by Graal in any VM.

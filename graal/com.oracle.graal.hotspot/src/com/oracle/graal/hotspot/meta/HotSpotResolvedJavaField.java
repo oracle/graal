@@ -28,8 +28,8 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaType.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.phases.*;
 
 /**
  * Represents a field in a HotSpot type.

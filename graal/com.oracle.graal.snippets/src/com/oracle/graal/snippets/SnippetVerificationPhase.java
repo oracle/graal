@@ -27,13 +27,13 @@ import static com.oracle.graal.snippets.WordTypeRewriterPhase.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.phases.phases.*;
 import com.oracle.graal.snippets.Word.*;
 
 /**

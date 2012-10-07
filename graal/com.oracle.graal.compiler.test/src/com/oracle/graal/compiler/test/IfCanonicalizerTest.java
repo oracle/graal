@@ -26,10 +26,10 @@ import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
 import org.junit.*;
 
-import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.phases.*;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant 0.

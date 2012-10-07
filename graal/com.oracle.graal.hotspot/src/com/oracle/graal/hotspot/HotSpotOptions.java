@@ -26,8 +26,8 @@ package com.oracle.graal.hotspot;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.logging.*;
+import com.oracle.graal.phases.*;
 
 public class HotSpotOptions {
 

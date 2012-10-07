@@ -25,8 +25,8 @@ package com.oracle.graal.printer;
 import java.io.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.phases.schedule.*;
 
 interface GraphPrinter extends Closeable {
     /**

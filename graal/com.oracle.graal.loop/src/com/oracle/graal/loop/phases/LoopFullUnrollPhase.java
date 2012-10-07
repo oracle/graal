@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.loop.phases;
 
-import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.phases.*;
 
 
 public class LoopFullUnrollPhase extends Phase {

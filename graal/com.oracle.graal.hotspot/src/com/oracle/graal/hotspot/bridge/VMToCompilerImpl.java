@@ -31,14 +31,15 @@ import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.phases.*;
+import com.oracle.graal.phases.phases.PhasePlan.*;
 import com.oracle.graal.snippets.*;
 
 /**

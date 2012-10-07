@@ -26,10 +26,10 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.schedule.*;
 
 public class GraphScheduleTest extends GraalCompilerTest {
     protected void assertOrderedAfterSchedule(StructuredGraph graph, Node a, Node b) {

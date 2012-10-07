@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot;
 import java.io.*;
 import java.util.concurrent.*;
 
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.phases.*;
 
 
 public final class CompilerThread extends Thread {

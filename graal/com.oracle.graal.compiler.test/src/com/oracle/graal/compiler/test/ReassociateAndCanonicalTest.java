@@ -24,9 +24,9 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.*;
 
-import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.phases.*;
 
 public class ReassociateAndCanonicalTest extends GraalCompilerTest {
     public static int rnd = (int) (Math.random() * 100);

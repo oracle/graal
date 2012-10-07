@@ -27,12 +27,12 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.phases.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
 /**

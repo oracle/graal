@@ -30,7 +30,6 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.amd64.*;
 import com.oracle.graal.graph.*;
@@ -44,6 +43,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.phases.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.amd64.*;
 import com.oracle.max.asm.amd64.AMD64Assembler.ConditionFlag;

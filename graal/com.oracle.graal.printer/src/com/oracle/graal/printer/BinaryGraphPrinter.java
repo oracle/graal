@@ -29,12 +29,12 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.schedule.*;
 
 public class BinaryGraphPrinter implements GraphPrinter{
     private static final int CONSTANT_POOL_MAX_SIZE = 2000;
