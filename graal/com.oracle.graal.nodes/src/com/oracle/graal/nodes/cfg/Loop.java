@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.cfg;
+package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 

@@ -23,7 +23,7 @@
 package com.oracle.graal.lir;
 
 import com.oracle.max.asm.*;
-import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.cfg.*;
 
 /**
  * LIR instructions such as JUMP and BRANCH need to reference their target {@link Block}. However,

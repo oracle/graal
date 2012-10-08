@@ -26,8 +26,8 @@ import org.junit.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 
 public class NestedLoopTest extends GraalCompilerTest {
 

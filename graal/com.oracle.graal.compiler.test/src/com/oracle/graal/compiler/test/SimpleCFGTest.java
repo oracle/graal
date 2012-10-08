@@ -26,8 +26,8 @@ import static org.junit.Assert.*;
 
 import org.junit.*;
 
-import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 
 public class SimpleCFGTest {
 

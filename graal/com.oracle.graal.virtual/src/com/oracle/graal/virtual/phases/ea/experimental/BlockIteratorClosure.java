@@ -24,8 +24,8 @@ package com.oracle.graal.virtual.phases.ea.experimental;
 
 import java.util.*;
 
-import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
 public abstract class BlockIteratorClosure<T extends MergeableBlockState<T>> {

@@ -38,7 +38,7 @@ import com.oracle.graal.compiler.alloc.Interval.State;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.*;
-import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 

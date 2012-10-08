@@ -32,7 +32,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.LIRInstruction.*;
-import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.cfg.*;
 
 public final class LIRVerifier {
     private final LIR lir;

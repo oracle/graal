@@ -25,7 +25,7 @@ package com.oracle.graal.lir;
 import java.util.*;
 
 import com.oracle.graal.lir.StandardOp.*;
-import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.cfg.*;
 
 /**
  * This class optimizes moves, particularly those that result from eliminating SSA form.

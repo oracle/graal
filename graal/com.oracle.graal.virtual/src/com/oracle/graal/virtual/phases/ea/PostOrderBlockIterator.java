@@ -25,8 +25,8 @@ package com.oracle.graal.virtual.phases.ea;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 
 public abstract class PostOrderBlockIterator<T extends MergeableBlockState<T>> {
 

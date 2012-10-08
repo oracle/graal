@@ -27,10 +27,10 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.loop.InductionVariable.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.cfg.*;
 
 public class LoopsData {
     private Map<Loop, LoopEx> lirLoopToEx = new IdentityHashMap<>();

@@ -27,8 +27,8 @@ import java.util.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 
 /**
  * Computes an ordering of the block that can be used by the linear scan register allocator
