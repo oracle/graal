@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.target.amd64;
+package com.oracle.graal.compiler.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;

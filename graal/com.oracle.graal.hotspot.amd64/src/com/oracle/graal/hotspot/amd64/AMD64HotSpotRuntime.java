@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.asm.amd64.AMD64.*;
-import static com.oracle.graal.compiler.target.amd64.AMD64DeoptimizationStub.*;
-import static com.oracle.graal.compiler.target.amd64.AMD64LIRGenerator.*;
+import static com.oracle.graal.compiler.amd64.AMD64DeoptimizationStub.*;
+import static com.oracle.graal.compiler.amd64.AMD64LIRGenerator.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
