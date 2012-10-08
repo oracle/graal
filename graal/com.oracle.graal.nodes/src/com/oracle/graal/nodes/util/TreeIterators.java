@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.util;
+package com.oracle.graal.nodes.util;
 
 import java.util.*;
 
