@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir;
 
-import com.oracle.max.asm.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.nodes.cfg.*;
 
 /**

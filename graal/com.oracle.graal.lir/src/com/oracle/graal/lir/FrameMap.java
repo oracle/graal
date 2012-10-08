@@ -28,7 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.max.asm.*;
+import com.oracle.graal.asm.*;
 
 /**
  * This class is used to build the stack frame layout for a compiled method.

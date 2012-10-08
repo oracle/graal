@@ -27,12 +27,12 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCall.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.phases.*;
-import com.oracle.max.asm.*;
-import com.oracle.max.asm.amd64.*;
 
 public class AMD64DeoptimizationStub extends AMD64Code {
 

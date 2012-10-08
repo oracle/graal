@@ -26,6 +26,8 @@ import static com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind.*;
 
 import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.*;
@@ -33,8 +35,6 @@ import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
-import com.oracle.max.asm.*;
-import com.oracle.max.asm.amd64.*;
 
 /**
  * A direct call that complies with the conventions for such calls in HotSpot.

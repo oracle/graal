@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.asm;
+package com.oracle.graal.asm;
 
 public class AsmOptions {
     public static int     InitialCodeBufferSize         = 232;

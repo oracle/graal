@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.asm.amd64.AMD64.*;
 import static com.oracle.graal.compiler.target.amd64.AMD64DeoptimizationStub.*;
 import static com.oracle.graal.compiler.target.amd64.AMD64LIRGenerator.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
@@ -32,7 +33,6 @@ import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
 import static com.oracle.graal.lir.amd64.AMD64Call.*;
-import static com.oracle.max.asm.amd64.AMD64.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;

@@ -30,6 +30,9 @@ import static com.oracle.graal.lir.amd64.AMD64Compare.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCall.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
@@ -69,9 +72,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.max.asm.*;
-import com.oracle.max.asm.amd64.*;
-import com.oracle.max.asm.amd64.AMD64Assembler.ConditionFlag;
 
 /**
  * This class implements the AMD64 specific portion of the LIR generator.

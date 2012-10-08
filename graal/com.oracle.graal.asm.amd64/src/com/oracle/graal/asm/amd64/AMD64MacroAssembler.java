@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.asm.amd64;
+package com.oracle.graal.asm.amd64;
 
-import static com.oracle.max.asm.amd64.AMD64AsmOptions.*;
+import static com.oracle.graal.asm.amd64.AMD64AsmOptions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.max.asm.*;
+import com.oracle.graal.asm.*;
 
 /**
  * This class implements commonly used X86 code patterns.

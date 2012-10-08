@@ -23,9 +23,9 @@
 package com.oracle.graal.hotspot.amd64;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.max.asm.amd64.*;
 
 /**
  * AMD64 specific implementation of {@link HotSpotGraalRuntime}.

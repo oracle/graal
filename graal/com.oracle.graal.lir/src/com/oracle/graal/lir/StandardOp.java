@@ -23,8 +23,8 @@
 package com.oracle.graal.lir;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.max.asm.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 /**

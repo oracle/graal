@@ -29,15 +29,15 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Address.Scale;
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.StandardOp.FallThroughOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.max.asm.*;
-import com.oracle.max.asm.amd64.*;
-import com.oracle.max.asm.amd64.AMD64Assembler.*;
 
 public class AMD64ControlFlow {
 

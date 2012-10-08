@@ -26,10 +26,10 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.max.asm.amd64.*;
 
 /**
  * Performs a hard-coded tail call to the specified target, which normally should be an {@link InstalledCode} instance.
