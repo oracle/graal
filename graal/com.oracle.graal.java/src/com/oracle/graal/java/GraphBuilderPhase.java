@@ -53,8 +53,8 @@ import com.oracle.graal.phases.util.*;
  */
 public final class GraphBuilderPhase extends Phase {
 
-    public static final Descriptor CREATE_NULL_POINTER_EXCEPTION = new Descriptor("createNullPointerException", Kind.Object);
-    public static final Descriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new Descriptor("createOutOfBoundsException", Kind.Object, Kind.Int);
+    public static final Descriptor CREATE_NULL_POINTER_EXCEPTION = new Descriptor("createNullPointerException", true, Kind.Object);
+    public static final Descriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new Descriptor("createOutOfBoundsException", true, Kind.Object, Kind.Int);
 
 
     /**

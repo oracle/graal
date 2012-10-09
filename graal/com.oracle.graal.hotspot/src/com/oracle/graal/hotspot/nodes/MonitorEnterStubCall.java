@@ -40,7 +40,7 @@ public class MonitorEnterStubCall extends FixedWithNextNode implements LIRGenLow
 
     @Input private final ValueNode object;
     @Input private final ValueNode lock;
-    public static final Descriptor MONITORENTER = new Descriptor("monitorenter", Kind.Void, Kind.Object, wordKind());
+    public static final Descriptor MONITORENTER = new Descriptor("monitorenter", true, Kind.Void, Kind.Object, wordKind());
 
     public MonitorEnterStubCall(ValueNode object, ValueNode lock) {
         super(StampFactory.forVoid());

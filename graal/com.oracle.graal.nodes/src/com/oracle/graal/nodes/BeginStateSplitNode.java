@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.code.*;
-
 /**
  * Base class for {@link BeginNode}s that are associated with a frame state.
  * TODO (dnsimon) this not needed until {@link BeginNode} no longer implements {@link StateSplit}
@@ -35,7 +33,7 @@ public abstract class BeginStateSplitNode extends BeginNode implements StateSpli
      * A begin node has no side effect.
      */
     @Override
-    public boolean hasSideEffect(CodeCacheProvider runtime) {
+    public boolean hasSideEffect() {
         return false;
     }
 }

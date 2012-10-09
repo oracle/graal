@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCall.Descriptor;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -44,8 +43,8 @@ public final class RuntimeCallNode extends AbstractCallNode implements LIRLowera
     }
 
     @Override
-    public boolean hasSideEffect(CodeCacheProvider runtime) {
-        return runtime.getRuntimeCall(descriptor).hasSideEffect();
+    public boolean hasSideEffect() {
+        return descriptor.hasSideEffect();
     }
 
     @Override

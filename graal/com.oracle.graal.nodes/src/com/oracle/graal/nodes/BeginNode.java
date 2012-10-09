@@ -26,7 +26,6 @@ import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.spi.*;
@@ -45,7 +44,7 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
         stateAfter = x;
     }
 
-    public boolean hasSideEffect(CodeCacheProvider runtime) {
+    public boolean hasSideEffect() {
         return false;
     }
 

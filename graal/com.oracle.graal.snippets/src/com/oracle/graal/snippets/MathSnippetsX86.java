@@ -84,9 +84,9 @@ public class MathSnippetsX86 implements SnippetsInterface {
         }
     }
 
-    public static final Descriptor ARITHMETIC_SIN = new Descriptor("arithmeticSin", Kind.Double, Kind.Double);
-    public static final Descriptor ARITHMETIC_COS = new Descriptor("arithmeticCos", Kind.Double, Kind.Double);
-    public static final Descriptor ARITHMETIC_TAN = new Descriptor("arithmeticTan", Kind.Double, Kind.Double);
+    public static final Descriptor ARITHMETIC_SIN = new Descriptor("arithmeticSin", false, Kind.Double, Kind.Double);
+    public static final Descriptor ARITHMETIC_COS = new Descriptor("arithmeticCos", false, Kind.Double, Kind.Double);
+    public static final Descriptor ARITHMETIC_TAN = new Descriptor("arithmeticTan", false, Kind.Double, Kind.Double);
 
     @NodeIntrinsic(value = RuntimeCallNode.class, setStampFromReturnType = true)
     public static native double callDouble(@ConstantNodeParameter Descriptor descriptor, double value);

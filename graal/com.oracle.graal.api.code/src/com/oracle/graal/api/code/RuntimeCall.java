@@ -37,11 +37,13 @@ public interface RuntimeCall {
      */
     public static class Descriptor {
         private final String name;
+        private final boolean hasSideEffect;
         private final Kind resultKind;
         private final Kind[] argumentKinds;
 
-        public Descriptor(String name, Kind resultKind, Kind... args) {
+        public Descriptor(String name, boolean hasSideEffect, Kind resultKind, Kind... args) {
             this.name = name;
+            this.hasSideEffect = hasSideEffect;
             this.resultKind = resultKind;
             this.argumentKinds = args;
         }
@@ -51,6 +53,15 @@ public interface RuntimeCall {
          */
         public String getName() {
             return name;
+        }
+
+        /**
+         * Determines if this call changes state visible to other threads.
+         * Such calls denote boundaries across which deoptimization
+         * points cannot be moved.
+         */
+        public boolean hasSideEffect() {
+            return hasSideEffect;
         }
 
         /**
@@ -94,13 +105,6 @@ public interface RuntimeCall {
     }
 
     CallingConvention getCallingConvention();
-
-    /**
-     * Determines if this call changes state visible to other threads.
-     * Such calls denote boundaries across which deoptimization
-     * points cannot be moved.
-     */
-    boolean hasSideEffect();
 
     /**
      * Returns the maximum absolute offset of PC relative call to this stub from any position in the code cache or -1

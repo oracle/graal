@@ -45,14 +45,12 @@ public class HotSpotRuntimeCall implements RuntimeCall {
      */
     public final CallingConvention cc;
 
-    private final boolean hasSideEffect;
     private final CompilerToVM vm;
 
-    public HotSpotRuntimeCall(Descriptor descriptor, long address, boolean hasSideEffect, CallingConvention cc, CompilerToVM vm) {
+    public HotSpotRuntimeCall(Descriptor descriptor, long address, CallingConvention cc, CompilerToVM vm) {
         this.address = address;
         this.descriptor = descriptor;
         this.cc = cc;
-        this.hasSideEffect = hasSideEffect;
         this.vm = vm;
     }
 
@@ -63,10 +61,6 @@ public class HotSpotRuntimeCall implements RuntimeCall {
 
     public CallingConvention getCallingConvention() {
         return cc;
-    }
-
-    public boolean hasSideEffect() {
-        return hasSideEffect;
     }
 
     public long getMaxCallTargetOffset() {

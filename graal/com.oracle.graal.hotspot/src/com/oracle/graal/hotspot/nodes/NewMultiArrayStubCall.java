@@ -46,7 +46,7 @@ public class NewMultiArrayStubCall extends FixedWithNextNode implements LIRGenLo
     @Input private final ValueNode dims;
     private final int rank;
 
-    public static final Descriptor NEW_MULTI_ARRAY = new Descriptor("new_multi_array", Kind.Object, Kind.Object, Kind.Int, wordKind());
+    public static final Descriptor NEW_MULTI_ARRAY = new Descriptor("new_multi_array", false, Kind.Object, Kind.Object, Kind.Int, wordKind());
 
     public NewMultiArrayStubCall(ValueNode hub, int rank, ValueNode dims) {
         super(defaultStamp);

@@ -47,73 +47,73 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         HotSpotVMConfig c = config;
         Kind word = graalRuntime.getTarget().wordKind;
 
-        addRuntimeCall(DEOPTIMIZE, config.deoptimizeStub, true,
+        addRuntimeCall(DEOPTIMIZE, config.deoptimizeStub,
                 /*           temps */ null,
                 /*             ret */ ret(Kind.Void));
 
-        addRuntimeCall(SET_DEOPT_INFO, config.setDeoptInfoStub, true,
+        addRuntimeCall(SET_DEOPT_INFO, config.setDeoptInfoStub,
                 /*           temps */ null,
                 /*             ret */ ret(Kind.Void),
                 /* arg0:      info */ scratch(Kind.Object));
 
-        addRuntimeCall(DEBUG, config.debugStub, false,
+        addRuntimeCall(DEBUG, config.debugStub,
                 /*           temps */ null,
                 /*             ret */ ret(Kind.Void));
 
-        addRuntimeCall(ARITHMETIC_FREM, config.arithmeticFremStub, false,
+        addRuntimeCall(ARITHMETIC_FREM, config.arithmeticFremStub,
                 /*           temps */ null,
                 /*             ret */ ret(Kind.Float),
                 /* arg0:         a */ arg(0, Kind.Float),
                 /* arg1:         b */ arg(1, Kind.Float));
 
-        addRuntimeCall(ARITHMETIC_DREM, config.arithmeticDremStub, false,
+        addRuntimeCall(ARITHMETIC_DREM, config.arithmeticDremStub,
                 /*           temps */ null,
                 /*             ret */ ret(Kind.Double),
                 /* arg0:         a */ arg(0, Kind.Double),
                 /* arg1:         b */ arg(1, Kind.Double));
 
-        addRuntimeCall(MONITORENTER, config.fastMonitorEnterStub, true,
+        addRuntimeCall(MONITORENTER, config.fastMonitorEnterStub,
                 /*        temps */ new Register[] {rax, rbx},
                 /*          ret */ ret(Kind.Void),
                 /* arg0: object */ arg(0, Kind.Object),
                 /* arg1:   lock */ arg(1, word));
 
-        addRuntimeCall(MONITOREXIT, c.fastMonitorExitStub, true,
+        addRuntimeCall(MONITOREXIT, c.fastMonitorExitStub,
                 /*        temps */ new Register[] {rax, rbx},
                 /*          ret */ ret(Kind.Void),
                 /* arg0: object */ arg(0, Kind.Object),
                 /* arg1:   lock */ arg(1, word));
 
-        addRuntimeCall(NEW_OBJECT_ARRAY, c.newObjectArrayStub, false,
+        addRuntimeCall(NEW_OBJECT_ARRAY, c.newObjectArrayStub,
                 /*        temps */ new Register[] {rcx, rdi, rsi},
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(Kind.Object),
                 /* arg1: length */ rbx.asValue(Kind.Int));
 
-        addRuntimeCall(NEW_TYPE_ARRAY, c.newTypeArrayStub, false,
+        addRuntimeCall(NEW_TYPE_ARRAY, c.newTypeArrayStub,
                 /*        temps */ new Register[] {rcx, rdi, rsi},
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(Kind.Object),
                 /* arg1: length */ rbx.asValue(Kind.Int));
 
-        addRuntimeCall(NEW_INSTANCE, c.newInstanceStub, false,
+        addRuntimeCall(NEW_INSTANCE, c.newInstanceStub,
                 /*        temps */ null,
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(Kind.Object));
 
-        addRuntimeCall(NEW_MULTI_ARRAY, c.newMultiArrayStub, false,
+        addRuntimeCall(NEW_MULTI_ARRAY, c.newMultiArrayStub,
                 /*        temps */ null,
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rax.asValue(Kind.Object),
                 /* arg1:   rank */ rbx.asValue(Kind.Int),
                 /* arg2:   dims */ rcx.asValue(word));
 
-        addRuntimeCall(VERIFY_OOP, c.verifyOopStub, false,
+        addRuntimeCall(VERIFY_OOP, c.verifyOopStub,
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void),
                 /* arg0: object */ r13.asValue(Kind.Object));
 
-        addRuntimeCall(VM_ERROR, c.vmErrorStub, false,
+        addRuntimeCall(VM_ERROR, c.vmErrorStub,
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void),
                 /* arg0:  where */ arg(0, Kind.Object),

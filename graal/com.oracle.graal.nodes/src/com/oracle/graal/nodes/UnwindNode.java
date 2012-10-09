@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class UnwindNode extends FixedNode implements LIRLowerable, Node.IterableNodeType {
 
-    public static final Descriptor UNWIND_EXCEPTION = new Descriptor("unwindException", Kind.Void, Kind.Object);
+    public static final Descriptor UNWIND_EXCEPTION = new Descriptor("unwindException", true, Kind.Void, Kind.Object);
 
     @Input private ValueNode exception;
 

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -46,7 +45,7 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
         stateAfter = x;
     }
 
-    public boolean hasSideEffect(CodeCacheProvider runtime) {
+    public boolean hasSideEffect() {
         return true;
     }
 

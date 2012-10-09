@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
@@ -40,7 +39,7 @@ public final class EndLockScopeNode extends AbstractStateSplit implements LIRGen
     }
 
     @Override
-    public boolean hasSideEffect(CodeCacheProvider runtime) {
+    public boolean hasSideEffect() {
         return false;
     }
 

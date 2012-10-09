@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
 public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
     @Input private final ValueNode object;
-    public static final Descriptor VERIFY_OOP = new Descriptor("verify_oop", Kind.Void, Kind.Object);
+    public static final Descriptor VERIFY_OOP = new Descriptor("verify_oop", false, Kind.Void, Kind.Object);
 
     public VerifyOopStubCall(ValueNode object) {
         super(StampFactory.objectNonNull());

@@ -24,13 +24,13 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
+
 @NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}")
 public class InvokeWithExceptionNode extends ControlSplitNode implements Node.IterableNodeType, Invoke, MemoryCheckpoint, LIRLowerable {
     public static final int NORMAL_EDGE = 0;
@@ -150,7 +150,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         this.stateAfter = stateAfter;
     }
 
-    public boolean hasSideEffect(CodeCacheProvider runtime) {
+    public boolean hasSideEffect() {
         return true;
     }
 

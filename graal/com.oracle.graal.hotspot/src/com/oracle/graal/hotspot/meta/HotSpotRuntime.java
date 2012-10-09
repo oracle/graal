@@ -100,62 +100,62 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         regConfig = createRegisterConfig(false);
         globalStubRegConfig = createRegisterConfig(true);
 
-        addRuntimeCall(UNWIND_EXCEPTION, config.unwindExceptionStub, true,
+        addRuntimeCall(UNWIND_EXCEPTION, config.unwindExceptionStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
                         /* arg0: exception */ arg(0, Kind.Object));
 
-        addRuntimeCall(REGISTER_FINALIZER, config.registerFinalizerStub, true,
+        addRuntimeCall(REGISTER_FINALIZER, config.registerFinalizerStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    object */ arg(0, Kind.Object));
 
-        addRuntimeCall(CREATE_NULL_POINTER_EXCEPTION, config.createNullPointerExceptionStub, true,
+        addRuntimeCall(CREATE_NULL_POINTER_EXCEPTION, config.createNullPointerExceptionStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Object));
 
-        addRuntimeCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, config.createOutOfBoundsExceptionStub, true,
+        addRuntimeCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, config.createOutOfBoundsExceptionStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Object),
                         /* arg0:     index */ arg(0, Kind.Int));
 
-        addRuntimeCall(JAVA_TIME_MILLIS, config.javaTimeMillisStub, false,
+        addRuntimeCall(JAVA_TIME_MILLIS, config.javaTimeMillisStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Long));
 
-        addRuntimeCall(JAVA_TIME_NANOS, config.javaTimeNanosStub, false,
+        addRuntimeCall(JAVA_TIME_NANOS, config.javaTimeNanosStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Long));
 
-        addRuntimeCall(ARITHMETIC_SIN, config.arithmeticSinStub, false,
+        addRuntimeCall(ARITHMETIC_SIN, config.arithmeticSinStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Double),
                         /* arg0:     index */ arg(0, Kind.Double));
 
-        addRuntimeCall(ARITHMETIC_COS, config.arithmeticCosStub, false,
+        addRuntimeCall(ARITHMETIC_COS, config.arithmeticCosStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Double),
                         /* arg0:     index */ arg(0, Kind.Double));
 
-        addRuntimeCall(ARITHMETIC_TAN, config.arithmeticTanStub, false,
+        addRuntimeCall(ARITHMETIC_TAN, config.arithmeticTanStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Double),
                         /* arg0:     index */ arg(0, Kind.Double));
 
-        addRuntimeCall(LOG_PRIMITIVE, config.logPrimitiveStub, false,
+        addRuntimeCall(LOG_PRIMITIVE, config.logPrimitiveStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:  typeChar */ arg(0, Kind.Int),
                         /* arg1:     value */ arg(1, Kind.Long),
                         /* arg2:   newline */ arg(2, Kind.Boolean));
 
-        addRuntimeCall(LOG_PRINTF, config.logPrintfStub, false,
+        addRuntimeCall(LOG_PRINTF, config.logPrintfStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    format */ arg(0, Kind.Object),
                         /* arg1:     value */ arg(1, Kind.Long));
 
-        addRuntimeCall(LOG_OBJECT, config.logObjectStub, false,
+        addRuntimeCall(LOG_OBJECT, config.logObjectStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    object */ arg(0, Kind.Object),
@@ -172,7 +172,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
      * @param ret where the call returns its result
      * @param args where arguments are passed to the call
      */
-    protected void addRuntimeCall(Descriptor descriptor, long address, boolean hasSideEffect, Register[] tempRegs, Value ret, Value... args) {
+    protected void addRuntimeCall(Descriptor descriptor, long address, Register[] tempRegs, Value ret, Value... args) {
         Value[] temps = tempRegs == null || tempRegs.length == 0 ? Value.NONE : new Value[tempRegs.length];
         for (int i = 0; i < temps.length; i++) {
             temps[i] = tempRegs[i].asValue();
@@ -187,7 +187,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         for (int i = 0; i < argKinds.length; i++) {
             assert argKinds[i].equals(args[i].getKind()) : descriptor + " incompatible with argument location " + i + ": " + args[i];
         }
-        HotSpotRuntimeCall runtimeCall = new HotSpotRuntimeCall(descriptor, address, hasSideEffect, new CallingConvention(temps, 0, ret, args), graalRuntime.getCompilerToVM());
+        HotSpotRuntimeCall runtimeCall = new HotSpotRuntimeCall(descriptor, address, new CallingConvention(temps, 0, ret, args), graalRuntime.getCompilerToVM());
         runtimeCalls.put(descriptor, runtimeCall);
     }
 

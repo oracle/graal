@@ -27,7 +27,6 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -153,10 +152,10 @@ public class SnippetTemplate {
     public static class Cache {
 
         private final ConcurrentHashMap<SnippetTemplate.Key, SnippetTemplate> templates = new ConcurrentHashMap<>();
-        private final CodeCacheProvider runtime;
+        private final MetaAccessProvider runtime;
 
 
-        public Cache(CodeCacheProvider runtime) {
+        public Cache(MetaAccessProvider runtime) {
             this.runtime = runtime;
         }
 
@@ -181,9 +180,9 @@ public class SnippetTemplate {
 
     public abstract static class AbstractTemplates<T extends SnippetsInterface> {
         protected final Cache cache;
-        protected final CodeCacheProvider runtime;
+        protected final MetaAccessProvider runtime;
         protected Class<T> snippetsClass;
-        public AbstractTemplates(CodeCacheProvider runtime, Class<T> snippetsClass) {
+        public AbstractTemplates(MetaAccessProvider runtime, Class<T> snippetsClass) {
             this.runtime = runtime;
             this.snippetsClass = snippetsClass;
             this.cache = new Cache(runtime);
@@ -215,7 +214,7 @@ public class SnippetTemplate {
     /**
      * Creates a snippet template.
      */
-    public SnippetTemplate(CodeCacheProvider runtime, SnippetTemplate.Key key) {
+    public SnippetTemplate(MetaAccessProvider runtime, SnippetTemplate.Key key) {
         ResolvedJavaMethod method = key.method;
         assert Modifier.isStatic(method.accessFlags()) : "snippet method must be static: " + method;
         Signature signature = method.signature();
@@ -336,7 +335,7 @@ public class SnippetTemplate {
             if (node instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) node;
                 FrameState frameState = stateSplit.stateAfter();
-                if (stateSplit.hasSideEffect(runtime)) {
+                if (stateSplit.hasSideEffect()) {
                     assert curSideEffectNode == null : "Currently limited to one side-effecting node (but this can be converted to a List if necessary)";
                     curSideEffectNode = node;
                 }
@@ -520,7 +519,7 @@ public class SnippetTemplate {
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      * @return the map of duplicated nodes (original -> duplicate)
      */
-    public Map<Node, Node> instantiate(CodeCacheProvider runtime,
+    public Map<Node, Node> instantiate(MetaAccessProvider runtime,
                     FixedWithNextNode replacee, SnippetTemplate.Arguments args) {
 
         // Inline the snippet nodes, replacing parameters with the given args in the process
@@ -540,7 +539,7 @@ public class SnippetTemplate {
         replacee.setNext(null);
 
         if (sideEffectNode != null) {
-            assert ((StateSplit) replacee).hasSideEffect(runtime);
+            assert ((StateSplit) replacee).hasSideEffect();
             Node sideEffectDup = duplicates.get(sideEffectNode);
             ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
         }
@@ -582,7 +581,7 @@ public class SnippetTemplate {
      * @param lastFixedNode the CFG of the snippet is inserted after this node
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      */
-    public void instantiate(CodeCacheProvider runtime,
+    public void instantiate(MetaAccessProvider runtime,
                     FloatingNode replacee,
                     FixedWithNextNode lastFixedNode, SnippetTemplate.Arguments args) {
 
@@ -603,7 +602,7 @@ public class SnippetTemplate {
         replaceeGraph.addAfterFixed(lastFixedNode, firstCFGNodeDuplicate);
 
         if (sideEffectNode != null) {
-            assert ((StateSplit) replacee).hasSideEffect(runtime);
+            assert ((StateSplit) replacee).hasSideEffect();
             Node sideEffectDup = duplicates.get(sideEffectNode);
             ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
         }

@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.type.*;
 public class MonitorExitStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
     @Input private final ValueNode object;
-    public static final Descriptor MONITOREXIT = new Descriptor("monitorexit", Kind.Void, Kind.Object, wordKind());
+    public static final Descriptor MONITOREXIT = new Descriptor("monitorexit", true, Kind.Void, Kind.Object, wordKind());
 
     public MonitorExitStubCall(ValueNode object) {
         super(StampFactory.forVoid());

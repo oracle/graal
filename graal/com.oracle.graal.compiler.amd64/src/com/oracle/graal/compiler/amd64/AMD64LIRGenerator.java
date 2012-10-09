@@ -78,8 +78,8 @@ import com.oracle.graal.phases.util.*;
  */
 public abstract class AMD64LIRGenerator extends LIRGenerator {
 
-    public static final Descriptor ARITHMETIC_FREM = new Descriptor("arithmeticFrem", Kind.Float, Kind.Float, Kind.Float);
-    public static final Descriptor ARITHMETIC_DREM = new Descriptor("arithmeticDrem", Kind.Double, Kind.Double, Kind.Double);
+    public static final Descriptor ARITHMETIC_FREM = new Descriptor("arithmeticFrem", false, Kind.Float, Kind.Float, Kind.Float);
+    public static final Descriptor ARITHMETIC_DREM = new Descriptor("arithmeticDrem", false, Kind.Double, Kind.Double, Kind.Double);
 
     private static final RegisterValue RAX_I = AMD64.rax.asValue(Kind.Int);
     private static final RegisterValue RAX_L = AMD64.rax.asValue(Kind.Long);

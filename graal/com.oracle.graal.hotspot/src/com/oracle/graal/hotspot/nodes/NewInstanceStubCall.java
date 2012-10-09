@@ -41,7 +41,7 @@ public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowe
 
     @Input private final ValueNode hub;
 
-    public static final Descriptor NEW_INSTANCE = new Descriptor("new_instance", Kind.Object, Kind.Object);
+    public static final Descriptor NEW_INSTANCE = new Descriptor("new_instance", false, Kind.Object, Kind.Object);
 
     public NewInstanceStubCall(ValueNode hub) {
         super(defaultStamp);

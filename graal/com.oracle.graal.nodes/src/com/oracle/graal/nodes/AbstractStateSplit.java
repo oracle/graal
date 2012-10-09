@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
@@ -42,7 +41,7 @@ public abstract class AbstractStateSplit extends FixedWithNextNode implements St
         stateAfter = x;
     }
 
-    public boolean hasSideEffect(CodeCacheProvider runtime) {
+    public boolean hasSideEffect() {
         return true;
     }
 

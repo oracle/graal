@@ -48,7 +48,7 @@ public final class BeginLockScopeNode extends AbstractStateSplit implements LIRG
     }
 
     @Override
-    public boolean hasSideEffect(CodeCacheProvider runtime) {
+    public boolean hasSideEffect() {
         return false;
     }
 

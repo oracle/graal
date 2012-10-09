@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class RegisterFinalizerNode extends AbstractStateSplit implements StateSplit, Canonicalizable, LIRLowerable {
 
-    public static final Descriptor REGISTER_FINALIZER = new Descriptor("registerFinalizer", Kind.Void, Kind.Object);
+    public static final Descriptor REGISTER_FINALIZER = new Descriptor("registerFinalizer", true, Kind.Void, Kind.Object);
 
     @Input private ValueNode object;
 

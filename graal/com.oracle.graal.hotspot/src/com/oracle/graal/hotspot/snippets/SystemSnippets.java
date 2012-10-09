@@ -35,8 +35,8 @@ import com.oracle.graal.snippets.*;
 @ClassSubstitution(java.lang.System.class)
 public class SystemSnippets implements SnippetsInterface {
 
-    public static final Descriptor JAVA_TIME_MILLIS = new Descriptor("javaTimeMillis", Kind.Long);
-    public static final Descriptor JAVA_TIME_NANOS = new Descriptor("javaTimeNanos", Kind.Long);
+    public static final Descriptor JAVA_TIME_MILLIS = new Descriptor("javaTimeMillis", false, Kind.Long);
+    public static final Descriptor JAVA_TIME_NANOS = new Descriptor("javaTimeNanos", false, Kind.Long);
 
     public static long currentTimeMillis() {
         return callLong(JAVA_TIME_MILLIS);

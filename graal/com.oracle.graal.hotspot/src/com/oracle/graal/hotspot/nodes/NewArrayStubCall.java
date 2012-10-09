@@ -43,9 +43,9 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
     @Input private final ValueNode length;
     private final boolean isObjectArray;
 
-    public static final Descriptor NEW_OBJECT_ARRAY = new Descriptor("new_object_array", Kind.Object, Kind.Object, Kind.Int);
+    public static final Descriptor NEW_OBJECT_ARRAY = new Descriptor("new_object_array", false, Kind.Object, Kind.Object, Kind.Int);
 
-    public static final Descriptor NEW_TYPE_ARRAY = new Descriptor("new_type_array", Kind.Object, Kind.Object, Kind.Int);
+    public static final Descriptor NEW_TYPE_ARRAY = new Descriptor("new_type_array", false, Kind.Object, Kind.Object, Kind.Int);
 
     public NewArrayStubCall(boolean isObjectArray, ValueNode hub, ValueNode length) {
         super(defaultStamp);
