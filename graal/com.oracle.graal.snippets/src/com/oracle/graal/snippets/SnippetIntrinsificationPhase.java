@@ -84,10 +84,10 @@ public class SnippetIntrinsificationPhase extends Phase {
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         if (intrinsic != null) {
             assert target.getAnnotation(Fold.class) == null;
-            assert Modifier.isNative(target.accessFlags()) : "node intrinsic " + target + " should be native";
+            assert Modifier.isNative(target.getModifiers()) : "node intrinsic " + target + " should be native";
 
-            Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.signature(), target.holder());
-            ResolvedJavaType returnType = (ResolvedJavaType) target.signature().returnType(target.holder());
+            Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.getSignature(), target.getDeclaringClass());
+            ResolvedJavaType returnType = (ResolvedJavaType) target.getSignature().getReturnType(target.getDeclaringClass());
 
             // Prepare the arguments for the reflective constructor call on the node class.
             Object[] nodeConstructorArguments = prepareArguments(invoke, parameterTypes, target, false);
@@ -103,7 +103,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnCheckCast(newInstance);
         } else if (target.getAnnotation(Fold.class) != null) {
-            Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.signature(), target.holder());
+            Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.getSignature(), target.getDeclaringClass());
 
             // Prepare the arguments for the reflective method call
             Object[] arguments = prepareArguments(invoke, parameterTypes, target, true);
@@ -114,7 +114,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             }
 
             // Call the method
-            Constant constant = callMethod(target.signature().returnKind(), target.holder().toJava(), target.name(), parameterTypes, receiver, arguments);
+            Constant constant = callMethod(target.getSignature().getReturnKind(), target.getDeclaringClass().toJava(), target.getName(), parameterTypes, receiver, arguments);
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
@@ -151,9 +151,9 @@ public class SnippetIntrinsificationPhase extends Phase {
                 }
                 ConstantNode constantNode = (ConstantNode) argument;
                 Constant constant = constantNode.asConstant();
-                Object o = constant.boxedValue();
+                Object o = constant.asBoxedValue();
                 if (o instanceof Class< ? >) {
-                    reflectionCallArguments[i] = runtime.getResolvedJavaType((Class< ? >) o);
+                    reflectionCallArguments[i] = runtime.lookupJavaType((Class< ? >) o);
                     parameterTypes[i] = ResolvedJavaType.class;
                 } else {
                     if (parameterTypes[i] == boolean.class) {
@@ -179,7 +179,7 @@ public class SnippetIntrinsificationPhase extends Phase {
     private static Class< ? > getNodeClass(ResolvedJavaMethod target, NodeIntrinsic intrinsic) {
         Class< ? > result = intrinsic.value();
         if (result == NodeIntrinsic.class) {
-            result = target.holder().toJava();
+            result = target.getDeclaringClass().toJava();
         }
         assert Node.class.isAssignableFrom(result);
         return result;
@@ -307,10 +307,10 @@ public class SnippetIntrinsificationPhase extends Phase {
         try {
             ValueNode intrinsicNode = (ValueNode) constructor.newInstance(arguments);
             if (setStampFromReturnType) {
-                if (returnType.kind().isObject()) {
+                if (returnType.getKind().isObject()) {
                     intrinsicNode.setStamp(StampFactory.declared(returnType));
                 } else {
-                    intrinsicNode.setStamp(StampFactory.forKind(returnType.kind()));
+                    intrinsicNode.setStamp(StampFactory.forKind(returnType.getKind()));
                 }
             }
             return intrinsicNode;

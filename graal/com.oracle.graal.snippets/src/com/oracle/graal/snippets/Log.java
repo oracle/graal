@@ -56,27 +56,27 @@ public final class Log {
     private static native void printf(@ConstantNodeParameter Descriptor logPrintf, String format, long value);
 
     public static void print(boolean value) {
-        log(LOG_PRIMITIVE, Kind.Boolean.typeChar, value ? 1L : 0L, false);
+        log(LOG_PRIMITIVE, Kind.Boolean.getTypeChar(), value ? 1L : 0L, false);
     }
 
     public static void print(byte value) {
-        log(LOG_PRIMITIVE, Kind.Byte.typeChar, value, false);
+        log(LOG_PRIMITIVE, Kind.Byte.getTypeChar(), value, false);
     }
 
     public static void print(char value) {
-        log(LOG_PRIMITIVE, Kind.Char.typeChar, value, false);
+        log(LOG_PRIMITIVE, Kind.Char.getTypeChar(), value, false);
     }
 
     public static void print(short value) {
-        log(LOG_PRIMITIVE, Kind.Short.typeChar, value, false);
+        log(LOG_PRIMITIVE, Kind.Short.getTypeChar(), value, false);
     }
 
     public static void print(int value) {
-        log(LOG_PRIMITIVE, Kind.Int.typeChar, value, false);
+        log(LOG_PRIMITIVE, Kind.Int.getTypeChar(), value, false);
     }
 
     public static void print(long value) {
-        log(LOG_PRIMITIVE, Kind.Long.typeChar, value, false);
+        log(LOG_PRIMITIVE, Kind.Long.getTypeChar(), value, false);
     }
 
     /**
@@ -97,7 +97,7 @@ public final class Log {
         } else if (value == Float.NEGATIVE_INFINITY) {
             print("-Infinity");
         } else {
-            log(LOG_PRIMITIVE, Kind.Float.typeChar, Float.floatToRawIntBits(value), false);
+            log(LOG_PRIMITIVE, Kind.Float.getTypeChar(), Float.floatToRawIntBits(value), false);
         }
     }
 
@@ -109,7 +109,7 @@ public final class Log {
         } else if (value == Double.NEGATIVE_INFINITY) {
             print("-Infinity");
         } else {
-            log(LOG_PRIMITIVE, Kind.Double.typeChar, Double.doubleToRawLongBits(value), false);
+            log(LOG_PRIMITIVE, Kind.Double.getTypeChar(), Double.doubleToRawLongBits(value), false);
         }
     }
 
@@ -126,27 +126,27 @@ public final class Log {
     }
 
     public static void println(boolean value) {
-        log(LOG_PRIMITIVE, Kind.Boolean.typeChar, value ? 1L : 0L, true);
+        log(LOG_PRIMITIVE, Kind.Boolean.getTypeChar(), value ? 1L : 0L, true);
     }
 
     public static void println(byte value) {
-        log(LOG_PRIMITIVE, Kind.Byte.typeChar, value, true);
+        log(LOG_PRIMITIVE, Kind.Byte.getTypeChar(), value, true);
     }
 
     public static void println(char value) {
-        log(LOG_PRIMITIVE, Kind.Char.typeChar, value, true);
+        log(LOG_PRIMITIVE, Kind.Char.getTypeChar(), value, true);
     }
 
     public static void println(short value) {
-        log(LOG_PRIMITIVE, Kind.Short.typeChar, value, true);
+        log(LOG_PRIMITIVE, Kind.Short.getTypeChar(), value, true);
     }
 
     public static void println(int value) {
-        log(LOG_PRIMITIVE, Kind.Int.typeChar, value, true);
+        log(LOG_PRIMITIVE, Kind.Int.getTypeChar(), value, true);
     }
 
     public static void println(long value) {
-        log(LOG_PRIMITIVE, Kind.Long.typeChar, value, true);
+        log(LOG_PRIMITIVE, Kind.Long.getTypeChar(), value, true);
     }
 
     public static void println(float value) {
@@ -157,7 +157,7 @@ public final class Log {
         } else if (value == Float.NEGATIVE_INFINITY) {
             println("-Infinity");
         } else {
-            log(LOG_PRIMITIVE, Kind.Float.typeChar, Float.floatToRawIntBits(value), true);
+            log(LOG_PRIMITIVE, Kind.Float.getTypeChar(), Float.floatToRawIntBits(value), true);
         }
     }
 
@@ -169,7 +169,7 @@ public final class Log {
         } else if (value == Double.NEGATIVE_INFINITY) {
             println("-Infinity");
         } else {
-            log(LOG_PRIMITIVE, Kind.Double.typeChar, Double.doubleToRawLongBits(value), true);
+            log(LOG_PRIMITIVE, Kind.Double.getTypeChar(), Double.doubleToRawLongBits(value), true);
         }
     }
 

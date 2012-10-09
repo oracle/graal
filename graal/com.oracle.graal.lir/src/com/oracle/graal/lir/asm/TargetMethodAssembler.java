@@ -109,7 +109,7 @@ public class TargetMethodAssembler {
         }
 
         Debug.metric("TargetMethods").increment();
-        Debug.metric("CodeBytesEmitted").add(targetMethod.targetCodeSize());
+        Debug.metric("CodeBytesEmitted").add(targetMethod.getTargetCodeSize());
         Debug.metric("SafepointsEmitted").add(targetMethod.getSafepoints().size());
         Debug.metric("DataPatches").add(targetMethod.getDataReferences().size());
         Debug.metric("ExceptionHandlersEmitted").add(targetMethod.getExceptionHandlers().size());
@@ -178,7 +178,7 @@ public class TargetMethodAssembler {
      * including long constants that fit into the 32-bit range.
      */
     public int asIntConst(Value value) {
-        assert (value.getKind().stackKind() == Kind.Int || value.getKind() == Kind.Jsr || value.getKind() == Kind.Long) && isConstant(value);
+        assert (value.getKind().getStackKind() == Kind.Int || value.getKind() == Kind.Jsr || value.getKind() == Kind.Long) && isConstant(value);
         long c = ((Constant) value).asLong();
         if (!(NumUtil.isInt(c))) {
             throw GraalInternalError.shouldNotReachHere();

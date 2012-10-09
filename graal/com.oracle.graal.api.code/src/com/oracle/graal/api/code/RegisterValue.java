@@ -49,7 +49,7 @@ public final class RegisterValue extends Value {
 
     @Override
     public String toString() {
-        return getRegister().name + kindSuffix();
+        return getRegister().name + getKindSuffix();
     }
 
     /**

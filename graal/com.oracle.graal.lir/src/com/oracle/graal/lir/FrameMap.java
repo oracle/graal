@@ -71,7 +71,7 @@ import com.oracle.graal.asm.*;
  * <br>
  * A runtime has two ways to reserve space in the stack frame for its own use: <ul>
  * <li>A memory block somewhere in the frame of size {@link CodeCacheProvider#getCustomStackAreaSize()}. The offset
- *     to this block is returned in {@link CompilationResult#customStackAreaOffset()}.
+ *     to this block is returned in {@link CompilationResult#getCustomStackAreaOffset()}.
  * <li>At the beginning of the overflow argument area: The calling convention can specify that the first
  *     overflow stack argument is not at offset 0, but at a specified offset o. Use
  *     {@link CodeCacheProvider#getMinimumOutgoingSize()} to make sure that call-free methods also have this space
@@ -194,13 +194,13 @@ public final class FrameMap {
      * @return the offset of the stack slot
      */
     public int offsetForStackSlot(StackSlot slot) {
-        assert (!slot.rawAddFrameSize() && slot.rawOffset() < outgoingSize) ||
-            (slot.rawAddFrameSize() && slot.rawOffset() < 0 && -slot.rawOffset() <= spillSize) ||
-            (slot.rawAddFrameSize() && slot.rawOffset() >= 0);
-        if (slot.inCallerFrame()) {
+        assert (!slot.getRawAddFrameSize() && slot.getRawOffset() < outgoingSize) ||
+            (slot.getRawAddFrameSize() && slot.getRawOffset() < 0 && -slot.getRawOffset() <= spillSize) ||
+            (slot.getRawAddFrameSize() && slot.getRawOffset() >= 0);
+        if (slot.isInCallerFrame()) {
             accessesCallerFrame = true;
         }
-        return slot.offset(totalFrameSize());
+        return slot.getOffset(totalFrameSize());
     }
 
     /**

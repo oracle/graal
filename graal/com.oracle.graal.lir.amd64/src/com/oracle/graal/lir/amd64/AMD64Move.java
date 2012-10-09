@@ -292,7 +292,7 @@ public class AMD64Move {
         // Note: we use the kind of the input operand (and not the kind of the result operand) because they don't match
         // in all cases. For example, an object constant can be loaded to a long register when unsafe casts occurred (e.g.,
         // for a write barrier where arithmetic operations are then performed on the pointer).
-        switch (input.getKind().stackKind()) {
+        switch (input.getKind().getStackKind()) {
             case Jsr:
             case Int:
                 // Do not optimize with an XOR as this instruction may be between
@@ -341,7 +341,7 @@ public class AMD64Move {
     }
 
     private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Constant input) {
-        switch (input.getKind().stackKind()) {
+        switch (input.getKind().getStackKind()) {
             case Jsr:
             case Int:    masm.movl(tasm.asAddress(result), input.asInt()); break;
             case Long:   masm.movlong(tasm.asAddress(result), input.asLong()); break;

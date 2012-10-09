@@ -25,28 +25,29 @@ package com.oracle.graal.api.meta;
 import java.io.*;
 
 /**
- * Abstract base class for values manipulated by the compiler. All values have a {@linkplain Kind kind} and are immutable.
+ * Abstract base class for values manipulated by the compiler. All values have a {@linkplain Kind kind} and are
+ * immutable.
  */
 public abstract class Value implements Serializable {
+
     private static final long serialVersionUID = -6909397188697766469L;
 
     public static final Value[] NONE = {};
 
     @SuppressWarnings("serial")
-    public static final Value IllegalValue = new Value(Kind.Illegal) {
+    public static final Value ILLEGAL = new Value(Kind.Illegal) {
+
         @Override
         public String toString() {
             return "-";
         }
     };
 
-    /**
-     * The kind of this value.
-     */
     private final Kind kind;
 
     /**
      * Initializes a new value of the specified kind.
+     * 
      * @param kind the kind
      */
     protected Value(Kind kind) {
@@ -54,15 +55,15 @@ public abstract class Value implements Serializable {
     }
 
     /**
-     * String representation of the kind, which should be the end of all {@link #toString()} implementation of subclasses.
+     * Returns a String representation of the kind, which should be the end of all {@link #toString()} implementation of
+     * subclasses.
      */
-    protected final String kindSuffix() {
-        return "|" + getKind().typeChar;
+    protected final String getKindSuffix() {
+        return "|" + getKind().getTypeChar();
     }
 
     /**
-     * Gets the kind of the value.
-     * @return the kind
+     * Returns the kind of this value.
      */
     public final Kind getKind() {
         return kind;

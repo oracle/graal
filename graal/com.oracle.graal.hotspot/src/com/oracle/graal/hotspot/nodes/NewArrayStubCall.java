@@ -66,7 +66,7 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().getRuntimeCall(isObjectArray ? NewArrayStubCall.NEW_OBJECT_ARRAY : NewArrayStubCall.NEW_TYPE_ARRAY);
+        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(isObjectArray ? NewArrayStubCall.NEW_OBJECT_ARRAY : NewArrayStubCall.NEW_TYPE_ARRAY);
         Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub), gen.operand(length));
         gen.setResult(this, result);
     }

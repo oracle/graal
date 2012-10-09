@@ -358,9 +358,9 @@ public class InliningPhase extends Phase implements InliningCallback {
 
             double maxSize = GraalOptions.MaximumGreedyInlineSize;
             if (GraalOptions.InliningBonusPerTransferredValue != 0) {
-                Signature signature = info.invoke.methodCallTarget().targetMethod().signature();
-                int transferredValues = signature.argumentCount(!Modifier.isStatic(info.invoke.methodCallTarget().targetMethod().accessFlags()));
-                if (signature.returnKind() != Kind.Void) {
+                Signature signature = info.invoke.methodCallTarget().targetMethod().getSignature();
+                int transferredValues = signature.getParameterCount(!Modifier.isStatic(info.invoke.methodCallTarget().targetMethod().getModifiers()));
+                if (signature.getReturnKind() != Kind.Void) {
                     transferredValues++;
                 }
                 maxSize += transferredValues * GraalOptions.InliningBonusPerTransferredValue;
@@ -399,7 +399,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static class BytecodeSizeBasedWeightComputationPolicy implements WeightComputationPolicy {
         @Override
         public double computeWeight(ResolvedJavaMethod caller, ResolvedJavaMethod method, Invoke invoke, boolean preferredInvoke) {
-            double codeSize = method.codeSize();
+            double codeSize = method.getCodeSize();
             if (preferredInvoke) {
                 codeSize = codeSize / GraalOptions.BoostInliningForEscapeAnalysis;
             }
@@ -410,7 +410,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static class ComplexityBasedWeightComputationPolicy implements WeightComputationPolicy {
         @Override
         public double computeWeight(ResolvedJavaMethod caller, ResolvedJavaMethod method, Invoke invoke, boolean preferredInvoke) {
-            double complexity = method.compilationComplexity();
+            double complexity = method.getCompilationComplexity();
             if (preferredInvoke) {
                 complexity = complexity / GraalOptions.BoostInliningForEscapeAnalysis;
             }

@@ -72,7 +72,7 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
 
             ResolvedJavaType element = virtual.componentType();
             NewArrayNode newArray;
-            if (element.kind() == Kind.Object) {
+            if (element.getKind() == Kind.Object) {
                 newArray = graph.add(new NewObjectArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), false, locked));
             } else {
                 newArray = graph.add(new NewPrimitiveArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), false, locked));
@@ -82,7 +82,7 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
 
             FixedWithNextNode position = newArray;
             for (int i = 0; i < virtual.entryCount(); i++) {
-                StoreIndexedNode store = graph.add(new StoreIndexedNode(newArray, ConstantNode.forInt(i, graph), element.kind(), values.get(i), -1));
+                StoreIndexedNode store = graph.add(new StoreIndexedNode(newArray, ConstantNode.forInt(i, graph), element.getKind(), values.get(i), -1));
                 graph.addAfterFixed(position, store);
                 position = store;
             }

@@ -30,6 +30,7 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.meta.*;
 
 @SuppressWarnings("unused")
 public final class CompilationStatistics {
@@ -76,14 +77,14 @@ public final class CompilationStatistics {
     private int codeSize;
     private int deoptCount;
 
-    private CompilationStatistics(ResolvedJavaMethod method) {
+    private CompilationStatistics(HotSpotResolvedJavaMethod method) {
         if (method != null) {
             holder = MetaUtil.format("%H", method);
-            name = method.name();
+            name = method.getName();
             signature = MetaUtil.format("%p", method);
             startTime = System.nanoTime();
             startInvCount = method.invocationCount();
-            bytecodeCount = method.codeSize();
+            bytecodeCount = method.getCodeSize();
         } else {
             holder = "";
             name = "";
@@ -92,11 +93,11 @@ public final class CompilationStatistics {
         }
     }
 
-    public void finish(ResolvedJavaMethod method) {
+    public void finish(HotSpotResolvedJavaMethod method) {
         if (ENABLED) {
             duration = System.nanoTime() - startTime;
             endInvCount = method.invocationCount();
-            codeSize = method.compiledCodeSize();
+            codeSize = method.getCompiledCodeSize();
             if (current.get().getLast() != this) {
                 throw new RuntimeException("mismatch in finish()");
             }
@@ -108,7 +109,7 @@ public final class CompilationStatistics {
         return current.get().isEmpty() ? null : current.get().getLast();
     }
 
-    public static CompilationStatistics create(ResolvedJavaMethod method) {
+    public static CompilationStatistics create(HotSpotResolvedJavaMethod method) {
         if (ENABLED) {
             CompilationStatistics stats = new CompilationStatistics(method);
             list.add(stats);

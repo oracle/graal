@@ -68,7 +68,7 @@ public class SnippetVerificationPhase extends Phase {
                     if (method.getAnnotation(NodeIntrinsic.class) == null) {
                         Invoke invoke = (Invoke) callTarget.usages().first();
                         NodeInputList<ValueNode> arguments = callTarget.arguments();
-                        boolean isStatic = Modifier.isStatic(method.accessFlags());
+                        boolean isStatic = Modifier.isStatic(method.getModifiers());
                         int argc = 0;
                         if (!isStatic) {
                             ValueNode receiver = arguments.get(argc);
@@ -78,11 +78,11 @@ public class SnippetVerificationPhase extends Phase {
                             }
                             argc++;
                         }
-                        Signature signature = method.signature();
-                        for (int i = 0; i < signature.argumentCount(false); i++) {
+                        Signature signature = method.getSignature();
+                        for (int i = 0; i < signature.getParameterCount(false); i++) {
                             ValueNode argument = arguments.get(argc);
                             if (argument == node) {
-                                ResolvedJavaType type = (ResolvedJavaType) signature.argumentTypeAt(i, method.holder());
+                                ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
                                 verify((type.toJava() == Word.class) == isWord(argument), node, invoke.node(), "cannot pass word value to non-word parameter " + i + " or vice-versa");
                             }
                             argc++;

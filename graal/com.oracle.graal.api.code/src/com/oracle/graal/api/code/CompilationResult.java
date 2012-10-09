@@ -149,7 +149,7 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Provides extra information about instructions or data at specific positions in {@link CompilationResult#targetCode()}.
+     * Provides extra information about instructions or data at specific positions in {@link CompilationResult#getTargetCode()}.
      * This is optional information that can be used to enhance a disassembly of the code.
      */
     public abstract static class CodeAnnotation implements Serializable {
@@ -340,17 +340,11 @@ public class CompilationResult implements Serializable {
 
     private Assumptions assumptions;
 
-    /**
-     * Constructs a new target method.
-     */
-    public CompilationResult() {
-    }
-
     public void setAssumptions(Assumptions assumptions) {
         this.assumptions = assumptions;
     }
 
-    public Assumptions assumptions() {
+    public Assumptions getAssumptions() {
         return assumptions;
     }
 
@@ -392,7 +386,7 @@ public class CompilationResult implements Serializable {
      *
      * @param codePos the position of the call in the code array
      * @param size the size of the call instruction
-     * @param target the {@link CodeCacheProvider#asCallTarget(Object) target} being called
+     * @param target the {@link CodeCacheProvider#lookupCallTarget(Object) target} being called
      * @param debugInfo the debug info for the call
      * @param direct specifies if this is a {@linkplain Call#direct direct} call
      */
@@ -459,7 +453,7 @@ public class CompilationResult implements Serializable {
      *
      * @return the frame size
      */
-    public int frameSize() {
+    public int getFrameSize() {
         assert frameSize != -1 : "frame size not yet initialized!";
         return frameSize;
     }
@@ -468,7 +462,7 @@ public class CompilationResult implements Serializable {
      * @return the code offset of the start of the epilogue that restores all callee saved registers, or -1 if this is
      *         not a callee saved method
      */
-    public int registerRestoreEpilogueOffset() {
+    public int getRegisterRestoreEpilogueOffset() {
         return registerRestoreEpilogueOffset;
     }
 
@@ -476,12 +470,12 @@ public class CompilationResult implements Serializable {
      * Offset in bytes for the custom stack area (relative to sp).
      * @return the offset in bytes
      */
-    public int customStackAreaOffset() {
+    public int getCustomStackAreaOffset() {
         return customStackAreaOffset;
     }
 
     /**
-     * @see #customStackAreaOffset()
+     * @see #getCustomStackAreaOffset()
      * @param offset
      */
     public void setCustomStackAreaOffset(int offset) {
@@ -491,21 +485,21 @@ public class CompilationResult implements Serializable {
     /**
      * @return the machine code generated for this method
      */
-    public byte[] targetCode() {
+    public byte[] getTargetCode() {
         return targetCode;
     }
 
     /**
      * @return the size of the machine code generated for this method
      */
-    public int targetCodeSize() {
+    public int getTargetCodeSize() {
         return targetCodeSize;
     }
 
     /**
      * @return the code annotations or {@code null} if there are none
      */
-    public List<CodeAnnotation> annotations() {
+    public List<CodeAnnotation> getAnnotations() {
         return annotations;
     }
 

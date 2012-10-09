@@ -518,7 +518,7 @@ public final class Interval {
 
     void setKind(Kind kind) {
         assert isRegister(operand) || this.kind() == Kind.Illegal || this.kind() == kind : "overwriting existing type";
-        assert kind == kind.stackKind() || kind == Kind.Short : "these kinds should have int type registers";
+        assert kind == kind.getStackKind() || kind == Kind.Short : "these kinds should have int type registers";
         this.kind = kind;
     }
 
@@ -660,7 +660,7 @@ public final class Interval {
     /**
      * Sentinel interval to denote the end of an interval list.
      */
-    static final Interval EndMarker = new Interval(Value.IllegalValue, -1);
+    static final Interval EndMarker = new Interval(Value.ILLEGAL, -1);
 
     Interval(Value operand, int operandNumber) {
         assert operand != null;

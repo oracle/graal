@@ -43,7 +43,7 @@ import com.oracle.graal.api.code.CompilationResult.Safepoint;
 import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.code.RuntimeCall.Descriptor;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaType.Representation;
+import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
@@ -78,7 +78,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     protected Value ret(Kind kind) {
         if (kind.isVoid()) {
-            return IllegalValue;
+            return ILLEGAL;
         }
         return globalStubRegConfig.getReturnRegister(kind).asValue(kind);
     }
@@ -226,11 +226,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     @Override
     public String disassemble(CodeInfo info, CompilationResult tm) {
-        byte[] code = info.code();
+        byte[] code = info.getCode();
         TargetDescription target = graalRuntime.getTarget();
-        HexCodeFile hcf = new HexCodeFile(code, info.start(), target.arch.name, target.wordSize * 8);
+        HexCodeFile hcf = new HexCodeFile(code, info.getStart(), target.arch.name, target.wordSize * 8);
         if (tm != null) {
-            HexCodeFile.addAnnotations(hcf, tm.annotations());
+            HexCodeFile.addAnnotations(hcf, tm.getAnnotations());
             addExceptionHandlersComment(tm, hcf);
             Register fp = regConfig.getFrameRegister();
             RefMapFormatter slotFormatter = new RefMapFormatter(target.arch, target.wordSize, fp, 0);
@@ -319,27 +319,22 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     }
 
     @Override
-    public ResolvedJavaType getResolvedJavaType(Kind kind) {
-        return (ResolvedJavaType) graalRuntime.getCompilerToVM().getType(kind.toJavaClass());
-    }
-
-    @Override
-    public ResolvedJavaType getTypeOf(Constant constant) {
+    public ResolvedJavaType lookupJavaType(Constant constant) {
         return (ResolvedJavaType) graalRuntime.getCompilerToVM().getJavaType(constant);
     }
 
     @Override
-    public int sizeOfLockData() {
+    public int getSizeOfLockData() {
         return config.basicLockSize;
     }
 
     @Override
-    public boolean areConstantObjectsEqual(Constant x, Constant y) {
+    public boolean constantEquals(Constant x, Constant y) {
         return graalRuntime.getCompilerToVM().compareConstantObjects(x, y);
     }
 
     @Override
-    public RegisterConfig getRegisterConfig(JavaMethod method) {
+    public RegisterConfig lookupRegisterConfig(JavaMethod method) {
         return regConfig;
     }
 
@@ -357,7 +352,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     }
 
     @Override
-    public int getArrayLength(Constant array) {
+    public int lookupArrayLength(Constant array) {
         return graalRuntime.getCompilerToVM().getArrayLength(array);
     }
 
@@ -377,7 +372,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 if (!callTarget.isStatic() && receiver.kind() == Kind.Object && !receiver.objectStamp().nonNull()) {
                     invoke.node().dependencies().add(tool.createNullCheckGuard(receiver, invoke.leafGraphId()));
                 }
-                Kind[] signature = MetaUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind());
+                Kind[] signature = MetaUtil.signatureToKinds(callTarget.targetMethod().getSignature(), callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass().getKind());
 
                 AbstractCallTargetNode loweredCallTarget = null;
                 if (callTarget.invokeKind() == InvokeKind.Virtual &&
@@ -385,7 +380,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                     (GraalOptions.AlwaysInlineVTableStubs || invoke.isMegamorphic())) {
 
                     HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
-                    if (!hsMethod.holder().isInterface()) {
+                    if (!hsMethod.getDeclaringClass().isInterface()) {
                         // We use LocationNode.ANY_LOCATION for the reads that access the vtable entry and the compiled code entry
                         // as HotSpot does not guarantee they are final values.
                         int vtableEntryOffset = hsMethod.vtableEntryOffset();
@@ -413,7 +408,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             LoadFieldNode field = (LoadFieldNode) n;
             int displacement = ((HotSpotResolvedJavaField) field.field()).offset();
             assert field.kind() != Kind.Illegal;
-            ReadNode memoryRead = graph.add(new ReadNode(field.object(), LocationNode.create(field.field(), field.field().kind(), displacement, graph), field.stamp()));
+            ReadNode memoryRead = graph.add(new ReadNode(field.object(), LocationNode.create(field.field(), field.field().getKind(), displacement, graph), field.stamp()));
             memoryRead.dependencies().add(tool.createNullCheckGuard(field.object(), field.leafGraphId()));
             graph.replaceFixedWithFixed(field, memoryRead);
             if (field.isVolatile()) {
@@ -425,13 +420,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         } else if (n instanceof StoreFieldNode) {
             StoreFieldNode storeField = (StoreFieldNode) n;
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
-            WriteNode memoryWrite = graph.add(new WriteNode(storeField.object(), storeField.value(), LocationNode.create(storeField.field(), storeField.field().kind(), field.offset(), graph)));
+            WriteNode memoryWrite = graph.add(new WriteNode(storeField.object(), storeField.value(), LocationNode.create(storeField.field(), storeField.field().getKind(), field.offset(), graph)));
             memoryWrite.dependencies().add(tool.createNullCheckGuard(storeField.object(), storeField.leafGraphId()));
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
 
             FixedWithNextNode last = memoryWrite;
-            if (field.kind() == Kind.Object && !memoryWrite.value().objectStamp().alwaysNull()) {
+            if (field.getKind() == Kind.Object && !memoryWrite.value().objectStamp().alwaysNull()) {
                 FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(memoryWrite.object()));
                 graph.addAfterFixed(memoryWrite, writeBarrier);
                 last = writeBarrier;
@@ -481,14 +476,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 // Store check!
                 ResolvedJavaType arrayType = array.objectStamp().type();
                 if (arrayType != null && array.objectStamp().isExactType()) {
-                    ResolvedJavaType elementType = arrayType.componentType();
-                    if (elementType.superType() != null) {
+                    ResolvedJavaType elementType = arrayType.getComponentType();
+                    if (elementType.getSuperclass() != null) {
                         ConstantNode type = ConstantNode.forConstant(elementType.getEncoding(Representation.ObjectHub), this, graph);
                         checkcast = graph.add(new CheckCastNode(type, elementType, value));
                         graph.addBeforeFixed(storeIndexed, checkcast);
                         value = checkcast;
                     } else {
-                        assert elementType.name().equals("Ljava/lang/Object;") : elementType.name();
+                        assert elementType.getName().equals("Ljava/lang/Object;") : elementType.getName();
                     }
                 } else {
                     LoadHubNode arrayClass = graph.add(new LoadHubNode(array));
@@ -588,9 +583,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     @Override
     public StructuredGraph intrinsicGraph(ResolvedJavaMethod caller, int bci, ResolvedJavaMethod method, List<? extends Node> parameters) {
-        JavaType holder = method.holder();
-        String fullName = method.name() + method.signature().asString();
-        String holderName = holder.name();
+        JavaType holder = method.getDeclaringClass();
+        String fullName = method.getName() + ((HotSpotSignature) method.getSignature()).asString();
+        String holderName = holder.getName();
         if (holderName.equals("Ljava/lang/Object;")) {
             if (fullName.equals("getClass()Ljava/lang/Class;")) {
                 ValueNode obj = (ValueNode) parameters.get(0);
@@ -605,7 +600,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
                 LoadHubNode hub = graph.add(new LoadHubNode(receiver));
-                Stamp resultStamp = StampFactory.declaredNonNull(getResolvedJavaType(Class.class));
+                Stamp resultStamp = StampFactory.declaredNonNull(lookupJavaType(Class.class));
                 FloatingReadNode result = graph.unique(new FloatingReadNode(hub, LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Object, config.classMirrorOffset, graph), null, resultStamp));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 graph.start().setNext(hub);
@@ -639,28 +634,28 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         return graph.add(new SafeReadNode(value, LocationNode.create(LocationNode.FINAL_LOCATION, kind, offset, graph), stamp, leafGraphId));
     }
 
-    public ResolvedJavaType getResolvedJavaType(Class<?> clazz) {
+    public ResolvedJavaType lookupJavaType(Class<?> clazz) {
         return (ResolvedJavaType) graalRuntime.getCompilerToVM().getType(clazz);
     }
 
-    public Object asCallTarget(Object target) {
+    public Object lookupCallTarget(Object target) {
         if (target instanceof HotSpotRuntimeCall) {
             return ((HotSpotRuntimeCall) target).address;
         }
         return target;
     }
 
-    public RuntimeCall getRuntimeCall(Descriptor descriptor) {
+    public RuntimeCall lookupRuntimeCall(Descriptor descriptor) {
         assert runtimeCalls.containsKey(descriptor) : descriptor;
         return runtimeCalls.get(descriptor);
     }
 
-    public ResolvedJavaMethod getResolvedJavaMethod(Method reflectionMethod) {
+    public ResolvedJavaMethod lookupJavaMethod(Method reflectionMethod) {
         return (ResolvedJavaMethod) graalRuntime.getCompilerToVM().getJavaMethod(reflectionMethod);
     }
 
     @Override
-    public ResolvedJavaField getResolvedJavaField(Field reflectionField) {
+    public ResolvedJavaField lookupJavaField(Field reflectionField) {
         return graalRuntime.getCompilerToVM().getJavaField(reflectionField);
     }
 
@@ -694,7 +689,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         return (~(((reasonValue) << reasonShift) + ((actionValue) << actionShift)));
     }
 
-    @Override
     public int convertDeoptAction(DeoptimizationAction action) {
         // This must be kept in sync with the DeoptAction enum defined in deoptimization.hpp
         switch(action) {
@@ -707,7 +701,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         }
     }
 
-    @Override
     public int convertDeoptReason(DeoptimizationReason reason) {
         // This must be kept in sync with the DeoptReason enum defined in deoptimization.hpp
         switch(reason) {

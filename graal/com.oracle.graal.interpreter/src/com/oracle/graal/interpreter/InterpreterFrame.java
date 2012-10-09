@@ -45,7 +45,7 @@ public class InterpreterFrame extends Frame {
     }
 
     private InterpreterFrame(ResolvedJavaMethod method, InterpreterFrame parent, int additionalStackSpace, int depth) {
-        super(method.maxLocals() + method.maxStackSize() + BASE_LENGTH + additionalStackSpace, parent);
+        super(method.getMaxLocals() + method.getMaxStackSize() + BASE_LENGTH + additionalStackSpace, parent);
         setMethod(method);
         setBCI(0);
         this.depth = depth;
@@ -54,9 +54,9 @@ public class InterpreterFrame extends Frame {
 
     public InterpreterFrame create(ResolvedJavaMethod method, boolean hasReceiver) {
         InterpreterFrame frame = new InterpreterFrame(method, this, 0, this.depth + 1);
-        int length = method.signature().argumentSlots(hasReceiver);
+        int length = method.getSignature().getParameterSlots(hasReceiver);
 
-        frame.pushVoid(method.maxLocals());
+        frame.pushVoid(method.getMaxLocals());
         if (length > 0) {
             copyArguments(frame, length);
             popVoid(length);
@@ -74,7 +74,7 @@ public class InterpreterFrame extends Frame {
     }
 
     private int stackTos() {
-        return BASE_LENGTH + getMethod().maxLocals();
+        return BASE_LENGTH + getMethod().getMaxLocals();
     }
 
     private void copyArguments(InterpreterFrame dest, int length) {
@@ -86,7 +86,7 @@ public class InterpreterFrame extends Frame {
 
 
     public Object peekReceiver(ResolvedJavaMethod method) {
-        return getObject(tosSingle(method.signature().argumentSlots(false)));
+        return getObject(tosSingle(method.getSignature().getParameterSlots(false)));
     }
 
     public void pushBoth(Object oValue, int intValue) {
@@ -318,7 +318,7 @@ public class InterpreterFrame extends Frame {
     @Override
     public String toString() {
         ResolvedJavaMethod method = getMethod();
-        StringBuilder b = new StringBuilder(getMethod().toStackTraceElement(getBCI()).toString());
+        StringBuilder b = new StringBuilder(getMethod().asStackTraceElement(getBCI()).toString());
         for (int i = 0; i < tos; i++) {
             Object object = getObject(tosSingle(i));
             long primitive = getLong(tosSingle(i));
@@ -337,7 +337,7 @@ public class InterpreterFrame extends Frame {
                 typeString = "bci";
             } else if (index == PARENT_FRAME_SLOT) {
                 typeString = "parent";
-            } else if (index < BASE_LENGTH + method.maxLocals()) {
+            } else if (index < BASE_LENGTH + method.getMaxLocals()) {
                 typeString = "var " + (index - BASE_LENGTH);
             } else {
                 typeString = "local";

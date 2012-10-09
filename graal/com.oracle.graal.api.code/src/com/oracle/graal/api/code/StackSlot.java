@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
 
 /**
  * Represents a compiler spill slot or an outgoing stack-based argument in a method's frame
- * or an incoming stack-based argument in a method's {@linkplain #inCallerFrame() caller's frame}.
+ * or an incoming stack-based argument in a method's {@linkplain #isInCallerFrame() caller's frame}.
  */
 public final class StackSlot extends Value {
     private static final long serialVersionUID = -7725071921307318433L;
@@ -46,7 +46,7 @@ public final class StackSlot extends Value {
      *        or the beginning of the frame (stack pointer + total frame size).
      */
     public static StackSlot get(Kind kind, int offset, boolean addFrameSize) {
-        assert kind.stackKind() == kind;
+        assert kind.getStackKind() == kind;
         assert addFrameSize || offset >= 0;
 
         if (offset % CACHE_GRANULARITY == 0) {
@@ -83,22 +83,22 @@ public final class StackSlot extends Value {
      * Gets the offset of this stack slot, relative to the stack pointer.
      * @return The offset of this slot (in bytes).
      */
-    public int offset(int totalFrameSize) {
+    public int getOffset(int totalFrameSize) {
         assert totalFrameSize > 0 || !addFrameSize;
         int result = offset + (addFrameSize ? totalFrameSize : 0);
         assert result >= 0;
         return result;
     }
 
-    public boolean inCallerFrame() {
+    public boolean isInCallerFrame() {
         return addFrameSize && offset >= 0;
     }
 
-    public int rawOffset() {
+    public int getRawOffset() {
         return offset;
     }
 
-    public boolean rawAddFrameSize() {
+    public boolean getRawAddFrameSize() {
         return addFrameSize;
     }
 
@@ -122,11 +122,11 @@ public final class StackSlot extends Value {
     @Override
     public String toString() {
         if (!addFrameSize) {
-            return "out:" + offset + kindSuffix();
+            return "out:" + offset + getKindSuffix();
         } else if (offset >= 0) {
-            return "in:" + offset + kindSuffix();
+            return "in:" + offset + getKindSuffix();
         } else {
-            return "stack:" + (-offset) + kindSuffix();
+            return "stack:" + (-offset) + getKindSuffix();
         }
     }
 

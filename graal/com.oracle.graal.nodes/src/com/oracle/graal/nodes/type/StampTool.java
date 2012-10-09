@@ -186,7 +186,7 @@ public class StampTool {
         if (fromStamp.upperBound() > toKind.getMaxValue()) {
             lowerBound = toKind.getMinValue();
         }
-        return StampFactory.forInteger(toKind.stackKind(), lowerBound, upperBound, mask);
+        return StampFactory.forInteger(toKind.getStackKind(), lowerBound, upperBound, mask);
     }
 
     public static Stamp intToByte(IntegerStamp intStamp) {

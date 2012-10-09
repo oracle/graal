@@ -288,8 +288,8 @@ public class NewObjectSnippets implements SnippetsInterface {
             ValueNode lengthNode = newArrayNode.length();
             TLABAllocateNode tlabAllocateNode;
             ResolvedJavaType elementType = newArrayNode.elementType();
-            ResolvedJavaType arrayType = elementType.arrayOf();
-            Kind elementKind = elementType.kind();
+            ResolvedJavaType arrayType = elementType.getArrayClass();
+            Kind elementKind = elementType.getKind();
             final int alignment = target.wordSize;
             final int headerSize = elementKind.getArrayBaseOffset();
             final Integer length = lengthNode.isConstant() ? Integer.valueOf(lengthNode.asConstant().asInt()) : null;
@@ -355,10 +355,10 @@ public class NewObjectSnippets implements SnippetsInterface {
         public void lower(InitializeArrayNode initializeNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) initializeNode.graph();
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) initializeNode.type();
-            ResolvedJavaType elementType = type.componentType();
+            ResolvedJavaType elementType = type.getComponentType();
             assert elementType != null;
             HotSpotKlassOop hub = type.klassOop();
-            Kind elementKind = elementType.kind();
+            Kind elementKind = elementType.getKind();
             final int headerSize = elementKind.getArrayBaseOffset();
             Key key = new Key(elementKind.isObject() ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
             ValueNode memory = initializeNode.memory();

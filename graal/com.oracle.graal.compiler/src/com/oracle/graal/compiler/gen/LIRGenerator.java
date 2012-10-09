@@ -146,7 +146,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      */
     @Override
     public Variable newVariable(Kind kind) {
-        Kind stackKind = kind.stackKind();
+        Kind stackKind = kind.getStackKind();
         switch (stackKind) {
             case Jsr:
             case Int:
@@ -170,10 +170,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public Value setResult(ValueNode x, Value operand) {
         assert (isVariable(operand) && x.kind() == operand.getKind()) ||
                (isRegister(operand) && !attributes(asRegister(operand)).isAllocatable()) ||
-               (isConstant(operand) && x.kind() == operand.getKind().stackKind()) : operand.getKind() + " for node " + x;
+               (isConstant(operand) && x.kind() == operand.getKind().getStackKind()) : operand.getKind() + " for node " + x;
         assert operand(x) == null : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
-        assert operand.getKind().stackKind() == x.kind();
+        assert operand.getKind().getStackKind() == x.kind();
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
         return operand;
@@ -242,7 +242,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      */
     public Value resultOperandFor(Kind kind) {
         if (kind == Kind.Void) {
-            return IllegalValue;
+            return ILLEGAL;
         }
         return frameMap.registerConfig.getReturnRegister(kind).asValue(kind);
     }
@@ -449,14 +449,14 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     protected void emitPrologue() {
-        CallingConvention incomingArguments = frameMap.registerConfig.getCallingConvention(JavaCallee, method.signature().returnKind(), MetaUtil.signatureToKinds(method), target, false);
+        CallingConvention incomingArguments = frameMap.registerConfig.getCallingConvention(JavaCallee, method.getSignature().getReturnKind(), MetaUtil.signatureToKinds(method), target, false);
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
         for (int i = 0; i < params.length; i++) {
             params[i] = toStackKind(incomingArguments.getArgument(i));
             if (ValueUtil.isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
-                if (slot.inCallerFrame() && !lir.hasArgInCallerFrame()) {
+                if (slot.isInCallerFrame() && !lir.hasArgInCallerFrame()) {
                     lir.setHasArgInCallerFrame();
                 }
             }
@@ -466,7 +466,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         for (LocalNode local : graph.getNodes(LocalNode.class)) {
             Value param = params[local.index()];
-            assert param.getKind() == local.kind().stackKind();
+            assert param.getKind() == local.kind().getStackKind();
             setResult(local, emitMove(param));
         }
     }
@@ -476,7 +476,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      */
     public void lock() {
         if (lockDataSlots.size() == currentLockCount) {
-            lockDataSlots.add(frameMap.allocateStackBlock(runtime.sizeOfLockData(), false));
+            lockDataSlots.add(frameMap.allocateStackBlock(runtime.getSizeOfLockData(), false));
         }
         currentLockCount++;
     }
@@ -502,7 +502,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void visitReturn(ReturnNode x) {
-        Value operand = Value.IllegalValue;
+        Value operand = Value.ILLEGAL;
         if (!x.kind().isVoid()) {
             operand = resultOperandFor(x.kind());
             emitMove(operand(x.result()), operand);
@@ -662,11 +662,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public abstract Variable emitCMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
 
     protected FrameState stateBeforeCallWithArguments(FrameState stateAfter, MethodCallTargetNode call, int bci) {
-        return stateAfter.duplicateModified(bci, stateAfter.rethrowException(), call.returnStamp().kind(), toJVMArgumentStack(call.targetMethod().signature(), call.isStatic(), call.arguments()));
+        return stateAfter.duplicateModified(bci, stateAfter.rethrowException(), call.returnStamp().kind(), toJVMArgumentStack(call.targetMethod().getSignature(), call.isStatic(), call.arguments()));
     }
 
     private static ValueNode[] toJVMArgumentStack(Signature signature, boolean isStatic, NodeInputList<ValueNode> arguments) {
-        int slotCount = signature.argumentSlots(!isStatic);
+        int slotCount = signature.getParameterSlots(!isStatic);
         ValueNode[] stack = new ValueNode[slotCount];
         int stackIndex = 0;
         int argumentIndex = 0;
@@ -677,7 +677,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 // Current argument is receiver.
                 stackIndex += stackSlots(Kind.Object);
             } else {
-                stackIndex += stackSlots(signature.argumentKindAt(argumentIndex));
+                stackIndex += stackSlots(signature.getParameterKind(argumentIndex));
                 argumentIndex++;
             }
         }
@@ -730,12 +730,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected abstract void emitCall(Object targetMethod, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info);
 
     private static Value toStackKind(Value value) {
-        if (value.getKind().stackKind() != value.getKind()) {
+        if (value.getKind().getStackKind() != value.getKind()) {
             // We only have stack-kinds in the LIR, so convert the operand kind for values from the calling convention.
             if (isRegister(value)) {
-                return asRegister(value).asValue(value.getKind().stackKind());
+                return asRegister(value).asValue(value.getKind().getStackKind());
             } else if (isStackSlot(value)) {
-                return StackSlot.get(value.getKind().stackKind(), asStackSlot(value).rawOffset(), asStackSlot(value).rawAddFrameSize());
+                return StackSlot.get(value.getKind().getStackKind(), asStackSlot(value).getRawOffset(), asStackSlot(value).getRawAddFrameSize());
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -788,7 +788,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void visitRuntimeCall(RuntimeCallNode x) {
-        RuntimeCall call = runtime.getRuntimeCall(x.getDescriptor());
+        RuntimeCall call = runtime.lookupRuntimeCall(x.getDescriptor());
         CallingConvention cc = call.getCallingConvention();
         frameMap.callsMethod(cc);
         Value resultOperand = cc.getReturn();

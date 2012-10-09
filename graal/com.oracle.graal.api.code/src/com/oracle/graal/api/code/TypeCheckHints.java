@@ -62,7 +62,7 @@ public class TypeCheckHints {
             types = new ResolvedJavaType[] {type};
             exact = true;
         } else {
-            ResolvedJavaType uniqueSubtype = type == null ? null : type.uniqueConcreteSubtype();
+            ResolvedJavaType uniqueSubtype = type == null ? null : type.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
                 types = new ResolvedJavaType[] {uniqueSubtype};
                 if (assumptions != null) {
@@ -83,10 +83,10 @@ public class TypeCheckHints {
                         int hintCount = 0;
                         double totalHintProbability = 0.0d;
                         for (ProfiledType ptype : ptypes) {
-                            ResolvedJavaType hint = ptype.type;
+                            ResolvedJavaType hint = ptype.getType();
                             if (type != null && hint.isSubtypeOf(type)) {
                                 hintTypes[hintCount++] = hint;
-                                totalHintProbability += ptype.probability;
+                                totalHintProbability += ptype.getProbability();
                             }
                         }
                         if (totalHintProbability >= minHintHitProbability) {
@@ -105,6 +105,6 @@ public class TypeCheckHints {
     }
 
     public static boolean isFinalClass(ResolvedJavaType type) {
-        return Modifier.isFinal(type.accessFlags()) || (type.isArrayClass() && Modifier.isFinal(type.componentType().accessFlags()));
+        return Modifier.isFinal(type.getModifiers()) || (type.isArrayClass() && Modifier.isFinal(type.getComponentType().getModifiers()));
     }
 }

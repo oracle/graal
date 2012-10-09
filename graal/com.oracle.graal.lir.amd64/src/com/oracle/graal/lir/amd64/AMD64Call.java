@@ -122,7 +122,7 @@ public class AMD64Call {
             masm.call();
         }
         int after = masm.codeBuffer.position();
-        tasm.recordDirectCall(before, after, tasm.runtime.asCallTarget(target), info);
+        tasm.recordDirectCall(before, after, tasm.runtime.lookupCallTarget(target), info);
         tasm.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
     }
@@ -131,7 +131,7 @@ public class AMD64Call {
         int before = masm.codeBuffer.position();
         masm.jmp(0, true);
         int after = masm.codeBuffer.position();
-        tasm.recordDirectCall(before, after, tasm.runtime.asCallTarget(target), null);
+        tasm.recordDirectCall(before, after, tasm.runtime.lookupCallTarget(target), null);
         masm.ensureUniquePC();
     }
 
@@ -139,7 +139,7 @@ public class AMD64Call {
         int before = masm.codeBuffer.position();
         masm.call(dst);
         int after = masm.codeBuffer.position();
-        tasm.recordIndirectCall(before, after, tasm.runtime.asCallTarget(target), info);
+        tasm.recordIndirectCall(before, after, tasm.runtime.lookupCallTarget(target), info);
         tasm.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
     }
@@ -149,7 +149,7 @@ public class AMD64Call {
         assert (assertions = true) == true;
 
         if (assertions) {
-            directCall(tasm, masm, tasm.runtime.getRuntimeCall(DEBUG), null);
+            directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(DEBUG), null);
             masm.hlt();
         }
     }

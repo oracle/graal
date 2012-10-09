@@ -62,8 +62,8 @@ public class ObjectStamp extends Stamp {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append(kind().typeChar);
-        str.append(nonNull ? "!" : "").append(exactType ? "#" : "").append(' ').append(type == null ? "-" : type.name()).append(alwaysNull ? " NULL" : "");
+        str.append(kind().getTypeChar());
+        str.append(nonNull ? "!" : "").append(exactType ? "#" : "").append(' ').append(type == null ? "-" : type.getName()).append(alwaysNull ? " NULL" : "");
         return str.toString();
     }
 
@@ -160,7 +160,7 @@ public class ObjectStamp extends Stamp {
         } else if (a == null || b == null) {
             return null;
         } else {
-            return a.leastCommonAncestor(b);
+            return a.findLeastCommonAncestor(b);
         }
     }
 

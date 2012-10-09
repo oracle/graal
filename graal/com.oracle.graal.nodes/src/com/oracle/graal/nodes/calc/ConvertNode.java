@@ -78,7 +78,7 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
      * @param value the instruction producing the input value
      */
     public ConvertNode(Op opcode, ValueNode value) {
-        super(StampFactory.forKind(opcode.to.stackKind()));
+        super(StampFactory.forKind(opcode.to.getStackKind()));
         assert value.kind() == opcode.from : opcode + " : " + value.kind() + " != " + opcode.from;
         this.opcode = opcode;
         this.value = value;

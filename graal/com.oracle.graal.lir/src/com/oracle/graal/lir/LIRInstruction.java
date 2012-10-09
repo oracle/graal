@@ -169,7 +169,7 @@ public abstract class LIRInstruction {
         CONST,
 
         /**
-         * The value can be {@link Value#IllegalValue}.
+         * The value can be {@link Value#ILLEGAL}.
          */
         ILLEGAL,
 

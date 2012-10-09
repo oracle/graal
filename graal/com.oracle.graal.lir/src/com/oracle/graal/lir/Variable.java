@@ -49,7 +49,7 @@ public final class Variable extends Value {
      */
     public Variable(Kind kind, int index, Register.RegisterFlag flag) {
         super(kind);
-        assert kind == kind.stackKind() : "Variables can be only created for stack kinds";
+        assert kind == kind.getStackKind() : "Variables can be only created for stack kinds";
         assert index >= 0;
         this.index = index;
         this.flag = flag;
@@ -62,6 +62,6 @@ public final class Variable extends Value {
 
     @Override
     public String toString() {
-        return "v" + index + kindSuffix();
+        return "v" + index + getKindSuffix();
     }
 }

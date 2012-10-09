@@ -88,7 +88,7 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
     }
 
     public Kind returnKind() {
-        return targetMethod().signature().returnKind();
+        return targetMethod().getSignature().getReturnKind();
     }
 
     public Invoke invoke() {
@@ -120,7 +120,7 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
             ValueNode receiver = receiver();
             if (receiver != null && receiver.objectStamp().isExactType()) {
                 if (invokeKind == InvokeKind.Interface || invokeKind == InvokeKind.Virtual) {
-                    ResolvedJavaMethod method = receiver.objectStamp().type().resolveMethodImpl(targetMethod);
+                    ResolvedJavaMethod method = receiver.objectStamp().type().resolveMethod(targetMethod);
                     if (method != null) {
                         invokeKind = InvokeKind.Special;
                         targetMethod = method;
@@ -133,7 +133,7 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
 
     @Override
     public Stamp returnStamp() {
-        Kind returnKind = targetMethod.signature().returnKind();
+        Kind returnKind = targetMethod.getSignature().getReturnKind();
         if (returnKind == Kind.Object && returnType instanceof ResolvedJavaType) {
             return StampFactory.declared((ResolvedJavaType) returnType);
         } else {
@@ -146,6 +146,6 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         if (targetMethod() == null) {
             return "??Invalid!";
         }
-        return targetMethod().name();
+        return targetMethod().getName();
     }
 }

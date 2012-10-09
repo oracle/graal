@@ -57,7 +57,7 @@ public class IntrinsifyArrayCopyPhase extends Phase {
             floatArrayCopy = getArrayCopySnippet(runtime, float.class);
             doubleArrayCopy = getArrayCopySnippet(runtime, double.class);
             objectArrayCopy = getArrayCopySnippet(runtime, Object.class);
-            arrayCopy = runtime.getResolvedJavaMethod(System.class.getDeclaredMethod("arraycopy", Object.class, int.class, Object.class, int.class, int.class));
+            arrayCopy = runtime.lookupJavaMethod(System.class.getDeclaredMethod("arraycopy", Object.class, int.class, Object.class, int.class, int.class));
         } catch (SecurityException e) {
             e.printStackTrace();
         } catch (NoSuchMethodException e) {
@@ -67,7 +67,7 @@ public class IntrinsifyArrayCopyPhase extends Phase {
 
     private static ResolvedJavaMethod getArrayCopySnippet(CodeCacheProvider runtime, Class<?> componentClass) throws NoSuchMethodException {
         Class<?> arrayClass = Array.newInstance(componentClass, 0).getClass();
-        return runtime.getResolvedJavaMethod(ArrayCopySnippets.class.getDeclaredMethod("arraycopy", arrayClass, int.class, arrayClass, int.class, int.class));
+        return runtime.lookupJavaMethod(ArrayCopySnippets.class.getDeclaredMethod("arraycopy", arrayClass, int.class, arrayClass, int.class, int.class));
     }
 
     @Override
@@ -86,8 +86,8 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                                 && srcType.isArrayClass()
                                 && destType != null
                                 && destType.isArrayClass()) {
-                    Kind componentKind = srcType.componentType().kind();
-                    if (srcType.componentType() == destType.componentType()) {
+                    Kind componentKind = srcType.getComponentType().getKind();
+                    if (srcType.getComponentType() == destType.getComponentType()) {
                         if (componentKind == Kind.Int) {
                             snippetMethod = intArrayCopy;
                         } else if (componentKind == Kind.Char) {
@@ -106,17 +106,17 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                             snippetMethod = objectArrayCopy;
                         }
                     } else if (componentKind == Kind.Object
-                                    && srcType.componentType().isSubtypeOf(destType.componentType())) {
+                                    && srcType.getComponentType().isSubtypeOf(destType.getComponentType())) {
                         snippetMethod = objectArrayCopy;
                     }
                 }
             }
 
             if (snippetMethod != null) {
-                StructuredGraph snippetGraph = (StructuredGraph) snippetMethod.compilerStorage().get(Graph.class);
+                StructuredGraph snippetGraph = (StructuredGraph) snippetMethod.getCompilerStorage().get(Graph.class);
                 assert snippetGraph != null : "ArrayCopySnippets should be installed";
                 hits = true;
-                Debug.log("%s > Intinsify (%s)", Debug.currentScope(), snippetMethod.signature().argumentTypeAt(0, snippetMethod.holder()).componentType());
+                Debug.log("%s > Intinsify (%s)", Debug.currentScope(), snippetMethod.getSignature().getParameterType(0, snippetMethod.getDeclaringClass()).getComponentType());
                 InliningUtil.inline(methodCallTarget.invoke(), snippetGraph, false);
             }
         }

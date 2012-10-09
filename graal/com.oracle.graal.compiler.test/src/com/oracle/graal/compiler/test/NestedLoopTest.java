@@ -135,7 +135,7 @@ public class NestedLoopTest extends GraalCompilerTest {
 
     private static Invoke getInvoke(String name, StructuredGraph graph) {
         for (Invoke invoke : graph.getInvokes()) {
-            if (invoke.methodCallTarget().targetMethod().name().equals(name)) {
+            if (invoke.methodCallTarget().targetMethod().getName().equals(name)) {
                 return invoke;
             }
         }

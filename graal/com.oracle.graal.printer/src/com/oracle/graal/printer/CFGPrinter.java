@@ -476,7 +476,7 @@ class CFGPrinter extends CompilationPrinter {
             if (value.kind() == Kind.Illegal) {
                 prefix = "v";
             } else {
-                prefix = String.valueOf(value.kind().typeChar);
+                prefix = String.valueOf(value.kind().getTypeChar());
             }
         } else {
             prefix = "?";
@@ -512,10 +512,10 @@ class CFGPrinter extends CompilationPrinter {
     private void printInterval(Interval interval) {
         out.printf("%s %s ", interval.operand, (isRegister(interval.operand) ? "fixed" : interval.kind().name()));
         if (isRegister(interval.operand)) {
-            out.printf("\"[%s|%c]\"", interval.operand, interval.operand.getKind().typeChar);
+            out.printf("\"[%s|%c]\"", interval.operand, interval.operand.getKind().getTypeChar());
         } else {
             if (interval.location() != null) {
-                out.printf("\"[%s|%c]\"", interval.location(), interval.location().getKind().typeChar);
+                out.printf("\"[%s|%c]\"", interval.location(), interval.location().getKind().getTypeChar());
             }
         }
 

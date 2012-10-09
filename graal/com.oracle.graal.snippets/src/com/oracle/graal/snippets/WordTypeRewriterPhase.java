@@ -158,7 +158,7 @@ public class WordTypeRewriterPhase extends Phase {
                     case W2A: {
                         assert arguments.size() == 1;
                         ValueNode value = arguments.first();
-                        ResolvedJavaType targetType = (ResolvedJavaType) targetMethod.signature().returnType(targetMethod.holder());
+                        ResolvedJavaType targetType = (ResolvedJavaType) targetMethod.getSignature().getReturnType(targetMethod.getDeclaringClass());
                         UnsafeCastNode cast = graph.unique(new UnsafeCastNode(value, targetType));
                         replace(invoke, cast);
                         break;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,44 +26,46 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 /**
- * Represents a reference to a resolved Java field. Fields, like methods and types, are
- * resolved through {@link ConstantPool constant pools}.
+ * Represents a reference to a resolved Java field. Fields, like methods and types, are resolved through
+ * {@link ConstantPool constant pools}.
  */
 public interface ResolvedJavaField extends JavaField {
 
     /**
-     * Gets the access flags for this field. Only the flags specified in the JVM specification
-     * will be included in the returned mask. The utility methods in the {@link Modifier} class
-     * should be used to query the returned mask for the presence/absence of individual flags.
-     * @return the mask of JVM defined field access flags defined for this field
+     * Returns the Java language modifiers for this field, as an integer. The {@link Modifier} class should be used to
+     * decode the modifiers. Only the flags specified in the JVM specification will be included in the returned mask.
      */
-    int accessFlags();
+    int getModifiers();
 
     /**
-     * Gets the constant value of this field if available.
-     * @param receiver object from which this field's value is to be read. This value is ignored if this field is static.
+     * Gets the constant value of this field for a given object, if available.
+     * 
+     * @param receiver object from which this field's value is to be read. This value is ignored if this field is
+     *            static.
      * @return the constant value of this field or {@code null} if the constant value is not available
      */
-    Constant constantValue(Constant receiver);
+    Constant readConstantValue(Constant receiver);
 
     /**
-     * Gets the current value of the field if available.
-     * @param receiver object from which this field's value is to be read. This value is ignored if this field is static.
-     * @return the value of this field or {@code null} if the value is not available (e.g., because the field holder is not yet initialized).
+     * Gets the current value of this field for a given object, if available.
+     * 
+     * @param receiver object from which this field's value is to be read. This value is ignored if this field is
+     *            static.
+     * @return the value of this field or {@code null} if the value is not available (e.g., because the field holder is
+     *         not yet initialized).
      */
-    Constant getValue(Constant receiver);
+    Constant readValue(Constant receiver);
 
     /**
-     * Gets the holder of this field as a compiler-runtime interface type.
-     * @return the holder of this field
+     * Returns the {@link ResolvedJavaType} object representing the class or interface that declares this field.
      */
-    ResolvedJavaType holder();
+    ResolvedJavaType getDeclaringClass();
 
     /**
-     * Returns this field's annotation of a specified type.
-     *
+     * Returns the annotation for the specified type of this field, if such an annotation is present.
+     * 
      * @param annotationClass the Class object corresponding to the annotation type
-     * @return the annotation of type {@code annotationClass} for this field if present, else null
+     * @return this element's annotation for the specified annotation type if present on this field, else {@code null}
      */
     <T extends Annotation> T getAnnotation(Class<T> annotationClass);
 }

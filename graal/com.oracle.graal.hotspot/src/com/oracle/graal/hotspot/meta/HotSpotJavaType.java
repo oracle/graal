@@ -33,7 +33,7 @@ public abstract class HotSpotJavaType extends CompilerObject implements JavaType
     protected String name;
 
     @Override
-    public final String name() {
+    public final String getName() {
         return name;
     }
 

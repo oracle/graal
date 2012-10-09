@@ -229,7 +229,7 @@ public class CheckCastEliminationPhase extends Phase {
         } else if (a == b) {
             return a;
         } else {
-            return a.leastCommonAncestor(b);
+            return a.findLeastCommonAncestor(b);
         }
     }
 

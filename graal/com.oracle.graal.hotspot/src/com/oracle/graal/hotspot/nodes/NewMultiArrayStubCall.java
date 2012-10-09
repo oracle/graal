@@ -67,7 +67,7 @@ public class NewMultiArrayStubCall extends FixedWithNextNode implements LIRGenLo
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().getRuntimeCall(NewMultiArrayStubCall.NEW_MULTI_ARRAY);
+        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(NewMultiArrayStubCall.NEW_MULTI_ARRAY);
         Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub), Constant.forInt(rank), gen.operand(dims));
         gen.setResult(this, result);
     }

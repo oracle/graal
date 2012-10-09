@@ -25,7 +25,7 @@ package com.oracle.graal.nodes.java;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaType.*;
+import com.oracle.graal.api.meta.ResolvedJavaType.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -81,7 +81,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
             for (int i = 0; i < keyCount(); i++) {
                 Constant typeHub = keyAt(i);
                 assert constant.getKind() == typeHub.getKind();
-                if (tool.runtime().areConstantObjectsEqual(value().asConstant(), typeHub)) {
+                if (tool.runtime().constantEquals(value().asConstant(), typeHub)) {
                     survivingEdge = keySuccessorIndex(i);
                 }
             }

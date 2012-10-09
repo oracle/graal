@@ -77,19 +77,19 @@ public class BoxingMethodPool {
     private void initialize(Kind kind, Class<?> type, String unboxMethod) throws SecurityException, NoSuchMethodException {
 
         // Get boxing method from runtime.
-        ResolvedJavaMethod boxingMethod = runtime.getResolvedJavaMethod(type.getDeclaredMethod("valueOf", kind.toJavaClass()));
+        ResolvedJavaMethod boxingMethod = runtime.lookupJavaMethod(type.getDeclaredMethod("valueOf", kind.toJavaClass()));
         specialMethods.add(boxingMethod);
         boxingMethods[kind.ordinal()] = boxingMethod;
 
         // Get unboxing method from runtime.
-        ResolvedJavaMethod unboxingMethod = runtime.getResolvedJavaMethod(type.getDeclaredMethod(unboxMethod));
+        ResolvedJavaMethod unboxingMethod = runtime.lookupJavaMethod(type.getDeclaredMethod(unboxMethod));
         unboxingMethods[kind.ordinal()] = unboxingMethod;
         specialMethods.add(unboxingMethod);
 
         // Get the field that contains the boxed value.
-        ResolvedJavaField[] fields = runtime.getResolvedJavaType(type).declaredFields();
+        ResolvedJavaField[] fields = runtime.lookupJavaType(type).getDeclaredFields();
         ResolvedJavaField boxField = fields[0];
-        assert fields.length == 1 && boxField.kind() == kind;
+        assert fields.length == 1 && boxField.getKind() == kind;
         boxFields[kind.ordinal()] = boxField;
     }
 
@@ -98,11 +98,11 @@ public class BoxingMethodPool {
     }
 
     public boolean isBoxingMethod(ResolvedJavaMethod method) {
-        return isSpecialMethod(method) && method.signature().returnKind() == Kind.Object;
+        return isSpecialMethod(method) && method.getSignature().getReturnKind() == Kind.Object;
     }
 
     public boolean isUnboxingMethod(ResolvedJavaMethod method) {
-        return isSpecialMethod(method) && method.signature().returnKind() != Kind.Object;
+        return isSpecialMethod(method) && method.getSignature().getReturnKind() != Kind.Object;
     }
 
     public ResolvedJavaMethod getBoxingMethod(Kind kind) {
@@ -122,32 +122,32 @@ public class BoxingMethodPool {
     }
 
     public static boolean isBoxingMethodStatic(ResolvedJavaMethod method) {
-        Signature signature = method.signature();
-        if (!Modifier.isStatic(method.accessFlags())
-                        || signature.returnKind() == Kind.Object
-                        || signature.argumentCount(false) != 1) {
+        Signature signature = method.getSignature();
+        if (!Modifier.isStatic(method.getModifiers())
+                        || signature.getReturnKind() == Kind.Object
+                        || signature.getParameterCount(false) != 1) {
             return false;
         }
-        Kind kind = signature.argumentKindAt(0);
+        Kind kind = signature.getParameterKind(0);
         BoxingMethod boxing = boxings.get(kind);
         if (boxing == null) {
             return false;
         }
-        return method.holder().toJava() == boxing.type && method.name().equals("valueOf");
+        return method.getDeclaringClass().toJava() == boxing.type && method.getName().equals("valueOf");
     }
 
     public static boolean isUnboxingMethodStatic(ResolvedJavaMethod method) {
-        Signature signature = method.signature();
-        if (signature.returnKind() == Kind.Object
-                        || signature.argumentCount(false) != 0
-                        || Modifier.isStatic(method.accessFlags())) {
+        Signature signature = method.getSignature();
+        if (signature.getReturnKind() == Kind.Object
+                        || signature.getParameterCount(false) != 0
+                        || Modifier.isStatic(method.getModifiers())) {
             return false;
         }
-        Kind kind = signature.returnKind();
+        Kind kind = signature.getReturnKind();
         BoxingMethod boxing = boxings.get(kind);
         if (boxing == null) {
             return false;
         }
-        return method.holder().toJava() == boxing.type && method.name().equals(boxing.unboxMethod);
+        return method.getDeclaringClass().toJava() == boxing.type && method.getName().equals(boxing.unboxMethod);
     }
 }

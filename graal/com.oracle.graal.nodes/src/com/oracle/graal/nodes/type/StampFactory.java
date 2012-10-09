@@ -66,8 +66,8 @@ public class StampFactory {
     }
 
     public static Stamp forKind(Kind kind) {
-        assert stampCache[kind.stackKind().ordinal()] != null : "unexpected forKind(" + kind + ")";
-        return stampCache[kind.stackKind().ordinal()];
+        assert stampCache[kind.getStackKind().ordinal()] != null : "unexpected forKind(" + kind + ")";
+        return stampCache[kind.getStackKind().ordinal()];
     }
 
     public static Stamp forVoid() {
@@ -134,14 +134,14 @@ public class StampFactory {
             } else if (value.getKind() == Kind.Float || value.getKind() == Kind.Double) {
                 return forFloat(value.getKind(), value.asDouble(), value.asDouble(), !Double.isNaN(value.asDouble()));
             }
-            return forKind(value.getKind().stackKind());
+            return forKind(value.getKind().getStackKind());
         }
     }
 
     public static Stamp forConstant(Constant value, MetaAccessProvider runtime) {
         assert value.getKind() == Kind.Object;
         if (value.getKind() == Kind.Object) {
-            ResolvedJavaType type = value.isNull() ? null : runtime.getTypeOf(value);
+            ResolvedJavaType type = value.isNull() ? null : runtime.lookupJavaType(value);
             return new ObjectStamp(type, value.isNonNull(), value.isNonNull(), value.isNull());
         } else {
             throw new GraalInternalError(Kind.Object + " expected, actual kind: %s", value.getKind());
@@ -170,8 +170,8 @@ public class StampFactory {
 
     public static Stamp declared(ResolvedJavaType type, boolean nonNull) {
         assert type != null;
-        assert type.kind() == Kind.Object;
-        ResolvedJavaType exact = type.exactType();
+        assert type.getKind() == Kind.Object;
+        ResolvedJavaType exact = type.getExactType();
         if (exact != null) {
             return new ObjectStamp(exact, true, nonNull, false);
         } else {

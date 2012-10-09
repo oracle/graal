@@ -232,7 +232,7 @@ public abstract class GraalCompilerTest {
             }
         }
 
-        InstalledCode compiledMethod = getCode(runtime.getResolvedJavaMethod(method), parse(method));
+        InstalledCode compiledMethod = getCode(runtime.lookupJavaMethod(method), parse(method));
         try {
             return new Result(compiledMethod.executeVarargs(executeArgs), null);
         } catch (Throwable e) {
@@ -331,7 +331,7 @@ public abstract class GraalCompilerTest {
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parse(Method m) {
-        ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(m);
+        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(m);
         StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;
@@ -341,7 +341,7 @@ public abstract class GraalCompilerTest {
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parseProfiled(Method m) {
-        ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(m);
+        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(m);
         StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;

@@ -60,12 +60,12 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     @Override
-    public int accessFlags() {
+    public int getModifiers() {
         return accessFlags;
     }
 
     @Override
-    public ResolvedJavaType arrayOf() {
+    public ResolvedJavaType getArrayClass() {
         if (arrayOfType == null) {
            arrayOfType = (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_arrayOf(this);
         }
@@ -73,7 +73,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     @Override
-    public ResolvedJavaType componentType() {
+    public ResolvedJavaType getComponentType() {
         if (isArrayClass) {
             return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_componentType(this);
         }
@@ -81,9 +81,9 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     @Override
-    public ResolvedJavaType uniqueConcreteSubtype() {
+    public ResolvedJavaType findUniqueConcreteSubtype() {
         if (isArrayClass()) {
-            return Modifier.isFinal(componentType().accessFlags()) ? this : null;
+            return Modifier.isFinal(getComponentType().getModifiers()) ? this : null;
         } else {
             ResolvedJavaType subtype = (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_uniqueConcreteSubtype(this);
             assert subtype == null || !subtype.isInterface();
@@ -92,7 +92,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     @Override
-    public ResolvedJavaType superType() {
+    public ResolvedJavaType getSuperclass() {
         if (!superTypeSet) {
             superType = (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_superType(this);
             superTypeSet = true;
@@ -101,7 +101,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     @Override
-    public ResolvedJavaType leastCommonAncestor(ResolvedJavaType otherType) {
+    public ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType) {
         if (otherType instanceof HotSpotTypePrimitive) {
             return null;
         } else {
@@ -110,7 +110,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     @Override
-    public ResolvedJavaType exactType() {
+    public ResolvedJavaType getExactType() {
         if (Modifier.isFinal(accessFlags)) {
             return this;
         }
@@ -131,11 +131,6 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
                 assert false : "Should not reach here.";
                 return null;
         }
-    }
-
-    @Override
-    public Kind getRepresentationKind(Representation r) {
-        return Kind.Object;
     }
 
     @Override
@@ -186,14 +181,14 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     @Override
-    public Kind kind() {
+    public Kind getKind() {
         return Kind.Object;
     }
 
     @Override
-    public ResolvedJavaMethod resolveMethodImpl(ResolvedJavaMethod method) {
+    public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method) {
         assert method instanceof HotSpotMethod;
-        return (ResolvedJavaMethod) HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_resolveMethodImpl(this, method.name(), method.signature().asString());
+        return (ResolvedJavaMethod) HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_resolveMethodImpl(this, method.getName(), ((HotSpotSignature) method.getSignature()).asString());
     }
 
     @Override
@@ -233,20 +228,20 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
             result = new HotSpotResolvedJavaField(this, fieldName, type, offset, flags);
             fieldCache.put(id, result);
         } else {
-            assert result.name().equals(fieldName);
-            assert result.accessFlags() == flags;
+            assert result.getName().equals(fieldName);
+            assert result.getModifiers() == flags;
         }
 
         return result;
     }
 
     @Override
-    public ResolvedJavaMethod uniqueConcreteMethod(ResolvedJavaMethod method) {
+    public ResolvedJavaMethod findUniqueConcreteMethod(ResolvedJavaMethod method) {
         return ((HotSpotResolvedJavaMethod) method).uniqueConcreteMethod();
     }
 
     @Override
-    public ResolvedJavaField[] declaredFields() {
+    public ResolvedJavaField[] getDeclaredFields() {
         if (fields == null) {
             if (isArrayClass) {
                 fields = new ResolvedJavaField[0];

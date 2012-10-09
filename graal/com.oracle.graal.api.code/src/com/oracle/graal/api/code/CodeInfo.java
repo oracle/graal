@@ -32,17 +32,17 @@ import com.oracle.graal.api.meta.*;
 public interface CodeInfo {
 
     /**
-     * Gets the start address of this installed code.
+     * Returns the start address of this installed code.
      */
-    long start();
+    long getStart();
 
     /**
-     * Gets a copy of this installed code.
+     * Returns a copy of this installed code.
      */
-    byte[] code();
+    byte[] getCode();
 
     /**
-     * Gets the method (if any) from which this installed code was compiled.
+     * Returns the method (if any) from which this installed code was compiled.
      */
-    ResolvedJavaMethod method();
+    ResolvedJavaMethod getMethod();
 }

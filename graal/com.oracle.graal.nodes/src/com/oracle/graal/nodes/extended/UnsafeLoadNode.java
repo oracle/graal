@@ -58,7 +58,7 @@ public class UnsafeLoadNode extends FixedWithNextNode implements Lowerable {
     }
 
     public UnsafeLoadNode(ValueNode object, int displacement, ValueNode offset, Kind kind) {
-        super(StampFactory.forKind(kind.stackKind()));
+        super(StampFactory.forKind(kind.getStackKind()));
         this.object = object;
         this.displacement = displacement;
         this.offset = offset;

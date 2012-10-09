@@ -1194,7 +1194,7 @@ public final class LinearScan {
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
-                            addDef(operand, opId, registerPriorityOfOutputOperand(op), operand.getKind().stackKind());
+                            addDef(operand, opId, registerPriorityOfOutputOperand(op), operand.getKind().getStackKind());
                             addRegisterHint(op, operand, mode, flags);
                         }
                         return operand;
@@ -1204,7 +1204,7 @@ public final class LinearScan {
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
-                            addTemp(operand, opId, RegisterPriority.MustHaveRegister, operand.getKind().stackKind());
+                            addTemp(operand, opId, RegisterPriority.MustHaveRegister, operand.getKind().getStackKind());
                             addRegisterHint(op, operand, mode, flags);
                         }
                         return operand;
@@ -1215,7 +1215,7 @@ public final class LinearScan {
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
-                            addUse(operand, blockFrom, opId + 1, p, operand.getKind().stackKind());
+                            addUse(operand, blockFrom, opId + 1, p, operand.getKind().getStackKind());
                             addRegisterHint(op, operand, mode, flags);
                         }
                         return operand;
@@ -1226,7 +1226,7 @@ public final class LinearScan {
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
-                            addUse(operand, blockFrom, opId, p, operand.getKind().stackKind());
+                            addUse(operand, blockFrom, opId, p, operand.getKind().getStackKind());
                             addRegisterHint(op, operand, mode, flags);
                         }
                         return operand;
@@ -1240,7 +1240,7 @@ public final class LinearScan {
                 op.forEachState(new ValueProcedure() {
                     @Override
                     public Value doValue(Value operand) {
-                        addUse(operand, blockFrom, opId + 1, RegisterPriority.None, operand.getKind().stackKind());
+                        addUse(operand, blockFrom, opId + 1, RegisterPriority.None, operand.getKind().getStackKind());
                         return operand;
                     }
                 });
@@ -1688,7 +1688,7 @@ public final class LinearScan {
         // intervals that have no oops inside need not to be processed.
         // to ensure a walking until the last instruction id, add a dummy interval
         // with a high operation id
-        nonOopIntervals = new Interval(Value.IllegalValue, -1);
+        nonOopIntervals = new Interval(Value.ILLEGAL, -1);
         nonOopIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
 
         return new IntervalWalker(this, oopIntervals, nonOopIntervals);
@@ -2060,7 +2060,7 @@ public final class LinearScan {
         fixedIntervals = createUnhandledLists(IS_PRECOLORED_INTERVAL, null).first;
         // to ensure a walking until the last instruction id, add a dummy interval
         // with a high operation id
-        otherIntervals = new Interval(Value.IllegalValue, -1);
+        otherIntervals = new Interval(Value.ILLEGAL, -1);
         otherIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
         IntervalWalker iw = new IntervalWalker(this, fixedIntervals, otherIntervals);
 

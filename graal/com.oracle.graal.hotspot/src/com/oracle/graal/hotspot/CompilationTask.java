@@ -103,7 +103,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         try {
             final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
             if (printCompilation) {
-                TTY.println(String.format("%-6d Graal %-70s %-45s %-50s ...", id, method.holder().name(), method.name(), method.signature().asString()));
+                TTY.println(String.format("%-6d Graal %-70s %-45s %-50s ...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature()));
             }
 
             CompilationResult result = null;
@@ -121,7 +121,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             } finally {
                 filter.remove();
                 if (printCompilation) {
-                    TTY.println(String.format("%-6d Graal %-70s %-45s %-50s | %4dnodes %5dB", id, "", "", "", 0, (result != null ? result.targetCodeSize() : -1)));
+                    TTY.println(String.format("%-6d Graal %-70s %-45s %-50s | %4dnodes %5dB", id, "", "", "", 0, (result != null ? result.getTargetCodeSize() : -1)));
                 }
             }
 

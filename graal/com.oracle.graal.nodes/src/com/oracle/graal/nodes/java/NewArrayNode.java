@@ -54,7 +54,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
      * @param locked determines whether the array should be locked immediately.
      */
     protected NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents, boolean locked) {
-        super(StampFactory.exactNonNull(elementType.arrayOf()));
+        super(StampFactory.exactNonNull(elementType.getArrayClass()));
         this.length = length;
         this.elementType = elementType;
         this.fillContents = fillContents;
@@ -115,7 +115,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
                     public ValueNode[] fieldState() {
                         ValueNode[] state = new ValueNode[constantLength];
                         for (int i = 0; i < constantLength; i++) {
-                            state[i] = ConstantNode.defaultForKind(elementType().kind(), graph());
+                            state[i] = ConstantNode.defaultForKind(elementType().getKind(), graph());
                         }
                         return state;
                     }

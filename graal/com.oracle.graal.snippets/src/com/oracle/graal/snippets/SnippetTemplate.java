@@ -190,7 +190,7 @@ public class SnippetTemplate {
 
         protected ResolvedJavaMethod snippet(String name, Class<?>... parameterTypes) {
             try {
-                ResolvedJavaMethod snippet = runtime.getResolvedJavaMethod(snippetsClass.getDeclaredMethod(name, parameterTypes));
+                ResolvedJavaMethod snippet = runtime.lookupJavaMethod(snippetsClass.getDeclaredMethod(name, parameterTypes));
                 assert snippet.getAnnotation(Snippet.class) != null : "snippet is not annotated with @" + Snippet.class.getSimpleName();
                 return snippet;
             } catch (NoSuchMethodException e) {
@@ -216,16 +216,16 @@ public class SnippetTemplate {
      */
     public SnippetTemplate(MetaAccessProvider runtime, SnippetTemplate.Key key) {
         ResolvedJavaMethod method = key.method;
-        assert Modifier.isStatic(method.accessFlags()) : "snippet method must be static: " + method;
-        Signature signature = method.signature();
+        assert Modifier.isStatic(method.getModifiers()) : "snippet method must be static: " + method;
+        Signature signature = method.getSignature();
 
         // Copy snippet graph, replacing constant parameters with given arguments
-        StructuredGraph snippetGraph = (StructuredGraph) method.compilerStorage().get(Graph.class);
+        StructuredGraph snippetGraph = (StructuredGraph) method.getCompilerStorage().get(Graph.class);
         StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
         replacements.put(snippetGraph.start(), snippetCopy.start());
 
-        int parameterCount = signature.argumentCount(false);
+        int parameterCount = signature.getParameterCount(false);
         assert checkTemplate(key, parameterCount, method, signature);
 
         Parameter[] parameterAnnotations = new Parameter[parameterCount];
@@ -236,7 +236,7 @@ public class SnippetTemplate {
             if (c != null) {
                 String name = c.value();
                 Object arg = key.get(name);
-                Kind kind = signature.argumentKindAt(i);
+                Kind kind = signature.getParameterKind(i);
                 replacements.put(snippetGraph.getLocal(i), ConstantNode.forConstant(Constant.forBoxed(kind, arg), runtime, snippetCopy));
             } else {
                 VarargsParameter vp = MetaUtil.getParameterAnnotation(VarargsParameter.class, i, method);
@@ -271,7 +271,7 @@ public class SnippetTemplate {
                 Object array = ((Varargs) key.get(vp.value())).array;
                 int length = Array.getLength(array);
                 LocalNode[] locals = new LocalNode[length];
-                Stamp stamp = StampFactory.forKind(runtime.getResolvedJavaType(array.getClass().getComponentType()).kind());
+                Stamp stamp = StampFactory.forKind(runtime.lookupJavaType(array.getClass().getComponentType()).getKind());
                 for (int j = 0; j < length; j++) {
                     assert (parameterCount & 0xFFFF) == parameterCount;
                     int idx = i << 16 | j;
@@ -409,7 +409,7 @@ public class SnippetTemplate {
 
     private static boolean checkConstantArgument(final ResolvedJavaMethod method, Signature signature, int i, String name, Object arg, Kind kind) {
         if (kind.isObject()) {
-            Class<?> type = signature.argumentTypeAt(i, method.holder()).resolve(method.holder()).toJava();
+            Class<?> type = signature.getParameterType(i, method.getDeclaringClass()).resolve(method.getDeclaringClass()).toJava();
             assert arg == null || type.isInstance(arg) :
                 method + ": wrong value type for " + name + ": expected " + type.getName() + ", got " + arg.getClass().getName();
         } else {
@@ -421,7 +421,7 @@ public class SnippetTemplate {
 
     private static boolean checkVarargs(final ResolvedJavaMethod method, Signature signature, int i, String name, Varargs varargs) {
         Object arg = varargs.array;
-        ResolvedJavaType type = (ResolvedJavaType) signature.argumentTypeAt(i, method.holder());
+        ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
         Class< ? > javaType = type.toJava();
         assert javaType.isArray() : "varargs parameter must be an array type";
         assert javaType.isInstance(arg) : "value for " + name + " is not a " + javaType.getName() + " instance: " + arg;
@@ -702,10 +702,10 @@ public class SnippetTemplate {
             sep = ", ";
             if (value instanceof LocalNode) {
                 LocalNode local = (LocalNode) value;
-                buf.append(local.kind().javaName).append(' ').append(name);
+                buf.append(local.kind().getJavaName()).append(' ').append(name);
             } else {
                 LocalNode[] locals = (LocalNode[]) value;
-                String kind = locals.length == 0 ? "?" : locals[0].kind().javaName;
+                String kind = locals.length == 0 ? "?" : locals[0].kind().getJavaName();
                 buf.append(kind).append('[').append(locals.length).append("] ").append(name);
             }
         }
@@ -722,7 +722,7 @@ public class SnippetTemplate {
                 assert vp == null && p == null;
                 String name = c.value();
                 expected.add(name);
-                Kind kind = signature.argumentKindAt(i);
+                Kind kind = signature.getParameterKind(i);
                 assert key.names().contains(name) : "key for " + method + " is missing \"" + name + "\": " + key;
                 assert checkConstantArgument(method, signature, i, c.value(), key.get(name), kind);
             } else if (vp != null) {

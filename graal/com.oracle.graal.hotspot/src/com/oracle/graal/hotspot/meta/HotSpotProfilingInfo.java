@@ -47,7 +47,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements Profil
     }
 
     @Override
-    public int codeSize() {
+    public int getCodeSize() {
         return codeSize;
     }
 

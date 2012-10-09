@@ -288,27 +288,27 @@ public class BinaryGraphPrinter implements GraphPrinter{
         } else if (object instanceof ResolvedJavaMethod) {
             writeByte(POOL_METHOD);
             ResolvedJavaMethod method = ((ResolvedJavaMethod) object);
-            writePoolObject(method.holder());
-            writePoolObject(method.name());
-            writePoolObject(method.signature());
-            writeInt(method.accessFlags());
-            writeBytes(method.code());
+            writePoolObject(method.getDeclaringClass());
+            writePoolObject(method.getName());
+            writePoolObject(method.getSignature());
+            writeInt(method.getModifiers());
+            writeBytes(method.getCode());
         } else if (object instanceof ResolvedJavaField) {
             writeByte(POOL_FIELD);
             ResolvedJavaField field = ((ResolvedJavaField) object);
-            writePoolObject(field.holder());
-            writePoolObject(field.name());
-            writePoolObject(field.type().name());
-            writeInt(field.accessFlags());
+            writePoolObject(field.getDeclaringClass());
+            writePoolObject(field.getName());
+            writePoolObject(field.getType().getName());
+            writeInt(field.getModifiers());
         } else if (object instanceof Signature) {
             writeByte(POOL_SIGNATURE);
             Signature signature = ((Signature) object);
-            int args = signature.argumentCount(false);
+            int args = signature.getParameterCount(false);
             writeShort((char) args);
             for (int i = 0; i < args; i++) {
-                writePoolObject(signature.argumentTypeAt(i, null).name());
+                writePoolObject(signature.getParameterType(i, null).getName());
             }
-            writePoolObject(signature.returnType(null).name());
+            writePoolObject(signature.getReturnType(null).getName());
         } else {
             writeByte(POOL_STRING);
             writeString(object.toString());

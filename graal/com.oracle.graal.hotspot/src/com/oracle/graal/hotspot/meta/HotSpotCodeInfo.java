@@ -45,12 +45,12 @@ public class HotSpotCodeInfo extends CompilerObject implements CodeInfo {
     }
 
     @Override
-    public long start() {
+    public long getStart() {
         return start;
     }
 
     @Override
-    public byte[] code() {
+    public byte[] getCode() {
         return code;
     }
 
@@ -62,7 +62,7 @@ public class HotSpotCodeInfo extends CompilerObject implements CodeInfo {
     }
 
     @Override
-    public ResolvedJavaMethod method() {
+    public ResolvedJavaMethod getMethod() {
         return method;
     }
 }

@@ -85,8 +85,8 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
 
     private void fillEscapeFields(ResolvedJavaType type, List<ResolvedJavaField> escapeFields) {
         if (type != null) {
-            fillEscapeFields(type.superType(), escapeFields);
-            for (ResolvedJavaField field : type.declaredFields()) {
+            fillEscapeFields(type.getSuperclass(), escapeFields);
+            for (ResolvedJavaField field : type.getDeclaredFields()) {
                 escapeFields.add(field);
             }
         }
@@ -105,7 +105,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
                 public ValueNode[] fieldState() {
                     ValueNode[] state = new ValueNode[fields.length];
                     for (int i = 0; i < state.length; i++) {
-                        state[i] = ConstantNode.defaultForKind(fields[i].type().kind(), graph());
+                        state[i] = ConstantNode.defaultForKind(fields[i].getType().getKind(), graph());
                     }
                     return state;
                 }

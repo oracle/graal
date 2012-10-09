@@ -60,7 +60,7 @@ public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowera
             where = "in compiled code for " + MetaUtil.format("%H.%n(%p)", gen.method());
         }
 
-        RuntimeCall stub = gen.getRuntime().getRuntimeCall(VMErrorNode.VM_ERROR);
+        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(VMErrorNode.VM_ERROR);
         gen.emitCall(stub, stub.getCallingConvention(), false, Constant.forObject(where), gen.operand(format), gen.operand(value));
     }
 

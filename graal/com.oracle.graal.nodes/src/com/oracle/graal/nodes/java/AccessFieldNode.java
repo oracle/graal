@@ -53,7 +53,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
         this.object = object;
         this.field = field;
         this.leafGraphId = leafGraphId;
-        assert field.holder().isInitialized();
+        assert field.getDeclaringClass().isInitialized();
     }
 
     /**
@@ -73,7 +73,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
      * @return {@code true} if this field access is to a static field
      */
     public boolean isStatic() {
-        return Modifier.isStatic(field.accessFlags());
+        return Modifier.isStatic(field.getModifiers());
     }
 
     /**
@@ -81,7 +81,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
      * @return {@code true} if the field is resolved and declared volatile
      */
     public boolean isVolatile() {
-        return Modifier.isVolatile(field.accessFlags());
+        return Modifier.isVolatile(field.getModifiers());
     }
 
     @Override
@@ -92,7 +92,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
-            return super.toString(verbosity) + "#" + field.name();
+            return super.toString(verbosity) + "#" + field.getName();
         } else {
             return super.toString(verbosity);
         }

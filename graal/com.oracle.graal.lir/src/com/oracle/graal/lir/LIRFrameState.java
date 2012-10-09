@@ -69,7 +69,7 @@ public class LIRFrameState {
         }
         if (virtualObjects != null) {
             for (VirtualObject obj : virtualObjects) {
-                processValues(obj.values(), proc);
+                processValues(obj.getValues(), proc);
             }
         }
     }

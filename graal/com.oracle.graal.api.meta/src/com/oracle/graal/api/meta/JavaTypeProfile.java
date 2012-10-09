@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,22 +25,24 @@ package com.oracle.graal.api.meta;
 import java.io.*;
 
 /**
- * This profile object represents the type profile at a specific BCI. The precision of the supplied values may vary,
- * but a runtime that provides this information should be aware that it will be used to guide performance-critical
- * decisions like speculative inlining, etc.
+ * This profile object represents the type profile at a specific BCI. The precision of the supplied values may vary, but
+ * a runtime that provides this information should be aware that it will be used to guide performance-critical decisions
+ * like speculative inlining, etc.
  */
 public final class JavaTypeProfile implements Serializable {
 
     private static final long serialVersionUID = -6877016333706838441L;
 
     /**
-     * A profiled type that has a probability. Profiled types are naturally sorted in
-     * descending order of their probabilities.
+     * A profiled type that has a probability. Profiled types are naturally sorted in descending order of their
+     * probabilities.
      */
-    public static class ProfiledType implements Comparable<ProfiledType>, Serializable {
+    public static final class ProfiledType implements Comparable<ProfiledType>, Serializable {
+
         private static final long serialVersionUID = 7838575753661305744L;
-        public final ResolvedJavaType type;
-        public final double probability;
+
+        private final ResolvedJavaType type;
+        private final double probability;
 
         public ProfiledType(ResolvedJavaType type, double probability) {
             assert type != null;
@@ -49,11 +51,27 @@ public final class JavaTypeProfile implements Serializable {
             this.probability = probability;
         }
 
+        /**
+         * Returns the type for this profile entry.
+         */
+        public ResolvedJavaType getType() {
+            return type;
+        }
+
+        /**
+         * Returns the estimated probability of {@link #getType()}.
+         *
+         * @return double value >= 0.0 and <= 1.0
+         */
+        public double getProbability() {
+            return probability;
+        }
+
         @Override
         public int compareTo(ProfiledType o) {
-            if (probability > o.probability) {
+            if (getProbability() > o.getProbability()) {
                 return -1;
-            } else if (probability < o.probability) {
+            } else if (getProbability() < o.getProbability()) {
                 return 1;
             }
             return 0;
@@ -66,9 +84,9 @@ public final class JavaTypeProfile implements Serializable {
     /**
      * Determines if an array of profiled types are sorted in descending order of their probabilities.
      */
-    public static boolean isSorted(ProfiledType[] ptypes) {
+    private static boolean isSorted(ProfiledType[] ptypes) {
         for (int i = 1; i < ptypes.length; i++) {
-            if (ptypes[i - 1].probability < ptypes[i].probability) {
+            if (ptypes[i - 1].getProbability() < ptypes[i].getProbability()) {
                 return false;
             }
         }
@@ -83,6 +101,7 @@ public final class JavaTypeProfile implements Serializable {
 
     /**
      * Returns the estimated probability of all types that could not be recorded due to profiling limitations.
+     *
      * @return double value >= 0.0 and <= 1.0
      */
     public double getNotRecordedProbability() {

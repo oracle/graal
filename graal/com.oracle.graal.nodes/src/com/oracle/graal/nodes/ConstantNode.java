@@ -223,14 +223,14 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> properties = super.getDebugProperties(map);
-        properties.put("rawvalue", value.getKind().isObject() ? value.getKind().format(value.boxedValue()) : value.boxedValue());
+        properties.put("rawvalue", value.getKind().isObject() ? value.getKind().format(value.asBoxedValue()) : value.asBoxedValue());
         return properties;
     }
 
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
-            return super.toString(Verbosity.Name) + "(" + value.getKind().format(value.boxedValue()) + ")";
+            return super.toString(Verbosity.Name) + "(" + value.getKind().format(value.asBoxedValue()) + ")";
         } else {
             return super.toString(verbosity);
         }

@@ -38,7 +38,7 @@ public final class VirtualObject extends Value {
     /**
      * Creates a new {@link VirtualObject} for the given type, with the given fields. If the type is an instance class
      * then the values array needs to have one entry for each field, ordered in like the fields returned by
-     * {@link ResolvedJavaType#declaredFields()}. If the type is an array then the length of the values array determines
+     * {@link ResolvedJavaType#getDeclaredFields()}. If the type is an array then the length of the values array determines
      * the reallocated array length.
      *
      * @param type the type of the object whose allocation was removed during compilation. This can be either an
@@ -65,23 +65,23 @@ public final class VirtualObject extends Value {
     }
 
     /**
-     * @return the type of the object whose allocation was removed during compilation. This can be either an instance of an array type.
+     * Returns the type of the object whose allocation was removed during compilation. This can be either an instance of an array type.
      */
-    public JavaType type() {
+    public JavaType getType() {
         return type;
     }
 
     /**
-     * @return an array containing all the values to be stored into the object when it is recreated.
+     * Returns an array containing all the values to be stored into the object when it is recreated.
      */
-    public Value[] values() {
+    public Value[] getValues() {
         return values;
     }
 
     /**
-     * @return the unique id that identifies the object within the debug information for one position in the compiled code.
+     * Returns the unique id that identifies the object within the debug information for one position in the compiled code.
      */
-    public int id() {
+    public int getId() {
         return id;
     }
 

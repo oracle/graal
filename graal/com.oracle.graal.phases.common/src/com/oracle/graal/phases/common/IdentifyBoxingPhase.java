@@ -61,12 +61,12 @@ public class IdentifyBoxingPhase extends Phase {
             Node newNode = null;
             if (returnKind == Kind.Object) {
                 // We have a boxing method here.
-                assert Modifier.isStatic(targetMethod.accessFlags()) : "boxing method must be static";
-                Kind sourceKind = targetMethod.signature().argumentKindAt(0);
-                newNode = invoke.graph().add(new BoxNode(sourceValue, targetMethod.holder(), sourceKind, invoke.bci()));
+                assert Modifier.isStatic(targetMethod.getModifiers()) : "boxing method must be static";
+                Kind sourceKind = targetMethod.getSignature().getParameterKind(0);
+                newNode = invoke.graph().add(new BoxNode(sourceValue, targetMethod.getDeclaringClass(), sourceKind, invoke.bci()));
             } else {
                 // We have an unboxing method here.
-                assert !Modifier.isStatic(targetMethod.accessFlags()) : "unboxing method must be an instance method";
+                assert !Modifier.isStatic(targetMethod.getModifiers()) : "unboxing method must be an instance method";
                 newNode = invoke.graph().add(new UnboxNode(returnKind, sourceValue));
             }
 

@@ -46,7 +46,7 @@ public class ReplacingStreams {
         input = new ReplacingInputStream(new BufferedInputStream(inputStream));
         invocation = new InvocationSocket(output, input);
 
-        addStaticObject(Value.IllegalValue);
+        addStaticObject(Value.ILLEGAL);
     }
 
     public void setInvocationSocket(InvocationSocket invocation) {

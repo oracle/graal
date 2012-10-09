@@ -37,7 +37,7 @@ public final class Address extends Value {
     /**
      * A sentinel value used as a place holder in an instruction stream for an address that will be patched.
      */
-    public static final Address Placeholder = new Address(Kind.Illegal, Value.IllegalValue);
+    public static final Address Placeholder = new Address(Kind.Illegal, Value.ILLEGAL);
 
     private Value base;
     private Value index;
@@ -51,7 +51,7 @@ public final class Address extends Value {
      * @param base the base register
      */
     public Address(Kind kind, Value base) {
-        this(kind, base, IllegalValue, Scale.Times1, 0);
+        this(kind, base, ILLEGAL, Scale.Times1, 0);
     }
 
     /**
@@ -62,7 +62,7 @@ public final class Address extends Value {
      * @param displacement the displacement
      */
     public Address(Kind kind, Value base, int displacement) {
-        this(kind, base, IllegalValue, Scale.Times1, displacement);
+        this(kind, base, ILLEGAL, Scale.Times1, displacement);
     }
 
     /**
@@ -128,7 +128,7 @@ public final class Address extends Value {
         }
 
         StringBuilder s = new StringBuilder();
-        s.append(getKind().javaName).append("[");
+        s.append(getKind().getJavaName()).append("[");
         String sep = "";
         if (isLegal(getBase())) {
             s.append(getBase());
@@ -163,7 +163,7 @@ public final class Address extends Value {
 
     /**
      * @return Base register that defines the start of the address computation.
-     * If not present, is denoted by {@link Value#IllegalValue}.
+     * If not present, is denoted by {@link Value#ILLEGAL}.
      */
     public Value getBase() {
         return base;
@@ -175,7 +175,7 @@ public final class Address extends Value {
 
     /**
      * @return Index register, the value of which (possibly scaled by {@link #scale}) is added to {@link #base}.
-     * If not present, is denoted by {@link Value#IllegalValue}.
+     * If not present, is denoted by {@link Value#ILLEGAL}.
      */
     public Value getIndex() {
         return index;

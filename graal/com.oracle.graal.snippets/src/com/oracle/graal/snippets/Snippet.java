@@ -70,7 +70,7 @@ public @interface Snippet {
          */
         InliningPolicy Default = new InliningPolicy() {
             public boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller) {
-                if (Modifier.isNative(method.accessFlags())) {
+                if (Modifier.isNative(method.getModifiers())) {
                     return false;
                 }
                 if (method.getAnnotation(Fold.class) != null) {
@@ -79,8 +79,8 @@ public @interface Snippet {
                 if (method.getAnnotation(NodeIntrinsic.class) != null) {
                     return false;
                 }
-                if (Throwable.class.isAssignableFrom(method.holder().toJava())) {
-                    if (method.name().equals("<init>")) {
+                if (Throwable.class.isAssignableFrom(method.getDeclaringClass().toJava())) {
+                    if (method.getName().equals("<init>")) {
                         return false;
                     }
                 }

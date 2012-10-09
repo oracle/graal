@@ -118,7 +118,7 @@ public class PhiResolver {
 
     public PhiResolver(LIRGenerator gen) {
         this.gen = gen;
-        temp = IllegalValue;
+        temp = ILLEGAL;
     }
 
     public void dispose() {
@@ -221,7 +221,7 @@ public class PhiResolver {
     private void moveTempTo(Value dest) {
         assert isLegal(temp);
         emitMove(temp, dest);
-        temp = IllegalValue;
+        temp = ILLEGAL;
     }
 
     private void moveToTemp(Value src) {

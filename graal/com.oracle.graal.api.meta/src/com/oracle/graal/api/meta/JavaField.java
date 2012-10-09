@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,31 +23,28 @@
 package com.oracle.graal.api.meta;
 
 /**
- * Represents a reference to a Java field, including both resolved and unresolved fields. Fields, like methods and types, are
+ * Represents a reference to a Java field, either resolved or unresolved fields. Fields, like methods and types, are
  * resolved through {@link ConstantPool constant pools}.
  */
 public interface JavaField {
-    /**
-     * Gets the name of this field as a string.
-     * @return the name of this field
-     */
-    String name();
 
     /**
-     * Gets the type of this field as a compiler-runtime interface type.
-     * @return the type of this field
+     * Returns the name of this field.
      */
-    JavaType type();
+    String getName();
 
     /**
-     * Gets the kind of this field.
-     * @return the kind
+     * Returns a {@link JavaType} object that identifies the declared type for this field.
      */
-    Kind kind();
+    JavaType getType();
 
     /**
-     * Gets the holder of this field as a compiler-runtime interface type.
-     * @return the holder of this field
+     * Returns the kind of this field. This is the same as calling {@link #getType}.{@link JavaType#getKind getKind}.
      */
-    JavaType holder();
+    Kind getKind();
+
+    /**
+     * Returns the {@link JavaType} object representing the class or interface that declares this field.
+     */
+    JavaType getDeclaringClass();
 }

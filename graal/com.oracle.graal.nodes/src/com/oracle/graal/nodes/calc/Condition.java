@@ -303,8 +303,8 @@ public enum Condition {
             }
             case Object: {
                 switch (this) {
-                    case EQ: return runtime.areConstantObjectsEqual(lt, rt);
-                    case NE: return !runtime.areConstantObjectsEqual(lt, rt);
+                    case EQ: return runtime.constantEquals(lt, rt);
+                    case NE: return !runtime.constantEquals(lt, rt);
                     default: throw new GraalInternalError("expected condition: %s", this);
                 }
             }

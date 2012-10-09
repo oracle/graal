@@ -27,7 +27,7 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaType.*;
+import com.oracle.graal.api.meta.ResolvedJavaType.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.phases.*;
 
@@ -54,18 +54,18 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     }
 
     @Override
-    public int accessFlags() {
+    public int getModifiers() {
         return accessFlags;
     }
 
     @Override
-    public Constant constantValue(Constant receiver) {
+    public Constant readConstantValue(Constant receiver) {
         if (receiver == null) {
             assert Modifier.isStatic(accessFlags);
             if (constant == null) {
                 if (holder.isInitialized() && holder.toJava() != System.class) {
-                    if (Modifier.isFinal(accessFlags()) || assumeStaticFieldsFinal(holder.toJava())) {
-                        constant = getValue(receiver);
+                    if (Modifier.isFinal(getModifiers()) || assumeStaticFieldsFinal(holder.toJava())) {
+                        constant = readValue(receiver);
                     }
                 }
             }
@@ -73,25 +73,25 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         } else {
             assert !Modifier.isStatic(accessFlags);
             // TODO (chaeubl) HotSpot does not trust final non-static fields (see ciField.cpp)
-            if (Modifier.isFinal(accessFlags())) {
-                return getValue(receiver);
+            if (Modifier.isFinal(getModifiers())) {
+                return readValue(receiver);
             }
         }
         return null;
     }
 
     @Override
-    public Constant getValue(Constant receiver) {
+    public Constant readValue(Constant receiver) {
         if (receiver == null) {
             assert Modifier.isStatic(accessFlags);
             if (holder.isInitialized()) {
-                Constant encoding = holder.getEncoding(kind() == Kind.Object ? Representation.StaticObjectFields : Representation.StaticPrimitiveFields);
-                return this.kind().readUnsafeConstant(encoding.asObject(), offset);
+                Constant encoding = holder.getEncoding(getKind() == Kind.Object ? Representation.StaticObjectFields : Representation.StaticPrimitiveFields);
+                return this.getKind().readUnsafeConstant(encoding.asObject(), offset);
             }
             return null;
         } else {
             assert !Modifier.isStatic(accessFlags);
-            return this.kind().readUnsafeConstant(receiver.asObject(), offset);
+            return this.getKind().readUnsafeConstant(receiver.asObject(), offset);
         }
     }
 
@@ -100,22 +100,22 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     }
 
     @Override
-    public ResolvedJavaType holder() {
+    public ResolvedJavaType getDeclaringClass() {
         return holder;
     }
 
     @Override
-    public Kind kind() {
-        return type().kind();
+    public Kind getKind() {
+        return getType().getKind();
     }
 
     @Override
-    public String name() {
+    public String getName() {
         return name;
     }
 
     @Override
-    public JavaType type() {
+    public JavaType getType() {
         return type;
     }
 

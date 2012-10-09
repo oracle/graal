@@ -50,7 +50,7 @@ public final class UnwindNode extends FixedNode implements LIRLowerable, Node.It
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        RuntimeCall call = gen.getRuntime().getRuntimeCall(UNWIND_EXCEPTION);
+        RuntimeCall call = gen.getRuntime().lookupRuntimeCall(UNWIND_EXCEPTION);
         gen.emitCall(call, call.getCallingConvention(), false, gen.operand(exception()));
     }
 }

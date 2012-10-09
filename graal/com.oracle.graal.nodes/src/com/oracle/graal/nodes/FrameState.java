@@ -272,7 +272,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
                 copy.remove(copy.size() - 1);
             }
             ValueNode lastSlot = copy.get(copy.size() - 1);
-            assert lastSlot.kind().stackKind() == popKind.stackKind() || (lastSlot instanceof BoxedVirtualObjectNode && popKind.isObject());
+            assert lastSlot.kind().getStackKind() == popKind.getStackKind() || (lastSlot instanceof BoxedVirtualObjectNode && popKind.isObject());
             copy.remove(copy.size() - 1);
         }
         Collections.addAll(copy, pushedValues);
@@ -391,7 +391,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         Map<Object, Object> properties = super.getDebugProperties(map);
         if (method != null) {
             //properties.put("method", MetaUtil.format("%H.%n(%p):%r", method));
-            StackTraceElement ste = method.toStackTraceElement(bci);
+            StackTraceElement ste = method.asStackTraceElement(bci);
             if (ste.getFileName() != null && ste.getLineNumber() >= 0) {
                 properties.put("sourceFile", ste.getFileName());
                 properties.put("sourceLine", ste.getLineNumber());
