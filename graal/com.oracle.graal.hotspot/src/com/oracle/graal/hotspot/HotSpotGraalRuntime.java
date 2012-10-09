@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot;
 
 import java.lang.reflect.*;
 
-import com.oracle.graal.api.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.interpreter.*;
 import com.oracle.graal.api.meta.*;

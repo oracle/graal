@@ -25,7 +25,6 @@ package com.oracle.graal.interpreter;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.*;
 import com.oracle.graal.api.interpreter.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
