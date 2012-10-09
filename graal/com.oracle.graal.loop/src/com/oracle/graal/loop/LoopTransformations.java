@@ -101,11 +101,11 @@ public abstract class LoopTransformations {
         BeginNode tempBegin = graph.add(new BeginNode());
         originalLoop.entryPoint().replaceAtPredecessor(tempBegin);
         double takenProbability = ifNode.probability(ifNode.blockSuccessorIndex(ifNode.trueSuccessor()));
-        IfNode newIf = graph.add(new IfNode(ifNode.compare(), duplicateLoop.entryPoint(), originalLoop.entryPoint(), takenProbability, ifNode.leafGraphId()));
+        IfNode newIf = graph.add(new IfNode(ifNode.condition(), duplicateLoop.entryPoint(), originalLoop.entryPoint(), takenProbability, ifNode.leafGraphId()));
         tempBegin.setNext(newIf);
-        ifNode.setCompare(graph.unique(ConstantNode.forBoolean(false, graph)));
+        ifNode.setCondition(graph.unique(ConstantNode.forBoolean(false, graph)));
         IfNode duplicateIf = duplicateLoop.getDuplicatedNode(ifNode);
-        duplicateIf.setCompare(graph.unique(ConstantNode.forBoolean(true, graph)));
+        duplicateIf.setCondition(graph.unique(ConstantNode.forBoolean(true, graph)));
         ifNode.simplify(simplifier);
         duplicateIf.simplify(simplifier);
         // TODO (gd) probabilities need some amount of fixup.. (probably also in other transforms)
@@ -134,7 +134,7 @@ public abstract class LoopTransformations {
 
     public static IfNode findUnswitchableIf(LoopEx loop) {
         for (IfNode ifNode : loop.whole().nodes().filter(IfNode.class)) {
-            if (loop.isOutsideLoop(ifNode.compare())) {
+            if (loop.isOutsideLoop(ifNode.condition())) {
                 return ifNode;
             }
         }

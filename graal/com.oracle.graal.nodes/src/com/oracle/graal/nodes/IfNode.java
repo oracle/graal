@@ -37,20 +37,20 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     public static final int FALSE_EDGE = 1;
     private final long leafGraphId;
 
-    @Input private BooleanNode compare;
+    @Input private BooleanNode condition;
 
-    public BooleanNode compare() {
-        return compare;
+    public BooleanNode condition() {
+        return condition;
     }
 
-    public void setCompare(BooleanNode x) {
-        updateUsages(compare, x);
-        compare = x;
+    public void setCondition(BooleanNode x) {
+        updateUsages(condition, x);
+        condition = x;
     }
 
     public IfNode(BooleanNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double takenProbability, long leafGraphId) {
         super(StampFactory.forVoid(), new BeginNode[] {BeginNode.begin(trueSuccessor), BeginNode.begin(falseSuccessor)}, new double[] {takenProbability, 1 - takenProbability});
-        this.compare = condition;
+        this.condition = condition;
         this.leafGraphId = leafGraphId;
     }
 
@@ -101,7 +101,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     @Override
     public boolean verify() {
-        assertTrue(compare() != null, "missing compare");
+        assertTrue(condition() != null, "missing condition");
         assertTrue(trueSuccessor() != null, "missing trueSuccessor");
         assertTrue(falseSuccessor() != null, "missing falseSuccessor");
         return super.verify();
@@ -109,8 +109,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     @Override
     public void simplify(SimplifierTool tool) {
-        if (compare() instanceof ConstantNode) {
-            ConstantNode c = (ConstantNode) compare();
+        if (condition() instanceof ConstantNode) {
+            ConstantNode c = (ConstantNode) condition();
             if (c.asConstant().asBoolean()) {
                 tool.deleteBranch(falseSuccessor());
                 tool.addToWorkList(trueSuccessor());
@@ -145,7 +145,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                                 return;
                             }
                             if (trueValue.isConstant() && falseValue.isConstant()) {
-                                MaterializeNode materialize = MaterializeNode.create(compare(), trueValue, falseValue);
+                                MaterializeNode materialize = MaterializeNode.create(condition(), trueValue, falseValue);
                                 ((StructuredGraph) graph()).replaceFloating(singlePhi, materialize);
                                 removeEmptyIf(tool);
                                 return;

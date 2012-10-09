@@ -78,7 +78,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         } else if (deoptBegin.predecessor() instanceof IfNode) {
             IfNode ifNode = (IfNode) deoptBegin.predecessor();
             BeginNode otherBegin = ifNode.trueSuccessor();
-            BooleanNode conditionNode = ifNode.compare();
+            BooleanNode conditionNode = ifNode.condition();
             boolean negated = false;
             if (deoptBegin == ifNode.trueSuccessor()) {
                 negated = true;

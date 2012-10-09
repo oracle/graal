@@ -559,7 +559,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void emitIf(IfNode x) {
-        emitBranch(x.compare(), getLIRBlock(x.trueSuccessor()),  getLIRBlock(x.falseSuccessor()), null);
+        emitBranch(x.condition(), getLIRBlock(x.trueSuccessor()),  getLIRBlock(x.falseSuccessor()), null);
     }
 
     @Override

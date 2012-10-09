@@ -264,24 +264,24 @@ public class CheckCastEliminationPhase extends Phase {
                 Node pred = node.predecessor();
                 if (pred != null && pred instanceof IfNode) {
                     IfNode ifNode = (IfNode) pred;
-                    if (!(ifNode.compare() instanceof ConstantNode)) {
+                    if (!(ifNode.condition() instanceof ConstantNode)) {
                         boolean isTrue = (node == ifNode.trueSuccessor());
                         if (isTrue) {
-                            state.trueConditions.put(ifNode.compare(), begin);
+                            state.trueConditions.put(ifNode.condition(), begin);
                         } else {
-                            state.falseConditions.put(ifNode.compare(), begin);
+                            state.falseConditions.put(ifNode.condition(), begin);
                         }
                     }
-                    if (ifNode.compare() instanceof InstanceOfNode) {
-                        InstanceOfNode instanceOf = (InstanceOfNode) ifNode.compare();
+                    if (ifNode.condition() instanceof InstanceOfNode) {
+                        InstanceOfNode instanceOf = (InstanceOfNode) ifNode.condition();
                         if ((node == ifNode.trueSuccessor())) {
                             ValueNode object = instanceOf.object();
                             state.knownNotNull.add(object);
                             state.knownTypes.put(object, tighten(instanceOf.targetClass(), state.getNodeType(object)));
                             metricInstanceOfRegistered.increment();
                         }
-                    } else if (ifNode.compare() instanceof IsNullNode) {
-                        IsNullNode nullCheck = (IsNullNode) ifNode.compare();
+                    } else if (ifNode.condition() instanceof IsNullNode) {
+                        IsNullNode nullCheck = (IsNullNode) ifNode.condition();
                         boolean isNull = (node == ifNode.trueSuccessor());
                         if (isNull) {
                             state.knownNull.add(nullCheck.object());
@@ -337,7 +337,7 @@ public class CheckCastEliminationPhase extends Phase {
             } else if (node instanceof IfNode) {
                 IfNode ifNode = (IfNode) node;
                 BooleanNode replaceWith = null;
-                BooleanNode compare = ifNode.compare();
+                BooleanNode compare = ifNode.condition();
 
                 if (state.trueConditions.containsKey(compare)) {
                     replaceWith = ConstantNode.forBoolean(true, graph);
@@ -372,7 +372,7 @@ public class CheckCastEliminationPhase extends Phase {
                     }
                 }
                 if (replaceWith != null) {
-                    ifNode.setCompare(replaceWith);
+                    ifNode.setCondition(replaceWith);
                     if (compare.usages().isEmpty()) {
                         GraphUtil.killWithUnusedFloatingInputs(compare);
                     }

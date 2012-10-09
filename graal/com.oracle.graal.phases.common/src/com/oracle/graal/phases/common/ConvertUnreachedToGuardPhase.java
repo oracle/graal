@@ -58,7 +58,7 @@ public class ConvertUnreachedToGuardPhase extends Phase {
                     delete = ifNode.falseSuccessor();
                 }
                 if (insertGuard != null) {
-                    GuardNode guard = graph.unique(new GuardNode(ifNode.compare(), BeginNode.prevBegin(ifNode), DeoptimizationReason.UnreachedCode, DeoptimizationAction.InvalidateReprofile, inverted, ifNode.leafGraphId()));
+                    GuardNode guard = graph.unique(new GuardNode(ifNode.condition(), BeginNode.prevBegin(ifNode), DeoptimizationReason.UnreachedCode, DeoptimizationAction.InvalidateReprofile, inverted, ifNode.leafGraphId()));
                     graph.addBeforeFixed(ifNode, graph.add(new ValueAnchorNode(guard)));
                     GraphUtil.killCFG(delete);
                     graph.removeSplit(ifNode, inverted ? IfNode.FALSE_EDGE : IfNode.TRUE_EDGE);
