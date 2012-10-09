@@ -28,6 +28,7 @@ import java.util.*;
 import com.oracle.graal.api.*;
 import com.oracle.graal.api.interpreter.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.bytecode.*;
 
 /**

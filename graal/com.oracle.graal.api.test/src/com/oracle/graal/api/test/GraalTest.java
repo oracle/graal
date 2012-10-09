@@ -20,11 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api;
+package com.oracle.graal.api.test;
 
 import static org.junit.Assert.*;
 
 import org.junit.*;
+
+import com.oracle.graal.api.runtime.*;
 
 
 public class GraalTest {
