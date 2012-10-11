@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 
@@ -79,6 +80,10 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
             IfNode ifNode = (IfNode) deoptBegin.predecessor();
             BeginNode otherBegin = ifNode.trueSuccessor();
             BooleanNode conditionNode = ifNode.compare();
+            if (conditionNode instanceof InstanceOfNode) {
+                // TODO The lowering currently does not support a FixedGuard as the usage of an InstanceOfNode. Relax this restriction.
+                return;
+            }
             boolean negated = false;
             if (deoptBegin == ifNode.trueSuccessor()) {
                 negated = true;
