@@ -157,6 +157,14 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     @Override
+    public void initialize() {
+        if (!HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_isInitialized(this)) {
+            HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaType_initialize(this);
+        }
+        isInitialized = true;
+    }
+
+    @Override
     public boolean isInstance(Constant obj) {
         return javaMirror.isInstance(obj);
     }

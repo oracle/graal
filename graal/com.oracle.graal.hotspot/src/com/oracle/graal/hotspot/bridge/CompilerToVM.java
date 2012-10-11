@@ -80,6 +80,8 @@ public interface CompilerToVM {
 
     boolean JavaType_isInitialized(HotSpotResolvedJavaType klass);
 
+    void JavaType_initialize(HotSpotResolvedJavaType klass);
+
     JavaType getType(Class<?> javaClass);
 
     JavaType JavaType_uniqueConcreteSubtype(HotSpotResolvedJavaType klass);

@@ -110,8 +110,7 @@ public class HotSpotTypeUnresolved extends HotSpotJavaType {
 
     @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
-        JavaType type = HotSpotGraalRuntime.getInstance().lookupType(name, (HotSpotResolvedJavaType) accessingClass, true);
-        return (ResolvedJavaType) type;
+        return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().lookupType(name, (HotSpotResolvedJavaType) accessingClass, true);
     }
 
     @Override

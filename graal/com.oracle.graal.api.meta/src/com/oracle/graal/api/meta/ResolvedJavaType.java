@@ -117,6 +117,11 @@ public interface ResolvedJavaType extends JavaType {
     boolean isInitialized();
 
     /**
+     * Initializes this type.
+     */
+    void initialize();
+
+    /**
      * Checks whether this type is a subtype of another type.
      *
      * @param other the type to test

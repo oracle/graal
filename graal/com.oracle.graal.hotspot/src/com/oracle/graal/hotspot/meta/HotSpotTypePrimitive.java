@@ -169,4 +169,8 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
     public HotSpotKlassOop klassOop() {
         return klassOop;
     }
+
+    @Override
+    public void initialize() {
+    }
 }
