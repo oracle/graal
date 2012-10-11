@@ -107,7 +107,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         if (verbosity == Verbosity.Long) {
             return super.toString(Verbosity.Short) + "(bci=" + bci() + ")";
         } else if (verbosity == Verbosity.Name) {
-            return "Invoke#" + callTarget().targetName();
+            return "Invoke#" + (callTarget == null ? "null" : callTarget().targetName());
         } else {
             return super.toString(verbosity);
         }
