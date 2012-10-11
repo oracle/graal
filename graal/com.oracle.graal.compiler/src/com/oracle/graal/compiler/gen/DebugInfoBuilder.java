@@ -141,14 +141,14 @@ public class DebugInfoBuilder {
         if (value instanceof VirtualObjectNode) {
             VirtualObjectNode obj = (VirtualObjectNode) value;
             EscapeObjectState state = objectStates.get(obj);
-            if (state == null && obj.entryCount() > 0) {
+            if (state == null && obj.entryCount() > 0 && !(obj instanceof BoxedVirtualObjectNode)) {
                 // null states occur for objects with 0 fields
                 throw new GraalInternalError("no mapping found for virtual object %s", obj);
             }
             if (state instanceof MaterializedObjectState) {
                 return toValue(((MaterializedObjectState) state).materializedValue());
             } else {
-                assert obj.entryCount() == 0 || state instanceof VirtualObjectState;
+                assert obj.entryCount() == 0 || state instanceof VirtualObjectState || obj instanceof BoxedVirtualObjectNode;
                 VirtualObject ciObj = virtualObjects.get(value);
                 if (ciObj == null) {
                     ciObj = VirtualObject.get(obj.type(), null, virtualObjects.size());
