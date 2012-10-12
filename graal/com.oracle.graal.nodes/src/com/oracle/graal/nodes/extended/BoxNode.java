@@ -27,10 +27,11 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 
-public final class BoxNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType {
+public final class BoxNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, Canonicalizable {
 
     @Input private ValueNode source;
     private int bci;
@@ -60,5 +61,16 @@ public final class BoxNode extends AbstractStateSplit implements StateSplit, Nod
         invokeNode.setProbability(this.probability());
         invokeNode.setStateAfter(stateAfter());
         ((StructuredGraph) graph()).replaceFixedWithFixed(this, invokeNode);
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        for (Node usage : usages()) {
+            if (usage != stateAfter()) {
+                return this;
+            }
+        }
+        replaceAtUsages(null);
+        return null;
     }
 }
