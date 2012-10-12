@@ -759,6 +759,9 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void emitNullCheck(ValueNode receiver) {
+        if (receiver.stamp().nonNull()) {
+            return;
+        }
         BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
         BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode());
         IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new IsNullNode(receiver)), trueSucc, falseSucc, 0.5, graphId));
