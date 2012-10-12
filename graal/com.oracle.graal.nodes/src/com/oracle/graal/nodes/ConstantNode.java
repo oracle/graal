@@ -171,6 +171,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @return a node representing the object
      */
     public static ConstantNode forObject(Object o, MetaAccessProvider runtime, Graph graph) {
+        assert !(o instanceof Constant) : "wrapping a Constant into a Constant";
         return graph.unique(new ConstantNode(Constant.forObject(o), runtime));
     }
 
