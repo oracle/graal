@@ -33,28 +33,21 @@ import com.oracle.graal.nodes.type.*;
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that
  * it is not a {@link StateSplit} and takes a computed address instead of an object.
  */
-public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
+public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
     @Input private ValueNode address;
-    @Input private ValueNode value;
+    private final Kind readKind;
 
-    public DirectStoreNode(ValueNode address, ValueNode value) {
-        super(StampFactory.forVoid());
+    public DirectReadNode(ValueNode address, Kind readKind) {
+        super(StampFactory.forKind(readKind));
         this.address = address;
-        this.value = value;
+        this.readKind = readKind;
     }
-
-    @NodeIntrinsic
-    public static native void store(long address, long value);
-
-    @NodeIntrinsic
-    public static native void store(long address, int value);
-
-    @NodeIntrinsic
-    public static native void store(long address, boolean value);
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        Value v = gen.operand(value);
-        gen.emitStore(new Address(v.getKind(), gen.operand(address)), v, false);
+        gen.setResult(this, gen.emitLoad(new Address(readKind, gen.operand(address)), false));
     }
+
+    @NodeIntrinsic
+    public static native <T> T read(long address, @ConstantNodeParameter Kind kind);
 }
