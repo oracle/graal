@@ -112,6 +112,9 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native boolean JavaType_isInitialized(HotSpotResolvedJavaType klass);
 
     @Override
+    public native void JavaType_initialize(HotSpotResolvedJavaType klass);
+
+    @Override
     public native HotSpotMethodData JavaMethod_methodData(HotSpotResolvedJavaMethod method);
 
     @Override

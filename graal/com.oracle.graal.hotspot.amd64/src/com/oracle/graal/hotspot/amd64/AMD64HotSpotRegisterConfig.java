@@ -154,12 +154,12 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
             }
 
             if (locations[i] == null) {
-                locations[i] = StackSlot.get(kind.stackKind(), currentStackOffset, !type.out);
+                locations[i] = StackSlot.get(kind.getStackKind(), currentStackOffset, !type.out);
                 currentStackOffset += Math.max(target.sizeInBytes(kind), target.wordSize);
             }
         }
 
-        Value returnLocation = returnKind.isVoid() ? Value.IllegalValue : getReturnRegister(returnKind).asValue(returnKind);
+        Value returnLocation = returnKind.isVoid() ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(returnKind);
         return new CallingConvention(currentStackOffset, returnLocation, locations);
     }
 

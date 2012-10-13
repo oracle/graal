@@ -109,7 +109,7 @@ public class IntegerStamp extends Stamp {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append(kind().typeChar);
+        str.append(kind().getTypeChar());
         if (lowerBound == upperBound) {
             str.append(" [").append(lowerBound).append(']');
         } else if (lowerBound != kind().getMinValue() || upperBound != kind().getMaxValue()) {

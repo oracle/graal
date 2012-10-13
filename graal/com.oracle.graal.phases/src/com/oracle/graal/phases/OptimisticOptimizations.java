@@ -46,7 +46,7 @@ public final class OptimisticOptimizations {
     public OptimisticOptimizations(ResolvedJavaMethod method) {
         this.enabledOpts = EnumSet.noneOf(Optimization.class);
 
-        ProfilingInfo profilingInfo = method.profilingInfo();
+        ProfilingInfo profilingInfo = method.getProfilingInfo();
         if (checkDeoptimizations(profilingInfo, DeoptimizationReason.UnreachedCode)) {
             enabledOpts.add(Optimization.RemoveNeverExecutedCode);
         }

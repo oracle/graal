@@ -65,12 +65,12 @@ public class AMD64DeoptimizationStub extends AMD64Code {
             keepAlive.add(deoptInfo.toString());
             AMD64Move.move(tasm, masm, scratch.asValue(), Constant.forObject(deoptInfo));
             // TODO Make this an explicit calling convention instead of using a scratch register
-            AMD64Call.directCall(tasm, masm, tasm.runtime.getRuntimeCall(SET_DEOPT_INFO), info);
+            AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(SET_DEOPT_INFO), info);
         }
 
         masm.movl(scratch, tasm.runtime.encodeDeoptActionAndReason(action, reason));
         // TODO Make this an explicit calling convention instead of using a scratch register
-        AMD64Call.directCall(tasm, masm, tasm.runtime.getRuntimeCall(DEOPTIMIZE), info);
+        AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(DEOPTIMIZE), info);
         AMD64Call.shouldNotReachHere(tasm, masm);
     }
 

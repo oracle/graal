@@ -50,7 +50,7 @@ public class MonitorEnterStubCall extends FixedWithNextNode implements LIRGenLow
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().getRuntimeCall(MonitorEnterStubCall.MONITORENTER);
+        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(MonitorEnterStubCall.MONITORENTER);
         gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object), gen.operand(lock));
     }
 

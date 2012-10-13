@@ -26,26 +26,26 @@ import com.oracle.graal.api.code.RuntimeCall.Descriptor;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Encapsulates the main functionality of the runtime for the compiler, including access
- * to constant pools, OSR frames, inlining requirements, and runtime calls such as checkcast.
-s */
+ * Encapsulates the main functionality of the runtime for the compiler.
+ */
 public interface CodeCacheProvider extends MetaAccessProvider {
 
     /**
-     * Adds the given compilation result as an implementation of the given method without making it the default implementation.
+     * Adds the given compilation result as an implementation of the given method without making it the default
+     * implementation.
      *
      * @param method a method to which the executable code is begin added
      * @param compResult the compilation result to be added
-     * @param info the object into which details of the installed code will be written.
-     *        Ignored if null, otherwise the info is written to index 0 of this array.
+     * @param info the object into which details of the installed code will be written. Ignored if null, otherwise the
+     *            info is written to index 0 of this array.
      * @return a reference to the compiled and ready-to-run code
      */
     InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, CodeInfo[] info);
 
     /**
-     * Get the size in bytes for locking information on the stack.
+     * Returns the size in bytes for locking information on the stack.
      */
-    int sizeOfLockData();
+    int getSizeOfLockData();
 
     /**
      * Returns a disassembly of the given installed code.
@@ -60,10 +60,11 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      *
      * @param method the top level method of a compilation
      */
-    RegisterConfig getRegisterConfig(JavaMethod method);
+    RegisterConfig lookupRegisterConfig(JavaMethod method);
 
     /**
      * Custom area on the stack of each compiled method that the VM can use for its own purposes.
+     *
      * @return the size of the custom area in bytes
      */
     int getCustomStackAreaSize();
@@ -71,6 +72,7 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     /**
      * Minimum size of the stack area reserved for outgoing parameters. This area is reserved in all cases, even when
      * the compiled method has no regular call instructions.
+     *
      * @return the minimum size of the outgoing parameter area in bytes
      */
     int getMinimumOutgoingSize();
@@ -78,30 +80,17 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     /**
      * Performs any runtime-specific conversion on the object used to describe the target of a call.
      */
-    Object asCallTarget(Object target);
+    Object lookupCallTarget(Object target);
 
     /**
      * Gets the signature and linkage information for a runtime call.
      */
-    RuntimeCall getRuntimeCall(Descriptor descriptor);
+    RuntimeCall lookupRuntimeCall(Descriptor descriptor);
 
     /**
      * Encodes a deoptimization action and a deoptimization reason in an integer value.
+     *
      * @return the encoded value as an integer
      */
     int encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason);
-
-    /**
-     * Converts a {@link DeoptimizationReason} into an integer value.
-     *
-     * @return an integer value representing the given {@link DeoptimizationReason}
-     */
-    int convertDeoptReason(DeoptimizationReason reason);
-
-    /**
-     * Converts a {@link DeoptimizationAction} into an integer value.
-     *
-     * @return an integer value representing the given {@link DeoptimizationAction}
-     */
-    int convertDeoptAction(DeoptimizationAction action);
 }

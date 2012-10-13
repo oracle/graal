@@ -44,7 +44,7 @@ public class WordStamp extends Stamp {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append(kind().typeChar);
+        str.append(kind().getTypeChar());
         str.append(nonNull ? "!" : "");
         return str.toString();
     }

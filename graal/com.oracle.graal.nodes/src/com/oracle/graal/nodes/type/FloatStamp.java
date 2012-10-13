@@ -73,7 +73,7 @@ public class FloatStamp extends Stamp {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append(kind().typeChar);
+        str.append(kind().getTypeChar());
         str.append(nonNaN ? "!" : "");
         if (lowerBound == upperBound) {
             str.append(" [").append(lowerBound).append(']');

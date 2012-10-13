@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,26 +23,23 @@
 package com.oracle.graal.api.meta;
 
 /**
- * Represents resolved and unresolved Java methods. Methods, like fields and types, are resolved through
- * {@link ConstantPool constant pools}.
+ * Represents a reference to a Java method, either resolved or unresolved. Methods, like fields and types, are resolved
+ * through {@link ConstantPool constant pools}.
  */
 public interface JavaMethod {
 
     /**
-     * Gets the name of the method as a string.
-     * @return the name of the method
+     * Returns the name of this method.
      */
-    String name();
+    String getName();
 
     /**
-     * Gets the type in which this method is declared.
-     * @return the type in which this method is declared
+     * Returns the {@link JavaType} object representing the class or interface that declares this method.
      */
-    JavaType holder();
+    JavaType getDeclaringClass();
 
     /**
-     * Gets the signature of the method.
-     * @return the signature of the method
+     * Returns the signature of this method.
      */
-    Signature signature();
+    Signature getSignature();
 }

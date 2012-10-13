@@ -44,7 +44,7 @@ public class IndirectCallTargetNode extends AbstractCallTargetNode {
     @Override
     public String targetName() {
         if (target() instanceof JavaMethod) {
-            return "Indirect#" + ((JavaMethod) target()).name();
+            return "Indirect#" + ((JavaMethod) target()).getName();
         } else if (target() != null) {
             return "Indirect#" + target().getClass().getSimpleName();
         } else {

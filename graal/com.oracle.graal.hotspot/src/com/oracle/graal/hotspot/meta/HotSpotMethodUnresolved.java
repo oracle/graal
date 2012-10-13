@@ -39,17 +39,17 @@ public final class HotSpotMethodUnresolved extends HotSpotMethod {
     }
 
     @Override
-    public Signature signature() {
+    public Signature getSignature() {
         return signature;
     }
 
     @Override
-    public JavaType holder() {
+    public JavaType getDeclaringClass() {
         return holder;
     }
 
     @Override
     public String toString() {
-        return "HotSpotMethod<" + holder.name() + ". " + name + ", unresolved>";
+        return "HotSpotMethod<" + holder.getName() + ". " + name + ", unresolved>";
     }
 }

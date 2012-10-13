@@ -136,7 +136,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         if (object instanceof BciBlockMapping) {
             BciBlockMapping blockMap = (BciBlockMapping) object;
             cfgPrinter.printCFG(message, blockMap);
-            if (blockMap.method.code() != null) {
+            if (blockMap.method.getCode() != null) {
                 cfgPrinter.printBytecodes(new BytecodeDisassembler(false).disassemble(blockMap.method));
             }
 
@@ -151,15 +151,15 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
         } else if (object instanceof CompilationResult) {
             final CompilationResult tm = (CompilationResult) object;
-            final byte[] code = Arrays.copyOf(tm.targetCode(), tm.targetCodeSize());
+            final byte[] code = Arrays.copyOf(tm.getTargetCode(), tm.getTargetCodeSize());
             CodeInfo info = new CodeInfo() {
-                public ResolvedJavaMethod method() {
+                public ResolvedJavaMethod getMethod() {
                     return null;
                 }
-                public long start() {
+                public long getStart() {
                     return 0L;
                 }
-                public byte[] code() {
+                public byte[] getCode() {
                     return code;
                 }
             };

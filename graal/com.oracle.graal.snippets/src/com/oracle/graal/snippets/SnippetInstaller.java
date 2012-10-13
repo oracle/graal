@@ -66,7 +66,7 @@ public class SnippetInstaller {
     /**
      * Finds all the snippet methods in a given class, builds a graph for them and
      * installs the graph with the key value of {@code Graph.class} in the
-     * {@linkplain ResolvedJavaMethod#compilerStorage() compiler storage} of each method.
+     * {@linkplain ResolvedJavaMethod#getCompilerStorage() compiler storage} of each method.
      * <p>
      * If {@code snippetsHolder} is annotated with {@link ClassSubstitution}, then all
      * methods in the class are snippets. Otherwise, the snippets are those methods
@@ -87,11 +87,11 @@ public class SnippetInstaller {
                 if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
                     throw new RuntimeException("Snippet must not be abstract or native");
                 }
-                ResolvedJavaMethod snippet = runtime.getResolvedJavaMethod(method);
-                assert snippet.compilerStorage().get(Graph.class) == null;
+                ResolvedJavaMethod snippet = runtime.lookupJavaMethod(method);
+                assert snippet.getCompilerStorage().get(Graph.class) == null;
                 StructuredGraph graph = makeGraph(snippet, inliningPolicy(snippet));
                 //System.out.println("snippet: " + graph);
-                snippet.compilerStorage().put(Graph.class, graph);
+                snippet.getCompilerStorage().put(Graph.class, graph);
             }
         }
     }
@@ -110,10 +110,10 @@ public class SnippetInstaller {
                 if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
                     throw new RuntimeException("Snippet must not be abstract or native");
                 }
-                ResolvedJavaMethod snippet = runtime.getResolvedJavaMethod(method);
+                ResolvedJavaMethod snippet = runtime.lookupJavaMethod(method);
                 StructuredGraph graph = makeGraph(snippet, inliningPolicy(snippet));
                 //System.out.println("snippet: " + graph);
-                runtime.getResolvedJavaMethod(originalMethod).compilerStorage().put(Graph.class, graph);
+                runtime.lookupJavaMethod(originalMethod).getCompilerStorage().put(Graph.class, graph);
             } catch (NoSuchMethodException e) {
                 throw new GraalInternalError("Could not resolve method in " + originalClazz + " to substitute with " + method, e);
             }
@@ -141,7 +141,7 @@ public class SnippetInstaller {
 
         new SnippetIntrinsificationPhase(runtime, pool, SnippetTemplate.hasConstantParameter(method)).apply(graph);
 
-        Debug.dump(graph, "%s: Final", method.name());
+        Debug.dump(graph, "%s: Final", method.getName());
 
         return graph;
     }
@@ -165,7 +165,7 @@ public class SnippetInstaller {
                 GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config, OptimisticOptimizations.NONE);
                 graphBuilder.apply(graph);
 
-                Debug.dump(graph, "%s: %s", method.name(), GraphBuilderPhase.class.getSimpleName());
+                Debug.dump(graph, "%s: %s", method.getName(), GraphBuilderPhase.class.getSimpleName());
 
                 new SnippetVerificationPhase().apply(graph);
 
@@ -179,7 +179,7 @@ public class SnippetInstaller {
                         InliningUtil.inline(invoke, targetGraph, true);
                         Debug.dump(graph, "after inlining %s", callee);
                         if (GraalOptions.OptCanonicalizer) {
-                            new WordTypeRewriterPhase(target.wordKind, runtime.getResolvedJavaType(target.wordKind)).apply(graph);
+                            new WordTypeRewriterPhase(target.wordKind, runtime.lookupJavaType(target.wordKind.toJavaClass())).apply(graph);
                             new CanonicalizerPhase(target, runtime, null).apply(graph);
                         }
                     }
@@ -187,7 +187,7 @@ public class SnippetInstaller {
 
                 new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
 
-                new WordTypeRewriterPhase(target.wordKind, runtime.getResolvedJavaType(target.wordKind)).apply(graph);
+                new WordTypeRewriterPhase(target.wordKind, runtime.lookupJavaType(target.wordKind.toJavaClass())).apply(graph);
 
                 new DeadCodeEliminationPhase().apply(graph);
                 if (GraalOptions.OptCanonicalizer) {

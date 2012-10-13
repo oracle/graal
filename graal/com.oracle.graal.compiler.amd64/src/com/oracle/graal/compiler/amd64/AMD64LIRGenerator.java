@@ -137,18 +137,18 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Address makeAddress(LocationNode location, ValueNode object) {
         Value base = operand(object);
-        Value index = Value.IllegalValue;
+        Value index = Value.ILLEGAL;
         int scale = 1;
         int displacement = location.displacement();
 
         if (isConstant(base)) {
             if (asConstant(base).isNull()) {
-                base = Value.IllegalValue;
+                base = Value.ILLEGAL;
             } else if (asConstant(base).getKind() != Kind.Object) {
                 long newDisplacement = displacement + asConstant(base).asLong();
                 if (NumUtil.isInt(newDisplacement)) {
                     displacement = (int) newDisplacement;
-                    base = Value.IllegalValue;
+                    base = Value.ILLEGAL;
                 }
             }
         }
@@ -165,7 +165,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 // only use the constant index if the resulting displacement fits into a 32 bit offset
                 if (NumUtil.isInt(newDisplacement)) {
                     displacement = (int) newDisplacement;
-                    index = Value.IllegalValue;
+                    index = Value.ILLEGAL;
                 } else {
                     // create a temporary variable for the index, the pointer load cannot handle a constant index
                     Value newIndex = newVariable(Kind.Long);
@@ -228,7 +228,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public void emitBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info) {
         boolean mirrored = emitCompare(left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
-        switch (left.getKind().stackKind()) {
+        switch (left.getKind().getStackKind()) {
             case Int:
             case Long:
             case Object: append(new BranchOp(finalCondition, label, info)); break;
@@ -244,7 +244,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Condition finalCondition = mirrored ? cond.mirror() : cond;
 
         Variable result = newVariable(trueValue.getKind());
-        switch (left.getKind().stackKind()) {
+        switch (left.getKind().getStackKind()) {
             case Int:
             case Long:
             case Object: append(new CondMoveOp(result, finalCondition, load(trueValue), loadNonConst(falseValue))); break;
@@ -275,7 +275,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             right = loadNonConst(b);
             mirrored = false;
         }
-        switch (left.getKind().stackKind()) {
+        switch (left.getKind().getStackKind()) {
             case Jsr:
             case Int: append(new CompareOp(ICMP, left, right)); break;
             case Long: append(new CompareOp(LCMP, left, right)); break;
@@ -377,11 +377,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new DivOp(LREM, RDX_L, RAX_L, load(b), state()));
                 return emitMove(RDX_L);
             case Float: {
-                RuntimeCall stub = runtime.getRuntimeCall(ARITHMETIC_FREM);
+                RuntimeCall stub = runtime.lookupRuntimeCall(ARITHMETIC_FREM);
                 return emitCall(stub, stub.getCallingConvention(), false, a, b);
             }
             case Double: {
-                RuntimeCall stub = runtime.getRuntimeCall(ARITHMETIC_DREM);
+                RuntimeCall stub = runtime.lookupRuntimeCall(ARITHMETIC_DREM);
                 return emitCall(stub, stub.getCallingConvention(), false, a, b);
             }
             default:
@@ -633,7 +633,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     protected void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
         // Making a copy of the switch value is necessary because jump table destroys the input value
         if (key.getKind() == Kind.Int) {
-            append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, Value.IllegalValue));
+            append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, Value.ILLEGAL));
         } else {
             assert key.getKind() == Kind.Object;
             append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, newVariable(Kind.Object)));

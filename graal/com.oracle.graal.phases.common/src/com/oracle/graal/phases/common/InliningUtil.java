@@ -28,7 +28,7 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaType.Representation;
+import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -58,9 +58,9 @@ public class InliningUtil {
         if (!Debug.isLogEnabled()) {
             return null;
         } else if (invoke != null && invoke.stateAfter() != null) {
-            return methodName(invoke.stateAfter(), invoke.bci()) + ": " + MetaUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+            return methodName(invoke.stateAfter(), invoke.bci()) + ": " + MetaUtil.format("%H.%n(%p):%r", method) + " (" + method.getCodeSize() + " bytes)";
         } else {
-            return MetaUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+            return MetaUtil.format("%H.%n(%p):%r", method) + " (" + method.getCodeSize() + " bytes)";
         }
     }
 
@@ -152,7 +152,7 @@ public class InliningUtil {
 
         @Override
         public int compiledCodeSize() {
-            return concrete.compiledCodeSize();
+            return concrete.getCompiledCodeSize();
         }
 
         @Override
@@ -182,7 +182,7 @@ public class InliningUtil {
 
         @Override
         public int compiledCodeSize() {
-            return concrete.compiledCodeSize();
+            return concrete.getCompiledCodeSize();
         }
 
         @Override
@@ -247,7 +247,7 @@ public class InliningUtil {
         public int compiledCodeSize() {
             int result = 0;
             for (ResolvedJavaMethod m: concretes) {
-                result += m.compiledCodeSize();
+                result += m.getCompiledCodeSize();
             }
             return result;
         }
@@ -308,7 +308,7 @@ public class InliningUtil {
                 for (int j = 0; j < typesToConcretes.length; j++) {
                     if (typesToConcretes[j] == i) {
                         predecessors++;
-                        probability += ptypes[j].probability;
+                        probability += ptypes[j].getProbability();
                     }
                 }
 
@@ -405,9 +405,9 @@ public class InliningUtil {
             for (int i = 0; i < typesToConcretes.length; i++) {
                 if (typesToConcretes[i] == concreteMethodIndex) {
                     if (commonType == null) {
-                        commonType = ptypes[i].type;
+                        commonType = ptypes[i].getType();
                     } else {
-                        commonType = commonType.leastCommonAncestor(ptypes[i].type);
+                        commonType = commonType.findLeastCommonAncestor(ptypes[i].getType());
                     }
                 }
             }
@@ -445,8 +445,8 @@ public class InliningUtil {
             BeginNode[] successors = new BeginNode[ptypes.length + 1];
             int[] keySuccessors = new int[ptypes.length + 1];
             for (int i = 0; i < ptypes.length; i++) {
-                types[i] = ptypes[i].type;
-                probabilities[i] = ptypes[i].probability;
+                types[i] = ptypes[i].getType();
+                probabilities[i] = ptypes[i].getProbability();
                 FixedNode entry = calleeEntryNodes[typesToConcretes[i]];
                 if (entry instanceof MergeNode) {
                     EndNode endNode = graph.add(new EndNode());
@@ -609,15 +609,15 @@ public class InliningUtil {
         ObjectStamp receiverStamp = callTarget.receiver().objectStamp();
         ResolvedJavaType receiverType = receiverStamp.type();
         if (receiverStamp.isExactType()) {
-            assert receiverType.isSubtypeOf(targetMethod.holder()) : receiverType + " subtype of " + targetMethod.holder() + " for " + targetMethod;
-            ResolvedJavaMethod resolved = receiverType.resolveMethodImpl(targetMethod);
+            assert receiverType.isSubtypeOf(targetMethod.getDeclaringClass()) : receiverType + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
+            ResolvedJavaMethod resolved = receiverType.resolveMethod(targetMethod);
             if (checkTargetConditions(invoke, resolved, optimisticOpts)) {
                 double weight = callback == null ? 0 : callback.inliningWeight(parent, resolved, invoke);
                 return new ExactInlineInfo(invoke, weight, level, resolved);
             }
             return null;
         }
-        ResolvedJavaType holder = targetMethod.holder();
+        ResolvedJavaType holder = targetMethod.getDeclaringClass();
 
         if (receiverStamp.type() != null) {
             // the invoke target might be more specific than the holder (happens after inlining: locals lose their declared type...)
@@ -628,7 +628,7 @@ public class InliningUtil {
         }
         // TODO (thomaswue) fix this
         if (assumptions != null) {
-            ResolvedJavaMethod concrete = holder.uniqueConcreteMethod(targetMethod);
+            ResolvedJavaMethod concrete = holder.findUniqueConcreteMethod(targetMethod);
             if (concrete != null) {
                 if (checkTargetConditions(invoke, concrete, optimisticOpts)) {
                     double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
@@ -643,7 +643,7 @@ public class InliningUtil {
     }
 
     private static InlineInfo getTypeCheckedInlineInfo(Invoke invoke, int level, InliningCallback callback, ResolvedJavaMethod parent, ResolvedJavaMethod targetMethod, OptimisticOptimizations optimisticOpts) {
-        ProfilingInfo profilingInfo = parent.profilingInfo();
+        ProfilingInfo profilingInfo = parent.getProfilingInfo();
         JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(invoke.bci());
         if (typeProfile != null) {
             ProfiledType[] ptypes = typeProfile.getTypes();
@@ -652,8 +652,8 @@ public class InliningUtil {
                 double notRecordedTypeProbability = typeProfile.getNotRecordedProbability();
                 if (ptypes.length == 1 && notRecordedTypeProbability == 0) {
                     if (optimisticOpts.inlineMonomorphicCalls()) {
-                        ResolvedJavaType type = ptypes[0].type;
-                        ResolvedJavaMethod concrete = type.resolveMethodImpl(targetMethod);
+                        ResolvedJavaType type = ptypes[0].getType();
+                        ResolvedJavaMethod concrete = type.resolveMethod(targetMethod);
                         if (checkTargetConditions(invoke, concrete, optimisticOpts)) {
                             double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
                             return new TypeGuardInlineInfo(invoke, weight, level, concrete, type);
@@ -680,7 +680,7 @@ public class InliningUtil {
                         ArrayList<ResolvedJavaMethod> concreteMethods = new ArrayList<>();
                         int[] typesToConcretes = new int[ptypes.length];
                         for (int i = 0; i < ptypes.length; i++) {
-                            ResolvedJavaMethod concrete = ptypes[i].type.resolveMethodImpl(targetMethod);
+                            ResolvedJavaMethod concrete = ptypes[i].getType().resolveMethod(targetMethod);
 
                             int index = concreteMethods.indexOf(concrete);
                             if (index < 0) {
@@ -756,15 +756,15 @@ public class InliningUtil {
             return false;
         }
         ResolvedJavaMethod resolvedMethod = (ResolvedJavaMethod) method;
-        if (Modifier.isNative(resolvedMethod.accessFlags())) {
+        if (Modifier.isNative(resolvedMethod.getModifiers())) {
             Debug.log("not inlining %s because it is a native method", methodName(resolvedMethod, invoke));
             return false;
         }
-        if (Modifier.isAbstract(resolvedMethod.accessFlags())) {
+        if (Modifier.isAbstract(resolvedMethod.getModifiers())) {
             Debug.log("not inlining %s because it is an abstract method", methodName(resolvedMethod, invoke));
             return false;
         }
-        if (!resolvedMethod.holder().isInitialized()) {
+        if (!resolvedMethod.getDeclaringClass().isInitialized()) {
             Debug.log("not inlining %s because of non-initialized class", methodName(resolvedMethod, invoke));
             return false;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,10 @@
 package com.oracle.graal.api.meta;
 
 /**
- * Represents an exception handler within the bytecode.
+ * Represents an exception handler within the bytecodes.
  */
 public final class ExceptionHandler {
+
     private final int startBCI;
     private final int endBCI;
     private final int handlerBCI;
@@ -34,6 +35,7 @@ public final class ExceptionHandler {
 
     /**
      * Creates a new exception handler with the specified ranges.
+     * 
      * @param startBCI the start index of the protected range
      * @param endBCI the end index of the protected range
      * @param catchBCI the index of the handler
@@ -49,33 +51,28 @@ public final class ExceptionHandler {
     }
 
     /**
-     * Gets the start bytecode index of the protected range of this handler.
-     * @return the start bytecode index
+     * Returns the start bytecode index of the protected range of this handler.
      */
-    public int startBCI() {
+    public int getStartBCI() {
         return startBCI;
     }
 
     /**
-     * Gets the end bytecode index of the protected range of this handler.
-     * @return the end bytecode index
+     * Returns the end bytecode index of the protected range of this handler.
      */
-    public int endBCI() {
+    public int getEndBCI() {
         return endBCI;
     }
 
     /**
-     * Gets the bytecode index of the handler block of this handler.
-     * @return the handler block bytecode index
+     * Returns the bytecode index of the handler block of this handler.
      */
-    public int handlerBCI() {
+    public int getHandlerBCI() {
         return handlerBCI;
     }
 
     /**
-     * Gets the index into the constant pool representing the type of exception
-     * caught by this handler.
-     * @return the constant pool index of the catch type
+     * Returns the index into the constant pool representing the type of exception caught by this handler.
      */
     public int catchTypeCPI() {
         return catchTypeCPI;
@@ -83,6 +80,7 @@ public final class ExceptionHandler {
 
     /**
      * Checks whether this handler catches all exceptions.
+     * 
      * @return {@code true} if this handler catches all exceptions
      */
     public boolean isCatchAll() {
@@ -90,11 +88,9 @@ public final class ExceptionHandler {
     }
 
     /**
-     * The type of exception caught by this exception handler.
-     *
-     * @return the exception type
+     * Returns the type of exception caught by this exception handler.
      */
-    public JavaType catchType() {
+    public JavaType getCatchType() {
         return catchType;
     }
 }

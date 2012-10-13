@@ -45,9 +45,9 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     private static Stamp createStamp(ResolvedJavaField field) {
-        Kind kind = field.kind();
-        if (kind == Kind.Object && field.type() instanceof ResolvedJavaType) {
-            return StampFactory.declared((ResolvedJavaType) field.type());
+        Kind kind = field.getKind();
+        if (kind == Kind.Object && field.getType() instanceof ResolvedJavaType) {
+            return StampFactory.declared((ResolvedJavaType) field.getType());
         } else {
             return StampFactory.forKind(kind);
         }
@@ -59,9 +59,9 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
         if (runtime != null) {
             Constant constant = null;
             if (isStatic()) {
-                constant = field().constantValue(null);
+                constant = field().readConstantValue(null);
             } else if (object().isConstant() && !object().isNullConstant()) {
-                constant = field().constantValue(object().asConstant());
+                constant = field().readConstantValue(object().asConstant());
             }
             if (constant != null) {
                 return ConstantNode.forConstant(constant, runtime, graph());

@@ -39,7 +39,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
 
     /**
      * The kind of this value. This is {@link Kind#Void} for instructions that produce no value.
-     * This kind is guaranteed to be a {@linkplain Kind#stackKind() stack kind}.
+     * This kind is guaranteed to be a {@linkplain Kind#getStackKind() stack kind}.
      */
     private Stamp stamp;
 
@@ -174,7 +174,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
             assertTrue(!(v.stamp() instanceof GenericStamp) || ((GenericStamp) v.stamp()).type() == GenericStampType.Dependency, "cannot depend on node with stamp %s", v.stamp());
         }
         assertTrue(kind() != null, "Should have a valid kind");
-        assertTrue(kind() == kind().stackKind(), "Should have a stack kind : %s", kind());
+        assertTrue(kind() == kind().getStackKind(), "Should have a stack kind : %s", kind());
         return super.verify();
     }
 

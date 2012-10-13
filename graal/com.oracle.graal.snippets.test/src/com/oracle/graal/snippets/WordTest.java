@@ -26,9 +26,9 @@ import java.lang.reflect.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
@@ -50,7 +50,7 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
 
     @Override
     protected StructuredGraph parse(Method m) {
-        ResolvedJavaMethod resolvedMethod = runtime.getResolvedJavaMethod(m);
+        ResolvedJavaMethod resolvedMethod = runtime.lookupJavaMethod(m);
         return installer.makeGraph(resolvedMethod, inliningPolicy.get());
     }
 
@@ -116,7 +116,7 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
     public void test_fromObject() {
         inliningPolicy.set(new InliningPolicy() {
             public boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller) {
-                return InliningPolicy.Default.shouldInline(method, caller) && !method.name().equals("hashCode");
+                return InliningPolicy.Default.shouldInline(method, caller) && !method.getName().equals("hashCode");
             }
         });
         test("fromToObject", "object1", "object2");

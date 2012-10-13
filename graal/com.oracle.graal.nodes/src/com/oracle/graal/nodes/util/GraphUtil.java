@@ -198,7 +198,7 @@ public class GraphUtil {
                 if (stateAfter != null) {
                     ResolvedJavaMethod method = stateAfter.method();
                     if (method != null) {
-                        StackTraceElement stackTraceElement = method.toStackTraceElement(stateAfter.bci);
+                        StackTraceElement stackTraceElement = method.asStackTraceElement(stateAfter.bci);
                         if (stackTraceElement.getFileName() != null && stackTraceElement.getLineNumber() >= 0) {
                             return stackTraceElement.getFileName() + ":" + stackTraceElement.getLineNumber();
                         }

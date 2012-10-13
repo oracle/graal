@@ -58,9 +58,9 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
         LIRGenerator gen = (LIRGenerator) generator;
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
         ResolvedJavaMethod method = frameState.method();
-        boolean isStatic = Modifier.isStatic(method.accessFlags());
+        boolean isStatic = Modifier.isStatic(method.getModifiers());
 
-        Kind[] signature = MetaUtil.signatureToKinds(method.signature(), isStatic ? null : method.holder().kind());
+        Kind[] signature = MetaUtil.signatureToKinds(method.getSignature(), isStatic ? null : method.getDeclaringClass().getKind());
         CallingConvention cc = gen.frameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, Kind.Void, signature, gen.target(), false);
         gen.frameMap().callsMethod(cc); // TODO (aw): I think this is unnecessary for a tail call.
         List<ValueNode> parameters = new ArrayList<>();

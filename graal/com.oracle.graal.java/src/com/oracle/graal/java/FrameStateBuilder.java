@@ -55,29 +55,29 @@ public class FrameStateBuilder {
         assert graph != null;
         this.method = method;
         this.graph = graph;
-        this.locals = new ValueNode[method.maxLocals()];
+        this.locals = new ValueNode[method.getMaxLocals()];
         // we always need at least one stack slot (for exceptions)
-        this.stack = new ValueNode[Math.max(1, method.maxStackSize())];
+        this.stack = new ValueNode[Math.max(1, method.getMaxStackSize())];
         this.locks = EMPTY_ARRAY;
 
         int javaIndex = 0;
         int index = 0;
-        if (!isStatic(method.accessFlags())) {
+        if (!isStatic(method.getModifiers())) {
             // add the receiver
-            LocalNode local = graph.unique(new LocalNode(javaIndex, StampFactory.declaredNonNull(method.holder())));
+            LocalNode local = graph.unique(new LocalNode(javaIndex, StampFactory.declaredNonNull(method.getDeclaringClass())));
             storeLocal(javaIndex, local);
             javaIndex = 1;
             index = 1;
         }
-        Signature sig = method.signature();
-        int max = sig.argumentCount(false);
-        ResolvedJavaType accessingClass = method.holder();
+        Signature sig = method.getSignature();
+        int max = sig.getParameterCount(false);
+        ResolvedJavaType accessingClass = method.getDeclaringClass();
         for (int i = 0; i < max; i++) {
-            JavaType type = sig.argumentTypeAt(i, accessingClass);
+            JavaType type = sig.getParameterType(i, accessingClass);
             if (eagerResolve) {
                 type = type.resolve(accessingClass);
             }
-            Kind kind = type.kind().stackKind();
+            Kind kind = type.getKind().getStackKind();
             Stamp stamp;
             if (kind == Kind.Object && type instanceof ResolvedJavaType) {
                 stamp = StampFactory.declared((ResolvedJavaType) type);
@@ -100,8 +100,8 @@ public class FrameStateBuilder {
         stackSize = other.stackSize;
         rethrowException = other.rethrowException;
 
-        assert locals.length == method.maxLocals();
-        assert stack.length == Math.max(1, method.maxStackSize());
+        assert locals.length == method.getMaxLocals();
+        assert stack.length == Math.max(1, method.getMaxStackSize());
     }
 
     @Override
@@ -477,7 +477,7 @@ public class FrameStateBuilder {
 
     public void pushReturn(Kind kind, ValueNode x) {
         if (kind != Kind.Void) {
-            push(kind.stackKind(), x);
+            push(kind.getStackKind(), x);
         }
     }
 

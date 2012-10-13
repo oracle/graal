@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.api.meta.JavaType.Representation;
+import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -58,7 +58,7 @@ public final class LoadHubNode extends FixedWithNextNode implements Lowerable, C
             if (stamp.isExactType()) {
                 exactType = stamp.type();
             } else if (stamp.type() != null && tool.assumptions() != null) {
-                exactType = stamp.type().uniqueConcreteSubtype();
+                exactType = stamp.type().findUniqueConcreteSubtype();
                 if (exactType != null) {
                     tool.assumptions().recordConcreteSubtype(stamp.type(), exactType);
                 }

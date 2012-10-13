@@ -68,30 +68,36 @@ public enum Kind {
     /** The non-type. */
     Illegal('-', "illegal", false, false);
 
-    private Kind(char ch, String name, boolean isPrimitive, boolean isStackInt) {
-        this.typeChar = ch;
-        this.javaName = name;
+    private final char typeChar;
+    private final String javaName;
+    private final boolean isStackInt;
+    private final boolean isPrimitive;
+
+    private Kind(char typeChar, String javaName, boolean isPrimitive, boolean isStackInt) {
+        this.typeChar = typeChar;
+        this.javaName = javaName;
         this.isPrimitive = isPrimitive;
         this.isStackInt = isStackInt;
     }
 
-    private final boolean isStackInt;
-    private final boolean isPrimitive;
+    /**
+     * Returns the name of the kind as a single character.
+     */
+    public char getTypeChar() {
+        return typeChar;
+    }
 
     /**
-     * The name of the kind as a single character.
+     * Returns the name of this kind which will also be it Java programming language name if it is
+     * {@linkplain #isPrimitive() primitive} or {@code void}.
      */
-    public final char typeChar;
-
-    /**
-     * The name of this kind which will also be it Java programming language name if it is {@linkplain #isPrimitive()
-     * primitive} or {@code void}.
-     */
-    public final String javaName;
+    public String getJavaName() {
+        return javaName;
+    }
 
     /**
      * Checks whether this type is valid as an {@code int} on the Java operand stack.
-     *
+     * 
      * @return {@code true} if this type is represented by an {@code int} on the operand stack
      */
     public boolean isStackInt() {
@@ -100,7 +106,7 @@ public enum Kind {
 
     /**
      * Checks whether this type is a Java primitive type.
-     *
+     * 
      * @return {@code true} if this is {@link #Boolean}, {@link #Byte}, {@link #Char}, {@link #Short}, {@link #Int},
      *         {@link #Long}, {@link #Float} or {@link #Double}.
      */
@@ -109,11 +115,11 @@ public enum Kind {
     }
 
     /**
-     * Gets the kind that represents this kind when on the Java operand stack.
-     *
+     * Returns the kind that represents this kind when on the Java operand stack.
+     * 
      * @return the kind used on the operand stack
      */
-    public Kind stackKind() {
+    public Kind getStackKind() {
         if (isStackInt()) {
             return Int;
         }
@@ -122,7 +128,7 @@ public enum Kind {
 
     /**
      * Returns the kind corresponding to the Java type string.
-     *
+     * 
      * @param typeString the Java type string
      * @return the kind
      */
@@ -136,8 +142,8 @@ public enum Kind {
     }
 
     /**
-     * Gets the kind from the character describing a primitive or void.
-     *
+     * Returns the kind from the character describing a primitive or void.
+     * 
      * @param ch the character
      * @return the kind
      */
@@ -167,7 +173,7 @@ public enum Kind {
 
     /**
      * Returns the Kind representing the given Java class.
-     *
+     * 
      * @param klass the class
      * @return the kind
      */
@@ -197,7 +203,7 @@ public enum Kind {
 
     /**
      * Returns the Java class representing this kind.
-     *
+     * 
      * @return the Java class
      */
     public Class< ? > toJavaClass() {
@@ -227,7 +233,7 @@ public enum Kind {
 
     /**
      * Returns the Java class for instances of boxed values of this kind.
-     *
+     * 
      * @return the Java class
      */
     public Class< ? > toBoxedJavaClass() {
@@ -257,7 +263,7 @@ public enum Kind {
 
     /**
      * Checks whether this value type is void.
-     *
+     * 
      * @return {@code true} if this type is void
      */
     public final boolean isVoid() {
@@ -266,7 +272,7 @@ public enum Kind {
 
     /**
      * Checks whether this value type is long.
-     *
+     * 
      * @return {@code true} if this type is long
      */
     public final boolean isLong() {
@@ -275,7 +281,7 @@ public enum Kind {
 
     /**
      * Checks whether this value type is float.
-     *
+     * 
      * @return {@code true} if this type is float
      */
     public final boolean isFloat() {
@@ -284,7 +290,7 @@ public enum Kind {
 
     /**
      * Checks whether this value type is double.
-     *
+     * 
      * @return {@code true} if this type is double
      */
     public final boolean isDouble() {
@@ -293,7 +299,7 @@ public enum Kind {
 
     /**
      * Checks whether this value type is float or double.
-     *
+     * 
      * @return {@code true} if this type is float or double
      */
     public final boolean isFloatOrDouble() {
@@ -302,7 +308,7 @@ public enum Kind {
 
     /**
      * Checks whether this value type is an object type.
-     *
+     * 
      * @return {@code true} if this type is an object
      */
     public final boolean isObject() {
@@ -311,7 +317,7 @@ public enum Kind {
 
     /**
      * Checks whether this value type is an address type.
-     *
+     * 
      * @return {@code true} if this type is an address
      */
     public boolean isJsr() {
@@ -335,7 +341,7 @@ public enum Kind {
 
     /**
      * Gets a formatted string for a given value of this kind.
-     *
+     * 
      * @param value a value of this kind
      * @return a formatted string for {@code value} based on this kind
      */
@@ -396,7 +402,7 @@ public enum Kind {
 
     /**
      * The offset from the origin of an array to the first element.
-     *
+     * 
      * @return the offset in bytes
      */
     public final int getArrayBaseOffset() {
@@ -427,7 +433,7 @@ public enum Kind {
 
     /**
      * The scale used for the index when accessing elements of an array of this kind.
-     *
+     * 
      * @return the scale in order to convert the index into a byte offset
      */
     public final int getArrayIndexScale() {
@@ -458,7 +464,7 @@ public enum Kind {
 
     /**
      * Utility function for reading a value of this kind using an object and a displacement.
-     *
+     * 
      * @param object the object from which the value is read
      * @param displacement the displacement within the object in bytes
      * @return the read value encapsulated in a {@link Constant} object
@@ -493,7 +499,7 @@ public enum Kind {
 
     /**
      * The minimum value that can be represented as a value of this kind.
-     *
+     * 
      * @return the minimum value
      */
     public long getMinValue() {
@@ -518,7 +524,7 @@ public enum Kind {
 
     /**
      * The maximum value that can be represented as a value of this kind.
-     *
+     * 
      * @return the maximum value
      */
     public long getMaxValue() {
@@ -543,7 +549,7 @@ public enum Kind {
 
     /**
      * Number of bits that are necessary to represent a value of this kind.
-     *
+     * 
      * @return the number of bits
      */
     public int getBitCount() {

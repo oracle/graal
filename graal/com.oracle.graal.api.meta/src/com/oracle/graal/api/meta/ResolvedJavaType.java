@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,66 +26,104 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 /**
- * Represents a resolved Java types. Types include primitives, objects, {@code void},
- * and arrays thereof. Types, like fields and methods, are resolved through {@link ConstantPool constant pools}.
+ * Represents a resolved Java types. Types include primitives, objects, {@code void}, and arrays thereof. Types, like
+ * fields and methods, are resolved through {@link ConstantPool constant pools}.
  */
 public interface ResolvedJavaType extends JavaType {
 
     /**
+     * Represents each of the several different parts of the runtime representation of a type which compiled code may
+     * need to reference individually. These may or may not be different objects or data structures, depending on the
+     * runtime system.
+     */
+    public enum Representation {
+        /**
+         * The runtime representation of the data structure containing the static primitive fields of this type.
+         */
+        StaticPrimitiveFields,
+
+        /**
+         * The runtime representation of the data structure containing the static object fields of this type.
+         */
+        StaticObjectFields,
+
+        /**
+         * The runtime representation of the Java class object of this type.
+         */
+        JavaClass,
+
+        /**
+         * The runtime representation of the "hub" of this type--that is, the closest part of the type representation
+         * which is typically stored in the object header.
+         */
+        ObjectHub
+    }
+
+    /**
      * Gets the encoding of (that is, a constant representing the value of) the specified part of this type.
-     * @param r the part of the this type
+     *
+     * @param r the part of this type
      * @return a constant representing a reference to the specified part of this type
      */
     Constant getEncoding(Representation r);
 
     /**
      * Checks whether this type has a finalizer method.
+     *
      * @return {@code true} if this class has a finalizer
      */
     boolean hasFinalizer();
 
     /**
-     * Checks whether this type has any finalizable subclasses so far. Any decisions
-     * based on this information require the registration of a dependency, since
-     * this information may change.
+     * Checks whether this type has any finalizable subclasses so far. Any decisions based on this information require
+     * the registration of a dependency, since this information may change.
+     *
      * @return {@code true} if this class has any subclasses with finalizers
      */
     boolean hasFinalizableSubclass();
 
     /**
      * Checks whether this type is an interface.
+     *
      * @return {@code true} if this type is an interface
      */
     boolean isInterface();
 
     /**
      * Checks whether this type is an instance class.
+     *
      * @return {@code true} if this type is an instance class
      */
     boolean isInstanceClass();
 
     /**
      * Checks whether this type is an array class.
+     *
      * @return {@code true} if this type is an array class
      */
     boolean isArrayClass();
 
     /**
-     * Gets the access flags for this type. Only the flags specified in the JVM specification
-     * will be included in the returned mask. The utility methods in the {@link Modifier} class
-     * should be used to query the returned mask for the presence/absence of individual flags.
-     * @return the mask of JVM defined class access flags defined for this type
+     * Returns the Java language modifiers for this type, as an integer. The {@link Modifier} class should be used to
+     * decode the modifiers. Only the flags specified in the JVM specification will be included in the returned mask.
      */
-    int accessFlags();
+    int getModifiers();
 
     /**
      * Checks whether this type is initialized.
+     *
      * @return {@code true} if this type is initialized
      */
     boolean isInitialized();
 
     /**
+     * Initializes this type.
+     */
+    void initialize();
+
+    /**
      * Checks whether this type is a subtype of another type.
+     *
      * @param other the type to test
      * @return {@code true} if this type a subtype of the specified type
      */
@@ -93,81 +131,89 @@ public interface ResolvedJavaType extends JavaType {
 
     /**
      * Checks whether the specified object is an instance of this type.
+     *
      * @param obj the object to test
      * @return {@code true} if the object is an instance of this type
      */
     boolean isInstance(Constant obj);
 
     /**
-     * Attempts to get an exact type for this type. Final classes,
-     * arrays of final classes, and primitive types all have exact types.
+     * Attempts to get an exact type for this type. Final classes, arrays of final classes, and primitive types all have
+     * exact types.
+     *
      * @return the exact type of this type, if it exists; {@code null} otherwise
      */
-    ResolvedJavaType exactType();
+    ResolvedJavaType getExactType();
 
     /**
-     * Gets the super type of this type or {@code null} if no such type exists.
+     * Gets the superclass of this type, or {@code null} if it does not exist. This method is analogous to
+     * {@link Class#getSuperclass()}.
      */
-    ResolvedJavaType superType();
+    ResolvedJavaType getSuperclass();
 
     /**
-     * Walks the class hierarchy upwards and returns the least common type that is a super type of both
-     * the current and the given type.
-     * @return the least common type that is a super type of both the current and the given type, or null if primitive types are involved.
+     * Walks the class hierarchy upwards and returns the least common class that is a superclass of both the current and
+     * the given type.
+     *
+     * @return the least common type that is a super type of both the current and the given type, or {@code null} if
+     *         primitive types are involved.
      */
-    ResolvedJavaType leastCommonAncestor(ResolvedJavaType otherType);
+    ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType);
 
     /**
-     * Attempts to get the unique concrete subtype of this type.
+     * Attempts to get the unique concrete subclass of this type.
+     * <p>
+     * If the compiler uses the result of this method for its compilation, it must register an assumption because
+     * dynamic class loading can invalidate the result of this method.
+     *
      * @return the exact type of this type, if it exists; {@code null} otherwise
      */
-    ResolvedJavaType uniqueConcreteSubtype();
+    ResolvedJavaType findUniqueConcreteSubtype();
 
-    ResolvedJavaType componentType();
+    ResolvedJavaType getComponentType();
 
-    ResolvedJavaType arrayOf();
+    ResolvedJavaType getArrayClass();
 
     /**
-     * Resolves the method implementation for virtual dispatches on objects
-     * of this dynamic type.
+     * Resolves the method implementation for virtual dispatches on objects of this dynamic type.
+     *
      * @param method the method to select the implementation of
      * @return the method implementation that would be selected at runtime
      */
-    ResolvedJavaMethod resolveMethodImpl(ResolvedJavaMethod method);
+    ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method);
 
     /**
-     * Given an JavaMethod a, returns a concrete JavaMethod b that is the only possible
-     * unique target for a virtual call on a(). Returns {@code null} if either no
-     * such concrete method or more than one such method exists. Returns the method a
-     * if a is a concrete method that is not overridden. If the compiler uses the
-     * result of this method for its compilation, it must register an assumption
-     * because dynamic class loading can invalidate the result of this method.
+     * Given an JavaMethod a, returns a concrete JavaMethod b that is the only possible unique target for a virtual call
+     * on a(). Returns {@code null} if either no such concrete method or more than one such method exists. Returns the
+     * method a if a is a concrete method that is not overridden.
+     * <p>
+     * If the compiler uses the result of this method for its compilation, it must register an assumption because
+     * dynamic class loading can invalidate the result of this method.
      *
      * @param method the method a for which a unique concrete target is searched
-     * @return the unique concrete target or {@code null} if no such target exists
-     *         or assumptions are not supported by this runtime
+     * @return the unique concrete target or {@code null} if no such target exists or assumptions are not supported by
+     *         this runtime
      */
-    ResolvedJavaMethod uniqueConcreteMethod(ResolvedJavaMethod method);
+    ResolvedJavaMethod findUniqueConcreteMethod(ResolvedJavaMethod method);
 
     /**
-     * Returns the instance fields declared in this class sorted by field offset.
-     * A zero-length array is returned for array and primitive classes.
+     * Returns the instance fields declared in this class. A zero-length array is returned for array and primitive
+     * types.
      *
      * @return an array of instance fields
      */
-    ResolvedJavaField[] declaredFields();
+    ResolvedJavaField[] getDeclaredFields();
 
     /**
-     * Returns this type's annotation of a specified type.
+     * Returns the annotation for the specified type of this class, if such an annotation is present.
      *
      * @param annotationClass the Class object corresponding to the annotation type
-     * @return the annotation of type {@code annotationClass} for this type if present, else null
+     * @return this element's annotation for the specified annotation type if present on this class, else {@code null}
      */
     <T extends Annotation> T getAnnotation(Class<T> annotationClass);
 
     /**
-     * Returns the java.lang.Class object representing this JavaType instance or {@code null} if none exists.
-     * @return the java.lang.Class object
+     * Returns the {@link java.lang.Class} object representing this type.
      */
-    Class<?> toJava();
+    Class< ? > toJava();
 }

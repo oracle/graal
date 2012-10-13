@@ -71,7 +71,7 @@ public class GraalCompiler {
 
     public CompilationResult compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, int osrBCI, final GraphCache cache, final PhasePlan plan,
                     final OptimisticOptimizations optimisticOpts) {
-        assert (method.accessFlags() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
+        assert (method.getModifiers() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
         if (osrBCI != -1) {
             throw new BailoutException("No OSR supported");
         }
@@ -234,7 +234,7 @@ public class GraalCompiler {
     }
 
     public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method) {
-        final FrameMap frameMap = backend.newFrameMap(runtime.getRegisterConfig(method));
+        final FrameMap frameMap = backend.newFrameMap(runtime.lookupRegisterConfig(method));
         final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir);
 
         Debug.scope("LIRGen", lirGenerator, new Runnable() {

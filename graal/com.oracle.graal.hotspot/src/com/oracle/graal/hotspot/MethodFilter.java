@@ -108,19 +108,19 @@ public class MethodFilter {
 
     public boolean matches(JavaMethod o) {
         // check method name first, since MetaUtil.toJavaName is expensive
-        if (methodName != null && !methodName.matcher(o.name()).matches()) {
+        if (methodName != null && !methodName.matcher(o.getName()).matches()) {
             return false;
         }
-        if (clazz != null && !clazz.matcher(MetaUtil.toJavaName(o.holder())).matches()) {
+        if (clazz != null && !clazz.matcher(MetaUtil.toJavaName(o.getDeclaringClass())).matches()) {
             return false;
         }
         if (signature != null) {
-            Signature sig = o.signature();
-            if (sig.argumentCount(false) != signature.length) {
+            Signature sig = o.getSignature();
+            if (sig.getParameterCount(false) != signature.length) {
                 return false;
             }
             for (int i = 0; i < signature.length; i++) {
-                JavaType type = sig.argumentTypeAt(i, null);
+                JavaType type = sig.getParameterType(i, null);
                 String javaName = MetaUtil.toJavaName(type);
                 if (signature[i] != null && !signature[i].matcher(javaName).matches()) {
                     return false;

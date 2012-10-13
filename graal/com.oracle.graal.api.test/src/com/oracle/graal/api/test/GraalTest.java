@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,45 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta;
+package com.oracle.graal.api.test;
+
+import static org.junit.Assert.*;
+
+import org.junit.*;
+
+import com.oracle.graal.api.runtime.*;
 
 
-/**
- * A implementation of {@link JavaField} for an unresolved field.
- */
-public class UnresolvedField implements JavaField {
+public class GraalTest {
 
-    private final String name;
-    private final JavaType holder;
-    private final JavaType type;
-
-    public UnresolvedField(JavaType holder, String name, JavaType type) {
-        this.name = name;
-        this.type = type;
-        this.holder = holder;
+    @Test
+    public void testRuntimeAvailable() {
+        assertNotNull(Graal.getRuntime());
+        System.out.println(Graal.getRuntime().getClass());
     }
 
-    public String name() {
-        return name;
-    }
-
-    public JavaType type() {
-        return type;
-    }
-
-    public Kind kind() {
-        return type.kind();
-    }
-
-    public JavaType holder() {
-        return holder;
-    }
-
-    /**
-     * Converts this compiler interface field to a string.
-     */
-    @Override
-    public String toString() {
-        return MetaUtil.format("%H.%n [unresolved]", this);
+    @Test
+    public void testRuntimeNamed() {
+        assertNotNull(Graal.getRuntime().getName());
+        System.out.println(Graal.getRuntime().getName());
     }
 }

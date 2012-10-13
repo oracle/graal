@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -131,5 +132,13 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
 
     public JavaTypeProfile profile() {
         return profile;
+    }
+
+    @Override
+    public boolean verify() {
+        for (Node usage : usages()) {
+            assertTrue(usage instanceof IfNode || usage instanceof ConditionalNode, "unsupported usage: ", usage);
+        }
+        return super.verify();
     }
 }

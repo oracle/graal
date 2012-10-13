@@ -31,7 +31,7 @@ public abstract class HotSpotMethod extends CompilerObject implements JavaMethod
     protected String name;
 
     @Override
-    public final String name() {
+    public final String getName() {
         return name;
     }
 }

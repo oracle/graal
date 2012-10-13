@@ -285,7 +285,7 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
         if (arrayType == null) {
             return;
         }
-        ResolvedJavaType type = metaProvider.getResolvedJavaType(array.getClass()).componentType();
+        ResolvedJavaType type = metaProvider.lookupJavaType(array.getClass()).getComponentType();
         if (!type.toJava().isAssignableFrom(arrayType)) {
             throw new ArrayStoreException(arrayType.getName());
         }
@@ -293,7 +293,7 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
 
     private void checkArray(Object array, long index) {
         nullCheck(array);
-        ResolvedJavaType type = metaProvider.getResolvedJavaType(array.getClass());
+        ResolvedJavaType type = metaProvider.lookupJavaType(array.getClass());
         if (!type.isArrayClass()) {
             throw new ArrayStoreException(array.getClass().getName());
         }
@@ -308,7 +308,7 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
     }
 
     private static boolean isVolatile(ResolvedJavaField field) {
-        return Modifier.isVolatile(field.accessFlags());
+        return Modifier.isVolatile(field.getModifiers());
     }
 
     private static long resolveOffset(ResolvedJavaField field) {
@@ -318,7 +318,7 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
     private static Object resolveBase(Object base, ResolvedJavaField field) {
         Object accessorBase = base;
         if (accessorBase == null) {
-            accessorBase = field.holder().toJava();
+            accessorBase = field.getDeclaringClass().toJava();
         }
         return accessorBase;
     }

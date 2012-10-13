@@ -221,8 +221,8 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     private void enqueue(Method m) throws Throwable {
-        JavaMethod javaMethod = graalRuntime.getRuntime().getResolvedJavaMethod(m);
-        assert !Modifier.isAbstract(((HotSpotResolvedJavaMethod) javaMethod).accessFlags()) && !Modifier.isNative(((HotSpotResolvedJavaMethod) javaMethod).accessFlags()) : javaMethod;
+        JavaMethod javaMethod = graalRuntime.getRuntime().lookupJavaMethod(m);
+        assert !Modifier.isAbstract(((HotSpotResolvedJavaMethod) javaMethod).getModifiers()) && !Modifier.isNative(((HotSpotResolvedJavaMethod) javaMethod).getModifiers()) : javaMethod;
         compileMethod((HotSpotResolvedJavaMethod) javaMethod, 0, false, 10);
     }
 
@@ -408,7 +408,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             HotSpotResolvedJavaType resolved = (HotSpotResolvedJavaType) holder;
             return resolved.createField(name, type, offset, flags);
         }
-        return new UnresolvedField(holder, name, type);
+        return new HotSpotUnresolvedField(holder, name, type);
     }
 
     @Override

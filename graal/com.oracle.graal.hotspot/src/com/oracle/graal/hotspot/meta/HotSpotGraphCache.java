@@ -44,7 +44,7 @@ import com.oracle.graal.phases.*;
  * depends upon the reachability of the keys.
  *
  * Therefore the graph cache is implemented in such a way that it stores its cache entries within the {@link ResolvedJavaMethod}.
- * It uses the {@link ResolvedJavaMethod#compilerStorage()} map with the HotSpotGraphCache instance as key.
+ * It uses the {@link ResolvedJavaMethod#getCompilerStorage()} map with the HotSpotGraphCache instance as key.
  * The cached graph will be kept alive as long as the {@link ResolvedJavaMethod} is alive, but does not prevent the method, and
  * therefore the class, from being unloaded.
  *
@@ -78,9 +78,9 @@ public class HotSpotGraphCache implements GraphCache {
             if (size() > GraalOptions.GraphCacheSize) {
                 ResolvedJavaMethod method = eldest.getValue().get();
                 if (method != null) {
-                    StructuredGraph cachedGraph = (StructuredGraph) method.compilerStorage().get(HotSpotGraphCache.this);
+                    StructuredGraph cachedGraph = (StructuredGraph) method.getCompilerStorage().get(HotSpotGraphCache.this);
                     if (cachedGraph != null && cachedGraph.graphId() == eldest.getKey()) {
-                        method.compilerStorage().remove(HotSpotGraphCache.this);
+                        method.getCompilerStorage().remove(HotSpotGraphCache.this);
                     }
                 }
                 return true;
@@ -110,7 +110,7 @@ public class HotSpotGraphCache implements GraphCache {
 
     @Override
     public StructuredGraph get(ResolvedJavaMethod method) {
-        StructuredGraph result = (StructuredGraph) method.compilerStorage().get(this);
+        StructuredGraph result = (StructuredGraph) method.getCompilerStorage().get(this);
 
         if (GraalOptions.PrintGraphCache) {
             if (result == null) {
@@ -126,7 +126,7 @@ public class HotSpotGraphCache implements GraphCache {
     public void put(StructuredGraph graph) {
         assert graph.method() != null;
         cachedGraphIds.put(graph.graphId(), new WeakReference<>(graph.method()));
-        graph.method().compilerStorage().put(this, graph);
+        graph.method().getCompilerStorage().put(this, graph);
 
         if (GraalOptions.PrintGraphCache) {
             putCounter++;
@@ -138,7 +138,7 @@ public class HotSpotGraphCache implements GraphCache {
             for (WeakReference<ResolvedJavaMethod> ref : cachedGraphIds.values()) {
                 ResolvedJavaMethod method = ref.get();
                 if (method != null) {
-                    method.compilerStorage().remove(this);
+                    method.getCompilerStorage().remove(this);
                 }
             }
             cachedGraphIds.clear();
@@ -155,9 +155,9 @@ public class HotSpotGraphCache implements GraphCache {
             WeakReference<ResolvedJavaMethod> ref = cachedGraphIds.get(graphId);
             ResolvedJavaMethod method = ref == null ? null : ref.get();
             if (method != null) {
-                StructuredGraph cachedGraph = (StructuredGraph) method.compilerStorage().get(this);
+                StructuredGraph cachedGraph = (StructuredGraph) method.getCompilerStorage().get(this);
                 if (cachedGraph != null && cachedGraph.graphId() == graphId) {
-                    method.compilerStorage().remove(this);
+                    method.getCompilerStorage().remove(this);
                     if (GraalOptions.PrintGraphCache) {
                         removeHitCounter++;
                     }

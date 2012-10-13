@@ -247,7 +247,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         // Emit the prefix
         tasm.recordMark(Marks.MARK_OSR_ENTRY);
 
-        boolean isStatic = Modifier.isStatic(method.accessFlags());
+        boolean isStatic = Modifier.isStatic(method.getModifiers());
         if (!isStatic) {
             tasm.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
             CallingConvention cc = regConfig.getCallingConvention(JavaCallee, Kind.Void, new Kind[] {Kind.Object}, target, false);

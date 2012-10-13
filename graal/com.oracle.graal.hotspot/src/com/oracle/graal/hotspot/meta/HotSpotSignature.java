@@ -92,26 +92,26 @@ public class HotSpotSignature extends CompilerObject implements Signature {
     }
 
     @Override
-    public int argumentCount(boolean withReceiver) {
+    public int getParameterCount(boolean withReceiver) {
         return arguments.size() + (withReceiver ? 1 : 0);
     }
 
     @Override
-    public Kind argumentKindAt(int index) {
+    public Kind getParameterKind(int index) {
         return Kind.fromTypeString(arguments.get(index));
     }
 
     @Override
-    public int argumentSlots(boolean withReceiver) {
+    public int getParameterSlots(boolean withReceiver) {
         int argSlots = 0;
-        for (int i = 0; i < argumentCount(false); i++) {
-            argSlots += FrameStateBuilder.stackSlots(argumentKindAt(i));
+        for (int i = 0; i < getParameterCount(false); i++) {
+            argSlots += FrameStateBuilder.stackSlots(getParameterKind(i));
         }
         return argSlots + (withReceiver ? 1 : 0);
     }
 
     @Override
-    public JavaType argumentTypeAt(int index, ResolvedJavaType accessingClass) {
+    public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
         if (argumentTypes == null) {
             argumentTypes = new JavaType[arguments.size()];
         }
@@ -123,18 +123,17 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         return type;
     }
 
-    @Override
     public String asString() {
         return originalString;
     }
 
     @Override
-    public Kind returnKind() {
+    public Kind getReturnKind() {
         return Kind.fromTypeString(returnType);
     }
 
     @Override
-    public JavaType returnType(ResolvedJavaType accessingClass) {
+    public JavaType getReturnType(ResolvedJavaType accessingClass) {
         if (returnTypeCache == null) {
             returnTypeCache = HotSpotGraalRuntime.getInstance().lookupType(returnType, (HotSpotResolvedJavaType) accessingClass, false);
         }

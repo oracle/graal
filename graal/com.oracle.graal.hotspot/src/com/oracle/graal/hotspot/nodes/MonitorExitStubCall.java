@@ -47,7 +47,7 @@ public class MonitorExitStubCall extends FixedWithNextNode implements LIRGenLowe
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().getRuntimeCall(MonitorExitStubCall.MONITOREXIT);
+        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(MonitorExitStubCall.MONITOREXIT);
         gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object), gen.emitLea(gen.peekLock()));
     }
 

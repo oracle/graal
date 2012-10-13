@@ -67,7 +67,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
             }
         }
 
-        final ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(method);
+        final ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             Object result = compiledMethod.execute("1", "2", "3");
@@ -81,7 +81,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     public void test3() {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
-        final ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(method);
+        final ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             Object result = compiledMethod.executeVarargs("1", "2", "3");
@@ -95,7 +95,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     public void test4() {
         Method method = getMethod("testMethodVirtual");
         final StructuredGraph graph = parse(method);
-        final ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(method);
+        final ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             f1 = "0";
@@ -109,7 +109,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     @Test
     public void test2() throws NoSuchMethodException, SecurityException {
         Method method = CompilableObjectImpl.class.getDeclaredMethod("executeHelper", ObjectCompiler.class, String.class);
-        ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(method);
+        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
         StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
         new CanonicalizerPhase(null, runtime, null).apply(graph);

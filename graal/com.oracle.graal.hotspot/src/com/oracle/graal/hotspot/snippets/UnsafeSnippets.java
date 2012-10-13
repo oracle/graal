@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.snippets;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.snippets.*;
@@ -248,5 +249,21 @@ public class UnsafeSnippets implements SnippetsInterface {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
         putDouble(o, offset, x);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+    }
+
+    public void putInt(long address, int value) {
+        DirectStoreNode.store(address, value);
+    }
+
+    public void putLong(long address, long value) {
+        DirectStoreNode.store(address, value);
+    }
+
+    public int getInt(long address) {
+        return DirectReadNode.read(address, Kind.Int);
+    }
+
+    public long getLong(long address) {
+        return DirectReadNode.read(address, Kind.Long);
     }
 }

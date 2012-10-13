@@ -92,7 +92,7 @@ public class CallingConvention {
      * Creates a description of the registers and stack locations used by a call.
      *
      * @param stackSize amount of stack space (in bytes) required for the stack-based arguments of the call
-     * @param returnLocation the location for the return value or {@link Value#IllegalValue} if a void call
+     * @param returnLocation the location for the return value or {@link Value#ILLEGAL} if a void call
      * @param argumentLocations the ordered locations in which the arguments are placed
      */
     public CallingConvention(int stackSize, Value returnLocation, Value... argumentLocations) {
@@ -104,7 +104,7 @@ public class CallingConvention {
      *
      * @param temporaryLocations the locations used (and killed) by the call in addition to {@code arguments}
      * @param stackSize amount of stack space (in bytes) required for the stack-based arguments of the call
-     * @param returnLocation the location for the return value or {@link Value#IllegalValue} if a void call
+     * @param returnLocation the location for the return value or {@link Value#ILLEGAL} if a void call
      * @param argumentLocations the ordered locations in which the arguments are placed
      */
     public CallingConvention(Value[] temporaryLocations, int stackSize, Value returnLocation, Value... argumentLocations) {
@@ -119,7 +119,7 @@ public class CallingConvention {
     }
 
     /**
-     * Gets the location for the return value or {@link Value#IllegalValue} if a void call.
+     * Gets the location for the return value or {@link Value#ILLEGAL} if a void call.
      */
     public Value getReturn() {
         return returnLocation;
@@ -165,7 +165,7 @@ public class CallingConvention {
             sb.append(sep).append(op);
             sep = ", ";
         }
-        if (returnLocation != Value.IllegalValue) {
+        if (returnLocation != Value.ILLEGAL) {
             sb.append(" -> ").append(returnLocation);
         }
         if (temporaryLocations.length != 0) {

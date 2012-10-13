@@ -47,7 +47,7 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
 
     private static Stamp createStamp(ValueNode array, Kind kind) {
         if (kind == Kind.Object && array.objectStamp().type() != null) {
-            return StampFactory.declared(array.objectStamp().type().componentType());
+            return StampFactory.declared(array.objectStamp().type().getComponentType());
         } else {
             return StampFactory.forKind(kind);
         }

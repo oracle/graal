@@ -51,11 +51,11 @@ public class BytecodeDisassembler {
      * @return {@code null} if {@code method} has no bytecode (e.g., it is native or abstract)
      */
     public String disassemble(ResolvedJavaMethod method) {
-        if (method.code() == null) {
+        if (method.getCode() == null) {
             return null;
         }
         ConstantPool cp = method.getConstantPool();
-        BytecodeStream stream = new BytecodeStream(method.code());
+        BytecodeStream stream = new BytecodeStream(method.getCode());
         StringBuilder buf = new StringBuilder();
         int opcode = stream.currentBC();
         while (opcode != Bytecodes.END) {
@@ -81,7 +81,7 @@ public class BytecodeDisassembler {
                     case PUTFIELD       : {
                         int cpi = stream.readCPI();
                         JavaField field = cp.lookupField(cpi, opcode);
-                        String fieldDesc = field.holder().name().equals(method.holder().name()) ? MetaUtil.format("%n:%T", field) : MetaUtil.format("%H.%n:%T", field);
+                        String fieldDesc = field.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? MetaUtil.format("%n:%T", field) : MetaUtil.format("%H.%n:%T", field);
                         buf.append(String.format("#%-10d // %s", cpi, fieldDesc));
                         break;
                     }
@@ -90,14 +90,14 @@ public class BytecodeDisassembler {
                     case INVOKESTATIC   : {
                         int cpi = stream.readCPI();
                         JavaMethod callee = cp.lookupMethod(cpi, opcode);
-                        String calleeDesc = callee.holder().name().equals(method.holder().name()) ? MetaUtil.format("%n:(%P)%R", callee) : MetaUtil.format("%H.%n:(%P)%R", callee);
+                        String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? MetaUtil.format("%n:(%P)%R", callee) : MetaUtil.format("%H.%n:(%P)%R", callee);
                         buf.append(String.format("#%-10d // %s", cpi, calleeDesc));
                         break;
                     }
                     case INVOKEINTERFACE: {
                         int cpi = stream.readCPI();
                         JavaMethod callee = cp.lookupMethod(cpi, opcode);
-                        String calleeDesc = callee.holder().name().equals(method.holder().name()) ? MetaUtil.format("%n:(%P)%R", callee) : MetaUtil.format("%H.%n:(%P)%R", callee);
+                        String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? MetaUtil.format("%n:(%P)%R", callee) : MetaUtil.format("%H.%n:(%P)%R", callee);
                         buf.append(String.format("#%-10s // %s", cpi + ", " + stream.readUByte(bci + 3), calleeDesc));
                         break;
                     }

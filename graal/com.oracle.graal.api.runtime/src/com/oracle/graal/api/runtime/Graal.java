@@ -20,10 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api;
+package com.oracle.graal.api.runtime;
 
+public class Graal {
 
-public interface GraalRuntime {
-    String getName();
-    <T> T getCapability(Class<T> clazz);
+    private static GraalRuntime runtime;
+
+    private static native GraalRuntime initializeRuntime();
+
+    public static GraalRuntime getRuntime() {
+        return runtime;
+    }
+
+    static {
+        try {
+            runtime = initializeRuntime();
+        } catch (UnsatisfiedLinkError e) {
+            runtime = new GraalRuntime() {
+                @Override
+                public String getName() {
+                    return "";
+                }
+                @Override
+                public <T> T getCapability(Class<T> clazz) {
+                    return null;
+                }
+            };
+        }
+    }
+
+    public static <T> T getRequiredCapability(Class<T> clazz) {
+        T t = getRuntime().getCapability(clazz);
+        if (t == null) {
+            throw new IllegalAccessError("Runtime does not expose required capability " + clazz.getName());
+        }
+        return t;
+    }
 }

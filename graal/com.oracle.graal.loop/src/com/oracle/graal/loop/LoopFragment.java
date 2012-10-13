@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.VirtualState.VirtualClosure;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.type.*;
 
 
 public abstract class LoopFragment {
@@ -269,7 +270,7 @@ public abstract class LoopFragment {
                 final ValueNode replaceWith;
                 ValueProxyNode newVpn = getDuplicatedNode(vpn);
                 if (newVpn != null) {
-                    PhiNode phi = graph.add(vpn.type() == PhiType.Value ? new PhiNode(vpn.kind(), merge) : new PhiNode(vpn.type(), merge));
+                    PhiNode phi = graph.add(vpn.type() == PhiType.Value ? vpn.stamp() == StampFactory.virtual() ? new PhiNode(vpn.stamp(), merge) : new PhiNode(vpn.kind(), merge) : new PhiNode(vpn.type(), merge));
                     phi.addInput(vpn);
                     phi.addInput(newVpn);
                     replaceWith = phi;

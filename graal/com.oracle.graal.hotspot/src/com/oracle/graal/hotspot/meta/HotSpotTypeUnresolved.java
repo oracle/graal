@@ -78,18 +78,18 @@ public class HotSpotTypeUnresolved extends HotSpotJavaType {
     }
 
     @Override
-    public JavaType componentType() {
-        assert dimensions > 0 : "no array class" + name();
+    public JavaType getComponentType() {
+        assert dimensions > 0 : "no array class" + getName();
         return new HotSpotTypeUnresolved(simpleName, dimensions - 1);
     }
 
     @Override
-    public JavaType arrayOf() {
+    public JavaType getArrayClass() {
         return new HotSpotTypeUnresolved(simpleName, dimensions + 1);
     }
 
     @Override
-    public Kind kind() {
+    public Kind getKind() {
         return Kind.Object;
     }
 
@@ -109,14 +109,8 @@ public class HotSpotTypeUnresolved extends HotSpotJavaType {
     }
 
     @Override
-    public Kind getRepresentationKind(JavaType.Representation r) {
-        return Kind.Object;
-    }
-
-    @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
-        JavaType type = HotSpotGraalRuntime.getInstance().lookupType(name, (HotSpotResolvedJavaType) accessingClass, true);
-        return (ResolvedJavaType) type;
+        return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().lookupType(name, (HotSpotResolvedJavaType) accessingClass, true);
     }
 
     @Override

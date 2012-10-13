@@ -476,7 +476,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 if (type == null) {
                     return false;
                 }
-                return (type.name().contains(TRACE_TYPE_FILTER));
+                return (type.getName().contains(TRACE_TYPE_FILTER));
             }
         }
 
@@ -504,17 +504,17 @@ public class MonitorSnippets implements SnippetsInterface {
                 NodeIterable<MonitorCounterNode> nodes = graph.getNodes().filter(MonitorCounterNode.class);
                 if (nodes.isEmpty()) {
                     // Only insert the nodes if this is the first monitorenter being lowered.
-                    JavaType returnType = initCounter.signature().returnType(initCounter.holder());
+                    JavaType returnType = initCounter.getSignature().getReturnType(initCounter.getDeclaringClass());
                     MethodCallTargetNode callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, initCounter, new ValueNode[0], returnType));
                     InvokeNode invoke = graph.add(new InvokeNode(callTarget, 0, -1));
                     invoke.setStateAfter(graph.start().stateAfter());
                     graph.addAfterFixed(graph.start(), invoke);
-                    StructuredGraph inlineeGraph = (StructuredGraph) initCounter.compilerStorage().get(Graph.class);
+                    StructuredGraph inlineeGraph = (StructuredGraph) initCounter.getCompilerStorage().get(Graph.class);
                     InliningUtil.inline(invoke, inlineeGraph, false);
 
                     List<ReturnNode> rets = graph.getNodes().filter(ReturnNode.class).snapshot();
                     for (ReturnNode ret : rets) {
-                        returnType = checkCounter.signature().returnType(checkCounter.holder());
+                        returnType = checkCounter.getSignature().getReturnType(checkCounter.getDeclaringClass());
                         ConstantNode errMsg = ConstantNode.forObject("unbalanced monitors in " + MetaUtil.format("%H.%n(%p)", graph.method()) + ", count = %d", runtime, graph);
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter, new ValueNode[] {errMsg}, returnType));
                         invoke = graph.add(new InvokeNode(callTarget, 0, -1));
@@ -522,7 +522,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         FrameState stateAfter = new FrameState(graph.method(), FrameState.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], false, false, null);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
-                        inlineeGraph = (StructuredGraph) checkCounter.compilerStorage().get(Graph.class);
+                        inlineeGraph = (StructuredGraph) checkCounter.getCompilerStorage().get(Graph.class);
                         InliningUtil.inline(invoke, inlineeGraph, false);
                     }
                 }

@@ -165,9 +165,9 @@ public class CompilationPrinter implements Closeable {
 
             for (int i = 0; i < virtualObjects.size(); i++) {
                 VirtualObject obj = virtualObjects.get(i);
-                sb.append(obj).append(" ").append(obj.type().name()).append(" ");
-                for (int j = 0; j < obj.values().length; j++) {
-                    sb.append(valueToString(obj.values()[j], virtualObjects)).append(' ');
+                sb.append(obj).append(" ").append(obj.getType().getName()).append(" ");
+                for (int j = 0; j < obj.getValues().length; j++) {
+                    sb.append(valueToString(obj.getValues()[j], virtualObjects)).append(' ');
                 }
                 sb.append("\n");
 

@@ -333,7 +333,7 @@ final class MoveResolver {
         assert fromInterval.operand != toInterval.operand : "from and to interval equal: " + fromInterval;
         assert fromInterval.kind() == toInterval.kind();
         mappingFrom.add(fromInterval);
-        mappingFromOpr.add(Value.IllegalValue);
+        mappingFromOpr.add(Value.ILLEGAL);
         mappingTo.add(toInterval);
     }
 

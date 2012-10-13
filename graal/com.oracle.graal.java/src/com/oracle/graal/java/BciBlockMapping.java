@@ -163,9 +163,9 @@ public final class BciBlockMapping {
      */
     public BciBlockMapping(ResolvedJavaMethod method) {
         this.method = method;
-        exceptionHandlers = method.exceptionHandlers();
-        stream = new BytecodeStream(method.code());
-        this.blockMap = new Block[method.codeSize()];
+        exceptionHandlers = method.getExceptionHandlers();
+        stream = new BytecodeStream(method.getCode());
+        this.blockMap = new Block[method.getCodeSize()];
         this.blocks = new ArrayList<>();
         this.loopHeaders = new Block[64];
     }
@@ -233,7 +233,7 @@ public final class BciBlockMapping {
     private void makeExceptionEntries() {
         // start basic blocks at all exception handler blocks and mark them as exception entries
         for (ExceptionHandler h : this.exceptionHandlers) {
-            Block xhandler = makeBlock(h.handlerBCI());
+            Block xhandler = makeBlock(h.getHandlerBCI());
             xhandler.isExceptionEntry = true;
         }
     }
@@ -486,7 +486,7 @@ public final class BciBlockMapping {
 
         for (int i = exceptionHandlers.length - 1; i >= 0; i--) {
             ExceptionHandler h = exceptionHandlers[i];
-            if (h.startBCI() <= bci && bci < h.endBCI()) {
+            if (h.getStartBCI() <= bci && bci < h.getEndBCI()) {
                 if (h.isCatchAll()) {
                     // Discard all information about succeeding exception handlers, since they can never be reached.
                     lastHandler = null;
@@ -500,7 +500,7 @@ public final class BciBlockMapping {
                     curHandler.endBci = -1;
                     curHandler.deoptBci = bci;
                     curHandler.handler = h;
-                    curHandler.successors.add(blockMap[h.handlerBCI()]);
+                    curHandler.successors.add(blockMap[h.getHandlerBCI()]);
                     if (lastHandler != null) {
                         curHandler.successors.add(lastHandler);
                     }
@@ -749,10 +749,10 @@ public final class BciBlockMapping {
     }
 
     private void computeLocalLiveness(Block block) {
-        block.localsLiveIn = new BitSet(method.maxLocals());
-        block.localsLiveOut = new BitSet(method.maxLocals());
-        block.localsLiveGen = new BitSet(method.maxLocals());
-        block.localsLiveKill = new BitSet(method.maxLocals());
+        block.localsLiveIn = new BitSet(method.getMaxLocals());
+        block.localsLiveOut = new BitSet(method.getMaxLocals());
+        block.localsLiveGen = new BitSet(method.getMaxLocals());
+        block.localsLiveKill = new BitSet(method.getMaxLocals());
 
         if (block.startBci < 0 || block.endBci < 0) {
             return;
@@ -762,7 +762,7 @@ public final class BciBlockMapping {
         while (stream.currentBCI() <= block.endBci) {
             switch (stream.currentBC()) {
                 case RETURN:
-                    if (method.isConstructor() && method.holder().superType() == null) {
+                    if (method.isConstructor() && method.getDeclaringClass().getSuperclass() == null) {
                         // return from Object.init implicitly registers a finalizer
                         // for the receiver if needed, so keep it alive.
                         loadOne(block, 0);

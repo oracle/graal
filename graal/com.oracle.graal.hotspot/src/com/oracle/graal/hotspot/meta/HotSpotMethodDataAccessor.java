@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.ExceptionSeen;
 
 /**
  * Interface for accessor objects that encapsulate the logic for accessing the different kinds of data in a HotSpot methodDataOop.

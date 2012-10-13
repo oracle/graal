@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaType.*;
+import com.oracle.graal.api.meta.ResolvedJavaType.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -267,11 +267,11 @@ class EscapeAnalysisIteration {
                         Kind fieldKind;
                         if (virtual instanceof VirtualArrayNode) {
                             deferredStores.add(graph.add(new CyclicMaterializeStoreNode(materialize, valueObj.materializedValue, i)));
-                            fieldKind = ((VirtualArrayNode) virtual).componentType().kind();
+                            fieldKind = ((VirtualArrayNode) virtual).componentType().getKind();
                         } else {
                             VirtualInstanceNode instanceObject = (VirtualInstanceNode) virtual;
                             deferredStores.add(graph.add(new CyclicMaterializeStoreNode(materialize, valueObj.materializedValue, instanceObject.field(i))));
-                            fieldKind = instanceObject.field(i).type().kind();
+                            fieldKind = instanceObject.field(i).getType().getKind();
                         }
                         materialize.values().set(i, ConstantNode.defaultForKind(fieldKind, graph));
                     } else {

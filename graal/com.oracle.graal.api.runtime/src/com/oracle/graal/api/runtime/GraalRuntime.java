@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,38 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta;
+package com.oracle.graal.api.runtime;
 
 
-/**
- * A implementation of {@link JavaMethod} for an unresolved method.
- */
-public class UnresolvedMethod implements JavaMethod {
-
-    private final String name;
-    private final JavaType holder;
-    private final Signature signature;
-
-    public UnresolvedMethod(JavaType holder, String name, Signature signature) {
-        this.name = name;
-        this.holder = holder;
-        this.signature = signature;
-    }
-
-    public String name() {
-        return name;
-    }
-
-    public JavaType holder() {
-        return holder;
-    }
-
-    public Signature signature() {
-        return signature;
-    }
-
-    @Override
-    public String toString() {
-        return MetaUtil.format("%H.%n(%p) [unresolved]", this);
-    }
+public interface GraalRuntime {
+    String getName();
+    <T> T getCapability(Class<T> clazz);
 }

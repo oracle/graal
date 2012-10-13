@@ -59,7 +59,7 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
         printProperty("name", name);
         endProperties();
         beginMethod(name, shortName, bci);
-        if (method != null && method.code() != null) {
+        if (method != null && method.getCode() != null) {
             printBytecodes(new BytecodeDisassembler(false).disassemble(method));
         }
         endMethod();

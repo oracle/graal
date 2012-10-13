@@ -23,8 +23,7 @@
 
 /**
  * Package that defines the interface between a runtime and a Java application that wants to access meta information. The runtime
- * provides an implementation of the {@link com.oracle.graal.api.meta.MetaAccessProvider} interface. The method
- * {@link com.oracle.graal.api.meta.MetaAccessProvider#getResolvedJavaType(Class)} allows to get access to the
- * {@link com.oracle.graal.api.meta.ResolvedJavaType} corresponding to a given {@link java.lang.Class}.
+ * provides an implementation of the {@link com.oracle.graal.api.meta.MetaAccessProvider} interface.
  */
 package com.oracle.graal.api.meta;
+

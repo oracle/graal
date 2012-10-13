@@ -45,7 +45,7 @@ public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowera
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().getRuntimeCall(VerifyOopStubCall.VERIFY_OOP);
+        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(VerifyOopStubCall.VERIFY_OOP);
         gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object));
     }
 

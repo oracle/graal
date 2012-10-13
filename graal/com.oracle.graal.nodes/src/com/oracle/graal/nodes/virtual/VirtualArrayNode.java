@@ -40,7 +40,7 @@ public class VirtualArrayNode extends VirtualObjectNode {
 
     @Override
     public ResolvedJavaType type() {
-        return componentType.arrayOf();
+        return componentType.getArrayClass();
     }
 
     public ResolvedJavaType componentType() {
@@ -60,7 +60,7 @@ public class VirtualArrayNode extends VirtualObjectNode {
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
-            return super.toString(Verbosity.Name) + " " + componentType.name() + "[" + length + "]";
+            return super.toString(Verbosity.Name) + " " + componentType.getName() + "[" + length + "]";
         } else {
             return super.toString(verbosity);
         }

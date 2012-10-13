@@ -65,7 +65,7 @@ public class NewMultiArrayTest extends GraalCompilerTest {
     }
 
     private static int rank(ResolvedJavaType type) {
-        String name = type.name();
+        String name = type.getName();
         int dims = 0;
         while (dims < name.length() && name.charAt(dims) == '[') {
             dims++;
@@ -116,11 +116,11 @@ public class NewMultiArrayTest extends GraalCompilerTest {
     @Test
     public void test1() {
         for (Class clazz : new Class[] {byte.class, char.class, short.class, int.class, float.class, long.class, double.class, String.class}) {
-            bottomType = runtime.getResolvedJavaType(clazz);
+            bottomType = runtime.lookupJavaType(clazz);
             arrayType = bottomType;
             for (int rank : new int[] {1, 2, 10, 50, 100, 200, 254, 255}) {
                 while (rank(arrayType) != rank) {
-                    arrayType = arrayType.arrayOf();
+                    arrayType = arrayType.getArrayClass();
                 }
 
                 dimensions = new int[rank];

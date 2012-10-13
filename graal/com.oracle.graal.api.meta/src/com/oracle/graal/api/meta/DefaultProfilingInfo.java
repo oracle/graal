@@ -22,16 +22,13 @@
  */
 package com.oracle.graal.api.meta;
 
-
 /**
  * An implementation of {@link ProfilingInfo} that can used in the absence of real profile information.
  */
 public final class DefaultProfilingInfo implements ProfilingInfo {
-    private static final ProfilingInfo[] NO_PROFILING_INFO = new ProfilingInfo[] {
-        new DefaultProfilingInfo(ExceptionSeen.TRUE),
-        new DefaultProfilingInfo(ExceptionSeen.FALSE),
-        new DefaultProfilingInfo(ExceptionSeen.NOT_SUPPORTED)
-    };
+
+    private static final ProfilingInfo[] NO_PROFILING_INFO = new ProfilingInfo[]{new DefaultProfilingInfo(ExceptionSeen.TRUE), new DefaultProfilingInfo(ExceptionSeen.FALSE),
+                    new DefaultProfilingInfo(ExceptionSeen.NOT_SUPPORTED)};
 
     private final ExceptionSeen exceptionSeen;
 
@@ -40,7 +37,7 @@ public final class DefaultProfilingInfo implements ProfilingInfo {
     }
 
     @Override
-    public int codeSize() {
+    public int getCodeSize() {
         return 0;
     }
 

@@ -25,51 +25,45 @@ package com.oracle.graal.api.meta;
 import java.lang.reflect.*;
 
 /**
- * Interface implemented by the runtime to allow access to its meta data.
- *
+ * Interface implemented by the runtime to allow access to its metadata.
  */
 public interface MetaAccessProvider {
 
     /**
      * Returns the resolved Java type representing a given Java class.
-     *
+     * 
      * @param clazz the Java class object
      * @return the resolved Java type object
      */
-    ResolvedJavaType getResolvedJavaType(Class< ? > clazz);
-
-    /**
-     * Returns the JavaType object representing the base type for the given kind.
-     */
-    ResolvedJavaType getResolvedJavaType(Kind kind);
-
-    /**
-     * Returns the type of the given constant object.
-     *
-     * @return {@code null} if {@code constant.isNull() || !constant.kind.isObject()}
-     */
-    ResolvedJavaType getTypeOf(Constant constant);
-
-    /**
-     * Used by the canonicalizer to compare objects, since a given runtime might not want to expose the real objects to
-     * the compiler.
-     *
-     * @return true if the two parameters represent the same runtime object, false otherwise
-     */
-    boolean areConstantObjectsEqual(Constant x, Constant y);
+    ResolvedJavaType lookupJavaType(Class< ? > clazz);
 
     /**
      * Provides the {@link ResolvedJavaMethod} for a {@link Method} obtained via reflection.
      */
-    ResolvedJavaMethod getResolvedJavaMethod(Method reflectionMethod);
+    ResolvedJavaMethod lookupJavaMethod(Method reflectionMethod);
 
     /**
      * Provides the {@link ResolvedJavaField} for a {@link Field} obtained via reflection.
      */
-    ResolvedJavaField getResolvedJavaField(Field reflectionField);
+    ResolvedJavaField lookupJavaField(Field reflectionField);
 
     /**
-     * Gets the length of the array that is wrapped in a Constant object.
+     * Returns the resolved Java type of the given {@link Constant} object.
+     * 
+     * @return {@code null} if {@code constant.isNull() || !constant.kind.isObject()}
      */
-    int getArrayLength(Constant array);
+    ResolvedJavaType lookupJavaType(Constant constant);
+
+    /**
+     * Compares two object constants. Since a given runtime might not want to expose the real objects to the compiler,
+     * the {@link Constant#asObject()} cannot be compared directly.
+     * 
+     * @return {@code true} if the two parameters represent the same runtime object, {@code false} otherwise
+     */
+    boolean constantEquals(Constant x, Constant y);
+
+    /**
+     * Returns the length of an array that is wrapped in a {@link Constant} object.
+     */
+    int lookupArrayLength(Constant array);
 }

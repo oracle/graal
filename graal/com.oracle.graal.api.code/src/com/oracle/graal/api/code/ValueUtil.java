@@ -30,7 +30,7 @@ import com.oracle.graal.api.meta.*;
 public final class ValueUtil {
     public static boolean isIllegal(Value value) {
         assert value != null;
-        return value == Value.IllegalValue;
+        return value == Value.ILLEGAL;
     }
 
     public static boolean isLegal(Value value) {

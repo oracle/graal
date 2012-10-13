@@ -190,7 +190,7 @@ public enum AMD64Arithmetic {
             assert isConstant(y) || asRegister(y) == AMD64.rcx;
             assert differentRegisters(result, y) || sameRegister(x, y);
             verifyKind(opcode, result, x, x);
-            assert y.getKind().stackKind() == Kind.Int;
+            assert y.getKind().getStackKind() == Kind.Int;
         }
     }
 
@@ -484,7 +484,7 @@ public enum AMD64Arithmetic {
 
 
     private static void verifyKind(AMD64Arithmetic opcode, Value result, Value x, Value y) {
-        assert (opcode.name().startsWith("I") && result.getKind() == Kind.Int && x.getKind().stackKind() == Kind.Int && y.getKind().stackKind() == Kind.Int)
+        assert (opcode.name().startsWith("I") && result.getKind() == Kind.Int && x.getKind().getStackKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int)
             || (opcode.name().startsWith("L") && result.getKind() == Kind.Long && x.getKind() == Kind.Long && y.getKind() == Kind.Long)
             || (opcode.name().startsWith("F") && result.getKind() == Kind.Float && x.getKind() == Kind.Float && y.getKind() == Kind.Float)
             || (opcode.name().startsWith("D") && result.getKind() == Kind.Double && x.getKind() == Kind.Double && y.getKind() == Kind.Double);

@@ -47,6 +47,9 @@ public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
     public static native void store(long address, long value);
 
     @NodeIntrinsic
+    public static native void store(long address, int value);
+
+    @NodeIntrinsic
     public static native void store(long address, boolean value);
 
     @Override

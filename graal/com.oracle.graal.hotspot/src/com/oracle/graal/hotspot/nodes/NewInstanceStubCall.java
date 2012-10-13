@@ -60,7 +60,7 @@ public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowe
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().getRuntimeCall(NewInstanceStubCall.NEW_INSTANCE);
+        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(NewInstanceStubCall.NEW_INSTANCE);
         Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub));
         gen.setResult(this, result);
     }

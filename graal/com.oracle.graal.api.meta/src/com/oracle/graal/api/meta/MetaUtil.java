@@ -29,6 +29,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
+import com.oracle.graal.api.meta.ProfilingInfo.ExceptionSeen;
 
 /**
  * Miscellaneous collection of utility methods used by {@code com.oracle.graal.api.meta} and its clients.
@@ -38,7 +39,7 @@ public class MetaUtil {
     /**
      * Extends the functionality of {@link Class#getSimpleName()} to include a non-empty string for anonymous and local
      * classes.
-     *
+     * 
      * @param clazz the class for which the simple name is being requested
      * @param withEnclosingClass specifies if the returned name should be qualified with the name(s) of the enclosing
      *            class/classes of {@code clazz} (if any). This option is ignored if {@code clazz} denotes an anonymous
@@ -71,11 +72,10 @@ public class MetaUtil {
         return name.substring(index + 1);
     }
 
-
     /**
      * Converts a given type to its Java programming language name. The following are examples of strings returned by
      * this method:
-     *
+     * 
      * <pre>
      *     qualified == true:
      *         java.lang.Object
@@ -86,34 +86,34 @@ public class MetaUtil {
      *         int
      *         boolean[][]
      * </pre>
-     *
+     * 
      * @param type the type to be converted to a Java name
      * @param qualified specifies if the package prefix of the type should be included in the returned name
      * @return the Java name corresponding to {@code type}
      */
     public static String toJavaName(JavaType type, boolean qualified) {
-        Kind kind = type.kind();
+        Kind kind = type.getKind();
         if (kind.isObject()) {
-            return internalNameToJava(type.name(), qualified);
+            return internalNameToJava(type.getName(), qualified);
         }
-        return type.kind().javaName;
+        return type.getKind().getJavaName();
     }
 
     /**
      * Converts a given type to its Java programming language name. The following are examples of strings returned by
      * this method:
-     *
+     * 
      * <pre>
      *      java.lang.Object
      *      int
      *      boolean[][]
      * </pre>
-     *
+     * 
      * @param type the type to be converted to a Java name
      * @return the Java name corresponding to {@code type}
      */
     public static String toJavaName(JavaType type) {
-        return (type == null) ? null : internalNameToJava(type.name(), true);
+        return (type == null) ? null : internalNameToJava(type.getName(), true);
     }
 
     private static String internalNameToJava(String name, boolean qualified) {
@@ -135,17 +135,16 @@ public class MetaUtil {
                 if (name.length() != 1) {
                     throw new IllegalArgumentException("Illegal internal name: " + name);
                 }
-                return Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0)).javaName;
+                return Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0)).getJavaName();
         }
     }
-
 
     /**
      * Gets a string for a given method formatted according to a given format specification. A format specification is
      * composed of characters that are to be copied verbatim to the result and specifiers that denote an attribute of
      * the method that is to be copied to the result. A specifier is a single character preceded by a '%' character. The
      * accepted specifiers and the method attributes they denote are described below:
-     *
+     * 
      * <pre>
      *     Specifier | Description                                          | Example(s)
      *     ----------+------------------------------------------------------------------------------------------
@@ -159,7 +158,7 @@ public class MetaUtil {
      *     'f'       | Indicator if method is unresolved, static or virtual | "unresolved" "static" "virtual"
      *     '%'       | A '%' character                                      | "%"
      * </pre>
-     *
+     * 
      * @param format a format specification
      * @param method the method to be formatted
      * @return the result of formatting this method according to {@code format}
@@ -183,20 +182,20 @@ public class MetaUtil {
                         // fall through
                     case 'r': {
                         if (sig == null) {
-                            sig = method.signature();
+                            sig = method.getSignature();
                         }
-                        sb.append(toJavaName(sig.returnType(null), qualified));
+                        sb.append(toJavaName(sig.getReturnType(null), qualified));
                         break;
                     }
                     case 'H':
                         qualified = true;
                         // fall through
                     case 'h': {
-                        sb.append(toJavaName(method.holder(), qualified));
+                        sb.append(toJavaName(method.getDeclaringClass(), qualified));
                         break;
                     }
                     case 'n': {
-                        sb.append(method.name());
+                        sb.append(method.getName());
                         break;
                     }
                     case 'P':
@@ -204,18 +203,18 @@ public class MetaUtil {
                         // fall through
                     case 'p': {
                         if (sig == null) {
-                            sig = method.signature();
+                            sig = method.getSignature();
                         }
-                        for (int i = 0; i < sig.argumentCount(false); i++) {
+                        for (int i = 0; i < sig.getParameterCount(false); i++) {
                             if (i != 0) {
                                 sb.append(", ");
                             }
-                            sb.append(toJavaName(sig.argumentTypeAt(i, null), qualified));
+                            sb.append(toJavaName(sig.getParameterType(i, null), qualified));
                         }
                         break;
                     }
                     case 'f': {
-                        sb.append(!(method instanceof ResolvedJavaMethod) ? "unresolved" : isStatic(((ResolvedJavaMethod) method).accessFlags()) ? "static" : "virtual");
+                        sb.append(!(method instanceof ResolvedJavaMethod) ? "unresolved" : isStatic(((ResolvedJavaMethod) method).getModifiers()) ? "static" : "virtual");
                         break;
                     }
                     case '%': {
@@ -233,13 +232,12 @@ public class MetaUtil {
         return sb.toString();
     }
 
-
     /**
      * Gets a string for a given field formatted according to a given format specification. A format specification is
      * composed of characters that are to be copied verbatim to the result and specifiers that denote an attribute of
      * the field that is to be copied to the result. A specifier is a single character preceded by a '%' character. The
      * accepted specifiers and the field attributes they denote are described below:
-     *
+     * 
      * <pre>
      *     Specifier | Description                                          | Example(s)
      *     ----------+------------------------------------------------------------------------------------------
@@ -251,7 +249,7 @@ public class MetaUtil {
      *     'f'       | Indicator if field is unresolved, static or instance | "unresolved" "static" "instance"
      *     '%'       | A '%' character                                      | "%"
      * </pre>
-     *
+     * 
      * @param format a format specification
      * @param field the field to be formatted
      * @return the result of formatting this field according to {@code format}
@@ -260,7 +258,7 @@ public class MetaUtil {
     public static String format(String format, JavaField field) throws IllegalFormatException {
         final StringBuilder sb = new StringBuilder();
         int index = 0;
-        JavaType type = field.type();
+        JavaType type = field.getType();
         while (index < format.length()) {
             final char ch = format.charAt(index++);
             if (ch == '%') {
@@ -281,15 +279,15 @@ public class MetaUtil {
                         qualified = true;
                         // fall through
                     case 'h': {
-                        sb.append(toJavaName(field.holder(), qualified));
+                        sb.append(toJavaName(field.getDeclaringClass(), qualified));
                         break;
                     }
                     case 'n': {
-                        sb.append(field.name());
+                        sb.append(field.getName());
                         break;
                     }
                     case 'f': {
-                        sb.append(!(field instanceof ResolvedJavaField) ? "unresolved" : isStatic(((ResolvedJavaField) field).accessFlags()) ? "static" : "instance");
+                        sb.append(!(field instanceof ResolvedJavaField) ? "unresolved" : isStatic(((ResolvedJavaField) field).getModifiers()) ? "static" : "instance");
                         break;
                     }
                     case '%': {
@@ -307,10 +305,9 @@ public class MetaUtil {
         return sb.toString();
     }
 
-
     /**
      * Gets the annotations of a particular type for the formal parameters of a given method.
-     *
+     * 
      * @param annotationClass the Class object corresponding to the annotation type
      * @param method the method for which a parameter annotations are being requested
      * @return the annotation of type {@code annotationClass} (if any) for each formal parameter present
@@ -331,7 +328,7 @@ public class MetaUtil {
 
     /**
      * Gets the annotation of a particular type for a formal parameter of a given method.
-     *
+     * 
      * @param annotationClass the Class object corresponding to the annotation type
      * @param parameterIndex the index of a formal parameter of {@code method}
      * @param method the method for which a parameter annotation is being requested
@@ -351,39 +348,38 @@ public class MetaUtil {
     }
 
     /**
-     * Convenient shortcut for calling {@link #appendLocation(StringBuilder, ResolvedJavaMethod, int)} without having to supply a
-     * a {@link StringBuilder} instance and convert the result to a string.
+     * Convenient shortcut for calling {@link #appendLocation(StringBuilder, ResolvedJavaMethod, int)} without having to
+     * supply a a {@link StringBuilder} instance and convert the result to a string.
      */
     public static String toLocation(ResolvedJavaMethod method, int bci) {
         return appendLocation(new StringBuilder(), method, bci).toString();
     }
 
-
     /**
      * Appends a string representation of a location specified by a given method and bci to a given
      * {@link StringBuilder}. If a stack trace element with a non-null file name and non-negative line number is
-     * {@linkplain ResolvedJavaMethod#toStackTraceElement(int) available} for the given method, then the string returned is the
-     * {@link StackTraceElement#toString()} value of the stack trace element, suffixed by the bci location. For example:
-     *
+     * {@linkplain ResolvedJavaMethod#asStackTraceElement(int) available} for the given method, then the string returned
+     * is the {@link StackTraceElement#toString()} value of the stack trace element, suffixed by the bci location. For
+     * example:
+     * 
      * <pre>
      *     java.lang.String.valueOf(String.java:2930) [bci: 12]
      * </pre>
-     *
-     * Otherwise, the string returned is the value of applying {@link #format(String, JavaMethod)}
-     * with the format string {@code "%H.%n(%p)"}, suffixed by the bci location.
-     * For example:
-     *
+     * 
+     * Otherwise, the string returned is the value of applying {@link #format(String, JavaMethod)} with the format
+     * string {@code "%H.%n(%p)"}, suffixed by the bci location. For example:
+     * 
      * <pre>
      *     java.lang.String.valueOf(int) [bci: 12]
      * </pre>
-     *
+     * 
      * @param sb
      * @param method
      * @param bci
      */
     public static StringBuilder appendLocation(StringBuilder sb, ResolvedJavaMethod method, int bci) {
         if (method != null) {
-            StackTraceElement ste = method.toStackTraceElement(bci);
+            StackTraceElement ste = method.asStackTraceElement(bci);
             if (ste.getFileName() != null && ste.getLineNumber() > 0) {
                 sb.append(ste);
             } else {
@@ -395,15 +391,13 @@ public class MetaUtil {
         return sb.append(" [bci: ").append(bci).append(']');
     }
 
-
     public static Kind[] signatureToKinds(ResolvedJavaMethod method) {
-        Kind receiver = isStatic(method.accessFlags()) ? null : method.holder().kind();
-        return signatureToKinds(method.signature(), receiver);
+        Kind receiver = isStatic(method.getModifiers()) ? null : method.getDeclaringClass().getKind();
+        return signatureToKinds(method.getSignature(), receiver);
     }
 
-
     public static Kind[] signatureToKinds(Signature signature, Kind receiverKind) {
-        int args = signature.argumentCount(false);
+        int args = signature.getParameterCount(false);
         Kind[] result;
         int i = 0;
         if (receiverKind != null) {
@@ -414,25 +408,23 @@ public class MetaUtil {
             result = new Kind[args];
         }
         for (int j = 0; j < args; j++) {
-            result[i + j] = signature.argumentKindAt(j);
+            result[i + j] = signature.getParameterKind(j);
         }
         return result;
     }
-
 
     public static Class< ? >[] signatureToTypes(Signature signature, ResolvedJavaType accessingClass) {
-        int count = signature.argumentCount(false);
+        int count = signature.getParameterCount(false);
         Class< ? >[] result = new Class< ? >[count];
         for (int i = 0; i < result.length; ++i) {
-            result[i] = signature.argumentTypeAt(i, accessingClass).resolve(accessingClass).toJava();
+            result[i] = signature.getParameterType(i, accessingClass).resolve(accessingClass).toJava();
         }
         return result;
     }
-
 
     /**
      * Formats some profiling information associated as a string.
-     *
+     * 
      * @param info the profiling info to format
      * @param method an optional method that augments the profile string returned
      * @param sep the separator to use for each separate profile record
@@ -440,10 +432,9 @@ public class MetaUtil {
     public static String profileToString(ProfilingInfo info, ResolvedJavaMethod method, String sep) {
         StringBuilder buf = new StringBuilder(100);
         if (method != null) {
-            buf.append(String.format("canBeStaticallyBound: %b%s", method.canBeStaticallyBound(), sep)).
-            append(String.format("invocationCount: %d%s", method.invocationCount(), sep));
+            buf.append(String.format("canBeStaticallyBound: %b%s", method.canBeStaticallyBound(), sep));
         }
-        for (int i = 0; i < info.codeSize(); i++) {
+        for (int i = 0; i < info.getCodeSize(); i++) {
             if (info.getExecutionCount(i) != -1) {
                 buf.append(String.format("executionCount@%d: %d%s", i, info.getExecutionCount(i), sep));
             }
@@ -472,7 +463,7 @@ public class MetaUtil {
                     buf.append(String.format("types@%d:", i));
                     for (int j = 0; j < ptypes.length; j++) {
                         ProfiledType ptype = ptypes[j];
-                        buf.append(String.format(" %.3f (%s)%s", ptype.probability, ptype.type, sep));
+                        buf.append(String.format(" %.3f (%s)%s", ptype.getProbability(), ptype.getType(), sep));
                     }
                     buf.append(String.format(" %.3f <not recorded>%s", typeProfile.getNotRecordedProbability(), sep));
                 }
@@ -480,7 +471,7 @@ public class MetaUtil {
         }
 
         boolean firstDeoptReason = true;
-        for (DeoptimizationReason reason: DeoptimizationReason.values()) {
+        for (DeoptimizationReason reason : DeoptimizationReason.values()) {
             int count = info.getDeoptimizationCount(reason);
             if (count > 0) {
                 if (firstDeoptReason) {
@@ -498,17 +489,15 @@ public class MetaUtil {
         return s.substring(0, s.length() - sep.length());
     }
 
-
     /**
      * Converts a Java source-language class name into the internal form.
-     *
+     * 
      * @param className the class name
      * @return the internal name form of the class name
      */
     public static String toInternalName(String className) {
         return "L" + className.replace('.', '/') + ";";
     }
-
 
     /**
      * Prepends the String {@code indentation} to every line in String {@code lines}, including a possibly non-empty

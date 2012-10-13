@@ -46,7 +46,7 @@ public class HotSpotCompiledMethod extends CompilerObject implements InstalledCo
     }
 
     @Override
-    public ResolvedJavaMethod method() {
+    public ResolvedJavaMethod getMethod() {
         return method;
     }
 
@@ -62,10 +62,10 @@ public class HotSpotCompiledMethod extends CompilerObject implements InstalledCo
 
     @Override
     public Object execute(Object arg1, Object arg2, Object arg3) {
-        assert method.signature().argumentCount(!Modifier.isStatic(method.accessFlags())) == 3;
-        assert method.signature().argumentKindAt(0) == Kind.Object;
-        assert method.signature().argumentKindAt(1) == Kind.Object;
-        assert !Modifier.isStatic(method.accessFlags()) || method.signature().argumentKindAt(2) == Kind.Object;
+        assert method.getSignature().getParameterCount(!Modifier.isStatic(method.getModifiers())) == 3;
+        assert method.getSignature().getParameterKind(0) == Kind.Object;
+        assert method.getSignature().getParameterKind(1) == Kind.Object;
+        assert !Modifier.isStatic(method.getModifiers()) || method.getSignature().getParameterKind(2) == Kind.Object;
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethod(this, arg1, arg2, arg3);
     }
 

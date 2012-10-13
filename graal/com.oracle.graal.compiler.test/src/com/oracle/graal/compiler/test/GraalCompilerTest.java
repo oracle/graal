@@ -28,9 +28,9 @@ import java.util.concurrent.*;
 
 import junit.framework.*;
 
-import com.oracle.graal.api.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.*;
+import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.schedule.*;
 
 /**
@@ -232,7 +232,7 @@ public abstract class GraalCompilerTest {
             }
         }
 
-        InstalledCode compiledMethod = getCode(runtime.getResolvedJavaMethod(method), parse(method));
+        InstalledCode compiledMethod = getCode(runtime.lookupJavaMethod(method), parse(method));
         try {
             return new Result(compiledMethod.executeVarargs(executeArgs), null);
         } catch (Throwable e) {
@@ -331,7 +331,7 @@ public abstract class GraalCompilerTest {
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parse(Method m) {
-        ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(m);
+        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(m);
         StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;
@@ -341,7 +341,7 @@ public abstract class GraalCompilerTest {
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parseProfiled(Method m) {
-        ResolvedJavaMethod javaMethod = runtime.getResolvedJavaMethod(m);
+        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(m);
         StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;
