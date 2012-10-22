@@ -25,6 +25,7 @@ import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.*;
 import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.Templates.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.Snippet.Varargs.*;
+import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.snippets.nodes.JumpNode.*;
 
@@ -360,7 +361,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
                     }
 
                     SnippetTemplate template = cache.get(key);
-                    template.instantiate(runtime, duplicate, tool.lastFixedNode(), arguments);
+                    template.instantiate(runtime, duplicate, DEFAULT_REPLACER, tool.lastFixedNode(), arguments);
                 } else {
                     throw new GraalInternalError("Unexpected usage of %s: %s", instanceOf, usage);
                 }

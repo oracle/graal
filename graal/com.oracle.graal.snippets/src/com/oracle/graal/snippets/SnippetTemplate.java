@@ -54,7 +54,7 @@ public class SnippetTemplate {
 
     /**
      * A snippet template key encapsulates the method from which a snippet was built
-     * and the arguments used to specialized the snippet.
+     * and the arguments used to specialize the snippet.
      *
      * @see Cache
      */
@@ -512,15 +512,43 @@ public class SnippetTemplate {
     }
 
     /**
+     * Logic for replacing a snippet-lowered node at its usages with the return value
+     * of the snippet. An alternative to the
+     * {@linkplain SnippetTemplate#DEFAULT_REPLACER default} replacement logic can be used to
+     * handle mismatches between the stamp of the node being lowered and the
+     * stamp of the snippet's return value.
+     */
+    public interface UsageReplacer {
+        /**
+         * Replaces all usages of {@code oldNode} with direct or indirect usages of {@code newNode}.
+         */
+        void replace(ValueNode oldNode, ValueNode newNode);
+    }
+
+    /**
+     * Represents the default {@link UsageReplacer usage replacer} logic which
+     * simply delegates to {@link Node#replaceAtUsages(Node)}.
+     */
+    public static final UsageReplacer DEFAULT_REPLACER = new UsageReplacer() {
+        @Override
+        public void replace(ValueNode oldNode, ValueNode newNode) {
+            oldNode.replaceAtUsages(newNode);
+        }
+    };
+
+    /**
      * Replaces a given fixed node with this specialized snippet.
      *
      * @param runtime
      * @param replacee the node that will be replaced
+     * @param replacer object that replaces the usages of {@code replacee}
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      * @return the map of duplicated nodes (original -> duplicate)
      */
     public Map<Node, Node> instantiate(MetaAccessProvider runtime,
-                    FixedWithNextNode replacee, SnippetTemplate.Arguments args) {
+                    FixedWithNextNode replacee,
+                    UsageReplacer replacer,
+                    SnippetTemplate.Arguments args) {
 
         // Inline the snippet nodes, replacing parameters with the given args in the process
         String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
@@ -549,15 +577,15 @@ public class SnippetTemplate {
         }
 
         // Replace all usages of the replacee with the value returned by the snippet
-        Node returnValue = null;
+        ValueNode returnValue = null;
         if (returnNode != null) {
             if (returnNode.result() instanceof LocalNode) {
-                returnValue = replacements.get(returnNode.result());
+                returnValue = (ValueNode) replacements.get(returnNode.result());
             } else {
-                returnValue = duplicates.get(returnNode.result());
+                returnValue = (ValueNode) duplicates.get(returnNode.result());
             }
             assert returnValue != null || replacee.usages().isEmpty();
-            replacee.replaceAtUsages(returnValue);
+            replacer.replace(replacee, returnValue);
 
             Node returnDuplicate = duplicates.get(returnNode);
             returnDuplicate.clearInputs();
@@ -578,11 +606,13 @@ public class SnippetTemplate {
      *
      * @param runtime
      * @param replacee the node that will be replaced
+     * @param replacer object that replaces the usages of {@code replacee}
      * @param lastFixedNode the CFG of the snippet is inserted after this node
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      */
     public void instantiate(MetaAccessProvider runtime,
                     FloatingNode replacee,
+                    UsageReplacer replacer,
                     FixedWithNextNode lastFixedNode, SnippetTemplate.Arguments args) {
 
         // Inline the snippet nodes, replacing parameters with the given args in the process
@@ -613,14 +643,14 @@ public class SnippetTemplate {
 
         // Replace all usages of the replacee with the value returned by the snippet
         assert returnNode != null : replaceeGraph;
-        Node returnValue = null;
+        ValueNode returnValue = null;
         if (returnNode.result() instanceof LocalNode) {
-            returnValue = replacements.get(returnNode.result());
+            returnValue = (ValueNode) replacements.get(returnNode.result());
         } else {
-            returnValue = duplicates.get(returnNode.result());
+            returnValue = (ValueNode) duplicates.get(returnNode.result());
         }
         assert returnValue != null || replacee.usages().isEmpty();
-        replacee.replaceAtUsages(returnValue);
+        replacer.replace(replacee, returnValue);
 
         Node returnDuplicate = duplicates.get(returnNode);
         returnDuplicate.clearInputs();

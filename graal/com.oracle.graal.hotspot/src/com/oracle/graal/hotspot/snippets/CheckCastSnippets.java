@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.Snippet.Varargs.*;
+import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 
 import com.oracle.graal.api.code.*;
@@ -279,7 +280,7 @@ public class CheckCastSnippets implements SnippetsInterface {
 
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, arguments);
-            template.instantiate(runtime, checkcast, arguments);
+            template.instantiate(runtime, checkcast, DEFAULT_REPLACER, arguments);
         }
 
         static HotSpotKlassOop[] createHints(TypeCheckHints hints) {

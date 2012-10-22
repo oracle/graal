@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.api.code.UnsignedMath.*;
 import static com.oracle.graal.hotspot.nodes.CastFromHub.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
+import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.snippets.nodes.DirectObjectStoreNode.*;
 import static com.oracle.graal.snippets.nodes.ExplodeLoopNode.*;
@@ -319,7 +320,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 Arguments arguments = new Arguments().add("length", lengthNode);
                 SnippetTemplate template = cache.get(key);
                 Debug.log("Lowering allocateArrayAndInitialize in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, arguments);
-                template.instantiate(runtime, newArrayNode, arguments);
+                template.instantiate(runtime, newArrayNode, DEFAULT_REPLACER, arguments);
             }
         }
 
@@ -331,7 +332,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             Arguments arguments = arguments("size", size);
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering fastAllocate in %s: node=%s, template=%s, arguments=%s", graph, tlabAllocateNode, template, arguments);
-            template.instantiate(runtime, tlabAllocateNode, arguments);
+            template.instantiate(runtime, tlabAllocateNode, DEFAULT_REPLACER, arguments);
         }
 
         @SuppressWarnings("unused")
@@ -348,7 +349,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord());
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering initializeObject in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, arguments);
-            template.instantiate(runtime, initializeNode, arguments);
+            template.instantiate(runtime, initializeNode, DEFAULT_REPLACER, arguments);
         }
 
         @SuppressWarnings("unused")
@@ -365,7 +366,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord()).add("size", initializeNode.size()).add("length", initializeNode.length());
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering initializeObjectArray in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, arguments);
-            template.instantiate(runtime, initializeNode, arguments);
+            template.instantiate(runtime, initializeNode, DEFAULT_REPLACER, arguments);
         }
 
         @SuppressWarnings("unused")
@@ -381,7 +382,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             Key key = new Key(newmultiarray).add("dimensions", Varargs.vargargs(int.class, rank)).add("rank", rank);
             Arguments arguments = arguments("dimensions", dims).add("hub", hub);
             SnippetTemplate template = cache.get(key);
-            template.instantiate(runtime, newmultiarrayNode, arguments);
+            template.instantiate(runtime, newmultiarrayNode, DEFAULT_REPLACER, arguments);
         }
     }
 

@@ -27,6 +27,7 @@ import static com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode.*;
 import static com.oracle.graal.hotspot.nodes.EndLockScopeNode.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
+import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.nodes.DirectObjectStoreNode.*;
 
 import java.util.*;
@@ -431,7 +432,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 arguments.add("object", monitorenterNode.object());
             }
             SnippetTemplate template = cache.get(key);
-            Map<Node, Node> nodes = template.instantiate(runtime, monitorenterNode, arguments);
+            Map<Node, Node> nodes = template.instantiate(runtime, monitorenterNode, DEFAULT_REPLACER, arguments);
             for (Node n : nodes.values()) {
                 if (n instanceof BeginLockScopeNode) {
                     BeginLockScopeNode begin = (BeginLockScopeNode) n;
@@ -456,7 +457,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 arguments.add("object", monitorexitNode.object());
             }
             SnippetTemplate template = cache.get(key);
-            Map<Node, Node> nodes = template.instantiate(runtime, monitorexitNode, arguments);
+            Map<Node, Node> nodes = template.instantiate(runtime, monitorexitNode, DEFAULT_REPLACER, arguments);
             for (Node n : nodes.values()) {
                 if (n instanceof EndLockScopeNode) {
                     EndLockScopeNode end = (EndLockScopeNode) n;
