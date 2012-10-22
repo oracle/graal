@@ -169,7 +169,7 @@ public class InstanceOfTest extends TypeCheckTest {
 
     public static int isStringInt(Object o) {
         if (o instanceof String) {
-            return id(0);
+            return id(1);
         }
         return id(0);
     }
