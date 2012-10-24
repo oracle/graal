@@ -353,31 +353,6 @@ public class SnippetTemplate {
         ReturnNode retNode = null;
         StartNode entryPointNode = snippet.start();
 
-        Map<Integer, JumpNode[]> jumpsMap = new HashMap<>();
-        for (JumpNode jump : snippet.getNodes().filter(JumpNode.class).snapshot()) {
-            FixedNode next = jump.next();
-
-            // Remove the nodes after the jump
-            jump.setNext(null);
-            GraphUtil.killCFG(next);
-            JumpNode[] jumpsForIndex = jumpsMap.get(jump.successorIndex());
-            if (jumpsForIndex == null) {
-                jumpsMap.put(jump.successorIndex(), new JumpNode[] {jump});
-            } else {
-                jumpsForIndex = Arrays.copyOf(jumpsForIndex, jumpsForIndex.length + 1);
-                jumpsForIndex[jumpsForIndex.length - 1] = jump;
-                jumpsMap.put(jump.successorIndex(), jumpsForIndex);
-            }
-        }
-
-        this.jumps = new JumpNode[jumpsMap.size()][];
-        for (Map.Entry<Integer, JumpNode[]> e : jumpsMap.entrySet()) {
-            int successorIndex = e.getKey();
-            assert successorIndex >= 0 && successorIndex < this.jumps.length;
-            assert this.jumps[successorIndex] == null;
-            this.jumps[successorIndex] = e.getValue();
-        }
-
         new DeadCodeEliminationPhase().apply(snippetCopy);
 
         nodes = new ArrayList<>(snippet.getNodeCount());
@@ -387,7 +362,6 @@ public class SnippetTemplate {
             } else {
                 nodes.add(node);
                 if (node instanceof ReturnNode) {
-                    assert this.jumps.length == 0 : "snippet with Jump node(s) cannot have a return node";
                     retNode = (ReturnNode) node;
                 }
             }
@@ -458,12 +432,6 @@ public class SnippetTemplate {
      * The nodes to be inlined when this specialization is instantiated.
      */
     private final ArrayList<Node> nodes;
-
-    /**
-     * The {@link JumpNode}s in the snippet, indexed by {@linkplain ControlSplitNode#blockSuccessor(int) successor} indexes.
-     * There may be more than one jump per successor index which explains why this is a 2-dimensional array.
-     */
-    private final JumpNode[][] jumps;
 
     /**
      * Gets the instantiation-time bindings to this template's parameters.
@@ -657,68 +625,6 @@ public class SnippetTemplate {
         returnDuplicate.replaceAndDelete(next);
 
         Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
-    }
-
-    /**
-     * Replaces a given floating node that is an input to a {@link ControlSplitNode} with this specialized snippet.
-     * The {@linkplain JumpNode jumps} in the snippet are connected to the successors of the control split node.
-     *
-     * @param replacee the node that will be replaced
-     * @param controlSplitNode the node replaced by this wheCFG of the snippet is inserted after this node
-     * @param args the arguments to be bound to the flattened positional parameters of the snippet
-     */
-    public void instantiate(MetaAccessProvider runtime,
-                    FloatingNode replacee,
-                    ControlSplitNode controlSplitNode,
-                    SnippetTemplate.Arguments args) {
-
-        // Inline the snippet nodes, replacing parameters with the given args in the process
-        String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
-        StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method());
-        StartNode entryPointNode = snippet.start();
-        FixedNode firstCFGNode = entryPointNode.next();
-        StructuredGraph replaceeGraph = (StructuredGraph) replacee.graph();
-        IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
-        Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, replacements);
-        Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
-
-
-        int successorIndex = 0;
-        for (JumpNode[] jumpsForIndex : jumps) {
-            fixEdge(controlSplitNode, jumpsForIndex, successorIndex++, duplicates);
-        }
-
-        FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
-        controlSplitNode.replaceAtPredecessor(firstCFGNodeDuplicate);
-        controlSplitNode.replaceAtUsages(null);
-
-        assert sideEffectNode == null;
-        assert stampNode == null;
-        assert returnNode == null : replaceeGraph;
-        GraphUtil.killCFG(controlSplitNode);
-
-        Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
-    }
-
-    private static void fixEdge(ControlSplitNode splitAnchor, JumpNode[] jumpsForIndex, int successorIndex, Map<Node, Node> duplicates) {
-        BeginNode blockSuccessor = splitAnchor.blockSuccessor(successorIndex);
-        splitAnchor.setBlockSuccessor(successorIndex, null);
-        if (jumpsForIndex.length == 1) {
-            JumpNode jump = (JumpNode) duplicates.get(jumpsForIndex[0]);
-            jump.replaceAtPredecessor(blockSuccessor);
-            GraphUtil.killCFG(jump);
-        } else {
-            StructuredGraph graph = (StructuredGraph) splitAnchor.graph();
-            MergeNode merge = graph.add(new MergeNode());
-            for (int i = 0; i < jumpsForIndex.length; i++) {
-                EndNode end = graph.add(new EndNode());
-                JumpNode jump = (JumpNode) duplicates.get(jumpsForIndex[i]);
-                jump.replaceAtPredecessor(end);
-                merge.addForwardEnd(end);
-                GraphUtil.killCFG(jump);
-            }
-            merge.setNext(blockSuccessor);
-        }
     }
 
     @Override

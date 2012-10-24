@@ -27,7 +27,6 @@ import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.Snippet.Varargs.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
-import static com.oracle.graal.snippets.nodes.JumpNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -85,29 +84,6 @@ public class InstanceOfSnippets implements SnippetsInterface {
     }
 
     /**
-     * A test against a final type with the result being {@linkplain IfNode branched} upon.
-     */
-    @Snippet
-    public static void ifExact(
-                    @Parameter("object") Object object,
-                    @Parameter("exactHub") Object exactHub,
-                    @ConstantParameter("checkNull") boolean checkNull) {
-        if (checkNull && object == null) {
-            isNull.inc();
-            jump(IfNode.FALSE_EDGE);
-            return;
-        }
-        Object objectHub = loadHub(object);
-        if (objectHub != exactHub) {
-            exactMiss.inc();
-            jump(IfNode.FALSE_EDGE);
-            return;
-        }
-        exactHit.inc();
-        jump(IfNode.TRUE_EDGE);
-    }
-
-    /**
      * A test against a primary type with the result being {@linkplain ConditionalNode materialized}.
      */
     @Snippet
@@ -129,31 +105,6 @@ public class InstanceOfSnippets implements SnippetsInterface {
         }
         displayHit.inc();
         return trueValue;
-    }
-
-    /**
-     * A test against a primary type with the result being {@linkplain IfNode branched} upon.
-     */
-    @Snippet
-    public static void ifPrimary(
-                    @Parameter("hub") Object hub,
-                    @Parameter("object") Object object,
-                    @ConstantParameter("checkNull") boolean checkNull,
-                    @ConstantParameter("superCheckOffset") int superCheckOffset) {
-        if (checkNull && object == null) {
-            isNull.inc();
-            jump(IfNode.FALSE_EDGE);
-            return;
-        }
-        Object objectHub = loadHub(object);
-        if (UnsafeLoadNode.loadObject(objectHub, 0, superCheckOffset, true) != hub) {
-            displayMiss.inc();
-            jump(IfNode.FALSE_EDGE);
-            return;
-        }
-        displayHit.inc();
-        jump(IfNode.TRUE_EDGE);
-        return;
     }
 
     /**
@@ -182,70 +133,6 @@ public class InstanceOfSnippets implements SnippetsInterface {
             }
         }
         if (!checkSecondarySubType(hub, objectHub)) {
-            return falseValue;
-        }
-        return trueValue;
-    }
-
-    /**
-     * A test against a restricted secondary type with the result being {@linkplain IfNode branched} upon.
-     */
-    @Snippet
-    public static void ifSecondary(
-                    @Parameter("hub") Object hub,
-                    @Parameter("object") Object object,
-                    @VarargsParameter("hints") Object[] hints,
-                    @ConstantParameter("checkNull") boolean checkNull) {
-        if (checkNull && object == null) {
-            isNull.inc();
-            jump(IfNode.FALSE_EDGE);
-            return;
-        }
-        Object objectHub = loadHub(object);
-        // if we get an exact match: succeed immediately
-        ExplodeLoopNode.explodeLoop();
-        for (int i = 0; i < hints.length; i++) {
-            Object hintHub = hints[i];
-            if (hintHub == objectHub) {
-                hintsHit.inc();
-                jump(IfNode.TRUE_EDGE);
-                return;
-            }
-        }
-        if (!checkSecondarySubType(hub, objectHub)) {
-            jump(IfNode.FALSE_EDGE);
-            return;
-        }
-        jump(IfNode.TRUE_EDGE);
-        return;
-    }
-
-    /**
-     * A test against an unknown (at compile time) type with the result being {@linkplain ConditionalNode materialized}.
-     */
-    @Snippet
-    public static Object materializeUnknown(
-                    @Parameter("hub") Object hub,
-                    @Parameter("object") Object object,
-                    @Parameter("trueValue") Object trueValue,
-                    @Parameter("falseValue") Object falseValue,
-                    @VarargsParameter("hints") Object[] hints,
-                    @ConstantParameter("checkNull") boolean checkNull) {
-        if (checkNull && object == null) {
-            isNull.inc();
-            return falseValue;
-        }
-        Object objectHub = loadHub(object);
-        // if we get an exact match: succeed immediately
-        ExplodeLoopNode.explodeLoop();
-        for (int i = 0; i < hints.length; i++) {
-            Object hintHub = hints[i];
-            if (hintHub == objectHub) {
-                hintsHit.inc();
-                return trueValue;
-            }
-        }
-        if (!checkUnknownSubType(hub, objectHub)) {
             return falseValue;
         }
         return trueValue;
@@ -280,25 +167,16 @@ public class InstanceOfSnippets implements SnippetsInterface {
 
     public static class Templates extends AbstractTemplates<InstanceOfSnippets> {
 
-        private final ResolvedJavaMethod ifExact;
-        private final ResolvedJavaMethod ifPrimary;
-        private final ResolvedJavaMethod ifSecondary;
         private final ResolvedJavaMethod materializeExact;
         private final ResolvedJavaMethod materializePrimary;
         private final ResolvedJavaMethod materializeSecondary;
 
         public Templates(CodeCacheProvider runtime) {
             super(runtime, InstanceOfSnippets.class);
-            ifExact = snippet("ifExact", Object.class, Object.class, boolean.class);
-            ifPrimary = snippet("ifPrimary", Object.class, Object.class, boolean.class, int.class);
-            ifSecondary = snippet("ifSecondary", Object.class, Object.class, Object[].class, boolean.class);
-
             materializeExact = snippet("materializeExact", Object.class, Object.class, Object.class, Object.class, boolean.class);
             materializePrimary = snippet("materializePrimary", Object.class, Object.class, Object.class, Object.class, boolean.class, int.class);
             materializeSecondary = snippet("materializeSecondary", Object.class, Object.class, Object.class, Object.class, Object[].class, boolean.class);
         }
-
-        private static final boolean MATERIALIZE_IF_NODE_USAGES = Boolean.getBoolean("graal.instanceof.disableJumpNodes");
 
         public void lower(InstanceOfNode instanceOf, LoweringTool tool) {
             ValueNode hub = instanceOf.targetClassInstruction();
@@ -318,59 +196,35 @@ public class InstanceOfSnippets implements SnippetsInterface {
 
                 if (usage instanceof IfNode) {
                     final StructuredGraph graph = (StructuredGraph) usage.graph();
-                    if (!MATERIALIZE_IF_NODE_USAGES) {
+                    final ValueNode falseValue = ConstantNode.forInt(0, graph);
+                    final ValueNode trueValue = ConstantNode.forInt(1, graph);
 
-                        IfNode ifNode = (IfNode) usage;
-                        if (hintInfo.exact) {
-                            HotSpotKlassOop[] hints = createHints(hintInfo);
-                            assert hints.length == 1;
-                            key = new Key(ifExact).add("checkNull", checkNull);
-                            arguments = arguments("object", object).add("exactHub", hints[0]);
-                        } else if (target.isPrimaryType()) {
-                            key = new Key(ifPrimary).add("checkNull", checkNull).add("superCheckOffset", target.superCheckOffset());
-                            arguments = arguments("hub", hub).add("object", object);
-                        } else {
-                            HotSpotKlassOop[] hints = createHints(hintInfo);
-                            key = new Key(ifSecondary).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
-                            arguments = arguments("hub", hub).add("object", object).add("hints", hints);
-                        }
-
-                        SnippetTemplate template = cache.get(key);
-                        template.instantiate(runtime, duplicate, ifNode, arguments);
-                        assert ifNode.isDeleted();
-
+                    if (hintInfo.exact) {
+                        HotSpotKlassOop[] hints = createHints(hintInfo);
+                        assert hints.length == 1;
+                        key = new Key(materializeExact).add("checkNull", checkNull);
+                        arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
+                    } else if (target.isPrimaryType()) {
+                        key = new Key(materializePrimary).add("checkNull", checkNull).add("superCheckOffset", target.superCheckOffset());
+                        arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
                     } else {
-
-                        final ValueNode falseValue = ConstantNode.forInt(0, graph);
-                        final ValueNode trueValue = ConstantNode.forInt(1, graph);
-
-                        if (hintInfo.exact) {
-                            HotSpotKlassOop[] hints = createHints(hintInfo);
-                            assert hints.length == 1;
-                            key = new Key(materializeExact).add("checkNull", checkNull);
-                            arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
-                        } else if (target.isPrimaryType()) {
-                            key = new Key(materializePrimary).add("checkNull", checkNull).add("superCheckOffset", target.superCheckOffset());
-                            arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
-                        } else {
-                            HotSpotKlassOop[] hints = createHints(hintInfo);
-                            key = new Key(materializeSecondary).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
-                            arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
-                        }
-
-                        UsageReplacer replacer = new UsageReplacer() {
-                            @Override
-                            public void replace(ValueNode oldNode, ValueNode newNode) {
-                                assert oldNode == duplicate;
-                                newNode.inferStamp();
-                                IntegerEqualsNode condition = graph.add(new IntegerEqualsNode(newNode, trueValue));
-                                oldNode.replaceAtUsages(condition);
-                            }
-                        };
-
-                        SnippetTemplate template = cache.get(key);
-                        template.instantiate(runtime, duplicate, replacer, tool.lastFixedNode(), arguments);
+                        HotSpotKlassOop[] hints = createHints(hintInfo);
+                        key = new Key(materializeSecondary).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
+                        arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
                     }
+
+                    UsageReplacer replacer = new UsageReplacer() {
+                        @Override
+                        public void replace(ValueNode oldNode, ValueNode newNode) {
+                            assert oldNode == duplicate;
+                            newNode.inferStamp();
+                            IntegerEqualsNode condition = graph.add(new IntegerEqualsNode(newNode, trueValue));
+                            oldNode.replaceAtUsages(condition);
+                        }
+                    };
+
+                    SnippetTemplate template = cache.get(key);
+                    template.instantiate(runtime, duplicate, replacer, tool.lastFixedNode(), arguments);
 
                 } else if (usage instanceof ConditionalNode) {
 
