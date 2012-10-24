@@ -84,24 +84,20 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
         Constant falseConstant = conditionalNode.falseValue().asConstant();
 
         if (falseConstant != null && trueConstant != null && runtime != null) {
-            Boolean trueResult = cond.foldCondition(trueConstant, constant, runtime, unorderedIsTrue());
-            Boolean falseResult = cond.foldCondition(falseConstant, constant, runtime, unorderedIsTrue());
+            boolean trueResult = cond.foldCondition(trueConstant, constant, runtime, unorderedIsTrue());
+            boolean falseResult = cond.foldCondition(falseConstant, constant, runtime, unorderedIsTrue());
 
-            if (trueResult != null && falseResult != null) {
-                boolean trueUnboxedResult = trueResult;
-                boolean falseUnboxedResult = falseResult;
-                if (trueUnboxedResult == falseUnboxedResult) {
-                    return ConstantNode.forBoolean(trueUnboxedResult, graph());
+            if (trueResult == falseResult) {
+                return ConstantNode.forBoolean(trueResult, graph());
+            } else {
+                if (trueResult) {
+                    assert falseResult == false;
+                    return conditionalNode.condition();
                 } else {
-                    if (trueUnboxedResult) {
-                        assert falseUnboxedResult == false;
-                        return conditionalNode.condition();
-                    } else {
-                        assert falseUnboxedResult == true;
-                        negateUsages();
-                        return conditionalNode.condition();
+                    assert falseResult == true;
+                    negateUsages();
+                    return conditionalNode.condition();
 
-                    }
                 }
             }
         }
