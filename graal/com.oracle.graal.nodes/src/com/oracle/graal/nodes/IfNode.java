@@ -25,8 +25,12 @@ package com.oracle.graal.nodes;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.PhiNode.PhiType;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 /**
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome of a
@@ -121,40 +125,240 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 ((StructuredGraph) graph()).removeSplit(this, FALSE_EDGE);
             }
         } else if (trueSuccessor().guards().isEmpty() && falseSuccessor().guards().isEmpty()) {
-            if (trueSuccessor().next() instanceof EndNode && falseSuccessor().next() instanceof EndNode) {
-                EndNode trueEnd = (EndNode) trueSuccessor().next();
-                EndNode falseEnd = (EndNode) falseSuccessor().next();
-                MergeNode merge = trueEnd.merge();
-                if (merge == falseEnd.merge() && merge.forwardEndCount() == 2 && trueSuccessor().anchored().isEmpty() && falseSuccessor().anchored().isEmpty()) {
-                    Iterator<PhiNode> phis = merge.phis().iterator();
+            if (removeOrMaterializeIf(tool)) {
+                return;
+            } else if (removeIntermediateMaterialization(tool)) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Tries to remove an empty if construct or replace an if construct with a materialization.
+     *
+     * @return true if a transformation was made, false otherwise
+     */
+    private boolean removeOrMaterializeIf(SimplifierTool tool) {
+        if (trueSuccessor().next() instanceof EndNode && falseSuccessor().next() instanceof EndNode) {
+            EndNode trueEnd = (EndNode) trueSuccessor().next();
+            EndNode falseEnd = (EndNode) falseSuccessor().next();
+            MergeNode merge = trueEnd.merge();
+            if (merge == falseEnd.merge() && merge.forwardEndCount() == 2 && trueSuccessor().anchored().isEmpty() && falseSuccessor().anchored().isEmpty()) {
+                Iterator<PhiNode> phis = merge.phis().iterator();
+                if (!phis.hasNext()) {
+                    // empty if construct with no phis: remove it
+                    removeEmptyIf(tool);
+                    return false;
+                } else {
+                    PhiNode singlePhi = phis.next();
                     if (!phis.hasNext()) {
-                        // empty if construct with no phis: remove it
-                        removeEmptyIf(tool);
-                        return;
-                    } else {
-                        PhiNode singlePhi = phis.next();
-                        if (!phis.hasNext()) {
-                            // one phi at the merge of an otherwise empty if construct: try to convert into a MaterializeNode
-                            boolean inverted = trueEnd == merge.forwardEndAt(FALSE_EDGE);
-                            ValueNode trueValue = singlePhi.valueAt(inverted ? 1 : 0);
-                            ValueNode falseValue = singlePhi.valueAt(inverted ? 0 : 1);
-                            if (trueValue.kind() != falseValue.kind()) {
-                                return;
-                            }
-                            if (trueValue.kind() != Kind.Int && trueValue.kind() != Kind.Long) {
-                                return;
-                            }
-                            if (trueValue.isConstant() && falseValue.isConstant()) {
-                                MaterializeNode materialize = MaterializeNode.create(condition(), trueValue, falseValue);
-                                ((StructuredGraph) graph()).replaceFloating(singlePhi, materialize);
-                                removeEmptyIf(tool);
-                                return;
-                            }
+                        // one phi at the merge of an otherwise empty if construct: try to convert into a MaterializeNode
+                        boolean inverted = trueEnd == merge.forwardEndAt(FALSE_EDGE);
+                        ValueNode trueValue = singlePhi.valueAt(inverted ? 1 : 0);
+                        ValueNode falseValue = singlePhi.valueAt(inverted ? 0 : 1);
+                        if (trueValue.kind() != falseValue.kind()) {
+                            return false;
+                        }
+                        if (trueValue.kind() != Kind.Int && trueValue.kind() != Kind.Long) {
+                            return false;
+                        }
+                        if (trueValue.isConstant() && falseValue.isConstant()) {
+                            MaterializeNode materialize = MaterializeNode.create(condition(), trueValue, falseValue);
+                            ((StructuredGraph) graph()).replaceFloating(singlePhi, materialize);
+                            removeEmptyIf(tool);
+                            return true;
                         }
                     }
                 }
             }
         }
+        return false;
+    }
+
+    private static final boolean NON_NULL_FRAMESTATE_EVACUATION_IN_BEGINNODE_SIMPLIFICATION_IMPLEMENTED = false;
+
+    /**
+     * Tries to connect code that initializes a variable directly with the successors of an if construct
+     * that switches on the variable. For example, the pseudo code below:
+     *
+     * <pre>
+     * contains(list, e, yes, no) {
+     *     if (list == null || e == null) {
+     *         condition = false;
+     *     } else {
+     *         condition = false;
+     *         for (i in list) {
+     *             if (i.equals(e)) {
+     *                 condition = true;
+     *                 break;
+     *             }
+     *         }
+     *     }
+     *     if (condition) {
+     *         return yes;
+     *     } else {
+     *         return no;
+     *     }
+     * }
+     * </pre>
+     * will be transformed into:
+     * <pre>
+     * contains(list, e, yes, no) {
+     *     if (list == null || e == null) {
+     *         return no;
+     *     } else {
+     *         condition = false;
+     *         for (i in list) {
+     *             if (i.equals(e)) {
+     *                 return yes;
+     *             }
+     *         }
+     *         return no;
+     *     }
+     * }
+     * </pre>
+     *
+     * @return true if a transformation was made, false otherwise
+     */
+    private boolean removeIntermediateMaterialization(SimplifierTool tool) {
+        if (!(condition() instanceof CompareNode)) {
+            return false;
+        }
+
+        CompareNode compare = (CompareNode) condition();
+        if (!(predecessor() instanceof MergeNode)) {
+            return false;
+        }
+
+        MergeNode merge = (MergeNode) predecessor();
+        if (!merge.anchored().isEmpty()) {
+            return false;
+        }
+
+        NodeUsagesList usages = merge.usages();
+        if (usages.count() != 1) {
+            return false;
+        }
+
+        Node singleUsage = usages.first();
+
+        if (!(singleUsage instanceof PhiNode) || (singleUsage != compare.x() && singleUsage != compare.y())) {
+            return false;
+        }
+
+        Constant[] xs = constantValues(compare.x(), merge);
+        Constant[] ys = constantValues(compare.y(), merge);
+
+        if (xs == null || ys == null) {
+            return false;
+        }
+
+        if (id() == 30 && graph().toString().contains("processNode")) {
+            System.console();
+        }
+
+        List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
+        List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
+        List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
+
+        BeginNode falseSuccessor = falseSuccessor();
+        BeginNode trueSuccessor = trueSuccessor();
+
+        if (merge.stateAfter() != null) {
+            if (!NON_NULL_FRAMESTATE_EVACUATION_IN_BEGINNODE_SIMPLIFICATION_IMPLEMENTED) {
+                return false;
+            }
+
+            if (!isFrameStateNullOrEqualTo(falseSuccessor, merge) || !isFrameStateNullOrEqualTo(trueSuccessor, merge)) {
+                // Cannot proceed if the frame state of either successor is different from the merge's frame state
+                return false;
+            }
+            trueSuccessor.setStateAfter(merge.stateAfter());
+            falseSuccessor.setStateAfter(merge.stateAfter());
+        }
+
+        setFalseSuccessor(null);
+        setTrueSuccessor(null);
+
+        Iterator<EndNode> ends = mergePredecessors.iterator();
+        for (int i = 0; i < xs.length; i++) {
+            EndNode end = ends.next();
+            merge.removeEnd(end);
+            if (compare.condition().foldCondition(xs[i], ys[i], tool.runtime(), compare.unorderedIsTrue())) {
+                trueEnds.add(end);
+            } else {
+                falseEnds.add(end);
+            }
+        }
+        assert !ends.hasNext();
+
+        connectEnds(falseEnds, falseSuccessor, tool);
+        connectEnds(trueEnds, trueSuccessor, tool);
+
+        GraphUtil.killCFG(merge);
+        return true;
+    }
+
+    protected static boolean isFrameStateNullOrEqualTo(BeginNode successor, MergeNode merge) {
+        return successor.stateAfter() == null || successor.stateAfter() == merge.stateAfter();
+    }
+
+    /**
+     * Connects a set of ends to a given successor, inserting a merge node if
+     * there is more than one end. If {@code ends} is empty, then {@code successor}
+     * is {@linkplain GraphUtil#killCFG(FixedNode) killed} otherwise it is added to {@code tool}'s
+     * {@linkplain SimplifierTool#addToWorkList(com.oracle.graal.graph.Node) work list}.
+     */
+    private void connectEnds(List<EndNode> ends, BeginNode successor, SimplifierTool tool) {
+        if (ends.isEmpty()) {
+            GraphUtil.killCFG(successor);
+        } else {
+            if (ends.size() == 1) {
+
+                EndNode end = ends.get(0);
+                ((FixedWithNextNode) end.predecessor()).setNext(successor);
+                GraphUtil.killCFG(end);
+            } else {
+                MergeNode falseMerge = graph().add(new MergeNode());
+                for (EndNode end : ends) {
+                    falseMerge.addForwardEnd(end);
+                }
+                falseMerge.setNext(successor);
+            }
+            tool.addToWorkList(successor);
+        }
+    }
+
+    /**
+     * Gets an array of constants derived from a node that is either a {@link ConstantNode}
+     * or a {@link PhiNode} whose input values are all constants. The length of the returned
+     * array is equal to the number of ends terminating in a given merge node.
+     *
+     * @return null if {@code node} is neither a {@link ConstantNode} nor a {@link PhiNode} whose input values are all constants
+     */
+    private static Constant[] constantValues(ValueNode node, MergeNode merge) {
+        if (node.isConstant()) {
+            Constant[] result = new Constant[merge.forwardEndCount()];
+            Arrays.fill(result, node.asConstant());
+            return result;
+        }
+
+        if (node instanceof PhiNode) {
+            PhiNode phi = (PhiNode) node;
+            if (phi.merge() == merge && phi.type() == PhiType.Value && phi.valueCount() == merge.forwardEndCount()) {
+                Constant[] result = new Constant[merge.forwardEndCount()];
+                int i = 0;
+                for (ValueNode n : phi.values()) {
+                    if (!n.isConstant()) {
+                        return null;
+                    }
+                    result[i++] = n.asConstant();
+                }
+                return result;
+            }
+        }
+
+        return null;
     }
 
     private void removeEmptyIf(SimplifierTool tool) {
