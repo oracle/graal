@@ -126,6 +126,18 @@ public final class DebugScope {
         }
     }
 
+    /**
+     * This method exists mainly to allow a debugger (e.g., Eclipse) to force dump a graph.
+     */
+    public static void dump(Object object, String message) {
+        DebugConfig config = getConfig();
+        if (config != null) {
+            for (DebugDumpHandler dumpHandler : config.dumpHandlers()) {
+                dumpHandler.dump(object, message);
+            }
+        }
+    }
+
     public <T> T scope(String newName, Runnable runnable, Callable<T> callable, boolean sandbox, Object[] newContext) {
         DebugScope oldContext = getInstance();
         DebugConfig oldConfig = getConfig();
