@@ -216,23 +216,29 @@ public class CanonicalizerPhase extends Phase {
                             }
                         } else {
                             assert node instanceof FixedWithNextNode && node.predecessor() != null : node + " -> " + canonical + " : node should be fixed & connected (" + node.predecessor() + ")";
+                            FixedWithNextNode fixedWithNext = (FixedWithNextNode) node;
+
+                            // When removing a fixed node, new canonicalization opportunities for its successor may arise
+                            assert fixedWithNext.next() != null;
+                            tool.addToWorkList(fixedWithNext.next());
+
                             if (canonical == null) {
                                 // case 3
-                                graph.removeFixed((FixedWithNextNode) node);
+                                graph.removeFixed(fixedWithNext);
                             } else if (canonical instanceof FloatingNode) {
                                 // case 4
-                                graph.replaceFixedWithFloating((FixedWithNextNode) node, (FloatingNode) canonical);
+                                graph.replaceFixedWithFloating(fixedWithNext, (FloatingNode) canonical);
                             } else {
                                 assert canonical instanceof FixedNode;
                                 if (canonical.predecessor() == null) {
                                     assert !canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " shouldn't have successors";
                                     // case 5
-                                    graph.replaceFixedWithFixed((FixedWithNextNode) node, (FixedWithNextNode) canonical);
+                                    graph.replaceFixedWithFixed(fixedWithNext, (FixedWithNextNode) canonical);
                                 } else {
                                     assert canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " should have successors";
                                     // case 6
                                     node.replaceAtUsages(canonical);
-                                    graph.removeFixed((FixedWithNextNode) node);
+                                    graph.removeFixed(fixedWithNext);
                                 }
                             }
                         }
@@ -321,7 +327,7 @@ public class CanonicalizerPhase extends Phase {
 
         @Override
         public void addToWorkList(Node node) {
-            nodeWorkSet.add(node);
+            nodeWorkSet.addAgain(node);
         }
 
         @Override
