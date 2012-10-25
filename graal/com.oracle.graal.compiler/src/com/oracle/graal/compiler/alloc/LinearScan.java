@@ -1417,7 +1417,7 @@ public final class LinearScan {
         notPrecoloredIntervals = result.second;
 
         // allocate cpu registers
-        LinearScanWalker lsw = new LinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals, !target.arch.isX86());
+        LinearScanWalker lsw = new LinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals);
         lsw.walk();
         lsw.finishAllocation();
     }
@@ -1593,49 +1593,6 @@ public final class LinearScan {
 
     // * Phase 7: assign register numbers back to LIR
     // (includes computation of debug information and oop maps)
-
-    boolean verifyAssignedLocation(Interval interval, Value location) {
-        Kind kind = interval.kind();
-
-        assert isRegister(location) || isStackSlot(location);
-
-        if (isRegister(location)) {
-            Register reg = asRegister(location);
-
-            // register
-            switch (kind) {
-                case Byte:
-                case Char:
-                case Short:
-                case Jsr:
-                case Object:
-                case Int: {
-                    assert reg.isCpu() : "not cpu register";
-                    break;
-                }
-
-                case Long: {
-                    assert reg.isCpu() : "not cpu register";
-                    break;
-                }
-
-                case Float: {
-                    assert !target.arch.isX86() || reg.isFpu() : "not xmm register: " + reg;
-                    break;
-                }
-
-                case Double: {
-                    assert !target.arch.isX86() || reg.isFpu() : "not xmm register: " + reg;
-                    break;
-                }
-
-                default: {
-                    throw GraalInternalError.shouldNotReachHere();
-                }
-            }
-        }
-        return true;
-    }
 
     static StackSlot canonicalSpillOpr(Interval interval) {
         assert interval.spillSlot() != null : "canonical spill slot not set";

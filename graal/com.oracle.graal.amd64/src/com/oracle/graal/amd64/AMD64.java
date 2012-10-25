@@ -116,13 +116,7 @@ public class AMD64 extends Architecture {
     }
 
     @Override
-    public boolean isX86() {
-        return true;
-    }
-
-    @Override
     public boolean twoOperandMode() {
         return true;
     }
-
 }

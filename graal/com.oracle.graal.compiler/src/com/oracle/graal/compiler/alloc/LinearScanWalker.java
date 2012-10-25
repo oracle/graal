@@ -46,7 +46,7 @@ import com.oracle.graal.phases.util.*;
  */
 final class LinearScanWalker extends IntervalWalker {
 
-    private final boolean hasCalleeSavedRegisters;
+    private final boolean callKillsRegisters;
 
     private Register[] availableRegs;
 
@@ -71,9 +71,9 @@ final class LinearScanWalker extends IntervalWalker {
         return allocator.blockForId(opId);
     }
 
-    LinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst, boolean hasCalleeSavedRegisters) {
+    LinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
-        this.hasCalleeSavedRegisters = hasCalleeSavedRegisters;
+        this.callKillsRegisters = allocator.frameMap.runtime.callKillsRegisters();
         moveResolver = new MoveResolver(allocator);
         spillIntervals = Util.uncheckedCast(new List[allocator.registers.length]);
         for (int i = 0; i < allocator.registers.length; i++) {
@@ -676,32 +676,6 @@ final class LinearScanWalker extends IntervalWalker {
         return true;
     }
 
-    Register findLockedRegister(int regNeededUntil, int intervalTo, Value ignoreReg, boolean[] needSplit) {
-        int maxReg = -1;
-        Register ignore = isRegister(ignoreReg) ? asRegister(ignoreReg) : null;
-
-        for (Register reg : availableRegs) {
-            int i = reg.number;
-            if (reg == ignore) {
-                // this register must be ignored
-
-            } else if (usePos[i] > regNeededUntil) {
-                if (maxReg == -1 || (usePos[i] > usePos[maxReg])) {
-                    maxReg = i;
-                }
-            }
-        }
-
-        if (maxReg != -1) {
-            if (blockPos[maxReg] <= intervalTo) {
-                needSplit[0] = true;
-            }
-            return availableRegs[maxReg];
-        }
-
-        return null;
-    }
-
     void splitAndSpillIntersectingIntervals(Register reg) {
         assert reg != null : "no register assigned";
 
@@ -797,10 +771,10 @@ final class LinearScanWalker extends IntervalWalker {
 
     boolean noAllocationPossible(Interval interval) {
 
-        if (!hasCalleeSavedRegisters) {
+        if (callKillsRegisters) {
             // fast calculation of intervals that can never get a register because the
             // the next instruction is a call that blocks all registers
-            // Note: this does not work if callee-saved registers are available (e.g. on Sparc)
+            // Note: this only works if a call kills all registers
 
             // check if this interval is the result of a split operation
             // (an interval got a register until this position)
@@ -816,7 +790,6 @@ final class LinearScanWalker extends IntervalWalker {
                     assert !allocFreeRegister(interval) : "found a register for this interval";
                     return true;
                 }
-
             }
         }
         return false;

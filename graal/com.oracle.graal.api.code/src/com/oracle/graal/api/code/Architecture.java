@@ -177,35 +177,10 @@ public abstract class Architecture {
         return wordSize == 8;
     }
 
-    // The following methods are architecture specific and not dependent on state
-    // stored in this class. They have convenient default implementations.
-
     /**
      * Checks whether this architecture's normal arithmetic instructions use a two-operand form
      * (e.g. x86 which overwrites one operand register with the result when adding).
      * @return {@code true} if this architecture uses two-operand mode
      */
-    public boolean twoOperandMode() {
-        return false;
-    }
-
-    // TODO: Why enumerate the concrete subclasses here rather
-    // than use instanceof comparisons in code that cares?
-
-    /**
-     * Checks whether the architecture is x86.
-     * @return {@code true} if the architecture is x86
-     */
-    public boolean isX86() {
-        return false;
-    }
-
-    /**
-     * Checks whether the architecture is SPARC.
-     * @return {@code true} if the architecture is SPARC
-     */
-    public boolean isSPARC() {
-        return false;
-    }
-
+    public abstract boolean twoOperandMode();
 }
