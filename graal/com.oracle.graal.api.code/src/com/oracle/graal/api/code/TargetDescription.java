@@ -101,7 +101,7 @@ public class TargetDescription {
         this.arch = arch;
         this.pageSize = pageSize;
         this.isMP = isMP;
-        this.wordSize = arch.wordSize;
+        this.wordSize = arch.getWordSize();
         if (wordSize == 8) {
             this.wordKind = Kind.Long;
         } else {
@@ -145,7 +145,7 @@ public class TargetDescription {
      * @return the aligned frame size
      */
     public int alignFrameSize(int frameSize) {
-        int x = frameSize + arch.returnAddressSize + (stackAlignment - 1);
-        return (x / stackAlignment) * stackAlignment - arch.returnAddressSize;
+        int x = frameSize + arch.getReturnAddressSize() + (stackAlignment - 1);
+        return (x / stackAlignment) * stackAlignment - arch.getReturnAddressSize();
     }
 }

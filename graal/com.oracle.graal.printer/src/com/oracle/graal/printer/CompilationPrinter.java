@@ -117,8 +117,9 @@ public class CompilationPrinter implements Closeable {
 
         if (registerRefMap != null) {
             sb.append("reg-ref-map:");
+            Register[] registers = arch.getRegisters();
             for (int reg = registerRefMap.nextSetBit(0); reg >= 0; reg = registerRefMap.nextSetBit(reg + 1)) {
-                sb.append(' ').append(arch == null ? "r" + reg : arch.registers[reg]);
+                sb.append(' ').append(arch == null ? "r" + reg : registers[reg]);
             }
             sb.append("\n");
         }

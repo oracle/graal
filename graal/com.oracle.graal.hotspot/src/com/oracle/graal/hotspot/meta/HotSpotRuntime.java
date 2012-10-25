@@ -228,7 +228,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     public String disassemble(CodeInfo info, CompilationResult tm) {
         byte[] code = info.getCode();
         TargetDescription target = graalRuntime.getTarget();
-        HexCodeFile hcf = new HexCodeFile(code, info.getStart(), target.arch.name, target.wordSize * 8);
+        HexCodeFile hcf = new HexCodeFile(code, info.getStart(), target.arch.getName(), target.wordSize * 8);
         if (tm != null) {
             HexCodeFile.addAnnotations(hcf, tm.getAnnotations());
             addExceptionHandlersComment(tm, hcf);

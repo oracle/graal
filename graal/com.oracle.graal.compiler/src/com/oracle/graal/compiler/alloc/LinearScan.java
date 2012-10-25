@@ -163,7 +163,7 @@ public final class LinearScan {
         this.sortedBlocks = ir.linearScanOrder().toArray(new Block[ir.linearScanOrder().size()]);
         this.registerAttributes = frameMap.registerConfig.getAttributesMap();
 
-        this.registers = target.arch.registers;
+        this.registers = target.arch.getRegisters();
         this.firstVariableNumber = registers.length;
         this.variables = new ArrayList<>(ir.numVariables() * 3 / 2);
         this.blockData = new BlockMap<>(ir.cfg);

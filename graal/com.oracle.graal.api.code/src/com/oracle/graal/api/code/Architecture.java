@@ -45,60 +45,45 @@ public abstract class Architecture {
      * The number of bits required in a bit map covering all the registers that may store references.
      * The bit position of a register in the map is the register's {@linkplain Register#number number}.
      */
-    public final int registerReferenceMapBitCount;
+    private final int registerReferenceMapBitCount;
 
     /**
      * Represents the natural size of words (typically registers and pointers) of this architecture, in bytes.
      */
-    public final int wordSize;
+    private final int wordSize;
 
     /**
      * The name of this architecture (e.g. "AMD64", "SPARCv9").
      */
-    public final String name;
+    private final String name;
 
     /**
      * Array of all available registers on this architecture. The index of each register in this
      * array is equal to its {@linkplain Register#number number}.
      */
-    public final Register[] registers;
-
-    /**
-     * Map of all registers keyed by their {@linkplain Register#name names}.
-     */
-    public final HashMap<String, Register> registersByName;
+    private final Register[] registers;
 
     /**
      * The byte ordering can be either little or big endian.
      */
-    public final ByteOrder byteOrder;
+    private final ByteOrder byteOrder;
 
     /**
      * Mask of the barrier constants denoting the barriers that
      * are not required to be explicitly inserted under this architecture.
      */
-    public final int implicitMemoryBarriers;
-
-    /**
-     * Determines the barriers in a given barrier mask that are explicitly required on this architecture.
-     *
-     * @param barriers a mask of the barrier constants
-     * @return the value of {@code barriers} minus the barriers unnecessary on this architecture
-     */
-    public final int requiredBarriers(int barriers) {
-        return barriers & ~implicitMemoryBarriers;
-    }
+    private final int implicitMemoryBarriers;
 
     /**
      * Offset in bytes from the beginning of a call instruction to the displacement.
      */
-    public final int machineCodeCallDisplacementOffset;
+    private final int machineCodeCallDisplacementOffset;
 
     /**
      * The size of the return address pushed to the stack by a call instruction.
      * A value of 0 denotes that call linkage uses registers instead (e.g. SPARC).
      */
-    public final int returnAddressSize;
+    private final int returnAddressSize;
 
     private final EnumMap<RegisterFlag, Register[]> registersByTypeAndEncoding;
 
@@ -133,12 +118,6 @@ public abstract class Architecture {
         this.registerReferenceMapBitCount = registerReferenceMapBitCount;
         this.returnAddressSize = returnAddressSize;
 
-        registersByName = new HashMap<>(registers.length);
-        for (Register register : registers) {
-            registersByName.put(register.name, register);
-            assert registers[register.number] == register;
-        }
-
         registersByTypeAndEncoding = new EnumMap<>(RegisterFlag.class);
         EnumMap<RegisterFlag, Register[]> categorizedRegs = Register.categorize(registers);
         for (RegisterFlag type : RegisterFlag.values()) {
@@ -158,29 +137,69 @@ public abstract class Architecture {
      */
     @Override
     public final String toString() {
-        return name.toLowerCase();
+        return getName().toLowerCase();
+    }
+
+    public int getRegisterReferenceMapBitCount() {
+        return registerReferenceMapBitCount;
     }
 
     /**
-     * Checks whether this is a 32-bit architecture.
-     * @return {@code true} if this architecture is 32-bit
+     * Gets the natural size of words (typically registers and pointers) of this architecture, in bytes.
      */
-    public final boolean is32bit() {
-        return wordSize == 4;
+    public int getWordSize() {
+        return wordSize;
     }
 
     /**
-     * Checks whether this is a 64-bit architecture.
-     * @return {@code true} if this architecture is 64-bit
+     * Gets the name of this architecture.
      */
-    public final boolean is64bit() {
-        return wordSize == 8;
+    public String getName() {
+        return name;
     }
 
     /**
-     * Checks whether this architecture's normal arithmetic instructions use a two-operand form
-     * (e.g. x86 which overwrites one operand register with the result when adding).
-     * @return {@code true} if this architecture uses two-operand mode
+     * Gets an array of all available registers on this architecture. The index of each register in this
+     * array is equal to its {@linkplain Register#number number}.
      */
-    public abstract boolean twoOperandMode();
+    public Register[] getRegisters() {
+        return registers.clone();
+    }
+
+    public ByteOrder getByteOrder() {
+        return byteOrder;
+    }
+
+    /**
+     * Gets a mask of the barrier constants denoting the barriers that
+     * are not required to be explicitly inserted under this architecture.
+     */
+    public int getImplicitMemoryBarriers() {
+        return implicitMemoryBarriers;
+    }
+
+    /**
+     * Gets the size of the return address pushed to the stack by a call instruction.
+     * A value of 0 denotes that call linkage uses registers instead.
+     */
+    public int getReturnAddressSize() {
+        return returnAddressSize;
+    }
+
+    /**
+     * Gets the offset in bytes from the beginning of a call instruction to the displacement.
+     */
+    public int getMachineCodeCallDisplacementOffset() {
+        return machineCodeCallDisplacementOffset;
+    }
+
+    /**
+     * Determines the barriers in a given barrier mask that are explicitly required on this architecture.
+     *
+     * @param barriers a mask of the barrier constants
+     * @return the value of {@code barriers} minus the barriers unnecessary on this architecture
+     */
+    public final int requiredBarriers(int barriers) {
+        return barriers & ~implicitMemoryBarriers;
+    }
 }

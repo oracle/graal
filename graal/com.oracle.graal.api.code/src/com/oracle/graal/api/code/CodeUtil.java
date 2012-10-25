@@ -240,6 +240,8 @@ public class CodeUtil {
 
         public final Architecture arch;
 
+        private final Register[] registers;
+
         /**
          * The offset (in bytes) from the slot pointed to by {@link #fp} to the slot corresponding to bit 0 in the frame
          * reference map.
@@ -251,6 +253,7 @@ public class CodeUtil {
             this.slotSize = slotSize;
             this.fp = fp;
             this.refMapToFPOffset = refMapToFPOffset;
+            this.registers = arch.getRegisters();
         }
 
         public String formatStackSlot(int frameRefMapIndex) {
@@ -263,7 +266,7 @@ public class CodeUtil {
         }
 
         public String formatRegister(int regRefMapIndex) {
-            return arch.registers[regRefMapIndex].toString();
+            return registers[regRefMapIndex].toString();
         }
     }
 

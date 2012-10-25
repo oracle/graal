@@ -114,9 +114,4 @@ public class AMD64 extends Architecture {
               r15.encoding + 1,
               8);
     }
-
-    @Override
-    public boolean twoOperandMode() {
-        return true;
-    }
 }

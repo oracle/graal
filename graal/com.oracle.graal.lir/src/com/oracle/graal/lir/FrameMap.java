@@ -137,7 +137,7 @@ public final class FrameMap {
     }
 
     private int returnAddressSize() {
-        return target.arch.returnAddressSize;
+        return target.arch.getReturnAddressSize();
     }
 
     private int calleeSaveAreaSize() {
@@ -294,7 +294,7 @@ public final class FrameMap {
      * Initializes a reference map that covers all registers of the target architecture.
      */
     public BitSet initRegisterRefMap() {
-        return new BitSet(target.arch.registerReferenceMapBitCount);
+        return new BitSet(target.arch.getRegisterReferenceMapBitCount());
     }
 
     /**

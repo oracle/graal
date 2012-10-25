@@ -35,7 +35,7 @@ public abstract class AbstractAssembler {
     public AbstractAssembler(TargetDescription target) {
         this.target = target;
 
-        if (target.arch.byteOrder == ByteOrder.BigEndian) {
+        if (target.arch.getByteOrder() == ByteOrder.BigEndian) {
             this.codeBuffer = new Buffer.BigEndian();
         } else {
             this.codeBuffer = new Buffer.LittleEndian();

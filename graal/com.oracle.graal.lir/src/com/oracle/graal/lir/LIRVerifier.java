@@ -51,7 +51,7 @@ public final class LIRVerifier {
     }
 
     private int maxRegisterNum() {
-        return frameMap.target.arch.registers.length;
+        return frameMap.target.arch.getRegisters().length;
     }
 
     private boolean isAllocatableRegister(Value value) {
@@ -101,11 +101,12 @@ public final class LIRVerifier {
         ValueProcedure useProc = new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
         ValueProcedure defProc = new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
 
+        int maxRegisterNum = maxRegisterNum();
         curRegistersDefined = new BitSet();
         for (Block block : lir.linearScanOrder()) {
             curBlock = block;
             curVariablesLive = new BitSet();
-            curRegistersLive = new Value[maxRegisterNum()];
+            curRegistersLive = new Value[maxRegisterNum];
 
             if (block.getDominator() != null) {
                 curVariablesLive.or(liveOutFor(block.getDominator()));
