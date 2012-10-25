@@ -24,6 +24,7 @@ package com.oracle.graal.asm.amd64;
 
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.*;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;

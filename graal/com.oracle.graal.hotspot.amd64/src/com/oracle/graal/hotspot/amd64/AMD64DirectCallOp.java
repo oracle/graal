@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind.*;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;

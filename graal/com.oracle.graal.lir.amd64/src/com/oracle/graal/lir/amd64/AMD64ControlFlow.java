@@ -25,6 +25,7 @@ package com.oracle.graal.lir.amd64;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Address.Scale;
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
