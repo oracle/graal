@@ -175,8 +175,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return false;
     }
 
-    private static final boolean NON_NULL_FRAMESTATE_EVACUATION_IN_BEGINNODE_SIMPLIFICATION_IMPLEMENTED = false;
-
     /**
      * Tries to connect code that initializes a variable directly with the successors of an if construct
      * that switches on the variable. For example, the pseudo code below:
@@ -235,6 +233,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
+        if (merge.stateAfter() != null) {
+            // Not sure how (or if) the frame state of the merge can be correctly propagated to the successors
+            return false;
+        }
+
         NodeUsagesList usages = merge.usages();
         if (usages.count() != 1) {
             return false;
@@ -260,19 +263,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         BeginNode falseSuccessor = falseSuccessor();
         BeginNode trueSuccessor = trueSuccessor();
 
-        if (merge.stateAfter() != null) {
-            if (!NON_NULL_FRAMESTATE_EVACUATION_IN_BEGINNODE_SIMPLIFICATION_IMPLEMENTED) {
-                return false;
-            }
-
-            if (!isFrameStateNullOrEqualTo(falseSuccessor, merge) || !isFrameStateNullOrEqualTo(trueSuccessor, merge)) {
-                // Cannot proceed if the frame state of either successor is different from the merge's frame state
-                return false;
-            }
-            trueSuccessor.setStateAfter(merge.stateAfter());
-            falseSuccessor.setStateAfter(merge.stateAfter());
-        }
-
         setFalseSuccessor(null);
         setTrueSuccessor(null);
 
@@ -293,10 +283,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
         GraphUtil.killCFG(merge);
         return true;
-    }
-
-    protected static boolean isFrameStateNullOrEqualTo(BeginNode successor, MergeNode merge) {
-        return successor.stateAfter() == null || successor.stateAfter() == merge.stateAfter();
     }
 
     /**

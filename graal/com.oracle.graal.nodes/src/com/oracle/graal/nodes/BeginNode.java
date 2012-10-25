@@ -102,7 +102,6 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
     }
 
     public void prepareDelete(FixedNode evacuateFrom) {
-        // TODO (ds) shouldn't non-null framestate be evacutated as well?
         removeProxies();
         evacuateGuards(evacuateFrom);
     }
