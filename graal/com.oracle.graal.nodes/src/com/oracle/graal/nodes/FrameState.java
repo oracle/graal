@@ -361,11 +361,11 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
             for (int i = 0; i < fs.localsSize(); i++) {
                 sb.append(i == 0 ? "" : ", ").append(fs.localAt(i) == null ? "_" : fs.localAt(i).toString(Verbosity.Id));
             }
-            sb.append("]").append(nl).append("stack: ");
+            sb.append("]").append(nl).append("stack: [");
             for (int i = 0; i < fs.stackSize(); i++) {
                 sb.append(i == 0 ? "" : ", ").append(fs.stackAt(i) == null ? "_" : fs.stackAt(i).toString(Verbosity.Id));
             }
-            sb.append("]").append(nl).append("locks: ");
+            sb.append("]").append(nl).append("locks: [");
             for (int i = 0; i < fs.locksSize(); i++) {
                 sb.append(i == 0 ? "" : ", ").append(fs.lockAt(i) == null ? "_" : fs.lockAt(i).toString(Verbosity.Id));
             }
