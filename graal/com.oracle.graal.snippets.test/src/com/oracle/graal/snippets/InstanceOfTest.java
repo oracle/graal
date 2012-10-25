@@ -30,8 +30,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.snippets.CheckCastTest.*;
+import com.oracle.graal.snippets.CheckCastTest.Depth12;
+import com.oracle.graal.snippets.CheckCastTest.Depth13;
+import com.oracle.graal.snippets.CheckCastTest.Depth14;
 
 /**
  * Tests the implementation of instanceof, allowing profiling information to
@@ -41,7 +42,7 @@ public class InstanceOfTest extends TypeCheckTest {
 
     @Override
     protected void editPhasePlan(ResolvedJavaMethod method, StructuredGraph graph, PhasePlan phasePlan) {
-        phasePlan.disablePhase(InliningPhase.class);
+    //    phasePlan.disablePhase(InliningPhase.class);
     }
 
     @Override
@@ -199,10 +200,10 @@ public class InstanceOfTest extends TypeCheckTest {
 
     public static int isThrowableInt(Object o) {
         if (o instanceof Throwable) {
-            return 1;
+            return id(1);
         }
         if (o instanceof Throwable) {
-            return 2;
+            return id(2);
         }
         return 0;
     }
@@ -213,9 +214,9 @@ public class InstanceOfTest extends TypeCheckTest {
 
     public static int isMapInt(Object o) {
         if (o instanceof Map) {
-            return 1;
+            return id(1);
         }
-        return 0;
+        return id(0);
     }
 
     public static boolean isDepth12(Object o) {
@@ -227,5 +228,45 @@ public class InstanceOfTest extends TypeCheckTest {
             return id(0);
         }
         return id(0);
+    }
+
+    /**
+     * This test exists to show the kind of pattern that *should* be optimizable by {@code removeIntermediateMaterialization()}
+     * in {@link IfNode}. The optimization is currently blocked for the code pattern in this method because of a non-null
+     * frame state at the position indicated in the source. For this particular method, the frame state could be ignored
+     * as there are no deopt points after the merge. However, this is not the case for all methods where this pattern is
+     * present. The problem (yet to be solved) is figuring how how to evacuate the frame state of the merge to
+     * the code paths that result from the transformation.
+     * <p>
+     * The test exists in this source file as the transformation was originally motivated by the need to
+     * remove use of special JumpNodes in the {@code InstanceOfSnippets}. The transformation works for
+     * the snippet as all frame state are stripped from snippets.
+     */
+    @Test
+    public void test_removeIntermediateMaterialization() {
+        List<String> list = Arrays.asList("1", "2", "3", "4");
+        test("removeIntermediateMaterialization",    profile(),                        list, "2", "yes", "no");
+        test("removeIntermediateMaterialization",    profile(),                        list, null, "yes", "no");
+        test("removeIntermediateMaterialization",    profile(),                        null, "2", "yes", "no");
+    }
+
+    public static String removeIntermediateMaterialization(List<Object> list, Object e, String a, String b) {
+        boolean test;
+        if (list == null || e == null) {
+            test = false;
+        } else {
+            test = false;
+            for (Object i : list) {
+                if (i.equals(e)) {
+                    test = true;
+                    break;
+                }
+            }
+        }
+        // The merge here has a non-null frame state
+        if (test) {
+            return a;
+        }
+        return b;
     }
 }
