@@ -253,10 +253,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
-        if (id() == 30 && graph().toString().contains("processNode")) {
-            System.console();
-        }
-
         List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
         List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
         List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
