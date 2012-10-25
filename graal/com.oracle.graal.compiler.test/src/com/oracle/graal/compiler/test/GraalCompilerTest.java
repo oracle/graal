@@ -44,8 +44,9 @@ import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.schedule.*;
 
 /**
- * Base class for Graal compiler unit tests. These are white box tests
- * for Graal compiler transformations. The general pattern for a test is:
+ * Base class for Graal compiler unit tests.
+ * <p>
+ * White box tests for Graal compiler transformations use this pattern:
  * <ol>
  * <li>Create a graph by {@linkplain #parse(String) parsing} a method.</li>
  * <li>Manually modify the graph (e.g. replace a parameter node with a constant).</li>
@@ -53,11 +54,13 @@ import com.oracle.graal.phases.schedule.*;
  * <li>Assert that the transformed graph is equal to an expected graph.</li>
  * </ol>
  * <p>
- * See {@link InvokeHintsTest} as an example.
+ * See {@link InvokeHintsTest} as an example of a white box test.
  * <p>
- * The tests can be run in Eclipse with the "Compiler Unit Test" Eclipse
- * launch configuration found in the top level of this project or by
- * running {@code mx unittest} on the command line.
+ * Black box tests use the {@link #test(String, Object...)} or {@link #testN(int, String, Object...)}
+ * to execute some method in the interpreter and compare its result against that produced
+ * by a Graal compiled version of the method.
+ * <p>
+ * These tests will be run by the {@code mx unittest} command.
  */
 public abstract class GraalCompilerTest {
 
