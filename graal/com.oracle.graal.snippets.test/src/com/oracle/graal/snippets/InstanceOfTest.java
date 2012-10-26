@@ -231,16 +231,11 @@ public class InstanceOfTest extends TypeCheckTest {
     }
 
     /**
-     * This test exists to show the kind of pattern that *should* be optimizable by {@code removeIntermediateMaterialization()}
-     * in {@link IfNode}. The optimization is currently blocked for the code pattern in this method because of a non-null
-     * frame state at the position indicated in the source. For this particular method, the frame state could be ignored
-     * as there are no deopt points after the merge. However, this is not the case for all methods where this pattern is
-     * present. The problem (yet to be solved) is figuring how how to evacuate the frame state of the merge to
-     * the code paths that result from the transformation.
+     * This test exists to show the kind of pattern that is be optimizable by
+     * {@code removeIntermediateMaterialization()} in {@link IfNode}.
      * <p>
      * The test exists in this source file as the transformation was originally motivated by the need to
-     * remove use of special JumpNodes in the {@code InstanceOfSnippets}. The transformation works for
-     * the snippet as all frame state are stripped from snippets.
+     * remove use of special JumpNodes in the {@code InstanceOfSnippets}.
      */
     @Test
     public void test_removeIntermediateMaterialization() {
@@ -263,7 +258,6 @@ public class InstanceOfTest extends TypeCheckTest {
                 }
             }
         }
-        // The merge here has a non-null frame state
         if (test) {
             return a;
         }

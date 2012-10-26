@@ -233,32 +233,37 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
-        if (merge.stateAfter() != null) {
-            // Not sure how (or if) the frame state of the merge can be correctly propagated to the successors
+        // Only consider merges with a single usage that is both a phi and an operand of the comparison
+        NodeUsagesList mergeUsages = merge.usages();
+        if (mergeUsages.count() != 1) {
             return false;
         }
-
-        NodeUsagesList usages = merge.usages();
-        if (usages.count() != 1) {
-            return false;
-        }
-
-        Node singleUsage = usages.first();
-
+        Node singleUsage = mergeUsages.first();
         if (!(singleUsage instanceof PhiNode) || (singleUsage != compare.x() && singleUsage != compare.y())) {
             return false;
         }
 
+        // Ensure phi is used by at most the comparison and the merge's frame state (if any)
+        PhiNode phi = (PhiNode) singleUsage;
+        for (Node usage : phi.usages()) {
+            if (usage != compare && usage != merge.stateAfter()) {
+                return false;
+            }
+        }
+
+
         Constant[] xs = constantValues(compare.x(), merge);
         Constant[] ys = constantValues(compare.y(), merge);
-
         if (xs == null || ys == null) {
             return false;
         }
 
+        // DebugScope.dump(this.graph(), "Before removeIntermediateMaterialization");
+
         List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
         List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
         List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
+        Map<EndNode, ValueNode> phiValues = new HashMap<>(mergePredecessors.size());
 
         BeginNode falseSuccessor = falseSuccessor();
         BeginNode trueSuccessor = trueSuccessor();
@@ -269,7 +274,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         Iterator<EndNode> ends = mergePredecessors.iterator();
         for (int i = 0; i < xs.length; i++) {
             EndNode end = ends.next();
-            merge.removeEnd(end);
+            phiValues.put(end, phi.valueAt(end));
             if (compare.condition().foldCondition(xs[i], ys[i], tool.runtime(), compare.unorderedIsTrue())) {
                 trueEnds.add(end);
             } else {
@@ -278,8 +283,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
         assert !ends.hasNext();
 
-        connectEnds(falseEnds, falseSuccessor, tool);
-        connectEnds(trueEnds, trueSuccessor, tool);
+        connectEnds(falseEnds, phiValues, falseSuccessor, merge, tool);
+        connectEnds(trueEnds, phiValues, trueSuccessor, merge, tool);
 
         GraphUtil.killCFG(merge);
         return true;
@@ -290,22 +295,37 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * there is more than one end. If {@code ends} is empty, then {@code successor}
      * is {@linkplain GraphUtil#killCFG(FixedNode) killed} otherwise it is added to {@code tool}'s
      * {@linkplain SimplifierTool#addToWorkList(com.oracle.graal.graph.Node) work list}.
+     *
+     * @param oldMerge the merge being removed
+     * @param phiValues the values of the phi at the merge, keyed by the merge ends
      */
-    private void connectEnds(List<EndNode> ends, BeginNode successor, SimplifierTool tool) {
+    private void connectEnds(List<EndNode> ends, Map<EndNode, ValueNode> phiValues, BeginNode successor, MergeNode oldMerge, SimplifierTool tool) {
         if (ends.isEmpty()) {
             GraphUtil.killCFG(successor);
         } else {
             if (ends.size() == 1) {
-
                 EndNode end = ends.get(0);
                 ((FixedWithNextNode) end.predecessor()).setNext(successor);
+                oldMerge.removeEnd(end);
                 GraphUtil.killCFG(end);
             } else {
-                MergeNode falseMerge = graph().add(new MergeNode());
+                MergeNode newMerge = graph().add(new MergeNode());
+                PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
+                PhiNode newPhi = graph().add(new PhiNode(oldPhi.stamp(), newMerge));
+
                 for (EndNode end : ends) {
-                    falseMerge.addForwardEnd(end);
+                    newPhi.addInput(phiValues.get(end));
+                    newMerge.addForwardEnd(end);
                 }
-                falseMerge.setNext(successor);
+
+                FrameState stateAfter = oldMerge.stateAfter();
+                if (stateAfter != null) {
+                    stateAfter = stateAfter.duplicate();
+                    stateAfter.replaceFirstInput(oldPhi, newPhi);
+                    newMerge.setStateAfter(stateAfter);
+                }
+
+                newMerge.setNext(successor);
             }
             tool.addToWorkList(successor);
         }
