@@ -165,7 +165,7 @@ public class ScalarTypeSystemTest extends GraalCompilerTest {
         Debug.dump(graph, "Graph");
 //        TypeSystemTest.outputGraph(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
-        new CheckCastEliminationPhase().apply(graph);
+        new ConditionalEliminationPhase().apply(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
         StructuredGraph referenceGraph = parse(referenceSnippet);
         assertEquals(referenceGraph, graph);

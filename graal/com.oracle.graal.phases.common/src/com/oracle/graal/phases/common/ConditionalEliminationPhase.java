@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
@@ -35,7 +36,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 
-public class CheckCastEliminationPhase extends Phase {
+public class ConditionalEliminationPhase extends Phase {
 
     private static final DebugMetric metricInstanceOfRegistered = Debug.metric("InstanceOfRegistered");
     private static final DebugMetric metricNullCheckRegistered = Debug.metric("NullCheckRegistered");
@@ -50,7 +51,7 @@ public class CheckCastEliminationPhase extends Phase {
     @Override
     protected void run(StructuredGraph inputGraph) {
         graph = inputGraph;
-        new EliminateCheckCasts(graph.start(), new State()).apply();
+        new ConditionalElimination(graph.start(), new State()).apply();
     }
 
     public static class State implements MergeableState<State> {
@@ -113,14 +114,14 @@ public class CheckCastEliminationPhase extends Phase {
                 }
             }
             for (ValueNode node : knownNull) {
-                boolean nul = true;
+                boolean isNull = true;
                 for (State other : withStates) {
                     if (!other.knownNull.contains(node)) {
-                        nul = false;
+                        isNull = false;
                         break;
                     }
                 }
-                if (nul) {
+                if (isNull) {
                     newKnownNull.add(node);
                 }
             }
@@ -161,7 +162,6 @@ public class CheckCastEliminationPhase extends Phase {
                 }
             }
 
-            /*
             // this piece of code handles phis (merges the types and knownNull/knownNotNull of the values)
             if (!(merge instanceof LoopBeginNode)) {
                 for (PhiNode phi : merge.phis()) {
@@ -169,7 +169,7 @@ public class CheckCastEliminationPhase extends Phase {
                         ValueNode firstValue = phi.valueAt(0);
                         ResolvedJavaType type = getNodeType(firstValue);
                         boolean notNull = knownNotNull.contains(firstValue);
-                        boolean nul = knownNull.contains(firstValue);
+                        boolean isNull = knownNull.contains(firstValue);
 
                         for (int i = 0; i < withStates.size(); i++) {
                             State otherState = withStates.get(i);
@@ -177,21 +177,21 @@ public class CheckCastEliminationPhase extends Phase {
                             ResolvedJavaType otherType = otherState.getNodeType(value);
                             type = widen(type, otherType);
                             notNull &= otherState.knownNotNull.contains(value);
-                            nul &= otherState.knownNull.contains(value);
+                            isNull &= otherState.knownNull.contains(value);
                         }
-                        if (type == null && type != phi.declaredType()) {
+                        if (type != null) {
                             newKnownTypes.put(phi, type);
                         }
                         if (notNull) {
                             newKnownNotNull.add(phi);
                         }
-                        if (nul) {
+                        if (isNull) {
                             newKnownNull.add(phi);
                         }
                     }
                 }
             }
-            */
+
             this.knownTypes = newKnownTypes;
             this.knownNotNull = newKnownNotNull;
             this.knownNull = newKnownNull;
@@ -249,10 +249,10 @@ public class CheckCastEliminationPhase extends Phase {
         }
     }
 
-    public class EliminateCheckCasts extends PostOrderNodeIterator<State> {
+    public class ConditionalElimination extends PostOrderNodeIterator<State> {
         private BeginNode lastBegin = null;
 
-        public EliminateCheckCasts(FixedNode start, State initialState) {
+        public ConditionalElimination(FixedNode start, State initialState) {
             super(start, initialState);
         }
 
