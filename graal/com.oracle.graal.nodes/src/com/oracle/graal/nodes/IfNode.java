@@ -237,6 +237,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
+        if (merge.stateAfter() != null) {
+            // TODO (ds) remove once scheduling issue (sometimes) triggered by compiling org.eclipse.jdt.core.tests.util.Util::unzip is fixed.
+            // Command to reproduce: mx dacapo 4 eclipse -esa -G:+DumpOnError
+            return false;
+        }
+
         // Only consider merges with a single usage that is both a phi and an operand of the comparison
         NodeUsagesList mergeUsages = merge.usages();
         if (mergeUsages.count() != 1) {
