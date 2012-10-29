@@ -32,12 +32,12 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 
 
-public class IterativeCheckCastEliminationPhase extends Phase {
+public class IterativeConditionalEliminationPhase extends Phase {
     private final TargetDescription target;
     private final MetaAccessProvider runtime;
     private final Assumptions assumptions;
 
-    public IterativeCheckCastEliminationPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions) {
+    public IterativeConditionalEliminationPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions) {
         this.target = target;
         this.runtime = runtime;
         this.assumptions = assumptions;
@@ -46,7 +46,7 @@ public class IterativeCheckCastEliminationPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         Set<Node> canonicalizationRoots = new HashSet<>();
-        CheckCastEliminationPhase eliminate = new CheckCastEliminationPhase();
+        ConditionalEliminationPhase eliminate = new ConditionalEliminationPhase();
         Listener listener = new Listener(canonicalizationRoots);
         while (true) {
             graph.trackInputChange(listener);

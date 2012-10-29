@@ -190,7 +190,7 @@ public class TypeSystemTest extends GraalCompilerTest {
             StructuredGraph graph = parse(snippet);
             Debug.dump(graph, "Graph");
             new CanonicalizerPhase(null, runtime(), null).apply(graph);
-            new CheckCastEliminationPhase().apply(graph);
+            new ConditionalEliminationPhase().apply(graph);
             new CanonicalizerPhase(null, runtime(), null).apply(graph);
             new GlobalValueNumberingPhase().apply(graph);
             StructuredGraph referenceGraph = parse(referenceSnippet);
@@ -254,7 +254,7 @@ public class TypeSystemTest extends GraalCompilerTest {
             StructuredGraph graph = parse(snippet);
             Debug.dump(graph, "Graph");
             new CanonicalizerPhase(null, runtime(), null).apply(graph);
-            new CheckCastEliminationPhase().apply(graph);
+            new ConditionalEliminationPhase().apply(graph);
             new CanonicalizerPhase(null, runtime(), null).apply(graph);
             Debug.dump(graph, "Graph");
             Assert.assertFalse("shouldn't have nodes of type " + clazz, graph.getNodes(clazz).iterator().hasNext());

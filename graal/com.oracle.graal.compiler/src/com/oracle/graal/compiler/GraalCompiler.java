@@ -134,7 +134,7 @@ public class GraalCompiler {
             }
 
             if (GraalOptions.CheckCastElimination && GraalOptions.OptCanonicalizer) {
-                new IterativeCheckCastEliminationPhase(target, runtime, assumptions).apply(graph);
+                new IterativeConditionalEliminationPhase(target, runtime, assumptions).apply(graph);
             }
         }
 
@@ -191,7 +191,7 @@ public class GraalCompiler {
         }
 
         if (GraalOptions.CheckCastElimination && GraalOptions.OptCanonicalizer) {
-            new IterativeCheckCastEliminationPhase(target, runtime, assumptions).apply(graph);
+            new IterativeConditionalEliminationPhase(target, runtime, assumptions).apply(graph);
         }
 
         plan.runPhases(PhasePosition.MID_LEVEL, graph);
