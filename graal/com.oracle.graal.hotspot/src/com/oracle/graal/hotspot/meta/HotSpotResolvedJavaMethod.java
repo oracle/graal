@@ -83,7 +83,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public byte[] getCode() {
         if (code == null) {
-            code = HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_code(this);
+            code = HotSpotGraalRuntime.getInstance().getCompilerToVM().getBytecode(this);
             assert code.length == codeSize : "expected: " + codeSize + ", actual: " + code.length;
         }
         return code;
@@ -96,12 +96,12 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public ExceptionHandler[] getExceptionHandlers() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_exceptionHandlers(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getExceptionHandlers(this);
     }
 
     public boolean hasBalancedMonitors() {
         if (hasBalancedMonitors == null) {
-            hasBalancedMonitors = HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_hasBalancedMonitors(this);
+            hasBalancedMonitors = HotSpotGraalRuntime.getInstance().getCompilerToVM().hasBalancedMonitors(this);
         }
         return hasBalancedMonitors;
     }
@@ -130,20 +130,20 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     public StackTraceElement asStackTraceElement(int bci) {
         if (bci < 0 || bci >= codeSize) {
             // HotSpot code can only construct stack trace elements for valid bcis
-            StackTraceElement ste = HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_toStackTraceElement(this, 0);
+            StackTraceElement ste = HotSpotGraalRuntime.getInstance().getCompilerToVM().getStackTraceElement(this, 0);
             return new StackTraceElement(ste.getClassName(), ste.getMethodName(), ste.getFileName(), -1);
         }
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_toStackTraceElement(this, bci);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getStackTraceElement(this, bci);
     }
 
     public ResolvedJavaMethod uniqueConcreteMethod() {
-        return (ResolvedJavaMethod) HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_uniqueConcreteMethod(this);
+        return (ResolvedJavaMethod) HotSpotGraalRuntime.getInstance().getCompilerToVM().getUniqueConcreteMethod(this);
     }
 
     @Override
     public Signature getSignature() {
         if (signature == null) {
-            signature = new HotSpotSignature(HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_signature(this));
+            signature = new HotSpotSignature(HotSpotGraalRuntime.getInstance().getCompilerToVM().getSignature(this));
         }
         return signature;
     }
@@ -153,16 +153,12 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return "HotSpotMethod<" + MetaUtil.format("%h.%n", this) + ">";
     }
 
-    public boolean hasCompiledCode() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_hasCompiledCode(this);
-    }
-
     public int getCompiledCodeSize() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_getCompiledCodeSize(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getCompiledCodeSize(this);
     }
 
     public int invocationCount() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_invocationCount(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getInvocationCount(this);
     }
 
     @Override
@@ -186,7 +182,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         ProfilingInfo info;
 
         if (GraalOptions.UseProfilingInformation && methodData == null) {
-            methodData = HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_methodData(this);
+            methodData = HotSpotGraalRuntime.getInstance().getCompilerToVM().getMethodData(this);
         }
 
         if (methodData == null || (!methodData.hasNormalData() && !methodData.hasExtraData())) {
@@ -271,7 +267,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         if (!holder.isInitialized()) {
             return -1;
         }
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().JavaMethod_vtableEntryOffset(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getVtableEntryOffset(this);
     }
 
     public void setCurrentTask(CompilationTask task) {

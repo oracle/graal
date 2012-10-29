@@ -34,59 +34,57 @@ import com.oracle.graal.hotspot.meta.*;
  */
 public interface CompilerToVM {
 
-    // Checkstyle: stop
+    byte[] getBytecode(HotSpotResolvedJavaMethod method);
 
-    byte[] JavaMethod_code(HotSpotResolvedJavaMethod method);
+    String getSignature(HotSpotResolvedJavaMethod method);
 
-    String JavaMethod_signature(HotSpotResolvedJavaMethod method);
+    ExceptionHandler[] getExceptionHandlers(HotSpotResolvedJavaMethod method);
 
-    ExceptionHandler[] JavaMethod_exceptionHandlers(HotSpotResolvedJavaMethod method);
+    boolean hasBalancedMonitors(HotSpotResolvedJavaMethod method);
 
-    boolean JavaMethod_hasBalancedMonitors(HotSpotResolvedJavaMethod method);
+    JavaMethod getUniqueConcreteMethod(HotSpotResolvedJavaMethod method);
 
-    JavaMethod JavaMethod_uniqueConcreteMethod(HotSpotResolvedJavaMethod method);
+    int getInvocationCount(HotSpotResolvedJavaMethod method);
 
-    int JavaMethod_invocationCount(HotSpotResolvedJavaMethod method);
+    HotSpotMethodData getMethodData(HotSpotResolvedJavaMethod method);
 
-    HotSpotMethodData JavaMethod_methodData(HotSpotResolvedJavaMethod method);
+    JavaType lookupType(String name, HotSpotResolvedJavaType accessingClass, boolean eagerResolve);
 
-    JavaType Signature_lookupType(String returnType, HotSpotResolvedJavaType accessingClass, boolean eagerResolve);
+    Object lookupConstantInPool(HotSpotResolvedJavaType pool, int cpi);
 
-    Object ConstantPool_lookupConstant(HotSpotResolvedJavaType pool, int cpi);
+    JavaMethod lookupMethodInPool(HotSpotResolvedJavaType pool, int cpi, byte opcode);
 
-    JavaMethod ConstantPool_lookupMethod(HotSpotResolvedJavaType pool, int cpi, byte byteCode);
+    JavaType lookupTypeInPool(HotSpotResolvedJavaType pool, int cpi);
 
-    JavaType ConstantPool_lookupType(HotSpotResolvedJavaType pool, int cpi);
+    JavaField lookupFieldInPool(HotSpotResolvedJavaType pool, int cpi, byte opcode);
 
-    JavaField ConstantPool_lookupField(HotSpotResolvedJavaType pool, int cpi, byte byteCode);
-
-    void ConstantPool_loadReferencedType(HotSpotResolvedJavaType pool, int cpi, byte byteCode);
+    void lookupReferencedTypeInPool(HotSpotResolvedJavaType pool, int cpi, byte opcode);
 
     HotSpotCompiledMethod installMethod(HotSpotCompilationResult compResult, boolean makeDefault, HotSpotCodeInfo info);
 
     void initializeConfiguration(HotSpotVMConfig config);
 
-    JavaMethod JavaType_resolveMethodImpl(HotSpotResolvedJavaType klass, String name, String signature);
+    JavaMethod resolveMethod(HotSpotResolvedJavaType klass, String name, String signature);
 
-    boolean JavaType_isSubtypeOf(HotSpotResolvedJavaType klass, JavaType other);
+    boolean isSubtypeOf(HotSpotResolvedJavaType klass, JavaType other);
 
-    JavaType JavaType_leastCommonAncestor(HotSpotResolvedJavaType thisType, HotSpotResolvedJavaType otherType);
+    JavaType getLeastCommonAncestor(HotSpotResolvedJavaType thisType, HotSpotResolvedJavaType otherType);
 
     JavaType getPrimitiveArrayType(Kind kind);
 
-    JavaType JavaType_arrayOf(HotSpotResolvedJavaType klass);
+    JavaType getArrayOf(HotSpotResolvedJavaType klass);
 
-    JavaType JavaType_componentType(HotSpotResolvedJavaType klass);
+    JavaType getComponentType(HotSpotResolvedJavaType klass);
 
-    boolean JavaType_isInitialized(HotSpotResolvedJavaType klass);
+    boolean isTypeInitialized(HotSpotResolvedJavaType klass);
 
-    void JavaType_initialize(HotSpotResolvedJavaType klass);
+    void initializeType(HotSpotResolvedJavaType klass);
 
     JavaType getType(Class<?> javaClass);
 
-    JavaType JavaType_uniqueConcreteSubtype(HotSpotResolvedJavaType klass);
+    JavaType getUniqueConcreteSubtype(HotSpotResolvedJavaType klass);
 
-    JavaType JavaType_superType(HotSpotResolvedJavaType klass);
+    JavaType getSuperType(HotSpotResolvedJavaType klass);
 
     int getArrayLength(Constant array);
 
@@ -94,11 +92,9 @@ public interface CompilerToVM {
 
     JavaType getJavaType(Constant constant);
 
-    ResolvedJavaField[] JavaType_fields(HotSpotResolvedJavaType klass);
+    ResolvedJavaField[] getFields(HotSpotResolvedJavaType klass);
 
-    boolean JavaMethod_hasCompiledCode(HotSpotResolvedJavaMethod method);
-
-    int JavaMethod_getCompiledCodeSize(HotSpotResolvedJavaMethod method);
+    int getCompiledCodeSize(HotSpotResolvedJavaMethod method);
 
     JavaMethod getJavaMethod(Method reflectionMethod);
 
@@ -108,19 +104,17 @@ public interface CompilerToVM {
 
     String disassembleNative(byte[] code, long address);
 
-    StackTraceElement JavaMethod_toStackTraceElement(HotSpotResolvedJavaMethod method, int bci);
+    StackTraceElement getStackTraceElement(HotSpotResolvedJavaMethod method, int bci);
 
     Object executeCompiledMethod(HotSpotCompiledMethod method, Object arg1, Object arg2, Object arg3);
 
     Object executeCompiledMethodVarargs(HotSpotCompiledMethod method, Object... args);
 
-    int JavaMethod_vtableEntryOffset(HotSpotResolvedJavaMethod method);
+    int getVtableEntryOffset(HotSpotResolvedJavaMethod method);
 
     long[] getDeoptedLeafGraphIds();
 
     String decodePC(long pc);
 
-    long JavaType_prototypeMarkWord(HotSpotResolvedJavaType hotSpotResolvedJavaType);
-
-    // Checkstyle: resume
+    long getPrototypeMarkWord(HotSpotResolvedJavaType hotSpotResolvedJavaType);
 }

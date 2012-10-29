@@ -34,8 +34,6 @@ import com.oracle.graal.hotspot.meta.*;
  */
 public class CompilerToVMImpl implements CompilerToVM {
 
-    // Checkstyle: stop
-
     @Override
     public native JavaMethod getJavaMethod(Method reflectionMethod);
 
@@ -43,40 +41,40 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native ResolvedJavaField getJavaField(Field reflectionMethod);
 
     @Override
-    public native byte[] JavaMethod_code(HotSpotResolvedJavaMethod method);
+    public native byte[] getBytecode(HotSpotResolvedJavaMethod method);
 
     @Override
-    public native String JavaMethod_signature(HotSpotResolvedJavaMethod method);
+    public native String getSignature(HotSpotResolvedJavaMethod method);
 
     @Override
-    public native ExceptionHandler[] JavaMethod_exceptionHandlers(HotSpotResolvedJavaMethod method);
+    public native ExceptionHandler[] getExceptionHandlers(HotSpotResolvedJavaMethod method);
 
     @Override
-    public native boolean JavaMethod_hasBalancedMonitors(HotSpotResolvedJavaMethod method);
+    public native boolean hasBalancedMonitors(HotSpotResolvedJavaMethod method);
 
     @Override
-    public native JavaMethod JavaMethod_uniqueConcreteMethod(HotSpotResolvedJavaMethod method);
+    public native JavaMethod getUniqueConcreteMethod(HotSpotResolvedJavaMethod method);
 
     @Override
-    public native int JavaMethod_invocationCount(HotSpotResolvedJavaMethod method);
+    public native int getInvocationCount(HotSpotResolvedJavaMethod method);
 
     @Override
-    public native JavaType Signature_lookupType(String returnType, HotSpotResolvedJavaType accessingClass, boolean eagerResolve);
+    public native JavaType lookupType(String name, HotSpotResolvedJavaType accessingClass, boolean eagerResolve);
 
     @Override
-    public native Object ConstantPool_lookupConstant(HotSpotResolvedJavaType pool, int cpi);
+    public native Object lookupConstantInPool(HotSpotResolvedJavaType pool, int cpi);
 
     @Override
-    public native JavaMethod ConstantPool_lookupMethod(HotSpotResolvedJavaType pool, int cpi, byte byteCode);
+    public native JavaMethod lookupMethodInPool(HotSpotResolvedJavaType pool, int cpi, byte opcode);
 
     @Override
-    public native JavaType ConstantPool_lookupType(HotSpotResolvedJavaType pool, int cpi);
+    public native JavaType lookupTypeInPool(HotSpotResolvedJavaType pool, int cpi);
 
     @Override
-    public native void ConstantPool_loadReferencedType(HotSpotResolvedJavaType pool, int cpi, byte byteCode);
+    public native void lookupReferencedTypeInPool(HotSpotResolvedJavaType pool, int cpi, byte opcode);
 
     @Override
-    public native JavaField ConstantPool_lookupField(HotSpotResolvedJavaType pool, int cpi, byte byteCode);
+    public native JavaField lookupFieldInPool(HotSpotResolvedJavaType pool, int cpi, byte opcode);
 
     @Override
     public native HotSpotCompiledMethod installMethod(HotSpotCompilationResult comp, boolean makeDefault, HotSpotCodeInfo info);
@@ -85,37 +83,37 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void initializeConfiguration(HotSpotVMConfig config);
 
     @Override
-    public native JavaMethod JavaType_resolveMethodImpl(HotSpotResolvedJavaType klass, String name, String signature);
+    public native JavaMethod resolveMethod(HotSpotResolvedJavaType klass, String name, String signature);
 
     @Override
-    public native boolean JavaType_isSubtypeOf(HotSpotResolvedJavaType klass, JavaType other);
+    public native boolean isSubtypeOf(HotSpotResolvedJavaType klass, JavaType other);
 
     @Override
-    public native JavaType JavaType_leastCommonAncestor(HotSpotResolvedJavaType thisType, HotSpotResolvedJavaType otherType);
+    public native JavaType getLeastCommonAncestor(HotSpotResolvedJavaType thisType, HotSpotResolvedJavaType otherType);
 
     @Override
     public native JavaType getPrimitiveArrayType(Kind kind);
 
     @Override
-    public native JavaType JavaType_arrayOf(HotSpotResolvedJavaType klass);
+    public native JavaType getArrayOf(HotSpotResolvedJavaType klass);
 
     @Override
-    public native JavaType JavaType_componentType(HotSpotResolvedJavaType klass);
+    public native JavaType getComponentType(HotSpotResolvedJavaType klass);
 
     @Override
-    public native JavaType JavaType_uniqueConcreteSubtype(HotSpotResolvedJavaType klass);
+    public native JavaType getUniqueConcreteSubtype(HotSpotResolvedJavaType klass);
 
     @Override
-    public native JavaType JavaType_superType(HotSpotResolvedJavaType klass);
+    public native JavaType getSuperType(HotSpotResolvedJavaType klass);
 
     @Override
-    public native boolean JavaType_isInitialized(HotSpotResolvedJavaType klass);
+    public native boolean isTypeInitialized(HotSpotResolvedJavaType klass);
 
     @Override
-    public native void JavaType_initialize(HotSpotResolvedJavaType klass);
+    public native void initializeType(HotSpotResolvedJavaType klass);
 
     @Override
-    public native HotSpotMethodData JavaMethod_methodData(HotSpotResolvedJavaMethod method);
+    public native HotSpotMethodData getMethodData(HotSpotResolvedJavaMethod method);
 
     @Override
     public native JavaType getType(Class<?> javaClass);
@@ -140,13 +138,10 @@ public class CompilerToVMImpl implements CompilerToVM {
     }
 
     @Override
-    public native ResolvedJavaField[] JavaType_fields(HotSpotResolvedJavaType klass);
+    public native ResolvedJavaField[] getFields(HotSpotResolvedJavaType klass);
 
     @Override
-    public native boolean JavaMethod_hasCompiledCode(HotSpotResolvedJavaMethod method);
-
-    @Override
-    public native int JavaMethod_getCompiledCodeSize(HotSpotResolvedJavaMethod method);
+    public native int getCompiledCodeSize(HotSpotResolvedJavaMethod method);
 
     @Override
     public native long getMaxCallTargetOffset(long stub);
@@ -155,7 +150,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native String disassembleNative(byte[] code, long address);
 
     @Override
-    public native StackTraceElement JavaMethod_toStackTraceElement(HotSpotResolvedJavaMethod method, int bci);
+    public native StackTraceElement getStackTraceElement(HotSpotResolvedJavaMethod method, int bci);
 
     @Override
     public native Object executeCompiledMethod(HotSpotCompiledMethod method, Object arg1, Object arg2, Object arg3);
@@ -164,7 +159,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native Object executeCompiledMethodVarargs(HotSpotCompiledMethod method, Object... args);
 
     @Override
-    public native int JavaMethod_vtableEntryOffset(HotSpotResolvedJavaMethod method);
+    public native int getVtableEntryOffset(HotSpotResolvedJavaMethod method);
 
     @Override
     public native long[] getDeoptedLeafGraphIds();
@@ -173,7 +168,5 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native String decodePC(long pc);
 
     @Override
-    public native long JavaType_prototypeMarkWord(HotSpotResolvedJavaType type);
-
-    // Checkstyle: resume
+    public native long getPrototypeMarkWord(HotSpotResolvedJavaType type);
 }

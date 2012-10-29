@@ -563,7 +563,7 @@ public class SnippetTemplate {
         // Remove the replacee from its graph
         replacee.clearInputs();
         replacee.replaceAtUsages(null);
-            GraphUtil.killCFG(replacee);
+        GraphUtil.killCFG(replacee);
 
         Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
         return duplicates;
