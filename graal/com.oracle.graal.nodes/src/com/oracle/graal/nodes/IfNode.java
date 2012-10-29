@@ -224,6 +224,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         CompareNode compare = (CompareNode) condition();
+        if (compare.usages().count() != 1) {
+            return false;
+        }
+
         if (!(predecessor() instanceof MergeNode)) {
             return false;
         }
@@ -287,6 +291,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         connectEnds(trueEnds, phiValues, trueSuccessor, merge, tool);
 
         GraphUtil.killCFG(merge);
+
+        assert !merge.isAlive() : merge;
+        assert !phi.isAlive() : phi;
+        assert !compare.isAlive() : compare;
+        assert !this.isAlive() : this;
+
         return true;
     }
 
