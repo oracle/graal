@@ -177,7 +177,7 @@ public class HotSpotDebugConfig implements DebugConfig {
     }
 
     @Override
-    public Collection<? extends DebugDumpHandler> dumpHandlers() {
+    public Collection<DebugDumpHandler> dumpHandlers() {
         return dumpHandlers;
     }
 

@@ -65,9 +65,18 @@ public interface DebugConfig {
      */
     boolean isTimeEnabled();
 
+    /**
+     * Handles notification of an exception occurring within a debug scope.
+     *
+     * @return the exception object that is to be propagated to parent scope. A value of {@code null} indicates that
+     *         {@code e} is to be propagated.
+     */
     RuntimeException interceptException(Throwable e);
 
-    Collection<? extends DebugDumpHandler> dumpHandlers();
+    /**
+     * Gets the modifiable collection dump handlers registered with this configuration.
+     */
+    Collection<DebugDumpHandler> dumpHandlers();
 
     PrintStream output();
 }

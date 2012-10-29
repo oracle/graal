@@ -189,7 +189,7 @@ public class Debug {
         }
     }
 
-    public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled, final Collection<? extends DebugDumpHandler> dumpHandlers, final PrintStream output) {
+    public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled, final Collection<DebugDumpHandler> dumpHandlers, final PrintStream output) {
         return new DebugConfig() {
 
             @Override
@@ -218,7 +218,7 @@ public class Debug {
             }
 
             @Override
-            public Collection< ? extends DebugDumpHandler> dumpHandlers() {
+            public Collection<DebugDumpHandler> dumpHandlers() {
                 return dumpHandlers;
             }
 
