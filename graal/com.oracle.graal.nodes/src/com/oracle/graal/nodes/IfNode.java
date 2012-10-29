@@ -237,12 +237,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
-        if (merge.stateAfter() != null) {
-            // TODO (ds) remove once scheduling issue (sometimes) triggered by compiling org.eclipse.jdt.core.tests.util.Util::unzip is fixed.
-            // Command to reproduce: mx dacapo 4 eclipse -esa -G:+DumpOnError
-            return false;
-        }
-
         // Only consider merges with a single usage that is both a phi and an operand of the comparison
         NodeUsagesList mergeUsages = merge.usages();
         if (mergeUsages.count() != 1) {
@@ -255,12 +249,21 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
         // Ensure phi is used by at most the comparison and the merge's frame state (if any)
         PhiNode phi = (PhiNode) singleUsage;
-        for (Node usage : phi.usages()) {
+        NodeUsagesList phiUsages = phi.usages();
+        if (phiUsages.count() > 2) {
+            return false;
+        }
+        for (Node usage : phiUsages) {
             if (usage != compare && usage != merge.stateAfter()) {
                 return false;
             }
         }
 
+        List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
+        if (phi.valueCount() != merge.forwardEndCount()) {
+            // Handles a loop begin merge
+            return false;
+        }
 
         Constant[] xs = constantValues(compare.x(), merge);
         Constant[] ys = constantValues(compare.y(), merge);
@@ -268,9 +271,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
-        // DebugScope.dump(this.graph(), "Before removeIntermediateMaterialization");
-
-        List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
         List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
         List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
         Map<EndNode, ValueNode> phiValues = new HashMap<>(mergePredecessors.size());
@@ -325,6 +325,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 oldMerge.removeEnd(end);
                 GraphUtil.killCFG(end);
             } else {
+                // Need a new phi in case the frame state is used by more than the merge being removed
                 MergeNode newMerge = graph().add(new MergeNode());
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
                 PhiNode newPhi = graph().add(new PhiNode(oldPhi.stamp(), newMerge));
