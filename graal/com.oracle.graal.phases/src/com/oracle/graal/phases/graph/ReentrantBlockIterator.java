@@ -20,16 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.virtual.phases.ea.experimental;
+package com.oracle.graal.phases.graph;
 
 import java.util.*;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.virtual.phases.ea.*;
-import com.oracle.graal.virtual.phases.ea.experimental.BlockIteratorClosure.*;
 
 public final class ReentrantBlockIterator {
+
+    public abstract static class MergeableBlockState<T> {
+
+        public abstract T cloneState();
+    }
+
+    public static class LoopInfo<T extends MergeableBlockState<T>> {
+
+        public final List<T> endStates = new ArrayList<>();
+        public final List<T> exitStates = new ArrayList<>();
+    }
+
+    public abstract static class BlockIteratorClosure<T extends MergeableBlockState<T>> {
+
+        protected abstract void processBlock(Block block, T currentState);
+
+        protected abstract T merge(MergeNode merge, List<T> states);
+
+        protected abstract T afterSplit(FixedNode node, T oldState);
+
+        protected abstract List<T> processLoop(Loop loop, T initialState);
+    }
 
     private ReentrantBlockIterator() {
         // no instances allowed

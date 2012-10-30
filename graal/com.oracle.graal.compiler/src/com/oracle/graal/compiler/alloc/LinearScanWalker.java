@@ -29,7 +29,7 @@ import static com.oracle.graal.lir.LIRValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Register.*;
+import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
 import com.oracle.graal.compiler.alloc.Interval.RegisterPriority;
@@ -37,7 +37,7 @@ import com.oracle.graal.compiler.alloc.Interval.SpillState;
 import com.oracle.graal.compiler.alloc.Interval.State;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
@@ -73,7 +73,13 @@ final class LinearScanWalker extends IntervalWalker {
 
     LinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
-        this.callKillsRegisters = allocator.frameMap.runtime.callKillsRegisters();
+
+        // If all allocatable registers are caller saved, then no registers are live across a call site.
+        // The register allocator can save time not trying to find a register at a call site.
+        HashSet<Register> registers = new HashSet<>(Arrays.asList(allocator.frameMap.registerConfig.getAllocatableRegisters()));
+        registers.removeAll(Arrays.asList(allocator.frameMap.registerConfig.getCallerSaveRegisters()));
+        callKillsRegisters = registers.size() == 0;
+
         moveResolver = new MoveResolver(allocator);
         spillIntervals = Util.uncheckedCast(new List[allocator.registers.length]);
         for (int i = 0; i < allocator.registers.length; i++) {

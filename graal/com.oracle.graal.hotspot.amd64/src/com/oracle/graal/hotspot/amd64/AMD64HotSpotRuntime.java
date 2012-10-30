@@ -123,11 +123,6 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
     }
 
     @Override
-    public boolean callKillsRegisters() {
-        return true;
-    }
-
-    @Override
     public Register threadRegister() {
         return r15;
     }
