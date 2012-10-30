@@ -61,10 +61,10 @@ import com.oracle.graal.snippets.nodes.*;
 public class InstanceOfSnippets implements SnippetsInterface {
 
     /**
-     * A test against a final type with the result being {@linkplain ConditionalNode materialized}.
+     * A test against a final type.
      */
     @Snippet
-    public static Object materializeExact(
+    public static Object instanceofExact(
                     @Parameter("object") Object object,
                     @Parameter("exactHub") Object exactHub,
                     @Parameter("trueValue") Object trueValue,
@@ -84,10 +84,10 @@ public class InstanceOfSnippets implements SnippetsInterface {
     }
 
     /**
-     * A test against a primary type with the result being {@linkplain ConditionalNode materialized}.
+     * A test against a primary type.
      */
     @Snippet
-    public static Object materializePrimary(
+    public static Object instanceofPrimary(
                     @Parameter("hub") Object hub,
                     @Parameter("object") Object object,
                     @Parameter("trueValue") Object trueValue,
@@ -108,10 +108,10 @@ public class InstanceOfSnippets implements SnippetsInterface {
     }
 
     /**
-     * A test against a restricted secondary type type with the result being {@linkplain ConditionalNode materialized}.
+     * A test against a restricted secondary type type.
      */
     @Snippet
-    public static Object materializeSecondary(
+    public static Object instanceofSecondary(
                     @Parameter("hub") Object hub,
                     @Parameter("object") Object object,
                     @Parameter("trueValue") Object trueValue,
@@ -167,15 +167,15 @@ public class InstanceOfSnippets implements SnippetsInterface {
 
     public static class Templates extends AbstractTemplates<InstanceOfSnippets> {
 
-        private final ResolvedJavaMethod materializeExact;
-        private final ResolvedJavaMethod materializePrimary;
-        private final ResolvedJavaMethod materializeSecondary;
+        private final ResolvedJavaMethod instanceofExact;
+        private final ResolvedJavaMethod instanceofPrimary;
+        private final ResolvedJavaMethod instanceofSecondary;
 
         public Templates(CodeCacheProvider runtime) {
             super(runtime, InstanceOfSnippets.class);
-            materializeExact = snippet("materializeExact", Object.class, Object.class, Object.class, Object.class, boolean.class);
-            materializePrimary = snippet("materializePrimary", Object.class, Object.class, Object.class, Object.class, boolean.class, int.class);
-            materializeSecondary = snippet("materializeSecondary", Object.class, Object.class, Object.class, Object.class, Object[].class, boolean.class);
+            instanceofExact = snippet("instanceofExact", Object.class, Object.class, Object.class, Object.class, boolean.class);
+            instanceofPrimary = snippet("instanceofPrimary", Object.class, Object.class, Object.class, Object.class, boolean.class, int.class);
+            instanceofSecondary = snippet("instanceofSecondary", Object.class, Object.class, Object.class, Object.class, Object[].class, boolean.class);
         }
 
         public void lower(InstanceOfNode instanceOf, LoweringTool tool) {
@@ -202,14 +202,14 @@ public class InstanceOfSnippets implements SnippetsInterface {
                     if (hintInfo.exact) {
                         HotSpotKlassOop[] hints = createHints(hintInfo);
                         assert hints.length == 1;
-                        key = new Key(materializeExact).add("checkNull", checkNull);
+                        key = new Key(instanceofExact).add("checkNull", checkNull);
                         arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
                     } else if (type.isPrimaryType()) {
-                        key = new Key(materializePrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
+                        key = new Key(instanceofPrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
                         arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
                     } else {
                         HotSpotKlassOop[] hints = createHints(hintInfo);
-                        key = new Key(materializeSecondary).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
+                        key = new Key(instanceofSecondary).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
                         arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
                     }
 
@@ -241,14 +241,14 @@ public class InstanceOfSnippets implements SnippetsInterface {
                     if (hintInfo.exact) {
                         HotSpotKlassOop[] hints = createHints(hintInfo);
                         assert hints.length == 1;
-                        key = new Key(materializeExact).add("checkNull", checkNull);
+                        key = new Key(instanceofExact).add("checkNull", checkNull);
                         arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
                     } else if (type.isPrimaryType()) {
-                        key = new Key(materializePrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
+                        key = new Key(instanceofPrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
                         arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
                     } else {
                         HotSpotKlassOop[] hints = createHints(hintInfo);
-                        key = new Key(materializeSecondary).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
+                        key = new Key(instanceofSecondary).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
                         arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
                     }
 
