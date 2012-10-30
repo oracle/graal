@@ -556,8 +556,10 @@ public class SnippetTemplate {
             replacer.replace(replacee, returnValue);
 
             Node returnDuplicate = duplicates.get(returnNode);
-            returnDuplicate.clearInputs();
-            returnDuplicate.replaceAndDelete(next);
+            if (returnDuplicate.isAlive()) {
+                returnDuplicate.clearInputs();
+                returnDuplicate.replaceAndDelete(next);
+            }
         }
 
         // Remove the replacee from its graph
@@ -621,8 +623,10 @@ public class SnippetTemplate {
         replacer.replace(replacee, returnValue);
 
         Node returnDuplicate = duplicates.get(returnNode);
-        returnDuplicate.clearInputs();
-        returnDuplicate.replaceAndDelete(next);
+        if (returnDuplicate.isAlive()) {
+            returnDuplicate.clearInputs();
+            returnDuplicate.replaceAndDelete(next);
+        }
 
         Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
     }
