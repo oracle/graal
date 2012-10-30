@@ -179,10 +179,10 @@ public class InstanceOfSnippets implements SnippetsInterface {
         }
 
         public void lower(InstanceOfNode instanceOf, LoweringTool tool) {
-            ValueNode hub = instanceOf.targetClassInstruction();
             ValueNode object = instanceOf.object();
-            TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.targetClass(), instanceOf.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
-            final HotSpotResolvedJavaType target = (HotSpotResolvedJavaType) instanceOf.targetClass();
+            TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
+            final HotSpotResolvedJavaType target = (HotSpotResolvedJavaType) instanceOf.type();
+            ConstantNode hub = ConstantNode.forObject(target.klassOop(), runtime, instanceOf.graph());
             boolean checkNull = !object.stamp().nonNull();
 
             for (Node usage : instanceOf.usages().snapshot()) {
@@ -191,7 +191,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
 
                 // instanceof nodes are lowered separately for each usage. To simply graph modifications,
                 // we duplicate the instanceof node for each usage.
-                final InstanceOfNode duplicate = instanceOf.graph().add(new InstanceOfNode(instanceOf.targetClassInstruction(), instanceOf.targetClass(), instanceOf.object(), instanceOf.profile()));
+                final InstanceOfNode duplicate = instanceOf.graph().add(new InstanceOfNode(instanceOf.type(), instanceOf.object(), instanceOf.profile()));
                 usage.replaceFirstInput(instanceOf, duplicate);
 
                 if (usage instanceof IfNode) {

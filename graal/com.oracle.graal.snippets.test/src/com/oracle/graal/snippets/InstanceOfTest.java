@@ -30,6 +30,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
 import com.oracle.graal.snippets.CheckCastTest.Depth12;
 import com.oracle.graal.snippets.CheckCastTest.Depth13;
 import com.oracle.graal.snippets.CheckCastTest.Depth14;
@@ -42,14 +43,14 @@ public class InstanceOfTest extends TypeCheckTest {
 
     @Override
     protected void editPhasePlan(ResolvedJavaMethod method, StructuredGraph graph, PhasePlan phasePlan) {
-    //    phasePlan.disablePhase(InliningPhase.class);
+        phasePlan.disablePhase(InliningPhase.class);
     }
 
     @Override
     protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
         InstanceOfNode ion = graph.getNodes().filter(InstanceOfNode.class).first();
         if (ion != null) {
-            InstanceOfNode ionNew = graph.add(new InstanceOfNode(ion.targetClassInstruction(), ion.targetClass(), ion.object(), profile));
+            InstanceOfNode ionNew = graph.add(new InstanceOfNode(ion.type(), ion.object(), profile));
             graph.replaceFloating(ion, ionNew);
         }
     }

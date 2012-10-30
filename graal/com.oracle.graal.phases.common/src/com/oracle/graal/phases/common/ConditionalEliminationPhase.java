@@ -277,7 +277,7 @@ public class ConditionalEliminationPhase extends Phase {
                         if ((node == ifNode.trueSuccessor())) {
                             ValueNode object = instanceOf.object();
                             state.knownNotNull.add(object);
-                            state.knownTypes.put(object, tighten(instanceOf.targetClass(), state.getNodeType(object)));
+                            state.knownTypes.put(object, tighten(instanceOf.type(), state.getNodeType(object)));
                             metricInstanceOfRegistered.increment();
                         }
                     } else if (ifNode.condition() instanceof IsNullNode) {
@@ -351,7 +351,7 @@ public class ConditionalEliminationPhase extends Phase {
                             replaceWith = ConstantNode.forBoolean(false, graph);
                         } else if (state.knownNotNull.contains(object)) {
                             ResolvedJavaType type = state.getNodeType(object);
-                            if (type != null && type.isSubtypeOf(instanceOf.targetClass())) {
+                            if (type != null && type.isSubtypeOf(instanceOf.type())) {
                                 replaceWith = ConstantNode.forBoolean(true, graph);
                             }
                         }

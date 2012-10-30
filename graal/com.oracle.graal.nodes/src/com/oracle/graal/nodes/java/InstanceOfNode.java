@@ -35,28 +35,21 @@ import com.oracle.graal.nodes.type.*;
 public final class InstanceOfNode extends BooleanNode implements Canonicalizable, Lowerable, LIRLowerable {
 
     @Input private ValueNode object;
-    @Input private ValueNode targetClassInstruction;
-    private final ResolvedJavaType targetClass;
+    private final ResolvedJavaType type;
     private final JavaTypeProfile profile;
 
     /**
      * Constructs a new InstanceOfNode.
      *
-     * @param targetClassInstruction the instruction which produces the target class of the instanceof check
-     * @param targetClass the class which is the target of the instanceof check
-     * @param object the instruction producing the object input to this instruction
+     * @param type the target type of the instanceof check
+     * @param object the object being tested by the instanceof
      */
-    public InstanceOfNode(ValueNode targetClassInstruction, ResolvedJavaType targetClass, ValueNode object) {
-        this(targetClassInstruction, targetClass, object, null);
-    }
-
-    public InstanceOfNode(ValueNode targetClassInstruction, ResolvedJavaType targetClass, ValueNode object, JavaTypeProfile profile) {
+    public InstanceOfNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
         super(StampFactory.condition());
-        this.targetClassInstruction = targetClassInstruction;
-        this.targetClass = targetClass;
+        this.type = type;
         this.object = object;
         this.profile = profile;
-        assert targetClass != null;
+        assert type != null;
     }
 
     @Override
@@ -73,10 +66,10 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
         assert object() != null : this;
 
         ObjectStamp stamp = object().objectStamp();
-        ResolvedJavaType type = stamp.type();
+        ResolvedJavaType stampType = stamp.type();
 
         if (stamp.isExactType()) {
-            boolean subType = type.isSubtypeOf(targetClass());
+            boolean subType = stampType.isSubtypeOf(type());
 
             if (subType) {
                 if (stamp.nonNull()) {
@@ -92,8 +85,8 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
                 // we also don't care about null values, since they will also make the check fail.
                 return ConstantNode.forBoolean(false, graph());
             }
-        } else if (type != null) {
-            boolean subType = type.isSubtypeOf(targetClass());
+        } else if (stampType != null) {
+            boolean subType = stampType.isSubtypeOf(type());
 
             if (subType) {
                 if (stamp.nonNull()) {
@@ -118,16 +111,11 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
         return object;
     }
 
-    public ValueNode targetClassInstruction() {
-        return targetClassInstruction;
-    }
-
     /**
-     * Gets the target class, i.e. the class being cast to, or the class being tested against.
-     * @return the target class
+     * Gets the type being tested.
      */
-    public ResolvedJavaType targetClass() {
-        return targetClass;
+    public ResolvedJavaType type() {
+        return type;
     }
 
     public JavaTypeProfile profile() {

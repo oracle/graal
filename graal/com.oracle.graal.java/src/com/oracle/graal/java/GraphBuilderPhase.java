@@ -651,8 +651,7 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode object = frameState.apop();
         if (type instanceof ResolvedJavaType) {
             ResolvedJavaType resolvedType = (ResolvedJavaType) type;
-            ConstantNode hub = appendConstant(resolvedType.getEncoding(Representation.ObjectHub));
-            InstanceOfNode instanceOfNode = new InstanceOfNode(hub, (ResolvedJavaType) type, object, getProfileForTypeCheck(resolvedType));
+            InstanceOfNode instanceOfNode = new InstanceOfNode((ResolvedJavaType) type, object, getProfileForTypeCheck(resolvedType));
             frameState.ipush(append(MaterializeNode.create(currentGraph.unique(instanceOfNode))));
         } else {
             BlockPlaceholderNode successor = currentGraph.add(new BlockPlaceholderNode());
@@ -1424,7 +1423,7 @@ public final class GraphBuilderPhase extends Phase {
             frameState.push(Kind.Object, exception);
             FixedNode nextDispatch = createTarget(nextBlock, frameState);
             checkCast.setNext(catchSuccessor);
-            IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new InstanceOfNode(typeInstruction, (ResolvedJavaType) catchType, exception)), checkCast, nextDispatch, 0.5, graphId));
+            IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), checkCast, nextDispatch, 0.5, graphId));
             append(ifNode);
         }
     }
