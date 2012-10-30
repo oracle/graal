@@ -70,12 +70,6 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     int getCustomStackAreaSize();
 
     /**
-     * Determines if a call instruction in compiled code can assume all allocatable
-     * registers are killed by the call.
-     */
-    boolean callKillsRegisters();
-
-    /**
      * Minimum size of the stack area reserved for outgoing parameters. This area is reserved in all cases, even when
      * the compiled method has no regular call instructions.
      *
