@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.virtual.phases.ea.*;
+import com.oracle.graal.virtual.phases.ea.experimental.*;
 
 /**
  * In these test cases the probability of all invokes is set to a high value, such that an InliningPhase should inline them all.
@@ -171,7 +171,7 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
                 new InliningPhase(null, runtime(), null, null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
                 Debug.dump(graph, "Graph");
-                new PartialEscapeAnalysisPhase(null, runtime(), null).apply(graph);
+                new SplitPartialEscapeAnalysisPhase(null).apply(graph);
                 new CullFrameStatesPhase().apply(graph);
                 new CanonicalizerPhase(null, runtime(), null).apply(graph);
                 Debug.dump(graph, "Graph");
