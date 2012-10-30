@@ -414,7 +414,7 @@ class EscapeAnalysisIteration {
                 ObjectState obj = state.objectState(x.object());
                 if (obj != null) {
                     if (obj.materializedValue == null) {
-                        if (x.targetClass() != null && obj.virtual.type().isSubtypeOf(x.targetClass())) {
+                        if (obj.virtual.type().isSubtypeOf(x.type())) {
                             state.addAndMarkAlias(obj.virtual, x);
                             effects.deleteFixedNode(x);
                         } else {

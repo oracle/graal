@@ -633,9 +633,8 @@ public final class GraphBuilderPhase extends Phase {
         JavaType type = lookupType(cpi, CHECKCAST);
         boolean initialized = type instanceof ResolvedJavaType;
         if (initialized) {
-            ConstantNode typeInstruction = genTypeOrDeopt(Representation.ObjectHub, type, true);
             ValueNode object = frameState.apop();
-            CheckCastNode checkCast = currentGraph.add(new CheckCastNode(typeInstruction, (ResolvedJavaType) type, object, getProfileForTypeCheck((ResolvedJavaType) type)));
+            CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) type, object, getProfileForTypeCheck((ResolvedJavaType) type)));
             append(checkCast);
             frameState.apush(checkCast);
         } else {
@@ -1411,11 +1410,10 @@ public final class GraphBuilderPhase extends Phase {
             }
         }
 
-        ConstantNode typeInstruction = genTypeOrDeopt(Representation.ObjectHub, catchType, initialized);
-        if (typeInstruction != null) {
+        if (initialized) {
             Block nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
             ValueNode exception = frameState.stackAt(0);
-            CheckCastNode checkCast = currentGraph.add(new CheckCastNode(typeInstruction, (ResolvedJavaType) catchType, exception));
+            CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) catchType, exception, null));
             frameState.apop();
             frameState.push(Kind.Object, checkCast);
             FixedNode catchSuccessor = createTarget(block.successors.get(0), frameState);
@@ -1425,6 +1423,8 @@ public final class GraphBuilderPhase extends Phase {
             checkCast.setNext(catchSuccessor);
             IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), checkCast, nextDispatch, 0.5, graphId));
             append(ifNode);
+        } else {
+            append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved, graphId)));
         }
     }
 

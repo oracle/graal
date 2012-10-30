@@ -326,7 +326,7 @@ public class ConditionalEliminationPhase extends Phase {
             } else if (node instanceof CheckCastNode) {
                 CheckCastNode checkCast = (CheckCastNode) node;
                 ResolvedJavaType type = state.getNodeType(checkCast.object());
-                if (checkCast.targetClass() != null && type != null && type.isSubtypeOf(checkCast.targetClass())) {
+                if (type != null && type.isSubtypeOf(checkCast.type())) {
                     PiNode piNode;
                     boolean nonNull = state.knownNotNull.contains(checkCast.object());
                     piNode = graph.unique(new PiNode(checkCast.object(), lastBegin, nonNull ? StampFactory.declaredNonNull(type) : StampFactory.declared(type)));

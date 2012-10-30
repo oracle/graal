@@ -43,7 +43,6 @@ import com.oracle.graal.api.code.CompilationResult.Safepoint;
 import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.code.RuntimeCall.Descriptor;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
@@ -470,7 +469,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             Kind elementKind = storeIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index());
             ValueNode value = storeIndexed.value();
-            CheckCastNode checkcast = null;
             ValueNode array = storeIndexed.array();
             if (elementKind == Kind.Object && !value.objectStamp().alwaysNull()) {
                 // Store check!
@@ -478,8 +476,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 if (arrayType != null && array.objectStamp().isExactType()) {
                     ResolvedJavaType elementType = arrayType.getComponentType();
                     if (elementType.getSuperclass() != null) {
-                        ConstantNode type = ConstantNode.forConstant(elementType.getEncoding(Representation.ObjectHub), this, graph);
-                        checkcast = graph.add(new CheckCastNode(type, elementType, value));
+                        CheckCastNode checkcast = graph.add(new CheckCastNode(elementType, value, null));
                         graph.addBeforeFixed(storeIndexed, checkcast);
                         value = checkcast;
                     } else {
@@ -488,7 +485,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 } else {
                     LoadHubNode arrayClass = graph.add(new LoadHubNode(array));
                     FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Object, config.arrayClassElementOffset, graph), null, StampFactory.objectNonNull()));
-                    checkcast = graph.add(new CheckCastNode(arrayElementKlass, null, value));
+                    CheckCastDynamicNode checkcast = graph.add(new CheckCastDynamicNode(arrayElementKlass, value));
                     graph.addBeforeFixed(storeIndexed, checkcast);
                     graph.addBeforeFixed(checkcast, arrayClass);
                     value = checkcast;
@@ -541,6 +538,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             graph.replaceFixed(loadHub, hub);
         } else if (n instanceof CheckCastNode) {
             checkcastSnippets.lower((CheckCastNode) n, tool);
+        } else if (n instanceof CheckCastDynamicNode) {
+            checkcastSnippets.lower((CheckCastDynamicNode) n);
         } else if (n instanceof InstanceOfNode) {
             instanceofSnippets.lower((InstanceOfNode) n, tool);
         } else if (n instanceof NewInstanceNode) {

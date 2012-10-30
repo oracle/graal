@@ -54,7 +54,7 @@ public class SnippetVerificationPhase extends Phase {
                     verify(!isWord(node) || ((StoreFieldNode) usage).object() != node, node, usage, "cannot store to word value");
                 } else if (usage instanceof CheckCastNode) {
                     verify(!isWord(node), node, usage, "word value cannot be cast");
-                    verify(!isWord(((CheckCastNode) usage).targetClass()), node, usage, "cannot cast to word value");
+                    verify(!isWord(((CheckCastNode) usage).type()), node, usage, "cannot cast to word value");
                 } else if (usage instanceof LoadIndexedNode) {
                     verify(!isWord(node) || ((LoadIndexedNode) usage).array() != node, node, usage, "cannot load from word value");
                     verify(!isWord(node) || ((LoadIndexedNode) usage).index() != node, node, usage, "cannot use word value as index");

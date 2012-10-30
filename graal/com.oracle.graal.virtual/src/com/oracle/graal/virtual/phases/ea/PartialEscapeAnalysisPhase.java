@@ -419,7 +419,7 @@ class EscapeAnalysisIteration {
                 ObjectState obj = state.objectState(x.object());
                 assert obj != null : x;
                 if (obj.materializedValue == null) {
-                    if (x.targetClass() != null && obj.virtual.type().isSubtypeOf(x.targetClass())) {
+                    if (obj.virtual.type().isSubtypeOf(x.type())) {
                         metricOtherRemoved.increment();
                         state.addAndMarkAlias(obj.virtual, x, true);
                         // throw new UnsupportedOperationException("probably incorrect - losing dependency");

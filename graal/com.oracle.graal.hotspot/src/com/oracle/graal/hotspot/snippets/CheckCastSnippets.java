@@ -134,25 +134,15 @@ public class CheckCastSnippets implements SnippetsInterface {
      * in an object array store check).
      */
     @Snippet
-    public static Object checkcastUnknown(
+    public static Object checkcastDynamic(
                     @Parameter("hub") Object hub,
                     @Parameter("object") Object object,
-                    @VarargsParameter("hints") Object[] hints,
                     @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
             isNull.inc();
             return object;
         }
         Object objectHub = loadHub(object);
-        // if we get an exact match: succeed immediately
-        ExplodeLoopNode.explodeLoop();
-        for (int i = 0; i < hints.length; i++) {
-            Object hintHub = hints[i];
-            if (hintHub == objectHub) {
-                hintsHit.inc();
-                return object;
-            }
-        }
         if (!checkUnknownSubType(hub, objectHub)) {
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
         }
@@ -237,14 +227,14 @@ public class CheckCastSnippets implements SnippetsInterface {
         private final ResolvedJavaMethod exact;
         private final ResolvedJavaMethod primary;
         private final ResolvedJavaMethod secondary;
-        private final ResolvedJavaMethod unknown;
+        private final ResolvedJavaMethod dynamic;
 
         public Templates(CodeCacheProvider runtime) {
             super(runtime, CheckCastSnippets.class);
             exact = snippet("checkcastExact", Object.class, Object.class, boolean.class);
             primary = snippet("checkcastPrimary", Object.class, Object.class, boolean.class, int.class);
             secondary = snippet("checkcastSecondary", Object.class, Object.class, Object[].class, boolean.class);
-            unknown = snippet("checkcastUnknown", Object.class, Object.class, Object[].class, boolean.class);
+            dynamic = snippet("checkcastDynamic", Object.class, Object.class, boolean.class);
         }
 
         /**
@@ -252,25 +242,22 @@ public class CheckCastSnippets implements SnippetsInterface {
          */
         public void lower(CheckCastNode checkcast, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) checkcast.graph();
-            ValueNode hub = checkcast.targetClassInstruction();
             ValueNode object = checkcast.object();
-            TypeCheckHints hintInfo = new TypeCheckHints(checkcast.targetClass(), checkcast.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
-            final HotSpotResolvedJavaType target = (HotSpotResolvedJavaType) checkcast.targetClass();
+            TypeCheckHints hintInfo = new TypeCheckHints(checkcast.type(), checkcast.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
+            final HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) checkcast.type();
+            ValueNode hub = ConstantNode.forObject(type.klassOop(), runtime, checkcast.graph());
             boolean checkNull = !object.stamp().nonNull();
             Arguments arguments;
             Key key;
 
-            if (target == null) {
-                HotSpotKlassOop[] hints = createHints(hintInfo);
-                key = new Key(unknown).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
-                arguments = arguments("hub", hub).add("object", object).add("hints", hints);
-            } else if (hintInfo.exact) {
+            assert type != null;
+            if (hintInfo.exact) {
                 HotSpotKlassOop[] hints = createHints(hintInfo);
                 assert hints.length == 1;
                 key = new Key(exact).add("checkNull", checkNull);
                 arguments = arguments("object", object).add("exactHub", hints[0]);
-            } else if (target.isPrimaryType()) {
-                key = new Key(primary).add("checkNull", checkNull).add("superCheckOffset", target.superCheckOffset());
+            } else if (type.isPrimaryType()) {
+                key = new Key(primary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
                 arguments = arguments("hub", hub).add("object", object);
             } else {
                 HotSpotKlassOop[] hints = createHints(hintInfo);
@@ -280,6 +267,23 @@ public class CheckCastSnippets implements SnippetsInterface {
 
             SnippetTemplate template = cache.get(key);
             Debug.log("Lowering checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, arguments);
+            template.instantiate(runtime, checkcast, DEFAULT_REPLACER, arguments);
+        }
+
+        /**
+         * Lowers a dynamic checkcast node.
+         */
+        public void lower(CheckCastDynamicNode checkcast) {
+            StructuredGraph graph = (StructuredGraph) checkcast.graph();
+            ValueNode hub = checkcast.type();
+            ValueNode object = checkcast.object();
+            boolean checkNull = !object.stamp().nonNull();
+
+            Key key = new Key(dynamic).add("checkNull", checkNull);
+            Arguments arguments = arguments("hub", hub).add("object", object);
+
+            SnippetTemplate template = cache.get(key);
+            Debug.log("Lowering dynamic checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, arguments);
             template.instantiate(runtime, checkcast, DEFAULT_REPLACER, arguments);
         }
 

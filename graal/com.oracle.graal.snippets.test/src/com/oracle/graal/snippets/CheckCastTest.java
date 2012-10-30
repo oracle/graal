@@ -34,27 +34,13 @@ import com.oracle.graal.nodes.java.*;
  */
 public class CheckCastTest extends TypeCheckTest {
 
-    /**
-     * Enables making the target type "unknown" at compile time.
-     */
-    boolean unknown;
-
     @Override
     protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
         CheckCastNode ccn = graph.getNodes(CheckCastNode.class).first();
         if (ccn != null) {
-            ResolvedJavaType targetClass = unknown ? null : ccn.targetClass();
-            CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.targetClassInstruction(), targetClass, ccn.object(), profile));
+            CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.type(), ccn.object(), profile));
             graph.replaceFixedWithFixed(ccn, ccnNew);
         }
-        unknown = false;
-    }
-
-    @Override
-    protected void test(String name, JavaTypeProfile profile, Object... args) {
-        super.test(name, profile, args);
-        unknown = true;
-        super.test(name, profile, args);
     }
 
     @Test
@@ -113,12 +99,12 @@ public class CheckCastTest extends TypeCheckTest {
 
     @Test
     public void test8() {
-        test("arrayStore", profile(), new Object[100], "111");
+        test("arrayStore", new Object[100], "111");
     }
 
     @Test
     public void test8_1() {
-        test("arrayFill", profile(), new Object[100], "111");
+        test("arrayFill", new Object[100], "111");
     }
 
     public static Number asNumber(Object o) {
@@ -197,6 +183,6 @@ public class CheckCastTest extends TypeCheckTest {
     @Test
     public void test10() {
         Object o = new Depth13[3][];
-        test("asDepth12Arr",   profile(), o);
+        test("asDepth12Arr", o);
     }
 }

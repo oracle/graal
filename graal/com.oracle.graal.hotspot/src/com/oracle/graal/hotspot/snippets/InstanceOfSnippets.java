@@ -181,8 +181,8 @@ public class InstanceOfSnippets implements SnippetsInterface {
         public void lower(InstanceOfNode instanceOf, LoweringTool tool) {
             ValueNode object = instanceOf.object();
             TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
-            final HotSpotResolvedJavaType target = (HotSpotResolvedJavaType) instanceOf.type();
-            ConstantNode hub = ConstantNode.forObject(target.klassOop(), runtime, instanceOf.graph());
+            final HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) instanceOf.type();
+            ConstantNode hub = ConstantNode.forObject(type.klassOop(), runtime, instanceOf.graph());
             boolean checkNull = !object.stamp().nonNull();
 
             for (Node usage : instanceOf.usages().snapshot()) {
@@ -204,8 +204,8 @@ public class InstanceOfSnippets implements SnippetsInterface {
                         assert hints.length == 1;
                         key = new Key(materializeExact).add("checkNull", checkNull);
                         arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
-                    } else if (target.isPrimaryType()) {
-                        key = new Key(materializePrimary).add("checkNull", checkNull).add("superCheckOffset", target.superCheckOffset());
+                    } else if (type.isPrimaryType()) {
+                        key = new Key(materializePrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
                         arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
                     } else {
                         HotSpotKlassOop[] hints = createHints(hintInfo);
@@ -243,8 +243,8 @@ public class InstanceOfSnippets implements SnippetsInterface {
                         assert hints.length == 1;
                         key = new Key(materializeExact).add("checkNull", checkNull);
                         arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
-                    } else if (target.isPrimaryType()) {
-                        key = new Key(materializePrimary).add("checkNull", checkNull).add("superCheckOffset", target.superCheckOffset());
+                    } else if (type.isPrimaryType()) {
+                        key = new Key(materializePrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
                         arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
                     } else {
                         HotSpotKlassOop[] hints = createHints(hintInfo);
