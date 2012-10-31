@@ -487,8 +487,9 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                 ObjectState resultState = newState.objectStateOptional(object);
                 if (resultState == null || resultState.isVirtual()) {
                     int virtual = 0;
-                    int lockCount = states.get(0).objectState(object).getLockCount();
-                    ValueNode singleValue = states.get(0).objectState(object).getMaterializedValue();
+                    ObjectState startObj = states.get(0).objectState(object);
+                    int lockCount = startObj.getLockCount();
+                    ValueNode singleValue = startObj.isVirtual() ? null : startObj.getMaterializedValue();
                     for (BlockState state : states) {
                         ObjectState obj = state.objectState(object);
                         if (obj.isVirtual()) {
@@ -519,7 +520,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                         }
                     } else {
                         assert virtual == states.size();
-                        ValueNode[] values = states.get(0).objectState(object).getEntries().clone();
+                        ValueNode[] values = startObj.getEntries().clone();
                         PhiNode[] phis = new PhiNode[values.length];
                         int mismatch = 0;
                         for (int i = 1; i < states.size(); i++) {
