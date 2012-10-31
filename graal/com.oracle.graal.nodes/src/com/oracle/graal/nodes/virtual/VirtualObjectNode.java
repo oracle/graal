@@ -31,9 +31,9 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "VirtualObject {p#type}")
 public abstract class VirtualObjectNode extends FloatingNode implements LIRLowerable {
 
-    private final int virtualId;
+    private final long virtualId;
 
-    public VirtualObjectNode(int virtualId) {
+    public VirtualObjectNode(long virtualId) {
         super(StampFactory.virtual());
         this.virtualId = virtualId;
     }
@@ -42,7 +42,7 @@ public abstract class VirtualObjectNode extends FloatingNode implements LIRLower
 
     public abstract int entryCount();
 
-    public int virtualId() {
+    public long virtualId() {
         return virtualId;
     }
 

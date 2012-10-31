@@ -32,7 +32,7 @@ public class VirtualArrayNode extends VirtualObjectNode {
     private final ResolvedJavaType componentType;
     private final int length;
 
-    public VirtualArrayNode(int virtualId, ResolvedJavaType componentType, int length) {
+    public VirtualArrayNode(long virtualId, ResolvedJavaType componentType, int length) {
         super(virtualId);
         this.componentType = componentType;
         this.length = length;

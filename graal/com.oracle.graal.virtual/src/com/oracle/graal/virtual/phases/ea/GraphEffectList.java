@@ -33,6 +33,13 @@ import com.oracle.graal.virtual.nodes.*;
 
 public class GraphEffectList extends EffectList {
 
+    /**
+     * Adds the given fixed node to the graph's control flow, before position (so that the original predecessor of
+     * position will then be node's predecessor).
+     *
+     * @param node The fixed node to be added to the graph.
+     * @param position The fixed node before which the node should be added.
+     */
     public void addFixedNodeBefore(final FixedWithNextNode node, final FixedNode position) {
         add(new Effect() {
 
@@ -50,6 +57,11 @@ public class GraphEffectList extends EffectList {
         });
     }
 
+    /**
+     * Add the given floating node to the graph.
+     *
+     * @param node The floating node to be added.
+     */
     public void addFloatingNode(final FloatingNode node) {
         add(new Effect() {
 
@@ -66,6 +78,13 @@ public class GraphEffectList extends EffectList {
         });
     }
 
+    /**
+     * Add the materialization node to the graph's control flow at the given position, and then sets its values.
+     *
+     * @param node The materialization node that should be added.
+     * @param position The fixed node before which the materialization node should be added.
+     * @param values The values for the materialization node's entries.
+     */
     public void addMaterialization(final MaterializeObjectNode node, final FixedNode position, final ValueNode[] values) {
         add(new Effect() {
 
@@ -86,6 +105,12 @@ public class GraphEffectList extends EffectList {
         });
     }
 
+    /**
+     * Adds an value to the given phi node.
+     *
+     * @param node The phi node to which the value should be added.
+     * @param value The value that will be added to the phi node.
+     */
     public void addPhiInput(final PhiNode node, final ValueNode value) {
         add(new Effect() {
 
@@ -102,6 +127,37 @@ public class GraphEffectList extends EffectList {
         });
     }
 
+    /**
+     * Sets the phi node's input at the given index to the given value.
+     *
+     * @param node The phi node whose input should be changed.
+     * @param index The index of the phi input to be changed.
+     * @param value The new value for the phi input.
+     */
+    public void setPhiInput(final PhiNode node, final int index, final ValueNode value) {
+        add(new Effect() {
+
+            @Override
+            public String name() {
+                return "setPhiInput";
+            }
+
+            @Override
+            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+                assert node.isAlive() && value.isAlive() && index >= 0;
+                node.setValueAt(index, value);
+            }
+        });
+    }
+
+    /**
+     * Adds a virtual object's state to the given frame state. If the given reusedVirtualObjects set contains the
+     * virtual object then old states for this object will be removed.
+     *
+     * @param node The frame state to which the state should be added.
+     * @param state The virtual object state to add.
+     * @param reusedVirtualObjects A set of all reused virtual objects.
+     */
     public void addVirtualMapping(final FrameState node, final EscapeObjectState state, final HashSet<VirtualObjectNode> reusedVirtualObjects) {
         add(new Effect() {
 
@@ -133,6 +189,11 @@ public class GraphEffectList extends EffectList {
         });
     }
 
+    /**
+     * Removes the given fixed node from the control flow and deletes it.
+     *
+     * @param node The fixed node that should be deleted.
+     */
     public void deleteFixedNode(final FixedWithNextNode node) {
         add(new Effect() {
 
@@ -152,6 +213,11 @@ public class GraphEffectList extends EffectList {
         });
     }
 
+    /**
+     * Virtualizes a monitor access by calling its {@link AccessMonitorNode#eliminate()} method.
+     *
+     * @param node The monitor access that should be virtualized.
+     */
     public void eliminateMonitor(final AccessMonitorNode node) {
         add(new Effect() {
 
@@ -168,6 +234,12 @@ public class GraphEffectList extends EffectList {
         });
     }
 
+    /**
+     * Replaces the given node at its usages without deleting it.
+     *
+     * @param node The node to be replaced.
+     * @param replacement The node that should replace the original value.
+     */
     public void replaceAtUsages(final ValueNode node, final ValueNode replacement) {
         add(new Effect() {
 
@@ -184,6 +256,13 @@ public class GraphEffectList extends EffectList {
         });
     }
 
+    /**
+     * Replaces the first occurrence of oldInput in node with newInput.
+     *
+     * @param node The node whose input should be changed.
+     * @param oldInput The value to look for.
+     * @param newInput The value to replace with.
+     */
     public void replaceFirstInput(final Node node, final ValueNode oldInput, final ValueNode newInput) {
         add(new Effect() {
 
@@ -201,22 +280,6 @@ public class GraphEffectList extends EffectList {
             @Override
             public boolean isVisible() {
                 return !(node instanceof FrameState);
-            }
-        });
-    }
-
-    public void setPhiInput(final PhiNode node, final ValueNode value, final int index) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "setPhiInput";
-            }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                assert node.isAlive() && value.isAlive() && index >= 0;
-                node.setValueAt(index, value);
             }
         });
     }

@@ -45,7 +45,7 @@ class BlockState extends MergeableBlockState<BlockState> {
 
     public BlockState(BlockState other) {
         for (Map.Entry<VirtualObjectNode, ObjectState> entry : other.objectStates.entrySet()) {
-            objectStates.put(entry.getKey(), entry.getValue().clone());
+            objectStates.put(entry.getKey(), entry.getValue().cloneState());
         }
         for (Map.Entry<ValueNode, VirtualObjectNode> entry : other.objectAliases.entrySet()) {
             objectAliases.put(entry.getKey(), entry.getValue());
@@ -55,18 +55,18 @@ class BlockState extends MergeableBlockState<BlockState> {
         }
     }
 
-    public ObjectState objectState(VirtualObjectNode object) {
+    public ObjectState getObjectState(VirtualObjectNode object) {
         assert objectStates.containsKey(object);
         return objectStates.get(object);
     }
 
-    public ObjectState objectStateOptional(VirtualObjectNode object) {
+    public ObjectState getObjectStateOptional(VirtualObjectNode object) {
         return objectStates.get(object);
     }
 
-    public ObjectState objectState(ValueNode value) {
+    public ObjectState getObjectState(ValueNode value) {
         VirtualObjectNode object = objectAliases.get(value);
-        return object == null ? null : objectState(object);
+        return object == null ? null : getObjectState(object);
     }
 
     @Override
@@ -83,7 +83,7 @@ class BlockState extends MergeableBlockState<BlockState> {
 
     private void materializeChangedBefore(FixedNode fixed, VirtualObjectNode virtual, HashSet<VirtualObjectNode> deferred, GraphEffectList deferredStores, GraphEffectList materializeEffects) {
         trace("materializing %s at %s", virtual, fixed);
-        ObjectState obj = objectState(virtual);
+        ObjectState obj = getObjectState(virtual);
         if (obj.getLockCount() > 0 && obj.virtual.type().isArrayClass()) {
             throw new BailoutException("array materialized with lock");
         }
@@ -95,7 +95,7 @@ class BlockState extends MergeableBlockState<BlockState> {
         obj.setMaterializedValue(materialize);
         deferred.add(virtual);
         for (int i = 0; i < fieldState.length; i++) {
-            ObjectState valueObj = objectState(fieldState[i]);
+            ObjectState valueObj = getObjectState(fieldState[i]);
             if (valueObj != null) {
                 if (valueObj.isVirtual()) {
                     materializeChangedBefore(fixed, valueObj.virtual, deferred, deferredStores, materializeEffects);
@@ -151,16 +151,16 @@ class BlockState extends MergeableBlockState<BlockState> {
         scalarAliases.put(alias, value);
     }
 
-    public ValueNode scalarAlias(ValueNode alias) {
+    public ValueNode getScalarAlias(ValueNode alias) {
         ValueNode result = scalarAliases.get(alias);
         return result == null ? alias : result;
     }
 
-    public Iterable<ObjectState> states() {
+    public Iterable<ObjectState> getStates() {
         return objectStates.values();
     }
 
-    public Iterable<VirtualObjectNode> virtualObjects() {
+    public Iterable<VirtualObjectNode> getVirtualObjects() {
         return objectAliases.values();
     }
 

@@ -34,7 +34,7 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     private final ResolvedJavaField[] fields;
     private final HashMap<ResolvedJavaField, Integer> fieldMap = new HashMap<>();
 
-    public VirtualInstanceNode(int virtualId, ResolvedJavaType type, ResolvedJavaField[] fields) {
+    public VirtualInstanceNode(long virtualId, ResolvedJavaType type, ResolvedJavaField[] fields) {
         super(virtualId);
         this.type = type;
         this.fields = fields;

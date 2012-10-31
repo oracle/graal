@@ -410,11 +410,14 @@ public class NodeClass extends FieldIntrospection {
         if (canGVN) {
             number = startGVNNumber;
             for (int i = 0; i < dataOffsets.length; ++i) {
-                Class<?> type = dataTypes[i];
+                Class< ? > type = dataTypes[i];
                 if (type.isPrimitive()) {
                     if (type == Integer.TYPE) {
                         int intValue = unsafe.getInt(n, dataOffsets[i]);
                         number += intValue;
+                    } else if (type == Long.TYPE) {
+                        long longValue = unsafe.getLong(n, dataOffsets[i]);
+                        number += longValue ^ (longValue >>> 32);
                     } else if (type == Boolean.TYPE) {
                         boolean booleanValue = unsafe.getBoolean(n, dataOffsets[i]);
                         if (booleanValue) {

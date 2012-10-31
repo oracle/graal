@@ -47,7 +47,10 @@ import com.oracle.graal.virtual.nodes.*;
 
 class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
-    final GraphEffectList effects = new GraphEffectList();
+
+    private static final DebugMetric metricAllocationRemoved = Debug.metric("AllocationRemoved ");
+
+    private final GraphEffectList effects = new GraphEffectList();
     private final HashSet<VirtualObjectNode> reusedVirtualObjects = new HashSet<>();
     private int virtualIds = 0;
 
@@ -59,6 +62,14 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         this.usages = usages;
         this.schedule = schedule;
         this.runtime = runtime;
+    }
+
+    public GraphEffectList getEffects() {
+        return effects;
+    }
+
+    public int getVirtualIdCount() {
+        return virtualIds;
     }
 
     @Override
@@ -86,6 +97,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                 state.addAndMarkAlias(virtualObject, (ValueNode) node, usages);
                 effects.deleteFixedNode((FixedWithNextNode) node);
                 virtualIds++;
+                metricAllocationRemoved.increment();
             } else {
                 if (usages.isMarked(node)) {
                     trace("[[%s]] ", node);
@@ -106,7 +118,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         boolean usageFound = false;
         if (node instanceof PiNode || node instanceof ValueProxyNode) {
             ValueNode value = node instanceof PiNode ? ((PiNode) node).object() : ((ValueProxyNode) node).value();
-            ObjectState obj = state.objectState(value);
+            ObjectState obj = state.getObjectState(value);
             if (obj != null) {
                 if (obj.isVirtual()) {
                     state.addAndMarkAlias(obj.virtual, node, usages);
@@ -117,7 +129,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         } else if (node instanceof CheckCastNode) {
             CheckCastNode x = (CheckCastNode) node;
-            ObjectState obj = state.objectState(x.object());
+            ObjectState obj = state.getObjectState(x.object());
             if (obj != null) {
                 if (obj.isVirtual()) {
                     if (obj.virtual.type().isSubtypeOf(x.type())) {
@@ -133,13 +145,13 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         } else if (node instanceof IsNullNode) {
             IsNullNode x = (IsNullNode) node;
-            if (state.objectState(x.object()) != null) {
+            if (state.getObjectState(x.object()) != null) {
                 replaceAtUsages(state, x, ConstantNode.forBoolean(false, node.graph()));
                 usageFound = true;
             }
         } else if (node instanceof AccessMonitorNode) {
             AccessMonitorNode x = (AccessMonitorNode) node;
-            ObjectState obj = state.objectState(x.object());
+            ObjectState obj = state.getObjectState(x.object());
             if (obj != null) {
                 Debug.log("monitor operation %s on %s\n", x, obj.virtual);
                 if (node instanceof MonitorEnterNode) {
@@ -158,7 +170,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         } else if (node instanceof CyclicMaterializeStoreNode) {
             CyclicMaterializeStoreNode x = (CyclicMaterializeStoreNode) node;
-            ObjectState obj = state.objectState(x.object());
+            ObjectState obj = state.getObjectState(x.object());
             if (obj != null) {
                 if (obj.virtual instanceof VirtualArrayNode) {
                     obj.setEntry(x.targetIndex(), x.value());
@@ -171,7 +183,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         } else if (node instanceof LoadFieldNode) {
             LoadFieldNode x = (LoadFieldNode) node;
-            ObjectState obj = state.objectState(x.object());
+            ObjectState obj = state.getObjectState(x.object());
             if (obj != null) {
                 VirtualInstanceNode virtual = (VirtualInstanceNode) obj.virtual;
                 int fieldIndex = virtual.fieldIndex(x.field());
@@ -181,7 +193,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                 }
                 if (obj.isVirtual()) {
                     ValueNode result = obj.getEntry(fieldIndex);
-                    ObjectState resultObj = state.objectState(result);
+                    ObjectState resultObj = state.getObjectState(result);
                     if (resultObj != null) {
                         state.addAndMarkAlias(resultObj.virtual, x, usages);
                     } else {
@@ -197,7 +209,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             StoreFieldNode x = (StoreFieldNode) node;
             ValueNode object = x.object();
             ValueNode value = x.value();
-            ObjectState obj = state.objectState(object);
+            ObjectState obj = state.getObjectState(object);
             if (obj != null) {
                 VirtualInstanceNode virtual = (VirtualInstanceNode) obj.virtual;
                 int fieldIndex = virtual.fieldIndex(x.field());
@@ -206,18 +218,18 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     ensureMaterialized(state, obj, x);
                 }
                 if (obj.isVirtual()) {
-                    obj.setEntry(fieldIndex, state.scalarAlias(value));
+                    obj.setEntry(fieldIndex, state.getScalarAlias(value));
                     effects.deleteFixedNode(x);
                 } else {
                     effects.replaceFirstInput(x, object, obj.getMaterializedValue());
-                    ObjectState valueObj = state.objectState(value);
+                    ObjectState valueObj = state.getObjectState(value);
                     if (valueObj != null) {
                         replaceWithMaterialized(value, x, state, valueObj);
                     }
                 }
                 usageFound = true;
             } else {
-                ObjectState valueObj = state.objectState(value);
+                ObjectState valueObj = state.getObjectState(value);
                 if (valueObj != null) {
                     replaceWithMaterialized(value, x, state, valueObj);
                     usageFound = true;
@@ -226,17 +238,17 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         } else if (node instanceof LoadIndexedNode) {
             LoadIndexedNode x = (LoadIndexedNode) node;
             ValueNode array = x.array();
-            ObjectState arrayObj = state.objectState(array);
+            ObjectState arrayObj = state.getObjectState(array);
             if (arrayObj != null) {
                 if (arrayObj.isVirtual()) {
-                    ValueNode indexValue = state.scalarAlias(x.index());
+                    ValueNode indexValue = state.getScalarAlias(x.index());
                     int index = indexValue.isConstant() ? indexValue.asConstant().asInt() : -1;
                     if (index < 0 || index >= arrayObj.getEntries().length) {
                         // out of bounds or not constant
                         replaceWithMaterialized(array, x, state, arrayObj);
                     } else {
                         ValueNode result = arrayObj.getEntry(index);
-                        ObjectState resultObj = state.objectState(result);
+                        ObjectState resultObj = state.getObjectState(result);
                         if (resultObj != null) {
                             state.addAndMarkAlias(resultObj.virtual, x, usages);
                         } else {
@@ -253,12 +265,12 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             StoreIndexedNode x = (StoreIndexedNode) node;
             ValueNode array = x.array();
             ValueNode value = x.value();
-            ObjectState arrayObj = state.objectState(array);
-            ObjectState valueObj = state.objectState(value);
+            ObjectState arrayObj = state.getObjectState(array);
+            ObjectState valueObj = state.getObjectState(value);
 
             if (arrayObj != null) {
                 if (arrayObj.isVirtual()) {
-                    ValueNode indexValue = state.scalarAlias(x.index());
+                    ValueNode indexValue = state.getScalarAlias(x.index());
                     int index = indexValue.isConstant() ? indexValue.asConstant().asInt() : -1;
                     if (index < 0 || index >= arrayObj.getEntries().length) {
                         // out of bounds or not constant
@@ -267,7 +279,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                             replaceWithMaterialized(value, x, state, valueObj);
                         }
                     } else {
-                        arrayObj.setEntry(index, state.scalarAlias(value));
+                        arrayObj.setEntry(index, state.getScalarAlias(value));
                         effects.deleteFixedNode(x);
                     }
                 } else {
@@ -285,14 +297,14 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         } else if (node instanceof RegisterFinalizerNode) {
             RegisterFinalizerNode x = (RegisterFinalizerNode) node;
-            ObjectState obj = state.objectState(x.object());
+            ObjectState obj = state.getObjectState(x.object());
             if (obj != null) {
                 replaceWithMaterialized(x.object(), x, state, obj);
                 usageFound = true;
             }
         } else if (node instanceof ArrayLengthNode) {
             ArrayLengthNode x = (ArrayLengthNode) node;
-            ObjectState obj = state.objectState(x.array());
+            ObjectState obj = state.getObjectState(x.array());
             if (obj != null) {
                 replaceAtUsages(state, x, ConstantNode.forInt(((VirtualArrayNode) obj.virtual).entryCount(), node.graph()));
                 effects.deleteFixedNode(x);
@@ -300,7 +312,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         } else if (node instanceof LoadHubNode) {
             LoadHubNode x = (LoadHubNode) node;
-            ObjectState obj = state.objectState(x.object());
+            ObjectState obj = state.getObjectState(x.object());
             if (obj != null) {
                 replaceAtUsages(state, x, ConstantNode.forConstant(obj.virtual.type().getEncoding(Representation.ObjectHub), runtime, node.graph()));
                 effects.deleteFixedNode(x);
@@ -308,14 +320,14 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         } else if (node instanceof ReturnNode) {
             ReturnNode x = (ReturnNode) node;
-            ObjectState obj = state.objectState(x.result());
+            ObjectState obj = state.getObjectState(x.result());
             if (obj != null) {
                 replaceWithMaterialized(x.result(), x, state, obj);
                 usageFound = true;
             }
         } else if (node instanceof MethodCallTargetNode) {
             for (ValueNode argument : ((MethodCallTargetNode) node).arguments()) {
-                ObjectState obj = state.objectState(argument);
+                ObjectState obj = state.getObjectState(argument);
                 if (obj != null) {
                     replaceWithMaterialized(argument, node, insertBefore, state, obj);
                     usageFound = true;
@@ -323,8 +335,8 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         } else if (node instanceof ObjectEqualsNode) {
             ObjectEqualsNode x = (ObjectEqualsNode) node;
-            ObjectState xObj = state.objectState(x.x());
-            ObjectState yObj = state.objectState(x.y());
+            ObjectState xObj = state.getObjectState(x.x());
+            ObjectState yObj = state.getObjectState(x.y());
             boolean xVirtual = xObj != null && xObj.isVirtual();
             boolean yVirtual = yObj != null && yObj.isVirtual();
 
@@ -353,7 +365,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             usageFound = true;
         } else if (node instanceof UnsafeLoadNode || node instanceof UnsafeStoreNode || node instanceof CompareAndSwapNode || node instanceof SafeReadNode) {
             for (ValueNode input : node.inputs().filter(ValueNode.class)) {
-                ObjectState obj = state.objectState(input);
+                ObjectState obj = state.getObjectState(input);
                 if (obj != null) {
                     replaceWithMaterialized(input, node, insertBefore, state, obj);
                     usageFound = true;
@@ -373,13 +385,13 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
                     @Override
                     public void apply(Node usage, ValueNode value) {
-                        ObjectState valueObj = state.objectState(value);
+                        ObjectState valueObj = state.getObjectState(value);
                         if (valueObj != null) {
                             virtual.add(valueObj);
                             effects.replaceFirstInput(usage, value, valueObj.virtual);
                         } else if (value instanceof VirtualObjectNode) {
                             ObjectState virtualObj = null;
-                            for (ObjectState obj : state.states()) {
+                            for (ObjectState obj : state.getStates()) {
                                 if (value == obj.virtual) {
                                     virtualObj = obj;
                                     break;
@@ -391,7 +403,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                         }
                     }
                 });
-                for (ObjectState obj : state.states()) {
+                for (ObjectState obj : state.getStates()) {
                     if (obj.isVirtual() && obj.getLockCount() > 0) {
                         virtual.add(obj);
                     }
@@ -402,7 +414,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     ObjectState obj = queue.removeLast();
                     if (obj.isVirtual()) {
                         for (ValueNode field : obj.getEntries()) {
-                            ObjectState fieldObj = state.objectState(field);
+                            ObjectState fieldObj = state.getObjectState(field);
                             if (fieldObj != null) {
                                 if (fieldObj.isVirtual() && !virtual.contains(fieldObj)) {
                                     virtual.add(fieldObj);
@@ -417,7 +429,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     if (obj.isVirtual()) {
                         ValueNode[] fieldState = obj.getEntries().clone();
                         for (int i = 0; i < fieldState.length; i++) {
-                            ObjectState valueObj = state.objectState(fieldState[i]);
+                            ObjectState valueObj = state.getObjectState(fieldState[i]);
                             if (valueObj != null) {
                                 if (valueObj.isVirtual()) {
                                     fieldState[i] = valueObj.virtual;
@@ -437,7 +449,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         }
         if (!usageFound) {
             for (ValueNode input : node.inputs().filter(ValueNode.class)) {
-                ObjectState obj = state.objectState(input);
+                ObjectState obj = state.getObjectState(input);
                 if (obj != null) {
                     replaceWithMaterialized(input, node, insertBefore, state, obj);
                     usageFound = true;
@@ -483,15 +495,15 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         do {
             materialized = false;
             // use a hash set to make the values distinct...
-            for (VirtualObjectNode object : newState.virtualObjects()) {
-                ObjectState resultState = newState.objectStateOptional(object);
+            for (VirtualObjectNode object : newState.getVirtualObjects()) {
+                ObjectState resultState = newState.getObjectStateOptional(object);
                 if (resultState == null || resultState.isVirtual()) {
                     int virtual = 0;
-                    ObjectState startObj = states.get(0).objectState(object);
+                    ObjectState startObj = states.get(0).getObjectState(object);
                     int lockCount = startObj.getLockCount();
                     ValueNode singleValue = startObj.isVirtual() ? null : startObj.getMaterializedValue();
                     for (BlockState state : states) {
-                        ObjectState obj = state.objectState(object);
+                        ObjectState obj = state.getObjectState(object);
                         if (obj.isVirtual()) {
                             virtual++;
                             singleValue = null;
@@ -509,7 +521,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                             effects.addFloatingNode(materializedValuePhi);
                             for (int i = 0; i < states.size(); i++) {
                                 BlockState state = states.get(i);
-                                ObjectState obj = state.objectState(object);
+                                ObjectState obj = state.getObjectState(object);
                                 materialized |= obj.isVirtual();
                                 ensureMaterialized(state, obj, merge.forwardEndAt(i));
                                 effects.addPhiInput(materializedValuePhi, obj.getMaterializedValue());
@@ -525,7 +537,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                         int mismatch = 0;
                         for (int i = 1; i < states.size(); i++) {
                             BlockState state = states.get(i);
-                            ValueNode[] fields = state.objectState(object).getEntries();
+                            ValueNode[] fields = state.getObjectState(object).getEntries();
                             for (int index = 0; index < values.length; index++) {
                                 if (phis[index] == null && values[index] != fields[index]) {
                                     mismatch++;
@@ -537,10 +549,10 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                         if (mismatch > 0) {
                             for (int i = 0; i < states.size(); i++) {
                                 BlockState state = states.get(i);
-                                ValueNode[] fields = state.objectState(object).getEntries();
+                                ValueNode[] fields = state.getObjectState(object).getEntries();
                                 for (int index = 0; index < values.length; index++) {
                                     if (phis[index] != null) {
-                                        ObjectState obj = state.objectState(fields[index]);
+                                        ObjectState obj = state.getObjectState(fields[index]);
                                         if (obj != null) {
                                             materialized |= obj.isVirtual();
                                             ensureMaterialized(state, obj, merge.forwardEndAt(i));
@@ -580,7 +592,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         int sameEntryCount = -1;
         for (int i = 0; i < phi.valueCount(); i++) {
             ValueNode value = phi.valueAt(i);
-            ObjectState obj = states.get(i).objectState(value);
+            ObjectState obj = states.get(i).getObjectState(value);
             if (obj != null) {
                 if (obj.isVirtual()) {
                     virtualInputs++;
@@ -600,7 +612,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                         }
                     }
                 } else {
-                    effects.setPhiInput(phi, obj.getMaterializedValue(), i);
+                    effects.setPhiInput(phi, i, obj.getMaterializedValue());
                 }
             }
         }
@@ -623,7 +635,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         if (materialize) {
             for (int i = 0; i < phi.valueCount(); i++) {
                 ValueNode value = phi.valueAt(i);
-                ObjectState obj = states.get(i).objectState(value);
+                ObjectState obj = states.get(i).getObjectState(value);
                 if (obj != null) {
                     materialized |= obj.isVirtual();
                     replaceWithMaterialized(value, phi, merge.forwardEndAt(i), states.get(i), obj);
@@ -647,10 +659,10 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             int checkpoint = effects.checkpoint();
 
             for (PhiDesc desc : phis) {
-                ObjectState obj = state.objectState(desc.virtualObject);
+                ObjectState obj = state.getObjectState(desc.virtualObject);
                 if (obj.isVirtual()) {
                     ValueNode value = obj.getEntry(desc.fieldIndex);
-                    ObjectState valueObj = state.objectState(value);
+                    ObjectState valueObj = state.getObjectState(value);
                     if (valueObj != null) {
                         assert !valueObj.isVirtual();
                         value = valueObj.getMaterializedValue();
@@ -665,12 +677,12 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
             for (PhiNode phi : loop.loopBegin().phis()) {
                 if (usages.isMarked(phi) && phi.type() == PhiType.Value) {
-                    ObjectState initialObj = initialState.objectState(phi.valueAt(0));
+                    ObjectState initialObj = initialState.getObjectState(phi.valueAt(0));
                     if (initialObj != null) {
                         if (initialObj.isVirtual()) {
                             state.addAndMarkAlias(initialObj.virtual, phi, usages);
                         } else {
-                            successEffects.setPhiInput(phi, initialObj.getMaterializedValue(), 0);
+                            successEffects.setPhiInput(phi, 0, initialObj.getMaterializedValue());
                         }
                     }
                 }
@@ -703,7 +715,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                 effects.backtrack(checkpoint);
                 effects.decLevel();
                 for (VirtualObjectNode virtualObject : additionalMaterializations) {
-                    ObjectState obj = initialState.objectState(virtualObject);
+                    ObjectState obj = initialState.getObjectState(virtualObject);
                     if (obj.isVirtual()) {
                         initialState.materializeBefore(loop.loopBegin().forwardEnd(), virtualObject, effects);
                     }
@@ -718,17 +730,17 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         HashMap<VirtualObjectNode, ValueProxyNode> proxies = new HashMap<>();
 
         for (ValueProxyNode proxy : exitNode.proxies()) {
-            ObjectState obj = exitState.objectState(proxy.value());
+            ObjectState obj = exitState.getObjectState(proxy.value());
             if (obj != null) {
                 proxies.put(obj.virtual, proxy);
             }
         }
-        for (ObjectState obj : exitState.states()) {
-            ObjectState initialObj = initialState.objectStateOptional(obj.virtual);
+        for (ObjectState obj : exitState.getStates()) {
+            ObjectState initialObj = initialState.getObjectStateOptional(obj.virtual);
             if (obj.isVirtual()) {
                 for (int i = 0; i < obj.getEntries().length; i++) {
                     ValueNode value = obj.getEntry(i);
-                    ObjectState valueObj = exitState.objectState(value);
+                    ObjectState valueObj = exitState.getObjectState(value);
                     if (valueObj == null) {
                         if ((value instanceof PhiNode && ((PhiNode) value).merge() == exitNode.loopBegin()) || initialObj == null || !initialObj.isVirtual() || initialObj.getEntry(i) != value) {
                             ValueProxyNode proxy = new ValueProxyNode(value, exitNode, PhiType.Value);
@@ -793,16 +805,16 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         boolean materialized;
         do {
             materialized = false;
-            for (ObjectState state : initialState.states()) {
-                ObjectState endState = loopEndState.objectState(state.virtual);
+            for (ObjectState state : initialState.getStates()) {
+                ObjectState endState = loopEndState.getObjectState(state.virtual);
                 if (state.isVirtual()) {
                     if (endState.isVirtual()) {
                         assert state.getEntries().length == endState.getEntries().length;
                         for (int i = 0; endState.isVirtual() && i < state.getEntries().length; i++) {
                             ValueNode value = state.getEntry(i);
                             ValueNode endValue = endState.getEntry(i);
-                            ObjectState valueObj = initialState.objectState(value);
-                            ObjectState endValueObj = loopEndState.objectState(endValue);
+                            ObjectState valueObj = initialState.getObjectState(value);
+                            ObjectState endValueObj = loopEndState.getObjectState(endValue);
 
                             if (valueObj != null) {
                                 if (valueObj.isVirtual()) {
@@ -831,13 +843,13 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
             for (PhiNode phi : loopBegin.phis().snapshot()) {
                 if (usages.isMarked(phi) && phi.type() == PhiType.Value) {
-                    ObjectState initialObj = initialState.objectState(phi.valueAt(0));
+                    ObjectState initialObj = initialState.getObjectState(phi.valueAt(0));
                     boolean initialMaterialized = initialObj == null || !initialObj.isVirtual();
 
-                    ObjectState loopEndObj = loopEndState.objectState(phi.valueAt(loopEnd));
+                    ObjectState loopEndObj = loopEndState.getObjectState(phi.valueAt(loopEnd));
                     if (loopEndObj == null || !loopEndObj.isVirtual()) {
                         if (loopEndObj != null) {
-                            successEffects.setPhiInput(phi, loopEndObj.getMaterializedValue(), loopBegin.phiPredecessorIndex(loopEnd));
+                            successEffects.setPhiInput(phi, loopBegin.phiPredecessorIndex(loopEnd), loopEndObj.getMaterializedValue());
                         }
                         if (!initialMaterialized) {
                             additionalMaterializations.add(initialObj.virtual);
@@ -856,16 +868,16 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         } while (materialized);
 
-        for (ObjectState state : initialState.states()) {
-            ObjectState endState = loopEndState.objectState(state.virtual);
+        for (ObjectState state : initialState.getStates()) {
+            ObjectState endState = loopEndState.getObjectState(state.virtual);
             if (state.isVirtual()) {
                 if (endState.isVirtual()) {
                     assert state.getEntries().length == endState.getEntries().length;
                     for (int i = 0; i < state.getEntries().length; i++) {
                         ValueNode value = state.getEntry(i);
                         ValueNode endValue = endState.getEntry(i);
-                        ObjectState valueObj = initialState.objectState(value);
-                        ObjectState endValueObj = loopEndState.objectState(endValue);
+                        ObjectState valueObj = initialState.getObjectState(value);
+                        ObjectState endValueObj = loopEndState.getObjectState(endValue);
 
                         if (valueObj != null) {
                             if (valueObj.isVirtual()) {

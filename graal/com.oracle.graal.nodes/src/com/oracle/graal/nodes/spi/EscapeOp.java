@@ -32,6 +32,6 @@ public abstract class EscapeOp {
      */
     public abstract ValueNode[] fieldState();
 
-    public abstract VirtualObjectNode virtualObject(int virtualId);
+    public abstract VirtualObjectNode virtualObject(long virtualId);
 
 }

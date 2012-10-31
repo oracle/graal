@@ -111,7 +111,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
                 }
 
                 @Override
-                public VirtualObjectNode virtualObject(int virtualId) {
+                public VirtualObjectNode virtualObject(long virtualId) {
                     return new VirtualInstanceNode(virtualId, instanceClass(), fields);
                 }
             };

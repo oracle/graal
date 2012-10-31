@@ -102,6 +102,9 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
 
     @Override
     public EscapeOp getEscapeOp() {
+        if (!shouldRevirtualize(this)) {
+            return null;
+        }
         return new EscapeOp() {
 
             @Override
@@ -110,9 +113,46 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
             }
 
             @Override
-            public VirtualObjectNode virtualObject(int virtualId) {
+            public VirtualObjectNode virtualObject(long virtualId) {
                 return virtualObject;
             }
         };
+    }
+
+    private boolean shouldRevirtualize(MaterializeObjectNode materializeObjectNode) {
+        FixedWithNextNode end = materializeObjectNode;
+        do {
+            Node next = end.next();
+            if (next instanceof MaterializeObjectNode) {
+                if (!shouldRevirtualize((MaterializeObjectNode) next)) {
+                    return false;
+                }
+                end = (FixedWithNextNode) next;
+            } else if (next instanceof CyclicMaterializeStoreNode) {
+                end = (FixedWithNextNode) next;
+            } else {
+                break;
+            }
+        } while (true);
+        FixedNode suffix = end.next();
+        if (suffix instanceof EndNode) {
+            for (PhiNode phi : ((EndNode) suffix).merge().phis()) {
+                int materialized = 0;
+                boolean used = false;
+                for (Node input : phi.inputs()) {
+                    if (input instanceof MaterializeObjectNode) {
+                        materialized++;
+                    }
+                    if (input == materializeObjectNode) {
+                        used = true;
+                    }
+                }
+                if (used && materialized != phi.valueCount()) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 }

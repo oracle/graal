@@ -157,7 +157,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
                 new DeadCodeEliminationPhase().apply(graph);
                 new CanonicalizerPhase(null, runtime(), null).apply(graph);
 //                TypeSystemTest.outputGraph(graph, "before EscapeAnalysis " + snippet);
-                new PartialEscapeAnalysisPhase(null).apply(graph);
+                new PartialEscapeAnalysisPhase(null, runtime(), null).apply(graph);
 //                TypeSystemTest.outputGraph(graph, "after EscapeAnalysis " + snippet);
                 new CullFrameStatesPhase().apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);

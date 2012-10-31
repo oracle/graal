@@ -171,7 +171,7 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
                 new InliningPhase(null, runtime(), null, null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
                 Debug.dump(graph, "Graph");
-                new PartialEscapeAnalysisPhase(null).apply(graph);
+                new PartialEscapeAnalysisPhase(null, runtime(), null).apply(graph);
                 new CullFrameStatesPhase().apply(graph);
                 new CanonicalizerPhase(null, runtime(), null).apply(graph);
                 Debug.dump(graph, "Graph");

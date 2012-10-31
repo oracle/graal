@@ -121,7 +121,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
                     }
 
                     @Override
-                    public VirtualObjectNode virtualObject(int virtualId) {
+                    public VirtualObjectNode virtualObject(long virtualId) {
                         return new VirtualArrayNode(virtualId, elementType, constantLength);
                     }
                 };

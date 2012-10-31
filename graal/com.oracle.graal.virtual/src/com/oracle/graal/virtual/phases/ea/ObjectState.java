@@ -56,8 +56,7 @@ class ObjectState {
         lockCount = other.lockCount;
     }
 
-    @Override
-    public ObjectState clone() {
+    public ObjectState cloneState() {
         return new ObjectState(this);
     }
 

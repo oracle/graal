@@ -69,9 +69,11 @@ public final class GraalOptions {
 
     // escape analysis settings
     public static boolean PartialEscapeAnalysis              = true;
+    public static int     EscapeAnalysisIterations           = 2;
+    public static String  EscapeAnalyzeOnly                  = null;
 
-    public static double TailDuplicationProbability          = 0.5;
-    public static int    TailDuplicationTrivialSize          = 1;
+    public static double  TailDuplicationProbability         = 0.5;
+    public static int     TailDuplicationTrivialSize         = 1;
 
     // absolute probability analysis
     public static boolean ProbabilityAnalysis                = true;
@@ -129,12 +131,12 @@ public final class GraalOptions {
     public static boolean PerThreadDebugValues               = ____;
     public static boolean SummarizeDebugValues               = ____;
     public static boolean SummarizePerPhase                  = ____;
-    public static String Dump                                = null;
-    public static String Meter                               = null;
-    public static String Time                                = null;
-    public static String Log                                 = null;
-    public static String LogFile                             = null;
-    public static String MethodFilter                        = null;
+    public static String  Dump                                = null;
+    public static String  Meter                               = null;
+    public static String  Time                                = null;
+    public static String  Log                                 = null;
+    public static String  LogFile                             = null;
+    public static String  MethodFilter                        = null;
     public static boolean DumpOnError                        = ____;
 
     // Ideal graph visualizer output settings

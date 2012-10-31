@@ -24,10 +24,11 @@ package com.oracle.graal.virtual.phases.ea;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
@@ -36,10 +37,14 @@ import com.oracle.graal.virtual.phases.ea.EffectList.Effect;
 
 public class PartialEscapeAnalysisPhase extends Phase {
 
-    private final GraalCodeCacheProvider runtime;
+    private final TargetDescription target;
+    private final MetaAccessProvider runtime;
+    private final Assumptions assumptions;
 
-    public PartialEscapeAnalysisPhase(GraalCodeCacheProvider runtime) {
+    public PartialEscapeAnalysisPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions) {
+        this.target = target;
         this.runtime = runtime;
+        this.assumptions = assumptions;
     }
 
     public static final void trace(String format, Object... obj) {
@@ -53,23 +58,49 @@ public class PartialEscapeAnalysisPhase extends Phase {
     }
 
     @Override
-    protected void run(StructuredGraph graph) {
-        SchedulePhase schedule = new SchedulePhase();
-        schedule.apply(graph, false);
-        PartialEscapeClosure closure = new PartialEscapeClosure(graph.createNodeBitMap(), schedule, runtime);
-        ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock(), new BlockState(), null);
-
-        // apply the effects collected during the escape analysis iteration
-        ArrayList<Node> obsoleteNodes = new ArrayList<>();
-        for (Effect effect : closure.effects) {
-            effect.apply(graph, obsoleteNodes);
+    protected void run(final StructuredGraph graph) {
+        if (!matches(graph, GraalOptions.EscapeAnalyzeOnly)) {
+            return;
         }
-        trace("%s\n", closure.effects);
 
-        Debug.dump(graph, "after PartialEscapeAnalysis");
-        assert noObsoleteNodes(graph, obsoleteNodes);
+        for (int iteration = 0; iteration < GraalOptions.EscapeAnalysisIterations; iteration++) {
+            Debug.scope("iteration " + iteration, new Runnable() {
+                @Override
+                public void run() {
+                    SchedulePhase schedule = new SchedulePhase();
+                    schedule.apply(graph, false);
+                    PartialEscapeClosure closure = new PartialEscapeClosure(graph.createNodeBitMap(), schedule, runtime);
+                    ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock(), new BlockState(), null);
 
-        new DeadCodeEliminationPhase().apply(graph);
+                    if (closure.getVirtualIdCount() == 0) {
+                        return;
+                    }
+
+                    // apply the effects collected during the escape analysis iteration
+                    ArrayList<Node> obsoleteNodes = new ArrayList<>();
+                    for (Effect effect : closure.getEffects()) {
+                        effect.apply(graph, obsoleteNodes);
+                    }
+                    trace("%s\n", closure.getEffects());
+
+                    Debug.dump(graph, "after PartialEscapeAnalysis");
+                    assert noObsoleteNodes(graph, obsoleteNodes);
+
+                    new DeadCodeEliminationPhase().apply(graph);
+                    if (GraalOptions.OptCanonicalizer) {
+                        new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+                    }
+                }
+            });
+        }
+    }
+
+    private static boolean matches(StructuredGraph graph, String filter) {
+        if (filter != null) {
+            ResolvedJavaMethod method = graph.method();
+            return method != null && MetaUtil.format("%H.%n", method).contains(filter);
+        }
+        return true;
     }
 
     private static boolean noObsoleteNodes(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
