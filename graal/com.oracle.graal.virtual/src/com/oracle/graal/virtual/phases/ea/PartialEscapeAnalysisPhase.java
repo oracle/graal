@@ -36,6 +36,12 @@ import com.oracle.graal.virtual.phases.ea.EffectList.Effect;
 
 public class PartialEscapeAnalysisPhase extends Phase {
 
+    private final GraalCodeCacheProvider runtime;
+
+    public PartialEscapeAnalysisPhase(GraalCodeCacheProvider runtime) {
+        this.runtime = runtime;
+    }
+
     public static final void trace(String format, Object... obj) {
         if (GraalOptions.TraceEscapeAnalysis) {
             Debug.log(format, obj);
@@ -44,12 +50,6 @@ public class PartialEscapeAnalysisPhase extends Phase {
 
     public static final void error(String format, Object... obj) {
         System.out.print(String.format(format, obj));
-    }
-
-    private final GraalCodeCacheProvider runtime;
-
-    public PartialEscapeAnalysisPhase(GraalCodeCacheProvider runtime) {
-        this.runtime = runtime;
     }
 
     @Override
@@ -61,20 +61,11 @@ public class PartialEscapeAnalysisPhase extends Phase {
 
         // apply the effects collected during the escape analysis iteration
         ArrayList<Node> obsoleteNodes = new ArrayList<>();
-        for (int i = 0; i < closure.effects.size(); i++) {
-            Effect effect = closure.effects.get(i);
+        for (Effect effect : closure.effects) {
             effect.apply(graph, obsoleteNodes);
-            if (GraalOptions.TraceEscapeAnalysis) {
-                if (effect.isVisible()) {
-                    int level = closure.effects.levelAt(i);
-                    StringBuilder str = new StringBuilder();
-                    for (int i2 = 0; i2 < level; i2++) {
-                        str.append("    ");
-                    }
-                    trace(str.append(effect).toString());
-                }
-            }
         }
+        trace("%s\n", closure.effects);
+
         Debug.dump(graph, "after PartialEscapeAnalysis");
         assert noObsoleteNodes(graph, obsoleteNodes);
 

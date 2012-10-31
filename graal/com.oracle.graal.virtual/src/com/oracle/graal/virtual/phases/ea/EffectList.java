@@ -28,6 +28,11 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
+/**
+ * An {@link EffectList} can be used to maintain a list of {@link Effect}s and backtrack to a previous state by
+ * truncating the list. It can also maintain a level for each effect, which helps in creating a string representation
+ * for the list.
+ */
 public class EffectList implements Iterable<EffectList.Effect> {
 
     public abstract static class Effect {
@@ -177,5 +182,20 @@ public class EffectList implements Iterable<EffectList.Effect> {
 
     public boolean isEmpty() {
         return size == 0;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder str = new StringBuilder();
+        for (int i = 0; i < size(); i++) {
+            Effect effect = get(i);
+            if (effect.isVisible()) {
+                for (int i2 = 0; i2 < levelAt(i); i2++) {
+                    str.append("    ");
+                }
+                str.append(effect).toString();
+            }
+        }
+        return str.toString();
     }
 }

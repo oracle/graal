@@ -25,16 +25,21 @@ package com.oracle.graal.virtual.phases.ea;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.virtual.*;
 
+/**
+ * This class describes the state of a virtual object while iterating over the graph.
+ * It describes the fields or array elements (called "entries") and the lock count if the object is still virtual.
+ * If the object was materialized, it contains the current materialized value.
+ */
 class ObjectState {
 
     public final VirtualObjectNode virtual;
-    public ValueNode[] fieldState;
-    public ValueNode materializedValue;
-    public int lockCount;
+    private ValueNode[] entries;
+    private ValueNode materializedValue;
+    private int lockCount;
 
-    public ObjectState(VirtualObjectNode virtual, ValueNode[] fieldState, int lockCount) {
+    public ObjectState(VirtualObjectNode virtual, ValueNode[] entries, int lockCount) {
         this.virtual = virtual;
-        this.fieldState = fieldState;
+        this.entries = entries;
         this.lockCount = lockCount;
     }
 
@@ -46,7 +51,7 @@ class ObjectState {
 
     private ObjectState(ObjectState other) {
         virtual = other.virtual;
-        fieldState = other.fieldState == null ? null : other.fieldState.clone();
+        entries = other.entries == null ? null : other.entries.clone();
         materializedValue = other.materializedValue;
         lockCount = other.lockCount;
     }
@@ -56,15 +61,64 @@ class ObjectState {
         return new ObjectState(this);
     }
 
+    public boolean isVirtual() {
+        assert (entries == null) ^ (materializedValue == null);
+        return materializedValue == null;
+    }
+
+    public ValueNode[] getEntries() {
+        assert isVirtual();
+        return entries;
+    }
+
+    public ValueNode getEntry(int index) {
+        assert isVirtual();
+        return entries[index];
+    }
+
+    public void setEntry(int index, ValueNode value) {
+        assert isVirtual();
+        entries[index] = value;
+    }
+
+    public ValueNode getMaterializedValue() {
+        assert !isVirtual();
+        return materializedValue;
+    }
+
+    public void setMaterializedValue(ValueNode value) {
+        assert isVirtual();
+        materializedValue = value;
+        entries = null;
+    }
+
+    public void updateMaterializedValue(ValueNode value) {
+        assert !isVirtual();
+        materializedValue = value;
+    }
+
+    public int getLockCount() {
+        assert isVirtual();
+        return lockCount;
+    }
+
+    public void incLockCount() {
+        lockCount++;
+    }
+
+    public void decLockCount() {
+        lockCount--;
+    }
+
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder().append('{');
         if (lockCount > 0) {
             str.append('l').append(lockCount).append(' ');
         }
-        if (fieldState != null) {
-            for (int i = 0; i < fieldState.length; i++) {
-                str.append(virtual.fieldName(i)).append('=').append(fieldState[i]).append(' ');
+        if (entries != null) {
+            for (int i = 0; i < entries.length; i++) {
+                str.append(virtual.fieldName(i)).append('=').append(entries[i]).append(' ');
             }
         }
         if (materializedValue != null) {

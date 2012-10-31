@@ -36,9 +36,9 @@ import com.oracle.graal.virtual.nodes.*;
 
 class BlockState extends MergeableBlockState<BlockState> {
 
-    final HashMap<VirtualObjectNode, ObjectState> objectStates = new HashMap<>();
-    final HashMap<ValueNode, VirtualObjectNode> objectAliases = new HashMap<>();
-    final HashMap<ValueNode, ValueNode> scalarAliases = new HashMap<>();
+    private final HashMap<VirtualObjectNode, ObjectState> objectStates = new HashMap<>();
+    private final HashMap<ValueNode, VirtualObjectNode> objectAliases = new HashMap<>();
+    private final HashMap<ValueNode, ValueNode> scalarAliases = new HashMap<>();
 
     public BlockState() {
     }
@@ -84,38 +84,37 @@ class BlockState extends MergeableBlockState<BlockState> {
     private void materializeChangedBefore(FixedNode fixed, VirtualObjectNode virtual, HashSet<VirtualObjectNode> deferred, GraphEffectList deferredStores, GraphEffectList materializeEffects) {
         trace("materializing %s at %s", virtual, fixed);
         ObjectState obj = objectState(virtual);
-        if (obj.lockCount > 0 && obj.virtual.type().isArrayClass()) {
+        if (obj.getLockCount() > 0 && obj.virtual.type().isArrayClass()) {
             throw new BailoutException("array materialized with lock");
         }
 
-        MaterializeObjectNode materialize = new MaterializeObjectNode(virtual, obj.lockCount > 0);
-        ValueNode[] values = new ValueNode[obj.fieldState.length];
+        MaterializeObjectNode materialize = new MaterializeObjectNode(virtual, obj.getLockCount() > 0);
+        ValueNode[] values = new ValueNode[obj.getEntries().length];
         materialize.setProbability(fixed.probability());
-        ValueNode[] fieldState = obj.fieldState;
-        obj.fieldState = null;
-        obj.materializedValue = materialize;
+        ValueNode[] fieldState = obj.getEntries();
+        obj.setMaterializedValue(materialize);
         deferred.add(virtual);
         for (int i = 0; i < fieldState.length; i++) {
             ObjectState valueObj = objectState(fieldState[i]);
             if (valueObj != null) {
-                if (valueObj.materializedValue == null) {
+                if (valueObj.getMaterializedValue() == null) {
                     materializeChangedBefore(fixed, valueObj.virtual, deferred, deferredStores, materializeEffects);
                 }
                 if (deferred.contains(valueObj.virtual)) {
                     Kind fieldKind;
                     CyclicMaterializeStoreNode store;
                     if (virtual instanceof VirtualArrayNode) {
-                        store = new CyclicMaterializeStoreNode(materialize, valueObj.materializedValue, i);
+                        store = new CyclicMaterializeStoreNode(materialize, valueObj.getMaterializedValue(), i);
                         fieldKind = ((VirtualArrayNode) virtual).componentType().getKind();
                     } else {
                         VirtualInstanceNode instanceObject = (VirtualInstanceNode) virtual;
-                        store = new CyclicMaterializeStoreNode(materialize, valueObj.materializedValue, instanceObject.field(i));
+                        store = new CyclicMaterializeStoreNode(materialize, valueObj.getMaterializedValue(), instanceObject.field(i));
                         fieldKind = instanceObject.field(i).getType().getKind();
                     }
                     deferredStores.addFixedNodeBefore(store, fixed);
                     values[i] = ConstantNode.defaultForKind(fieldKind, fixed.graph());
                 } else {
-                    values[i] = valueObj.materializedValue;
+                    values[i] = valueObj.getMaterializedValue();
                 }
             } else {
                 values[i] = fieldState[i];
@@ -161,8 +160,41 @@ class BlockState extends MergeableBlockState<BlockState> {
         return objectStates.values();
     }
 
+    public Iterable<VirtualObjectNode> virtualObjects() {
+        return objectAliases.values();
+    }
+
     @Override
     public String toString() {
         return objectStates.toString();
+    }
+
+    public static BlockState meetAliases(List<BlockState> states) {
+        BlockState newState = new BlockState();
+
+        newState.objectAliases.putAll(states.get(0).objectAliases);
+        for (int i = 1; i < states.size(); i++) {
+            BlockState state = states.get(i);
+            for (Map.Entry<ValueNode, VirtualObjectNode> entry : states.get(0).objectAliases.entrySet()) {
+                if (state.objectAliases.containsKey(entry.getKey())) {
+                    assert state.objectAliases.get(entry.getKey()) == entry.getValue();
+                } else {
+                    newState.objectAliases.remove(entry.getKey());
+                }
+            }
+        }
+
+        newState.scalarAliases.putAll(states.get(0).scalarAliases);
+        for (int i = 1; i < states.size(); i++) {
+            BlockState state = states.get(i);
+            for (Map.Entry<ValueNode, ValueNode> entry : states.get(0).scalarAliases.entrySet()) {
+                if (state.scalarAliases.containsKey(entry.getKey())) {
+                    assert state.scalarAliases.get(entry.getKey()) == entry.getValue();
+                } else {
+                    newState.scalarAliases.remove(entry.getKey());
+                }
+            }
+        }
+        return newState;
     }
 }
