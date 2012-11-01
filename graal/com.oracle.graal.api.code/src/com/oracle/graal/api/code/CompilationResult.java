@@ -57,7 +57,7 @@ public class CompilationResult implements Serializable {
         private static final long serialVersionUID = 2479806696381720162L;
         public final DebugInfo debugInfo;
 
-        Safepoint(int pcOffset, DebugInfo debugInfo) {
+        public Safepoint(int pcOffset, DebugInfo debugInfo) {
             super(pcOffset);
             this.debugInfo = debugInfo;
         }
@@ -105,7 +105,7 @@ public class CompilationResult implements Serializable {
          */
         public final boolean direct;
 
-        Call(Object target, int pcOffset, int size, boolean direct, DebugInfo debugInfo) {
+        public Call(Object target, int pcOffset, int size, boolean direct, DebugInfo debugInfo) {
             super(pcOffset, debugInfo);
             this.size = size;
             this.target = target;
@@ -300,7 +300,7 @@ public class CompilationResult implements Serializable {
         public final Object id;
         public final Mark[] references;
 
-        Mark(int pcOffset, Object id, Mark[] references) {
+        public Mark(int pcOffset, Object id, Mark[] references) {
             super(pcOffset);
             this.id = id;
             this.references = references;
