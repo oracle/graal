@@ -54,6 +54,15 @@ public final class HotSpotCompilationResult extends CompilerObject {
         }
     }
 
+    static class SiteComparator implements Comparator<Site> {
+        public int compare(Site s1, Site s2) {
+            if (s1.pcOffset == s2.pcOffset && (s1 instanceof Mark ^ s2 instanceof Mark)) {
+                return s1 instanceof Mark ? -1 : 1;
+            }
+            return s1.pcOffset - s2.pcOffset;
+        }
+    }
+
     private static Site[] getSortedSites(CompilationResult target) {
         List<?>[] lists = new List<?>[] {target.getSafepoints(), target.getDataReferences(), target.getMarks()};
         int count = 0;
@@ -67,15 +76,7 @@ public final class HotSpotCompilationResult extends CompilerObject {
                 result[pos++] = (Site) elem;
             }
         }
-        Arrays.sort(result, new Comparator<Site>() {
-
-            public int compare(Site s1, Site s2) {
-                if (s1.pcOffset == s2.pcOffset && (s1 instanceof Mark ^ s2 instanceof Mark)) {
-                    return s1 instanceof Mark ? -1 : 1;
-                }
-                return s1.pcOffset - s2.pcOffset;
-            }
-        });
+        Arrays.sort(result, new SiteComparator());
         return result;
     }
 }
