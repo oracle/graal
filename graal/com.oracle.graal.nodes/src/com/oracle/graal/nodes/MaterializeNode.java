@@ -27,7 +27,7 @@ import com.oracle.graal.nodes.calc.*;
 
 public final class MaterializeNode extends ConditionalNode {
 
-    private static CompareNode createCompareNode(Condition condition, ValueNode x, ValueNode y) {
+    public static CompareNode createCompareNode(Condition condition, ValueNode x, ValueNode y) {
         assert x.kind() == y.kind();
         assert condition.isCanonical() : "condition is not canonical: " + condition;
 

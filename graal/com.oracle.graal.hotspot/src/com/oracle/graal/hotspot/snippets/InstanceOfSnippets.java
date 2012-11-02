@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.*;
 import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.Templates.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
+import static com.oracle.graal.nodes.MaterializeNode.*;
 import static com.oracle.graal.snippets.Snippet.Varargs.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 
@@ -188,26 +189,29 @@ public class InstanceOfSnippets implements SnippetsInterface {
 
             List<Node> usages = instanceOf.usages().snapshot();
             int nUsages = usages.size();
-            Map<MaterializationKey, Materialization> materializations = nUsages == 1 ? null : new HashMap<MaterializationKey, Materialization>(nUsages);
 
+            Instantiation instantiation = new Instantiation();
             for (Node usage : usages) {
                 final StructuredGraph graph = (StructuredGraph) usage.graph();
 
-                UsageReplacer replacer;
-                MaterializationKey mkey;
+                InstanceOfUsageReplacer replacer;
+                ValueNode trueValue;
+                ValueNode falseValue;
                 if (usage instanceof IfNode) {
-                    mkey = new MaterializationKey(ConstantNode.forInt(1, graph), ConstantNode.forInt(0, graph));
-                    replacer = new IfUsageReplacer(materializations, mkey, instanceOf, (IfNode) usage, tool);
+                    trueValue = ConstantNode.forInt(1, graph);
+                    falseValue = ConstantNode.forInt(0, graph);
+                    replacer = new IfUsageReplacer(instantiation, trueValue, falseValue, instanceOf, (IfNode) usage, nUsages == 1, tool);
                 } else {
                     assert usage instanceof ConditionalNode : "unexpected usage of " + instanceOf + ": " + usage;
                     ConditionalNode conditional = (ConditionalNode) usage;
-                    mkey = new MaterializationKey(conditional.trueValue(), conditional.falseValue());
-                    replacer = new ConditionalUsageReplacer(materializations, mkey, instanceOf, conditional);
+                    trueValue = conditional.trueValue();
+                    falseValue = conditional.falseValue();
+                    replacer = new ConditionalUsageReplacer(instantiation, trueValue, falseValue, instanceOf, conditional);
                 }
 
-                Materialization materialization = materializations == null ? null : materializations.get(mkey);
-                if (materialization != null) {
-                    usage.replaceFirstInput(instanceOf, materialization.condition(mkey));
+                if (instantiation.isInitialized()) {
+                    // No need to re-instantiate the snippet - just re-use its result
+                    replacer.replaceUsingInstantiation();
                 } else {
                     Arguments arguments;
                     Key key;
@@ -215,14 +219,14 @@ public class InstanceOfSnippets implements SnippetsInterface {
                         HotSpotKlassOop[] hints = createHints(hintInfo);
                         assert hints.length == 1;
                         key = new Key(instanceofExact).add("checkNull", checkNull);
-                        arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", mkey.trueValue).add("falseValue", mkey.falseValue);
+                        arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
                     } else if (type.isPrimaryType()) {
                         key = new Key(instanceofPrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
-                        arguments = arguments("hub", hub).add("object", object).add("trueValue", mkey.trueValue).add("falseValue", mkey.falseValue);
+                        arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
                     } else {
                         HotSpotKlassOop[] hints = createHints(hintInfo);
                         key = new Key(instanceofSecondary).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
-                        arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", mkey.trueValue).add("falseValue", mkey.falseValue);
+                        arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
                     }
 
                     SnippetTemplate template = cache.get(key);
@@ -237,74 +241,101 @@ public class InstanceOfSnippets implements SnippetsInterface {
         }
 
         /**
-         * The materialized result of an instanceof snippet.
-         * All usages of an {@link InstanceOfNode} that have the same key can share the result.
+         * The result of an instantiating an instanceof snippet.
+         * This enables a snippet instantiation to be re-used which reduces compile time and produces better code.
          */
-        static final class Materialization {
-            private final PhiNode phi;
+        static final class Instantiation {
+            private PhiNode result;
             private CompareNode condition;
+            private ValueNode trueValue;
+            private ValueNode falseValue;
 
-
-            public Materialization(PhiNode phi) {
-                this.phi = phi;
+            /**
+             * Determines if the instantiation has occurred.
+             */
+            boolean isInitialized() {
+                return result != null;
             }
 
-            CompareNode condition(MaterializationKey key) {
-                if (condition == null) {
-                    StructuredGraph graph = (StructuredGraph) phi.graph();
-                    condition = graph.add(new IntegerEqualsNode(phi, key.trueValue));
+            void initialize(PhiNode phi, ValueNode t, ValueNode f) {
+                assert !isInitialized();
+                this.result = phi;
+                this.trueValue = t;
+                this.falseValue = f;
+            }
+
+            /**
+             * Gets the result of this instantiation as a condition.
+             *
+             * @param testValue the returned condition is true if the result is equal to this value
+             */
+            CompareNode asCondition(ValueNode testValue) {
+                assert isInitialized();
+                if (condition == null || condition.y() != testValue) {
+                    // Re-use previously generated condition if the trueValue for the test is the same
+                    condition = createCompareNode(Condition.EQ, result, testValue);
                 }
                 return condition;
             }
+
+            /**
+             * Gets the result of the instantiation as a materialized value.
+             *
+             * @param t the true value for the materialization
+             * @param f the false value for the materialization
+             */
+            ValueNode asMaterialization(ValueNode t, ValueNode f) {
+                assert isInitialized();
+                if (t == this.trueValue && f == this.falseValue) {
+                    // Can simply use the phi result if the same materialized values are expected.
+                    return result;
+                } else {
+                    return MaterializeNode.create(asCondition(trueValue), t, f);
+                }
+            }
         }
 
-        static final class MaterializationKey {
-            final ValueNode trueValue;
-            final ValueNode falseValue;
-            public MaterializationKey(ValueNode trueValue, ValueNode falseValue) {
+        /**
+         * Replaces a usage of an {@link InstanceOfNode}.
+         */
+        abstract static class InstanceOfUsageReplacer implements UsageReplacer {
+            protected final Instantiation instantiation;
+            protected final InstanceOfNode instanceOf;
+            protected final ValueNode trueValue;
+            protected final ValueNode falseValue;
+
+            public InstanceOfUsageReplacer(Instantiation instantiation, InstanceOfNode instanceOf, ValueNode trueValue, ValueNode falseValue) {
+                this.instantiation = instantiation;
+                this.instanceOf = instanceOf;
                 this.trueValue = trueValue;
                 this.falseValue = falseValue;
             }
 
-            @Override
-            public int hashCode() {
-                return trueValue.hashCode();
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                if (obj instanceof MaterializationKey) {
-                    MaterializationKey mk = (MaterializationKey) obj;
-                    return mk.trueValue == trueValue && mk.falseValue == falseValue;
-                }
-                return false;
-            }
-
-            @Override
-            public String toString() {
-                return "[true=" + trueValue + ", false=" + falseValue + "]";
-            }
+            /**
+             * Does the replacement based on a previously snippet instantiation.
+             */
+            abstract void replaceUsingInstantiation();
         }
 
         /**
          * Replaces an {@link IfNode} usage of an {@link InstanceOfNode}.
          */
-        static final class IfUsageReplacer implements UsageReplacer {
+        static final class IfUsageReplacer extends InstanceOfUsageReplacer {
 
             private final boolean solitaryUsage;
-            private final InstanceOfNode instanceOf;
             private final IfNode usage;
-            private final Map<MaterializationKey, Materialization> materializations;
-            private final MaterializationKey key;
             private final boolean sameBlock;
 
-            private IfUsageReplacer(Map<MaterializationKey, Materialization> materializations, MaterializationKey key, InstanceOfNode instanceOf, IfNode usage, LoweringTool tool) {
-                this.materializations = materializations;
-                this.key = key;
+            private IfUsageReplacer(Instantiation instantiation, ValueNode trueValue, ValueNode falseValue, InstanceOfNode instanceOf, IfNode usage, boolean solitaryUsage, LoweringTool tool) {
+                super(instantiation, instanceOf, trueValue, falseValue);
                 this.sameBlock = tool.getBlockFor(usage) == tool.getBlockFor(instanceOf);
-                this.solitaryUsage = materializations == null;
-                this.instanceOf = instanceOf;
+                this.solitaryUsage = solitaryUsage;
                 this.usage = usage;
+            }
+
+            @Override
+            void replaceUsingInstantiation() {
+                usage.replaceFirstInput(instanceOf, instantiation.asCondition(trueValue));
             }
 
             @Override
@@ -315,12 +346,8 @@ public class InstanceOfSnippets implements SnippetsInterface {
                     removeIntermediateMaterialization(newNode);
                 } else {
                     newNode.inferStamp();
-                    Materialization m = new Materialization((PhiNode) newNode);
-                    if (materializations != null) {
-                        Materialization oldValue = materializations.put(key, m);
-                        assert oldValue == null;
-                    }
-                    usage.replaceFirstInput(oldNode, m.condition(key));
+                    instantiation.initialize((PhiNode) newNode, trueValue, falseValue);
+                    usage.replaceFirstInput(oldNode, instantiation.asCondition(trueValue));
                 }
             }
 
@@ -343,10 +370,10 @@ public class InstanceOfSnippets implements SnippetsInterface {
                 int endIndex = 0;
                 for (EndNode end : mergePredecessors) {
                     ValueNode endValue = phi.valueAt(endIndex++);
-                    if (endValue == key.trueValue) {
+                    if (endValue == trueValue) {
                         trueEnds.add(end);
                     } else {
-                        assert endValue == key.falseValue;
+                        assert endValue == falseValue;
                         falseEnds.add(end);
                     }
                 }
@@ -387,18 +414,22 @@ public class InstanceOfSnippets implements SnippetsInterface {
         /**
          * Replaces a {@link ConditionalNode} usage of an {@link InstanceOfNode}.
          */
-        static final class ConditionalUsageReplacer implements UsageReplacer {
+        static final class ConditionalUsageReplacer extends InstanceOfUsageReplacer {
 
-            private final InstanceOfNode instanceOf;
             private final ConditionalNode usage;
-            private final Map<MaterializationKey, Materialization> materializations;
-            private final MaterializationKey key;
 
-            private ConditionalUsageReplacer(Map<MaterializationKey, Materialization> materializations, MaterializationKey key, InstanceOfNode instanceOf, ConditionalNode usage) {
-                this.materializations = materializations;
-                this.key = key;
-                this.instanceOf = instanceOf;
+            private ConditionalUsageReplacer(Instantiation instantiation, ValueNode trueValue, ValueNode falseValue, InstanceOfNode instanceOf, ConditionalNode usage) {
+                super(instantiation, instanceOf, trueValue, falseValue);
                 this.usage = usage;
+            }
+
+            @Override
+            void replaceUsingInstantiation() {
+                ValueNode newValue = instantiation.asMaterialization(trueValue, falseValue);
+                usage.replaceAtUsages(newValue);
+                usage.clearInputs();
+                assert usage.usages().isEmpty();
+                GraphUtil.killWithUnusedFloatingInputs(usage);
             }
 
             @Override
@@ -406,11 +437,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
                 assert newNode instanceof PhiNode;
                 assert oldNode == instanceOf;
                 newNode.inferStamp();
-                if (materializations != null) {
-                    Materialization m = new Materialization((PhiNode) newNode);
-                    Materialization oldValue = materializations.put(key, m);
-                    assert oldValue == null;
-                }
+                instantiation.initialize((PhiNode) newNode, trueValue, falseValue);
                 usage.replaceAtUsages(newNode);
                 usage.clearInputs();
                 assert usage.usages().isEmpty();
