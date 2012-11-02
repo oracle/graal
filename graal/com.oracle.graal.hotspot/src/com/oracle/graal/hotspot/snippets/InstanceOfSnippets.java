@@ -24,32 +24,24 @@ package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.*;
 import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.Templates.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
-import static com.oracle.graal.nodes.MaterializeNode.*;
 import static com.oracle.graal.snippets.Snippet.Varargs.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
 import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.Snippet.VarargsParameter;
-import com.oracle.graal.snippets.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
-import com.oracle.graal.snippets.SnippetTemplate.UsageReplacer;
 import com.oracle.graal.snippets.nodes.*;
 
 /**
@@ -167,7 +159,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
         return false;
     }
 
-    public static class Templates extends AbstractTemplates<InstanceOfSnippets> {
+    public static class Templates extends InstanceOfSnippetsTemplates<InstanceOfSnippets> {
 
         private final ResolvedJavaMethod instanceofExact;
         private final ResolvedJavaMethod instanceofPrimary;
@@ -180,269 +172,32 @@ public class InstanceOfSnippets implements SnippetsInterface {
             instanceofSecondary = snippet("instanceofSecondary", Object.class, Object.class, Object.class, Object.class, Object[].class, boolean.class);
         }
 
-        public void lower(InstanceOfNode instanceOf, LoweringTool tool) {
+        @Override
+        protected KeyAndArguments getKeyAndArguments(InstanceOfUsageReplacer replacer, LoweringTool tool) {
+            InstanceOfNode instanceOf = replacer.instanceOf;
+            ValueNode trueValue = replacer.trueValue;
+            ValueNode falseValue = replacer.falseValue;
             ValueNode object = instanceOf.object();
             TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
             final HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) instanceOf.type();
             ConstantNode hub = ConstantNode.forObject(type.klassOop(), runtime, instanceOf.graph());
             boolean checkNull = !object.stamp().nonNull();
-
-            List<Node> usages = instanceOf.usages().snapshot();
-            int nUsages = usages.size();
-
-            Instantiation instantiation = new Instantiation();
-            for (Node usage : usages) {
-                final StructuredGraph graph = (StructuredGraph) usage.graph();
-
-                InstanceOfUsageReplacer replacer;
-                ValueNode trueValue;
-                ValueNode falseValue;
-                if (usage instanceof IfNode) {
-                    trueValue = ConstantNode.forInt(1, graph);
-                    falseValue = ConstantNode.forInt(0, graph);
-                    replacer = new IfUsageReplacer(instantiation, trueValue, falseValue, instanceOf, (IfNode) usage, nUsages == 1, tool);
-                } else {
-                    assert usage instanceof ConditionalNode : "unexpected usage of " + instanceOf + ": " + usage;
-                    ConditionalNode conditional = (ConditionalNode) usage;
-                    trueValue = conditional.trueValue();
-                    falseValue = conditional.falseValue();
-                    replacer = new ConditionalUsageReplacer(instantiation, trueValue, falseValue, instanceOf, conditional);
-                }
-
-                if (instantiation.isInitialized()) {
-                    // No need to re-instantiate the snippet - just re-use its result
-                    replacer.replaceUsingInstantiation();
-                } else {
-                    Arguments arguments;
-                    Key key;
-                    if (hintInfo.exact) {
-                        HotSpotKlassOop[] hints = createHints(hintInfo);
-                        assert hints.length == 1;
-                        key = new Key(instanceofExact).add("checkNull", checkNull);
-                        arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
-                    } else if (type.isPrimaryType()) {
-                        key = new Key(instanceofPrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
-                        arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
-                    } else {
-                        HotSpotKlassOop[] hints = createHints(hintInfo);
-                        key = new Key(instanceofSecondary).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
-                        arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
-                    }
-
-                    SnippetTemplate template = cache.get(key);
-                    template.instantiate(runtime, instanceOf, replacer, tool.lastFixedNode(), arguments);
-                }
+            Arguments arguments;
+            Key key;
+            if (hintInfo.exact) {
+                HotSpotKlassOop[] hints = createHints(hintInfo);
+                assert hints.length == 1;
+                key = new Key(instanceofExact).add("checkNull", checkNull);
+                arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
+            } else if (type.isPrimaryType()) {
+                key = new Key(instanceofPrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
+                arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
+            } else {
+                HotSpotKlassOop[] hints = createHints(hintInfo);
+                key = new Key(instanceofSecondary).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
+                arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
             }
-
-            assert instanceOf.usages().isEmpty();
-            if (!instanceOf.isDeleted()) {
-                GraphUtil.killWithUnusedFloatingInputs(instanceOf);
-            }
-        }
-
-        /**
-         * The result of an instantiating an instanceof snippet.
-         * This enables a snippet instantiation to be re-used which reduces compile time and produces better code.
-         */
-        static final class Instantiation {
-            private PhiNode result;
-            private CompareNode condition;
-            private ValueNode trueValue;
-            private ValueNode falseValue;
-
-            /**
-             * Determines if the instantiation has occurred.
-             */
-            boolean isInitialized() {
-                return result != null;
-            }
-
-            void initialize(PhiNode phi, ValueNode t, ValueNode f) {
-                assert !isInitialized();
-                this.result = phi;
-                this.trueValue = t;
-                this.falseValue = f;
-            }
-
-            /**
-             * Gets the result of this instantiation as a condition.
-             *
-             * @param testValue the returned condition is true if the result is equal to this value
-             */
-            CompareNode asCondition(ValueNode testValue) {
-                assert isInitialized();
-                if (condition == null || condition.y() != testValue) {
-                    // Re-use previously generated condition if the trueValue for the test is the same
-                    condition = createCompareNode(Condition.EQ, result, testValue);
-                }
-                return condition;
-            }
-
-            /**
-             * Gets the result of the instantiation as a materialized value.
-             *
-             * @param t the true value for the materialization
-             * @param f the false value for the materialization
-             */
-            ValueNode asMaterialization(ValueNode t, ValueNode f) {
-                assert isInitialized();
-                if (t == this.trueValue && f == this.falseValue) {
-                    // Can simply use the phi result if the same materialized values are expected.
-                    return result;
-                } else {
-                    return MaterializeNode.create(asCondition(trueValue), t, f);
-                }
-            }
-        }
-
-        /**
-         * Replaces a usage of an {@link InstanceOfNode}.
-         */
-        abstract static class InstanceOfUsageReplacer implements UsageReplacer {
-            protected final Instantiation instantiation;
-            protected final InstanceOfNode instanceOf;
-            protected final ValueNode trueValue;
-            protected final ValueNode falseValue;
-
-            public InstanceOfUsageReplacer(Instantiation instantiation, InstanceOfNode instanceOf, ValueNode trueValue, ValueNode falseValue) {
-                this.instantiation = instantiation;
-                this.instanceOf = instanceOf;
-                this.trueValue = trueValue;
-                this.falseValue = falseValue;
-            }
-
-            /**
-             * Does the replacement based on a previously snippet instantiation.
-             */
-            abstract void replaceUsingInstantiation();
-        }
-
-        /**
-         * Replaces an {@link IfNode} usage of an {@link InstanceOfNode}.
-         */
-        static final class IfUsageReplacer extends InstanceOfUsageReplacer {
-
-            private final boolean solitaryUsage;
-            private final IfNode usage;
-            private final boolean sameBlock;
-
-            private IfUsageReplacer(Instantiation instantiation, ValueNode trueValue, ValueNode falseValue, InstanceOfNode instanceOf, IfNode usage, boolean solitaryUsage, LoweringTool tool) {
-                super(instantiation, instanceOf, trueValue, falseValue);
-                this.sameBlock = tool.getBlockFor(usage) == tool.getBlockFor(instanceOf);
-                this.solitaryUsage = solitaryUsage;
-                this.usage = usage;
-            }
-
-            @Override
-            void replaceUsingInstantiation() {
-                usage.replaceFirstInput(instanceOf, instantiation.asCondition(trueValue));
-            }
-
-            @Override
-            public void replace(ValueNode oldNode, ValueNode newNode) {
-                assert newNode instanceof PhiNode;
-                assert oldNode == instanceOf;
-                if (sameBlock && solitaryUsage) {
-                    removeIntermediateMaterialization(newNode);
-                } else {
-                    newNode.inferStamp();
-                    instantiation.initialize((PhiNode) newNode, trueValue, falseValue);
-                    usage.replaceFirstInput(oldNode, instantiation.asCondition(trueValue));
-                }
-            }
-
-            /**
-             * Directly wires the incoming edges of the merge at the end of the snippet to
-             * the outgoing edges of the IfNode that uses the materialized result.
-             */
-            private void removeIntermediateMaterialization(ValueNode newNode) {
-                IfNode ifNode = usage;
-                PhiNode phi = (PhiNode) newNode;
-                MergeNode merge = phi.merge();
-                assert merge.stateAfter() == null;
-
-                List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
-                assert phi.valueCount() == mergePredecessors.size();
-
-                List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
-                List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
-
-                int endIndex = 0;
-                for (EndNode end : mergePredecessors) {
-                    ValueNode endValue = phi.valueAt(endIndex++);
-                    if (endValue == trueValue) {
-                        trueEnds.add(end);
-                    } else {
-                        assert endValue == falseValue;
-                        falseEnds.add(end);
-                    }
-                }
-
-                BeginNode trueSuccessor = ifNode.trueSuccessor();
-                BeginNode falseSuccessor = ifNode.falseSuccessor();
-                ifNode.setTrueSuccessor(null);
-                ifNode.setFalseSuccessor(null);
-
-                connectEnds(merge, trueEnds, trueSuccessor);
-                connectEnds(merge, falseEnds, falseSuccessor);
-
-                GraphUtil.killCFG(merge);
-                GraphUtil.killCFG(ifNode);
-
-                assert !merge.isAlive() : merge;
-                assert !phi.isAlive() : phi;
-            }
-
-            private static void connectEnds(MergeNode merge, List<EndNode> ends, BeginNode successor) {
-                if (ends.size() == 1) {
-                    EndNode end = ends.get(0);
-                    ((FixedWithNextNode) end.predecessor()).setNext(successor);
-                    merge.removeEnd(end);
-                    GraphUtil.killCFG(end);
-                } else {
-                    assert ends.size() > 1;
-                    MergeNode newMerge = merge.graph().add(new MergeNode());
-
-                    for (EndNode end : ends) {
-                        newMerge.addForwardEnd(end);
-                    }
-                    newMerge.setNext(successor);
-                }
-            }
-        }
-
-        /**
-         * Replaces a {@link ConditionalNode} usage of an {@link InstanceOfNode}.
-         */
-        static final class ConditionalUsageReplacer extends InstanceOfUsageReplacer {
-
-            private final ConditionalNode usage;
-
-            private ConditionalUsageReplacer(Instantiation instantiation, ValueNode trueValue, ValueNode falseValue, InstanceOfNode instanceOf, ConditionalNode usage) {
-                super(instantiation, instanceOf, trueValue, falseValue);
-                this.usage = usage;
-            }
-
-            @Override
-            void replaceUsingInstantiation() {
-                ValueNode newValue = instantiation.asMaterialization(trueValue, falseValue);
-                usage.replaceAtUsages(newValue);
-                usage.clearInputs();
-                assert usage.usages().isEmpty();
-                GraphUtil.killWithUnusedFloatingInputs(usage);
-            }
-
-            @Override
-            public void replace(ValueNode oldNode, ValueNode newNode) {
-                assert newNode instanceof PhiNode;
-                assert oldNode == instanceOf;
-                newNode.inferStamp();
-                instantiation.initialize((PhiNode) newNode, trueValue, falseValue);
-                usage.replaceAtUsages(newNode);
-                usage.clearInputs();
-                assert usage.usages().isEmpty();
-                GraphUtil.killWithUnusedFloatingInputs(usage);
-            }
+            return new KeyAndArguments(key, arguments);
         }
     }
 
