@@ -93,7 +93,11 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                 } else {
                     effects.addFloatingNode(virtualObject);
                 }
-                state.addObject(virtualObject, new ObjectState(virtualObject, op.fieldState(), 0));
+                ValueNode[] fieldState = op.fieldState();
+                for (int i = 0; i < fieldState.length; i++) {
+                    fieldState[i] = state.getScalarAlias(fieldState[i]);
+                }
+                state.addObject(virtualObject, new ObjectState(virtualObject, fieldState, 0));
                 state.addAndMarkAlias(virtualObject, (ValueNode) node, usages);
                 effects.deleteFixedNode((FixedWithNextNode) node);
                 virtualIds++;
