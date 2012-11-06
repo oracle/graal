@@ -97,7 +97,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                 for (int i = 0; i < fieldState.length; i++) {
                     fieldState[i] = state.getScalarAlias(fieldState[i]);
                 }
-                state.addObject(virtualObject, new ObjectState(virtualObject, fieldState, 0));
+                state.addObject(virtualObject, new ObjectState(virtualObject, fieldState, op.lockCount()));
                 state.addAndMarkAlias(virtualObject, (ValueNode) node, usages);
                 effects.deleteFixedNode((FixedWithNextNode) node);
                 virtualIds++;
@@ -505,6 +505,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     int virtual = 0;
                     ObjectState startObj = states.get(0).getObjectState(object);
                     int lockCount = startObj.getLockCount();
+                    boolean locksMatch = true;
                     ValueNode singleValue = startObj.isVirtual() ? null : startObj.getMaterializedValue();
                     for (BlockState state : states) {
                         ObjectState obj = state.getObjectState(object);
@@ -516,8 +517,10 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                                 singleValue = null;
                             }
                         }
-                        assert obj.getLockCount() == lockCount : "mismatching lock counts";
+                        locksMatch &= obj.getLockCount() == lockCount;
                     }
+
+                    assert virtual < states.size() || locksMatch : "mismatching lock counts at " + merge;
 
                     if (virtual < states.size()) {
                         if (singleValue == null) {

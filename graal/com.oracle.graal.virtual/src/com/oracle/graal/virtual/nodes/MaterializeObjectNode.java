@@ -35,12 +35,12 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
 
     @Input private final NodeInputList<ValueNode> values;
     @Input private final VirtualObjectNode virtualObject;
-    private final boolean locked;
+    private final int lockCount;
 
-    public MaterializeObjectNode(VirtualObjectNode virtualObject, boolean locked) {
+    public MaterializeObjectNode(VirtualObjectNode virtualObject, int lockCount) {
         super(StampFactory.exactNonNull(virtualObject.type()));
         this.virtualObject = virtualObject;
-        this.locked = locked;
+        this.lockCount = lockCount;
         this.values = new NodeInputList<>(this, virtualObject.entryCount());
     }
 
@@ -54,7 +54,7 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
         if (virtualObject instanceof VirtualInstanceNode) {
             VirtualInstanceNode virtual = (VirtualInstanceNode) virtualObject;
 
-            NewInstanceNode newInstance = graph.add(new NewInstanceNode(virtual.type(), false, locked));
+            NewInstanceNode newInstance = graph.add(new NewInstanceNode(virtual.type(), false, lockCount > 0));
             this.replaceAtUsages(newInstance);
             graph.addAfterFixed(this, newInstance);
 
@@ -73,9 +73,9 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
             ResolvedJavaType element = virtual.componentType();
             NewArrayNode newArray;
             if (element.getKind() == Kind.Object) {
-                newArray = graph.add(new NewObjectArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), false, locked));
+                newArray = graph.add(new NewObjectArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), false, lockCount > 0));
             } else {
-                newArray = graph.add(new NewPrimitiveArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), false, locked));
+                newArray = graph.add(new NewPrimitiveArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), false, lockCount > 0));
             }
             this.replaceAtUsages(newArray);
             graph.addAfterFixed(this, newArray);
@@ -115,6 +115,11 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
             @Override
             public VirtualObjectNode virtualObject(long virtualId) {
                 return virtualObject;
+            }
+
+            @Override
+            public int lockCount() {
+                return lockCount;
             }
         };
     }
