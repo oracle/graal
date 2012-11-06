@@ -125,6 +125,11 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
                     public VirtualObjectNode virtualObject(long virtualId) {
                         return new VirtualArrayNode(virtualId, elementType, constantLength);
                     }
+
+                    @Override
+                    public int lockCount() {
+                        return 0;
+                    }
                 };
             }
         }

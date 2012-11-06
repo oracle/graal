@@ -114,6 +114,11 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
                 public VirtualObjectNode virtualObject(long virtualId) {
                     return new VirtualInstanceNode(virtualId, instanceClass(), fields);
                 }
+
+                @Override
+                public int lockCount() {
+                    return 0;
+                }
             };
         }
         return null;

@@ -88,7 +88,7 @@ class BlockState extends MergeableBlockState<BlockState> {
             throw new BailoutException("array materialized with lock");
         }
 
-        MaterializeObjectNode materialize = new MaterializeObjectNode(virtual, obj.getLockCount() > 0);
+        MaterializeObjectNode materialize = new MaterializeObjectNode(virtual, obj.getLockCount());
         ValueNode[] values = new ValueNode[obj.getEntries().length];
         materialize.setProbability(fixed.probability());
         ValueNode[] fieldState = obj.getEntries();
