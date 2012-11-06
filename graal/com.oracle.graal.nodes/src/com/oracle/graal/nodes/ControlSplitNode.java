@@ -62,27 +62,7 @@ public abstract class ControlSplitNode extends FixedNode {
     }
 
     public Iterable<BeginNode> blockSuccessors() {
-        return new Iterable<BeginNode>() {
-            @Override
-            public Iterator<BeginNode> iterator() {
-                return new Iterator<BeginNode>() {
-                    int i = 0;
-                    @Override
-                    public void remove() {
-                        throw new UnsupportedOperationException();
-                    }
-                    @Override
-                    public BeginNode next() {
-                        return ControlSplitNode.this.blockSuccessor(i++);
-                    }
-
-                    @Override
-                    public boolean hasNext() {
-                        return i < ControlSplitNode.this.blockSuccessorCount();
-                    }
-                };
-            }
-        };
+        return blockSuccessors;
     }
 
     public int blockSuccessorIndex(BeginNode successor) {

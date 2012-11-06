@@ -48,6 +48,11 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
         this.loopFrequency = loopFrequency;
     }
 
+    /**
+     * Returns the <b>unordered</b> set of {@link LoopEndNode} that correspond to back-edges for this loop.
+     * The order of the back-edges is unspecified, if you need to get an ordering compatible for {@link PhiNode} creation, use {@link #orderedLoopEnds()}.
+     * @return the set of {@code LoopEndNode} that correspond to back-edges for this loop
+     */
     public NodeIterable<LoopEndNode> loopEnds() {
         return usages().filter(LoopEndNode.class);
     }
@@ -61,6 +66,11 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
         return super.anchored().filter(isNotA(LoopEndNode.class).nor(LoopExitNode.class));
     }
 
+    /**
+     * Returns the set of {@link LoopEndNode} that correspond to back-edges for this loop, ordered in increasing {@link #phiPredecessorIndex}.
+     * This method is suited to create new loop {@link PhiNode}.
+     * @return the set of {@code LoopEndNode} that correspond to back-edges for this loop
+     */
     public List<LoopEndNode> orderedLoopEnds() {
         List<LoopEndNode> snapshot = loopEnds().snapshot();
         Collections.sort(snapshot, new Comparator<LoopEndNode>() {
