@@ -49,6 +49,15 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
     private boolean negated;
     private final long leafGraphId;
 
+    public GuardNode(BooleanNode condition, FixedNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, long leafGraphId) {
+        super(StampFactory.dependency(), anchor);
+        this.condition = condition;
+        this.reason = reason;
+        this.action = action;
+        this.negated = negated;
+        this.leafGraphId = leafGraphId;
+    }
+
     /**
      * The instruction that produces the tested boolean value.
      */
@@ -73,13 +82,8 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         return action;
     }
 
-    public GuardNode(BooleanNode condition, FixedNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, long leafGraphId) {
-        super(StampFactory.dependency(), anchor);
-        this.condition = condition;
-        this.reason = reason;
-        this.action = action;
-        this.negated = negated;
-        this.leafGraphId = leafGraphId;
+    public long getLeafGraphId() {
+        return leafGraphId;
     }
 
     @Override
