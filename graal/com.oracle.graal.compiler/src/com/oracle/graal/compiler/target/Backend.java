@@ -25,9 +25,9 @@ package com.oracle.graal.compiler.target;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 
 /**
@@ -51,7 +51,7 @@ public abstract class Backend {
         return new FrameMap(runtime, target, registerConfig);
     }
 
-    public abstract LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir);
+    public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir);
 
     public abstract TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir);
 
