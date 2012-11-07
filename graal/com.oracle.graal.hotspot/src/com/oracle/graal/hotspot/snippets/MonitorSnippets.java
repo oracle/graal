@@ -520,7 +520,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter, new ValueNode[] {errMsg}, returnType));
                         invoke = graph.add(new InvokeNode(callTarget, 0, -1));
                         List<ValueNode> stack = Collections.emptyList();
-                        FrameState stateAfter = new FrameState(graph.method(), FrameState.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], false, false, null);
+                        FrameState stateAfter = new FrameState(graph.method(), FrameState.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], false, false);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
                         inlineeGraph = (StructuredGraph) checkCounter.getCompilerStorage().get(Graph.class);
