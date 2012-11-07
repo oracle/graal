@@ -1373,7 +1373,6 @@ public final class GraphBuilderPhase extends Phase {
 
         synchronizedEpilogue(FrameState.AFTER_BCI);
         if (!frameState.locksEmpty()) {
-            System.out.println("unbalanced monitors");
             throw new BailoutException("unbalanced monitors");
         }
         ReturnNode returnNode = currentGraph.add(new ReturnNode(x));

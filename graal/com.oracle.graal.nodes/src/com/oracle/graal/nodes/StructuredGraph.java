@@ -57,30 +57,23 @@ public class StructuredGraph extends Graph {
     /**
      * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
      */
-    public StructuredGraph(String name) {
-        this(name, null);
-    }
-
     public StructuredGraph(String name, ResolvedJavaMethod method) {
-        this(name, method, uniqueGraphIds.incrementAndGet());
+        this(name, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI);
     }
 
-    private StructuredGraph(String name, ResolvedJavaMethod method, long graphId) {
+    public StructuredGraph(ResolvedJavaMethod method) {
+        this(null, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI);
+    }
+
+    public StructuredGraph(ResolvedJavaMethod method, int entryBCI) {
+        this(null, method, uniqueGraphIds.incrementAndGet(), entryBCI);
+    }
+
+    private StructuredGraph(String name, ResolvedJavaMethod method, long graphId, int entryBCI) {
         super(name);
         this.start = add(new StartNode());
         this.method = method;
         this.graphId = graphId;
-        this.entryBCI = INVOCATION_ENTRY_BCI;
-    }
-
-    public StructuredGraph(ResolvedJavaMethod method) {
-        this(method, INVOCATION_ENTRY_BCI);
-    }
-
-    public StructuredGraph(ResolvedJavaMethod method, int entryBCI) {
-        this.start = add(new StartNode());
-        this.method = method;
-        this.graphId = uniqueGraphIds.incrementAndGet();
         this.entryBCI = entryBCI;
     }
 
@@ -128,7 +121,7 @@ public class StructuredGraph extends Graph {
 
     @Override
     public StructuredGraph copy(String newName) {
-        StructuredGraph copy = new StructuredGraph(newName, method, graphId);
+        StructuredGraph copy = new StructuredGraph(newName, method, graphId, entryBCI);
         HashMap<Node, Node> replacements = new HashMap<>();
         replacements.put(start, copy.start);
         copy.addDuplicates(getNodes(), replacements);

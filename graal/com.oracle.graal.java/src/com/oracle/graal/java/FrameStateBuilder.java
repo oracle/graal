@@ -28,6 +28,7 @@ import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.Verbosity;
@@ -153,8 +154,7 @@ public class FrameStateBuilder {
         }
         for (int i = 0; i < locks.length; i++) {
             if (GraphUtil.originalValue(locks[i]) != GraphUtil.originalValue(other.locks[i])) {
-                System.out.println("unbalanced monitors");
-                return false;
+                throw new BailoutException("unbalanced monitors");
             }
         }
         return true;
