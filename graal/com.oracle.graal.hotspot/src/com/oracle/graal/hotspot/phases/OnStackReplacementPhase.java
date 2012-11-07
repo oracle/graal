@@ -42,20 +42,22 @@ public class OnStackReplacementPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        if (graph.getEntryBCI() == StructuredGraph.INVOCATION_ENTRY_BCI) {
+            // This happens during inlining in a OSR method, because the same phase plan will be used.
+            return;
+        }
         Debug.dump(graph, "OnStackReplacement initial");
         EntryMarkerNode osr;
         do {
             NodeIterable<EntryMarkerNode> osrNodes = graph.getNodes(EntryMarkerNode.class);
             osr = osrNodes.first();
             if (osr == null) {
-                System.out.println("no OnStackReplacementNode generated");
                 throw new BailoutException("no OnStackReplacementNode generated");
             }
             if (osrNodes.count() > 1) {
                 throw new GraalInternalError("multiple OnStackReplacementNodes generated");
             }
             if (osr.stateAfter().locksSize() != 0) {
-                System.out.println("osr with locks not supported");
                 throw new BailoutException("osr with locks not supported");
             }
             if (osr.stateAfter().stackSize() != 0) {
