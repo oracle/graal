@@ -448,8 +448,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return !(location instanceof IndexedLocationNode) && location.displacement() < 4096;
     }
 
+    protected CallingConvention createCallingConvention() {
+        return frameMap.registerConfig.getCallingConvention(JavaCallee, method.getSignature().getReturnKind(), MetaUtil.signatureToKinds(method), target, false);
+    }
+
     protected void emitPrologue() {
-        CallingConvention incomingArguments = frameMap.registerConfig.getCallingConvention(JavaCallee, method.getSignature().getReturnKind(), MetaUtil.signatureToKinds(method), target, false);
+        CallingConvention incomingArguments = createCallingConvention();
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
         for (int i = 0; i < params.length; i++) {

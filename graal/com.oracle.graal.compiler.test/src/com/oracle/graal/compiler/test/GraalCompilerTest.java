@@ -298,7 +298,7 @@ public abstract class GraalCompilerTest {
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 editPhasePlan(method, graph, phasePlan);
-                CompilationResult compResult = graalCompiler.compileMethod(method, graph, -1, null, phasePlan, OptimisticOptimizations.ALL);
+                CompilationResult compResult = graalCompiler.compileMethod(method, graph, null, phasePlan, OptimisticOptimizations.ALL);
                 return addMethod(method, compResult);
             }
         });

@@ -114,8 +114,8 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                     @Override
                     public CompilationResult call() throws Exception {
                         graalRuntime.evictDeoptedGraphs();
-                        StructuredGraph graph = new StructuredGraph(method);
-                        return graalRuntime.getCompiler().compileMethod(method, graph, -1, graalRuntime.getCache(), plan, optimisticOpts);
+                        StructuredGraph graph = new StructuredGraph(method, -1);
+                        return graalRuntime.getCompiler().compileMethod(method, graph, graalRuntime.getCache(), plan, optimisticOpts);
                     }
                 });
             } finally {

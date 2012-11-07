@@ -38,11 +38,14 @@ import com.oracle.graal.nodes.util.*;
  */
 public class StructuredGraph extends Graph {
 
+    public static final int INVOCATION_ENTRY_BCI = -1;
     public static final long INVALID_GRAPH_ID = -1;
+
     private static final AtomicLong uniqueGraphIds = new AtomicLong();
     private final StartNode start;
     private final ResolvedJavaMethod method;
     private final long graphId;
+    private final int entryBCI;
 
     /**
      * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
@@ -67,10 +70,18 @@ public class StructuredGraph extends Graph {
         this.start = add(new StartNode());
         this.method = method;
         this.graphId = graphId;
+        this.entryBCI = INVOCATION_ENTRY_BCI;
     }
 
     public StructuredGraph(ResolvedJavaMethod method) {
-        this(null, method);
+        this(method, INVOCATION_ENTRY_BCI);
+    }
+
+    public StructuredGraph(ResolvedJavaMethod method, int entryBCI) {
+        this.start = add(new StartNode());
+        this.method = method;
+        this.graphId = uniqueGraphIds.incrementAndGet();
+        this.entryBCI = entryBCI;
     }
 
     @Override
@@ -100,6 +111,10 @@ public class StructuredGraph extends Graph {
 
     public ResolvedJavaMethod method() {
         return method;
+    }
+
+    public int getEntryBCI() {
+        return entryBCI;
     }
 
     public long graphId() {

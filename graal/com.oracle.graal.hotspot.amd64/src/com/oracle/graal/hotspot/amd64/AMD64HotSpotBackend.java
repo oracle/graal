@@ -73,6 +73,15 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         }
 
         @Override
+        protected CallingConvention createCallingConvention() {
+            if (graph.getEntryBCI() == StructuredGraph.INVOCATION_ENTRY_BCI) {
+                return super.createCallingConvention();
+            } else {
+                return frameMap.registerConfig.getCallingConvention(JavaCallee, method.getSignature().getReturnKind(), new Kind[]{Kind.Long}, target, false);
+            }
+        }
+
+        @Override
         public void visitSafepointNode(SafepointNode i) {
             LIRFrameState info = state();
             append(new AMD64SafepointOp(info, runtime().config));
@@ -245,7 +254,6 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         Label unverifiedStub = new Label();
 
         // Emit the prefix
-        tasm.recordMark(Marks.MARK_OSR_ENTRY);
 
         boolean isStatic = Modifier.isStatic(method.getModifiers());
         if (!isStatic) {
@@ -260,6 +268,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         }
 
         asm.align(config.codeEntryAlignment);
+        tasm.recordMark(Marks.MARK_OSR_ENTRY);
         tasm.recordMark(Marks.MARK_VERIFIED_ENTRY);
 
         // Emit code for the LIR

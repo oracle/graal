@@ -75,6 +75,7 @@ public final class GraphBuilderPhase extends Phase {
     private final MetaAccessProvider runtime;
     private ConstantPool constantPool;
     private ResolvedJavaMethod method;
+    private int entryBCI;
     private ProfilingInfo profilingInfo;
 
     private BytecodeStream stream;           // the bytecode stream
@@ -119,6 +120,7 @@ public final class GraphBuilderPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         method = graph.method();
+        entryBCI = graph.getEntryBCI();
         graphId = graph.graphId();
         profilingInfo = method.getProfilingInfo();
         assert method.getCode() != null : "method must contain bytecodes: " + method;
@@ -1186,7 +1188,7 @@ public final class GraphBuilderPhase extends Phase {
                     }
                     lastLoopExit = loopExit;
                     Debug.log("Target %s (%s) Exits %s, scanning framestates...", targetBlock, target, loop);
-                    newState.insertProxies(loopExit, loop.entryState);
+                    newState.insertLoopProxies(loopExit, loop.entryState);
                     loopExit.setStateAfter(newState.create(bci));
                 }
 
@@ -1199,7 +1201,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private FixedNode createTarget(double probability, Block block, FrameStateBuilder stateAfter) {
         assert probability >= 0 && probability <= 1.01 : probability;
-        if (probability == 0 && optimisticOpts.removeNeverExecutedCode()) {
+        if (probability == 0 && optimisticOpts.removeNeverExecutedCode() && entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI) {
             return currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.UnreachedCode, graphId));
         } else {
             return createTarget(block, stateAfter);
@@ -1486,6 +1488,12 @@ public final class GraphBuilderPhase extends Phase {
             int opcode = stream.currentBC();
             traceState();
             traceInstruction(bci, opcode, bci == block.startBci);
+            if (bci == entryBCI) {
+                EntryMarkerNode x = currentGraph.add(new EntryMarkerNode());
+                append(x);
+                frameState.insertProxies(x);
+                x.setStateAfter(frameState.create(bci));
+            }
             processBytecode(bci, opcode);
 
             if (lastInstr == null || isBlockEnd(lastInstr) || lastInstr.next() != null) {

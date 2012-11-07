@@ -229,7 +229,7 @@ public class FrameStateBuilder {
         }
     }
 
-    public void insertProxies(LoopExitNode loopExit, FrameStateBuilder loopEntryState) {
+    public void insertLoopProxies(LoopExitNode loopExit, FrameStateBuilder loopEntryState) {
         for (int i = 0; i < localsSize(); i++) {
             ValueNode value = localAt(i);
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
@@ -249,6 +249,30 @@ public class FrameStateBuilder {
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 Debug.log(" inserting proxy for %s", value);
                 locks[i] = graph.unique(new ValueProxyNode(value, loopExit, PhiType.Value));
+            }
+        }
+    }
+
+    public void insertProxies(BeginNode begin) {
+        for (int i = 0; i < localsSize(); i++) {
+            ValueNode value = localAt(i);
+            if (value != null) {
+                Debug.log(" inserting proxy for %s", value);
+                storeLocal(i, graph.unique(new ValueProxyNode(value, begin, PhiType.Value)));
+            }
+        }
+        for (int i = 0; i < stackSize(); i++) {
+            ValueNode value = stackAt(i);
+            if (value != null) {
+                Debug.log(" inserting proxy for %s", value);
+                storeStack(i, graph.unique(new ValueProxyNode(value, begin, PhiType.Value)));
+            }
+        }
+        for (int i = 0; i < locks.length; i++) {
+            ValueNode value = locks[i];
+            if (value != null) {
+                Debug.log(" inserting proxy for %s", value);
+                locks[i] = graph.unique(new ValueProxyNode(value, begin, PhiType.Value));
             }
         }
     }
