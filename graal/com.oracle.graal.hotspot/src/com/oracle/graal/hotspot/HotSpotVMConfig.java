@@ -179,6 +179,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long vmErrorStub;
     public long deoptimizeStub;
     public long unwindExceptionStub;
+    public long osrMigrationEndStub;
     public long registerFinalizerStub;
     public long setDeoptInfoStub;
     public long createNullPointerExceptionStub;

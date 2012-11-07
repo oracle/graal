@@ -150,7 +150,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             @Override
             public void run() {
                 final CodeInfo[] info = Debug.isDumpEnabled() ? new CodeInfo[1] : null;
-                graalRuntime.getRuntime().installMethod(method, tm, info);
+                graalRuntime.getRuntime().installMethod(method, -1, tm, info);
                 if (info != null) {
                     Debug.dump(new Object[] {tm, info[0]}, "After code installation");
                 }
