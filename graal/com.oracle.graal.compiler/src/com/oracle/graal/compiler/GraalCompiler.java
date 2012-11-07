@@ -189,10 +189,16 @@ public class GraalCompiler {
             new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
         }
 
-        new EliminatePartiallyRedundantGuardsPhase().apply(graph);
+        if (GraalOptions.OptEliminatePartiallyRedundantGuards) {
+            new EliminatePartiallyRedundantGuardsPhase(false, true).apply(graph);
+        }
 
         if (GraalOptions.CheckCastElimination && GraalOptions.OptCanonicalizer) {
             new IterativeConditionalEliminationPhase(target, runtime, assumptions).apply(graph);
+        }
+
+        if (GraalOptions.OptEliminatePartiallyRedundantGuards) {
+            new EliminatePartiallyRedundantGuardsPhase(true, true).apply(graph);
         }
 
         plan.runPhases(PhasePosition.MID_LEVEL, graph);

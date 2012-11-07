@@ -194,6 +194,7 @@ public final class GraalOptions {
     public static boolean OptSafepointElimination            = true;
     public static boolean OptFloatingReads                   = true;
     public static boolean OptTailDuplication                 = true;
+    public static boolean OptEliminatePartiallyRedundantGuards = true;
 
     /**
      * Counts the various paths taken through snippets.
