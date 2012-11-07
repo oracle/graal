@@ -127,7 +127,7 @@ public class SchedulePhase extends Phase {
         Block block;
         if (latestBlock == null) {
             block = earliestBlock(node);
-        } else if (GraalOptions.ScheduleOutOfLoops && !(node instanceof VirtualObjectNode)) {
+        } else if (GraalOptions.OptScheduleOutOfLoops && !(node instanceof VirtualObjectNode)) {
             Block earliestBlock = earliestBlock(node);
             block = scheduleOutOfLoops(node, latestBlock, earliestBlock);
             assert earliestBlock.dominates(block) : "Graph can not be scheduled : inconsistent for " + node + " (" + earliestBlock + " needs to dominate " + block + ")";

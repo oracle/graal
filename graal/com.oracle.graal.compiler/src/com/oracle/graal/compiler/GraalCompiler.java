@@ -171,7 +171,7 @@ public class GraalCompiler {
             new CullFrameStatesPhase().apply(graph);
         }
 
-        if (GraalOptions.FloatingReads) {
+        if (GraalOptions.OptFloatingReads) {
             int mark = graph.getMark();
             new FloatingReadPhase().apply(graph);
             new CanonicalizerPhase(target, runtime, assumptions, mark, null).apply(graph);
