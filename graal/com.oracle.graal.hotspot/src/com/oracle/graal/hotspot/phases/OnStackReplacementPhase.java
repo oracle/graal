@@ -1,0 +1,124 @@
+/*
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.graal.hotspot.phases;
+
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.loop.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
+
+public class OnStackReplacementPhase extends Phase {
+
+    public static final Descriptor OSR_MIGRATION_END = new Descriptor("OSR_migration_end", true, Kind.Void, Kind.Long);
+
+    @Override
+    protected void run(StructuredGraph graph) {
+        Debug.dump(graph, "OnStackReplacement initial");
+        EntryMarkerNode osr;
+        do {
+            NodeIterable<EntryMarkerNode> osrNodes = graph.getNodes(EntryMarkerNode.class);
+            osr = osrNodes.first();
+            if (osr == null) {
+                System.out.println("no OnStackReplacementNode generated");
+                throw new BailoutException("no OnStackReplacementNode generated");
+            }
+            if (osrNodes.count() > 1) {
+                throw new GraalInternalError("multiple OnStackReplacementNodes generated");
+            }
+            if (osr.stateAfter().locksSize() != 0) {
+                System.out.println("osr with locks not supported");
+                throw new BailoutException("osr with locks not supported");
+            }
+            if (osr.stateAfter().stackSize() != 0) {
+                throw new GraalInternalError("osr with stack entries not supported");
+            }
+            LoopEx osrLoop = null;
+            LoopsData loops = new LoopsData(graph);
+            for (LoopEx loop : loops.loops()) {
+                if (loop.inside().contains(osr)) {
+                    osrLoop = loop;
+                    break;
+                }
+            }
+            if (osrLoop == null) {
+                break;
+            }
+
+            LoopTransformations.peel(osrLoop);
+            for (Node usage : osr.usages().snapshot()) {
+                ValueProxyNode proxy = (ValueProxyNode) usage;
+                proxy.replaceAndDelete(proxy.value());
+            }
+            FixedNode next = osr.next();
+            osr.setNext(null);
+            ((FixedWithNextNode) osr.predecessor()).setNext(next);
+            GraphUtil.killWithUnusedFloatingInputs(osr);
+            Debug.dump(graph, "OnStackReplacement loop peeling result");
+        } while (true);
+
+
+        LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(Kind.Long)));
+        RuntimeCallNode migrationEnd = graph.add(new RuntimeCallNode(OSR_MIGRATION_END, buffer));
+        FrameState osrState = osr.stateAfter();
+        migrationEnd.setStateAfter(osrState);
+        osr.setStateAfter(null);
+
+        StartNode start = graph.start();
+        FixedNode rest = start.next();
+        start.setNext(migrationEnd);
+        FixedNode next = osr.next();
+        osr.setNext(null);
+        migrationEnd.setNext(next);
+
+        FrameState oldStartState = start.stateAfter();
+        start.setStateAfter(null);
+        GraphUtil.killWithUnusedFloatingInputs(oldStartState);
+
+        int localsOffset = (graph.method().getMaxLocals() - 1) * 8;
+        for (int i = 0; i < osrState.localsSize(); i++) {
+            ValueNode value = osrState.localAt(i);
+            if (value != null) {
+                ValueProxyNode proxy = (ValueProxyNode) value;
+                int size = (value.kind() == Kind.Long || value.kind() == Kind.Double) ? 2 : 1;
+                int offset = localsOffset - (i + size - 1) * 8;
+                UnsafeLoadNode load = graph.add(new UnsafeLoadNode(buffer, offset, ConstantNode.forInt(0, graph), value.kind()));
+                proxy.replaceAndDelete(load);
+                graph.addBeforeFixed(migrationEnd, load);
+            }
+        }
+
+        GraphUtil.killCFG(rest);
+
+        Debug.dump(graph, "OnStackReplacement result");
+        new DeadCodeEliminationPhase().apply(graph);
+    }
+}

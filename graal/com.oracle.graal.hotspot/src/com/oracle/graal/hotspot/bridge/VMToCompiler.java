@@ -27,7 +27,6 @@ import java.io.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.phases.*;
 
 /**
  * Calls from HotSpot into Java.
@@ -61,6 +60,4 @@ public interface VMToCompiler {
     Constant createConstantDouble(double value);
 
     Constant createConstantObject(Object object);
-
-    PhasePlan createPhasePlan(OptimisticOptimizations optimisticOpts);
 }
