@@ -389,7 +389,6 @@ public class VMToCompilerImpl implements VMToCompiler {
                 }
             }
             if (entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI && CompilationTask.withinCompilation.get() == 0) {
-                assert !blocking;
                 final OptimisticOptimizations osrOptimisticOpts = new OptimisticOptimizations(method);
                 int osrId = compileTaskIds.incrementAndGet();
                 Debug.log("OSR compilation %s@%d", method, entryBCI);
