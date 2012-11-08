@@ -386,21 +386,22 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
                     HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
                     if (!hsMethod.getDeclaringClass().isInterface()) {
-                        // We use LocationNode.ANY_LOCATION for the reads that access the vtable entry and the compiled code entry
-                        // as HotSpot does not guarantee they are final values.
                         int vtableEntryOffset = hsMethod.vtableEntryOffset();
-                        assert vtableEntryOffset > 0;
-                        LoadHubNode hub = graph.add(new LoadHubNode(receiver));
-                        Kind wordKind = graalRuntime.getTarget().wordKind;
-                        Stamp nonNullWordStamp = StampFactory.forWord(wordKind, true);
-                        ReadNode methodOop = graph.add(new ReadNode(hub, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, vtableEntryOffset, graph), nonNullWordStamp));
-                        ReadNode compiledEntry = graph.add(new ReadNode(methodOop, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph), nonNullWordStamp));
+                        if (vtableEntryOffset > 0) {
+                            // We use LocationNode.ANY_LOCATION for the reads that access the vtable entry and the compiled code entry
+                            // as HotSpot does not guarantee they are final values.
+                            LoadHubNode hub = graph.add(new LoadHubNode(receiver));
+                            Kind wordKind = graalRuntime.getTarget().wordKind;
+                            Stamp nonNullWordStamp = StampFactory.forWord(wordKind, true);
+                            ReadNode methodOop = graph.add(new ReadNode(hub, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, vtableEntryOffset, graph), nonNullWordStamp));
+                            ReadNode compiledEntry = graph.add(new ReadNode(methodOop, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph), nonNullWordStamp));
 
-                        loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(methodOop, compiledEntry, parameters, invoke.node().stamp(), signature, callTarget.targetMethod(), CallingConvention.Type.JavaCall));
+                            loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(methodOop, compiledEntry, parameters, invoke.node().stamp(), signature, callTarget.targetMethod(), CallingConvention.Type.JavaCall));
 
-                        graph.addBeforeFixed(invoke.node(), hub);
-                        graph.addAfterFixed(hub, methodOop);
-                        graph.addAfterFixed(methodOop, compiledEntry);
+                            graph.addBeforeFixed(invoke.node(), hub);
+                            graph.addAfterFixed(hub, methodOop);
+                            graph.addAfterFixed(methodOop, compiledEntry);
+                        }
                     }
                 }
 
