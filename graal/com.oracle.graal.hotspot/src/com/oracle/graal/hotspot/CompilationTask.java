@@ -115,11 +115,12 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         try {
             final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
             if (printCompilation) {
-                TTY.println(String.format("%-6d Graal %-70s %-45s %-50s ...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature()));
+                TTY.println(String.format("%-6d Graal %-70s %-45s %-50s %s...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature(), entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "(OSR) "));
             }
 
             CompilationResult result = null;
             TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
+            long start = System.currentTimeMillis();
             try {
                 result = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true), new Callable<CompilationResult>() {
 
@@ -133,7 +134,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             } finally {
                 filter.remove();
                 if (printCompilation) {
-                    TTY.println(String.format("%-6d Graal %-70s %-45s %-50s | %4dnodes %5dB", id, "", "", "", 0, (result != null ? result.getTargetCodeSize() : -1)));
+                    TTY.println(String.format("%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, (result != null ? result.getTargetCodeSize() : -1)));
                 }
             }
 
