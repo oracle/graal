@@ -132,8 +132,8 @@ public final class GraalOptions {
     public static boolean DumpOnError                        = ____;
 
     // Ideal graph visualizer output settings
-    public static boolean PrintBinaryGraphs                  = ____;
-    public static boolean PrintCFG                           = true;
+    public static boolean PrintBinaryGraphs                  = true;
+    public static boolean PrintCFG                           = ____;
     public static boolean PrintIdealGraphFile                = ____;
     public static String  PrintIdealGraphAddress             = "127.0.0.1";
     public static int     PrintIdealGraphPort                = 4444;

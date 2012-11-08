@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-@NodeInfo(nameTemplate = "RuntimeCall#{p#call/s}")
+@NodeInfo(nameTemplate = "RuntimeCall#{p#descriptor/s}")
 public final class RuntimeCallNode extends AbstractCallNode implements LIRLowerable {
 
     private final Descriptor descriptor;
