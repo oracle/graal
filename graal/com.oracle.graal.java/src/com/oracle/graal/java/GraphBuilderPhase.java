@@ -173,11 +173,16 @@ public final class GraphBuilderPhase extends Phase {
 
         // finish the start block
         ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
+
+        currentBlock = blockMap.startBlock;
+        blockMap.startBlock.entryState = frameState;
         if (blockMap.startBlock.isLoopHeader) {
+            // TODO(lstadler,gduboscq) createTarget might not be safe at this position, since it expects currentBlock,
+            // etc. to be set up correctly. A better solution to this problem of start blocks that are loop headers
+            // would be to create a dummy block in BciBlockMapping.
             appendGoto(createTarget(blockMap.startBlock, frameState));
         } else {
             blockMap.startBlock.firstInstruction = lastInstr;
-            blockMap.startBlock.entryState = frameState;
         }
 
         for (Block block : blockMap.blocks) {
