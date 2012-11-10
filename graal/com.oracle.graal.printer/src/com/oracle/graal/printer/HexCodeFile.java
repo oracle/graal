@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.printer;
 
 import java.io.*;
 import java.util.*;
