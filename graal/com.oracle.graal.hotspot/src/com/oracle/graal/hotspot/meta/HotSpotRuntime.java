@@ -57,6 +57,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.printer.*;
 import com.oracle.graal.snippets.*;
 
 /**
@@ -482,12 +483,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 ResolvedJavaType arrayType = array.objectStamp().type();
                 if (arrayType != null && array.objectStamp().isExactType()) {
                     ResolvedJavaType elementType = arrayType.getComponentType();
-                    if (elementType.getSuperclass() != null) {
+                    if (!MetaUtil.isJavaLangObject(elementType)) {
                         CheckCastNode checkcast = graph.add(new CheckCastNode(elementType, value, null));
                         graph.addBeforeFixed(storeIndexed, checkcast);
                         value = checkcast;
-                    } else {
-                        assert elementType.getName().equals("Ljava/lang/Object;") : elementType.getName();
                     }
                 } else {
                     LoadHubNode arrayClass = graph.add(new LoadHubNode(array));

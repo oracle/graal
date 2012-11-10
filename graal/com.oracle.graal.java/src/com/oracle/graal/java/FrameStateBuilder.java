@@ -339,7 +339,7 @@ public class FrameStateBuilder {
      * @param i the index into the locals
      * @return the instruction that produced the value for the specified local
      */
-    protected final ValueNode localAt(int i) {
+    public final ValueNode localAt(int i) {
         return locals[i];
     }
 
@@ -349,7 +349,7 @@ public class FrameStateBuilder {
      * @param i the index into the stack, with {@code 0} being the bottom of the stack
      * @return the instruction at the specified position in the stack
      */
-    protected final ValueNode stackAt(int i) {
+    public final ValueNode stackAt(int i) {
         return stack[i];
     }
 

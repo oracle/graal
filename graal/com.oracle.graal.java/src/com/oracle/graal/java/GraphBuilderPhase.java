@@ -1363,7 +1363,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void createReturn() {
-        if (method.isConstructor() && method.getDeclaringClass().getSuperclass() == null) {
+        if (method.isConstructor() && MetaUtil.isJavaLangObject(method.getDeclaringClass())) {
             callRegisterFinalizer();
         }
         Kind returnKind = method.getSignature().getReturnKind().getStackKind();

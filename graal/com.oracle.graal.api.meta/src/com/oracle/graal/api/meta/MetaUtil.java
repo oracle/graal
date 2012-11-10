@@ -37,6 +37,15 @@ import com.oracle.graal.api.meta.ProfilingInfo.ExceptionSeen;
 public class MetaUtil {
 
     /**
+     * Returns true if the specified typed is exactly the type {@link java.lang.Object}.
+     */
+    public static boolean isJavaLangObject(ResolvedJavaType type) {
+        boolean result = type.getSuperclass() == null && !type.isInterface() && type.getKind() == Kind.Object;
+        assert result == type.getName().equals("Ljava/lang/Object;") : type.getName();
+        return result;
+    }
+
+    /**
      * Extends the functionality of {@link Class#getSimpleName()} to include a non-empty string for anonymous and local
      * classes.
      * 

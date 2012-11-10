@@ -762,7 +762,7 @@ public final class BciBlockMapping {
         while (stream.currentBCI() <= block.endBci) {
             switch (stream.currentBC()) {
                 case RETURN:
-                    if (method.isConstructor() && method.getDeclaringClass().getSuperclass() == null) {
+                    if (method.isConstructor() && MetaUtil.isJavaLangObject(method.getDeclaringClass())) {
                         // return from Object.init implicitly registers a finalizer
                         // for the receiver if needed, so keep it alive.
                         loadOne(block, 0);

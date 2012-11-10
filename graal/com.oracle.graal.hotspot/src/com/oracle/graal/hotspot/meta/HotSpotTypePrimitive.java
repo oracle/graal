@@ -71,6 +71,11 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
     }
 
     @Override
+    public ResolvedJavaType[] getInterfaces() {
+        return new ResolvedJavaType[0];
+    }
+
+    @Override
     public ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType) {
         return null;
     }

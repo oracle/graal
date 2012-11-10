@@ -152,6 +152,11 @@ public interface ResolvedJavaType extends JavaType {
     ResolvedJavaType getSuperclass();
 
     /**
+     * Gets the interfaces that this type defines. This method is analogous to {@link Class#getInterfaces()}.
+     */
+    ResolvedJavaType[] getInterfaces();
+
+    /**
      * Walks the class hierarchy upwards and returns the least common class that is a superclass of both the current and
      * the given type.
      *

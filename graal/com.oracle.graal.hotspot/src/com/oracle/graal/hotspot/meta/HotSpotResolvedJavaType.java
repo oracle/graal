@@ -49,6 +49,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     private int instanceSize;
     private HashMap<Long, ResolvedJavaField> fieldCache;
     private ResolvedJavaType superType;
+    private ResolvedJavaType[] interfaces;
     private boolean superTypeSet;
     private ResolvedJavaField[] fields;
     private ConstantPool constantPool;
@@ -94,10 +95,28 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     @Override
     public ResolvedJavaType getSuperclass() {
         if (!superTypeSet) {
-            superType = (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().getSuperType(this);
+            Class<?> javaSuper = toJava().getSuperclass();
+            if (javaSuper == null) {
+                superType = null;
+            } else {
+                superType = HotSpotGraalRuntime.getInstance().getRuntime().lookupJavaType(javaSuper);
+            }
             superTypeSet = true;
         }
         return superType;
+    }
+
+    @Override
+    public ResolvedJavaType[] getInterfaces() {
+        if (interfaces == null) {
+            Class[] javaInterfaces = toJava().getInterfaces();
+            ResolvedJavaType[] result = new ResolvedJavaType[javaInterfaces.length];
+            for (int i = 0; i < javaInterfaces.length; i++) {
+                result[i] = HotSpotGraalRuntime.getInstance().getRuntime().lookupJavaType(javaInterfaces[i]);
+            }
+            interfaces = result;
+        }
+        return interfaces;
     }
 
     @Override
@@ -145,6 +164,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
 
     @Override
     public boolean isArrayClass() {
+        assert isArrayClass ^ (isInterface || isInstanceClass);
         return isArrayClass;
     }
 
@@ -171,11 +191,13 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
 
     @Override
     public boolean isInstanceClass() {
+        assert isInstanceClass ^ (isInterface || isArrayClass);
         return isInstanceClass;
     }
 
     @Override
     public boolean isInterface() {
+        assert isInterface ^ (isInstanceClass || isArrayClass);
         return isInterface;
     }
 
