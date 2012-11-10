@@ -272,7 +272,10 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
         }
 
         private static void connectEnds(MergeNode merge, List<EndNode> ends, BeginNode successor) {
-            if (ends.size() == 1) {
+            if (ends.size() == 0) {
+                // InstanceOf has been lowered to always true or always false - this successor is therefore unreachable.
+                GraphUtil.killCFG(successor);
+            } else if (ends.size() == 1) {
                 EndNode end = ends.get(0);
                 ((FixedWithNextNode) end.predecessor()).setNext(successor);
                 merge.removeEnd(end);
