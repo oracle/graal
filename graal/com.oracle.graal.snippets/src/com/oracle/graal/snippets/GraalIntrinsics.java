@@ -36,6 +36,7 @@ public class GraalIntrinsics {
             installer.install(NodeClassSnippets.class);
             installer.install(LongSnippets.class);
             installer.install(IntegerSnippets.class);
+            installer.install(UnsignedMathSnippets.class);
         }
     }
 }

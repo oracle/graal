@@ -20,13 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.snippets;
+package com.oracle.graal.snippets;
 
 import static com.oracle.graal.nodes.MaterializeNode.*;
 import static com.oracle.graal.nodes.calc.Condition.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.snippets.*;
 
 /**
  * Snippets for {@link UnsignedMath}.
