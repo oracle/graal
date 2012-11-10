@@ -326,6 +326,9 @@ public class CompilationResult implements Serializable {
     private int frameSize = -1;
     private int customStackAreaOffset = -1;
     private int registerRestoreEpilogueOffset = -1;
+
+    private CalleeSaveLayout calleeSaveLayout;
+
     /**
      * The buffer containing the emitted machine code.
      */
@@ -367,6 +370,15 @@ public class CompilationResult implements Serializable {
     public void setTargetCode(byte[] code, int size) {
         targetCode = code;
         targetCodeSize = size;
+    }
+
+    /**
+     * Sets the info on callee-saved registers used by this method.
+     *
+     * @param csl the register-saving info.
+     */
+    public void setCalleeSaveLayout(CalleeSaveLayout csl) {
+        calleeSaveLayout = csl;
     }
 
     /**
@@ -480,6 +492,13 @@ public class CompilationResult implements Serializable {
      */
     public void setCustomStackAreaOffset(int offset) {
         customStackAreaOffset = offset;
+    }
+
+    /**
+     * @return the layout information for callee-saved registers used by this method.
+     */
+    public CalleeSaveLayout getCalleeSaveLayout() {
+        return calleeSaveLayout;
     }
 
     /**

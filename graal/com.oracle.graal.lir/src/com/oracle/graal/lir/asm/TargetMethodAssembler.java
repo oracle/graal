@@ -108,6 +108,9 @@ public class TargetMethodAssembler {
             }
         }
 
+        // Set the info on callee-saved registers
+        targetMethod.setCalleeSaveLayout(frameMap.registerConfig.getCalleeSaveLayout());
+
         Debug.metric("TargetMethods").increment();
         Debug.metric("CodeBytesEmitted").add(targetMethod.getTargetCodeSize());
         Debug.metric("SafepointsEmitted").add(targetMethod.getSafepoints().size());
