@@ -59,9 +59,6 @@
     <module name="LeftCurly"/>
     <module name="NeedBraces"/>
     <module name="RightCurly"/>
-    <module name="DoubleCheckedLocking">
-      <property name="severity" value="error"/>
-    </module>
     <module name="EmptyStatement"/>
     <module name="HiddenField">
       <property name="severity" value="ignore"/>
