@@ -204,6 +204,8 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         for (int i = 0; i < previousInlineContext.size(); i++) {
             closeScope();
         }
-        printer.close();
+        if (printer != null) {
+            printer.close();
+        }
     }
 }
