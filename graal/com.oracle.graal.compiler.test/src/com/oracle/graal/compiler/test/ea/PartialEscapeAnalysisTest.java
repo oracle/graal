@@ -99,7 +99,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
             obj.y = null;
             return obj;
         } else {
-            ((TestObject2) obj.x).y = null;
+            ((TestObject2) obj.x).y = Integer.class;
             ((TestObject2) obj.x).x = null;
             return obj.x;
         }
