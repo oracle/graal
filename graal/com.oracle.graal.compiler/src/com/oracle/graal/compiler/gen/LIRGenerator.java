@@ -218,7 +218,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     public LIRFrameState state() {
         assert lastState != null : "must have state before instruction";
-        return stateFor(lastState, -1);
+        return stateFor(lastState, StructuredGraph.INVALID_GRAPH_ID);
     }
 
     public LIRFrameState state(long leafGraphId) {

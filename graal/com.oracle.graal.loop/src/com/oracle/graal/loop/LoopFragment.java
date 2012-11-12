@@ -255,7 +255,6 @@ public abstract class LoopFragment {
             merge.setNext(next);
 
             FrameState exitState = earlyExit.stateAfter();
-            FrameState newExitState = newEarlyExit.stateAfter();
             FrameState state = null;
             if (exitState != null) {
                 state = exitState;
