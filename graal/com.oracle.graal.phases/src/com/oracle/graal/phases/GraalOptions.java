@@ -68,6 +68,7 @@ public final class GraalOptions {
 
     // escape analysis settings
     public static boolean PartialEscapeAnalysis              = true;
+    public static boolean EscapeAnalysisHistogram            = ____;
     public static int     EscapeAnalysisIterations           = 2;
     public static String  EscapeAnalyzeOnly                  = null;
 

@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * An IsNullNode will be true if the supplied value is null, and false if it is non-null.
  */
-public final class IsNullNode extends BooleanNode implements Canonicalizable, LIRLowerable {
+public final class IsNullNode extends BooleanNode implements Canonicalizable, LIRLowerable, Virtualizable {
 
     @Input private ValueNode object;
 
@@ -72,5 +72,12 @@ public final class IsNullNode extends BooleanNode implements Canonicalizable, LI
             return ConstantNode.forBoolean(false, graph());
         }
         return this;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        if (tool.getVirtualState(object()) != null || tool.getMaterializedValue(object()) != null) {
+            tool.replaceWithValue(ConstantNode.forBoolean(false, graph()));
+        }
     }
 }

@@ -27,12 +27,13 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code LoadFieldNode} represents a read of a static or instance field.
  */
 @NodeInfo(nameTemplate = "LoadField#{p#field/s}")
-public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable, Node.IterableNodeType {
+public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable, Node.IterableNodeType, Virtualizable {
 
     /**
      * Creates a new LoadFieldNode instance.
@@ -68,5 +69,22 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             }
         }
         return this;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        VirtualObjectNode virtual = tool.getVirtualState(object());
+        if (virtual != null) {
+            int fieldIndex = ((VirtualInstanceNode) virtual).fieldIndex(field());
+            if (fieldIndex != -1) {
+                ValueNode result = tool.getVirtualEntry(virtual, fieldIndex);
+                VirtualObjectNode virtualResult = tool.getVirtualState(result);
+                if (virtualResult != null) {
+                    tool.replaceWithVirtual(virtualResult);
+                } else {
+                    tool.replaceWithValue(result);
+                }
+            }
+        }
     }
 }

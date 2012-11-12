@@ -157,10 +157,10 @@ public class PartialEscapeAnalysisPhase extends Phase {
         boolean success = true;
         for (Node node : obsoleteNodes) {
             if (flood.isMarked(node)) {
-                trace("offending node path:");
+                error("offending node path:");
                 Node current = node;
                 while (current != null) {
-                    trace(current.toString());
+                    error(current.toString());
                     current = path.get(current);
                     if (current != null && current instanceof FixedNode && !obsoleteNodes.contains(current)) {
                         break;

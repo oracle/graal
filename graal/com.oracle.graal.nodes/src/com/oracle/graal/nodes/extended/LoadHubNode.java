@@ -27,11 +27,12 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * Loads an object's {@linkplain Representation#ObjectHub hub}, null-checking the object first.
  */
-public final class LoadHubNode extends FixedWithNextNode implements Lowerable, Canonicalizable {
+public final class LoadHubNode extends FixedWithNextNode implements Lowerable, Canonicalizable, Virtualizable {
     @Input private ValueNode object;
 
     public ValueNode object() {
@@ -75,4 +76,12 @@ public final class LoadHubNode extends FixedWithNextNode implements Lowerable, C
 
     @NodeIntrinsic
     public static native Object loadHub(Object object);
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        VirtualObjectNode virtual = tool.getVirtualState(object());
+        if (virtual != null) {
+            tool.replaceWithValue(ConstantNode.forConstant(virtual.type().getEncoding(Representation.ObjectHub), tool.getMetaAccessProvider(), graph()));
+        }
+    }
 }

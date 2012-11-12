@@ -28,12 +28,13 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code StoreFieldNode} represents a write to a static or instance field.
  */
 @NodeInfo(nameTemplate = "MaterializeStore#{p#target/s}")
-public final class CyclicMaterializeStoreNode extends FixedWithNextNode implements Lowerable {
+public final class CyclicMaterializeStoreNode extends FixedWithNextNode implements Lowerable, Virtualizable {
 
     @Input private ValueNode object;
     @Input private ValueNode value;
@@ -81,5 +82,18 @@ public final class CyclicMaterializeStoreNode extends FixedWithNextNode implemen
             store = graph.add(new StoreFieldNode(object, (ResolvedJavaField) target, value, -1));
         }
         graph.replaceFixedWithFixed(this, store);
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        VirtualObjectNode virtual = tool.getVirtualState(object());
+        if (virtual != null) {
+            if (virtual instanceof VirtualArrayNode) {
+                tool.setVirtualEntry(virtual, targetIndex(), value());
+            } else {
+                tool.setVirtualEntry(virtual, ((VirtualInstanceNode) virtual).fieldIndex(targetField()), value());
+            }
+            tool.delete();
+        }
     }
 }

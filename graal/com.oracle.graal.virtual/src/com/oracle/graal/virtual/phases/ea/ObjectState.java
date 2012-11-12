@@ -100,12 +100,8 @@ class ObjectState {
         return lockCount;
     }
 
-    public void incLockCount() {
-        lockCount++;
-    }
-
-    public void decLockCount() {
-        lockCount--;
+    public void setLockCount(int lockCount) {
+        this.lockCount = lockCount;
     }
 
     @Override

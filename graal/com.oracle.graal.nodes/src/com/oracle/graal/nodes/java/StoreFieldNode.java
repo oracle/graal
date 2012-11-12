@@ -25,13 +25,15 @@ package com.oracle.graal.nodes.java;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code StoreFieldNode} represents a write to a static or instance field.
  */
 @NodeInfo(nameTemplate = "StoreField#{p#field/s}")
-public final class StoreFieldNode extends AccessFieldNode implements StateSplit {
+public final class StoreFieldNode extends AccessFieldNode implements StateSplit, Virtualizable {
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
@@ -63,5 +65,17 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit 
     public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, long leafGraphId) {
         super(StampFactory.forVoid(), object, field, leafGraphId);
         this.value = value;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        VirtualObjectNode virtual = tool.getVirtualState(object());
+        if (virtual != null) {
+            int fieldIndex = ((VirtualInstanceNode) virtual).fieldIndex(field());
+            if (fieldIndex != -1) {
+                tool.setVirtualEntry(virtual, fieldIndex, value());
+                tool.delete();
+            }
+        }
     }
 }

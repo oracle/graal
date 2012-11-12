@@ -26,11 +26,12 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code ArrayLength} instruction gets the length of an array.
  */
-public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable, Lowerable {
+public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable, Lowerable, Virtualizable {
 
     @Input private ValueNode array;
 
@@ -67,4 +68,13 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
 
     @NodeIntrinsic
     public static native int arrayLength(Object array);
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        VirtualObjectNode virtual = tool.getVirtualState(array());
+        if (virtual != null) {
+            assert virtual instanceof VirtualArrayNode : virtual;
+            tool.replaceWithValue(ConstantNode.forInt(virtual.entryCount(), graph()));
+        }
+    }
 }

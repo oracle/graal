@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.MergeableBlockState;
 import com.oracle.graal.virtual.nodes.*;
@@ -88,41 +89,71 @@ class BlockState extends MergeableBlockState<BlockState> {
             throw new BailoutException("array materialized with lock");
         }
 
-        MaterializeObjectNode materialize = new MaterializeObjectNode(virtual, obj.getLockCount());
-        ValueNode[] values = new ValueNode[obj.getEntries().length];
-        materialize.setProbability(fixed.probability());
         ValueNode[] fieldState = obj.getEntries();
-        obj.setMaterializedValue(materialize);
-        deferred.add(virtual);
+
+        // determine if all entries are default constants
+        boolean allDefault = true;
         for (int i = 0; i < fieldState.length; i++) {
-            ObjectState valueObj = getObjectState(fieldState[i]);
-            if (valueObj != null) {
-                if (valueObj.isVirtual()) {
-                    materializeChangedBefore(fixed, valueObj.virtual, deferred, deferredStores, materializeEffects);
-                }
-                if (deferred.contains(valueObj.virtual)) {
-                    Kind fieldKind;
-                    CyclicMaterializeStoreNode store;
-                    if (virtual instanceof VirtualArrayNode) {
-                        store = new CyclicMaterializeStoreNode(materialize, valueObj.getMaterializedValue(), i);
-                        fieldKind = ((VirtualArrayNode) virtual).componentType().getKind();
-                    } else {
-                        VirtualInstanceNode instanceObject = (VirtualInstanceNode) virtual;
-                        store = new CyclicMaterializeStoreNode(materialize, valueObj.getMaterializedValue(), instanceObject.field(i));
-                        fieldKind = instanceObject.field(i).getType().getKind();
-                    }
-                    deferredStores.addFixedNodeBefore(store, fixed);
-                    values[i] = ConstantNode.defaultForKind(fieldKind, fixed.graph());
-                } else {
-                    values[i] = valueObj.getMaterializedValue();
-                }
-            } else {
-                values[i] = fieldState[i];
+            if (!fieldState[i].isConstant() || !fieldState[i].asConstant().isDefaultForKind()) {
+                allDefault = false;
+                break;
             }
         }
-        deferred.remove(virtual);
 
-        materializeEffects.addMaterialization(materialize, fixed, values);
+        if (allDefault && obj.getLockCount() == 0) {
+            // create an ordinary NewInstance/NewArray node if all entries are default constants
+            FixedWithNextNode newObject;
+            if (virtual instanceof VirtualInstanceNode) {
+                newObject = new NewInstanceNode(virtual.type(), true, false);
+            } else {
+                assert virtual instanceof VirtualArrayNode;
+                ResolvedJavaType element = ((VirtualArrayNode) virtual).componentType();
+                if (element.getKind() == Kind.Object) {
+                    newObject = new NewObjectArrayNode(element, ConstantNode.forInt(virtual.entryCount(), fixed.graph()), true, false);
+                } else {
+                    newObject = new NewPrimitiveArrayNode(element, ConstantNode.forInt(virtual.entryCount(), fixed.graph()), true, false);
+                }
+            }
+            newObject.setProbability(fixed.probability());
+            obj.setMaterializedValue(newObject);
+            materializeEffects.addFixedNodeBefore(newObject, fixed);
+        } else {
+            // some entries are not default constants - do the materialization
+            MaterializeObjectNode materialize = new MaterializeObjectNode(virtual, obj.getLockCount());
+            ValueNode[] values = new ValueNode[obj.getEntries().length];
+            materialize.setProbability(fixed.probability());
+            obj.setMaterializedValue(materialize);
+            deferred.add(virtual);
+            for (int i = 0; i < fieldState.length; i++) {
+                ObjectState valueObj = getObjectState(fieldState[i]);
+                if (valueObj != null) {
+                    if (valueObj.isVirtual()) {
+                        materializeChangedBefore(fixed, valueObj.virtual, deferred, deferredStores, materializeEffects);
+                    }
+                    if (deferred.contains(valueObj.virtual)) {
+                        Kind fieldKind;
+                        CyclicMaterializeStoreNode store;
+                        if (virtual instanceof VirtualArrayNode) {
+                            store = new CyclicMaterializeStoreNode(materialize, valueObj.getMaterializedValue(), i);
+                            fieldKind = ((VirtualArrayNode) virtual).componentType().getKind();
+                        } else {
+                            VirtualInstanceNode instanceObject = (VirtualInstanceNode) virtual;
+                            store = new CyclicMaterializeStoreNode(materialize, valueObj.getMaterializedValue(), instanceObject.field(i));
+                            fieldKind = instanceObject.field(i).getType().getKind();
+                        }
+                        deferredStores.addFixedNodeBefore(store, fixed);
+                        values[i] = ConstantNode.defaultForKind(fieldKind, fixed.graph());
+                    } else {
+                        values[i] = valueObj.getMaterializedValue();
+                    }
+                } else {
+                    values[i] = fieldState[i];
+                }
+            }
+            deferred.remove(virtual);
+
+            materializeEffects.addMaterialization(materialize, fixed, values);
+        }
     }
 
     void addAndMarkAlias(VirtualObjectNode virtual, ValueNode node, NodeBitMap usages) {

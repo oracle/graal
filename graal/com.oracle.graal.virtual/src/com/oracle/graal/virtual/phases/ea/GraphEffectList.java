@@ -27,8 +27,8 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.phases.common.*;
 import com.oracle.graal.virtual.nodes.*;
 
 public class GraphEffectList extends EffectList {
@@ -214,31 +214,13 @@ public class GraphEffectList extends EffectList {
     }
 
     /**
-     * Virtualizes a monitor access by calling its {@link AccessMonitorNode#eliminate()} method.
-     *
-     * @param node The monitor access that should be virtualized.
-     */
-    public void eliminateMonitor(final AccessMonitorNode node) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "eliminateMonitor";
-            }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                assert node.isAlive() && node.object().isAlive() && (node.object() instanceof VirtualObjectNode);
-                node.eliminate();
-            }
-        });
-    }
-
-    /**
-     * Replaces the given node at its usages without deleting it.
+     * Replaces the given node at its usages without deleting it. If the current node is a fixed node it will be
+     * disconnected from the control flow, so that it will be deleted by a subsequent {@link DeadCodeEliminationPhase}
      *
      * @param node The node to be replaced.
-     * @param replacement The node that should replace the original value.
+     * @param replacement The node that should replace the original value. If the replacement is a non-connected
+     *            {@link FixedWithNextNode} it will be added to the control flow.
+     *
      */
     public void replaceAtUsages(final ValueNode node, final ValueNode replacement) {
         add(new Effect() {
@@ -251,7 +233,17 @@ public class GraphEffectList extends EffectList {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert node.isAlive() && replacement.isAlive();
+                if (replacement instanceof FixedWithNextNode && ((FixedWithNextNode) replacement).next() == null) {
+                    assert node instanceof FixedNode;
+                    graph.addBeforeFixed((FixedNode) node, (FixedWithNextNode) replacement);
+                }
                 node.replaceAtUsages(replacement);
+                if (node instanceof FixedWithNextNode) {
+                    FixedNode next = ((FixedWithNextNode) node).next();
+                    ((FixedWithNextNode) node).setNext(null);
+                    node.replaceAtPredecessor(next);
+                    obsoleteNodes.add(node);
+                }
             }
         });
     }
@@ -263,7 +255,7 @@ public class GraphEffectList extends EffectList {
      * @param oldInput The value to look for.
      * @param newInput The value to replace with.
      */
-    public void replaceFirstInput(final Node node, final ValueNode oldInput, final ValueNode newInput) {
+    public void replaceFirstInput(final Node node, final Node oldInput, final Node newInput) {
         add(new Effect() {
 
             @Override
@@ -280,6 +272,26 @@ public class GraphEffectList extends EffectList {
             @Override
             public boolean isVisible() {
                 return !(node instanceof FrameState);
+            }
+        });
+    }
+
+    /**
+     * Performs a custom action.
+     *
+     * @param action The action that should be performed when the effects are applied.
+     */
+    public void customAction(final Runnable action) {
+        add(new Effect() {
+
+            @Override
+            public String name() {
+                return "customAction";
+            }
+
+            @Override
+            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+                action.run();
             }
         });
     }

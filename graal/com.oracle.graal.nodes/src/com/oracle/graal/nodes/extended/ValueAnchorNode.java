@@ -28,13 +28,14 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * The ValueAnchor instruction keeps non-CFG (floating) nodes above a certain point in the graph.
  */
-public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType {
+public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType, Virtualizable {
 
     public ValueAnchorNode(ValueNode... values) {
         super(StampFactory.dependency(), values);
@@ -83,5 +84,22 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
             return null; // no node which require an anchor found
         }
         return this;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        // don't process this node if it is anchoring the return value
+        if (next() instanceof MonitorExitNode) {
+            MonitorExitNode monitorExit = (MonitorExitNode) next();
+            if (monitorExit.stateAfter() != null && monitorExit.stateAfter().bci == FrameState.AFTER_BCI && monitorExit.next() instanceof ReturnNode) {
+                return;
+            }
+        }
+        for (ValueNode node : dependencies().nonNull().and(isNotA(BeginNode.class))) {
+            if (tool.getVirtualState(node) == null) {
+                return;
+            }
+        }
+        tool.delete();
     }
 }

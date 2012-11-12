@@ -25,13 +25,14 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * A node that changes the type of its input, usually narrowing it.
  * For example, a PI node refines the type of a receiver during
  * type-guarded inlining to be the type tested by the guard.
  */
-public class PiNode extends FloatingNode implements LIRLowerable {
+public class PiNode extends FloatingNode implements LIRLowerable, Virtualizable {
 
     @Input private ValueNode object;
     @Input(notDataflow = true) private final FixedNode anchor;
@@ -63,5 +64,13 @@ public class PiNode extends FloatingNode implements LIRLowerable {
             return false;
         }
         return updateStamp(stamp().join(object().stamp()));
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        VirtualObjectNode virtual = tool.getVirtualState(object());
+        if (virtual != null) {
+            tool.replaceWithVirtual(virtual);
+        }
     }
 }

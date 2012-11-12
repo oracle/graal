@@ -27,11 +27,12 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * Implements a type check against a compile-time known type.
  */
-public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Lowerable, Node.IterableNodeType {
+public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Lowerable, Node.IterableNodeType, Virtualizable {
 
     @Input private ValueNode object;
     private final ResolvedJavaType type;
@@ -96,5 +97,13 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
     public JavaTypeProfile profile() {
         return profile;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        VirtualObjectNode virtual = tool.getVirtualState(object());
+        if (virtual != null && virtual.type().isSubtypeOf(type())) {
+            tool.replaceWithVirtual(virtual);
+        }
     }
 }
