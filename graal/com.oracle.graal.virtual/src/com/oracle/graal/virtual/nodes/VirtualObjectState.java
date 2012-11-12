@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * This class encapsulated the virtual state of an escape analyzed object.
  */
-public final class VirtualObjectState extends EscapeObjectState implements Node.IterableNodeType, LIRLowerable {
+public final class VirtualObjectState extends EscapeObjectState implements Node.IterableNodeType, LIRLowerable, Node.ValueNumberable {
 
     @Input private final NodeInputList<ValueNode> fieldValues;
 
