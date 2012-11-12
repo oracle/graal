@@ -116,6 +116,15 @@ public final class Constant extends Value {
         return getKind().isObject() && object == null;
     }
 
+    /**
+     * Checks whether this constant is the default value for its kind (null, 0, 0.0, false).
+     *
+     * @return {@code true} if this constant is the default value for its kind
+     */
+    public boolean isDefaultForKind() {
+        return object == null && primitive == 0;
+    }
+
     @Override
     public String toString() {
         return getKind().getJavaName() + "[" + getKind().format(asBoxedValue()) + (getKind() != Kind.Object ? "|0x" + Long.toHexString(primitive) : "") + "]";
