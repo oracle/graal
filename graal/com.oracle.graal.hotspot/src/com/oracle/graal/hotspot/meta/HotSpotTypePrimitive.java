@@ -47,7 +47,7 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
     @Override
     public int getModifiers() {
         assert kind != null && kind.toJavaClass() != null;
-        return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
+        return Modifier.FINAL | Modifier.PUBLIC;
     }
 
     @Override
