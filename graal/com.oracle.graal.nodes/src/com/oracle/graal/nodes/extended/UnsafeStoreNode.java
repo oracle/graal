@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.type.*;
 
 /**
  * Store of a value at a location specified as an offset relative to an object.
+ * No null check is performed before the store.
  */
 public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lowerable {
 

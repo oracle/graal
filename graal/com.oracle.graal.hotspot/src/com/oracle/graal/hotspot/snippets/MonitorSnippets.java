@@ -74,8 +74,12 @@ public class MonitorSnippets implements SnippetsInterface {
     public static final boolean CHECK_BALANCED_MONITORS = Boolean.getBoolean("graal.monitors.checkBalanced");
 
     @Snippet
-    public static void monitorenter(@Parameter("object") Object object, @ConstantParameter("trace") boolean trace) {
+    public static void monitorenter(@Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull, @ConstantParameter("trace") boolean trace) {
         verifyOop(object);
+
+        if (checkNull && object == null) {
+            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
+        }
 
         // Load the mark word - this includes a null-check on object
         final Word mark = loadWordFromObject(object, markOffset());
@@ -397,7 +401,7 @@ public class MonitorSnippets implements SnippetsInterface {
 
         public Templates(CodeCacheProvider runtime, boolean useFastLocking) {
             super(runtime, MonitorSnippets.class);
-            monitorenter = snippet("monitorenter", Object.class, boolean.class);
+            monitorenter = snippet("monitorenter", Object.class, boolean.class, boolean.class);
             monitorexit = snippet("monitorexit", Object.class, boolean.class);
             monitorenterStub = snippet("monitorenterStub", Object.class, boolean.class, boolean.class);
             monitorexitStub = snippet("monitorexitStub", Object.class, boolean.class);
@@ -418,7 +422,7 @@ public class MonitorSnippets implements SnippetsInterface {
             ResolvedJavaMethod method = eliminated ? monitorenterEliminated : useFastLocking ? monitorenter : monitorenterStub;
             boolean checkNull = !monitorenterNode.object().stamp().nonNull();
             Key key = new Key(method);
-            if (method == monitorenterStub) {
+            if (method != monitorenterEliminated) {
                 key.add("checkNull", checkNull);
             }
             if (!eliminated) {

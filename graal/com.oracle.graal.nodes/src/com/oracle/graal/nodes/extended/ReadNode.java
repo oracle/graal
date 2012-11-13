@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -32,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Reads an {@linkplain AccessNode accessed} value.
  */
-public final class ReadNode extends AccessNode implements Node.IterableNodeType, LIRLowerable, Simplifiable/*, Canonicalizable*/ {
+public final class ReadNode extends AccessNode implements Node.IterableNodeType, LIRLowerable /*, Canonicalizable*/ {
 
     public ReadNode(ValueNode object, ValueNode location, Stamp stamp) {
         super(object, location, stamp);
@@ -64,18 +63,6 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
             }
         }
         return (ValueNode) read;
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        if (object().isConstant() && object().asConstant().isNull()) {
-            FixedNode successor = next();
-            tool.deleteBranch(successor);
-            if (isAlive()) {
-                replaceAtPredecessor(graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException)));
-                safeDelete();
-            }
-        }
     }
 
     private ReadNode(ValueNode object, ValueNode location) {

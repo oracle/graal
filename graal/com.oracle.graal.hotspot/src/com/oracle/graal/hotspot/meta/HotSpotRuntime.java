@@ -511,9 +511,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             assert load.kind() != Kind.Illegal;
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.loadKind(), load.displacement(), load.offset(), graph, false);
             ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp()));
-            if (load.object().kind().isObject()) {
-                memoryRead.dependencies().add(tool.createNullCheckGuard(load.object(), StructuredGraph.INVALID_GRAPH_ID));
-            }
             graph.replaceFixedWithFixed(load, memoryRead);
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
