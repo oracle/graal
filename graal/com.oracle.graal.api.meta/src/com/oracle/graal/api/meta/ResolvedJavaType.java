@@ -106,6 +106,7 @@ public interface ResolvedJavaType extends JavaType {
     /**
      * Returns the Java language modifiers for this type, as an integer. The {@link Modifier} class should be used to
      * decode the modifiers. Only the flags specified in the JVM specification will be included in the returned mask.
+     * This method is identical to {@link Class#getModifiers()} in terms of the value return for this type.
      */
     int getModifiers();
 

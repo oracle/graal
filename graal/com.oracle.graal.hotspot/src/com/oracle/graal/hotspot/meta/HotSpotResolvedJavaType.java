@@ -62,7 +62,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
 
     @Override
     public int getModifiers() {
-        return accessFlags;
+        return javaMirror.getModifiers();
     }
 
     @Override
@@ -84,7 +84,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     @Override
     public ResolvedJavaType findUniqueConcreteSubtype() {
         if (isArrayClass()) {
-            return Modifier.isFinal(getComponentType().getModifiers()) ? this : null;
+            return getComponentType().findUniqueConcreteSubtype() != null ? this : null;
         } else {
             ResolvedJavaType subtype = (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().getUniqueConcreteSubtype(this);
             assert subtype == null || !subtype.isInterface();
