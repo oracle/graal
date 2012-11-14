@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.type.*;
 
 /**
  * Load of a value from a location specified as an offset relative to an object.
+ * No null check is performed before the load.
  */
 public class UnsafeLoadNode extends FixedWithNextNode implements Lowerable {
 
