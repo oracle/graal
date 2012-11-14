@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import java.util.*;
+import static com.oracle.graal.graph.FieldIntrospection.*;
 
-import sun.misc.*;
+import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
@@ -32,20 +32,17 @@ import com.oracle.graal.api.meta.ProfilingInfo.ExceptionSeen;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.phases.*;
 
-
+/**
+ * Access to a HotSpot MethodData structure (defined in methodData.hpp).
+ */
 public final class HotSpotMethodData extends CompilerObject {
 
     private static final long serialVersionUID = -8873133496591225071L;
 
-    static {
-        config = HotSpotGraalRuntime.getInstance().getConfig();
-    }
-
-    // TODO (chaeubl) use same logic as in NodeClass?
-    private static final Unsafe unsafe = Unsafe.getUnsafe();
+    private static final HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
     private static final HotSpotMethodDataAccessor NO_DATA_NO_EXCEPTION_ACCESSOR = new NoMethodData(ExceptionSeen.FALSE);
     private static final HotSpotMethodDataAccessor NO_DATA_EXCEPTION_POSSIBLY_NOT_RECORDED_ACCESSOR = new NoMethodData(ExceptionSeen.NOT_SUPPORTED);
-    private static final HotSpotVMConfig config;
+
     // sorted by tag
     private static final HotSpotMethodDataAccessor[] PROFILE_DATA_ACCESSORS = {
         null, new BitData(), new CounterData(), new JumpData(),
@@ -53,12 +50,17 @@ public final class HotSpotMethodData extends CompilerObject {
         new BranchData(), new MultiBranchData(), new ArgInfoData()
     };
 
-    private Object hotspotMirror;
+    /**
+     * Reference to the C++ MethodData object.
+     */
+    private final long metaspaceMethodData;
+
     private int normalDataSize;
     private int extraDataSize;
 
-    private HotSpotMethodData() {
-        throw new IllegalStateException("this constructor is never actually called, because the objects are allocated from within the VM");
+    HotSpotMethodData(long metaspaceMethodData) {
+        this.metaspaceMethodData = metaspaceMethodData;
+        HotSpotGraalRuntime.getInstance().getCompilerToVM().initializeMethodData(metaspaceMethodData, this);
     }
 
     public boolean hasNormalData() {
@@ -79,7 +81,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
     public int getDeoptimizationCount(DeoptimizationReason reason) {
         int reasonIndex = HotSpotGraalRuntime.getInstance().getRuntime().convertDeoptReason(reason);
-        return unsafe.getByte(hotspotMirror, (long) config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
+        return unsafe.getByte(null, metaspaceMethodData + config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
     }
 
     public HotSpotMethodDataAccessor getNormalData(int position) {
@@ -116,17 +118,17 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private int readUnsignedByte(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getByte(hotspotMirror, fullOffsetInBytes) & 0xFF;
+        return unsafe.getByte(null, metaspaceMethodData + fullOffsetInBytes) & 0xFF;
     }
 
     private int readUnsignedShort(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getShort(hotspotMirror, fullOffsetInBytes) & 0xFFFF;
+        return unsafe.getShort(null, metaspaceMethodData + fullOffsetInBytes) & 0xFFFF;
     }
 
     private long readUnsignedInt(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getInt(hotspotMirror, fullOffsetInBytes) & 0xFFFFFFFFL;
+        return unsafe.getInt(null, metaspaceMethodData + fullOffsetInBytes) & 0xFFFFFFFFL;
     }
 
     private int readUnsignedIntAsSignedInt(int position, int offsetInBytes) {
@@ -136,12 +138,12 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private int readInt(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getInt(hotspotMirror, fullOffsetInBytes);
+        return unsafe.getInt(null, metaspaceMethodData + fullOffsetInBytes);
     }
 
-    private Object readObject(int position, int offsetInBytes) {
+    private long readLong(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getObject(hotspotMirror, fullOffsetInBytes);
+        return unsafe.getLong(null, metaspaceMethodData + fullOffsetInBytes);
     }
 
     private static int truncateLongToInt(long value) {
@@ -338,17 +340,9 @@ public final class HotSpotMethodData extends CompilerObject {
             int entries = 0;
 
             for (int i = 0; i < typeProfileWidth; i++) {
-                Object receiverKlassOop = data.readObject(position, getReceiverOffset(i));
-                if (receiverKlassOop != null) {
-                    Object graalMirror = unsafe.getObject(receiverKlassOop, (long) config.graalMirrorKlassOffset);
-                    if (graalMirror == null) {
-                        Class<?> javaClass = (Class<?>) unsafe.getObject(receiverKlassOop, (long) config.classMirrorOffset);
-                        graalMirror = HotSpotGraalRuntime.getInstance().getCompilerToVM().getType(javaClass);
-                        assert graalMirror != null : "must not return null";
-                    }
-
-
-                    types[entries] = (ResolvedJavaType) graalMirror;
+                long receiverKlass = data.readLong(position, getReceiverOffset(i));
+                if (receiverKlass != 0) {
+                    types[entries] = HotSpotResolvedJavaType.fromMetaspaceKlass(receiverKlass);
 
                     long count = data.readUnsignedInt(position, getCountOffset(i));
                     totalCount += count;

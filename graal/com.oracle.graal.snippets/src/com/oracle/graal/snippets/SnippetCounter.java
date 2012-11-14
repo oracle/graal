@@ -24,10 +24,10 @@ package com.oracle.graal.snippets;
 
 //JaCoCo Exclude
 
+import static com.oracle.graal.graph.FieldIntrospection.*;
+
 import java.io.*;
 import java.util.*;
-
-import sun.misc.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.snippets.Snippet.Fold;
@@ -96,7 +96,7 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
     @Fold
     private static int countOffset() {
         try {
-            return (int) Unsafe.getUnsafe().objectFieldOffset(SnippetCounter.class.getDeclaredField("value"));
+            return (int) unsafe.objectFieldOffset(SnippetCounter.class.getDeclaredField("value"));
         } catch (Exception e) {
             throw new GraalInternalError(e);
         }

@@ -242,7 +242,8 @@ public class SnippetTemplate {
                 VarargsParameter vp = MetaUtil.getParameterAnnotation(VarargsParameter.class, i, method);
                 if (vp != null) {
                     String name = vp.value();
-                    Object array = ((Varargs) key.get(name)).array;
+                    Varargs varargs = (Varargs) key.get(name);
+                    Object array = varargs.getArray();
                     ConstantNode placeholder = ConstantNode.forObject(array, runtime, snippetCopy);
                     replacements.put(snippetGraph.getLocal(i), placeholder);
                     placeholders[i] = placeholder;
@@ -268,10 +269,11 @@ public class SnippetTemplate {
             VarargsParameter vp = varargsParameterAnnotations[i];
             if (vp != null) {
                 assert snippetCopy.getLocal(i) == null;
-                Object array = ((Varargs) key.get(vp.value())).array;
+                Varargs varargs = (Varargs) key.get(vp.value());
+                Object array = varargs.getArray();
                 int length = Array.getLength(array);
                 LocalNode[] locals = new LocalNode[length];
-                Stamp stamp = StampFactory.forKind(runtime.lookupJavaType(array.getClass().getComponentType()).getKind());
+                Stamp stamp = varargs.getArgStamp();
                 for (int j = 0; j < length; j++) {
                     assert (parameterCount & 0xFFFF) == parameterCount;
                     int idx = i << 16 | j;
@@ -394,7 +396,7 @@ public class SnippetTemplate {
     }
 
     private static boolean checkVarargs(final ResolvedJavaMethod method, Signature signature, int i, String name, Varargs varargs) {
-        Object arg = varargs.array;
+        Object arg = varargs.getArray();
         ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
         Class< ? > javaType = type.toJava();
         assert javaType.isArray() : "varargs parameter must be an array type";

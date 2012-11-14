@@ -104,7 +104,16 @@ public class TypeCheckHints {
         }
     }
 
+    /**
+     * Determines if a given type can have subtypes. This analysis is purely static; no
+     * assumptions are made.
+     *
+     * @return true if {@code type} has no subtype(s)
+     */
     public static boolean isFinalClass(ResolvedJavaType type) {
-        return Modifier.isFinal(type.getModifiers()) || (type.isArrayClass() && Modifier.isFinal(type.getComponentType().getModifiers()));
+        if (type.isArrayClass()) {
+            return isFinalClass(type.getComponentType());
+        }
+        return Modifier.isFinal(type.getModifiers());
     }
 }

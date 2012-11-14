@@ -28,6 +28,7 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.Word.Operation;
 import com.oracle.graal.snippets.nodes.*;
 
@@ -157,40 +158,50 @@ public @interface Snippet {
      * Wrapper for the prototype value of a {@linkplain VarargsParameter varargs} parameter.
      */
     public static class Varargs {
-        public final Object array;
-        private final Class componentType;
+        private final Object args;
+        private final Class argType;
         private final int length;
+        private final Stamp argStamp;
 
-        public static Varargs vargargs(Class componentType, int length) {
-            return new Varargs(Array.newInstance(componentType, length));
+        public static Varargs vargargs(Object array, Stamp argStamp) {
+            return new Varargs(array, argStamp);
         }
 
-        public Varargs(Object array) {
+        public Varargs(Object array, Stamp argStamp) {
             assert array != null;
-            this.componentType = array.getClass().getComponentType();
-            assert this.componentType != null;
+            this.argType = array.getClass().getComponentType();
+            this.argStamp = argStamp;
+            assert this.argType != null;
             this.length = java.lang.reflect.Array.getLength(array);
-            this.array = array;
+            this.args = array;
         }
 
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof Varargs) {
                 Varargs other = (Varargs) obj;
-                return other.componentType == componentType &&
+                return other.argType == argType &&
                         other.length == length;
             }
             return false;
         }
 
+        public Object getArray() {
+            return args;
+        }
+
+        public Stamp getArgStamp() {
+            return argStamp;
+        }
+
         @Override
         public int hashCode() {
-            return componentType.hashCode() ^ length;
+            return argType.hashCode() ^ length;
         }
 
         @Override
         public String toString() {
-            return componentType.getName() + "[" + length + "]";
+            return argType.getName() + "[" + length + "]";
         }
     }
 }

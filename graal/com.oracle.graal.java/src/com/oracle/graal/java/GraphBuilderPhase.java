@@ -951,7 +951,7 @@ public final class GraphBuilderPhase extends Phase {
             return;
         }
         // 1. check if the exact type of the receiver can be determined
-        ResolvedJavaType exact = klass.getExactType();
+        ResolvedJavaType exact = klass.asExactType();
         if (exact == null && receiver.objectStamp().isExactType()) {
             exact = receiver.objectStamp().type();
         }
@@ -1416,7 +1416,8 @@ public final class GraphBuilderPhase extends Phase {
             }
         }
 
-        if (initialized) {
+        ConstantNode typeInstruction = genTypeOrDeopt(Representation.ObjectHub, catchType, initialized);
+        if (typeInstruction != null) {
             Block nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
             ValueNode exception = frameState.stackAt(0);
             CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) catchType, exception, null));
@@ -1429,8 +1430,6 @@ public final class GraphBuilderPhase extends Phase {
             checkCast.setNext(catchSuccessor);
             IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), checkCast, nextDispatch, 0.5, graphId));
             append(ifNode);
-        } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved, graphId)));
         }
     }
 

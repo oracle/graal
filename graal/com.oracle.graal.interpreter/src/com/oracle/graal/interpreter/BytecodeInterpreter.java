@@ -1633,7 +1633,7 @@ public final class BytecodeInterpreter implements Interpreter {
 
     private ResolvedJavaField findThrowableField(InterpreterFrame frame, String name) {
         ResolvedJavaType throwableType = resolveType(frame, Throwable.class);
-        ResolvedJavaField[] fields = throwableType.getDeclaredFields();
+        ResolvedJavaField[] fields = throwableType.getInstanceFields(false);
         for (int i = 0; i < fields.length; i++) {
             if (fields[i].getName().equals(name)) {
                 return fields[i];

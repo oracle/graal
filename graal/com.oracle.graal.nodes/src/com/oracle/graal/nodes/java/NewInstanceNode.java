@@ -86,7 +86,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
     private void fillEscapeFields(ResolvedJavaType type, List<ResolvedJavaField> escapeFields) {
         if (type != null) {
             fillEscapeFields(type.getSuperclass(), escapeFields);
-            for (ResolvedJavaField field : type.getDeclaredFields()) {
+            for (ResolvedJavaField field : type.getInstanceFields(true)) {
                 escapeFields.add(field);
             }
         }

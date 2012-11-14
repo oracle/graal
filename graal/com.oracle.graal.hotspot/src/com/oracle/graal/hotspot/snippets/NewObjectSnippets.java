@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.api.code.UnsignedMath.*;
 import static com.oracle.graal.hotspot.nodes.CastFromHub.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
+import static com.oracle.graal.snippets.Snippet.Varargs.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.snippets.nodes.DirectObjectStoreNode.*;
@@ -33,17 +34,16 @@ import static com.oracle.graal.snippets.nodes.ExplodeLoopNode.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
 import com.oracle.graal.snippets.Snippet.Parameter;
-import com.oracle.graal.snippets.Snippet.Varargs;
 import com.oracle.graal.snippets.Snippet.VarargsParameter;
 import com.oracle.graal.snippets.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.snippets.SnippetTemplate.Arguments;
@@ -72,7 +72,7 @@ public class NewObjectSnippets implements SnippetsInterface {
     @Snippet
     public static Object initializeObject(
                     @Parameter("memory") Word memory,
-                    @Parameter("hub") Object hub,
+                    @Parameter("hub") Word hub,
                     @Parameter("prototypeMarkWord") Word prototypeMarkWord,
                     @ConstantParameter("size") int size,
                     @ConstantParameter("fillContents") boolean fillContents,
@@ -94,7 +94,7 @@ public class NewObjectSnippets implements SnippetsInterface {
     @Snippet
     public static Object initializeObjectArray(
                     @Parameter("memory") Word memory,
-                    @Parameter("hub") Object hub,
+                    @Parameter("hub") Word hub,
                     @Parameter("length") int length,
                     @Parameter("size") int size,
                     @Parameter("prototypeMarkWord") Word prototypeMarkWord,
@@ -111,7 +111,7 @@ public class NewObjectSnippets implements SnippetsInterface {
     @Snippet
     public static Object initializePrimitiveArray(
                     @Parameter("memory") Word memory,
-                    @Parameter("hub") Object hub,
+                    @Parameter("hub") Word hub,
                     @Parameter("length") int length,
                     @Parameter("size") int size,
                     @Parameter("prototypeMarkWord") Word prototypeMarkWord,
@@ -125,7 +125,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         }
     }
 
-    private static Object initializeArray(Word memory, Object hub, int length, int size, Word prototypeMarkWord, int headerSize, boolean isObjectArray, boolean fillContents) {
+    private static Object initializeArray(Word memory, Word hub, int length, int size, Word prototypeMarkWord, int headerSize, boolean isObjectArray, boolean fillContents) {
         if (memory == Word.zero()) {
             if (isObjectArray) {
                 anewarray_stub.inc();
@@ -177,7 +177,7 @@ public class NewObjectSnippets implements SnippetsInterface {
      */
     @Snippet
     public static Object newmultiarray(
-                    @Parameter("hub") Object hub,
+                    @Parameter("hub") Word hub,
                     @ConstantParameter("rank") int rank,
                     @VarargsParameter("dimensions") int[] dimensions) {
         Word dims = DimensionsNode.allocaDimsArray(rank, wordKind());
@@ -198,10 +198,10 @@ public class NewObjectSnippets implements SnippetsInterface {
     /**
      * Formats some allocated memory with an object header zeroes out the rest.
      */
-    private static void formatObject(Object hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents) {
-        Word prototypeMarkWord = useBiasedLocking() ? loadWordFromObject(hub, prototypeMarkWordOffset()) : compileTimePrototypeMarkWord;
-        storeObject(memory, 0, markOffset(), prototypeMarkWord);
-        storeObject(memory, 0, hubOffset(), hub);
+    private static void formatObject(Word hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents) {
+        Word prototypeMarkWord = useBiasedLocking() ? loadWordFromWord(hub, prototypeMarkWordOffset()) : compileTimePrototypeMarkWord;
+        storeWord(memory, 0, markOffset(), prototypeMarkWord);
+        storeWord(memory, 0, hubOffset(), hub);
         if (fillContents) {
             if (size <= MAX_UNROLLED_OBJECT_ZEROING_SIZE) {
                 new_seqInit.inc();
@@ -221,9 +221,9 @@ public class NewObjectSnippets implements SnippetsInterface {
     /**
      * Formats some allocated memory with an object header zeroes out the rest.
      */
-    private static void formatArray(Object hub, int size, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents) {
-        storeObject(memory, 0, markOffset(), prototypeMarkWord);
-        storeObject(memory, 0, hubOffset(), hub);
+    private static void formatArray(Word hub, int size, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents) {
+        storeWord(memory, 0, markOffset(), prototypeMarkWord);
+        storeWord(memory, 0, hubOffset(), hub);
         storeInt(memory, 0, arrayLengthOffset(), length);
         if (fillContents) {
             for (int offset = headerSize; offset < size; offset += wordSize()) {
@@ -248,11 +248,11 @@ public class NewObjectSnippets implements SnippetsInterface {
             this.target = target;
             this.useTLAB = useTLAB;
             allocate = snippet("allocate", int.class);
-            initializeObject = snippet("initializeObject", Word.class, Object.class, Word.class, int.class, boolean.class, boolean.class);
-            initializeObjectArray = snippet("initializeObjectArray", Word.class, Object.class, int.class, int.class, Word.class, int.class, boolean.class, boolean.class);
-            initializePrimitiveArray = snippet("initializePrimitiveArray", Word.class, Object.class, int.class, int.class, Word.class, int.class, boolean.class, boolean.class);
+            initializeObject = snippet("initializeObject", Word.class, Word.class, Word.class, int.class, boolean.class, boolean.class);
+            initializeObjectArray = snippet("initializeObjectArray", Word.class, Word.class, int.class, int.class, Word.class, int.class, boolean.class, boolean.class);
+            initializePrimitiveArray = snippet("initializePrimitiveArray", Word.class, Word.class, int.class, int.class, Word.class, int.class, boolean.class, boolean.class);
             allocateArrayAndInitialize = snippet("allocateArrayAndInitialize", int.class, int.class, int.class, int.class, ResolvedJavaType.class, Kind.class);
-            newmultiarray = snippet("newmultiarray", Object.class, int.class, int[].class);
+            newmultiarray = snippet("newmultiarray", Word.class, int.class, int[].class);
         }
 
         /**
@@ -262,7 +262,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         public void lower(NewInstanceNode newInstanceNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) newInstanceNode.graph();
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) newInstanceNode.instanceClass();
-            HotSpotKlassOop hub = type.klassOop();
+            ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             int size = type.instanceSize();
             assert (size % wordSize()) == 0;
             assert size >= 0;
@@ -340,7 +340,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             StructuredGraph graph = (StructuredGraph) initializeNode.graph();
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) initializeNode.type();
             assert !type.isArrayClass();
-            HotSpotKlassOop hub = type.klassOop();
+            ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             int size = type.instanceSize();
             assert (size % wordSize()) == 0;
             assert size >= 0;
@@ -358,7 +358,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) initializeNode.type();
             ResolvedJavaType elementType = type.getComponentType();
             assert elementType != null;
-            HotSpotKlassOop hub = type.klassOop();
+            ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             Kind elementKind = elementType.getKind();
             final int headerSize = elementKind.getArrayBaseOffset();
             Key key = new Key(elementKind.isObject() ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
@@ -378,8 +378,8 @@ public class NewObjectSnippets implements SnippetsInterface {
                 dims[i] = newmultiarrayNode.dimension(i);
             }
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) newmultiarrayNode.type();
-            HotSpotKlassOop hub = type.klassOop();
-            Key key = new Key(newmultiarray).add("dimensions", Varargs.vargargs(int.class, rank)).add("rank", rank);
+            ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
+            Key key = new Key(newmultiarray).add("dimensions", vargargs(new int[rank], StampFactory.forKind(Kind.Int))).add("rank", rank);
             Arguments arguments = arguments("dimensions", dims).add("hub", hub);
             SnippetTemplate template = cache.get(key);
             template.instantiate(runtime, newmultiarrayNode, DEFAULT_REPLACER, arguments);

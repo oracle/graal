@@ -67,7 +67,7 @@ public final class GraalOptions {
     public static float   ProbabilityCapForInlining          = 1f;
 
     // escape analysis settings
-    public static boolean PartialEscapeAnalysis              = true;
+    public static boolean PartialEscapeAnalysis              = false;
     public static boolean EscapeAnalysisHistogram            = ____;
     public static int     EscapeAnalysisIterations           = 2;
     public static String  EscapeAnalyzeOnly                  = null;

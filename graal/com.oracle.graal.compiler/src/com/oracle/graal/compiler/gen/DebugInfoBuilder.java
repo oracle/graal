@@ -83,7 +83,6 @@ public class DebugInfoBuilder {
                             entry.getValue().setValues(new Value[]{toValue(boxedVirtualObjectNode.getUnboxedValue())});
                         } else {
                             Value[] values = new Value[vobj.entryCount()];
-                            entry.getValue().setValues(values);
                             if (values.length > 0) {
                                 changed = true;
                                 VirtualObjectState currentField = (VirtualObjectState) objectStates.get(vobj);
@@ -92,6 +91,7 @@ public class DebugInfoBuilder {
                                     values[i] = toValue(currentField.fieldValues().get(i));
                                 }
                             }
+                            entry.getValue().setValues(values);
                         }
                     }
                 }

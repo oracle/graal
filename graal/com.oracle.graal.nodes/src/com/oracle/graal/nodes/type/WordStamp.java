@@ -27,7 +27,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * Models the word type.
  */
-public class WordStamp extends Stamp {
+public class WordStamp extends IntegerStamp {
 
     private final boolean nonNull;
 
@@ -56,6 +56,11 @@ public class WordStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp otherStamp) {
+        if (otherStamp.getClass() == IntegerStamp.class) {
+            IntegerStamp istamp = (IntegerStamp) otherStamp;
+            assert istamp.lowerBound() == istamp.upperBound() : "expected a word constant";
+            return istamp;
+        }
         WordStamp other = (WordStamp) otherStamp;
         boolean meetNonNull = nonNull && other.nonNull;
         if (meetNonNull == this.nonNull) {

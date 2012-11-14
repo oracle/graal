@@ -158,6 +158,12 @@ public class AMD64ControlFlow {
                     masm.cmpl(intKey, tasm.asIntConst(keyConstants[i]));
                     masm.jcc(ConditionFlag.equal, keyTargets[i].label());
                 }
+            } else if (key.getKind() == Kind.Long) {
+                Register longKey = asLongReg(key);
+                for (int i = 0; i < keyConstants.length; i++) {
+                    masm.cmpq(longKey, tasm.asLongConstRef(keyConstants[i]));
+                    masm.jcc(ConditionFlag.equal, keyTargets[i].label());
+                }
             } else if (key.getKind() == Kind.Object) {
                 Register intKey = asObjectReg(key);
                 Register temp = asObjectReg(scratch);
@@ -167,7 +173,7 @@ public class AMD64ControlFlow {
                     masm.jcc(ConditionFlag.equal, keyTargets[i].label());
                 }
             } else {
-                throw new GraalInternalError("sequential switch only supported for int and object");
+                throw new GraalInternalError("sequential switch only supported for int, long and object");
             }
             if (defaultTarget != null) {
                 masm.jmp(defaultTarget.label());

@@ -38,7 +38,7 @@ import com.oracle.graal.lir.asm.*;
 
 /**
  * A register indirect call that complies with the extra conventions for such calls in HotSpot.
- * In particular, the methodOop of the callee must be in RBX for the case where a vtable entry's
+ * In particular, the metaspace Method of the callee must be in RBX for the case where a vtable entry's
  * _from_compiled_entry is the address of an C2I adapter. Such adapters expect the target
  * method to be in RBX.
  */
@@ -46,28 +46,28 @@ import com.oracle.graal.lir.asm.*;
 final class AMD64IndirectCallOp extends IndirectCallOp {
 
     /**
-     * Vtable stubs expect the methodOop in RBX.
+     * Vtable stubs expect the metaspace Method in RBX.
      */
-    public static final Register METHOD_OOP = AMD64.rbx;
+    public static final Register METHOD = AMD64.rbx;
 
-    @Use({REG}) protected Value methodOop;
+    @Use({REG}) protected Value metaspaceMethod;
 
-    AMD64IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value[] temps, Value methodOop, Value targetAddress, LIRFrameState state) {
+    AMD64IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state) {
         super(targetMethod, result, parameters, temps, targetAddress, state);
-        this.methodOop = methodOop;
+        this.metaspaceMethod = metaspaceMethod;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         tasm.recordMark(Marks.MARK_INLINE_INVOKEVIRTUAL);
         Register callReg = asRegister(targetAddress);
-        assert callReg != METHOD_OOP;
+        assert callReg != METHOD;
         AMD64Call.indirectCall(tasm, masm, callReg, targetMethod, state);
     }
 
     @Override
     protected void verify() {
         super.verify();
-        assert asRegister(methodOop) == METHOD_OOP;
+        assert asRegister(metaspaceMethod) == METHOD;
     }
 }

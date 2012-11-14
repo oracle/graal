@@ -632,10 +632,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     protected void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
         // Making a copy of the switch value is necessary because jump table destroys the input value
-        if (key.getKind() == Kind.Int) {
+        if (key.getKind() == Kind.Int || key.getKind() == Kind.Long) {
             append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, Value.ILLEGAL));
         } else {
-            assert key.getKind() == Kind.Object;
+            assert key.getKind() == Kind.Object : key.getKind();
             append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, newVariable(Kind.Object)));
         }
     }

@@ -480,7 +480,7 @@ public enum Kind {
      * @return the read value encapsulated in a {@link Constant} object
      */
     public Constant readUnsafeConstant(Object object, long displacement) {
-        assert object != null;
+        assert object != null : displacement;
         switch (this) {
             case Boolean:
                 return Constant.forBoolean(unsafe().getBoolean(object, displacement));

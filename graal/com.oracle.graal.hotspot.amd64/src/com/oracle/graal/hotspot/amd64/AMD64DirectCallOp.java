@@ -41,9 +41,9 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
  * A direct call that complies with the conventions for such calls in HotSpot.
  * In particular, for calls using an inline cache, a MOVE instruction is
  * emitted just prior to the aligned direct call. This instruction
- * (which moves null in RAX) is patched by the C++ Graal code to replace the
- * null constant with Universe::non_oop_word(), a special sentinel
- * used for the initial value of the klassOop in an inline cache.
+ * (which moves 0L in RAX) is patched by the C++ Graal code to replace the
+ * 0L constant with Universe::non_oop_word(), a special sentinel
+ * used for the initial value of the Klass in an inline cache.
  * <p>
  * For non-inline cache calls, a static call stub is emitted.
  */
@@ -89,10 +89,10 @@ final class AMD64DirectCallOp extends DirectCallOp {
         } else {
             assert invokeKind == Virtual || invokeKind == Interface;
             // The mark for an invocation that uses an inline cache must be placed at the instruction
-            // that loads the klassOop from the inline cache so that the C++ code can find it
-            // and replace the inline null value with Universe::non_oop_word()
+            // that loads the Klass from the inline cache so that the C++ code can find it
+            // and replace the inline 0L value with Universe::non_oop_word()
             tasm.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
-            AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Object), Constant.NULL_OBJECT);
+            AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Long), Constant.LONG_0);
         }
 
         emitAlignmentForDirectCall(tasm, masm);

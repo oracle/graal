@@ -31,14 +31,14 @@ import com.oracle.graal.nodes.type.*;
 
 public class HotSpotIndirectCallTargetNode extends IndirectCallTargetNode {
 
-    @Input private ValueNode methodOop;
+    @Input private ValueNode metaspaceMethod;
 
-    public HotSpotIndirectCallTargetNode(ValueNode methodOop, ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, Kind[] signature, Object target, Type callType) {
+    public HotSpotIndirectCallTargetNode(ValueNode metaspaceMethod, ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, Kind[] signature, Object target, Type callType) {
         super(computedAddress, arguments, returnStamp, signature, target, callType);
-        this.methodOop = methodOop;
+        this.metaspaceMethod = metaspaceMethod;
     }
 
-    public ValueNode methodOop() {
-        return methodOop;
+    public ValueNode metaspaceMethod() {
+        return metaspaceMethod;
     }
 }

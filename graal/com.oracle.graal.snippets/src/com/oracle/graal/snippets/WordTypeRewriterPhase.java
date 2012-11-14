@@ -80,6 +80,13 @@ public class WordTypeRewriterPhase extends Phase {
             }
         }
 
+        // Replace ObjectEqualsNodes with IntegerEqualsNodes where the values being compared are words
+        for (LoadIndexedNode load : graph.getNodes().filter(LoadIndexedNode.class).snapshot()) {
+            if (isWord(load)) {
+                load.setStamp(StampFactory.forWord(wordKind, false));
+            }
+        }
+
         for (MethodCallTargetNode callTargetNode : graph.getNodes(MethodCallTargetNode.class).snapshot()) {
             ResolvedJavaMethod targetMethod = callTargetNode.targetMethod();
             Operation operation = targetMethod.getAnnotation(Word.Operation.class);
@@ -286,6 +293,9 @@ public class WordTypeRewriterPhase extends Phase {
     public static boolean isWord(ValueNode node) {
         if (node.stamp() instanceof WordStamp) {
             return true;
+        }
+        if (node instanceof LoadIndexedNode) {
+            return isWord(((LoadIndexedNode) node).array().objectStamp().type().getComponentType());
         }
         if (node.kind().isObject()) {
             return isWord(node.objectStamp().type());
