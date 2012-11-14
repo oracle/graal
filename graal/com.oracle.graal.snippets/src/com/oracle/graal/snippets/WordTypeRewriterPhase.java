@@ -43,6 +43,8 @@ import com.oracle.graal.snippets.Word.Operation;
  */
 public class WordTypeRewriterPhase extends Phase {
 
+    private static final String WordClassName = MetaUtil.toInternalName(Word.class.getName());
+
     private final Kind wordKind;
     private final ResolvedJavaType wordType;
 
@@ -304,7 +306,7 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     public static boolean isWord(ResolvedJavaType type) {
-        if (type != null && type.toJava() == Word.class) {
+        if (type != null && type.getName().equals(WordClassName)) {
             return true;
         }
         return false;
