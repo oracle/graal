@@ -28,6 +28,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
@@ -43,6 +44,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
     public static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter("baseKind") Kind baseKind) {
+        checkInputs(src, srcPos, dest, destPos, length);
         int header = arrayBaseOffset(baseKind);
         int elementSize = arrayIndexScale(baseKind);
         long byteLength = (long) length * elementSize;
@@ -70,68 +72,43 @@ public class ArrayCopySnippets implements SnippetsInterface{
     }
 
     @Snippet
-    public static void arraycopy(byte[] src, int srcPos, byte[] dest, int destPos, int length) {
+    public static void checkInputs(Object src, int srcPos, Object dest, int destPos, int length) {
         if (src == null || dest == null) {
             throw new NullPointerException();
         }
-        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
+        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > ArrayLengthNode.arrayLength(src) || destPos + length > ArrayLengthNode.arrayLength(dest)) {
             throw new IndexOutOfBoundsException();
         }
+    }
+
+    @Snippet
+    public static void arraycopy(byte[] src, int srcPos, byte[] dest, int destPos, int length) {
         vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Byte);
     }
 
     @Snippet
     public static void arraycopy(char[] src, int srcPos, char[] dest, int destPos, int length) {
-        if (src == null || dest == null) {
-            throw new NullPointerException();
-        }
-        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
-            throw new IndexOutOfBoundsException();
-        }
         vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Char);
     }
 
     @Snippet
     public static void arraycopy(short[] src, int srcPos, short[] dest, int destPos, int length) {
-        if (src == null || dest == null) {
-            throw new NullPointerException();
-        }
-        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
-            throw new IndexOutOfBoundsException();
-        }
         vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Short);
     }
 
     @Snippet
     public static void arraycopy(int[] src, int srcPos, int[] dest, int destPos, int length) {
-        if (src == null || dest == null) {
-            throw new NullPointerException();
-        }
-        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
-            throw new IndexOutOfBoundsException();
-        }
         vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Int);
     }
 
     @Snippet
     public static void arraycopy(float[] src, int srcPos, float[] dest, int destPos, int length) {
-        if (src == null || dest == null) {
-            throw new NullPointerException();
-        }
-        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
-            throw new IndexOutOfBoundsException();
-        }
         vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Float);
     }
 
     @Snippet
     public static void arraycopy(long[] src, int srcPos, long[] dest, int destPos, int length) {
-        if (src == null || dest == null) {
-            throw new NullPointerException();
-        }
-        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
-            throw new IndexOutOfBoundsException();
-        }
+        checkInputs(src, srcPos, dest, destPos, length);
         Kind baseKind = Kind.Long;
         int header = arrayBaseOffset(baseKind);
         long byteLength = (long) length * arrayIndexScale(baseKind);
@@ -152,12 +129,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
     public static void arraycopy(double[] src, int srcPos, double[] dest, int destPos, int length) {
-        if (src == null || dest == null) {
-            throw new NullPointerException();
-        }
-        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
-            throw new IndexOutOfBoundsException();
-        }
+        checkInputs(src, srcPos, dest, destPos, length);
         Kind baseKind = Kind.Double;
         int header = arrayBaseOffset(baseKind);
         long byteLength = (long) length * arrayIndexScale(baseKind);
@@ -179,12 +151,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
     // Does NOT perform store checks
     @Snippet
     public static void arraycopy(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
-        if (src == null || dest == null) {
-            throw new NullPointerException();
-        }
-        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
-            throw new IndexOutOfBoundsException();
-        }
+        checkInputs(src, srcPos, dest, destPos, length);
         final int scale = arrayIndexScale(Kind.Object);
         int header = arrayBaseOffset(Kind.Object);
         if (src == dest && srcPos < destPos) { // bad aliased case
