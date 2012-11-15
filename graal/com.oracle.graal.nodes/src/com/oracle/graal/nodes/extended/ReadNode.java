@@ -57,7 +57,6 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
                     Kind kind = read.location().getValueKind();
                     Constant constant = kind.readUnsafeConstant(value, displacement);
                     if (constant != null) {
-                        System.out.println("Canonicalizd " + read + " to " + constant);
                         return ConstantNode.forConstant(constant, runtime, read.node().graph());
                     }
                 }
