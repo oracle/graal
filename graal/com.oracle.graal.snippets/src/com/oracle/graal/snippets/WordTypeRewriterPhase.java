@@ -46,11 +46,13 @@ public class WordTypeRewriterPhase extends Phase {
     private static final String WordClassName = MetaUtil.toInternalName(Word.class.getName());
 
     private final Kind wordKind;
+    private final Stamp wordStamp;
     private final ResolvedJavaType wordType;
 
-    public WordTypeRewriterPhase(Kind wordKind, ResolvedJavaType wordType) {
+    public WordTypeRewriterPhase(Kind wordKind, Stamp wordStamp, ResolvedJavaType wordType) {
         this.wordKind = wordKind;
         this.wordType = wordType;
+        this.wordStamp = wordStamp;
     }
 
     @Override
@@ -85,7 +87,7 @@ public class WordTypeRewriterPhase extends Phase {
         // Replace ObjectEqualsNodes with IntegerEqualsNodes where the values being compared are words
         for (LoadIndexedNode load : graph.getNodes().filter(LoadIndexedNode.class).snapshot()) {
             if (isWord(load)) {
-                load.setStamp(StampFactory.forWord(wordKind, false));
+                load.setStamp(wordStamp);
             }
         }
 
@@ -293,9 +295,6 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     public static boolean isWord(ValueNode node) {
-        if (node.stamp() instanceof WordStamp) {
-            return true;
-        }
         if (node instanceof LoadIndexedNode) {
             return isWord(((LoadIndexedNode) node).array().objectStamp().type().getComponentType());
         }
@@ -314,7 +313,7 @@ public class WordTypeRewriterPhase extends Phase {
 
     private void changeToWord(ValueNode valueNode) {
         assert !(valueNode instanceof ConstantNode);
-        valueNode.setStamp(StampFactory.forKind(wordKind));
+        valueNode.setStamp(wordStamp);
 
         // Propagate word kind.
         for (Node n : valueNode.usages()) {

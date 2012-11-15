@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.Value.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.snippets.SystemSnippets.*;
 import static com.oracle.graal.java.GraphBuilderPhase.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
@@ -397,9 +398,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                             // as HotSpot does not guarantee they are final values.
                             assert vtableEntryOffset > 0;
                             LoadHubNode hub = graph.add(new LoadHubNode(receiver, wordKind));
-                            Stamp nonZeroWordStamp = StampFactory.forWord(wordKind, true);
-                            ReadNode metaspaceMethod = graph.add(new ReadNode(hub, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, vtableEntryOffset, graph), nonZeroWordStamp));
-                            ReadNode compiledEntry = graph.add(new ReadNode(metaspaceMethod, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph), nonZeroWordStamp));
+                            ReadNode metaspaceMethod = graph.add(new ReadNode(hub, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, vtableEntryOffset, graph), wordStamp()));
+                            ReadNode compiledEntry = graph.add(new ReadNode(metaspaceMethod, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph), wordStamp()));
 
                             loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(metaspaceMethod, compiledEntry, parameters, invoke.node().stamp(), signature, callTarget.targetMethod(), CallingConvention.Type.JavaCall));
 
@@ -490,10 +490,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                         value = checkcast;
                     }
                 } else {
-                    Stamp nonZeroWordStamp = StampFactory.forWord(wordKind, true);
                     LoadHubNode arrayClass = graph.add(new LoadHubNode(array, wordKind));
                     LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, wordKind, config.arrayClassElementOffset, graph);
-                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, location, null, nonZeroWordStamp));
+                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, location, null, wordStamp()));
                     CheckCastDynamicNode checkcast = graph.add(new CheckCastDynamicNode(arrayElementKlass, value));
                     graph.addBeforeFixed(storeIndexed, checkcast);
                     graph.addBeforeFixed(checkcast, arrayClass);
@@ -540,7 +539,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, wordKind, config.hubOffset, graph);
             ValueNode object = loadHub.object();
             ValueNode guard = tool.createNullCheckGuard(object, StructuredGraph.INVALID_GRAPH_ID);
-            ReadNode hub = graph.add(new ReadNode(object, location, StampFactory.forWord(wordKind, true)));
+            ReadNode hub = graph.add(new ReadNode(object, location, wordStamp()));
             hub.dependencies().add(guard);
             graph.replaceFixed(loadHub, hub);
         } else if (n instanceof CheckCastNode) {
@@ -617,7 +616,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             if (fullName.equals("getModifiers()I")) {
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
-                SafeReadNode klass = safeRead(graph, wordKind, receiver, config.klassOffset, StampFactory.forWord(wordKind, true), INVALID_GRAPH_ID);
+                SafeReadNode klass = safeRead(graph, wordKind, receiver, config.klassOffset, wordStamp(), INVALID_GRAPH_ID);
                 graph.start().setNext(klass);
                 LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Int, config.klassModifierFlagsOffset, graph);
                 FloatingReadNode readModifiers = graph.unique(new FloatingReadNode(klass, location, null, StampFactory.intValue()));

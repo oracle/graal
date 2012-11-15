@@ -155,14 +155,13 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @ConstantParameter("alignment") int alignment,
                     @ConstantParameter("headerSize") int headerSize,
                     @ConstantParameter("log2ElementSize") int log2ElementSize,
-                    @ConstantParameter("type") ResolvedJavaType type,
-                    @ConstantParameter("wordKind") Kind wordKind) {
+                    @ConstantParameter("type") ResolvedJavaType type) {
         if (!belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
             // This handles both negative array sizes and very large array sizes
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.RuntimeConstraint);
         }
         int size = getArraySize(length, alignment, headerSize, log2ElementSize);
-        Word memory = TLABAllocateNode.allocateVariableSize(size, wordKind);
+        Word memory = TLABAllocateNode.allocateVariableSize(size);
         return InitializeArrayNode.initialize(memory, length, size, type, true, false);
     }
 
@@ -180,7 +179,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @Parameter("hub") Word hub,
                     @ConstantParameter("rank") int rank,
                     @VarargsParameter("dimensions") int[] dimensions) {
-        Word dims = DimensionsNode.allocaDimsArray(rank, wordKind());
+        Word dims = DimensionsNode.allocaDimsArray(rank);
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < rank; i++) {
             DirectObjectStoreNode.storeInt(dims, 0, i * 4, dimensions[i]);
@@ -251,7 +250,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             initializeObject = snippet("initializeObject", Word.class, Word.class, Word.class, int.class, boolean.class, boolean.class);
             initializeObjectArray = snippet("initializeObjectArray", Word.class, Word.class, int.class, int.class, Word.class, int.class, boolean.class, boolean.class);
             initializePrimitiveArray = snippet("initializePrimitiveArray", Word.class, Word.class, int.class, int.class, Word.class, int.class, boolean.class, boolean.class);
-            allocateArrayAndInitialize = snippet("allocateArrayAndInitialize", int.class, int.class, int.class, int.class, ResolvedJavaType.class, Kind.class);
+            allocateArrayAndInitialize = snippet("allocateArrayAndInitialize", int.class, int.class, int.class, int.class, ResolvedJavaType.class);
             newmultiarray = snippet("newmultiarray", Word.class, int.class, int[].class);
         }
 
@@ -272,7 +271,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 memory = ConstantNode.forConstant(new Constant(target.wordKind, 0L), runtime, graph);
             } else {
                 ConstantNode sizeNode = ConstantNode.forInt(size, graph);
-                TLABAllocateNode tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode, wordKind()));
+                TLABAllocateNode tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode));
                 graph.addBeforeFixed(newInstanceNode, tlabAllocateNode);
                 memory = tlabAllocateNode;
             }
@@ -306,7 +305,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 // Calculate aligned size
                 int size = getArraySize(length, alignment, headerSize, log2ElementSize);
                 ConstantNode sizeNode = ConstantNode.forInt(size, graph);
-                tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode, target.wordKind));
+                tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode));
                 graph.addBeforeFixed(newArrayNode, tlabAllocateNode);
                 InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(tlabAllocateNode, lengthNode, sizeNode, arrayType, newArrayNode.fillContents(), newArrayNode.locked()));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
@@ -315,7 +314,6 @@ public class NewObjectSnippets implements SnippetsInterface {
                                 add("alignment", alignment).
                                 add("headerSize", headerSize).
                                 add("log2ElementSize", log2ElementSize).
-                                add("wordKind", target.wordKind).
                                 add("type", arrayType);
                 Arguments arguments = new Arguments().add("length", lengthNode);
                 SnippetTemplate template = cache.get(key);
