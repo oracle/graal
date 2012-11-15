@@ -52,7 +52,7 @@ public class SnippetInstaller {
      * A graph cache used by this installer to avoid using the compiler
      * storage for each method processed during snippet installation.
      * Without this, all processed methods are to be determined as
-     * {@linkplain IntrinsificationPhase#canIntrinsify intrinsifiable}.
+     * {@linkplain InliningUtil#canIntrinsify intrinsifiable}.
      */
     private final Map<ResolvedJavaMethod, StructuredGraph> graphCache;
 

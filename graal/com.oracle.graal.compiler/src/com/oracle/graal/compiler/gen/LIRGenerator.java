@@ -841,16 +841,15 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         } else {
             Variable value = load(operand(x.value()));
             LabelRef defaultTarget = x.defaultSuccessor() == null ? null : getLIRBlock(x.defaultSuccessor());
-            if (value.getKind() == Kind.Object || keyCount < GraalOptions.SequentialSwitchLimit) {
+            if (value.getKind() == Kind.Object) {
                 // only a few entries
                 emitSequentialSwitch(x, value, defaultTarget);
             } else {
                 long valueRange = x.keyAt(keyCount - 1).asLong() - x.keyAt(0).asLong() + 1;
                 int switchRangeCount = switchRangeCount(x);
-                int rangeDensity = keyCount / switchRangeCount;
-                if (rangeDensity >= GraalOptions.RangeTestsSwitchDensity) {
-                    emitSwitchRanges(x, switchRangeCount, value, defaultTarget);
-                } else if (keyCount / (double) valueRange >= GraalOptions.MinTableSwitchDensity) {
+                if (switchRangeCount == 0) {
+                    emitJump(getLIRBlock(x.defaultSuccessor()), null);
+                } else if (switchRangeCount >= GraalOptions.MinimumJumpTableSize && keyCount / (double) valueRange >= GraalOptions.MinTableSwitchDensity) {
                     int minValue = x.keyAt(0).asInt();
                     assert valueRange < Integer.MAX_VALUE;
                     LabelRef[] targets = new LabelRef[(int) valueRange];
@@ -861,6 +860,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                         targets[x.keyAt(i).asInt() - minValue] = getLIRBlock(x.keySuccessor(i));
                     }
                     emitTableSwitch(minValue, defaultTarget, targets, value);
+                } else if (keyCount / switchRangeCount >= GraalOptions.RangeTestsSwitchDensity) {
+                    emitSwitchRanges(x, switchRangeCount, value, defaultTarget);
                 } else {
                     emitSequentialSwitch(x, value, defaultTarget);
                 }
@@ -891,27 +892,26 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     private static int switchRangeCount(SwitchNode x) {
         int keyCount = x.keyCount();
-        int i = 0;
-        while (i < keyCount && x.keySuccessorIndex(i) == x.defaultSuccessorIndex()) {
-            i++;
-        }
-        if (i == keyCount) {
-            return 0;
-        } else {
-            int switchRangeCount = 1;
-            i++;
-            for (; i < keyCount; i++) {
-                if (x.keySuccessorIndex(i) != x.defaultSuccessorIndex()) {
-                    if (x.keyAt(i).asInt() != x.keyAt(i - 1).asInt() + 1 || x.keySuccessorIndex(i) != x.keySuccessorIndex(i - 1)) {
-                        switchRangeCount++;
-                    }
-                }
+        int switchRangeCount = 0;
+        int defaultSux = x.defaultSuccessorIndex();
+
+        int key = x.keyAt(0).asInt();
+        int sux = x.keySuccessorIndex(0);
+        for (int i = 0; i < keyCount; i++) {
+            int newKey = x.keyAt(i).asInt();
+            int newSux = x.keySuccessorIndex(i);
+            if (newSux != defaultSux && (newKey != key + 1 || sux != newSux)) {
+                switchRangeCount++;
             }
-            return switchRangeCount;
+            key = newKey;
+            sux = newSux;
         }
+        return switchRangeCount;
     }
 
     private void emitSwitchRanges(SwitchNode x, int switchRangeCount, Variable keyValue, LabelRef defaultTarget) {
+        assert switchRangeCount >= 1 : "switch ranges should not be used for emitting only the default case";
+
         int[] lowKeys = new int[switchRangeCount];
         int[] highKeys = new int[switchRangeCount];
         LabelRef[] targets = new LabelRef[switchRangeCount];
@@ -919,40 +919,28 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         int keyCount = x.keyCount();
         int defaultSuccessor = x.defaultSuccessorIndex();
 
-        int current = 0;
-        int i = 0;
-        while (i < keyCount && x.keySuccessorIndex(i) == x.defaultSuccessorIndex()) {
-            i++;
-        }
-        if (i == keyCount) {
-            emitJump(defaultTarget, null);
-        } else {
-            int key = x.keyAt(i).asInt();
-            int successor = x.keySuccessorIndex(i);
-            lowKeys[current] = key;
-            highKeys[current] = key;
-            targets[current] = getLIRBlock(x.blockSuccessor(successor));
-            i++;
-            for (; i < keyCount; i++) {
-                int newSuccessor = x.keySuccessorIndex(i);
-                if (newSuccessor != defaultSuccessor) {
-                    int newKey = x.keyAt(i).asInt();
-                    if (key + 1 == newKey && successor == newSuccessor) {
-                        // still in same range
-                        highKeys[current] = newKey;
-                    } else {
-                        current++;
-                        lowKeys[current] = newKey;
-                        highKeys[current] = newKey;
-                        targets[current] = getLIRBlock(x.blockSuccessor(newSuccessor));
-                    }
-                    key = newKey;
+        int current = -1;
+        int key = -1;
+        int successor = -1;
+        for (int i = 0; i < keyCount; i++) {
+            int newSuccessor = x.keySuccessorIndex(i);
+            int newKey = x.keyAt(i).asInt();
+            if (newSuccessor != defaultSuccessor) {
+                if (key + 1 == newKey && successor == newSuccessor) {
+                    // still in same range
+                    highKeys[current] = newKey;
+                } else {
+                    current++;
+                    lowKeys[current] = newKey;
+                    highKeys[current] = newKey;
+                    targets[current] = getLIRBlock(x.blockSuccessor(newSuccessor));
                 }
-                successor = newSuccessor;
             }
-            assert current == switchRangeCount - 1;
-            emitSwitchRanges(lowKeys, highKeys, targets, defaultTarget, keyValue);
+            key = newKey;
+            successor = newSuccessor;
         }
+        assert current == switchRangeCount - 1;
+        emitSwitchRanges(lowKeys, highKeys, targets, defaultTarget, keyValue);
     }
 
     public FrameMap frameMap() {

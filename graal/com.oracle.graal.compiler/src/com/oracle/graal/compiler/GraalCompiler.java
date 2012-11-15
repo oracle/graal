@@ -118,10 +118,6 @@ public class GraalCompiler {
             new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
         }
 
-        if (GraalOptions.Intrinsify) {
-            new IntrinsificationPhase(runtime).apply(graph);
-        }
-
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
             new InliningPhase(target, runtime, null, assumptions, cache, plan, optimisticOpts).apply(graph);
 

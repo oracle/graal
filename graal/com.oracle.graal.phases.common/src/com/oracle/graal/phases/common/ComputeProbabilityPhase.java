@@ -100,6 +100,8 @@ public class ComputeProbabilityPhase extends Phase {
                 double originalProbability = probability / frequency;
                 assert isRelativeProbability(originalProbability);
                 return (1 / frequency) * Math.max(1, Math.pow(originalProbability, 1.5) * Math.log10(frequency));
+            case -4:
+                return 1 / probability;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -337,6 +339,7 @@ public class ComputeProbabilityPhase extends Phase {
 
     private static FrequencyPropagationPolicy createFrequencyPropagationPolicy() {
         switch (GraalOptions.LoopFrequencyPropagationPolicy) {
+            case -4:
             case -3:
             case -2:
             case -1:

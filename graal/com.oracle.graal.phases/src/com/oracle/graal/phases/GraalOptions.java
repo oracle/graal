@@ -48,6 +48,7 @@ public final class GraalOptions {
     public static int     MaximumTrivialSize                 = 10;
     public static int     MaximumInlineLevel                 = 30;
     public static int     MaximumDesiredSize                 = 3000;
+    public static boolean AlwaysInlineTrivialMethods         = ____;
     public static int     MaximumRecursiveInlining           = 1;
     public static int     SmallCompiledCodeSize              = 2200;
     public static boolean LimitInlinedProbability            = ____;
@@ -172,7 +173,7 @@ public final class GraalOptions {
     public static boolean ResolveClassBeforeStaticInvoke     = true;
 
     // Translating tableswitch instructions
-    public static int     SequentialSwitchLimit              = 4;
+    public static int     MinimumJumpTableSize               = 5;
     public static int     RangeTestsSwitchDensity            = 5;
     public static double  MinTableSwitchDensity              = 0.5;
 

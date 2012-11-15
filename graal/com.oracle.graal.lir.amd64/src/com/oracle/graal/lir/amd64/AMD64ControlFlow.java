@@ -31,8 +31,8 @@ import com.oracle.graal.api.code.Address.Scale;
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
@@ -204,29 +204,33 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            assert isSorted(lowKeys) && isSorted(highKeys);
+
+            Label actualDefaultTarget = defaultTarget == null ? new Label() : defaultTarget.label();
+            int prevHighKey = 0;
+            boolean skipLowCheck = false;
             for (int i = 0; i < lowKeys.length; i++) {
                 int lowKey = lowKeys[i];
                 int highKey = highKeys[i];
                 if (lowKey == highKey) {
                     masm.cmpl(asIntReg(key), lowKey);
                     masm.jcc(ConditionFlag.equal, keyTargets[i].label());
-                } else if (lowKey + 1 == highKey) {
-                    masm.cmpl(asIntReg(key), lowKey);
-                    masm.jcc(ConditionFlag.equal, keyTargets[i].label());
-                    masm.cmpl(asIntReg(key), highKey);
-                    masm.jcc(ConditionFlag.equal, keyTargets[i].label());
+                    skipLowCheck = false;
                 } else {
-                    Label skip = new Label();
-                    masm.cmpl(asIntReg(key), lowKey);
-                    masm.jcc(ConditionFlag.less, skip);
+                    if (!skipLowCheck || (prevHighKey + 1) != lowKey) {
+                        masm.cmpl(asIntReg(key), lowKey);
+                        masm.jcc(ConditionFlag.less, actualDefaultTarget);
+                    }
                     masm.cmpl(asIntReg(key), highKey);
                     masm.jcc(ConditionFlag.lessEqual, keyTargets[i].label());
-                    masm.bind(skip);
+                    skipLowCheck = true;
                 }
+                prevHighKey = highKey;
             }
             if (defaultTarget != null) {
                 masm.jmp(defaultTarget.label());
             } else {
+                masm.bind(actualDefaultTarget);
                 masm.hlt();
             }
         }
@@ -247,6 +251,15 @@ public class AMD64ControlFlow {
         @Override
         public void setFallThroughTarget(LabelRef target) {
             defaultTarget = target;
+        }
+
+        private static boolean isSorted(int[] values) {
+            for (int i = 1; i < values.length; i++) {
+                if (values[i - 1] >= values[i]) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 

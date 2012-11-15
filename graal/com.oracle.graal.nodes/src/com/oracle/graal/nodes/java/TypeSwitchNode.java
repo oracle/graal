@@ -41,8 +41,8 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     private final ResolvedJavaType[] keys;
 
     /**
-     * Constructs a type switch instruction. The keyProbabilities and keySuccessors array contain key.length + 1
-     * entries, the last entry describes the default (fall through) case.
+     * Constructs a type switch instruction. The keyProbabilities array contain key.length + 1
+     * entries. The last entry in every array describes the default case.
      *
      * @param value the instruction producing the value being switched on
      * @param successors the list of successors
@@ -52,8 +52,8 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
      */
     public TypeSwitchNode(ValueNode value, BeginNode[] successors, double[] successorProbabilities, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
         super(value, successors, successorProbabilities, keySuccessors, keyProbabilities);
-        assert successors.length == keys.length + 1;
-        assert successors.length == keyProbabilities.length;
+        assert successors.length <= keys.length + 1;
+        assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
     }
 

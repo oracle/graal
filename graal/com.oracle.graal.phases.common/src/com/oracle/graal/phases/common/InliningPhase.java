@@ -34,10 +34,9 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.*;
-import com.oracle.graal.phases.common.InliningUtil.*;
-import com.oracle.graal.phases.util.*;
-
+import com.oracle.graal.phases.PhasePlan.PhasePosition;
+import com.oracle.graal.phases.common.InliningUtil.InlineInfo;
+import com.oracle.graal.phases.common.InliningUtil.InliningCallback;
 
 public class InliningPhase extends Phase implements InliningCallback {
     /*
@@ -51,7 +50,6 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     private final Collection<? extends Invoke> hints;
 
-    private final PriorityQueue<InlineInfo> inlineCandidates = new PriorityQueue<>();
     private Assumptions assumptions;
 
     private final PhasePlan plan;
@@ -64,6 +62,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
     private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
+    private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
 
     public InliningPhase(TargetDescription target, GraalCodeCacheProvider runtime, Collection<? extends Invoke> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this.target = target;
@@ -77,108 +76,86 @@ public class InliningPhase extends Phase implements InliningCallback {
         this.inliningPolicy = createInliningPolicy();
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     protected void run(final StructuredGraph graph) {
-        graph.createNodeMap();
+        NodeBitMap visitedFixedNodes = graph.createNodeBitMap(true);
+        Deque<Invoke> sortedInvokes = new ArrayDeque<>();
 
-        if (hints != null) {
-            scanInvokes((Iterable<? extends Node>) Util.uncheckedCast(this.hints));
-        } else {
-            scanInvokes(graph.getNodes(InvokeNode.class));
-            scanInvokes(graph.getNodes(InvokeWithExceptionNode.class));
-        }
+        queueInvokes(graph.start(), sortedInvokes, visitedFixedNodes);
 
-        while (!inlineCandidates.isEmpty() && graph.getNodeCount() < GraalOptions.MaximumDesiredSize) {
-            InlineInfo candidate = inlineCandidates.remove();
-            if (!candidate.invoke.node().isAlive()) {
+        while (!sortedInvokes.isEmpty() && graph.getNodeCount() < GraalOptions.MaximumDesiredSize) {
+            final Invoke invoke = sortedInvokes.pop();
+            if (hints != null && !hints.contains(invoke)) {
                 continue;
             }
-            // refresh infos
-            final InlineInfo info = InliningUtil.getInlineInfo(candidate.invoke, candidate.level, runtime, assumptions, this, optimisticOpts);
 
-            boolean inline = Debug.scope("InliningDecisions", new Callable<Boolean>() {
+            InlineInfo candidate = Debug.scope("InliningDecisions", new Callable<InlineInfo>() {
                 @Override
-                public Boolean call() throws Exception {
-                    return info != null && inliningPolicy.isWorthInlining(graph, info);
+                public InlineInfo call() throws Exception {
+                    InlineInfo info = InliningUtil.getInlineInfo(invoke, computeInliningLevel(invoke), runtime, assumptions, InliningPhase.this, optimisticOpts);
+                    if (info == null || !info.invoke.node().isAlive() || info.level > GraalOptions.MaximumInlineLevel) {
+                        return null;
+                    }
+                    metricInliningConsidered.increment();
+                    if (inliningPolicy.isWorthInlining(graph, info)) {
+                        return info;
+                    } else {
+                        return null;
+                    }
                 }
             });
 
-            if (inline) {
+            // TEMP:
+//            if (GraalOptions.AlwaysInlineTrivialMethods) {
+//                TODO: Continue;
+//            }
+
+            if (candidate != null) {
                 int mark = graph.getMark();
-                Iterable<Node> newNodes = null;
                 try {
-                    info.inline(graph, runtime, this);
-                    Debug.dump(graph, "after %s", info);
-                    newNodes = graph.getNewNodes(mark);
+                    FixedNode predecessor = (FixedNode) invoke.predecessor();
+                    candidate.inline(graph, runtime, InliningPhase.this);
+                    Debug.dump(graph, "after %s", candidate);
                     if (GraalOptions.OptCanonicalizer) {
                         new CanonicalizerPhase(target, runtime, assumptions, mark, null).apply(graph);
                     }
-//                    if (GraalOptions.Intrinsify) {
-//                        new IntrinsificationPhase(runtime).apply(graph);
-//                    }
                     metricInliningPerformed.increment();
+
+                    queueInvokes(predecessor, sortedInvokes, visitedFixedNodes);
                 } catch (BailoutException bailout) {
                     // TODO determine if we should really bail out of the whole compilation.
                     throw bailout;
                 } catch (AssertionError e) {
-                    throw new GraalInternalError(e).addContext(info.toString());
+                    throw new GraalInternalError(e).addContext(candidate.toString());
                 } catch (RuntimeException e) {
-                    throw new GraalInternalError(e).addContext(info.toString());
+                    throw new GraalInternalError(e).addContext(candidate.toString());
                 } catch (GraalInternalError e) {
-                    throw e.addContext(info.toString());
-                }
-
-                if (newNodes != null && info.level < GraalOptions.MaximumInlineLevel) {
-                    scanInvokes(newNodes);
+                    throw e.addContext(candidate.toString());
                 }
             }
         }
 
-        if (GraalOptions.Debug && graph.getNodeCount() >= GraalOptions.MaximumDesiredSize) {
-            Debug.scope("InliningDecisions", new Runnable() {
-                public void run() {
-                    for (InlineInfo info : inlineCandidates) {
-                        Debug.log("not inlining %s because inlining cut off by MaximumDesiredSize", InliningUtil.methodName(info));
+        if (graph.getNodeCount() >= GraalOptions.MaximumDesiredSize) {
+            if (GraalOptions.Debug) {
+                Debug.scope("InliningDecisions", new Runnable() {
+                    public void run() {
+                        Debug.log("inlining is cut off by MaximumDesiredSize");
                     }
-                }
-            });
+                });
 
-            metricInliningStoppedByMaxDesiredSize.increment();
-        }
-    }
-
-    private void scanInvokes(final Iterable<? extends Node> nodes) {
-        Debug.scope("InliningDecisions", new Runnable() {
-            public void run() {
-                for (Node node : nodes) {
-                    if (node != null) {
-                        if (node instanceof Invoke) {
-                            Invoke invoke = (Invoke) node;
-                            scanInvoke(invoke);
-                        }
-                        for (Node usage : node.usages().filterInterface(Invoke.class).snapshot()) {
-                            scanInvoke((Invoke) usage);
-                        }
-                    }
-                }
+                metricInliningStoppedByMaxDesiredSize.increment();
             }
-        });
-    }
-
-    private void scanInvoke(Invoke invoke) {
-        InlineInfo info = InliningUtil.getInlineInfo(invoke, computeInliningLevel(invoke), runtime, assumptions, this, optimisticOpts);
-        if (info != null) {
-            metricInliningConsidered.increment();
-            inlineCandidates.add(info);
         }
     }
 
-    public static final Map<JavaMethod, Integer> parsedMethods = new HashMap<>();
-
-
-
-    private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
+    private static void queueInvokes(FixedNode start, Deque<Invoke> invokes, NodeBitMap visitedFixedNodes) {
+        ArrayList<Invoke> results = new ArrayList<>();
+        new InliningIterator(start, results, visitedFixedNodes).apply();
+        // insert the newly found invokes in their correct control-flow order
+        for (int i = results.size() - 1; i >= 0; i--) {
+            invokes.addFirst(results.get(i));
+        }
+    }
 
     @Override
     public StructuredGraph buildGraph(final ResolvedJavaMethod method) {
@@ -201,9 +178,6 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
-        }
-        if (GraalOptions.Intrinsify) {
-            new IntrinsificationPhase(runtime).apply(newGraph);
         }
         if (GraalOptions.CullFrameStates) {
             new CullFrameStatesPhase().apply(newGraph);
@@ -415,6 +389,105 @@ public class InliningPhase extends Phase implements InliningCallback {
                 complexity = complexity / GraalOptions.BoostInliningForEscapeAnalysis;
             }
             return complexity;
+        }
+    }
+
+    private static class InliningIterator {
+        private final FixedNode start;
+        private final Collection<Invoke> invokes;
+        private final NodeBitMap processedNodes;
+
+        private final Deque<FixedNode> nodeQueue;
+        private final NodeBitMap queuedNodes;
+
+        public InliningIterator(FixedNode start, Collection<Invoke> invokes, NodeBitMap visitedFixedNodes) {
+            this.start = start;
+            this.invokes = invokes;
+            this.processedNodes = visitedFixedNodes;
+
+            this.nodeQueue = new ArrayDeque<>();
+            this.queuedNodes = visitedFixedNodes.copy();
+
+            assert start.isAlive();
+        }
+
+        public void apply() {
+            FixedNode current = start;
+            do {
+                assert current.isAlive();
+                processedNodes.mark(current);
+
+                if (current instanceof InvokeWithExceptionNode || current instanceof InvokeNode) {
+                    invoke((Invoke) current);
+                    queueSuccessors(current);
+                    current = nextQueuedNode();
+                } else if (current instanceof LoopBeginNode) {
+                    current = ((LoopBeginNode) current).next();
+                    assert current != null;
+                } else if (current instanceof LoopEndNode) {
+                    current = nextQueuedNode();
+                } else if (current instanceof MergeNode) {
+                    current = ((MergeNode) current).next();
+                    assert current != null;
+                } else if (current instanceof FixedWithNextNode) {
+                    queueSuccessors(current);
+                    current = nextQueuedNode();
+                } else if (current instanceof EndNode) {
+                    queueMerge((EndNode) current);
+                    current = nextQueuedNode();
+                } else if (current instanceof DeoptimizeNode) {
+                    current = nextQueuedNode();
+                } else if (current instanceof ReturnNode) {
+                    current = nextQueuedNode();
+                } else if (current instanceof UnwindNode) {
+                    current = nextQueuedNode();
+                } else if (current instanceof ControlSplitNode) {
+                    queueSuccessors(current);
+                    current = nextQueuedNode();
+                } else {
+                    assert false : current;
+                }
+            } while(current != null);
+        }
+
+        private void queueSuccessors(FixedNode x) {
+            for (Node node : x.successors()) {
+                if (node != null && !queuedNodes.isMarked(node)) {
+                    queuedNodes.mark(node);
+                    nodeQueue.addFirst((FixedNode) node);
+                }
+            }
+        }
+
+        private FixedNode nextQueuedNode() {
+            if (nodeQueue.isEmpty()) {
+                return null;
+            }
+
+            FixedNode result = nodeQueue.removeFirst();
+            assert queuedNodes.isMarked(result);
+            return result;
+        }
+
+        private void queueMerge(EndNode end) {
+            MergeNode merge = end.merge();
+            if (!queuedNodes.isMarked(merge) && visitedAllEnds(merge)) {
+                queuedNodes.mark(merge);
+                nodeQueue.add(merge);
+            }
+        }
+
+        private boolean visitedAllEnds(MergeNode merge) {
+            for (int i = 0; i < merge.forwardEndCount(); i++) {
+                if (!processedNodes.isMarked(merge.forwardEndAt(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        protected void invoke(Invoke invoke) {
+            invokes.add(invoke);
         }
     }
 }

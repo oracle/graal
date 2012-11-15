@@ -59,19 +59,23 @@ public final class OptimisticOptimizations {
         if (checkDeoptimizations(profilingInfo, DeoptimizationReason.NotCompiledExceptionHandler)) {
             enabledOpts.add(Optimization.UseExceptionProbability);
         }
+
+        log(method);
     }
 
     private OptimisticOptimizations(Set<Optimization> enabledOpts) {
         this.enabledOpts = enabledOpts;
     }
 
-    public void log(JavaMethod method) {
-        for (Optimization opt: Optimization.values()) {
-            if (!enabledOpts.contains(opt)) {
-                if (GraalOptions.PrintDisabledOptimisticOptimizations) {
-                    TTY.println("WARN: deactivated optimistic optimization %s for %s", opt.name(), MetaUtil.format("%H.%n(%p)", method));
+    private void log(ResolvedJavaMethod method) {
+        if (Debug.isLogEnabled()) {
+            for (Optimization opt: Optimization.values()) {
+                if (!enabledOpts.contains(opt)) {
+                    if (GraalOptions.PrintDisabledOptimisticOptimizations) {
+                        Debug.log("WARN: deactivated optimistic optimization %s for %s", opt.name(), MetaUtil.format("%H.%n(%p)", method));
+                    }
+                    disabledOptimisticOptsMetric.increment();
                 }
-                disabledOptimisticOptsMetric.increment();
             }
         }
     }
