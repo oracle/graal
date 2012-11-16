@@ -419,4 +419,12 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     public long prototypeMarkWord() {
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().getPrototypeMarkWord(this);
     }
+
+    public long address() {
+        return metaspaceKlass;
+    }
+
+    public String symbol() {
+        return javaMirror.getName();
+    }
 }

@@ -141,6 +141,7 @@ public final class GraalOptions {
     public static int     PrintBinaryGraphPort               = 4445;
 
     // Other printing settings
+    public static boolean PrintAddressMap                    = ____;
     public static boolean PrintQueue                         = ____;
     public static boolean PrintCompilation                   = ____;
     public static boolean PrintProfilingInformation          = ____;

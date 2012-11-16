@@ -63,6 +63,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         this.metaspaceMethod = metaspaceMethod;
         this.holder = holder;
         HotSpotGraalRuntime.getInstance().getCompilerToVM().initializeMethod(metaspaceMethod, this);
+        AddressMap.log(metaspaceMethod, MetaUtil.format("%H.%n(%P):%R", this));
     }
 
     @Override
@@ -202,6 +203,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             long metaspaceMethodData = unsafe.getLong(null, metaspaceMethod + HotSpotGraalRuntime.getInstance().getConfig().methodDataOffset);
             if (metaspaceMethodData != 0) {
                 methodData = new HotSpotMethodData(metaspaceMethodData);
+                AddressMap.log(metaspaceMethodData, MetaUtil.format("MethodData{%H.%n(%P):%R}", this));
             }
         }
 
