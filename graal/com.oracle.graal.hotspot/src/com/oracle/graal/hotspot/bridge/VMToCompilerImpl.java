@@ -65,6 +65,8 @@ public class VMToCompilerImpl implements VMToCompiler {
     private ThreadPoolExecutor slowCompileQueue;
     private AtomicInteger compileTaskIds = new AtomicInteger();
 
+    private volatile boolean bootstrapRunning;
+
     private PrintStream log = System.out;
 
     public VMToCompilerImpl(HotSpotGraalRuntime compiler) {
@@ -170,6 +172,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         TTY.flush();
         long startTime = System.currentTimeMillis();
 
+        bootstrapRunning = true;
         boolean firstRun = true;
         do {
             // Initialize compile queue with a selected set of methods.
@@ -213,6 +216,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         } while ((System.currentTimeMillis() - startTime) <= GraalOptions.TimedBootstrap);
         CompilationStatistics.clear("bootstrap");
+        bootstrapRunning = false;
 
         TTY.println(" in %d ms", System.currentTimeMillis() - startTime);
         if (graalRuntime.getCache() != null) {
@@ -349,6 +353,12 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     @Override
     public boolean compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, boolean blocking, int priority) throws Throwable {
+        boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
+        if (osrCompilation && bootstrapRunning) {
+            // no OSR compilations during bootstrap - the compiler is just too slow at this point, and we know that there are no endless loops
+            return true;
+        }
+
         if (CompilationTask.withinEnqueue.get()) {
             // This is required to avoid deadlocking a compiler thread. The issue is that a
             // java.util.concurrent.BlockingQueue is used to implement the compilation worker
@@ -361,18 +371,27 @@ public class VMToCompilerImpl implements VMToCompiler {
         try {
             CompilationTask current = method.currentTask();
             if (!blocking && current != null) {
-                if (GraalOptions.PriorityCompileQueue) {
-                    // normally compilation tasks will only be re-queued when they get a priority boost, so cancel the old task and add a new one
-                    current.cancel();
+                if (current.isInProgress()) {
+                    if (current.getEntryBCI() == entryBCI) {
+                        // a compilation with the correct bci is already in progress, so just return true
+                        return true;
+                    }
                 } else {
-                    // without a prioritizing compile queue it makes no sense to re-queue the compilation task
-                    return true;
+                    if (GraalOptions.PriorityCompileQueue) {
+                        // normally compilation tasks will only be re-queued when they get a priority boost, so cancel the old task and add a new one
+                        current.cancel();
+                    } else {
+                        // without a prioritizing compile queue it makes no sense to re-queue the compilation task
+                        return true;
+                    }
                 }
             }
 
             final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(method);
             int id = compileTaskIds.incrementAndGet();
-            CompilationTask task = CompilationTask.create(graalRuntime, createPhasePlan(optimisticOpts, false), optimisticOpts, method, StructuredGraph.INVOCATION_ENTRY_BCI, id, priority, null);
+            // osr compilations need to be finished quickly, so they get max priority
+            int queuePriority = osrCompilation ? -1 : priority;
+            CompilationTask task = CompilationTask.create(graalRuntime, createPhasePlan(optimisticOpts, osrCompilation), optimisticOpts, method, entryBCI, id, queuePriority);
             if (blocking) {
                 task.runCompilation();
             } else {
@@ -387,21 +406,6 @@ public class VMToCompilerImpl implements VMToCompiler {
                     // The compile queue was already shut down.
                     return false;
                 }
-            }
-            if (entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI && CompilationTask.withinCompilation.get() == 0) {
-                final OptimisticOptimizations osrOptimisticOpts = new OptimisticOptimizations(method);
-                int osrId = compileTaskIds.incrementAndGet();
-                Debug.log("OSR compilation %s@%d", method, entryBCI);
-                final CountDownLatch latch = new CountDownLatch(1);
-                Runnable callback = new Runnable() {
-                    @Override
-                    public void run() {
-                        latch.countDown();
-                    }
-                };
-                CompilationTask osrTask = CompilationTask.create(graalRuntime, createPhasePlan(osrOptimisticOpts, true), osrOptimisticOpts, method, entryBCI, osrId, Integer.MAX_VALUE, callback);
-                compileQueue.execute(osrTask);
-                latch.await();
             }
             return true;
         } finally {
