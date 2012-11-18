@@ -115,7 +115,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         try {
             final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
             if (printCompilation) {
-                TTY.println(String.format("%-6d Graal %-70s %-45s %-50s %s...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature(), entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "(OSR) "));
+                TTY.println(String.format("%-6d Graal %-70s %-45s %-50s %s...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature(), entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "(OSR@" + entryBCI + ") "));
             }
 
             CompilationResult result = null;
