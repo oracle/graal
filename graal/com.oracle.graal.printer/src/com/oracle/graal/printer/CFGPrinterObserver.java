@@ -154,13 +154,18 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             final byte[] code = Arrays.copyOf(tm.getTargetCode(), tm.getTargetCodeSize());
             CodeInfo info = new CodeInfo() {
                 public ResolvedJavaMethod getMethod() {
-                    return null;
+                    return curMethod;
                 }
                 public long getStart() {
                     return 0L;
                 }
                 public byte[] getCode() {
                     return code;
+                }
+                @Override
+                public String toString() {
+                    int size = code == null ? 0 : code.length;
+                    return getMethod() + " installed code; length = " + size;
                 }
             };
             cfgPrinter.printMachineCode(runtime.disassemble(info, tm), message);
