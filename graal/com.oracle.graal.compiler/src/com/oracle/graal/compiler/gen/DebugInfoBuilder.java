@@ -149,13 +149,13 @@ public class DebugInfoBuilder {
                 return toValue(((MaterializedObjectState) state).materializedValue());
             } else {
                 assert obj.entryCount() == 0 || state instanceof VirtualObjectState || obj instanceof BoxedVirtualObjectNode;
-                VirtualObject ciObj = virtualObjects.get(value);
-                if (ciObj == null) {
-                    ciObj = VirtualObject.get(obj.type(), null, virtualObjects.size());
-                    virtualObjects.put(obj, ciObj);
+                VirtualObject vobject = virtualObjects.get(value);
+                if (vobject == null) {
+                    vobject = VirtualObject.get(obj.type(), null, virtualObjects.size());
+                    virtualObjects.put(obj, vobject);
                 }
                 Debug.metric("StateVirtualObjects").increment();
-                return ciObj;
+                return vobject;
             }
         } else if (value instanceof ConstantNode) {
             Debug.metric("StateConstants").increment();

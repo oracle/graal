@@ -92,7 +92,7 @@ public final class VirtualObject extends Value {
     /**
      * Returns the type of the object whose allocation was removed during compilation. This can be either an instance of an array type.
      */
-    public JavaType getType() {
+    public ResolvedJavaType getType() {
         return type;
     }
 
@@ -110,12 +110,34 @@ public final class VirtualObject extends Value {
         return id;
     }
 
+    private static boolean checkValues(ResolvedJavaType type, Value[] values) {
+        if (values != null) {
+            if (!type.isArrayClass()) {
+                ResolvedJavaField[] fields = type.getInstanceFields(true);
+                assert fields.length == values.length : type + ": fields=" + Arrays.toString(fields) + ", field values=" + Arrays.toString(values);
+                for (int i = 0; i < values.length; i++) {
+                    ResolvedJavaField field = fields[i];
+                    Kind valKind = values[i].getKind().getStackKind();
+                    assert valKind == field.getKind().getStackKind() : field + ": " + valKind + " != " + field.getKind().getStackKind();
+                }
+            } else {
+                Kind componentKind = type.getComponentType().getKind().getStackKind();
+                for (int i = 0; i < values.length; i++) {
+                    assert values[i].getKind().getStackKind() == componentKind : values[i].getKind() + " != " + componentKind;
+                }
+            }
+
+        }
+        return true;
+    }
+
     /**
      * Overwrites the current set of values with a new one.
      *
      * @param values an array containing all the values to be stored into the object when it is recreated.
      */
     public void setValues(Value[] values) {
+        assert checkValues(type, values);
         this.values = values;
     }
 
