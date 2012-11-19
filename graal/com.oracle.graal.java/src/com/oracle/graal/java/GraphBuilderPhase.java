@@ -79,7 +79,6 @@ public final class GraphBuilderPhase extends Phase {
     private ProfilingInfo profilingInfo;
 
     private BytecodeStream stream;           // the bytecode stream
-    private final LogStream log;
 
     private FrameStateBuilder frameState;          // the current execution state
     private Block currentBlock;
@@ -113,7 +112,6 @@ public final class GraphBuilderPhase extends Phase {
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
         this.runtime = runtime;
-        this.log = GraalOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
         assert runtime != null;
     }
 
@@ -131,7 +129,12 @@ public final class GraphBuilderPhase extends Phase {
         methodSynchronizedObject = null;
         this.currentGraph = graph;
         this.frameState = new FrameStateBuilder(method, graph, graphBuilderConfig.eagerResolving());
-        build();
+        TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
+        try {
+            build();
+        } finally {
+            filter.remove();
+        }
     }
 
     @Override
@@ -148,11 +151,6 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void build() {
-        if (log != null) {
-            log.println();
-            log.println("Compiling " + method);
-        }
-
         if (GraalOptions.PrintProfilingInformation) {
             TTY.println("Profiling info for " + method);
             TTY.println(MetaUtil.indent(MetaUtil.profileToString(profilingInfo, method, CodeUtil.NEW_LINE), "  "));
@@ -1533,14 +1531,14 @@ public final class GraphBuilderPhase extends Phase {
 
     private void traceState() {
         if (GraalOptions.TraceBytecodeParserLevel >= TRACELEVEL_STATE && !TTY.isSuppressed()) {
-            log.println(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method));
+            TTY.println(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method));
             for (int i = 0; i < frameState.localsSize(); ++i) {
                 ValueNode value = frameState.localAt(i);
-                log.println(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind().getJavaName(), value));
+                TTY.println(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind().getJavaName(), value));
             }
             for (int i = 0; i < frameState.stackSize(); ++i) {
                 ValueNode value = frameState.stackAt(i);
-                log.println(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind().getJavaName(), value));
+                TTY.println(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind().getJavaName(), value));
             }
         }
     }
@@ -1774,7 +1772,7 @@ public final class GraphBuilderPhase extends Phase {
             if (!currentBlock.jsrScope.isEmpty()) {
                 sb.append(' ').append(currentBlock.jsrScope);
             }
-            log.println(sb.toString());
+            TTY.println(sb.toString());
         }
     }
 
