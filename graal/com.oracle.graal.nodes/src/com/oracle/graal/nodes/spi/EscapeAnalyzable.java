@@ -22,7 +22,23 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.virtual.*;
+
 public interface EscapeAnalyzable {
 
-    EscapeOp getEscapeOp();
+    public static class ObjectDesc {
+
+        public final VirtualObjectNode virtualObject;
+        public final ValueNode[] entryState;
+        public final int lockCount;
+
+        public ObjectDesc(VirtualObjectNode virtualObject, ValueNode[] entryState, int lockCount) {
+            this.virtualObject = virtualObject;
+            this.entryState = entryState;
+            this.lockCount = lockCount;
+        }
+    }
+
+    ObjectDesc[] getAllocations(long nextVirtualId);
 }

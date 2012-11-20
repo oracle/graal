@@ -36,6 +36,7 @@ import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.EscapeAnalyzable.ObjectDesc;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
@@ -93,29 +94,31 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
         FixedWithNextNode lastFixedNode = null;
         for (Node node : nodeList) {
-            EscapeOp op = null;
+            ObjectDesc[] newAllocations = null;
             if (node instanceof EscapeAnalyzable) {
-                op = ((EscapeAnalyzable) node).getEscapeOp();
+                newAllocations = ((EscapeAnalyzable) node).getAllocations(virtualIds);
             }
 
-            if (op != null) {
-                trace("{{%s}} ", node);
-                VirtualObjectNode virtualObject = op.virtualObject(virtualIds);
-                if (virtualObject.isAlive()) {
-                    reusedVirtualObjects.add(virtualObject);
-                    state.addAndMarkAlias(virtualObject, virtualObject, usages);
-                } else {
-                    effects.addFloatingNode(virtualObject);
+            if (newAllocations != null) {
+                for (ObjectDesc desc : newAllocations) {
+                    trace("{{%s}} ", node);
+                    VirtualObjectNode virtualObject = desc.virtualObject;
+                    if (virtualObject.isAlive()) {
+                        reusedVirtualObjects.add(virtualObject);
+                        state.addAndMarkAlias(virtualObject, virtualObject, usages);
+                    } else {
+                        effects.addFloatingNode(virtualObject);
+                    }
+                    ValueNode[] fieldState = desc.entryState;
+                    for (int i = 0; i < fieldState.length; i++) {
+                        fieldState[i] = state.getScalarAlias(fieldState[i]);
+                    }
+                    state.addObject(virtualObject, new ObjectState(virtualObject, fieldState, desc.lockCount));
+                    state.addAndMarkAlias(virtualObject, (ValueNode) node, usages);
                 }
-                ValueNode[] fieldState = op.fieldState();
-                for (int i = 0; i < fieldState.length; i++) {
-                    fieldState[i] = state.getScalarAlias(fieldState[i]);
-                }
-                state.addObject(virtualObject, new ObjectState(virtualObject, fieldState, op.lockCount()));
-                state.addAndMarkAlias(virtualObject, (ValueNode) node, usages);
                 effects.deleteFixedNode((FixedWithNextNode) node);
-                virtualIds++;
-                metricAllocationRemoved.increment();
+                metricAllocationRemoved.add(newAllocations.length);
+                virtualIds += newAllocations.length;
             } else {
                 if (usages.isMarked(node)) {
                     trace("[[%s]] ", node);
