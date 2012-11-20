@@ -101,7 +101,7 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
     }
 
     @Override
-    public ObjectDesc[] getAllocations(long nextVirtualId) {
+    public ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess) {
         if (shouldRevirtualize(this)) {
             return new ObjectDesc[] {new ObjectDesc(virtualObject, values.toArray(new ValueNode[values.size()]), lockCount)};
         }

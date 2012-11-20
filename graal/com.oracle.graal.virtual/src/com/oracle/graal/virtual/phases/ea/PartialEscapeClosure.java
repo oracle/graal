@@ -72,10 +72,12 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
     private int virtualIds = 0;
 
     private final VirtualizerToolImpl tool;
+    private final MetaAccessProvider metaAccess;
 
     public PartialEscapeClosure(NodeBitMap usages, SchedulePhase schedule, MetaAccessProvider metaAccess) {
         this.usages = usages;
         this.schedule = schedule;
+        this.metaAccess = metaAccess;
         tool = new VirtualizerToolImpl(effects, usages, metaAccess);
     }
 
@@ -96,7 +98,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         for (Node node : nodeList) {
             ObjectDesc[] newAllocations = null;
             if (node instanceof EscapeAnalyzable) {
-                newAllocations = ((EscapeAnalyzable) node).getAllocations(virtualIds);
+                newAllocations = ((EscapeAnalyzable) node).getAllocations(virtualIds, metaAccess);
             }
 
             if (newAllocations != null) {

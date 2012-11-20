@@ -100,7 +100,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
     }
 
     @Override
-    public ObjectDesc[] getAllocations(long nextVirtualId) {
+    public ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess) {
         if (instanceClass != null) {
             assert !instanceClass().isArrayClass();
             ResolvedJavaField[] fields = getEscapeFields(instanceClass());

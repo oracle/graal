@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.virtual.*;
 
@@ -40,5 +41,5 @@ public interface EscapeAnalyzable {
         }
     }
 
-    ObjectDesc[] getAllocations(long nextVirtualId);
+    ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess);
 }

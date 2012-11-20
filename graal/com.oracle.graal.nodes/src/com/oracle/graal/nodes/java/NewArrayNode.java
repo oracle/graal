@@ -105,7 +105,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
     }
 
     @Override
-    public ObjectDesc[] getAllocations(long nextVirtualId) {
+    public ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess) {
         if (length().asConstant() != null) {
             final int constantLength = length().asConstant().asInt();
             if (constantLength >= 0 && constantLength < MaximumEscapeAnalysisArrayLength) {
