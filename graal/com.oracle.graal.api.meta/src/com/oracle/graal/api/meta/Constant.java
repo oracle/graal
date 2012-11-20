@@ -38,7 +38,7 @@ public final class Constant extends Value {
         }
     }
 
-    public static final Constant NULL_OBJECT = new Constant(Kind.Object, null);
+    public static final Constant NULL_OBJECT = new Constant(null);
     public static final Constant INT_MINUS_1 = new Constant(Kind.Int, -1);
     public static final Constant INT_0 = forInt(0);
     public static final Constant INT_1 = forInt(1);
@@ -76,19 +76,17 @@ public final class Constant extends Value {
 
     /**
      * Create a new constant represented by the specified object reference.
-     * 
-     * @param kind the type of this constant
      * @param object the value of this constant
      */
-    private Constant(Kind kind, Object object) {
-        super(kind);
+    private Constant(Object object) {
+        super(Kind.Object);
         this.object = object;
         this.primitive = 0L;
     }
 
     /**
      * Create a new constant represented by the specified primitive.
-     * 
+     *
      * @param kind the type of this constant
      * @param primitive the value of this constant
      */
@@ -100,7 +98,7 @@ public final class Constant extends Value {
 
     /**
      * Checks whether this constant is non-null.
-     * 
+     *
      * @return {@code true} if this constant is a primitive, or an object constant that is not null
      */
     public boolean isNonNull() {
@@ -109,7 +107,7 @@ public final class Constant extends Value {
 
     /**
      * Checks whether this constant is null.
-     * 
+     *
      * @return {@code true} if this constant is the null constant
      */
     public boolean isNull() {
@@ -132,7 +130,7 @@ public final class Constant extends Value {
 
     /**
      * Returns the value of this constant as a boxed Java value.
-     * 
+     *
      * @return the value of this constant
      */
     public Object asBoxedValue() {
@@ -174,7 +172,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to a primitive int.
-     * 
+     *
      * @return the int value of this constant
      */
     public int asInt() {
@@ -186,7 +184,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to a primitive boolean.
-     * 
+     *
      * @return the boolean value of this constant
      */
     public boolean asBoolean() {
@@ -198,7 +196,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to a primitive long.
-     * 
+     *
      * @return the long value of this constant
      */
     public long asLong() {
@@ -218,7 +216,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to a primitive float.
-     * 
+     *
      * @return the float value of this constant
      */
     public float asFloat() {
@@ -230,7 +228,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to a primitive double.
-     * 
+     *
      * @return the double value of this constant
      */
     public double asDouble() {
@@ -245,7 +243,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to the object reference it represents.
-     * 
+     *
      * @return the object which this constant represents
      */
     public Object asObject() {
@@ -257,7 +255,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to the jsr reference it represents.
-     * 
+     *
      * @return the object which this constant represents
      */
     public int asJsr() {
@@ -279,7 +277,7 @@ public final class Constant extends Value {
 
     /**
      * Computes the hashcode of this constant.
-     * 
+     *
      * @return a suitable hashcode for this constant
      */
     @Override
@@ -293,7 +291,7 @@ public final class Constant extends Value {
     /**
      * Checks whether this constant equals another object. This is only true if the other object is a constant and has
      * the same value.
-     * 
+     *
      * @param o the object to compare equality
      * @return {@code true} if this constant is equivalent to the specified object
      */
@@ -304,7 +302,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed double constant.
-     * 
+     *
      * @param d the double value to box
      * @return a boxed copy of {@code value}
      */
@@ -320,7 +318,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed float constant.
-     * 
+     *
      * @param f the float value to box
      * @return a boxed copy of {@code value}
      */
@@ -339,7 +337,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed long constant.
-     * 
+     *
      * @param i the long value to box
      * @return a boxed copy of {@code value}
      */
@@ -349,7 +347,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed integer constant.
-     * 
+     *
      * @param i the integer value to box
      * @return a boxed copy of {@code value}
      */
@@ -365,7 +363,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed byte constant.
-     * 
+     *
      * @param i the byte value to box
      * @return a boxed copy of {@code value}
      */
@@ -375,7 +373,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed boolean constant.
-     * 
+     *
      * @param i the boolean value to box
      * @return a boxed copy of {@code value}
      */
@@ -385,7 +383,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed char constant.
-     * 
+     *
      * @param i the char value to box
      * @return a boxed copy of {@code value}
      */
@@ -395,7 +393,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed short constant.
-     * 
+     *
      * @param i the short value to box
      * @return a boxed copy of {@code value}
      */
@@ -405,7 +403,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed address (jsr/ret address) constant.
-     * 
+     *
      * @param i the address value to box
      * @return a boxed copy of {@code value}
      */
@@ -415,7 +413,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed object constant.
-     * 
+     *
      * @param o the object value to box
      * @return a boxed copy of {@code value}
      */
@@ -423,13 +421,13 @@ public final class Constant extends Value {
         if (o == null) {
             return NULL_OBJECT;
         }
-        return new Constant(Kind.Object, o);
+        return new Constant(o);
     }
 
     /**
      * Creates a boxed constant for the given kind from an Object. The object needs to be of the Java boxed type
      * corresponding to the kind.
-     * 
+     *
      * @param kind the kind of the constant to create
      * @param value the Java boxed value: a {@link Byte} instance for {@link Kind#Byte}, etc.
      * @return the boxed copy of {@code value}
