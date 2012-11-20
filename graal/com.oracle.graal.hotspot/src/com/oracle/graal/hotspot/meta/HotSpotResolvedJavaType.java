@@ -403,8 +403,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
 
     @Override
     public Constant klass() {
-        Kind wordKind = HotSpotGraalRuntime.getInstance().getTarget().wordKind;
-        return wordKind.isLong() ? Constant.forLong(metaspaceKlass) : Constant.forInt((int) metaspaceKlass);
+        return new Constant(HotSpotGraalRuntime.getInstance().getTarget().wordKind, metaspaceKlass, this);
     }
 
     public boolean isPrimaryType() {
@@ -418,13 +417,5 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
 
     public long prototypeMarkWord() {
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().getPrototypeMarkWord(this);
-    }
-
-    public long address() {
-        return metaspaceKlass;
-    }
-
-    public String symbol() {
-        return javaMirror.getName();
     }
 }

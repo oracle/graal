@@ -155,7 +155,12 @@ public class AMD64ControlFlow {
             if (key.getKind() == Kind.Int) {
                 Register intKey = asIntReg(key);
                 for (int i = 0; i < keyConstants.length; i++) {
-                    masm.cmpl(intKey, tasm.asIntConst(keyConstants[i]));
+                    if (tasm.runtime.needsDataPatch(keyConstants[i])) {
+                        tasm.recordDataReferenceInCode(keyConstants[i], 0, true);
+                    }
+                    long lc = keyConstants[i].asLong();
+                    assert NumUtil.isInt(lc);
+                    masm.cmpl(intKey, (int) lc);
                     masm.jcc(ConditionFlag.equal, keyTargets[i].label());
                 }
             } else if (key.getKind() == Kind.Long) {

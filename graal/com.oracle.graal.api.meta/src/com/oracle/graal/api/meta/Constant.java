@@ -63,7 +63,8 @@ public final class Constant extends Value {
     }
 
     /**
-     * The boxed object value. This is ignored iff {@code !kind.isObject()}.
+     * The boxed object value if {@code !kind.isObject()} otherwise the (possibly null)
+     * {@link #getPrimitiveAnnotation() annotation} for a primitive value.
      */
     private final Object object;
 
@@ -75,7 +76,7 @@ public final class Constant extends Value {
     private final long primitive;
 
     /**
-     * Create a new constant represented by the specified object reference.
+     * Creates a constant represented by the specified object reference.
      * @param object the value of this constant
      */
     private Constant(Object object) {
@@ -85,14 +86,32 @@ public final class Constant extends Value {
     }
 
     /**
-     * Create a new constant represented by the specified primitive.
+     * Creates a constant represented by the specified primitive.
      *
      * @param kind the type of this constant
      * @param primitive the value of this constant
      */
     public Constant(Kind kind, long primitive) {
         super(kind);
+        assert !kind.isObject();
         this.object = null;
+        this.primitive = primitive;
+    }
+
+    /**
+     * Creates an annotated primitive constant. An annotation enables a {@linkplain MetaAccessProvider provider} to
+     * associate some extra semantic or debugging information with a primitive. An annotated primitive constant
+     * is never {@linkplain #equals(Object) equal} to a non-annotated constant.
+     *
+     * @param kind the type of this constant
+     * @param primitive the value of this constant
+     * @param annotation an arbitrary non-null object
+     */
+    public Constant(Kind kind, long primitive, Object annotation) {
+        super(kind);
+        assert !kind.isObject();
+        assert annotation != null;
+        this.object = annotation;
         this.primitive = primitive;
     }
 
@@ -125,7 +144,11 @@ public final class Constant extends Value {
 
     @Override
     public String toString() {
-        return getKind().getJavaName() + "[" + getKind().format(asBoxedValue()) + (getKind() != Kind.Object ? "|0x" + Long.toHexString(primitive) : "") + "]";
+        String annotationSuffix = "";
+        if (!getKind().isObject() && getPrimitiveAnnotation() != null) {
+            annotationSuffix = "{" + getPrimitiveAnnotation() + "}";
+        }
+        return getKind().getJavaName() + "[" + getKind().format(asBoxedValue()) + (getKind() != Kind.Object ? "|0x" + Long.toHexString(primitive) : "") + "]" + annotationSuffix;
     }
 
     /**
@@ -140,15 +163,15 @@ public final class Constant extends Value {
             case Boolean:
                 return asInt() == 0 ? Boolean.FALSE : Boolean.TRUE;
             case Short:
-                return (short) asInt();
+                return (short) primitive;
             case Char:
-                return (char) asInt();
+                return (char) primitive;
             case Jsr:
                 return (int) primitive;
             case Int:
-                return asInt();
+                return (int) primitive;
             case Long:
-                return asLong();
+                return primitive;
             case Float:
                 return asFloat();
             case Double:
@@ -167,7 +190,7 @@ public final class Constant extends Value {
         if (getKind().isObject()) {
             return object == other.object;
         }
-        return primitive == other.primitive;
+        return primitive == other.primitive && getPrimitiveAnnotation() == other.getPrimitiveAnnotation();
     }
 
     /**
@@ -276,6 +299,15 @@ public final class Constant extends Value {
     }
 
     /**
+     * Gets the annotation (if any) associated with this constant.
+     *
+     * @return null if this constant is not primitive or has no annotation
+     */
+    public Object getPrimitiveAnnotation() {
+        return getKind().isObject() ? null : object;
+    }
+
+    /**
      * Computes the hashcode of this constant.
      *
      * @return a suitable hashcode for this constant
@@ -289,8 +321,8 @@ public final class Constant extends Value {
     }
 
     /**
-     * Checks whether this constant equals another object. This is only true if the other object is a constant and has
-     * the same value.
+     * Checks whether this constant equals another object. This is only true if the other object is a constant that has
+     * the same {@linkplain #getKind() kind}, value and {@link #getPrimitiveAnnotation() annotation}.
      *
      * @param o the object to compare equality
      * @return {@code true} if this constant is equivalent to the specified object

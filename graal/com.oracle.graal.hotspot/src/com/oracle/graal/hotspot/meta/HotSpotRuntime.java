@@ -733,4 +733,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             default: throw GraalInternalError.shouldNotReachHere();
         }
     }
+
+    public boolean needsDataPatch(Constant constant) {
+        return constant.getPrimitiveAnnotation() instanceof HotSpotResolvedJavaType;
+    }
 }
