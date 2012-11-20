@@ -102,8 +102,8 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
 
             if (newAllocations != null) {
+                trace("{{%s}} ", node);
                 for (ObjectDesc desc : newAllocations) {
-                    trace("{{%s}} ", node);
                     VirtualObjectNode virtualObject = desc.virtualObject;
                     if (virtualObject.isAlive()) {
                         reusedVirtualObjects.add(virtualObject);
@@ -116,8 +116,8 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                         fieldState[i] = state.getScalarAlias(fieldState[i]);
                     }
                     state.addObject(virtualObject, new ObjectState(virtualObject, fieldState, desc.lockCount));
-                    state.addAndMarkAlias(virtualObject, (ValueNode) node, usages);
                 }
+                state.addAndMarkAlias(newAllocations[0].virtualObject, (ValueNode) node, usages);
                 effects.deleteFixedNode((FixedWithNextNode) node);
                 metricAllocationRemoved.add(newAllocations.length);
                 virtualIds += newAllocations.length;
