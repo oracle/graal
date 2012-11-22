@@ -28,6 +28,7 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.*;
@@ -189,12 +190,13 @@ public class TypeSystemTest extends GraalCompilerTest {
         if (false) {
             StructuredGraph graph = parse(snippet);
             Debug.dump(graph, "Graph");
-            new CanonicalizerPhase(null, runtime(), null).apply(graph);
+            Assumptions assumptions = new Assumptions(false);
+            new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
             new ConditionalEliminationPhase().apply(graph);
-            new CanonicalizerPhase(null, runtime(), null).apply(graph);
+            new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
             new GlobalValueNumberingPhase().apply(graph);
             StructuredGraph referenceGraph = parse(referenceSnippet);
-            new CanonicalizerPhase(null, runtime(), null).apply(referenceGraph);
+            new CanonicalizerPhase(null, runtime(), assumptions).apply(referenceGraph);
             new GlobalValueNumberingPhase().apply(referenceGraph);
             assertEquals(referenceGraph, graph);
         }
@@ -253,9 +255,10 @@ public class TypeSystemTest extends GraalCompilerTest {
         if (false) {
             StructuredGraph graph = parse(snippet);
             Debug.dump(graph, "Graph");
-            new CanonicalizerPhase(null, runtime(), null).apply(graph);
+            Assumptions assumptions = new Assumptions(false);
+            new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
             new ConditionalEliminationPhase().apply(graph);
-            new CanonicalizerPhase(null, runtime(), null).apply(graph);
+            new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
             Debug.dump(graph, "Graph");
             Assert.assertFalse("shouldn't have nodes of type " + clazz, graph.getNodes(clazz).iterator().hasNext());
         }

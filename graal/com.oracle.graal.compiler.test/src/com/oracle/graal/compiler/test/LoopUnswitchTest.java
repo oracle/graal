@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.phases.*;
@@ -79,8 +80,9 @@ public class LoopUnswitchTest extends GraalCompilerTest {
             ((StateSplit) stateSplit).setStateAfter(null);
         }
 
-        new CanonicalizerPhase(null, runtime(), null).apply(graph);
-        new CanonicalizerPhase(null, runtime(), null).apply(referenceGraph);
+        Assumptions assumptions = new Assumptions(false);
+        new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
+        new CanonicalizerPhase(null, runtime(), assumptions).apply(referenceGraph);
         Debug.scope("Test", new DebugDumpScope("Test:" + snippet), new Runnable() {
             @Override
             public void run() {

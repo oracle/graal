@@ -399,8 +399,8 @@ public class MonitorSnippets implements SnippetsInterface {
         private final ResolvedJavaMethod checkCounter;
         private final boolean useFastLocking;
 
-        public Templates(CodeCacheProvider runtime, boolean useFastLocking) {
-            super(runtime, MonitorSnippets.class);
+        public Templates(CodeCacheProvider runtime, Assumptions assumptions, boolean useFastLocking) {
+            super(runtime, assumptions, MonitorSnippets.class);
             monitorenter = snippet("monitorenter", Object.class, boolean.class, boolean.class);
             monitorexit = snippet("monitorexit", Object.class, boolean.class);
             monitorenterStub = snippet("monitorenterStub", Object.class, boolean.class, boolean.class);
@@ -435,7 +435,7 @@ public class MonitorSnippets implements SnippetsInterface {
             if (!eliminated) {
                 arguments.add("object", monitorenterNode.object());
             }
-            SnippetTemplate template = cache.get(key);
+            SnippetTemplate template = cache.get(key, assumptions);
             Map<Node, Node> nodes = template.instantiate(runtime, monitorenterNode, DEFAULT_REPLACER, arguments);
             for (Node n : nodes.values()) {
                 if (n instanceof BeginLockScopeNode) {
@@ -460,7 +460,7 @@ public class MonitorSnippets implements SnippetsInterface {
             if (!eliminated) {
                 arguments.add("object", monitorexitNode.object());
             }
-            SnippetTemplate template = cache.get(key);
+            SnippetTemplate template = cache.get(key, assumptions);
             Map<Node, Node> nodes = template.instantiate(runtime, monitorexitNode, DEFAULT_REPLACER, arguments);
             for (Node n : nodes.values()) {
                 if (n instanceof EndLockScopeNode) {

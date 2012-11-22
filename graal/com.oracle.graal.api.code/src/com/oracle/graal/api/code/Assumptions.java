@@ -167,8 +167,12 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * Array with the assumptions. This field is directly accessed from C++ code in the Graal/HotSpot implementation.
      */
     private Assumption[] list;
-
+    private boolean useOptimisticAssumptions;
     private int count;
+
+    public Assumptions(boolean useOptimisticAssumptions) {
+        this.useOptimisticAssumptions = useOptimisticAssumptions;
+    }
 
     /**
      * Returns whether any assumptions have been registered.
@@ -176,6 +180,10 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      */
     public boolean isEmpty() {
         return count == 0;
+    }
+
+    public boolean useOptimisticAssumptions() {
+        return useOptimisticAssumptions;
     }
 
     @Override
@@ -203,9 +211,9 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * @param receiverType the type that is assumed to have no finalizable subclasses
      * @return {@code true} if the assumption was recorded and can be assumed; {@code false} otherwise
      */
-    @SuppressWarnings("static-method")
     public boolean recordNoFinalizableSubclassAssumption(ResolvedJavaType receiverType) {
         // TODO (thomaswue): Record that assumption correctly.
+        assert useOptimisticAssumptions;
         return false;
     }
 
@@ -215,6 +223,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * @param subtype the one concrete subtype
      */
     public void recordConcreteSubtype(ResolvedJavaType context, ResolvedJavaType subtype) {
+        assert useOptimisticAssumptions;
         record(new ConcreteSubtype(context, subtype));
     }
 
@@ -227,6 +236,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * @param impl the concrete method that is the only possible target for the virtual call
      */
     public void recordConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType context, ResolvedJavaMethod impl) {
+        assert useOptimisticAssumptions;
         record(new ConcreteMethod(method, context, impl));
     }
 

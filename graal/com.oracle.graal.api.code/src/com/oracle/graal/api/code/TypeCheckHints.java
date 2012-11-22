@@ -65,7 +65,7 @@ public class TypeCheckHints {
             ResolvedJavaType uniqueSubtype = type == null ? null : type.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
                 types = new ResolvedJavaType[] {uniqueSubtype};
-                if (assumptions != null) {
+                if (assumptions.useOptimisticAssumptions()) {
                     assumptions.recordConcreteSubtype(type, uniqueSubtype);
                     exact = true;
                 } else {

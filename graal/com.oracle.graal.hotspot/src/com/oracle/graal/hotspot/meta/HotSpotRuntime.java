@@ -199,7 +199,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     protected abstract RegisterConfig createRegisterConfig(boolean globalStubConfig);
 
-    public void installSnippets(SnippetInstaller installer) {
+    public void installSnippets(SnippetInstaller installer, Assumptions assumptions) {
         installer.install(SystemSnippets.class);
         installer.install(UnsafeSnippets.class);
         installer.install(ArrayCopySnippets.class);
@@ -209,10 +209,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         installer.install(NewObjectSnippets.class);
         installer.install(MonitorSnippets.class);
 
-        checkcastSnippets = new CheckCastSnippets.Templates(this);
-        instanceofSnippets = new InstanceOfSnippets.Templates(this);
-        newObjectSnippets = new NewObjectSnippets.Templates(this, graalRuntime.getTarget(), config.useTLAB);
-        monitorSnippets = new MonitorSnippets.Templates(this, config.useFastLocking);
+        checkcastSnippets = new CheckCastSnippets.Templates(this, assumptions);
+        instanceofSnippets = new InstanceOfSnippets.Templates(this, assumptions);
+        newObjectSnippets = new NewObjectSnippets.Templates(this, assumptions, graalRuntime.getTarget(), config.useTLAB);
+        monitorSnippets = new MonitorSnippets.Templates(this, assumptions, config.useFastLocking);
     }
 
 

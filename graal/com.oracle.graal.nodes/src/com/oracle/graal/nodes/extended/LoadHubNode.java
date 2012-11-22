@@ -58,7 +58,7 @@ public final class LoadHubNode extends FixedWithNextNode implements Lowerable, C
             ResolvedJavaType exactType;
             if (stamp.isExactType()) {
                 exactType = stamp.type();
-            } else if (stamp.type() != null && tool.assumptions() != null) {
+            } else if (stamp.type() != null && tool.assumptions().useOptimisticAssumptions()) {
                 exactType = stamp.type().findUniqueConcreteSubtype();
                 if (exactType != null) {
                     tool.assumptions().recordConcreteSubtype(stamp.type(), exactType);

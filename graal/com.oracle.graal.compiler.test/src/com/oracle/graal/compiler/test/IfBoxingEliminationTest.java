@@ -26,6 +26,7 @@ import java.util.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -85,18 +86,20 @@ public class IfBoxingEliminationTest extends GraalCompilerTest {
                 for (Invoke invoke : graph.getInvokes()) {
                     hints.add(invoke);
                 }
-                new InliningPhase(null, runtime(), hints, null, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
-                new CanonicalizerPhase(null, runtime(), null).apply(graph);
+
+                Assumptions assumptions = new Assumptions(false);
+                new InliningPhase(null, runtime(), hints, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
+                new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
                 new PhiStampPhase().apply(graph);
-                new CanonicalizerPhase(null, runtime(), null).apply(graph);
+                new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
                 Debug.dump(graph, "Graph");
                 new BoxingEliminationPhase().apply(graph);
                 Debug.dump(graph, "Graph");
                 new ExpandBoxingNodesPhase(pool).apply(graph);
-                new CanonicalizerPhase(null, runtime(), null).apply(graph);
+                new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
                 StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
-                new CanonicalizerPhase(null, runtime(), null).apply(referenceGraph);
+                new CanonicalizerPhase(null, runtime(), assumptions).apply(referenceGraph);
                 new DeadCodeEliminationPhase().apply(referenceGraph);
 
                 assertEquals(referenceGraph, graph);

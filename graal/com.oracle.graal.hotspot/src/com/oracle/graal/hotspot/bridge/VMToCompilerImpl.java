@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
@@ -112,10 +113,11 @@ public class VMToCompilerImpl implements VMToCompiler {
 
                 @Override
                 public void run() {
-                    VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime);
-                    SnippetInstaller installer = new SnippetInstaller(runtime, runtime.getGraalRuntime().getTarget());
+                    Assumptions assumptions = new Assumptions(GraalOptions.OptAssumptions);
+                    VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime, assumptions);
+                    SnippetInstaller installer = new SnippetInstaller(runtime, runtime.getGraalRuntime().getTarget(), assumptions);
                     GraalIntrinsics.installIntrinsics(installer);
-                    runtime.installSnippets(installer);
+                    runtime.installSnippets(installer, assumptions);
                 }
             });
 

@@ -26,6 +26,7 @@ import java.util.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -73,8 +74,10 @@ public class InvokeHintsTest extends GraalCompilerTest {
         for (Invoke invoke : graph.getInvokes()) {
             hints.add(invoke);
         }
-        new InliningPhase(null, runtime(), hints, null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-        new CanonicalizerPhase(null, runtime(), null).apply(graph);
+
+        Assumptions assumptions = new Assumptions(false);
+        new InliningPhase(null, runtime(), hints, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+        new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
         StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);

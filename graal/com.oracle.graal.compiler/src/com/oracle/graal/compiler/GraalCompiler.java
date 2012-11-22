@@ -75,7 +75,7 @@ public class GraalCompiler {
         return Debug.scope("GraalCompiler", new Object[]{graph, method, this}, new Callable<CompilationResult>() {
 
             public CompilationResult call() {
-                final Assumptions assumptions = GraalOptions.OptAssumptions ? new Assumptions() : null;
+                final Assumptions assumptions = new Assumptions(GraalOptions.OptAssumptions);
                 final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
 
                     public LIR call() {
@@ -135,7 +135,7 @@ public class GraalCompiler {
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
 
         if (GraalOptions.FullUnroll) {
-            new LoopFullUnrollPhase(runtime).apply(graph);
+            new LoopFullUnrollPhase(runtime, assumptions).apply(graph);
             if (GraalOptions.OptCanonicalizer) {
                 new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
             }
@@ -261,7 +261,7 @@ public class GraalCompiler {
         TargetMethodAssembler tasm = backend.newAssembler(frameMap, lir);
         backend.emitCode(tasm, method, lir);
         CompilationResult targetMethod = tasm.finishTargetMethod(method, false);
-        if (assumptions != null && !assumptions.isEmpty()) {
+        if (!assumptions.isEmpty()) {
             targetMethod.setAssumptions(assumptions);
         }
 

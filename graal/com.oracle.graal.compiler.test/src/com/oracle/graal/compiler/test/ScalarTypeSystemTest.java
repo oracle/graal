@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
@@ -164,9 +165,10 @@ public class ScalarTypeSystemTest extends GraalCompilerTest {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
 //        TypeSystemTest.outputGraph(graph);
-        new CanonicalizerPhase(null, runtime(), null).apply(graph);
+        Assumptions assumptions = new Assumptions(false);
+        new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
         new ConditionalEliminationPhase().apply(graph);
-        new CanonicalizerPhase(null, runtime(), null).apply(graph);
+        new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
         StructuredGraph referenceGraph = parse(referenceSnippet);
         assertEquals(referenceGraph, graph);
     }

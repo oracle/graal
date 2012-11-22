@@ -243,8 +243,8 @@ public class NewObjectSnippets implements SnippetsInterface {
         private final TargetDescription target;
         private final boolean useTLAB;
 
-        public Templates(CodeCacheProvider runtime, TargetDescription target, boolean useTLAB) {
-            super(runtime, NewObjectSnippets.class);
+        public Templates(CodeCacheProvider runtime, Assumptions assumptions, TargetDescription target, boolean useTLAB) {
+            super(runtime, assumptions, NewObjectSnippets.class);
             this.target = target;
             this.useTLAB = useTLAB;
             allocate = snippet("allocate", int.class);
@@ -318,7 +318,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                                 add("wordKind", target.wordKind).
                                 add("type", arrayType);
                 Arguments arguments = new Arguments().add("length", lengthNode);
-                SnippetTemplate template = cache.get(key);
+                SnippetTemplate template = cache.get(key, assumptions);
                 Debug.log("Lowering allocateArrayAndInitialize in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, arguments);
                 template.instantiate(runtime, newArrayNode, DEFAULT_REPLACER, arguments);
             }
@@ -330,7 +330,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             ValueNode size = tlabAllocateNode.size();
             Key key = new Key(allocate);
             Arguments arguments = arguments("size", size);
-            SnippetTemplate template = cache.get(key);
+            SnippetTemplate template = cache.get(key, assumptions);
             Debug.log("Lowering fastAllocate in %s: node=%s, template=%s, arguments=%s", graph, tlabAllocateNode, template, arguments);
             template.instantiate(runtime, tlabAllocateNode, DEFAULT_REPLACER, arguments);
         }
@@ -347,7 +347,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             Key key = new Key(initializeObject).add("size", size).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
             ValueNode memory = initializeNode.memory();
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord());
-            SnippetTemplate template = cache.get(key);
+            SnippetTemplate template = cache.get(key, assumptions);
             Debug.log("Lowering initializeObject in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, arguments);
             template.instantiate(runtime, initializeNode, DEFAULT_REPLACER, arguments);
         }
@@ -364,7 +364,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             Key key = new Key(elementKind.isObject() ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
             ValueNode memory = initializeNode.memory();
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord()).add("size", initializeNode.size()).add("length", initializeNode.length());
-            SnippetTemplate template = cache.get(key);
+            SnippetTemplate template = cache.get(key, assumptions);
             Debug.log("Lowering initializeObjectArray in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, arguments);
             template.instantiate(runtime, initializeNode, DEFAULT_REPLACER, arguments);
         }
@@ -381,7 +381,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             HotSpotKlassOop hub = type.klassOop();
             Key key = new Key(newmultiarray).add("dimensions", Varargs.vargargs(int.class, rank)).add("rank", rank);
             Arguments arguments = arguments("dimensions", dims).add("hub", hub);
-            SnippetTemplate template = cache.get(key);
+            SnippetTemplate template = cache.get(key, assumptions);
             template.instantiate(runtime, newmultiarrayNode, DEFAULT_REPLACER, arguments);
         }
     }

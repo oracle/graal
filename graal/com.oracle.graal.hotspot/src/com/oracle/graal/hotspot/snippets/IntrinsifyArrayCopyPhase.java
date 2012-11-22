@@ -36,6 +36,7 @@ import com.oracle.graal.phases.common.*;
 
 public class IntrinsifyArrayCopyPhase extends Phase {
     private final GraalCodeCacheProvider runtime;
+    private final Assumptions assumptions;
     private ResolvedJavaMethod arrayCopy;
     private ResolvedJavaMethod byteArrayCopy;
     private ResolvedJavaMethod shortArrayCopy;
@@ -46,8 +47,9 @@ public class IntrinsifyArrayCopyPhase extends Phase {
     private ResolvedJavaMethod doubleArrayCopy;
     private ResolvedJavaMethod objectArrayCopy;
 
-    public IntrinsifyArrayCopyPhase(GraalCodeCacheProvider runtime) {
+    public IntrinsifyArrayCopyPhase(GraalCodeCacheProvider runtime, Assumptions assumptions) {
         this.runtime = runtime;
+        this.assumptions = assumptions;
         try {
             byteArrayCopy = getArrayCopySnippet(runtime, byte.class);
             charArrayCopy = getArrayCopySnippet(runtime, char.class);
@@ -121,7 +123,7 @@ public class IntrinsifyArrayCopyPhase extends Phase {
             }
         }
         if (GraalOptions.OptCanonicalizer && hits) {
-            new CanonicalizerPhase(null, runtime, null).apply(graph);
+            new CanonicalizerPhase(null, runtime, assumptions).apply(graph);
         }
     }
 }

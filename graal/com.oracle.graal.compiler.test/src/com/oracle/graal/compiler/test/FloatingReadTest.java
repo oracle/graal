@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -54,7 +55,7 @@ public class FloatingReadTest extends GraphScheduleTest {
         Debug.scope("FloatingReadTest", new DebugDumpScope(snippet), new Runnable() {
             public void run() {
                 StructuredGraph graph = parse(snippet);
-                new LoweringPhase(runtime(), null).apply(graph);
+                new LoweringPhase(runtime(), new Assumptions(false)).apply(graph);
                 new FloatingReadPhase().apply(graph);
 
                 ReturnNode returnNode = null;

@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
 
@@ -36,10 +37,11 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
             StructuredGraph graph = parse("canonicalCompare" + i);
             assertEquals(referenceGraph, graph);
         }
-        new CanonicalizerPhase(null, runtime(), null).apply(referenceGraph);
+        Assumptions assumptions = new Assumptions(false);
+        new CanonicalizerPhase(null, runtime(), assumptions).apply(referenceGraph);
         for (int i = 1; i < 4; i++) {
             StructuredGraph graph = parse("canonicalCompare" + i);
-            new CanonicalizerPhase(null, runtime(), null).apply(graph);
+            new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
             assertEquals(referenceGraph, graph);
         }
     }

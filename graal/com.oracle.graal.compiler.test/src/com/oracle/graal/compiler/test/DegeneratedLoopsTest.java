@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
@@ -81,7 +82,7 @@ public class DegeneratedLoopsTest extends GraalCompilerTest {
                 for (Invoke invoke : graph.getInvokes()) {
                     invoke.intrinsify(null);
                 }
-                new CanonicalizerPhase(null, runtime(), null).apply(graph);
+                new CanonicalizerPhase(null, runtime(), new Assumptions(false)).apply(graph);
                 StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
                 Debug.dump(referenceGraph, "Graph");
                 assertEquals(referenceGraph, graph);

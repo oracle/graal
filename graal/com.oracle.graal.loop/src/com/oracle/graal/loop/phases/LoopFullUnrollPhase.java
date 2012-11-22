@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.loop.phases;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
@@ -32,9 +33,11 @@ import com.oracle.graal.phases.*;
 public class LoopFullUnrollPhase extends Phase {
     private static final DebugMetric FULLY_UNROLLED_LOOPS = Debug.metric("FullUnrolls");
     private final GraalCodeCacheProvider runtime;
+    private final Assumptions assumptions;
 
-    public LoopFullUnrollPhase(GraalCodeCacheProvider runtime) {
+    public LoopFullUnrollPhase(GraalCodeCacheProvider runtime, Assumptions assumptions) {
         this.runtime = runtime;
+        this.assumptions = assumptions;
     }
 
     @Override
@@ -48,7 +51,7 @@ public class LoopFullUnrollPhase extends Phase {
                 for (LoopEx loop : dataCounted.countedLoops()) {
                     if (LoopPolicies.shouldFullUnroll(loop)) {
                         Debug.log("FullUnroll %s", loop);
-                        LoopTransformations.fullUnroll(loop, runtime);
+                        LoopTransformations.fullUnroll(loop, runtime, assumptions);
                         FULLY_UNROLLED_LOOPS.increment();
                         Debug.dump(graph, "After fullUnroll %s", loop);
                         peeled = true;

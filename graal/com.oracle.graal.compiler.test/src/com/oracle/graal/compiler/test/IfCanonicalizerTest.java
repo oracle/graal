@@ -26,6 +26,7 @@ import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -143,7 +144,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
             n.replaceFirstInput(local, constant);
         }
         Debug.dump(graph, "Graph");
-        new CanonicalizerPhase(null, runtime(), null).apply(graph);
+        new CanonicalizerPhase(null, runtime(), new Assumptions(false)).apply(graph);
         StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);
     }

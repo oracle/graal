@@ -45,14 +45,14 @@ public @interface Snippet {
 
     /**
      * Specifies the class defining the inlining policy for this snippet.
-     * A {@linkplain InliningPolicy#Default default} policy is used if none is supplied.
+     * A {@linkplain SnippetInliningPolicy#Default default} policy is used if none is supplied.
      */
-    Class<? extends InliningPolicy> inlining() default InliningPolicy.class;
+    Class<? extends SnippetInliningPolicy> inlining() default SnippetInliningPolicy.class;
 
     /**
      * Guides inlining decisions used when installing a snippet.
      */
-    public interface InliningPolicy {
+    public interface SnippetInliningPolicy {
         /**
          * Determines if {@code method} should be inlined into {@code caller}.
          */
@@ -68,7 +68,7 @@ public @interface Snippet {
          * <li>constructors of {@link Throwable} classes</li>
          * </ul>
          */
-        InliningPolicy Default = new InliningPolicy() {
+        SnippetInliningPolicy Default = new SnippetInliningPolicy() {
             public boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller) {
                 if (Modifier.isNative(method.getModifiers())) {
                     return false;

@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
@@ -88,7 +89,7 @@ public class StraighteningTest extends GraalCompilerTest {
         // No debug scope to reduce console noise for @Test(expected = ...) tests
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
-        new CanonicalizerPhase(null, runtime(), null).apply(graph);
+        new CanonicalizerPhase(null, runtime(), new Assumptions(false)).apply(graph);
         StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);
     }

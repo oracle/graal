@@ -43,12 +43,12 @@ public final class GraalOptions {
            static boolean InlineMonomorphicCalls             = true;
            static boolean InlinePolymorphicCalls             = true;
            static boolean InlineMegamorphicCalls             = ____;
-    public static int     InliningPolicy                     = 4;
+    public static int     InliningPolicy                     = 0;
+    public static int     InliningDecision                   = 4;
     public static int     WeightComputationPolicy            = 2;
     public static int     MaximumTrivialSize                 = 10;
     public static int     MaximumInlineLevel                 = 30;
     public static int     MaximumDesiredSize                 = 3000;
-    public static boolean AlwaysInlineTrivialMethods         = ____;
     public static int     MaximumRecursiveInlining           = 1;
     public static int     SmallCompiledCodeSize              = 2200;
     public static boolean LimitInlinedProbability            = ____;
