@@ -22,14 +22,12 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import java.util.concurrent.*;
-
+import junit.framework.*;
 import junit.framework.Assert;
 
 import org.junit.Test;
 
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -145,26 +143,22 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
     }
 
     private StructuredGraph processMethod(final String snippet) {
-        return Debug.scope(getClass().getSimpleName(), new Callable<StructuredGraph>() {
-            @Override
-            public StructuredGraph call() throws Exception {
-                StructuredGraph graph = parse(snippet);
-                new ComputeProbabilityPhase().apply(graph);
-                for (Invoke n : graph.getInvokes()) {
-                    n.node().setProbability(100000);
-                }
-                new InliningPhase(null, runtime(), null, null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-                new DeadCodeEliminationPhase().apply(graph);
-                new CanonicalizerPhase(null, runtime(), null).apply(graph);
-//                TypeSystemTest.outputGraph(graph, "before EscapeAnalysis " + snippet);
-                new PartialEscapeAnalysisPhase(null, runtime(), null).apply(graph);
-//                TypeSystemTest.outputGraph(graph, "after EscapeAnalysis " + snippet);
-                new CullFrameStatesPhase().apply(graph);
-                new DeadCodeEliminationPhase().apply(graph);
-                new CanonicalizerPhase(null, runtime(), null).apply(graph);
-//                TypeSystemTest.outputGraph(graph, "after CullFrameStates " + snippet);
-                return graph;
+        StructuredGraph graph = parse(snippet);
+        try {
+            new ComputeProbabilityPhase().apply(graph);
+            for (Invoke n : graph.getInvokes()) {
+                n.node().setProbability(100000);
             }
-        });
+            new InliningPhase(null, runtime(), null, null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+            new DeadCodeEliminationPhase().apply(graph);
+            new CanonicalizerPhase(null, runtime(), null).apply(graph);
+            new PartialEscapeAnalysisPhase(null, runtime(), null, false).apply(graph);
+            new CullFrameStatesPhase().apply(graph);
+            new DeadCodeEliminationPhase().apply(graph);
+            new CanonicalizerPhase(null, runtime(), null).apply(graph);
+            return graph;
+        } catch (AssertionFailedError t) {
+            throw new RuntimeException(t.getMessage() + "\n" + getCanonicalGraphString(graph), t);
+        }
     }
 }
