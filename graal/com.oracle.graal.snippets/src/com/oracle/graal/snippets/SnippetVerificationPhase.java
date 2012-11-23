@@ -83,7 +83,7 @@ public class SnippetVerificationPhase extends Phase {
                             ValueNode argument = arguments.get(argc);
                             if (argument == node) {
                                 ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
-                                verify((type.toJava() == Word.class) == isWord(argument), node, invoke.node(), "cannot pass word value to non-word parameter " + i + " or vice-versa");
+                                verify((type.isClass(Word.class)) == isWord(argument), node, invoke.node(), "cannot pass word value to non-word parameter " + i + " or vice-versa");
                             }
                             argc++;
                         }

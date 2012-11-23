@@ -56,8 +56,10 @@ public interface MetaAccessProvider {
 
     /**
      * Compares two constants for equality.
-     * This is used instead of {@link Constant#equals(Object)} in case where the runtime
-     * may have an interpretation for object equality other than {@code x.asObject() == y.asObject()}.
+     * This is used instead of {@link Constant#equals(Object)} in case the runtime
+     * has an interpretation for object equality other than {@code x.asObject() == y.asObject()}.
+     * For primitive constants, this is equivalent to calling {@code x.equals(y)}.
+     * The equality relationship is symmetric.
      *
      * @return {@code true} if the two parameters represent the same runtime object, {@code false} otherwise
      */
@@ -65,6 +67,8 @@ public interface MetaAccessProvider {
 
     /**
      * Returns the length of an array that is wrapped in a {@link Constant} object.
+     *
+     * @throws IllegalArgumentException if {@code array} is not an array
      */
     int lookupArrayLength(Constant array);
 }

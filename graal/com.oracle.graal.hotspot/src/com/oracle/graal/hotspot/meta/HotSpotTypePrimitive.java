@@ -167,6 +167,11 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
     }
 
     @Override
+    public boolean isClass(Class c) {
+        return c == javaMirror;
+    }
+
+    @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
         return this;
     }
