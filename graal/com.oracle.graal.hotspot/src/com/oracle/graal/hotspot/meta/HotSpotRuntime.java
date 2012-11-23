@@ -395,7 +395,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 AbstractCallTargetNode loweredCallTarget = null;
                 if (callTarget.invokeKind() == InvokeKind.Virtual &&
                     GraalOptions.InlineVTableStubs &&
-                    (GraalOptions.AlwaysInlineVTableStubs || invoke.isMegamorphic())) {
+                    (GraalOptions.AlwaysInlineVTableStubs || invoke.isPolymorphic())) {
 
                     HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
                     if (!hsMethod.getDeclaringClass().isInterface()) {

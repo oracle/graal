@@ -62,11 +62,11 @@ public interface Invoke extends StateSplit, Lowerable {
     void setUseForInlining(boolean value);
 
     /**
-     * True if this invocation is almost certainly megamorphic, false when in doubt.
+     * True if this invocation is almost certainly polymorphic, false when in doubt.
      */
-    boolean isMegamorphic();
+    boolean isPolymorphic();
 
-    void setMegamorphic(boolean value);
+    void setPolymorphic(boolean value);
 
     long leafGraphId();
 }
