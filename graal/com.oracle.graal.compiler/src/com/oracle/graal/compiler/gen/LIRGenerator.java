@@ -845,6 +845,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 // only a few entries
                 emitSequentialSwitch(x, value, defaultTarget);
             } else {
+                assert value.getKind() == Kind.Int;
                 long valueRange = x.keyAt(keyCount - 1).asLong() - x.keyAt(0).asLong() + 1;
                 int switchRangeCount = switchRangeCount(x);
                 if (switchRangeCount == 0) {

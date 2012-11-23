@@ -35,6 +35,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.snippets.Snippet.SnippetInliningPolicy;
@@ -47,6 +48,7 @@ public class SnippetInstaller {
     private final MetaAccessProvider runtime;
     private final TargetDescription target;
     private final Assumptions assumptions;
+    private final Stamp wordStamp;
     private final BoxingMethodPool pool;
 
     /**
@@ -57,9 +59,10 @@ public class SnippetInstaller {
      */
     private final Map<ResolvedJavaMethod, StructuredGraph> graphCache;
 
-    public SnippetInstaller(MetaAccessProvider runtime, TargetDescription target, Assumptions assumptions) {
+    public SnippetInstaller(MetaAccessProvider runtime, TargetDescription target, Stamp wordStamp, Assumptions assumptions) {
         this.runtime = runtime;
         this.target = target;
+        this.wordStamp = wordStamp;
         this.assumptions = assumptions;
         this.pool = new BoxingMethodPool(runtime);
         this.graphCache = new HashMap<>();
@@ -181,7 +184,7 @@ public class SnippetInstaller {
                         InliningUtil.inline(invoke, targetGraph, true);
                         Debug.dump(graph, "after inlining %s", callee);
                         if (GraalOptions.OptCanonicalizer) {
-                            new WordTypeRewriterPhase(target.wordKind, runtime.lookupJavaType(target.wordKind.toJavaClass())).apply(graph);
+                            new WordTypeRewriterPhase(target.wordKind, wordStamp, runtime.lookupJavaType(target.wordKind.toJavaClass())).apply(graph);
                             new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
                         }
                     }
@@ -189,7 +192,7 @@ public class SnippetInstaller {
 
                 new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
 
-                new WordTypeRewriterPhase(target.wordKind, runtime.lookupJavaType(target.wordKind.toJavaClass())).apply(graph);
+                new WordTypeRewriterPhase(target.wordKind, wordStamp, runtime.lookupJavaType(target.wordKind.toJavaClass())).apply(graph);
 
                 new DeadCodeEliminationPhase().apply(graph);
                 if (GraalOptions.OptCanonicalizer) {

@@ -30,7 +30,12 @@ import com.oracle.graal.hotspot.*;
  */
 public abstract class HotSpotJavaType extends CompilerObject implements JavaType {
     private static final long serialVersionUID = -4252886265301910771L;
-    protected String name;
+
+    private final String name;
+
+    public HotSpotJavaType(String name) {
+        this.name = name;
+    }
 
     @Override
     public final String getName() {
@@ -38,8 +43,7 @@ public abstract class HotSpotJavaType extends CompilerObject implements JavaType
     }
 
     /**
-     * Gets the object representing the C++ klassOop for this type.
-     * Such a value cannot be safely exposed to Java code.
+     * Gets the address of the C++ Klass object for this type.
      */
-    public abstract HotSpotKlassOop klassOop();
+    public abstract Constant klass();
 }

@@ -138,6 +138,16 @@ public class HotSpotSnippetUtils {
     }
 
     @Fold
+    static int metaspaceArrayLengthOffset() {
+        return HotSpotGraalRuntime.getInstance().getConfig().metaspaceArrayLengthOffset;
+    }
+
+    @Fold
+    static int metaspaceArrayBaseOffset() {
+        return HotSpotGraalRuntime.getInstance().getConfig().metaspaceArrayBaseOffset;
+    }
+
+    @Fold
     static int arrayLengthOffset() {
         return HotSpotGraalRuntime.getInstance().getConfig().arrayLengthOffset;
     }
@@ -190,10 +200,9 @@ public class HotSpotSnippetUtils {
     /**
      * Loads the hub from a object, null checking it first.
      */
-    static Object loadHub(Object object) {
-        return LoadHubNode.loadHub(object);
+    static Word loadHub(Object object) {
+        return loadHubIntrinsic(object, wordKind());
     }
-
 
     static Object verifyOop(Object object) {
         if (verifyOops()) {
@@ -216,6 +225,11 @@ public class HotSpotSnippetUtils {
         return HotSpotSnippetUtils.registerAsWord(threadRegister());
     }
 
+    static int loadIntFromWord(Word address, int offset) {
+        Integer value = UnsafeLoadNode.load(address, 0, offset, Kind.Int);
+        return value;
+    }
+
     static Word loadWordFromWord(Word address, int offset) {
         return loadWordFromWordIntrinsic(address, 0, offset, wordKind());
     }
@@ -232,6 +246,9 @@ public class HotSpotSnippetUtils {
 
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
     private static native Word loadWordFromWordIntrinsic(Word address, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind);
+
+    @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
+    static native Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word);
 
     static {
         assert arrayIndexScale(Kind.Byte) == 1;

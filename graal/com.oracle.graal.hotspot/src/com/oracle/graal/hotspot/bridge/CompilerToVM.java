@@ -34,19 +34,75 @@ import com.oracle.graal.hotspot.meta.*;
  */
 public interface CompilerToVM {
 
-    byte[] getBytecode(HotSpotResolvedJavaMethod method);
+    /**
+     * Copies the original bytecode of a given method into a given byte array.
+     *
+     * @param metaspaceMethod the metaspace Method object
+     * @param code the array into which to copy the original bytecode
+     * @return the value of {@code code}
+     */
+    byte[] initializeBytecode(long metaspaceMethod, byte[] code);
 
-    String getSignature(HotSpotResolvedJavaMethod method);
+    String getSignature(long metaspaceMethod);
 
-    ExceptionHandler[] getExceptionHandlers(HotSpotResolvedJavaMethod method);
+    ExceptionHandler[] initializeExceptionHandlers(long metaspaceMethod, ExceptionHandler[] handlers);
 
-    boolean hasBalancedMonitors(HotSpotResolvedJavaMethod method);
+    /**
+     * Determines if a given metaspace Method object has balanced monitors.
+     *
+     * @param metaspaceMethod the metaspace Method object to query
+     * @return true if the method has balanced monitors
+     */
+    boolean hasBalancedMonitors(long metaspaceMethod);
 
-    JavaMethod getUniqueConcreteMethod(HotSpotResolvedJavaMethod method);
+    /**
+     * Determines if a given metaspace Method object is compilable. A method may not be compilable
+     * for a number of reasons such as:
+     * <ul>
+     * <li>a CompileOracle directive may prevent compilation of methods</li>
+     * <li>the method may have a bytecode breakpoint set</li>
+     * <li>the method may have other bytecode features that require special handling by the VM</li>
+     * </ul>
+     *
+     * A non-compilable method should not be inlined.
+     *
+     * @param metaspaceMethod the metaspace Method object to query
+     * @return true if the method is compilable
+     */
+    boolean isMethodCompilable(long metaspaceMethod);
 
-    int getInvocationCount(HotSpotResolvedJavaMethod method);
+    /**
+     * Used to implement {@link ResolvedJavaType#findUniqueConcreteMethod(ResolvedJavaMethod)}.
+     *
+     * @param metaspaceMethod the metaspace Method on which to based the search
+     * @param resultHolder the holder of the result is put in element 0 of this array
+     * @return the metaspace Method result or 0 is there is no unique concrete method for {@code metaspaceMethod}
+     */
+    long getUniqueConcreteMethod(long metaspaceMethod, HotSpotResolvedJavaType[] resultHolder);
 
-    HotSpotMethodData getMethodData(HotSpotResolvedJavaMethod method);
+    /**
+     * Gets the invocation count for a method.
+     *
+     * @param metaspaceMethod the metaspace Method object to query
+     * @return the invocation count for the method
+     */
+    int getInvocationCount(long metaspaceMethod);
+
+    /**
+     * Initializes a {@link HotSpotResolvedJavaMethod} object from a metaspace Method object.
+     *
+     * @param metaspaceMethod the metaspace Method object
+     * @param method address of a metaspace Method object
+     */
+    void initializeMethod(long metaspaceMethod, HotSpotResolvedJavaMethod method);
+
+    /**
+     * Initializes a {@link HotSpotMethodData} object from a metaspace MethodData object.
+     *
+     * @param metaspaceMethodData the metaspace MethodData object
+     * @param methodData the object to initialize from the metaspace object
+     */
+    void initializeMethodData(long metaspaceMethodData, HotSpotMethodData methodData);
 
     JavaType lookupType(String name, HotSpotResolvedJavaType accessingClass, boolean eagerResolve);
 
@@ -60,7 +116,16 @@ public interface CompilerToVM {
 
     void lookupReferencedTypeInPool(HotSpotResolvedJavaType pool, int cpi, byte opcode);
 
-    HotSpotCompiledMethod installMethod(HotSpotCompilationResult compResult, boolean makeDefault, HotSpotCodeInfo info);
+    /**
+     * Installs the result of a compilation into the code cache.
+     *
+     * @param compResult the result of a compilation
+     * @param code if not null, then the code is installed as the non-default compiled code for the associated method
+     *            and the details of the installation are written to this object
+     * @param info additional information about the installation are written to this object if it is not null
+     * @return the value of {@code code}
+     */
+    HotSpotInstalledCode installCode(HotSpotCompilationResult compResult, HotSpotInstalledCode code, HotSpotCodeInfo info);
 
     void initializeConfiguration(HotSpotVMConfig config);
 
@@ -70,47 +135,53 @@ public interface CompilerToVM {
 
     JavaType getLeastCommonAncestor(HotSpotResolvedJavaType thisType, HotSpotResolvedJavaType otherType);
 
-    JavaType getPrimitiveArrayType(Kind kind);
-
-    JavaType getArrayOf(HotSpotResolvedJavaType klass);
-
-    JavaType getComponentType(HotSpotResolvedJavaType klass);
-
     boolean isTypeInitialized(HotSpotResolvedJavaType klass);
 
     void initializeType(HotSpotResolvedJavaType klass);
 
-    JavaType getType(Class<?> javaClass);
+    ResolvedJavaType getResolvedType(Class<?> javaClass);
 
     JavaType getUniqueConcreteSubtype(HotSpotResolvedJavaType klass);
 
-    JavaType getSuperType(HotSpotResolvedJavaType klass);
-
     int getArrayLength(Constant array);
 
-    boolean compareConstantObjects(Constant x, Constant y);
-
+    /**
+     * Gets the type of an object constant.
+     */
     JavaType getJavaType(Constant constant);
 
-    ResolvedJavaField[] getFields(HotSpotResolvedJavaType klass);
+    HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedJavaType klass);
 
-    int getCompiledCodeSize(HotSpotResolvedJavaMethod method);
+    /**
+     * Gets the compiled code size for a method.
+     *
+     * @param metaspaceMethod the metaspace Method object to query
+     * @return the compiled code size the method
+     */
+    int getCompiledCodeSize(long metaspaceMethod);
 
-    JavaMethod getJavaMethod(Method reflectionMethod);
+    /**
+     * Gets the metaspace Method object corresponding to a given reflection {@link Method} object.
+     *
+     * @param reflectionMethod
+     * @param resultHolder the holder of the result is put in element 0 of this array
+     * @return the metaspace Method result for {@code reflectionMethod}
+     */
+    long getMetaspaceMethod(Method reflectionMethod, HotSpotResolvedJavaType[] resultHolder);
 
-    ResolvedJavaField getJavaField(Field reflectionField);
+    HotSpotResolvedJavaField getJavaField(Field reflectionField);
 
     long getMaxCallTargetOffset(long stub);
 
     String disassembleNative(byte[] code, long address);
 
-    StackTraceElement getStackTraceElement(HotSpotResolvedJavaMethod method, int bci);
+    StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
-    Object executeCompiledMethod(HotSpotCompiledMethod method, Object arg1, Object arg2, Object arg3);
+    Object executeCompiledMethod(long metaspaceMethod, long nmethod, Object arg1, Object arg2, Object arg3);
 
-    Object executeCompiledMethodVarargs(HotSpotCompiledMethod method, Object... args);
+    Object executeCompiledMethodVarargs(long metaspaceMethod, long nmethod, Object... args);
 
-    int getVtableEntryOffset(HotSpotResolvedJavaMethod method);
+    int getVtableEntryOffset(long metaspaceMethod);
 
     long[] getDeoptedLeafGraphIds();
 

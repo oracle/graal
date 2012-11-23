@@ -83,7 +83,6 @@ public class DebugInfoBuilder {
                             entry.getValue().setValues(new Value[]{toValue(boxedVirtualObjectNode.getUnboxedValue())});
                         } else {
                             Value[] values = new Value[vobj.entryCount()];
-                            entry.getValue().setValues(values);
                             if (values.length > 0) {
                                 changed = true;
                                 VirtualObjectState currentField = (VirtualObjectState) objectStates.get(vobj);
@@ -92,6 +91,7 @@ public class DebugInfoBuilder {
                                     values[i] = toValue(currentField.fieldValues().get(i));
                                 }
                             }
+                            entry.getValue().setValues(values);
                         }
                     }
                 }
@@ -149,13 +149,13 @@ public class DebugInfoBuilder {
                 return toValue(((MaterializedObjectState) state).materializedValue());
             } else {
                 assert obj.entryCount() == 0 || state instanceof VirtualObjectState || obj instanceof BoxedVirtualObjectNode;
-                VirtualObject ciObj = virtualObjects.get(value);
-                if (ciObj == null) {
-                    ciObj = VirtualObject.get(obj.type(), null, virtualObjects.size());
-                    virtualObjects.put(obj, ciObj);
+                VirtualObject vobject = virtualObjects.get(value);
+                if (vobject == null) {
+                    vobject = VirtualObject.get(obj.type(), null, virtualObjects.size());
+                    virtualObjects.put(obj, vobject);
                 }
                 Debug.metric("StateVirtualObjects").increment();
-                return ciObj;
+                return vobject;
             }
         } else if (value instanceof ConstantNode) {
             Debug.metric("StateConstants").increment();

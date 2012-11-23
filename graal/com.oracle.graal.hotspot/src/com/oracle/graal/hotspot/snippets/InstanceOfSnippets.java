@@ -21,24 +21,23 @@
  * questions.
  */
 package com.oracle.graal.hotspot.snippets;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.*;
 import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.Templates.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
-import static com.oracle.graal.snippets.Snippet.Varargs.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
 import com.oracle.graal.snippets.Snippet.Parameter;
+import com.oracle.graal.snippets.Snippet.Varargs;
 import com.oracle.graal.snippets.Snippet.VarargsParameter;
 import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
@@ -60,7 +59,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
     @Snippet
     public static Object instanceofExact(
                     @Parameter("object") Object object,
-                    @Parameter("exactHub") Object exactHub,
+                    @Parameter("exactHub") Word exactHub,
                     @Parameter("trueValue") Object trueValue,
                     @Parameter("falseValue") Object falseValue,
                     @ConstantParameter("checkNull") boolean checkNull) {
@@ -68,7 +67,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
             isNull.inc();
             return falseValue;
         }
-        Object objectHub = loadHub(object);
+        Word objectHub = loadHub(object);
         if (objectHub != exactHub) {
             exactMiss.inc();
             return falseValue;
@@ -82,7 +81,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
      */
     @Snippet
     public static Object instanceofPrimary(
-                    @Parameter("hub") Object hub,
+                    @Parameter("hub") Word hub,
                     @Parameter("object") Object object,
                     @Parameter("trueValue") Object trueValue,
                     @Parameter("falseValue") Object falseValue,
@@ -92,8 +91,8 @@ public class InstanceOfSnippets implements SnippetsInterface {
             isNull.inc();
             return falseValue;
         }
-        Object objectHub = loadHub(object);
-        if (UnsafeLoadNode.loadObject(objectHub, 0, superCheckOffset, true) != hub) {
+        Word objectHub = loadHub(object);
+        if (loadWordFromWord(objectHub, superCheckOffset) != hub) {
             displayMiss.inc();
             return falseValue;
         }
@@ -106,21 +105,21 @@ public class InstanceOfSnippets implements SnippetsInterface {
      */
     @Snippet
     public static Object instanceofSecondary(
-                    @Parameter("hub") Object hub,
+                    @Parameter("hub") Word hub,
                     @Parameter("object") Object object,
                     @Parameter("trueValue") Object trueValue,
                     @Parameter("falseValue") Object falseValue,
-                    @VarargsParameter("hints") Object[] hints,
+                    @VarargsParameter("hints") Word[] hints,
                     @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
             isNull.inc();
             return falseValue;
         }
-        Object objectHub = loadHub(object);
+        Word objectHub = loadHub(object);
         // if we get an exact match: succeed immediately
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < hints.length; i++) {
-            Object hintHub = hints[i];
+            Word hintHub = hints[i];
             if (hintHub == objectHub) {
                 hintsHit.inc();
                 return trueValue;
@@ -132,9 +131,9 @@ public class InstanceOfSnippets implements SnippetsInterface {
         return trueValue;
     }
 
-    static boolean checkSecondarySubType(Object t, Object s) {
+    static boolean checkSecondarySubType(Word t, Word s) {
         // if (S.cache == T) return true
-        if (UnsafeLoadNode.loadObject(s, 0, secondarySuperCacheOffset(), true) == t) {
+        if (loadWordFromWord(s, secondarySuperCacheOffset()) == t) {
             cacheHit.inc();
             return true;
         }
@@ -146,10 +145,10 @@ public class InstanceOfSnippets implements SnippetsInterface {
         }
 
         // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
-        Object[] secondarySupers = UnsafeCastNode.cast(UnsafeLoadNode.loadObject(s, 0, secondarySupersOffset(), true), Object[].class);
-
-        for (int i = 0; i < secondarySupers.length; i++) {
-            if (t == loadNonNullObjectElement(secondarySupers, i)) {
+        Word secondarySupers = loadWordFromWord(s, secondarySupersOffset());
+        int length = loadIntFromWord(secondarySupers, metaspaceArrayLengthOffset());
+        for (int i = 0; i < length; i++) {
+            if (t == loadWordElement(secondarySupers, i)) {
                 DirectObjectStoreNode.storeObject(s, secondarySuperCacheOffset(), 0, t);
                 secondariesHit.inc();
                 return true;
@@ -167,9 +166,9 @@ public class InstanceOfSnippets implements SnippetsInterface {
 
         public Templates(CodeCacheProvider runtime, Assumptions assumptions) {
             super(runtime, assumptions, InstanceOfSnippets.class);
-            instanceofExact = snippet("instanceofExact", Object.class, Object.class, Object.class, Object.class, boolean.class);
-            instanceofPrimary = snippet("instanceofPrimary", Object.class, Object.class, Object.class, Object.class, boolean.class, int.class);
-            instanceofSecondary = snippet("instanceofSecondary", Object.class, Object.class, Object.class, Object.class, Object[].class, boolean.class);
+            instanceofExact = snippet("instanceofExact", Object.class, Word.class, Object.class, Object.class, boolean.class);
+            instanceofPrimary = snippet("instanceofPrimary", Word.class, Object.class, Object.class, Object.class, boolean.class, int.class);
+            instanceofSecondary = snippet("instanceofSecondary", Word.class, Object.class, Object.class, Object.class, Word[].class, boolean.class);
         }
 
         @Override
@@ -180,12 +179,12 @@ public class InstanceOfSnippets implements SnippetsInterface {
             ValueNode object = instanceOf.object();
             TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), GraalOptions.InstanceOfMinHintHitProbability, GraalOptions.InstanceOfMaxHints);
             final HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) instanceOf.type();
-            ConstantNode hub = ConstantNode.forObject(type.klassOop(), runtime, instanceOf.graph());
+            ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, instanceOf.graph());
             boolean checkNull = !object.stamp().nonNull();
             Arguments arguments;
             Key key;
             if (hintInfo.exact) {
-                HotSpotKlassOop[] hints = createHints(hintInfo);
+                ConstantNode[] hints = createHints(hintInfo, runtime, hub.graph());
                 assert hints.length == 1;
                 key = new Key(instanceofExact).add("checkNull", checkNull);
                 arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
@@ -193,8 +192,8 @@ public class InstanceOfSnippets implements SnippetsInterface {
                 key = new Key(instanceofPrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
                 arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
             } else {
-                HotSpotKlassOop[] hints = createHints(hintInfo);
-                key = new Key(instanceofSecondary).add("hints", vargargs(Object.class, hints.length)).add("checkNull", checkNull);
+                ConstantNode[] hints = createHints(hintInfo, runtime, hub.graph());
+                key = new Key(instanceofSecondary).add("hints", Varargs.vargargs(new Word[hints.length], wordStamp())).add("checkNull", checkNull);
                 arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
             }
             return new KeyAndArguments(key, arguments);

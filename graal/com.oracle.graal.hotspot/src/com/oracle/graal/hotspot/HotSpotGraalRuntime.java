@@ -33,6 +33,7 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 
 /**
@@ -61,10 +62,22 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     }
 
     private static Kind wordKind;
+    private static Stamp wordStamp;
 
+    /**
+     * Gets the kind of a word value.
+     */
     public static Kind wordKind() {
         assert wordKind != null;
         return wordKind;
+    }
+
+    /**
+     * Gets the stamp for a word value.
+     */
+    public static Stamp wordStamp() {
+        assert wordStamp != null;
+        return wordStamp;
     }
 
     protected final CompilerToVM compilerToVm;
@@ -106,9 +119,13 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
             printConfig(config);
         }
 
+        AddressMap.log(config.cardtableStartAddress, "CARDTABLE");
+        AddressMap.log(config.cardtableStartAddress, "SAFEPOINT_POLL_PAGE");
+
         target = createTarget();
         assert wordKind == null || wordKind.equals(target.wordKind);
         wordKind = target.wordKind;
+        wordStamp = StampFactory.forInteger(wordKind, wordKind.getMinValue(), wordKind.getMaxValue());
 
         runtime = createRuntime();
 
@@ -161,33 +178,33 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     public JavaType lookupType(String name, HotSpotResolvedJavaType accessingClass, boolean eagerResolve) {
         if (name.length() == 1 && vmToCompiler instanceof VMToCompilerImpl) {
-            VMToCompilerImpl exitsNative = (VMToCompilerImpl) vmToCompiler;
+            VMToCompilerImpl impl = (VMToCompilerImpl) vmToCompiler;
             Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
             switch(kind) {
                 case Boolean:
-                    return exitsNative.typeBoolean;
+                    return impl.typeBoolean;
                 case Byte:
-                    return exitsNative.typeByte;
+                    return impl.typeByte;
                 case Char:
-                    return exitsNative.typeChar;
+                    return impl.typeChar;
                 case Double:
-                    return exitsNative.typeDouble;
+                    return impl.typeDouble;
                 case Float:
-                    return exitsNative.typeFloat;
+                    return impl.typeFloat;
                 case Illegal:
                     break;
                 case Int:
-                    return exitsNative.typeInt;
+                    return impl.typeInt;
                 case Jsr:
                     break;
                 case Long:
-                    return exitsNative.typeLong;
+                    return impl.typeLong;
                 case Object:
                     break;
                 case Short:
-                    return exitsNative.typeShort;
+                    return impl.typeShort;
                 case Void:
-                    return exitsNative.typeVoid;
+                    return impl.typeVoid;
             }
         }
         return compilerToVm.lookupType(name, accessingClass, eagerResolve);

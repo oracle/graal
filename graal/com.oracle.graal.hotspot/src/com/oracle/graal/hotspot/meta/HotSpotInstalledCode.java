@@ -34,14 +34,14 @@ import com.oracle.graal.hotspot.*;
  * The nmethod also stores a weak reference to the HotSpotCompiledMethod
  * instance which is necessary to keep the nmethod from being unloaded.
  */
-public class HotSpotCompiledMethod extends CompilerObject implements InstalledCode {
+public class HotSpotInstalledCode extends CompilerObject implements InstalledCode {
 
     private static final long serialVersionUID = 156632908220561612L;
 
-    private final ResolvedJavaMethod method;
+    private final HotSpotResolvedJavaMethod method;
     private long nmethod;
 
-    public HotSpotCompiledMethod(ResolvedJavaMethod method) {
+    public HotSpotInstalledCode(HotSpotResolvedJavaMethod method) {
         this.method = method;
     }
 
@@ -66,7 +66,7 @@ public class HotSpotCompiledMethod extends CompilerObject implements InstalledCo
         assert method.getSignature().getParameterKind(0) == Kind.Object;
         assert method.getSignature().getParameterKind(1) == Kind.Object;
         assert !Modifier.isStatic(method.getModifiers()) || method.getSignature().getParameterKind(2) == Kind.Object;
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethod(this, arg1, arg2, arg3);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethod(method.metaspaceMethod, nmethod, arg1, arg2, arg3);
     }
 
     private boolean checkArgs(Object... args) {
@@ -86,6 +86,6 @@ public class HotSpotCompiledMethod extends CompilerObject implements InstalledCo
     @Override
     public Object executeVarargs(Object... args) {
         assert checkArgs(args);
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethodVarargs(this, args);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethodVarargs(method.metaspaceMethod, nmethod, args);
     }
 }

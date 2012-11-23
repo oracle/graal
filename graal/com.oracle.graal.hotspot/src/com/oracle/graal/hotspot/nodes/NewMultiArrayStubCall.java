@@ -29,7 +29,7 @@ import com.oracle.graal.api.code.RuntimeCall.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
@@ -46,7 +46,7 @@ public class NewMultiArrayStubCall extends FixedWithNextNode implements LIRGenLo
     @Input private final ValueNode dims;
     private final int rank;
 
-    public static final Descriptor NEW_MULTI_ARRAY = new Descriptor("new_multi_array", false, Kind.Object, Kind.Object, Kind.Int, wordKind());
+    public static final Descriptor NEW_MULTI_ARRAY = new Descriptor("new_multi_array", false, Kind.Object, wordKind(), Kind.Int, wordKind());
 
     public NewMultiArrayStubCall(ValueNode hub, int rank, ValueNode dims) {
         super(defaultStamp);
@@ -58,8 +58,7 @@ public class NewMultiArrayStubCall extends FixedWithNextNode implements LIRGenLo
     @Override
     public boolean inferStamp() {
         if (stamp() == defaultStamp && hub.isConstant()) {
-            HotSpotKlassOop klassOop = (HotSpotKlassOop) this.hub.asConstant().asObject();
-            updateStamp(StampFactory.exactNonNull(klassOop.type));
+            updateStamp(StampFactory.exactNonNull(HotSpotResolvedJavaType.fromMetaspaceKlass(hub.asConstant())));
             return true;
         }
         return false;
@@ -73,5 +72,5 @@ public class NewMultiArrayStubCall extends FixedWithNextNode implements LIRGenLo
     }
 
     @NodeIntrinsic
-    public static native Object call(Object hub, @ConstantNodeParameter int rank, Word dims);
+    public static native Object call(Word hub, @ConstantNodeParameter int rank, Word dims);
 }

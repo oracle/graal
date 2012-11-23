@@ -127,4 +127,29 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
         }
         return this;
     }
+
+    public static CompareNode createCompareNode(Condition condition, ValueNode x, ValueNode y) {
+        assert x.kind() == y.kind();
+        assert condition.isCanonical() : "condition is not canonical: " + condition;
+
+        assert !x.kind().isFloatOrDouble();
+        CompareNode comparison;
+        if (condition == Condition.EQ) {
+            if (x.kind().isObject()) {
+                comparison = new ObjectEqualsNode(x, y);
+            } else {
+                assert x.kind().getStackKind().isStackInt() || x.kind().isLong();
+                comparison = new IntegerEqualsNode(x, y);
+            }
+        } else if (condition == Condition.LT) {
+            assert x.kind().getStackKind().isStackInt() || x.kind().isLong();
+            comparison = new IntegerLessThanNode(x, y);
+        } else {
+            assert condition == Condition.BT;
+            assert x.kind().getStackKind().isStackInt() || x.kind().isLong();
+            comparison = new IntegerBelowThanNode(x, y);
+        }
+
+        return x.graph().unique(comparison);
+    }
 }

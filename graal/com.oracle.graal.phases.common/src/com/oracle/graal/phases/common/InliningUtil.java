@@ -264,9 +264,9 @@ public class InliningUtil {
             // receiver null check must be before the type check
             InliningUtil.receiverNullCheck(invoke);
             ValueNode receiver = invoke.methodCallTarget().receiver();
-            LoadHubNode receiverHub = graph.add(new LoadHubNode(receiver));
             ConstantNode typeHub = ConstantNode.forConstant(type.getEncoding(Representation.ObjectHub), runtime, graph);
-            ObjectEqualsNode typeCheck = graph.unique(new ObjectEqualsNode(receiverHub, typeHub));
+            LoadHubNode receiverHub = graph.add(new LoadHubNode(receiver, typeHub.kind()));
+            CompareNode typeCheck = CompareNode.createCompareNode(Condition.EQ, receiverHub, typeHub);
             FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, invoke.leafGraphId()));
             ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
             assert invoke.predecessor() != null;
@@ -410,7 +410,8 @@ public class InliningUtil {
             }
 
             // replace the invoke with a switch on the type of the actual receiver
-            LoadHubNode receiverHub = graph.add(new LoadHubNode(invoke.methodCallTarget().receiver()));
+            Kind hubKind = invoke.methodCallTarget().targetMethod().getDeclaringClass().getEncoding(Representation.ObjectHub).getKind();
+            LoadHubNode receiverHub = graph.add(new LoadHubNode(invoke.methodCallTarget().receiver(), hubKind));
             graph.addBeforeFixed(invoke.node(), receiverHub);
             FixedNode dispatchOnType = createDispatchOnType(graph, receiverHub, successors);
 
@@ -493,7 +494,8 @@ public class InliningUtil {
 
             BeginNode calleeEntryNode = graph.add(new BeginNode());
             calleeEntryNode.setProbability(invoke.probability());
-            LoadHubNode receiverHub = graph.add(new LoadHubNode(invoke.methodCallTarget().receiver()));
+            Kind hubKind = invoke.methodCallTarget().targetMethod().getDeclaringClass().getEncoding(Representation.ObjectHub).getKind();
+            LoadHubNode receiverHub = graph.add(new LoadHubNode(invoke.methodCallTarget().receiver(), hubKind));
             graph.addBeforeFixed(invoke.node(), receiverHub);
 
             BeginNode unknownTypeSux = BeginNode.begin(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated, invoke.leafGraphId())));
@@ -510,7 +512,7 @@ public class InliningUtil {
             InliningUtil.inline(invoke, calleeGraph, false);
         }
 
-        private FixedNode createDispatchOnType(StructuredGraph graph, LoadHubNode objectClassNode, BeginNode[] successors) {
+        private FixedNode createDispatchOnType(StructuredGraph graph, LoadHubNode hub, BeginNode[] successors) {
             assert ptypes.length > 1;
 
             ResolvedJavaType[] keys = new ResolvedJavaType[ptypes.length];
@@ -526,7 +528,7 @@ public class InliningUtil {
             keySuccessors[keySuccessors.length - 1] = successors.length - 1;
 
             double[] successorProbabilities = SwitchNode.successorProbabilites(successors.length, keySuccessors, keyProbabilities);
-            TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(objectClassNode, successors, successorProbabilities, keys, keyProbabilities, keySuccessors));
+            TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, successorProbabilities, keys, keyProbabilities, keySuccessors));
 
             return typeSwitch;
         }

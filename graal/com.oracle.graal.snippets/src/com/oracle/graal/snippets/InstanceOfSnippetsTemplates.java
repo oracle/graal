@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.snippets;
 
-import static com.oracle.graal.nodes.MaterializeNode.*;
+import static com.oracle.graal.nodes.calc.CompareNode.*;
 
 import java.util.*;
 

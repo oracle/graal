@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.snippets.Snippet.SnippetInliningPolicy;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * Tests for the {@link Word} type.
@@ -43,7 +44,9 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
 
     public WordTest() {
         TargetDescription target = Graal.getRequiredCapability(GraalCompiler.class).target;
-        installer = new SnippetInstaller(runtime, target, new Assumptions(false));
+        Kind wordKind = target.wordKind;
+        Stamp wordStamp = StampFactory.forInteger(wordKind, wordKind.getMinValue(), wordKind.getMaxValue());
+        installer = new SnippetInstaller(runtime, target, wordStamp, new Assumptions(false));
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();

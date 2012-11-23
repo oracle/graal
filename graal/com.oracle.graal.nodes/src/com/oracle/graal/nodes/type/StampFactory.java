@@ -61,10 +61,6 @@ public class StampFactory {
         setCache(Kind.Void, voidStamp);
     }
 
-    public static Stamp forWord(Kind wordKind, boolean nonNull) {
-        return new WordStamp(wordKind, nonNull);
-    }
-
     public static Stamp forKind(Kind kind) {
         assert stampCache[kind.getStackKind().ordinal()] != null : "unexpected forKind(" + kind + ")";
         return stampCache[kind.getStackKind().ordinal()];
@@ -171,7 +167,7 @@ public class StampFactory {
     public static Stamp declared(ResolvedJavaType type, boolean nonNull) {
         assert type != null;
         assert type.getKind() == Kind.Object;
-        ResolvedJavaType exact = type.getExactType();
+        ResolvedJavaType exact = type.asExactType();
         if (exact != null) {
             return new ObjectStamp(exact, true, nonNull, false);
         } else {

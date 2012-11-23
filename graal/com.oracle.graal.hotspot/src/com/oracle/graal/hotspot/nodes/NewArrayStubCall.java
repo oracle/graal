@@ -22,15 +22,18 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCall.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.snippets.*;
 
 /**
  * Node implementing a call to HotSpot's {@code new_[object|type]_array} stub.
@@ -43,9 +46,9 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
     @Input private final ValueNode length;
     private final boolean isObjectArray;
 
-    public static final Descriptor NEW_OBJECT_ARRAY = new Descriptor("new_object_array", false, Kind.Object, Kind.Object, Kind.Int);
+    public static final Descriptor NEW_OBJECT_ARRAY = new Descriptor("new_object_array", false, Kind.Object, wordKind(), Kind.Int);
 
-    public static final Descriptor NEW_TYPE_ARRAY = new Descriptor("new_type_array", false, Kind.Object, Kind.Object, Kind.Int);
+    public static final Descriptor NEW_TYPE_ARRAY = new Descriptor("new_type_array", false, Kind.Object, wordKind(), Kind.Int);
 
     public NewArrayStubCall(boolean isObjectArray, ValueNode hub, ValueNode length) {
         super(defaultStamp);
@@ -57,8 +60,7 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
     @Override
     public boolean inferStamp() {
         if (stamp() == defaultStamp && hub.isConstant()) {
-            HotSpotKlassOop klassOop = (HotSpotKlassOop) this.hub.asConstant().asObject();
-            updateStamp(StampFactory.exactNonNull(klassOop.type));
+            updateStamp(StampFactory.exactNonNull(HotSpotResolvedJavaType.fromMetaspaceKlass(hub.asConstant())));
             return true;
         }
         return false;
@@ -72,5 +74,5 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
     }
 
     @NodeIntrinsic
-    public static native Object call(@ConstantNodeParameter boolean isObjectArray, Object hub, int length);
+    public static native Object call(@ConstantNodeParameter boolean isObjectArray, Word hub, int length);
 }

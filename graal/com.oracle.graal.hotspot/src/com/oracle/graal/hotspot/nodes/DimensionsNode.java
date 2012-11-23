@@ -26,9 +26,9 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
 
 
@@ -40,8 +40,8 @@ public final class DimensionsNode extends FixedWithNextNode implements LIRGenLow
 
     private final int rank;
 
-    public DimensionsNode(int rank, Kind wordKind) {
-        super(StampFactory.forWord(wordKind, true));
+    public DimensionsNode(int rank) {
+        super(HotSpotGraalRuntime.wordStamp());
         this.rank = rank;
     }
 
@@ -54,5 +54,5 @@ public final class DimensionsNode extends FixedWithNextNode implements LIRGenLow
     }
 
     @NodeIntrinsic
-    public static native Word allocaDimsArray(@ConstantNodeParameter int rank, @ConstantNodeParameter Kind wordKind);
+    public static native Word allocaDimsArray(@ConstantNodeParameter int rank);
 }

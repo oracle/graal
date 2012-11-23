@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.graph.FieldIntrospection.*;
+
 import java.lang.reflect.*;
 
 import sun.misc.*;
@@ -31,8 +33,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 
 public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInterface {
-
-    private static final Unsafe unsafe = loadUnsafe();
 
     private final MetaAccessProvider metaProvider;
 
@@ -321,19 +321,5 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
             accessorBase = field.getDeclaringClass().toJava();
         }
         return accessorBase;
-    }
-
-    private static Unsafe loadUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-        }
     }
 }
