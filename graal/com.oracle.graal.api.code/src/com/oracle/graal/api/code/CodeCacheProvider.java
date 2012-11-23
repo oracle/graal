@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.api.code;
 
+import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.RuntimeCall.Descriptor;
 import com.oracle.graal.api.meta.*;
 
@@ -93,4 +94,11 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      * @return the encoded value as an integer
      */
     int encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason);
+
+    /**
+     * Determines if a {@link DataPatch} should be created for a given {@linkplain Constant#getPrimitiveAnnotation() annotated}
+     * primitive constant that part of a {@link CompilationResult}. A data patch is always
+     * created for an object constant.
+     */
+    boolean needsDataPatch(Constant constant);
 }

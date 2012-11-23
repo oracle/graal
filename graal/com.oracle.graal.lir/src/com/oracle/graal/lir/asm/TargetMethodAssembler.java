@@ -163,11 +163,11 @@ public class TargetMethodAssembler {
         targetMethod.recordSafepoint(pos, debugInfo);
     }
 
-    public Address recordDataReferenceInCode(Constant data, int alignment) {
+    public Address recordDataReferenceInCode(Constant data, int alignment, boolean inlined) {
         assert data != null;
         int pos = asm.codeBuffer.position();
         Debug.log("Data reference in code: pos = %d, data = %s", pos, data.toString());
-        targetMethod.recordDataReference(pos, data, alignment);
+        targetMethod.recordDataReference(pos, data, alignment, inlined);
         return Address.Placeholder;
     }
 
@@ -175,15 +175,16 @@ public class TargetMethodAssembler {
         return lastSafepointPos;
     }
 
-
     /**
-     * Returns the integer value of any constants that can be represented by a 32-bit integer value,
+     * Returns the integer value of any constant that can be represented by a 32-bit integer value,
      * including long constants that fit into the 32-bit range.
      */
     public int asIntConst(Value value) {
         assert (value.getKind().getStackKind() == Kind.Int || value.getKind() == Kind.Jsr || value.getKind() == Kind.Long) && isConstant(value);
-        long c = ((Constant) value).asLong();
-        if (!(NumUtil.isInt(c))) {
+        Constant constant = (Constant) value;
+        assert !runtime.needsDataPatch(constant) : constant + " should be in a DataPatch";
+        long c = constant.asLong();
+        if (!NumUtil.isInt(c)) {
             throw GraalInternalError.shouldNotReachHere();
         }
         return (int) c;
@@ -198,7 +199,7 @@ public class TargetMethodAssembler {
 
     public Address asFloatConstRef(Value value, int alignment) {
         assert value.getKind() == Kind.Float && isConstant(value);
-        return recordDataReferenceInCode((Constant) value, alignment);
+        return recordDataReferenceInCode((Constant) value, alignment, false);
     }
 
     /**
@@ -210,7 +211,7 @@ public class TargetMethodAssembler {
 
     public Address asDoubleConstRef(Value value, int alignment) {
         assert value.getKind() == Kind.Double && isConstant(value);
-        return recordDataReferenceInCode((Constant) value, alignment);
+        return recordDataReferenceInCode((Constant) value, alignment, false);
     }
 
     /**
@@ -218,7 +219,7 @@ public class TargetMethodAssembler {
      */
     public Address asLongConstRef(Value value) {
         assert value.getKind() == Kind.Long && isConstant(value);
-        return recordDataReferenceInCode((Constant) value, 8);
+        return recordDataReferenceInCode((Constant) value, 8, false);
     }
 
     public Address asIntAddr(Value value) {

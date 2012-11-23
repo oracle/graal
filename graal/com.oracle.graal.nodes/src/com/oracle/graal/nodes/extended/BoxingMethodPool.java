@@ -87,7 +87,7 @@ public class BoxingMethodPool {
         specialMethods.add(unboxingMethod);
 
         // Get the field that contains the boxed value.
-        ResolvedJavaField[] fields = runtime.lookupJavaType(type).getDeclaredFields();
+        ResolvedJavaField[] fields = runtime.lookupJavaType(type).getInstanceFields(false);
         ResolvedJavaField boxField = fields[0];
         assert fields.length == 1 && boxField.getKind() == kind;
         boxFields[kind.ordinal()] = boxField;

@@ -27,6 +27,7 @@ import com.oracle.graal.api.code.RuntimeCall.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
@@ -61,7 +62,7 @@ public class OnStackReplacementPhase extends Phase {
                 throw new BailoutException("osr with locks not supported");
             }
             if (osr.stateAfter().stackSize() != 0) {
-                throw new GraalInternalError("osr with stack entries not supported");
+                throw new BailoutException("osr with stack entries not supported: " + osr.stateAfter().toString(Verbosity.Debugger));
             }
             LoopEx osrLoop = null;
             LoopsData loops = new LoopsData(graph);

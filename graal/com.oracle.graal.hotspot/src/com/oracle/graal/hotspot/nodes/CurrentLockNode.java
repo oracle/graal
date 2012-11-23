@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
 
 /**
@@ -34,8 +34,8 @@ import com.oracle.graal.snippets.*;
  */
 public final class CurrentLockNode extends FixedWithNextNode implements LIRGenLowerable {
 
-    public CurrentLockNode(Kind wordKind) {
-        super(StampFactory.forWord(wordKind, true));
+    public CurrentLockNode() {
+        super(HotSpotGraalRuntime.wordStamp());
     }
 
     @Override
@@ -46,5 +46,5 @@ public final class CurrentLockNode extends FixedWithNextNode implements LIRGenLo
     }
 
     @NodeIntrinsic
-    public static native Word currentLock(@ConstantNodeParameter Kind wordKind);
+    public static native Word currentLock();
 }

@@ -91,7 +91,7 @@ public class SnippetVerificationPhase extends Phase {
                 } else if (usage instanceof ObjectEqualsNode) {
                     ObjectEqualsNode compare = (ObjectEqualsNode) usage;
                     if (compare.x() == node || compare.y() == node) {
-                        verify(isWord(compare.x()) == isWord(compare.y()), node, compare.usages().first(), "cannot mixed word and now-word type in use of '==' or '!='");
+                        verify(isWord(compare.x()) == isWord(compare.y()), node, compare.usages().first(), "cannot mixed word and non-word type in use of '==' or '!='");
                     }
                 } else if (usage instanceof ArrayLengthNode) {
                     verify(!isWord(node) || ((ArrayLengthNode) usage).array() != node, node, usage, "cannot get array length from word value");

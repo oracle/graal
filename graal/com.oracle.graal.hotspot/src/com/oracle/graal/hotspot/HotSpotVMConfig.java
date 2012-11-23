@@ -53,7 +53,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int markOffset;
 
     /**
-     * The offset of the hub/klassOop word in an object's header.
+     * The offset of the hub (i.e. Klass*) in an object's header.
      */
     public int hubOffset;
 
@@ -63,9 +63,19 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int prototypeMarkWordOffset;
 
     /**
-     * The offset of an the array length in an array's header.
+     * The offset of the array length word in an array object's header.
      */
     public int arrayLengthOffset;
+
+    /**
+     * The offset of the _length field in an Array metaspace object (see array.hpp).
+     */
+    public int metaspaceArrayLengthOffset;
+
+    /**
+     * The offset of the _data field in an Array metaspace object (see array.hpp).
+     */
+    public int metaspaceArrayBaseOffset;
 
     /**
      * The offset of the _super_check_offset field in a Klass.
@@ -134,18 +144,70 @@ public final class HotSpotVMConfig extends CompilerObject {
      */
     public int biasedLockPattern;
 
+    /**
+     * Offset of _access_flags in metaspace Method object.
+     */
+    public int methodAccessFlagsOffset;
+
+    /**
+     * Offset of _max_locals in metaspace Method object.
+     */
+    public int methodMaxLocalsOffset;
+
+    /**
+     * Offset of _max_stack in metaspace Method object.
+     */
+    public int methodMaxStackOffset;
+
+    /**
+     * Value of extra_stack_entries() in method.hpp.
+     */
+    public int extraStackEntries;
+
+    /**
+     * Value of JVM_ACC_HAS_FINALIZER in accessFlags.hpp.
+     */
+    public int klassHasFinalizerFlag;
+
     public int threadExceptionOopOffset;
     public int threadExceptionPcOffset;
-    public int threadMultiNewArrayStorageOffset;
     public long cardtableStartAddress;
     public int cardtableShift;
     public long safepointPollingAddress;
     public boolean isPollingPageFar;
+
+    /**
+     * The offset of the _java_mirror field (of type {@link Class}) in a Klass.
+     */
     public int classMirrorOffset;
+
     public int runtimeCallStackSize;
+
+    /**
+     * The offset of the _modifier_flags field in a Klass.
+     */
     public int klassModifierFlagsOffset;
-    public int klassOopOffset;
-    public int graalMirrorKlassOffset;
+
+    /**
+     * The offset of the _access_flags field in a Klass.
+     */
+    public int klassAccessFlagsOffset;
+
+    /**
+     * The offset of the injected klass field in a {@link Class}.
+     */
+    public int klassOffset;
+
+    /**
+     * The offset of the injected graal_mirror field in a {@link Class}.
+     */
+    public int graalMirrorInClassOffset;
+
+    /**
+     * The offset of the _method_data field in a metaspace Method.
+     */
+    public int methodDataOffset;
+
     public int nmethodEntryOffset;
     public int methodCompiledEntryOffset;
     public int basicLockSize;
@@ -194,7 +256,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long logPrimitiveStub;
     public long logObjectStub;
     public long logPrintfStub;
-
 
     public void check() {
         assert vmPageSize >= 16;

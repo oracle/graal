@@ -136,10 +136,16 @@ public class CompilationResult implements Serializable {
         public final Constant constant;
         public final int alignment;
 
-        DataPatch(int pcOffset, Constant data, int alignment) {
+        /**
+         * Determines if the data is encoded inline or is loaded from a separate data area.
+         */
+        public final boolean inlined;
+
+        DataPatch(int pcOffset, Constant data, int alignment, boolean inlined) {
             super(pcOffset);
             this.constant = data;
             this.alignment = alignment;
+            this.inlined = inlined;
         }
 
         @Override
@@ -387,10 +393,11 @@ public class CompilationResult implements Serializable {
      * @param codePos the position in the code where the data reference occurs
      * @param data the data that is referenced
      * @param alignment the alignment requirement of the data or 0 if there is no alignment requirement
+     * @param inlined specifies if the data is encoded inline or is loaded from a separate data area
      */
-    public void recordDataReference(int codePos, Constant data, int alignment) {
+    public void recordDataReference(int codePos, Constant data, int alignment, boolean inlined) {
         assert codePos >= 0 && data != null;
-        getDataReferences().add(new DataPatch(codePos, data, alignment));
+        getDataReferences().add(new DataPatch(codePos, data, alignment, inlined));
     }
 
     /**

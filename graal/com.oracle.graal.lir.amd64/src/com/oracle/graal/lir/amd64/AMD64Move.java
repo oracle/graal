@@ -296,12 +296,19 @@ public class AMD64Move {
         switch (input.getKind().getStackKind()) {
             case Jsr:
             case Int:
+                if (tasm.runtime.needsDataPatch(input)) {
+                    tasm.recordDataReferenceInCode(input, 0, true);
+                }
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
-                masm.movl(asRegister(result), tasm.asIntConst(input));
+                masm.movl(asRegister(result), input.asInt());
+
                 break;
             case Long:
+                if (tasm.runtime.needsDataPatch(input)) {
+                    tasm.recordDataReferenceInCode(input, 0, true);
+                }
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
@@ -310,6 +317,7 @@ public class AMD64Move {
             case Float:
                 // This is *not* the same as 'constant == 0.0f' in the case where constant is -0.0f
                 if (Float.floatToRawIntBits(input.asFloat()) == Float.floatToRawIntBits(0.0f)) {
+                    assert !tasm.runtime.needsDataPatch(input);
                     masm.xorps(asFloatReg(result), asFloatReg(result));
                 } else {
                     masm.movflt(asFloatReg(result), tasm.asFloatConstRef(input));
@@ -318,6 +326,7 @@ public class AMD64Move {
             case Double:
                 // This is *not* the same as 'constant == 0.0d' in the case where constant is -0.0d
                 if (Double.doubleToRawLongBits(input.asDouble()) == Double.doubleToRawLongBits(0.0d)) {
+                    assert !tasm.runtime.needsDataPatch(input);
                     masm.xorpd(asDoubleReg(result), asDoubleReg(result));
                 } else {
                     masm.movdbl(asDoubleReg(result), tasm.asDoubleConstRef(input));
@@ -330,10 +339,10 @@ public class AMD64Move {
                 if (input.isNull()) {
                     masm.movq(asRegister(result), 0x0L);
                 } else if (tasm.target.inlineObjects) {
-                    tasm.recordDataReferenceInCode(input, 0);
+                    tasm.recordDataReferenceInCode(input, 0, true);
                     masm.movq(asRegister(result), 0xDEADDEADDEADDEADL);
                 } else {
-                    masm.movq(asRegister(result), tasm.recordDataReferenceInCode(input, 0));
+                    masm.movq(asRegister(result), tasm.recordDataReferenceInCode(input, 0, false));
                 }
                 break;
             default:
@@ -342,6 +351,7 @@ public class AMD64Move {
     }
 
     private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Constant input) {
+        assert !tasm.runtime.needsDataPatch(input);
         switch (input.getKind().getStackKind()) {
             case Jsr:
             case Int:    masm.movl(tasm.asAddress(result), input.asInt()); break;

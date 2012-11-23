@@ -23,13 +23,14 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.snippets.*;
 
 /**
  * This node is used by the {@link NewObjectSnippets} to give a formatted new instance or object its exact type.
@@ -55,12 +56,12 @@ public final class CastFromHub extends FloatingNode implements Canonicalizable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (hub.isConstant()) {
-            ResolvedJavaType type = ((HotSpotKlassOop) this.hub.asConstant().asObject()).type;
+            ResolvedJavaType type = HotSpotResolvedJavaType.fromMetaspaceKlass(hub.asConstant());
             return graph().unique(new UnsafeCastNode(object, type, true, true));
         }
         return this;
     }
 
     @NodeIntrinsic
-    public static native <T> T castFromHub(Object object, Object hub);
+    public static native <T> T castFromHub(Object object, Word hub);
 }

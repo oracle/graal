@@ -38,7 +38,7 @@ public final class Constant extends Value {
         }
     }
 
-    public static final Constant NULL_OBJECT = new Constant(Kind.Object, null);
+    public static final Constant NULL_OBJECT = new Constant(null);
     public static final Constant INT_MINUS_1 = new Constant(Kind.Int, -1);
     public static final Constant INT_0 = forInt(0);
     public static final Constant INT_1 = forInt(1);
@@ -63,7 +63,8 @@ public final class Constant extends Value {
     }
 
     /**
-     * The boxed object value. This is ignored iff {@code !kind.isObject()}.
+     * The boxed object value if {@code !kind.isObject()} otherwise the (possibly null)
+     * {@link #getPrimitiveAnnotation() annotation} for a primitive value.
      */
     private final Object object;
 
@@ -75,32 +76,48 @@ public final class Constant extends Value {
     private final long primitive;
 
     /**
-     * Create a new constant represented by the specified object reference.
-     * 
-     * @param kind the type of this constant
+     * Creates a constant represented by the specified object reference.
      * @param object the value of this constant
      */
-    private Constant(Kind kind, Object object) {
-        super(kind);
+    private Constant(Object object) {
+        super(Kind.Object);
         this.object = object;
         this.primitive = 0L;
     }
 
     /**
-     * Create a new constant represented by the specified primitive.
-     * 
+     * Creates a constant represented by the specified primitive.
+     *
      * @param kind the type of this constant
      * @param primitive the value of this constant
      */
     public Constant(Kind kind, long primitive) {
         super(kind);
+        assert !kind.isObject();
         this.object = null;
         this.primitive = primitive;
     }
 
     /**
+     * Creates an annotated primitive constant. An annotation enables a {@linkplain MetaAccessProvider provider} to
+     * associate some extra semantic or debugging information with a primitive. An annotated primitive constant
+     * is never {@linkplain #equals(Object) equal} to a non-annotated constant.
+     *
+     * @param kind the type of this constant
+     * @param primitive the value of this constant
+     * @param annotation an arbitrary non-null object
+     */
+    public Constant(Kind kind, long primitive, Object annotation) {
+        super(kind);
+        assert !kind.isObject();
+        assert annotation != null;
+        this.object = annotation;
+        this.primitive = primitive;
+    }
+
+    /**
      * Checks whether this constant is non-null.
-     * 
+     *
      * @return {@code true} if this constant is a primitive, or an object constant that is not null
      */
     public boolean isNonNull() {
@@ -109,7 +126,7 @@ public final class Constant extends Value {
 
     /**
      * Checks whether this constant is null.
-     * 
+     *
      * @return {@code true} if this constant is the null constant
      */
     public boolean isNull() {
@@ -127,12 +144,16 @@ public final class Constant extends Value {
 
     @Override
     public String toString() {
-        return getKind().getJavaName() + "[" + getKind().format(asBoxedValue()) + (getKind() != Kind.Object ? "|0x" + Long.toHexString(primitive) : "") + "]";
+        String annotationSuffix = "";
+        if (!getKind().isObject() && getPrimitiveAnnotation() != null) {
+            annotationSuffix = "{" + getPrimitiveAnnotation() + "}";
+        }
+        return getKind().getJavaName() + "[" + getKind().format(asBoxedValue()) + (getKind() != Kind.Object ? "|0x" + Long.toHexString(primitive) : "") + "]" + annotationSuffix;
     }
 
     /**
      * Returns the value of this constant as a boxed Java value.
-     * 
+     *
      * @return the value of this constant
      */
     public Object asBoxedValue() {
@@ -142,15 +163,15 @@ public final class Constant extends Value {
             case Boolean:
                 return asInt() == 0 ? Boolean.FALSE : Boolean.TRUE;
             case Short:
-                return (short) asInt();
+                return (short) primitive;
             case Char:
-                return (char) asInt();
+                return (char) primitive;
             case Jsr:
                 return (int) primitive;
             case Int:
-                return asInt();
+                return (int) primitive;
             case Long:
-                return asLong();
+                return primitive;
             case Float:
                 return asFloat();
             case Double:
@@ -169,12 +190,12 @@ public final class Constant extends Value {
         if (getKind().isObject()) {
             return object == other.object;
         }
-        return primitive == other.primitive;
+        return primitive == other.primitive && getPrimitiveAnnotation() == other.getPrimitiveAnnotation();
     }
 
     /**
      * Converts this constant to a primitive int.
-     * 
+     *
      * @return the int value of this constant
      */
     public int asInt() {
@@ -186,7 +207,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to a primitive boolean.
-     * 
+     *
      * @return the boolean value of this constant
      */
     public boolean asBoolean() {
@@ -198,7 +219,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to a primitive long.
-     * 
+     *
      * @return the long value of this constant
      */
     public long asLong() {
@@ -218,7 +239,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to a primitive float.
-     * 
+     *
      * @return the float value of this constant
      */
     public float asFloat() {
@@ -230,7 +251,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to a primitive double.
-     * 
+     *
      * @return the double value of this constant
      */
     public double asDouble() {
@@ -245,7 +266,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to the object reference it represents.
-     * 
+     *
      * @return the object which this constant represents
      */
     public Object asObject() {
@@ -257,7 +278,7 @@ public final class Constant extends Value {
 
     /**
      * Converts this constant to the jsr reference it represents.
-     * 
+     *
      * @return the object which this constant represents
      */
     public int asJsr() {
@@ -278,8 +299,17 @@ public final class Constant extends Value {
     }
 
     /**
+     * Gets the annotation (if any) associated with this constant.
+     *
+     * @return null if this constant is not primitive or has no annotation
+     */
+    public Object getPrimitiveAnnotation() {
+        return getKind().isObject() ? null : object;
+    }
+
+    /**
      * Computes the hashcode of this constant.
-     * 
+     *
      * @return a suitable hashcode for this constant
      */
     @Override
@@ -291,9 +321,9 @@ public final class Constant extends Value {
     }
 
     /**
-     * Checks whether this constant equals another object. This is only true if the other object is a constant and has
-     * the same value.
-     * 
+     * Checks whether this constant equals another object. This is only true if the other object is a constant that has
+     * the same {@linkplain #getKind() kind}, value and {@link #getPrimitiveAnnotation() annotation}.
+     *
      * @param o the object to compare equality
      * @return {@code true} if this constant is equivalent to the specified object
      */
@@ -304,7 +334,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed double constant.
-     * 
+     *
      * @param d the double value to box
      * @return a boxed copy of {@code value}
      */
@@ -320,7 +350,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed float constant.
-     * 
+     *
      * @param f the float value to box
      * @return a boxed copy of {@code value}
      */
@@ -339,7 +369,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed long constant.
-     * 
+     *
      * @param i the long value to box
      * @return a boxed copy of {@code value}
      */
@@ -349,7 +379,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed integer constant.
-     * 
+     *
      * @param i the integer value to box
      * @return a boxed copy of {@code value}
      */
@@ -365,7 +395,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed byte constant.
-     * 
+     *
      * @param i the byte value to box
      * @return a boxed copy of {@code value}
      */
@@ -375,7 +405,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed boolean constant.
-     * 
+     *
      * @param i the boolean value to box
      * @return a boxed copy of {@code value}
      */
@@ -385,7 +415,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed char constant.
-     * 
+     *
      * @param i the char value to box
      * @return a boxed copy of {@code value}
      */
@@ -395,7 +425,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed short constant.
-     * 
+     *
      * @param i the short value to box
      * @return a boxed copy of {@code value}
      */
@@ -405,7 +435,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed address (jsr/ret address) constant.
-     * 
+     *
      * @param i the address value to box
      * @return a boxed copy of {@code value}
      */
@@ -415,7 +445,7 @@ public final class Constant extends Value {
 
     /**
      * Creates a boxed object constant.
-     * 
+     *
      * @param o the object value to box
      * @return a boxed copy of {@code value}
      */
@@ -423,13 +453,13 @@ public final class Constant extends Value {
         if (o == null) {
             return NULL_OBJECT;
         }
-        return new Constant(Kind.Object, o);
+        return new Constant(o);
     }
 
     /**
      * Creates a boxed constant for the given kind from an Object. The object needs to be of the Java boxed type
      * corresponding to the kind.
-     * 
+     *
      * @param kind the kind of the constant to create
      * @param value the Java boxed value: a {@link Byte} instance for {@link Kind#Byte}, etc.
      * @return the boxed copy of {@code value}

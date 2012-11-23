@@ -38,8 +38,13 @@ public interface ResolvedJavaField extends JavaField {
     int getModifiers();
 
     /**
+     * Determines if this field was injected by the VM. Such a field, for example, is not derived from a class file.
+     */
+    boolean isInternal();
+
+    /**
      * Gets the constant value of this field for a given object, if available.
-     * 
+     *
      * @param receiver object from which this field's value is to be read. This value is ignored if this field is
      *            static.
      * @return the constant value of this field or {@code null} if the constant value is not available
@@ -48,7 +53,7 @@ public interface ResolvedJavaField extends JavaField {
 
     /**
      * Gets the current value of this field for a given object, if available.
-     * 
+     *
      * @param receiver object from which this field's value is to be read. This value is ignored if this field is
      *            static.
      * @return the value of this field or {@code null} if the value is not available (e.g., because the field holder is
@@ -63,7 +68,7 @@ public interface ResolvedJavaField extends JavaField {
 
     /**
      * Returns the annotation for the specified type of this field, if such an annotation is present.
-     * 
+     *
      * @param annotationClass the Class object corresponding to the annotation type
      * @return this element's annotation for the specified annotation type if present on this field, else {@code null}
      */
