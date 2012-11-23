@@ -28,7 +28,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -148,16 +147,16 @@ public class InliningPhase extends Phase implements InliningCallback {
     private abstract static class AbstractInliningDecision implements InliningDecision {
         public static boolean decideSizeBasedInlining(InlineInfo info, double maxSize) {
             boolean success = info.weight() <= maxSize;
-            if (DebugScope.getInstance().isLogEnabled()) {
-                String formatterString = success ? "inlining %s (size %f <= %f)" : "not inlining %s (too large %f > %f)";
-                Debug.log(formatterString, InliningUtil.methodName(info), info.weight(), maxSize);
+            if (GraalOptions.Debug) {
+                String formatterString = success ? "(size %f <= %f)" : "(too large %f > %f)";
+                InliningUtil.logInliningDecision(info, success, formatterString, info.weight(), maxSize);
             }
             return success;
         }
 
         public static boolean checkCompiledCodeSize(InlineInfo info) {
             if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
-                Debug.log("not inlining %s (CompiledCodeSize %d > %d)", InliningUtil.methodName(info), info.compiledCodeSize(), GraalOptions.SmallCompiledCodeSize);
+                InliningUtil.logNotInlinedMethod(info, "(CompiledCodeSize %d > %d)", info.compiledCodeSize(), GraalOptions.SmallCompiledCodeSize);
                 return false;
             }
             return true;
@@ -231,6 +230,20 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
+    private static class GreedyMachineCodeInliningDecision extends AbstractInliningDecision {
+        @Override
+        public boolean isWorthInlining(InlineInfo info) {
+            assert GraalOptions.ProbabilityAnalysis;
+
+            double maxSize = GraalOptions.MaximumGreedyInlineSize;
+            double inlineRatio = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke().probability());
+            maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level()) * maxSize * inlineRatio;
+            maxSize = Math.max(maxSize, GraalOptions.MaximumTrivialSize);
+
+            return decideSizeBasedInlining(info, maxSize);
+        }
+    }
+
     private static class BytecodeSizeBasedWeightComputationPolicy implements WeightComputationPolicy {
         @Override
         public double computeWeight(ResolvedJavaMethod caller, ResolvedJavaMethod method, Invoke invoke, boolean preferredInvoke) {
@@ -250,6 +263,14 @@ public class InliningPhase extends Phase implements InliningCallback {
                 complexity = complexity / GraalOptions.BoostInliningForEscapeAnalysis;
             }
             return complexity;
+        }
+    }
+
+    private static class CompiledCodeSizeWeightComputationPolicy implements WeightComputationPolicy {
+        @Override
+        public double computeWeight(ResolvedJavaMethod caller, ResolvedJavaMethod method, Invoke invoke, boolean preferredInvoke) {
+            int compiledCodeSize = method.getCompiledCodeSize();
+            return compiledCodeSize > 0 ? compiledCodeSize : method.getCodeSize() * 10;
         }
     }
 
@@ -516,6 +537,7 @@ public class InliningPhase extends Phase implements InliningCallback {
             case 2: return new MinimumCodeSizeBasedInliningDecision();
             case 3: return new DynamicSizeBasedInliningDecision();
             case 4: return new GreedySizeBasedInliningDecision();
+            case 5: return new GreedyMachineCodeInliningDecision();
             default:
                 GraalInternalError.shouldNotReachHere();
                 return null;
@@ -527,6 +549,7 @@ public class InliningPhase extends Phase implements InliningCallback {
             case 0: throw new GraalInternalError("removed because of invokation counter changes");
             case 1: return new BytecodeSizeBasedWeightComputationPolicy();
             case 2: return new ComplexityBasedWeightComputationPolicy();
+            case 3: return new CompiledCodeSizeWeightComputationPolicy();
             default:
                 GraalInternalError.shouldNotReachHere();
                 return null;

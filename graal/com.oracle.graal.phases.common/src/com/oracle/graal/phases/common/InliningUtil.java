@@ -44,6 +44,7 @@ import com.oracle.graal.phases.*;
 
 public class InliningUtil {
     private static final DebugMetric metricInliningTailDuplication = Debug.metric("InliningTailDuplication");
+    private static final String inliningDecisionsScopeString = "InliningDecisions";
 
     public interface InliningCallback {
         StructuredGraph buildGraph(final ResolvedJavaMethod method);
@@ -62,39 +63,75 @@ public class InliningUtil {
         double computeWeight(ResolvedJavaMethod caller, ResolvedJavaMethod method, Invoke invoke, boolean preferredInvoke);
     }
 
-    public static String methodName(ResolvedJavaMethod method, Invoke invoke) {
-        if (!Debug.isLogEnabled()) {
-            return null;
-        } else if (invoke != null && invoke.stateAfter() != null) {
+    public static void logNotInlinedMethod(InlineInfo info, String msg, Object... args) {
+        logInliningDecision(info, false, msg, args);
+    }
+
+    public static void logInliningDecision(InlineInfo info, boolean success, String msg, final Object... args) {
+        if (shouldLogInliningDecision()) {
+            logInliningDecision(methodName(info), success, msg, args);
+        }
+    }
+
+    public static void logInliningDecision(final String msg, final Object... args) {
+        Debug.scope(inliningDecisionsScopeString, new Runnable() {
+            public void run() {
+                Debug.log(msg, args);
+            }
+        });
+    }
+
+    private static boolean logNotInlinedMethodAndReturnFalse(Invoke invoke, String msg) {
+        if (shouldLogInliningDecision()) {
+            String methodString = invoke.callTarget() == null ? "callTarget=null" : invoke.callTarget().targetName();
+            logInliningDecision(methodString, false, msg);
+        }
+        return false;
+    }
+
+    private static InlineInfo logNotInlinedMethodAndReturnNull(Invoke invoke, ResolvedJavaMethod method, String msg) {
+        if (shouldLogInliningDecision()) {
+            String methodString = methodName(method, invoke);
+            logInliningDecision(methodString, false, msg);
+        }
+        return null;
+    }
+
+    private static boolean logNotInlinedMethodAndReturnFalse(Invoke invoke, ResolvedJavaMethod method, String msg) {
+        if (shouldLogInliningDecision()) {
+            String methodString = methodName(method, invoke);
+            logInliningDecision(methodString, false, msg);
+        }
+        return false;
+    }
+
+    private static void logInliningDecision(final String methodString, final boolean success, final String msg, final Object... args) {
+        String inliningMsg = "inlining " + methodString + ": " + msg;
+        if (!success) {
+            inliningMsg = "not " + inliningMsg;
+        }
+        logInliningDecision(inliningMsg, args);
+    }
+
+    private static boolean shouldLogInliningDecision() {
+        return Debug.scope(inliningDecisionsScopeString, new Callable<Boolean>() {
+            public Boolean call() {
+                return Debug.isLogEnabled();
+            }
+        });
+    }
+
+    private static String methodName(ResolvedJavaMethod method, Invoke invoke) {
+        if (invoke != null && invoke.stateAfter() != null) {
             return methodName(invoke.stateAfter(), invoke.bci()) + ": " + MetaUtil.format("%H.%n(%p):%r", method) + " (" + method.getCodeSize() + " bytes)";
         } else {
             return MetaUtil.format("%H.%n(%p):%r", method) + " (" + method.getCodeSize() + " bytes)";
         }
     }
 
-    public static void logInliningDecision(final String msg, final Object... args) {
-        if (GraalOptions.Debug) {
-            Debug.scope("InliningDecisions", new Runnable() {
-                public void run() {
-                    Debug.log(msg, args);
-                }
-            });
-        }
-    }
-
-    private static InlineInfo logNotInlinedMethodAndReturnNull(final String msg, final Object... args) {
-        logInliningDecision(msg, args);
-        return null;
-    }
-
-    private static boolean logNotInlinedMethodAndReturnFalse(final String msg, final Object... args) {
-        logInliningDecision(msg, args);
-        return false;
-    }
-
-    public static String methodName(InlineInfo info) {
-        if (!Debug.isLogEnabled()) {
-            return null;
+    private static String methodName(InlineInfo info) {
+        if (info == null) {
+            return "null";
         } else if (info.invoke() != null && info.invoke().stateAfter() != null) {
             return methodName(info.invoke().stateAfter(), info.invoke().bci()) + ": " + info.toString();
         } else {
@@ -657,18 +694,18 @@ public class InliningUtil {
         ProfilingInfo profilingInfo = caller.getProfilingInfo();
         JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(invoke.bci());
         if (typeProfile == null) {
-            return logNotInlinedMethodAndReturnNull("not inlining %s because no type profile exists", methodName(targetMethod, invoke));
+            return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no type profile exists");
         }
 
         ProfiledType[] ptypes = typeProfile.getTypes();
         if (ptypes == null || ptypes.length <= 0) {
-            return logNotInlinedMethodAndReturnNull("not inlining %s because no types/probabilities were recorded", methodName(targetMethod, invoke));
+            return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no types/probabilities were recorded");
         }
 
         double notRecordedTypeProbability = typeProfile.getNotRecordedProbability();
         if (ptypes.length == 1 && notRecordedTypeProbability == 0) {
             if (!optimisticOpts.inlineMonomorphicCalls()) {
-                return logNotInlinedMethodAndReturnNull("not inlining %s because inlining monomorphic calls is disabled", methodName(targetMethod, invoke));
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining monomorphic calls is disabled");
             }
 
             ResolvedJavaType type = ptypes[0].getType();
@@ -682,10 +719,10 @@ public class InliningUtil {
             invoke.setMegamorphic(true);
 
             if (!optimisticOpts.inlinePolymorphicCalls() && notRecordedTypeProbability == 0) {
-                return logNotInlinedMethodAndReturnNull("not inlining %s because inlining polymorphic calls is disabled", methodName(targetMethod, invoke));
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining polymorphic calls is disabled");
             }
             if (!optimisticOpts.inlineMegamorphicCalls() && notRecordedTypeProbability > 0) {
-                return logNotInlinedMethodAndReturnNull("not inlining %s because inlining megamorphic calls is disabled", methodName(targetMethod, invoke));
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining megamorphic calls is disabled");
             }
 
             // TODO (chaeubl) inlining of multiple methods should work differently
@@ -712,13 +749,14 @@ public class InliningUtil {
             double totalWeight = 0;
             for (ResolvedJavaMethod concrete: concreteMethods) {
                 if (!checkTargetConditions(invoke, concrete, optimisticOpts, runtime)) {
-                    return logNotInlinedMethodAndReturnNull("not inlining %s because it is a polymorphic method call and at least one invoked method cannot be inlined", methodName(targetMethod, invoke));
+                    return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "it is a polymorphic method call and at least one invoked method cannot be inlined");
                 }
                 totalWeight += inliningPolicy.inliningWeight(caller, concrete, invoke);
             }
             return new MultiTypeGuardInlineInfo(invoke, totalWeight, concreteMethods, ptypes, typesToConcretes, notRecordedTypeProbability);
         }
     }
+
 
     private static ResolvedJavaMethod getCaller(Invoke invoke) {
         return invoke.stateAfter().method();
@@ -731,15 +769,15 @@ public class InliningUtil {
 
     private static boolean checkInvokeConditions(Invoke invoke) {
         if (!(invoke.callTarget() instanceof MethodCallTargetNode)) {
-            return logNotInlinedMethodAndReturnFalse("not inlining %s because the invoke has already been lowered, or has been created as a low-level node", invoke.callTarget() == null ? "callTarget=null" : invoke.callTarget().targetName());
+            return logNotInlinedMethodAndReturnFalse(invoke, "the invoke has already been lowered, or has been created as a low-level node");
         } else if (invoke.methodCallTarget().targetMethod() == null) {
-            return logNotInlinedMethodAndReturnFalse("not inlining %s because target method is null", invoke.toString());
+            return logNotInlinedMethodAndReturnFalse(invoke, "target method is null");
         } else if (invoke.stateAfter() == null) {
-            return logNotInlinedMethodAndReturnFalse("not inlining %s because the invoke has no after state", methodName(invoke.methodCallTarget().targetMethod(), invoke));
+            return logNotInlinedMethodAndReturnFalse(invoke, "the invoke has no after state");
         } else if (invoke.predecessor() == null || !invoke.node().isAlive()) {
-            return logNotInlinedMethodAndReturnFalse("not inlining %s because the invoke is dead code", methodName(invoke.methodCallTarget().targetMethod(), invoke));
+            return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is dead code");
         } else if (!invoke.useForInlining()) {
-            return logNotInlinedMethodAndReturnFalse("not inlining %s because invoke is marked to be not used for inlining", methodName(invoke.methodCallTarget().targetMethod(), invoke));
+            return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is marked to be not used for inlining");
         } else {
             return true;
         }
@@ -747,21 +785,21 @@ public class InliningUtil {
 
     private static boolean checkTargetConditions(Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts, GraalCodeCacheProvider runtime) {
         if (method == null) {
-            return logNotInlinedMethodAndReturnFalse("not inlining because method is not resolved");
+            return logNotInlinedMethodAndReturnFalse(invoke, method, "the method is not resolved");
         } else if (Modifier.isNative(method.getModifiers()) && (!GraalOptions.Intrinsify || !InliningUtil.canIntrinsify(invoke, method, runtime))) {
-            return logNotInlinedMethodAndReturnFalse("not inlining %s because it is a non-intrinsic native method", methodName(method, invoke));
+            return logNotInlinedMethodAndReturnFalse(invoke, method, "it is a non-intrinsic native method");
         } else if (Modifier.isAbstract(method.getModifiers())) {
-            return logNotInlinedMethodAndReturnFalse("not inlining %s because it is an abstract method", methodName(method, invoke));
+            return logNotInlinedMethodAndReturnFalse(invoke, method, "it is an abstract method");
         } else if (!method.getDeclaringClass().isInitialized()) {
-            return logNotInlinedMethodAndReturnFalse("not inlining %s because of non-initialized class", methodName(method, invoke));
+            return logNotInlinedMethodAndReturnFalse(invoke, method, "the method's class is not initialized");
         } else if (!method.canBeInlined()) {
-            return logNotInlinedMethodAndReturnFalse("not inlining %s because it is marked non-inlinable", methodName(method, invoke));
+            return logNotInlinedMethodAndReturnFalse(invoke, method, "it is marked non-inlinable");
         } else if (computeInliningLevel(invoke) > GraalOptions.MaximumInlineLevel) {
-            return logNotInlinedMethodAndReturnFalse("not inlining %s because it excees the maximum inlining depth", methodName(method, invoke));
+            return logNotInlinedMethodAndReturnFalse(invoke, method, "it exceeds the maximum inlining depth");
         } else if (computeRecursiveInliningLevel(invoke.stateAfter(), method) > GraalOptions.MaximumRecursiveInlining) {
-            return logNotInlinedMethodAndReturnFalse("not inlining %s because it exceeds the maximum recursive inlining depth", methodName(method, invoke));
+            return logNotInlinedMethodAndReturnFalse(invoke, method, "it exceeds the maximum recursive inlining depth");
         } else if (new OptimisticOptimizations(method).lessOptimisticThan(optimisticOpts)) {
-            return logNotInlinedMethodAndReturnFalse("not inlining %s because callee uses less optimistic optimizations than caller", methodName(method, invoke));
+            return logNotInlinedMethodAndReturnFalse(invoke, method, "the callee uses less optimistic optimizations than caller");
         } else {
             return true;
         }

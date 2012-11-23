@@ -106,7 +106,7 @@ public final class DebugScope {
 
     public void log(String msg, Object... args) {
         if (isLogEnabled()) {
-            if (lastLogScope.get() != this) {
+            if (lastLogScope.get() == null || !lastLogScope.get().qualifiedName.equals(this.qualifiedName)) {
                 output.println("scope: " + qualifiedName);
                 lastLogScope.set(this);
             }
