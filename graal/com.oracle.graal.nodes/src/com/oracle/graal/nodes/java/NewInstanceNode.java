@@ -82,31 +82,16 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
     }
 
     @Override
-    public EscapeOp getEscapeOp() {
+    public ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess) {
         if (instanceClass != null) {
             assert !instanceClass().isArrayClass();
-            final ResolvedJavaField[] fields = instanceClass().getInstanceFields(true);
-            return new EscapeOp() {
-
-                @Override
-                public ValueNode[] fieldState() {
-                    ValueNode[] state = new ValueNode[fields.length];
-                    for (int i = 0; i < state.length; i++) {
-                        state[i] = ConstantNode.defaultForKind(fields[i].getType().getKind(), graph());
-                    }
-                    return state;
-                }
-
-                @Override
-                public VirtualObjectNode virtualObject(long virtualId) {
-                    return new VirtualInstanceNode(virtualId, instanceClass(), fields);
-                }
-
-                @Override
-                public int lockCount() {
-                    return 0;
-                }
-            };
+            ResolvedJavaField[] fields = instanceClass().getInstanceFields(true);
+            ValueNode[] state = new ValueNode[fields.length];
+            for (int i = 0; i < state.length; i++) {
+                state[i] = ConstantNode.defaultForKind(fields[i].getType().getKind(), graph());
+            }
+            VirtualObjectNode virtualObject = new VirtualInstanceNode(nextVirtualId, instanceClass(), fields);
+            return new ObjectDesc[]{new ObjectDesc(virtualObject, state, 0)};
         }
         return null;
     }

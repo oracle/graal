@@ -937,13 +937,8 @@ public class InliningUtil {
             returnDuplicate.replaceAndDelete(n);
         }
 
-        invoke.node().clearInputs();
         invoke.node().replaceAtUsages(null);
         GraphUtil.killCFG(invoke.node());
-
-        if (stateAfter.usages().isEmpty()) {
-            stateAfter.safeDelete();
-        }
     }
 
     public static void receiverNullCheck(Invoke invoke) {

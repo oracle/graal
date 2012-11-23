@@ -105,32 +105,17 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
     }
 
     @Override
-    public EscapeOp getEscapeOp() {
+    public ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess) {
         if (length().asConstant() != null) {
             final int constantLength = length().asConstant().asInt();
             if (constantLength >= 0 && constantLength < MaximumEscapeAnalysisArrayLength) {
-                return new EscapeOp() {
-
-                    @Override
-                    public ValueNode[] fieldState() {
-                        ValueNode[] state = new ValueNode[constantLength];
-                        ConstantNode defaultForKind = constantLength == 0 ? null : ConstantNode.defaultForKind(elementType().getKind(), graph());
-                        for (int i = 0; i < constantLength; i++) {
-                            state[i] = defaultForKind;
-                        }
-                        return state;
-                    }
-
-                    @Override
-                    public VirtualObjectNode virtualObject(long virtualId) {
-                        return new VirtualArrayNode(virtualId, elementType, constantLength);
-                    }
-
-                    @Override
-                    public int lockCount() {
-                        return 0;
-                    }
-                };
+                ValueNode[] state = new ValueNode[constantLength];
+                ConstantNode defaultForKind = constantLength == 0 ? null : ConstantNode.defaultForKind(elementType().getKind(), graph());
+                for (int i = 0; i < constantLength; i++) {
+                    state[i] = defaultForKind;
+                }
+                VirtualObjectNode virtualObject = new VirtualArrayNode(nextVirtualId, elementType, constantLength);
+                return new ObjectDesc[]{new ObjectDesc(virtualObject, state, 0)};
             }
         }
         return null;

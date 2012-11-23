@@ -158,8 +158,10 @@ class BlockState extends MergeableBlockState<BlockState> {
 
     void addAndMarkAlias(VirtualObjectNode virtual, ValueNode node, NodeBitMap usages) {
         objectAliases.put(node, virtual);
-        for (Node usage : node.usages()) {
-            markVirtualUsages(usage, usages);
+        if (node.isAlive()) {
+            for (Node usage : node.usages()) {
+                markVirtualUsages(usage, usages);
+            }
         }
     }
 

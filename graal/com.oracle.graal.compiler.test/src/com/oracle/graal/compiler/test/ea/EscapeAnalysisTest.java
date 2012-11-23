@@ -22,17 +22,17 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import junit.framework.Assert;
+import junit.framework.*;
 
 import org.junit.Test;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.virtual.nodes.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
 /**
@@ -43,46 +43,42 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
 
     @Test
     public void test1() {
-        test("test1Snippet", Constant.forInt(101));
+        testEscapeAnalysis("test1Snippet", Constant.forInt(101), false);
     }
 
-    @SuppressWarnings("all")
-    public static int test1Snippet(int a) {
+    public static int test1Snippet() {
         Integer x = new Integer(101);
         return x.intValue();
     }
 
     @Test
     public void test2() {
-        test("test2Snippet", Constant.forInt(0));
+        testEscapeAnalysis("test2Snippet", Constant.forInt(0), false);
     }
 
-    @SuppressWarnings("all")
-    public static int test2Snippet(int a) {
+    public static int test2Snippet() {
         Integer[] x = new Integer[0];
         return x.length;
     }
 
     @Test
     public void test3() {
-        test("test3Snippet", Constant.forObject(null));
+        testEscapeAnalysis("test3Snippet", Constant.forObject(null), false);
     }
 
-    @SuppressWarnings("all")
-    public static Object test3Snippet(int a) {
+    public static Object test3Snippet() {
         Integer[] x = new Integer[1];
         return x[0];
     }
 
     @Test
     public void testMonitor() {
-        test("testMonitorSnippet", Constant.forInt(0));
+        testEscapeAnalysis("testMonitorSnippet", Constant.forInt(0), false);
     }
 
     private static native void notInlineable();
 
-    @SuppressWarnings("all")
-    public static int testMonitorSnippet(int a) {
+    public static int testMonitorSnippet() {
         Integer x = new Integer(0);
         Integer[] y = new Integer[0];
         Integer[] z = new Integer[1];
@@ -98,14 +94,13 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
 
     @Test
     public void testMonitor2() {
-        test("testMonitor2Snippet", Constant.forInt(0));
+        testEscapeAnalysis("testMonitor2Snippet", Constant.forInt(0), false);
     }
 
     /**
      * This test case differs from the last one in that it requires inlining within a synchronized region.
      */
-    @SuppressWarnings("all")
-    public static int testMonitor2Snippet(int a) {
+    public static int testMonitor2Snippet() {
         Integer x = new Integer(0);
         Integer[] y = new Integer[0];
         Integer[] z = new Integer[1];
@@ -121,7 +116,7 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
 
     @Test
     public void testMerge() {
-        test("testMerge1Snippet", Constant.forInt(0));
+        testEscapeAnalysis("testMerge1Snippet", Constant.forInt(0), true);
     }
 
     public static class TestObject {
@@ -149,7 +144,7 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
 
     @Test
     public void testSimpleLoop() {
-        test("testSimpleLoopSnippet", Constant.forInt(1));
+        testEscapeAnalysis("testSimpleLoopSnippet", Constant.forInt(1), false);
     }
 
     public int testSimpleLoopSnippet(int a) {
@@ -160,37 +155,59 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
         return obj.x;
     }
 
-    private void test(final String snippet, final Constant expectedResult) {
-        Debug.scope("EscapeAnalysisTest", new DebugDumpScope(snippet), new Runnable() {
-            public void run() {
-                StructuredGraph graph = parse(snippet);
-                for (Invoke n : graph.getInvokes()) {
-                    n.node().setProbability(100000);
-                }
+    public static class TestObject2 {
+        Object o;
+        public TestObject2(Object o) {
+            this.o = o;
+        }
+    }
 
-                new InliningPhase(null, runtime(), null, null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-                new DeadCodeEliminationPhase().apply(graph);
-                Debug.dump(graph, "Graph");
-                new PartialEscapeAnalysisPhase(null, runtime(), null).apply(graph);
-                new CullFrameStatesPhase().apply(graph);
-                new CanonicalizerPhase(null, runtime(), null).apply(graph);
-                Debug.dump(graph, "Graph");
-                int retCount = 0;
-                for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {
-                    Assert.assertTrue(ret.result().isConstant());
-                    Assert.assertEquals(ret.result().asConstant(), expectedResult);
-                    retCount++;
-                }
-                Assert.assertEquals(1, retCount);
-                int newInstanceCount = 0;
-                for (@SuppressWarnings("unused") NewInstanceNode n : graph.getNodes(NewInstanceNode.class)) {
-                    newInstanceCount++;
-                }
-                for (@SuppressWarnings("unused") NewObjectArrayNode n : graph.getNodes(NewObjectArrayNode.class)) {
-                    newInstanceCount++;
-                }
-                Assert.assertEquals(0, newInstanceCount);
+    @Test
+    public void testCheckCast() {
+        testEscapeAnalysis("testCheckCastSnippet", Constant.forObject(TestObject2.class), false);
+    }
+
+    public Object testCheckCastSnippet() {
+        TestObject2 obj = new TestObject2(TestObject2.class);
+        TestObject2 obj2 = new TestObject2(obj);
+        return ((TestObject2) obj2.o).o;
+    }
+
+    @Test
+    public void testInstanceOf() {
+        ReturnNode returnNode = testEscapeAnalysis("testInstanceOfSnippet", null, false);
+        ValueNode result = returnNode.result();
+        Assert.assertTrue(result instanceof MaterializeNode);
+        Assert.assertEquals(Constant.TRUE, ((MaterializeNode) result).condition().asConstant());
+    }
+
+    public boolean testInstanceOfSnippet() {
+        TestObject2 obj = new TestObject2(TestObject2.class);
+        TestObject2 obj2 = new TestObject2(obj);
+        return obj2.o instanceof TestObject2;
+    }
+
+    private ReturnNode testEscapeAnalysis(String snippet, Constant expectedConstantResult, boolean iterativeEscapeAnalysis) {
+        StructuredGraph graph = parse(snippet);
+        try {
+            for (Invoke n : graph.getInvokes()) {
+                n.node().setProbability(100000);
             }
-        });
+
+            new InliningPhase(null, runtime(), null, null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+            new DeadCodeEliminationPhase().apply(graph);
+            new PartialEscapeAnalysisPhase(null, runtime(), null, iterativeEscapeAnalysis).apply(graph);
+            Assert.assertEquals(1, graph.getNodes(ReturnNode.class).count());
+            ReturnNode returnNode = graph.getNodes(ReturnNode.class).first();
+            if (expectedConstantResult != null) {
+                Assert.assertTrue(returnNode.result().toString(), returnNode.result().isConstant());
+                Assert.assertEquals(expectedConstantResult, returnNode.result().asConstant());
+            }
+            int newInstanceCount = graph.getNodes(NewInstanceNode.class).count() + graph.getNodes(NewObjectArrayNode.class).count() + graph.getNodes(MaterializeObjectNode.class).count();
+            Assert.assertEquals(0, newInstanceCount);
+            return returnNode;
+        } catch (AssertionFailedError t) {
+            throw new RuntimeException(t.getMessage() + "\n" + getCanonicalGraphString(graph), t);
+        }
     }
 }

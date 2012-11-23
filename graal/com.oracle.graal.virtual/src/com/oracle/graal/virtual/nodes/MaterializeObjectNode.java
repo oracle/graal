@@ -101,27 +101,11 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
     }
 
     @Override
-    public EscapeOp getEscapeOp() {
-        if (!shouldRevirtualize(this)) {
-            return null;
+    public ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess) {
+        if (shouldRevirtualize(this)) {
+            return new ObjectDesc[] {new ObjectDesc(virtualObject, values.toArray(new ValueNode[values.size()]), lockCount)};
         }
-        return new EscapeOp() {
-
-            @Override
-            public ValueNode[] fieldState() {
-                return values.toArray(new ValueNode[values.size()]);
-            }
-
-            @Override
-            public VirtualObjectNode virtualObject(long virtualId) {
-                return virtualObject;
-            }
-
-            @Override
-            public int lockCount() {
-                return lockCount;
-            }
-        };
+        return null;
     }
 
     private boolean shouldRevirtualize(MaterializeObjectNode materializeObjectNode) {
