@@ -119,9 +119,6 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
             printConfig(config);
         }
 
-        AddressMap.log(config.cardtableStartAddress, "CARDTABLE");
-        AddressMap.log(config.cardtableStartAddress, "SAFEPOINT_POLL_PAGE");
-
         target = createTarget();
         assert wordKind == null || wordKind.equals(target.wordKind);
         wordKind = target.wordKind;
