@@ -84,7 +84,7 @@ public class InliningUtil {
     private static boolean logNotInlinedMethodAndReturnFalse(Invoke invoke, String msg) {
         if (shouldLogInliningDecision()) {
             String methodString = invoke.callTarget() == null ? "callTarget=null" : invoke.callTarget().targetName();
-            logInliningDecision(methodString, false, msg);
+            logInliningDecision(methodString, false, msg, new Object[0]);
         }
         return false;
     }
@@ -92,7 +92,7 @@ public class InliningUtil {
     private static InlineInfo logNotInlinedMethodAndReturnNull(Invoke invoke, ResolvedJavaMethod method, String msg) {
         if (shouldLogInliningDecision()) {
             String methodString = methodName(method, invoke);
-            logInliningDecision(methodString, false, msg);
+            logInliningDecision(methodString, false, msg, new Object[0]);
         }
         return null;
     }
@@ -100,7 +100,7 @@ public class InliningUtil {
     private static boolean logNotInlinedMethodAndReturnFalse(Invoke invoke, ResolvedJavaMethod method, String msg) {
         if (shouldLogInliningDecision()) {
             String methodString = methodName(method, invoke);
-            logInliningDecision(methodString, false, msg);
+            logInliningDecision(methodString, false, msg, new Object[0]);
         }
         return false;
     }

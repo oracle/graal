@@ -393,7 +393,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                 scanInvokes(graph.getNodes(InvokeNode.class));
                 scanInvokes(graph.getNodes(InvokeWithExceptionNode.class));
             } else {
-                scanInvokes((Iterable<? extends Node>) hints);
+                scanInvokes((Iterable<? extends Node>) (Iterable<?>) hints);
             }
         }
 
@@ -521,7 +521,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
-    private static InliningPolicy createInliningPolicy(GraalCodeCacheProvider runtime, Assumptions assumptions,  OptimisticOptimizations optimisticOpts, Collection<Invoke> hints) {
+    private static InliningPolicy createInliningPolicy(GraalCodeCacheProvider runtime, Assumptions assumptions, OptimisticOptimizations optimisticOpts, Collection<Invoke> hints) {
         switch(GraalOptions.InliningPolicy) {
             case 0: return new CFInliningPolicy(createInliningDecision(), createWeightComputationPolicy(), hints, runtime, assumptions, optimisticOpts);
             case 1: return new PriorityInliningPolicy(createInliningDecision(), createWeightComputationPolicy(), hints, runtime, assumptions, optimisticOpts);
