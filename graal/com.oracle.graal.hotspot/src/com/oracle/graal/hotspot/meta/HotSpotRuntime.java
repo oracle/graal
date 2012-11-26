@@ -540,6 +540,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             assert loadHub.kind() == wordKind;
             LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, wordKind, config.hubOffset, graph);
             ValueNode object = loadHub.object();
+            assert !object.isConstant();
             ValueNode guard = tool.createNullCheckGuard(object, StructuredGraph.INVALID_GRAPH_ID);
             ReadNode hub = graph.add(new ReadNode(object, location, wordStamp()));
             hub.dependencies().add(guard);
@@ -568,6 +569,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             newObjectSnippets.lower((NewMultiArrayNode) n, tool);
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
