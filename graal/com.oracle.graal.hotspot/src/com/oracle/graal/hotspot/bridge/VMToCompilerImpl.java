@@ -528,7 +528,6 @@ public class VMToCompilerImpl implements VMToCompiler {
             // lost the race - return the existing value instead
             type = (HotSpotResolvedJavaType) unsafe.getObject(javaMirror, offset);
         }
-        AddressMap.log(metaspaceKlass, type.toJava().getName());
         return type;
     }
 

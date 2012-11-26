@@ -385,8 +385,8 @@ public class SnippetTemplate {
 
     private static boolean checkConstantArgument(final ResolvedJavaMethod method, Signature signature, int i, String name, Object arg, Kind kind) {
         if (kind.isObject()) {
-            Class<?> type = signature.getParameterType(i, method.getDeclaringClass()).resolve(method.getDeclaringClass()).toJava();
-            assert arg == null || type.isInstance(arg) :
+            ResolvedJavaType type = signature.getParameterType(i, method.getDeclaringClass()).resolve(method.getDeclaringClass());
+            assert arg == null || type.isInstance(Constant.forObject(arg)) :
                 method + ": wrong value type for " + name + ": expected " + type.getName() + ", got " + arg.getClass().getName();
         } else {
             assert arg != null && kind.toBoxedJavaClass() == arg.getClass() :
@@ -398,9 +398,8 @@ public class SnippetTemplate {
     private static boolean checkVarargs(final ResolvedJavaMethod method, Signature signature, int i, String name, Varargs varargs) {
         Object arg = varargs.getArray();
         ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
-        Class< ? > javaType = type.toJava();
-        assert javaType.isArray() : "varargs parameter must be an array type";
-        assert javaType.isInstance(arg) : "value for " + name + " is not a " + javaType.getName() + " instance: " + arg;
+        assert type.isArrayClass() : "varargs parameter must be an array type";
+        assert type.isInstance(Constant.forObject(arg)) : "value for " + name + " is not a " + MetaUtil.toJavaName(type) + " instance: " + arg;
         return true;
     }
 

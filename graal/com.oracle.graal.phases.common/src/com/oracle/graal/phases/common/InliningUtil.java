@@ -667,7 +667,7 @@ public class InliningUtil {
                         return null;
                     }
                 } else {
-                    invoke.setMegamorphic(true);
+                    invoke.setPolymorphic(true);
                     if (optimisticOpts.inlinePolymorphicCalls() && notRecordedTypeProbability == 0 || optimisticOpts.inlineMegamorphicCalls() && notRecordedTypeProbability > 0) {
                         // TODO (chaeubl) inlining of multiple methods should work differently
                         // 1. check which methods can be inlined

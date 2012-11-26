@@ -1207,7 +1207,7 @@ public final class BytecodeInterpreter implements Interpreter {
     }
 
     private void instanceOf(InterpreterFrame frame, char cpi) {
-        frame.pushInt(resolveType(frame, Bytecodes.INSTANCEOF, cpi).toJava().isInstance(frame.popObject()) ? 1 : 0);
+        frame.pushInt(resolveType(frame, Bytecodes.INSTANCEOF, cpi).isInstance(Constant.forObject(frame.popObject())) ? 1 : 0);
     }
 
     private void pushCPConstant(InterpreterFrame frame, char cpi) {

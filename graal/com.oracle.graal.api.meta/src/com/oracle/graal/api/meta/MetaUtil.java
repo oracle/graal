@@ -46,9 +46,16 @@ public class MetaUtil {
     }
 
     /**
+     * Determines if a given type represents a primitive type.
+     */
+    public static boolean isPrimitive(ResolvedJavaType type) {
+        return type.getSuperclass() == null && !type.isInstanceClass();
+    }
+
+    /**
      * Extends the functionality of {@link Class#getSimpleName()} to include a non-empty string for anonymous and local
      * classes.
-     * 
+     *
      * @param clazz the class for which the simple name is being requested
      * @param withEnclosingClass specifies if the returned name should be qualified with the name(s) of the enclosing
      *            class/classes of {@code clazz} (if any). This option is ignored if {@code clazz} denotes an anonymous
@@ -84,7 +91,7 @@ public class MetaUtil {
     /**
      * Converts a given type to its Java programming language name. The following are examples of strings returned by
      * this method:
-     * 
+     *
      * <pre>
      *     qualified == true:
      *         java.lang.Object
@@ -95,7 +102,7 @@ public class MetaUtil {
      *         int
      *         boolean[][]
      * </pre>
-     * 
+     *
      * @param type the type to be converted to a Java name
      * @param qualified specifies if the package prefix of the type should be included in the returned name
      * @return the Java name corresponding to {@code type}
@@ -111,13 +118,13 @@ public class MetaUtil {
     /**
      * Converts a given type to its Java programming language name. The following are examples of strings returned by
      * this method:
-     * 
+     *
      * <pre>
      *      java.lang.Object
      *      int
      *      boolean[][]
      * </pre>
-     * 
+     *
      * @param type the type to be converted to a Java name
      * @return the Java name corresponding to {@code type}
      */
@@ -153,7 +160,7 @@ public class MetaUtil {
      * composed of characters that are to be copied verbatim to the result and specifiers that denote an attribute of
      * the method that is to be copied to the result. A specifier is a single character preceded by a '%' character. The
      * accepted specifiers and the method attributes they denote are described below:
-     * 
+     *
      * <pre>
      *     Specifier | Description                                          | Example(s)
      *     ----------+------------------------------------------------------------------------------------------
@@ -167,7 +174,7 @@ public class MetaUtil {
      *     'f'       | Indicator if method is unresolved, static or virtual | "unresolved" "static" "virtual"
      *     '%'       | A '%' character                                      | "%"
      * </pre>
-     * 
+     *
      * @param format a format specification
      * @param method the method to be formatted
      * @return the result of formatting this method according to {@code format}
@@ -246,7 +253,7 @@ public class MetaUtil {
      * composed of characters that are to be copied verbatim to the result and specifiers that denote an attribute of
      * the field that is to be copied to the result. A specifier is a single character preceded by a '%' character. The
      * accepted specifiers and the field attributes they denote are described below:
-     * 
+     *
      * <pre>
      *     Specifier | Description                                          | Example(s)
      *     ----------+------------------------------------------------------------------------------------------
@@ -258,7 +265,7 @@ public class MetaUtil {
      *     'f'       | Indicator if field is unresolved, static or instance | "unresolved" "static" "instance"
      *     '%'       | A '%' character                                      | "%"
      * </pre>
-     * 
+     *
      * @param format a format specification
      * @param field the field to be formatted
      * @return the result of formatting this field according to {@code format}
@@ -316,7 +323,7 @@ public class MetaUtil {
 
     /**
      * Gets the annotations of a particular type for the formal parameters of a given method.
-     * 
+     *
      * @param annotationClass the Class object corresponding to the annotation type
      * @param method the method for which a parameter annotations are being requested
      * @return the annotation of type {@code annotationClass} (if any) for each formal parameter present
@@ -337,7 +344,7 @@ public class MetaUtil {
 
     /**
      * Gets the annotation of a particular type for a formal parameter of a given method.
-     * 
+     *
      * @param annotationClass the Class object corresponding to the annotation type
      * @param parameterIndex the index of a formal parameter of {@code method}
      * @param method the method for which a parameter annotation is being requested
@@ -370,18 +377,18 @@ public class MetaUtil {
      * {@linkplain ResolvedJavaMethod#asStackTraceElement(int) available} for the given method, then the string returned
      * is the {@link StackTraceElement#toString()} value of the stack trace element, suffixed by the bci location. For
      * example:
-     * 
+     *
      * <pre>
      *     java.lang.String.valueOf(String.java:2930) [bci: 12]
      * </pre>
-     * 
+     *
      * Otherwise, the string returned is the value of applying {@link #format(String, JavaMethod)} with the format
      * string {@code "%H.%n(%p)"}, suffixed by the bci location. For example:
-     * 
+     *
      * <pre>
      *     java.lang.String.valueOf(int) [bci: 12]
      * </pre>
-     * 
+     *
      * @param sb
      * @param method
      * @param bci
@@ -433,7 +440,7 @@ public class MetaUtil {
 
     /**
      * Formats some profiling information associated as a string.
-     * 
+     *
      * @param info the profiling info to format
      * @param method an optional method that augments the profile string returned
      * @param sep the separator to use for each separate profile record
@@ -500,12 +507,46 @@ public class MetaUtil {
 
     /**
      * Converts a Java source-language class name into the internal form.
-     * 
+     *
      * @param className the class name
      * @return the internal name form of the class name
      */
     public static String toInternalName(String className) {
-        return "L" + className.replace('.', '/') + ";";
+        String prefix = "";
+        String base = className;
+        while (base.endsWith("[]")) {
+            prefix += "[";
+            base = base.substring(base.length() - 2);
+        }
+
+        if (className.equals("boolean")) {
+            return prefix + "Z";
+        }
+        if (className.equals("byte")) {
+            return prefix + "B";
+        }
+        if (className.equals("short")) {
+            return prefix + "S";
+        }
+        if (className.equals("char")) {
+            return prefix + "C";
+        }
+        if (className.equals("int")) {
+            return prefix + "I";
+        }
+        if (className.equals("float")) {
+            return prefix + "F";
+        }
+        if (className.equals("long")) {
+            return prefix + "J";
+        }
+        if (className.equals("double")) {
+            return prefix + "D";
+        }
+        if (className.equals("void")) {
+            return prefix + "V";
+        }
+        return prefix + "L" + className.replace('.', '/') + ";";
     }
 
     /**

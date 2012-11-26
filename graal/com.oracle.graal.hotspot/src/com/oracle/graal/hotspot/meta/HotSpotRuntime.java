@@ -330,7 +330,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     @Override
     public ResolvedJavaType lookupJavaType(Constant constant) {
-        return (ResolvedJavaType) graalRuntime.getCompilerToVM().getJavaType(constant);
+        if (!constant.getKind().isObject() || constant.isNull()) {
+            return null;
+        }
+        Object o = constant.asObject();
+        return HotSpotResolvedJavaType.fromClass(o.getClass());
     }
 
     @Override
@@ -363,7 +367,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     @Override
     public int lookupArrayLength(Constant array) {
-        return graalRuntime.getCompilerToVM().getArrayLength(array);
+        if (!array.getKind().isObject() || array.isNull() || !array.asObject().getClass().isArray()) {
+            throw new IllegalArgumentException(array + " is not an array");
+        }
+        return Array.getLength(array.asObject());
     }
 
     @Override
@@ -388,7 +395,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 AbstractCallTargetNode loweredCallTarget = null;
                 if (callTarget.invokeKind() == InvokeKind.Virtual &&
                     GraalOptions.InlineVTableStubs &&
-                    (GraalOptions.AlwaysInlineVTableStubs || invoke.isMegamorphic())) {
+                    (GraalOptions.AlwaysInlineVTableStubs || invoke.isPolymorphic())) {
 
                     HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
                     if (!hsMethod.getDeclaringClass().isInterface()) {
