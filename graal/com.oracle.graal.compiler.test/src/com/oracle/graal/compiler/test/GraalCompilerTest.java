@@ -257,6 +257,7 @@ public abstract class GraalCompilerTest {
             Assert.assertTrue("expected " + expect.exception, actual.exception != null);
             Assert.assertEquals(expect.exception.getClass(), actual.exception.getClass());
         } else {
+            //System.out.println(name + "(" + Arrays.toString(args) + "): expected=" + expect.returnValue + ", actual=" + actual.returnValue);
             assertEquals(expect.returnValue, actual.returnValue);
         }
     }
@@ -288,8 +289,13 @@ public abstract class GraalCompilerTest {
     protected InstalledCode getCode(final ResolvedJavaMethod method, final StructuredGraph graph, boolean forceCompile) {
         if (!forceCompile) {
             InstalledCode cached = cache.get(method);
-            if (cached != null && cached.isValid()) {
-                return cached;
+            if (cached != null) {
+                if (cached.isValid()) {
+                    return cached;
+                } else {
+                    //System.out.println(cached.getMethod() + " was invalidated");
+                }
+
             }
         }
         InstalledCode installedCode = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(compilationId++), true), new Callable<InstalledCode>() {
