@@ -40,11 +40,13 @@ public class PartialEscapeAnalysisPhase extends Phase {
     private final TargetDescription target;
     private final MetaAccessProvider runtime;
     private final Assumptions assumptions;
+    private final boolean iterative;
 
-    public PartialEscapeAnalysisPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions) {
+    public PartialEscapeAnalysisPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, boolean iterative) {
         this.target = target;
         this.runtime = runtime;
         this.assumptions = assumptions;
+        this.iterative = iterative;
     }
 
     public static final void trace(String format, Object... obj) {
@@ -87,6 +89,9 @@ public class PartialEscapeAnalysisPhase extends Phase {
                     assert noObsoleteNodes(graph, obsoleteNodes);
 
                     new DeadCodeEliminationPhase().apply(graph);
+                    if (!iterative) {
+                        return;
+                    }
                     if (GraalOptions.OptCanonicalizer) {
                         new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
                     }

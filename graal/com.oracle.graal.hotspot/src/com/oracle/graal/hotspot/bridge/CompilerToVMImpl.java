@@ -113,20 +113,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native ResolvedJavaType getResolvedType(Class<?> javaClass);
 
     @Override
-    public int getArrayLength(Constant array) {
-        return Array.getLength(array.asObject());
-    }
-
-    @Override
-    public JavaType getJavaType(Constant constant) {
-        Object o = constant.asObject();
-        if (o == null) {
-            return null;
-        }
-        return HotSpotResolvedJavaType.fromClass(o.getClass());
-    }
-
-    @Override
     public native HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedJavaType klass);
 
     @Override

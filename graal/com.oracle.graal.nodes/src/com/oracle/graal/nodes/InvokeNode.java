@@ -39,7 +39,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
 
     @Input private final CallTargetNode callTarget;
     private final int bci;
-    private boolean megamorphic;
+    private boolean polymorphic;
     private boolean useForInlining;
     private final long leafGraphId;
 
@@ -54,7 +54,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
         this.callTarget = callTarget;
         this.bci = bci;
         this.leafGraphId = leafGraphId;
-        this.megamorphic = false;
+        this.polymorphic = false;
         this.useForInlining = true;
     }
 
@@ -69,13 +69,13 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     }
 
     @Override
-    public boolean isMegamorphic() {
-        return megamorphic;
+    public boolean isPolymorphic() {
+        return polymorphic;
     }
 
     @Override
-    public void setMegamorphic(boolean value) {
-        this.megamorphic = value;
+    public void setPolymorphic(boolean value) {
+        this.polymorphic = value;
     }
 
     public boolean useForInlining() {

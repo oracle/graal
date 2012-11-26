@@ -143,13 +143,6 @@ public interface CompilerToVM {
 
     JavaType getUniqueConcreteSubtype(HotSpotResolvedJavaType klass);
 
-    int getArrayLength(Constant array);
-
-    /**
-     * Gets the type of an object constant.
-     */
-    JavaType getJavaType(Constant constant);
-
     HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedJavaType klass);
 
     /**

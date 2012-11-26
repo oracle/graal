@@ -133,7 +133,7 @@ public class BoxingMethodPool {
         if (boxing == null) {
             return false;
         }
-        return method.getDeclaringClass().toJava() == boxing.type && method.getName().equals("valueOf");
+        return method.getDeclaringClass().isClass(boxing.type) && method.getName().equals("valueOf");
     }
 
     public static boolean isUnboxingMethodStatic(ResolvedJavaMethod method) {

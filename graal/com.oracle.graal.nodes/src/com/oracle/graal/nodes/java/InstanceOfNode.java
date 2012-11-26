@@ -28,11 +28,12 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
-public final class InstanceOfNode extends BooleanNode implements Canonicalizable, Lowerable, LIRLowerable {
+public final class InstanceOfNode extends BooleanNode implements Canonicalizable, Lowerable, LIRLowerable, Virtualizable {
 
     @Input private ValueNode object;
     private final ResolvedJavaType type;
@@ -128,5 +129,13 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
             assertTrue(usage instanceof IfNode || usage instanceof ConditionalNode, "unsupported usage: ", usage);
         }
         return super.verify();
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        VirtualObjectNode virtual = tool.getVirtualState(object());
+        if (virtual != null) {
+            tool.replaceWithValue(ConstantNode.forBoolean(virtual.type().isSubtypeOf(type()), graph()));
+        }
     }
 }

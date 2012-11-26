@@ -254,7 +254,10 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
 
     @Override
     public boolean isInstance(Constant obj) {
-        return javaMirror.isInstance(obj);
+        if (obj.getKind().isObject() && !obj.isNull()) {
+            return javaMirror.isInstance(obj.asObject());
+        }
+        return false;
     }
 
     @Override
@@ -389,6 +392,11 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     @Override
     public Class< ? > toJava() {
         return javaMirror;
+    }
+
+    @Override
+    public boolean isClass(Class c) {
+        return c == javaMirror;
     }
 
     @Override
