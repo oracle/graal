@@ -104,6 +104,17 @@ public interface CompilerToVM {
      */
     void initializeMethodData(long metaspaceMethodData, HotSpotMethodData methodData);
 
+    /**
+     * Converts a name to a Java type.
+     *
+     * @param name a well formed Java type in {@linkplain JavaType#getName() internal} format
+     * @param accessingClass the context of resolution (may be null)
+     * @param eagerResolve force resolution to a {@link ResolvedJavaType}. If true, this method will either return a
+     *            {@link ResolvedJavaType} or throw an exception
+     * @return a Java type for {@code name} which is guaranteed to be of type {@link ResolvedJavaType} if
+     *         {@code eagerResolve == true}
+     * @throws LinkageError if {@code eagerResolve == true} and the resolution failed
+     */
     JavaType lookupType(String name, HotSpotResolvedJavaType accessingClass, boolean eagerResolve);
 
     Object lookupConstantInPool(HotSpotResolvedJavaType pool, int cpi);
