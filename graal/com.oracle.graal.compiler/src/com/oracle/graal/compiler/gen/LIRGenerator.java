@@ -841,8 +841,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         } else {
             Variable value = load(operand(x.value()));
             LabelRef defaultTarget = x.defaultSuccessor() == null ? null : getLIRBlock(x.defaultSuccessor());
-            if (value.getKind() == Kind.Object) {
-                // only a few entries
+            if (value.getKind() != Kind.Int) {
+                // hopefully only a few entries
                 emitSequentialSwitch(x, value, defaultTarget);
             } else {
                 assert value.getKind() == Kind.Int;

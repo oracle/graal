@@ -149,6 +149,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 if (NumUtil.isInt(newDisplacement)) {
                     displacement = (int) newDisplacement;
                     base = Value.ILLEGAL;
+                } else {
+                    Value newBase = newVariable(Kind.Long);
+                    emitMove(base, newBase);
+                    base = newBase;
                 }
             }
         }
