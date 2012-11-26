@@ -52,7 +52,7 @@ public abstract class VirtualObjectNode extends FloatingNode implements LIRLower
         // nothing to do...
     }
 
-    public abstract Object fieldName(int i);
+    public abstract String fieldName(int i);
 
     public void materializeAt(@SuppressWarnings("unused") FixedNode fixed) {
         // nothing to do in here - this method allows subclasses to respond to materialization
