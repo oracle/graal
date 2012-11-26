@@ -324,4 +324,25 @@ public class InstanceOfTest extends TypeCheckTest {
         }
         return b;
     }
+
+    abstract static class A {}
+    static class B extends A {}
+
+    public static boolean isArrayOfA(Object o) {
+        return o instanceof A[];
+    }
+
+    public static boolean isArrayOfB(Object o) {
+        return o instanceof A[];
+    }
+
+    @Test
+    public void testArray() {
+        Object bArray = new A[10];
+        Object aArray = new B[10];
+        test("isArrayOfA", aArray);
+        test("isArrayOfA", bArray);
+        test("isArrayOfB", aArray);
+        test("isArrayOfB", bArray);
+    }
 }
