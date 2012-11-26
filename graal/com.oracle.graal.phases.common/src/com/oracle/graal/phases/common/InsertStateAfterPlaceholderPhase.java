@@ -50,16 +50,29 @@ public class InsertStateAfterPlaceholderPhase extends Phase {
             if (stateAfter() == null) {
                 return null;
             }
+            FixedNode next = next();
+            if (next instanceof PlaceholderNode && ((PlaceholderNode) next).stateAfter() != null) {
+                return null;
+            }
             return this;
         }
     }
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {
-            PlaceholderNode p = graph.add(new PlaceholderNode());
-            p.setStateAfter(graph.add(new FrameState(FrameState.AFTER_BCI)));
-            graph.addBeforeFixed(ret, p);
+        boolean needsPlaceHolder = false;
+        for (Node node : graph.getNodes().filterInterface(StateSplit.class)) {
+            StateSplit stateSplit = (StateSplit) node;
+            if (stateSplit.hasSideEffect() && stateSplit.stateAfter() != null) {
+                needsPlaceHolder = true;
+            }
+        }
+        if (needsPlaceHolder) {
+            for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {
+                PlaceholderNode p = graph.add(new PlaceholderNode());
+                p.setStateAfter(graph.add(new FrameState(FrameState.AFTER_BCI)));
+                graph.addBeforeFixed(ret, p);
+            }
         }
     }
 
