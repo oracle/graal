@@ -198,7 +198,7 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
             Assumptions assumptions = new Assumptions(false);
             new InliningPhase(null, runtime(), null, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
-            new PartialEscapeAnalysisPhase(null, runtime(), null, assumptions, iterativeEscapeAnalysis).apply(graph);
+            new PartialEscapeAnalysisPhase(null, runtime(), assumptions, iterativeEscapeAnalysis).apply(graph);
             Assert.assertEquals(1, graph.getNodes(ReturnNode.class).count());
             ReturnNode returnNode = graph.getNodes(ReturnNode.class).first();
             if (expectedConstantResult != null) {
