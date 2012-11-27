@@ -171,13 +171,21 @@ public interface ResolvedJavaType extends JavaType {
     ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType);
 
     /**
-     * Gets the unique concrete subclass of this type.
-     *
+     * Attempts to get a unique concrete subclass of this type.
+     * <p>
+     * For an {@linkplain #isArrayClass() array} type A, the unique concrete subclass is A if
+     * the element type of A is primitive or has no subtype. Otherwise there is no unique concrete subclass.
+     * <p>
+     * For a non-array type T, the result is the unique concrete type in the complete hierarchy of T.
+     * <p>
+     * A runtime may decide not to manage or walk a large hierarchy and so the result is conservative.
+     * That is, a non-null result is guaranteed to be the unique concrete class in T's hierarchy
+     * but a null result does not necessarily imply that there is no unique concrete class in T's hierarchy.
      * <p>
      * If the compiler uses the result of this method for its compilation, it must register an assumption because
      * dynamic class loading can invalidate the result of this method.
      *
-     * @return the exact type of this type, if it exists; {@code null} otherwise
+     * @return the unique concrete subclass for this type as described above
      */
     ResolvedJavaType findUniqueConcreteSubtype();
 
