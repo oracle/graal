@@ -457,6 +457,11 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     @Override
+    public Class<?> mirror() {
+        return javaMirror;
+    }
+
+    @Override
     public boolean isClass(Class c) {
         return c == javaMirror;
     }

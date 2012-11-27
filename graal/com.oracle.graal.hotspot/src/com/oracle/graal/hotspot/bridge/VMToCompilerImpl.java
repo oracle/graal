@@ -86,7 +86,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     private static void initMirror(HotSpotTypePrimitive type, long offset) {
-        Class< ? > mirror = type.toJava();
+        Class<?> mirror = type.mirror();
         unsafe.putObject(mirror, offset, type);
         assert unsafe.getObject(mirror, offset) == type;
     }

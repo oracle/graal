@@ -71,7 +71,7 @@ public class BoxingEliminationPhase extends Phase {
             ObjectStamp stamp = phiNode.objectStamp();
             if (stamp.nonNull() && stamp.isExactType()) {
                 ResolvedJavaType type = stamp.type();
-                if (type != null && type.toJava() == kind.toBoxedJavaClass()) {
+                if (type != null && type.isClass(kind.toBoxedJavaClass())) {
                     StructuredGraph graph = (StructuredGraph) phiNode.graph();
                     result = graph.add(new PhiNode(kind, phiNode.merge()));
                     phiReplacements.put(phiNode, result);

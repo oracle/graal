@@ -460,7 +460,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             ValueNode expected = cas.expected();
             if (expected.kind() == Kind.Object && !cas.newValue().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = cas.object().objectStamp().type();
-                if (type != null && !type.isArrayClass() && type.toJava() != Object.class) {
+                if (type != null && !type.isArrayClass() && !type.isClass(Object.class)) {
                     // Use a field write barrier since it's not an array store
                     FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(cas.object()));
                     graph.addAfterFixed(cas, writeBarrier);
@@ -533,7 +533,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             if (write.value().kind() == Kind.Object && !write.value().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = object.objectStamp().type();
                 WriteBarrier writeBarrier;
-                if (type != null && !type.isArrayClass() && type.toJava() != Object.class) {
+                if (type != null && !type.isArrayClass() && !type.isClass(Object.class)) {
                     // Use a field write barrier since it's not an array store
                     writeBarrier = graph.add(new FieldWriteBarrier(object));
                 } else {
@@ -600,7 +600,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         ResolvedJavaType holder = method.getDeclaringClass();
         String fullName = method.getName() + ((HotSpotSignature) method.getSignature()).asString();
         Kind wordKind = graalRuntime.getTarget().wordKind;
-        if (holder.toJava() == Object.class) {
+        if (holder.isClass(Object.class)) {
             if (fullName.equals("getClass()Ljava/lang/Class;")) {
                 ValueNode obj = (ValueNode) parameters.get(0);
                 ObjectStamp stamp = (ObjectStamp) obj.stamp();
@@ -621,7 +621,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 hub.setNext(ret);
                 return graph;
             }
-        } else if (holder.toJava() == Class.class) {
+        } else if (holder.isClass(Class.class)) {
             if (fullName.equals("getModifiers()I")) {
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
@@ -636,7 +636,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 klass.setNext(ret);
                 return graph;
             }
-        } else if (holder.toJava() == Thread.class) {
+        } else if (holder.isClass(Thread.class)) {
             if (fullName.equals("currentThread()Ljava/lang/Thread;")) {
                 StructuredGraph graph = new StructuredGraph();
                 ReturnNode ret = graph.add(new ReturnNode(graph.unique(new CurrentThread(config.threadObjectOffset, this))));

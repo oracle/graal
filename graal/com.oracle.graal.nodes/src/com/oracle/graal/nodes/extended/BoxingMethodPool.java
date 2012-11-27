@@ -148,6 +148,6 @@ public class BoxingMethodPool {
         if (boxing == null) {
             return false;
         }
-        return method.getDeclaringClass().toJava() == boxing.type && method.getName().equals(boxing.unboxMethod);
+        return method.getDeclaringClass().isClass(boxing.type) && method.getName().equals(boxing.unboxMethod);
     }
 }
