@@ -213,10 +213,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         installer.install(NewObjectSnippets.class);
         installer.install(MonitorSnippets.class);
 
-        checkcastSnippets = new CheckCastSnippets.Templates(this);
-        instanceofSnippets = new InstanceOfSnippets.Templates(this);
+        checkcastSnippets = new CheckCastSnippets.Templates(this, graalRuntime.getTarget());
+        instanceofSnippets = new InstanceOfSnippets.Templates(this, graalRuntime.getTarget());
         newObjectSnippets = new NewObjectSnippets.Templates(this, graalRuntime.getTarget(), config.useTLAB);
-        monitorSnippets = new MonitorSnippets.Templates(this, config.useFastLocking);
+        monitorSnippets = new MonitorSnippets.Templates(this, graalRuntime.getTarget(), config.useFastLocking);
     }
 
 
@@ -405,8 +405,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                             // as HotSpot does not guarantee they are final values.
                             assert vtableEntryOffset > 0;
                             LoadHubNode hub = graph.add(new LoadHubNode(receiver, wordKind));
-                            ReadNode metaspaceMethod = graph.add(new ReadNode(hub, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, vtableEntryOffset, graph), wordStamp()));
-                            ReadNode compiledEntry = graph.add(new ReadNode(metaspaceMethod, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph), wordStamp()));
+                            ReadNode metaspaceMethod = graph.add(new ReadNode(hub, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, vtableEntryOffset, graph), StampFactory.forKind(wordKind())));
+                            ReadNode compiledEntry = graph.add(new ReadNode(metaspaceMethod, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph), StampFactory.forKind(wordKind())));
 
                             loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(metaspaceMethod, compiledEntry, parameters, invoke.node().stamp(), signature, callTarget.targetMethod(), CallingConvention.Type.JavaCall));
 
@@ -499,7 +499,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 } else {
                     LoadHubNode arrayClass = graph.add(new LoadHubNode(array, wordKind));
                     LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, wordKind, config.arrayClassElementOffset, graph);
-                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, location, null, wordStamp()));
+                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, location, null, StampFactory.forKind(wordKind())));
                     CheckCastDynamicNode checkcast = graph.add(new CheckCastDynamicNode(arrayElementKlass, value));
                     graph.addBeforeFixed(storeIndexed, checkcast);
                     graph.addBeforeFixed(checkcast, arrayClass);
@@ -548,7 +548,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, wordKind, config.hubOffset, graph);
             ValueNode object = loadHub.object();
             ValueNode guard = tool.createNullCheckGuard(object, StructuredGraph.INVALID_GRAPH_ID);
-            ReadNode hub = graph.add(new ReadNode(object, location, wordStamp()));
+            ReadNode hub = graph.add(new ReadNode(object, location, StampFactory.forKind(wordKind())));
             hub.dependencies().add(guard);
             graph.replaceFixed(loadHub, hub);
         } else if (n instanceof CheckCastNode) {
@@ -625,7 +625,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             if (fullName.equals("getModifiers()I")) {
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
-                SafeReadNode klass = safeRead(graph, wordKind, receiver, config.klassOffset, wordStamp(), INVALID_GRAPH_ID);
+                SafeReadNode klass = safeRead(graph, wordKind, receiver, config.klassOffset, StampFactory.forKind(wordKind), INVALID_GRAPH_ID);
                 graph.start().setNext(klass);
                 LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Int, config.klassModifierFlagsOffset, graph);
                 FloatingReadNode readModifiers = graph.unique(new FloatingReadNode(klass, location, null, StampFactory.intValue()));

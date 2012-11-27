@@ -136,7 +136,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                 @Override
                 public void run() {
                     VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime);
-                    SnippetInstaller installer = new SnippetInstaller(runtime, runtime.getGraalRuntime().getTarget(), HotSpotGraalRuntime.wordStamp());
+                    SnippetInstaller installer = new SnippetInstaller(runtime, runtime.getGraalRuntime().getTarget());
                     GraalIntrinsics.installIntrinsics(installer);
                     runtime.installSnippets(installer);
                 }

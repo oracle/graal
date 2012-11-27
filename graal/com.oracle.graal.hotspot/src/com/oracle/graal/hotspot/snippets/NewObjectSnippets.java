@@ -243,7 +243,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         private final boolean useTLAB;
 
         public Templates(CodeCacheProvider runtime, TargetDescription target, boolean useTLAB) {
-            super(runtime, NewObjectSnippets.class);
+            super(runtime, target, NewObjectSnippets.class);
             this.target = target;
             this.useTLAB = useTLAB;
             allocate = snippet("allocate", int.class);

@@ -46,11 +46,9 @@ public class WordTypeRewriterPhase extends Phase {
     private static final String WordClassName = MetaUtil.toInternalName(Word.class.getName());
 
     private final Kind wordKind;
-    private final Stamp wordStamp;
 
-    public WordTypeRewriterPhase(Kind wordKind, Stamp wordStamp) {
+    public WordTypeRewriterPhase(Kind wordKind) {
         this.wordKind = wordKind;
-        this.wordStamp = wordStamp;
     }
 
     @Override
@@ -85,7 +83,7 @@ public class WordTypeRewriterPhase extends Phase {
         // Replace ObjectEqualsNodes with IntegerEqualsNodes where the values being compared are words
         for (LoadIndexedNode load : graph.getNodes().filter(LoadIndexedNode.class).snapshot()) {
             if (isWord(load)) {
-                load.setStamp(wordStamp);
+                load.setStamp(StampFactory.forKind(wordKind));
             }
         }
 
@@ -192,7 +190,7 @@ public class WordTypeRewriterPhase extends Phase {
                         assert arguments.size() == 1;
                         ValueNode value = arguments.first();
                         assert value.kind() == Kind.Object : value + ", " + targetMethod;
-                        UnsafeCastNode cast = graph.unique(new UnsafeCastNode(value, wordStamp));
+                        UnsafeCastNode cast = graph.unique(new UnsafeCastNode(value, StampFactory.forKind(wordKind)));
                         replace(invoke, cast);
                         break;
                     }
@@ -292,6 +290,9 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     public static boolean isWord(ValueNode node) {
+        if (node.stamp() == StampFactory.forWord()) {
+            return true;
+        }
         if (node instanceof LoadIndexedNode) {
             return isWord(((LoadIndexedNode) node).array().objectStamp().type().getComponentType());
         }
@@ -310,7 +311,7 @@ public class WordTypeRewriterPhase extends Phase {
 
     private void changeToWord(ValueNode valueNode) {
         assert !(valueNode instanceof ConstantNode);
-        valueNode.setStamp(wordStamp);
+        valueNode.setStamp(StampFactory.forKind(wordKind));
 
         // Propagate word kind.
         for (Node n : valueNode.usages()) {

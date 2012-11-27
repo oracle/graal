@@ -26,6 +26,7 @@ import static com.oracle.graal.nodes.calc.CompareNode.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -54,8 +55,8 @@ import com.oracle.graal.snippets.SnippetTemplate.UsageReplacer;
  */
 public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> extends AbstractTemplates<T> {
 
-    public InstanceOfSnippetsTemplates(MetaAccessProvider runtime, Class<T> snippetsClass) {
-        super(runtime, snippetsClass);
+    public InstanceOfSnippetsTemplates(MetaAccessProvider runtime, TargetDescription target, Class<T> snippetsClass) {
+        super(runtime, target, snippetsClass);
     }
 
     /**
