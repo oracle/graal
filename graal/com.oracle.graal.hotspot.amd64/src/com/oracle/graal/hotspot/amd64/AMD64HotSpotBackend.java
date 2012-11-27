@@ -231,7 +231,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         //  - has no callee-saved registers
         //  - has no incoming arguments passed on the stack
         //  - has no instructions with debug info
-        boolean canOmitFrame =
+        boolean canOmitFrame = GraalOptions.CanOmitFrame &&
             frameMap.frameSize() == frameMap.initialFrameSize &&
             frameMap.registerConfig.getCalleeSaveLayout().registers.length == 0 &&
             !lir.hasArgInCallerFrame() &&
