@@ -169,7 +169,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     private static boolean hasSubtype(ResolvedJavaType type) {
-        assert !type.isInterface() && !type.isArrayClass() : type;
+        assert !type.isArrayClass() : type;
         if (isPrimitive(type)) {
             return false;
         }
