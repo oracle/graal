@@ -118,7 +118,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public boolean canStoreConstant(Constant c) {
         // there is no immediate move of 64-bit constants on Intel
         switch (c.getKind()) {
-            case Long:   return Util.isInt(c.asLong());
+            case Long:   return Util.isInt(c.asLong()) && !runtime.needsDataPatch(c);
             case Double: return false;
             case Object: return c.isNull();
             default:     return true;
@@ -147,6 +147,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             } else if (asConstant(base).getKind() != Kind.Object) {
                 long newDisplacement = displacement + asConstant(base).asLong();
                 if (NumUtil.isInt(newDisplacement)) {
+                    assert !runtime.needsDataPatch(asConstant(base));
                     displacement = (int) newDisplacement;
                     base = Value.ILLEGAL;
                 } else {
@@ -683,6 +684,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         int displacement = node.displacement();
         Value index = operand(node.offset());
         if (isConstant(index) && NumUtil.isInt(asConstant(index).asLong() + displacement)) {
+            assert !runtime.needsDataPatch(asConstant(index));
             displacement += (int) asConstant(index).asLong();
             address = new Address(kind, load(operand(node.object())), displacement);
         } else {
