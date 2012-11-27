@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.graph.FieldIntrospection.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static java.lang.reflect.Modifier.*;
@@ -159,12 +160,36 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
         return javaComponentType == null ? null : fromClass(javaComponentType);
     }
 
+    public ResolvedJavaType getElementType() {
+        ResolvedJavaType type = this;
+        while (type.getComponentType() != null) {
+            type = type.getComponentType();
+        }
+        return type;
+    }
+
+    private static boolean hasSubtype(ResolvedJavaType type) {
+        assert !type.isInterface() && !type.isArrayClass() : type;
+        if (isPrimitive(type)) {
+            return false;
+        }
+        HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
+        if (unsafeReadWord(((HotSpotResolvedJavaType) type).metaspaceKlass + config.subklassOffset) != 0) {
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public ResolvedJavaType findUniqueConcreteSubtype() {
+        HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
         if (isArrayClass()) {
-            return getComponentType().findUniqueConcreteSubtype() == getComponentType() ? this : null;
+            ResolvedJavaType elementType = getElementType();
+            if (hasSubtype(elementType)) {
+                return null;
+            }
+            return this;
         } else {
-            HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
             HotSpotResolvedJavaType type = this;
             while (isAbstract(type.getModifiers())) {
                 long subklass = unsafeReadWord(type.metaspaceKlass + config.subklassOffset);
@@ -176,7 +201,6 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
             if (unsafeReadWord(type.metaspaceKlass + config.subklassOffset) != 0) {
                 return null;
             }
-            assert !type.isInterface();
             return type;
         }
     }

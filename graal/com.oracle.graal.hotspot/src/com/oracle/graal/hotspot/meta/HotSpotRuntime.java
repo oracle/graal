@@ -675,7 +675,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         return resultHolder[0].createMethod(metaspaceMethod);
     }
 
-    @Override
+    public ResolvedJavaMethod lookupJavaConstructor(Constructor reflectionConstructor) {
+        CompilerToVM c2vm = graalRuntime.getCompilerToVM();
+        HotSpotResolvedJavaType[] resultHolder = {null};
+        long metaspaceMethod = c2vm.getMetaspaceConstructor(reflectionConstructor, resultHolder);
+        assert metaspaceMethod != 0L;
+        return resultHolder[0].createMethod(metaspaceMethod);
+    }
+
     public ResolvedJavaField lookupJavaField(Field reflectionField) {
         return graalRuntime.getCompilerToVM().getJavaField(reflectionField);
     }
