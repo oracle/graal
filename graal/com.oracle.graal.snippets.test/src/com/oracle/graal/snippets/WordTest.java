@@ -43,7 +43,7 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
 
     public WordTest() {
         TargetDescription target = Graal.getRequiredCapability(GraalCompiler.class).target;
-        installer = new SnippetInstaller(runtime, target, new Assumptions(false));
+        installer = new SnippetInstaller(runtime, new Assumptions(false), target);
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();

@@ -135,7 +135,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                 @Override
                 public void run() {
                     Assumptions assumptions = new Assumptions(GraalOptions.OptAssumptions);
-                    SnippetInstaller installer = new SnippetInstaller(runtime, runtime.getGraalRuntime().getTarget(), HotSpotGraalRuntime.wordStamp(), assumptions);
+                    SnippetInstaller installer = new SnippetInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
                     GraalIntrinsics.installIntrinsics(installer);
                     runtime.installSnippets(installer, assumptions);
                 }
