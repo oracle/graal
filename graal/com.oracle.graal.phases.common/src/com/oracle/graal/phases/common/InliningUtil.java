@@ -991,7 +991,7 @@ public class InliningUtil {
         assert invoke.node().isAlive();
 
         StructuredGraph intrinsicGraph = (StructuredGraph) target.getCompilerStorage().get(Graph.class);
-        if (intrinsicGraph == null) {
+        if (intrinsicGraph == null && runtime != null) {
             // TODO remove once all intrinsics are available via compilerStorage
             intrinsicGraph = runtime.intrinsicGraph(invoke.stateAfter().method(), invoke.bci(), target, invoke.callTarget().arguments());
         }
