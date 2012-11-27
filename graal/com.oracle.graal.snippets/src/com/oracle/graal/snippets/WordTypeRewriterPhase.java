@@ -47,11 +47,9 @@ public class WordTypeRewriterPhase extends Phase {
 
     private final Kind wordKind;
     private final Stamp wordStamp;
-    private final ResolvedJavaType wordType;
 
-    public WordTypeRewriterPhase(Kind wordKind, Stamp wordStamp, ResolvedJavaType wordType) {
+    public WordTypeRewriterPhase(Kind wordKind, Stamp wordStamp) {
         this.wordKind = wordKind;
-        this.wordType = wordType;
         this.wordStamp = wordStamp;
     }
 
@@ -169,9 +167,7 @@ public class WordTypeRewriterPhase extends Phase {
                     case W2A: {
                         assert arguments.size() == 1;
                         ValueNode value = arguments.first();
-                        ResolvedJavaType declaringClass = targetMethod.getDeclaringClass();
-                        ResolvedJavaType targetType = targetMethod.getSignature().getReturnType(declaringClass).resolve(declaringClass);
-                        UnsafeCastNode cast = graph.unique(new UnsafeCastNode(value, targetType));
+                        UnsafeCastNode cast = graph.unique(new UnsafeCastNode(value, ((ValueNode) invoke).stamp()));
                         replace(invoke, cast);
                         break;
                     }
@@ -196,7 +192,7 @@ public class WordTypeRewriterPhase extends Phase {
                         assert arguments.size() == 1;
                         ValueNode value = arguments.first();
                         assert value.kind() == Kind.Object : value + ", " + targetMethod;
-                        UnsafeCastNode cast = graph.unique(new UnsafeCastNode(value, wordType));
+                        UnsafeCastNode cast = graph.unique(new UnsafeCastNode(value, wordStamp));
                         replace(invoke, cast);
                         break;
                     }

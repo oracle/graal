@@ -38,11 +38,11 @@ import com.oracle.graal.nodes.extended.*;
 public class NodeClassSnippets implements SnippetsInterface {
 
     private static Node getNode(Node node, long offset) {
-        return UnsafeCastNode.cast(UnsafeLoadNode.load(node, 0, offset, Kind.Object), Node.class);
+        return UnsafeCastNode.unsafeCast(UnsafeLoadNode.load(node, 0, offset, Kind.Object), Node.class, false, false);
     }
 
-    private static NodeList<Node> getNodeList(Node node, long offset) {
-        return UnsafeCastNode.cast(UnsafeLoadNode.load(node, 0, offset, Kind.Object), NodeList.class);
+    private static NodeList getNodeList(Node node, long offset) {
+        return UnsafeCastNode.unsafeCast(UnsafeLoadNode.load(node, 0, offset, Kind.Object), NodeList.class, false, false);
     }
 
     private static void putNode(Node node, long offset, Node value) {

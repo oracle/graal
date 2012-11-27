@@ -182,7 +182,7 @@ public class SnippetInstaller {
                         InliningUtil.inline(invoke, targetGraph, true);
                         Debug.dump(graph, "after inlining %s", callee);
                         if (GraalOptions.OptCanonicalizer) {
-                            new WordTypeRewriterPhase(target.wordKind, wordStamp, runtime.lookupJavaType(target.wordKind.toJavaClass())).apply(graph);
+                            new WordTypeRewriterPhase(target.wordKind, wordStamp).apply(graph);
                             new CanonicalizerPhase(target, runtime, null).apply(graph);
                         }
                     }
@@ -190,7 +190,7 @@ public class SnippetInstaller {
 
                 new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
 
-                new WordTypeRewriterPhase(target.wordKind, wordStamp, runtime.lookupJavaType(target.wordKind.toJavaClass())).apply(graph);
+                new WordTypeRewriterPhase(target.wordKind, wordStamp).apply(graph);
 
                 new DeadCodeEliminationPhase().apply(graph);
                 if (GraalOptions.OptCanonicalizer) {

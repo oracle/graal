@@ -165,13 +165,18 @@ public class StampFactory {
     }
 
     public static Stamp declared(ResolvedJavaType type, boolean nonNull) {
+        return object(type, false, nonNull);
+    }
+
+    public static Stamp object(ResolvedJavaType type, boolean exactType, boolean nonNull) {
         assert type != null;
         assert type.getKind() == Kind.Object;
         ResolvedJavaType exact = type.asExactType();
         if (exact != null) {
+            assert !exactType || type == exact;
             return new ObjectStamp(exact, true, nonNull, false);
         } else {
-            return new ObjectStamp(type, false, nonNull, false);
+            return new ObjectStamp(type, exactType, nonNull, false);
         }
     }
 
