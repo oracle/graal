@@ -58,4 +58,10 @@ public class BoxedVirtualObjectNode extends VirtualObjectNode implements LIRLowe
         assert index == 0;
         return "value";
     }
+
+    @Override
+    public int fieldIndexForOffset(long constantOffset) {
+        // (lstadler) unsafe access to a newly created boxing object should only ever touch the value field
+        return 0;
+    }
 }

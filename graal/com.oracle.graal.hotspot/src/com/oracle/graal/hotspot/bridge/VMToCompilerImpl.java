@@ -445,11 +445,6 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public Signature createSignature(String signature) {
-        return new HotSpotSignature(signature);
-    }
-
-    @Override
     public JavaField createJavaField(JavaType holder, String name, JavaType type, int offset, int flags, boolean internal) {
         if (offset != -1) {
             HotSpotResolvedJavaType resolved = (HotSpotResolvedJavaType) holder;
