@@ -23,8 +23,9 @@
 package com.oracle.graal.hotspot.snippets;
 
 import static com.oracle.graal.api.code.UnsignedMath.*;
-import static com.oracle.graal.hotspot.nodes.CastFromHub.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
+import static com.oracle.graal.nodes.extended.UnsafeArrayCastNode.*;
+import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 import static com.oracle.graal.snippets.Snippet.Varargs.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
@@ -78,17 +79,19 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @ConstantParameter("fillContents") boolean fillContents,
                     @ConstantParameter("locked") boolean locked) {
 
+        Object result;
         if (memory == Word.zero()) {
             new_stub.inc();
-            return NewInstanceStubCall.call(hub);
-        }
-        if (locked) {
-            formatObject(hub, size, memory, thread().or(biasedLockPattern()), fillContents);
+            result = NewInstanceStubCall.call(hub);
         } else {
-            formatObject(hub, size, memory, prototypeMarkWord, fillContents);
+            if (locked) {
+                formatObject(hub, size, memory, thread().or(biasedLockPattern()), fillContents);
+            } else {
+                formatObject(hub, size, memory, prototypeMarkWord, fillContents);
+            }
+            result = memory.toObject();
         }
-        Object instance = memory.toObject();
-        return castFromHub(verifyOop(instance), hub);
+        return unsafeCast(verifyOop(result), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet
@@ -126,22 +129,24 @@ public class NewObjectSnippets implements SnippetsInterface {
     }
 
     private static Object initializeArray(Word memory, Word hub, int length, int size, Word prototypeMarkWord, int headerSize, boolean isObjectArray, boolean fillContents) {
+        Object result;
         if (memory == Word.zero()) {
             if (isObjectArray) {
                 anewarray_stub.inc();
             } else {
                 newarray_stub.inc();
             }
-            return NewArrayStubCall.call(isObjectArray, hub, length);
-        }
-        if (isObjectArray) {
-            anewarray_loopInit.inc();
+            result = NewArrayStubCall.call(isObjectArray, hub, length);
         } else {
-            newarray_loopInit.inc();
+            if (isObjectArray) {
+                anewarray_loopInit.inc();
+            } else {
+                newarray_loopInit.inc();
+            }
+            formatArray(hub, size, length, headerSize, memory, prototypeMarkWord, fillContents);
+            result = memory.toObject();
         }
-        formatArray(hub, size, length, headerSize, memory, prototypeMarkWord, fillContents);
-        Object instance = memory.toObject();
-        return castFromHub(verifyOop(instance), hub);
+        return unsafeArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
     }
 
     /**
@@ -243,7 +248,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         private final boolean useTLAB;
 
         public Templates(CodeCacheProvider runtime, Assumptions assumptions, TargetDescription target, boolean useTLAB) {
-            super(runtime, assumptions, NewObjectSnippets.class);
+            super(runtime, assumptions, target, NewObjectSnippets.class);
             this.target = target;
             this.useTLAB = useTLAB;
             allocate = snippet("allocate", int.class);

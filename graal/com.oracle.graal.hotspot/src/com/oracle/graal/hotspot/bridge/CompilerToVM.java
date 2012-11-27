@@ -104,6 +104,17 @@ public interface CompilerToVM {
      */
     void initializeMethodData(long metaspaceMethodData, HotSpotMethodData methodData);
 
+    /**
+     * Converts a name to a Java type.
+     *
+     * @param name a well formed Java type in {@linkplain JavaType#getName() internal} format
+     * @param accessingClass the context of resolution (may be null)
+     * @param eagerResolve force resolution to a {@link ResolvedJavaType}. If true, this method will either return a
+     *            {@link ResolvedJavaType} or throw an exception
+     * @return a Java type for {@code name} which is guaranteed to be of type {@link ResolvedJavaType} if
+     *         {@code eagerResolve == true}
+     * @throws LinkageError if {@code eagerResolve == true} and the resolution failed
+     */
     JavaType lookupType(String name, HotSpotResolvedJavaType accessingClass, boolean eagerResolve);
 
     Object lookupConstantInPool(HotSpotResolvedJavaType pool, int cpi);
@@ -123,7 +134,7 @@ public interface CompilerToVM {
      * @param code if not null, then the code is installed as the non-default compiled code for the associated method
      *            and the details of the installation are written to this object
      * @param info additional information about the installation are written to this object if it is not null
-     * @return the value of {@code code}
+     * @return the value of {@code code} if installation was successful, null otherwise
      */
     HotSpotInstalledCode installCode(HotSpotCompilationResult compResult, HotSpotInstalledCode code, HotSpotCodeInfo info);
 

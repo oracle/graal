@@ -195,7 +195,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         if (cfgPrinter != null) {
             cfgPrinter.close();
         }

@@ -324,4 +324,66 @@ public class InstanceOfTest extends TypeCheckTest {
         }
         return b;
     }
+
+    abstract static class A {}
+    static class B extends A {}
+    static class C extends B {}
+    abstract static class D extends C {}
+
+    public static boolean isArrayOfA(Object o) {
+        return o instanceof A[];
+    }
+
+    public static boolean isArrayOfB(Object o) {
+        return o instanceof B[];
+    }
+
+    public static boolean isArrayOfC(Object o) {
+        return o instanceof C[];
+    }
+
+    public static boolean isArrayOfD(Object o) {
+        return o instanceof D[];
+    }
+
+    @Test
+    public void testArray() {
+        Object aArray = new A[10];
+        test("isArrayOfA", aArray);
+
+        Object bArray = new B[10];
+        test("isArrayOfA", aArray);
+        test("isArrayOfA", bArray);
+        test("isArrayOfB", aArray);
+        test("isArrayOfB", bArray);
+
+        Object cArray = new C[10];
+        test("isArrayOfA", aArray);
+        test("isArrayOfA", bArray);
+        test("isArrayOfA", cArray);
+        test("isArrayOfB", aArray);
+        test("isArrayOfB", bArray);
+        test("isArrayOfB", cArray);
+        test("isArrayOfC", aArray);
+        test("isArrayOfC", bArray);
+        test("isArrayOfC", cArray);
+
+        Object dArray = new D[10];
+        test("isArrayOfA", aArray);
+        test("isArrayOfA", bArray);
+        test("isArrayOfA", cArray);
+        test("isArrayOfA", dArray);
+        test("isArrayOfB", aArray);
+        test("isArrayOfB", bArray);
+        test("isArrayOfB", cArray);
+        test("isArrayOfB", dArray);
+        test("isArrayOfC", aArray);
+        test("isArrayOfC", bArray);
+        test("isArrayOfC", cArray);
+        test("isArrayOfC", dArray);
+        test("isArrayOfD", aArray);
+        test("isArrayOfD", bArray);
+        test("isArrayOfD", cArray);
+        test("isArrayOfD", dArray);
+    }
 }

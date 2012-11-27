@@ -21,7 +21,7 @@
  * questions.
  */
 package com.oracle.graal.hotspot.snippets;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
@@ -36,6 +36,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
@@ -235,8 +236,8 @@ public class CheckCastSnippets implements SnippetsInterface {
         private final ResolvedJavaMethod secondary;
         private final ResolvedJavaMethod dynamic;
 
-        public Templates(CodeCacheProvider runtime, Assumptions assumptions) {
-            super(runtime, assumptions, CheckCastSnippets.class);
+        public Templates(CodeCacheProvider runtime, Assumptions assumptions, TargetDescription target) {
+            super(runtime, assumptions, target, CheckCastSnippets.class);
             exact = snippet("checkcastExact", Object.class, Word.class, boolean.class);
             primary = snippet("checkcastPrimary", Word.class, Object.class, boolean.class, int.class);
             secondary = snippet("checkcastSecondary", Word.class, Object.class, Word[].class, boolean.class);
@@ -267,7 +268,7 @@ public class CheckCastSnippets implements SnippetsInterface {
                 arguments = arguments("hub", hub).add("object", object);
             } else {
                 ConstantNode[] hints = createHints(hintInfo, runtime, graph);
-                key = new Key(secondary).add("hints", Varargs.vargargs(new Word[hints.length], wordStamp())).add("checkNull", checkNull);
+                key = new Key(secondary).add("hints", Varargs.vargargs(new Word[hints.length], StampFactory.forKind(wordKind()))).add("checkNull", checkNull);
                 arguments = arguments("hub", hub).add("object", object).add("hints", hints);
             }
 

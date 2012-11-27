@@ -200,7 +200,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         for (int i = 0; i < previousInlineContext.size(); i++) {
             closeScope();
         }

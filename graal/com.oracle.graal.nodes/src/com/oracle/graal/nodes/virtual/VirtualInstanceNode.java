@@ -67,7 +67,7 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     }
 
     @Override
-    public Object fieldName(int index) {
+    public String fieldName(int index) {
         return fields[index].getName();
     }
 

@@ -43,4 +43,7 @@ interface GraphPrinter extends Closeable {
      * Ends the current group.
      */
     void endGroup() throws IOException;
+
+    @Override
+    void close();
 }

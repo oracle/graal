@@ -119,6 +119,7 @@ class BlockState extends MergeableBlockState<BlockState> {
             materializeEffects.addFixedNodeBefore(newObject, fixed);
         } else {
             // some entries are not default constants - do the materialization
+            virtual.materializeAt(fixed);
             MaterializeObjectNode materialize = new MaterializeObjectNode(virtual, obj.getLockCount());
             ValueNode[] values = new ValueNode[obj.getEntries().length];
             materialize.setProbability(fixed.probability());

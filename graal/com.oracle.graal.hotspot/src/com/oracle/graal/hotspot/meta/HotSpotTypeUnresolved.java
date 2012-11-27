@@ -36,10 +36,9 @@ public class HotSpotTypeUnresolved extends HotSpotJavaType {
     public final int dimensions;
 
     public HotSpotTypeUnresolved(String name, String simpleName, int dimensions) {
-        super(getFullName(name, dimensions));
+        super(name);
         assert dimensions >= 0;
         this.simpleName = simpleName;
-
         this.dimensions = dimensions;
     }
 

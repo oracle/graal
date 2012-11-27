@@ -399,8 +399,8 @@ public class MonitorSnippets implements SnippetsInterface {
         private final ResolvedJavaMethod checkCounter;
         private final boolean useFastLocking;
 
-        public Templates(CodeCacheProvider runtime, Assumptions assumptions, boolean useFastLocking) {
-            super(runtime, assumptions, MonitorSnippets.class);
+        public Templates(CodeCacheProvider runtime, Assumptions assumptions, TargetDescription target, boolean useFastLocking) {
+            super(runtime, assumptions, target, MonitorSnippets.class);
             monitorenter = snippet("monitorenter", Object.class, boolean.class, boolean.class);
             monitorexit = snippet("monitorexit", Object.class, boolean.class);
             monitorenterStub = snippet("monitorenterStub", Object.class, boolean.class, boolean.class);

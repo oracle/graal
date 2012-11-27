@@ -438,8 +438,12 @@ public class BinaryGraphPrinter implements GraphPrinter{
     }
 
     @Override
-    public void close() throws IOException {
-        flush();
-        channel.close();
+    public void close() {
+        try {
+            flush();
+            channel.close();
+        } catch (IOException ex) {
+            throw new Error(ex);
+        }
     }
 }

@@ -160,7 +160,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     @Override
     public ResolvedJavaType findUniqueConcreteSubtype() {
         if (isArrayClass()) {
-            return getComponentType().findUniqueConcreteSubtype() != null ? this : null;
+            return getComponentType().findUniqueConcreteSubtype() == getComponentType() ? this : null;
         } else {
             ResolvedJavaType subtype = (ResolvedJavaType) HotSpotGraalRuntime.getInstance().getCompilerToVM().getUniqueConcreteSubtype(this);
             assert subtype == null || !subtype.isInterface();
@@ -358,7 +358,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     @Override
     public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
         if (instanceFields == null) {
-            if (isArrayClass() && isInterface()) {
+            if (isArrayClass() || isInterface()) {
                 instanceFields = new HotSpotResolvedJavaField[0];
             } else {
                 HotSpotResolvedJavaField[] myFields = HotSpotGraalRuntime.getInstance().getCompilerToVM().getInstanceFields(this);

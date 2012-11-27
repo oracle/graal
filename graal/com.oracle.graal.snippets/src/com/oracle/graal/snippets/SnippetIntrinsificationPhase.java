@@ -82,12 +82,13 @@ public class SnippetIntrinsificationPhase extends Phase {
     private void tryIntrinsify(Invoke invoke) {
         ResolvedJavaMethod target = invoke.methodCallTarget().targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
+        ResolvedJavaType declaringClass = target.getDeclaringClass();
         if (intrinsic != null) {
             assert target.getAnnotation(Fold.class) == null;
             assert Modifier.isNative(target.getModifiers()) : "node intrinsic " + target + " should be native";
 
-            Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.getSignature(), target.getDeclaringClass());
-            ResolvedJavaType returnType = (ResolvedJavaType) target.getSignature().getReturnType(target.getDeclaringClass());
+            Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.getSignature(), declaringClass);
+            ResolvedJavaType returnType = target.getSignature().getReturnType(declaringClass).resolve(declaringClass);
 
             // Prepare the arguments for the reflective constructor call on the node class.
             Object[] nodeConstructorArguments = prepareArguments(invoke, parameterTypes, target, false);
@@ -103,7 +104,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnCheckCast(newInstance);
         } else if (target.getAnnotation(Fold.class) != null) {
-            Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.getSignature(), target.getDeclaringClass());
+            Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.getSignature(), declaringClass);
 
             // Prepare the arguments for the reflective method call
             Object[] arguments = prepareArguments(invoke, parameterTypes, target, true);
@@ -114,7 +115,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             }
 
             // Call the method
-            Constant constant = callMethod(target.getSignature().getReturnKind(), target.getDeclaringClass().toJava(), target.getName(), parameterTypes, receiver, arguments);
+            Constant constant = callMethod(target.getSignature().getReturnKind(), declaringClass.toJava(), target.getName(), parameterTypes, receiver, arguments);
 
             if (constant != null) {
                 // Replace the invoke with the result of the call

@@ -55,8 +55,8 @@ import com.oracle.graal.snippets.SnippetTemplate.UsageReplacer;
  */
 public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> extends AbstractTemplates<T> {
 
-    public InstanceOfSnippetsTemplates(MetaAccessProvider runtime, Assumptions assumptions, Class<T> snippetsClass) {
-        super(runtime, assumptions, snippetsClass);
+    public InstanceOfSnippetsTemplates(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target, Class<T> snippetsClass) {
+        super(runtime, assumptions, target, snippetsClass);
     }
 
     /**

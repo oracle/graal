@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,41 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.virtual;
+package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-@NodeInfo(nameTemplate = "VirtualObject {p#type}")
-public abstract class VirtualObjectNode extends FloatingNode implements LIRLowerable {
+/**
+ * The {@code UnsafeCastNode} produces the same value as its input, but with a different type.
+ */
+public final class UnsafeArrayCastNode extends UnsafeCastNode implements ArrayLengthProvider {
 
-    private final long virtualId;
+    @Input
+    private ValueNode length;
 
-    public VirtualObjectNode(long virtualId) {
-        super(StampFactory.virtual());
-        this.virtualId = virtualId;
+    public ValueNode length() {
+        return length;
     }
 
-    public abstract ResolvedJavaType type();
-
-    public abstract int entryCount();
-
-    public long virtualId() {
-        return virtualId;
+    public UnsafeArrayCastNode(ValueNode object, ValueNode length, Stamp stamp) {
+        super(object, stamp);
+        this.length = length;
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        // nothing to do...
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (!(object() instanceof ArrayLengthProvider) || length() != ((ArrayLengthProvider) object()).length()) {
+            return this;
+        }
+        return super.canonical(tool);
     }
 
-    public abstract String fieldName(int i);
-
-    public void materializeAt(@SuppressWarnings("unused") FixedNode fixed) {
-        // nothing to do in here - this method allows subclasses to respond to materialization
-    }
+    @NodeIntrinsic
+    public static native <T> T unsafeArrayCast(Object object, int length, @ConstantNodeParameter Stamp stamp);
 }
