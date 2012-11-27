@@ -297,7 +297,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         static ConstantNode[] createHints(TypeCheckHints hints, MetaAccessProvider runtime, Graph graph) {
             ConstantNode[] hintHubs = new ConstantNode[hints.types.length];
             for (int i = 0; i < hintHubs.length; i++) {
-                hintHubs[i] = ConstantNode.forConstant(((HotSpotJavaType) hints.types[i]).klass(), runtime, graph);
+                hintHubs[i] = ConstantNode.forConstant(((HotSpotResolvedJavaType) hints.types[i]).klass(), runtime, graph);
             }
             return hintHubs;
         }
