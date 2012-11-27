@@ -45,8 +45,6 @@ public interface VMToCompiler {
 
     JavaMethod createUnresolvedJavaMethod(String name, String signature, JavaType holder);
 
-    Signature createSignature(String signature);
-
     JavaField createJavaField(JavaType holder, String name, JavaType type, int offset, int flags, boolean internal);
 
     ResolvedJavaMethod createResolvedJavaMethod(JavaType holder, long metaspaceMethod);
