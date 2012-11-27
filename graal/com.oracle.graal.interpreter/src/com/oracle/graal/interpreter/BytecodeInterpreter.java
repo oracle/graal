@@ -89,7 +89,7 @@ public final class BytecodeInterpreter implements Interpreter {
 
             @Override
             public Object invoke(InterpreterFrame caller, ResolvedJavaMethod method, Object[] arguments) throws Throwable {
-                setBackTrace(caller, (Throwable) arguments[0], createStackTraceElements(caller));
+                setBackTrace(caller, (Throwable) arguments[0], createStackTraceElements(caller, runtimeInterface));
                 return null;
             }
         });
@@ -942,7 +942,7 @@ public final class BytecodeInterpreter implements Interpreter {
             setStackTrace(frame, t, elements);
             setBackTrace(frame, t, null);
         } else {
-            setBackTrace(frame, t, createStackTraceElements(frame));
+            setBackTrace(frame, t, createStackTraceElements(frame, runtimeInterface));
         }
     }
 
@@ -973,13 +973,17 @@ public final class BytecodeInterpreter implements Interpreter {
                     catchType = resolveType(frame, Bytecodes.INSTANCEOF, (char) handler.catchTypeCPI());
                 }
 
-                if (catchType == null || catchType.toJava().isInstance(t)) {
+                if (catchType == null || catchType.isInstance(Constant.forObject(t))) {
                     // the first found exception handler is our exception handler
                     return handler;
                 }
             }
         }
         return null;
+    }
+
+    private Class<?> mirror(ResolvedJavaType type) {
+        return runtimeInterface.getMirror(type);
     }
 
     private InterpreterFrame allocateFrame(InterpreterFrame frame, BytecodeStream bs) {
@@ -1000,7 +1004,7 @@ public final class BytecodeInterpreter implements Interpreter {
                     traceOp(frame, "Method monitor enter");
                 }
                 if (Modifier.isStatic(nextFrame.getMethod().getModifiers())) {
-                    runtimeInterface.monitorEnter(nextFrame.getMethod().getDeclaringClass().toJava());
+                    runtimeInterface.monitorEnter(mirror(nextFrame.getMethod().getDeclaringClass()));
                 } else {
                     Object enterObject = nextFrame.getObject(frame.resolveLocalIndex(0));
                     assert enterObject != null;
@@ -1022,7 +1026,7 @@ public final class BytecodeInterpreter implements Interpreter {
                 traceOp(frame, "Method monitor exit");
             }
             if (Modifier.isStatic(frame.getMethod().getModifiers())) {
-                runtimeInterface.monitorExit(frame.getMethod().getDeclaringClass().toJava());
+                runtimeInterface.monitorExit(mirror(frame.getMethod().getDeclaringClass()));
             } else {
                 Object exitObject = frame.getObject(frame.resolveLocalIndex(0));
                 if (exitObject != null) {
@@ -1181,7 +1185,7 @@ public final class BytecodeInterpreter implements Interpreter {
     }
 
     private void checkCast(InterpreterFrame frame, char cpi) {
-        frame.pushObject(resolveType(frame, Bytecodes.CHECKCAST, cpi).toJava().cast(frame.popObject()));
+        frame.pushObject(mirror(resolveType(frame, Bytecodes.CHECKCAST, cpi)).cast(frame.popObject()));
     }
 
     private ResolvedJavaType resolveType(InterpreterFrame frame, int opcode, char cpi) {
@@ -1236,7 +1240,7 @@ public final class BytecodeInterpreter implements Interpreter {
                     assert false : "unspecified case";
             }
         } else if (constant instanceof JavaType) {
-            frame.pushObject(((JavaType) constant).resolve(method.getDeclaringClass()).toJava());
+            frame.pushObject(mirror(((JavaType) constant).resolve(method.getDeclaringClass())));
         } else {
             assert false : "unexpected case";
         }
@@ -1387,7 +1391,7 @@ public final class BytecodeInterpreter implements Interpreter {
         for (int i = dimension - 1; i >= 0; i--) {
             dimensions[i] = frame.popInt();
         }
-        return Array.newInstance(type.toJava(), dimensions);
+        return Array.newInstance(mirror(type), dimensions);
     }
 
     private ResolvedJavaType getLastDimensionType(ResolvedJavaType type) {
@@ -1400,7 +1404,7 @@ public final class BytecodeInterpreter implements Interpreter {
 
     private Object allocateArray(InterpreterFrame frame, char cpi) {
         ResolvedJavaType type = resolveType(frame, Bytecodes.ANEWARRAY, cpi);
-        return Array.newInstance(type.toJava(), frame.popInt());
+        return Array.newInstance(runtimeInterface.getMirror(type), frame.popInt());
     }
 
     private Object allocateNativeArray(InterpreterFrame frame, byte cpi) {
@@ -1613,12 +1617,12 @@ public final class BytecodeInterpreter implements Interpreter {
         }
     }
 
-    private static StackTraceElement[] createStackTraceElements(InterpreterFrame frame) {
+    private static StackTraceElement[] createStackTraceElements(InterpreterFrame frame, RuntimeInterpreterInterface runtimeInterface) {
         InterpreterFrame tmp = frame;
         List<StackTraceElement> elements = new ArrayList<>();
         boolean first = false; // filter only first stack elements
         while (tmp != null) {
-            if (first || !filterStackElement(tmp)) {
+            if (first || !filterStackElement(tmp, runtimeInterface)) {
                 first = true;
                 elements.add(tmp.getMethod().asStackTraceElement(tmp.getBCI()));
             }
@@ -1627,8 +1631,8 @@ public final class BytecodeInterpreter implements Interpreter {
         return elements.toArray(new StackTraceElement[elements.size()]);
     }
 
-    private static boolean filterStackElement(InterpreterFrame frame) {
-        return Throwable.class.isAssignableFrom(frame.getMethod().getDeclaringClass().toJava());
+    private static boolean filterStackElement(InterpreterFrame frame, RuntimeInterpreterInterface runtimeInterface) {
+        return Throwable.class.isAssignableFrom(runtimeInterface.getMirror(frame.getMethod().getDeclaringClass()));
     }
 
     private ResolvedJavaField findThrowableField(InterpreterFrame frame, String name) {

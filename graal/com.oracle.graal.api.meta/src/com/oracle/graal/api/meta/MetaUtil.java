@@ -429,15 +429,6 @@ public class MetaUtil {
         return result;
     }
 
-    public static Class< ? >[] signatureToTypes(Signature signature, ResolvedJavaType accessingClass) {
-        int count = signature.getParameterCount(false);
-        Class< ? >[] result = new Class< ? >[count];
-        for (int i = 0; i < result.length; ++i) {
-            result[i] = signature.getParameterType(i, accessingClass).resolve(accessingClass).toJava();
-        }
-        return result;
-    }
-
     /**
      * Formats some profiling information associated as a string.
      *

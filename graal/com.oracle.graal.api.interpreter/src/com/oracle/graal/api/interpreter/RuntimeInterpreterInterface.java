@@ -100,4 +100,5 @@ public interface RuntimeInterpreterInterface {
 
     void setArrayObject(Object value, long index, Object array);
 
+    Class<?> getMirror(ResolvedJavaType type);
 }
