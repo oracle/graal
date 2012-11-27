@@ -45,6 +45,22 @@ public class TestResolvedJavaType {
     }
 
     @Test
+    public void findInstanceFieldWithOffsetTest() {
+        for (Class c : classes) {
+            ResolvedJavaType type = runtime.lookupJavaType(c);
+            Set<Field> reflectionFields = getInstanceFields(c, true);
+            for (Field f : reflectionFields) {
+                ResolvedJavaField rf = lookupField(type.getInstanceFields(true), f);
+                assertNotNull(rf);
+                long offset = isStatic(f.getModifiers()) ? unsafe.staticFieldOffset(f) : unsafe.objectFieldOffset(f);
+                ResolvedJavaField result = type.findFieldWithOffset(offset);
+                assertNotNull(result);
+                assertTrue(fieldsEqual(f, result));
+            }
+        }
+    }
+
+    @Test
     public void isInterfaceTest() {
         for (Class c : classes) {
             ResolvedJavaType type = runtime.lookupJavaType(c);
@@ -442,24 +458,30 @@ public class TestResolvedJavaType {
         return result;
     }
 
-    public static boolean containsField(ResolvedJavaField[] fields, Field f) {
-        for (ResolvedJavaField rf : fields) {
-            if (rf.getName().equals(f.getName()) && rf.getType().resolve(rf.getDeclaringClass()).isClass(f.getType())) {
-                assert f.getModifiers() == rf.getModifiers() : f;
-                return true;
-            }
-        }
-        return false;
+    public static boolean fieldsEqual(Field f, ResolvedJavaField rjf) {
+        return rjf.getDeclaringClass().isClass(f.getDeclaringClass()) &&
+               rjf.getName().equals(f.getName()) &&
+               rjf.getType().resolve(rjf.getDeclaringClass()).isClass(f.getType());
     }
 
-    public static boolean containsField(Set<Field> fields, ResolvedJavaField rf) {
-        for (Field f : fields) {
-            if (f.getName().equals(rf.getName()) && rf.getType().resolve(rf.getDeclaringClass()).isClass(f.getType())) {
-                assert rf.getModifiers() == f.getModifiers() : rf;
-                return true;
+    public static ResolvedJavaField lookupField(ResolvedJavaField[] fields, Field key) {
+        for (ResolvedJavaField rf : fields) {
+            if (fieldsEqual(key, rf)) {
+                assert key.getModifiers() == rf.getModifiers() : key;
+                return rf;
             }
         }
-        return false;
+        return null;
+    }
+
+    public static Field lookupField(Set<Field> fields, ResolvedJavaField key) {
+        for (Field f : fields) {
+            if (fieldsEqual(f, key)) {
+                assert key.getModifiers() == f.getModifiers() : key;
+                return f;
+            }
+        }
+        return null;
     }
 
     private static boolean isHiddenFromReflection(ResolvedJavaField f) {
@@ -480,11 +502,11 @@ public class TestResolvedJavaType {
                 Set<Field> expected = getInstanceFields(c, includeSuperclasses);
                 ResolvedJavaField[] actual = type.getInstanceFields(includeSuperclasses);
                 for (Field f : expected) {
-                    assertTrue(containsField(actual, f));
+                    assertNotNull(lookupField(actual, f));
                 }
                 for (ResolvedJavaField rf : actual) {
                     if (!isHiddenFromReflection(rf)) {
-                        assertEquals(containsField(expected, rf), !rf.isInternal());
+                        assertEquals(lookupField(expected, rf) != null, !rf.isInternal());
                     }
                 }
 

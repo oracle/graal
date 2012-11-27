@@ -31,6 +31,8 @@ import java.util.*;
 
 import org.junit.*;
 
+import sun.misc.Unsafe;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 
@@ -38,6 +40,23 @@ import com.oracle.graal.api.runtime.*;
  * Tests for {@link MetaAccessProvider}.
  */
 public class TestMetaAccessProvider {
+
+    public static final Unsafe unsafe;
+    static {
+        Unsafe theUnsafe = null;
+        try {
+            theUnsafe = Unsafe.getUnsafe();
+        } catch (Exception e) {
+            try {
+                Field theUnsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafeField.setAccessible(true);
+                theUnsafe = (Unsafe) theUnsafeField.get(null);
+            } catch (Exception e1) {
+                throw (InternalError) new InternalError("unable to initialize unsafe").initCause(e1);
+            }
+        }
+        unsafe = theUnsafe;
+    }
 
     public TestMetaAccessProvider() {
     }
