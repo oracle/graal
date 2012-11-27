@@ -82,7 +82,7 @@ public class CompilationPrinter implements Closeable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         out.out().close();
     }
 
