@@ -102,46 +102,6 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
 
     @Override
     public ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess) {
-        if (shouldRevirtualize(this)) {
-            return new ObjectDesc[] {new ObjectDesc(virtualObject, values.toArray(new ValueNode[values.size()]), lockCount)};
-        }
-        return null;
-    }
-
-    private boolean shouldRevirtualize(MaterializeObjectNode materializeObjectNode) {
-        FixedWithNextNode end = materializeObjectNode;
-        do {
-            Node next = end.next();
-            if (next instanceof MaterializeObjectNode) {
-                if (!shouldRevirtualize((MaterializeObjectNode) next)) {
-                    return false;
-                }
-                end = (FixedWithNextNode) next;
-            } else if (next instanceof CyclicMaterializeStoreNode) {
-                end = (FixedWithNextNode) next;
-            } else {
-                break;
-            }
-        } while (true);
-        FixedNode suffix = end.next();
-        if (suffix instanceof EndNode) {
-            for (PhiNode phi : ((EndNode) suffix).merge().phis()) {
-                int materialized = 0;
-                boolean used = false;
-                for (Node input : phi.inputs()) {
-                    if (input instanceof MaterializeObjectNode) {
-                        materialized++;
-                    }
-                    if (input == materializeObjectNode) {
-                        used = true;
-                    }
-                }
-                if (used && materialized != phi.valueCount()) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        return new ObjectDesc[] {new ObjectDesc(virtualObject, values.toArray(new ValueNode[values.size()]), lockCount)};
     }
 }
