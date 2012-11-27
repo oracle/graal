@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.graph.FieldIntrospection.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
 
@@ -141,9 +142,9 @@ public final class HotSpotMethodData extends CompilerObject {
         return unsafe.getInt(null, metaspaceMethodData + fullOffsetInBytes);
     }
 
-    private long readLong(int position, int offsetInBytes) {
+    private long readWord(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getLong(null, metaspaceMethodData + fullOffsetInBytes);
+        return unsafeReadWord(metaspaceMethodData + fullOffsetInBytes);
     }
 
     private static int truncateLongToInt(long value) {
@@ -340,10 +341,9 @@ public final class HotSpotMethodData extends CompilerObject {
             int entries = 0;
 
             for (int i = 0; i < typeProfileWidth; i++) {
-                long receiverKlass = data.readLong(position, getReceiverOffset(i));
+                long receiverKlass = data.readWord(position, getReceiverOffset(i));
                 if (receiverKlass != 0) {
                     types[entries] = HotSpotResolvedJavaType.fromMetaspaceKlass(receiverKlass);
-
                     long count = data.readUnsignedInt(position, getCountOffset(i));
                     totalCount += count;
                     counts[entries] = count;

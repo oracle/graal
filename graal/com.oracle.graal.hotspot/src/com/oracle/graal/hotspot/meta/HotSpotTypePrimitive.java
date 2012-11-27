@@ -122,7 +122,10 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
     }
 
     @Override
-    public boolean isSubtypeOf(ResolvedJavaType other) {
+    public boolean isAssignableTo(ResolvedJavaType other) {
+        if (other instanceof HotSpotTypePrimitive) {
+            return other == this;
+        }
         return false;
     }
 
@@ -174,11 +177,6 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
     @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
         return this;
-    }
-
-    @Override
-    public Constant klass() {
-        throw GraalInternalError.shouldNotReachHere("HotSpotTypePrimitive.klass()");
     }
 
     @Override

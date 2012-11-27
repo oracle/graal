@@ -142,17 +142,11 @@ public interface CompilerToVM {
 
     JavaMethod resolveMethod(HotSpotResolvedJavaType klass, String name, String signature);
 
-    boolean isSubtypeOf(HotSpotResolvedJavaType klass, JavaType other);
-
-    JavaType getLeastCommonAncestor(HotSpotResolvedJavaType thisType, HotSpotResolvedJavaType otherType);
-
     boolean isTypeInitialized(HotSpotResolvedJavaType klass);
 
     void initializeType(HotSpotResolvedJavaType klass);
 
     ResolvedJavaType getResolvedType(Class<?> javaClass);
-
-    JavaType getUniqueConcreteSubtype(HotSpotResolvedJavaType klass);
 
     HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedJavaType klass);
 

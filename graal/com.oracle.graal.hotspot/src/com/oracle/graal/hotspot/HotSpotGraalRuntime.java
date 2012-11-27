@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.graph.FieldIntrospection.*;
+
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
@@ -68,6 +70,16 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     public static Kind wordKind() {
         assert wordKind != null;
         return wordKind;
+    }
+
+    /**
+     * Reads a word value from a given address.
+     */
+    public static long unsafeReadWord(long address) {
+        if (wordKind.isLong()) {
+            return unsafe.getLong(address);
+        }
+        return unsafe.getInt(address);
     }
 
     protected final CompilerToVM compilerToVm;

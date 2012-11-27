@@ -108,7 +108,7 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                             snippetMethod = objectArrayCopy;
                         }
                     } else if (componentKind == Kind.Object
-                                    && srcType.getComponentType().isSubtypeOf(destType.getComponentType())) {
+                                    && srcType.getComponentType().isAssignableTo(destType.getComponentType())) {
                         snippetMethod = objectArrayCopy;
                     }
                 }

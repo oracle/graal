@@ -33,7 +33,8 @@ public interface ResolvedJavaField extends JavaField {
 
     /**
      * Returns the Java language modifiers for this field, as an integer. The {@link Modifier} class should be used to
-     * decode the modifiers. Only the flags specified in the JVM specification will be included in the returned mask.
+     * decode the modifiers. Only the {@linkplain Modifier#fieldModifiers() field flags} specified in the JVM
+     * specification will be included in the returned mask.
      */
     int getModifiers();
 

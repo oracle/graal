@@ -41,29 +41,121 @@ public class TestMetaAccessProvider {
     }
 
     public static final MetaAccessProvider runtime = Graal.getRequiredCapability(MetaAccessProvider.class);
-    public static final List<Class<?>> classes = new ArrayList<>(Arrays.asList(
-        void.class,
-        boolean.class,
-        byte.class,
-        short.class,
-        char.class,
-        int.class,
-        float.class,
-        long.class,
-        double.class,
-        Object.class,
-        Serializable.class,
-        Cloneable.class,
-        Test.class,
-        TestMetaAccessProvider.class
-    ));
+    public static final Collection<Class<?>> classes = new HashSet<>();
+    public static final Map<Class<?>, Class<?>> arrayClasses = new HashMap<>();
 
-    static {
-        for (Class<?> c : new ArrayList<>(classes)) {
-            if (c != void.class) {
-                classes.add(Array.newInstance(c, 0).getClass());
+    public static synchronized Class<?> getArrayClass(Class componentType) {
+        Class< ? > arrayClass = arrayClasses.get(componentType);
+        if (arrayClass == null) {
+            arrayClass = Array.newInstance(componentType, 0).getClass();
+            arrayClasses.put(componentType, arrayClass);
+        }
+        return arrayClass;
+    }
+
+    public static int dimensions(Class c) {
+        if (c.getComponentType() != null) {
+            return 1 + dimensions(c.getComponentType());
+        }
+        return 0;
+    }
+
+    private static void addClass(Class c) {
+        if (classes.add(c)) {
+            if (c.getSuperclass() != null) {
+                addClass(c.getSuperclass());
+            }
+            for (Class sc : c.getInterfaces()) {
+                addClass(sc);
+            }
+            for (Class dc : c.getDeclaredClasses()) {
+                addClass(dc);
+            }
+            for (Method m : c.getDeclaredMethods()) {
+                addClass(m.getReturnType());
+                for (Class p : m.getParameterTypes()) {
+                    addClass(p);
+                }
+            }
+
+            if (c != void.class && dimensions(c) < 2) {
+                Class<?> arrayClass = Array.newInstance(c, 0).getClass();
+                arrayClasses.put(c, arrayClass);
+                addClass(arrayClass);
             }
         }
+    }
+
+    static {
+        Class[] initialClasses = {
+                        void.class,
+                        boolean.class,
+                        byte.class,
+                        short.class,
+                        char.class,
+                        int.class,
+                        float.class,
+                        long.class,
+                        double.class,
+                        Object.class,
+                        Class.class,
+                        ClassLoader.class,
+                        String.class,
+                        Serializable.class,
+                        Cloneable.class,
+                        Test.class,
+                        TestMetaAccessProvider.class,
+                        List.class,
+                        Collection.class,
+                        Map.class,
+                        Queue.class,
+                        HashMap.class,
+                        LinkedHashMap.class,
+                        IdentityHashMap.class,
+                        AbstractCollection.class,
+                        AbstractList.class,
+                        ArrayList.class
+        };
+        for (Class c : initialClasses) {
+            addClass(c);
+        }
+    }
+
+    static {
+        System.out.println(classes.size() + " classes");
+    }
+
+    public static final List<Constant> constants = new ArrayList<>();
+    static {
+        for (Field f : Constant.class.getDeclaredFields()) {
+            int mods = f.getModifiers();
+            if (f.getType() == Constant.class && Modifier.isPublic(mods) && Modifier.isStatic(mods) && Modifier.isFinal(mods)) {
+                try {
+                    Constant c = (Constant) f.get(null);
+                    if (c != null) {
+                        constants.add(c);
+                    }
+                } catch (Exception e) {
+                }
+            }
+        }
+        for (Class c : classes) {
+            if (c != void.class && !c.isArray()) {
+                constants.add(Constant.forObject(Array.newInstance(c, 42)));
+            }
+        }
+        constants.add(Constant.forObject(new ArrayList<>()));
+        constants.add(Constant.forObject(new IdentityHashMap<>()));
+        constants.add(Constant.forObject(new LinkedHashMap<>()));
+        constants.add(Constant.forObject(new TreeMap<>()));
+        constants.add(Constant.forObject(new ArrayDeque<>()));
+        constants.add(Constant.forObject(new LinkedList<>()));
+        constants.add(Constant.forObject("a string"));
+        constants.add(Constant.forObject(42));
+    }
+
+    static {
+        System.out.println(constants.size() + " constants");
     }
 
     @Test
@@ -86,7 +178,9 @@ public class TestMetaAccessProvider {
             for (Method reflect : c.getDeclaredMethods()) {
                 ResolvedJavaMethod method = runtime.lookupJavaMethod(reflect);
                 assertNotNull(method);
-                assertEquals(reflect.getModifiers(), method.getModifiers());
+                int expected = reflect.getModifiers() & Modifier.methodModifiers();
+                int actual = method.getModifiers();
+                assertEquals(String.format("%s: 0x%x != 0x%x", reflect, expected, actual), expected, actual);
                 assertTrue(method.getDeclaringClass().isClass(reflect.getDeclaringClass()));
             }
         }
@@ -98,29 +192,10 @@ public class TestMetaAccessProvider {
             for (Field reflect : c.getDeclaredFields()) {
                 ResolvedJavaField field = runtime.lookupJavaField(reflect);
                 assertNotNull(field);
-                assertEquals(reflect.getModifiers(), field.getModifiers());
+                int expected = reflect.getModifiers() & Modifier.fieldModifiers();
+                int actual = field.getModifiers();
+                assertEquals(String.format("%s: 0x%x != 0x%x", reflect, expected, actual), expected, actual);
                 assertTrue(field.getDeclaringClass().isClass(reflect.getDeclaringClass()));
-            }
-        }
-    }
-
-    public static final List<Constant> constants = new ArrayList<>();
-    static {
-        for (Field f : Constant.class.getDeclaredFields()) {
-            int mods = f.getModifiers();
-            if (f.getType() == Constant.class && Modifier.isPublic(mods) && Modifier.isStatic(mods) && Modifier.isFinal(mods)) {
-                try {
-                    Constant c = (Constant) f.get(null);
-                    if (c != null) {
-                        constants.add(c);
-                    }
-                } catch (Exception e) {
-                }
-            }
-        }
-        for (Class c : classes) {
-            if (c != void.class) {
-                constants.add(Constant.forObject(Array.newInstance(c, 42)));
             }
         }
     }

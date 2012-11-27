@@ -240,9 +240,9 @@ public class ConditionalEliminationPhase extends Phase {
             return a;
         } else if (a == b) {
             return a;
-        } else if (a.isSubtypeOf(b)) {
+        } else if (a.isAssignableTo(b)) {
             return a;
-        } else if (b.isSubtypeOf(a)) {
+        } else if (b.isAssignableTo(a)) {
             return b;
         } else {
             return a;
@@ -326,7 +326,7 @@ public class ConditionalEliminationPhase extends Phase {
             } else if (node instanceof CheckCastNode) {
                 CheckCastNode checkCast = (CheckCastNode) node;
                 ResolvedJavaType type = state.getNodeType(checkCast.object());
-                if (type != null && type.isSubtypeOf(checkCast.type())) {
+                if (type != null && type.isAssignableTo(checkCast.type())) {
                     PiNode piNode;
                     boolean nonNull = state.knownNotNull.contains(checkCast.object());
                     piNode = graph.unique(new PiNode(checkCast.object(), lastBegin, nonNull ? StampFactory.declaredNonNull(type) : StampFactory.declared(type)));
@@ -351,7 +351,7 @@ public class ConditionalEliminationPhase extends Phase {
                             replaceWith = ConstantNode.forBoolean(false, graph);
                         } else if (state.knownNotNull.contains(object)) {
                             ResolvedJavaType type = state.getNodeType(object);
-                            if (type != null && type.isSubtypeOf(instanceOf.type())) {
+                            if (type != null && type.isAssignableTo(instanceOf.type())) {
                                 replaceWith = ConstantNode.forBoolean(true, graph);
                             }
                         }

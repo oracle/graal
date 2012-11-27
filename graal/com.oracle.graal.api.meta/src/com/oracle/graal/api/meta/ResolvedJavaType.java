@@ -127,8 +127,9 @@ public interface ResolvedJavaType extends JavaType {
      *
      * @param other the type to test
      * @return {@code true} if this type a subtype of the specified type
+     * @see Class#isAssignableFrom(Class)
      */
-    boolean isSubtypeOf(ResolvedJavaType other);
+    boolean isAssignableTo(ResolvedJavaType other);
 
     /**
      * Checks whether the specified object is an instance of this type.
@@ -170,7 +171,8 @@ public interface ResolvedJavaType extends JavaType {
     ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType);
 
     /**
-     * Attempts to get the unique concrete subclass of this type.
+     * Gets the unique concrete subclass of this type.
+     *
      * <p>
      * If the compiler uses the result of this method for its compilation, it must register an assumption because
      * dynamic class loading can invalidate the result of this method.
@@ -192,14 +194,14 @@ public interface ResolvedJavaType extends JavaType {
     ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method);
 
     /**
-     * Given a {@link ResolvedJavaMethod} a, returns a concrete {@link ResolvedJavaMethod} b that is the only possible
-     * unique target for a virtual call on a(). Returns {@code null} if either no such concrete method or more than one
-     * such method exists. Returns the method a if a is a concrete method that is not overridden.
+     * Given a {@link ResolvedJavaMethod} A, returns a concrete {@link ResolvedJavaMethod} B that is the only possible
+     * unique target for a virtual call on A(). Returns {@code null} if either no such concrete method or more than one
+     * such method exists. Returns the method A if A is a concrete method that is not overridden.
      * <p>
      * If the compiler uses the result of this method for its compilation, it must register an assumption because
      * dynamic class loading can invalidate the result of this method.
      *
-     * @param method the method a for which a unique concrete target is searched
+     * @param method the method A for which a unique concrete target is searched
      * @return the unique concrete target or {@code null} if no such target exists or assumptions are not supported by
      *         this runtime
      */
