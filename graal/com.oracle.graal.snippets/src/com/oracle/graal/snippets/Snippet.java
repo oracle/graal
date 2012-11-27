@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.snippets;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 
@@ -80,7 +82,7 @@ public @interface Snippet {
                 if (method.getAnnotation(NodeIntrinsic.class) != null) {
                     return false;
                 }
-                if (Throwable.class.isAssignableFrom(method.getDeclaringClass().toJava())) {
+                if (Throwable.class.isAssignableFrom(getMirrorOrFail(method.getDeclaringClass(), null))) {
                     if (method.getName().equals("<init>")) {
                         return false;
                     }

@@ -104,6 +104,13 @@ public interface ResolvedJavaType extends JavaType {
     boolean isArrayClass();
 
     /**
+     * Checks whether this type is primitive.
+     *
+     * @return {@code true} if this type is primitive
+     */
+    boolean isPrimitive();
+
+    /**
      * Returns the Java language modifiers for this type, as an integer. The {@link Modifier} class should be used to
      * decode the modifiers. Only the flags specified in the JVM specification will be included in the returned mask.
      * This method is identical to {@link Class#getModifiers()} in terms of the value return for this type.
@@ -237,11 +244,6 @@ public interface ResolvedJavaType extends JavaType {
      * Determines if this type is the same as that represented by a given {@link Class}.
      */
     boolean isClass(Class c);
-
-    /**
-     * Returns the {@link java.lang.Class} object representing this type.
-     */
-    Class< ? > toJava();
 
     /**
      * Returns the instance field of this class (or one of its super classes) at the given

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.snippets;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -79,11 +81,11 @@ public class SnippetIntrinsificationPhase extends Phase {
         }
     }
 
-    public static Class< ? >[] signatureToTypes(Signature signature, ResolvedJavaType accessingClass) {
+    public static Class<?>[] signatureToTypes(Signature signature, ResolvedJavaType accessingClass) {
         int count = signature.getParameterCount(false);
-        Class< ? >[] result = new Class< ? >[count];
+        Class<?>[] result = new Class< ? >[count];
         for (int i = 0; i < result.length; ++i) {
-            result[i] = signature.getParameterType(i, accessingClass).resolve(accessingClass).toJava();
+            result[i] = getMirrorOrFail(signature.getParameterType(i, accessingClass).resolve(accessingClass), null);
         }
         return result;
     }
@@ -124,7 +126,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             }
 
             // Call the method
-            Constant constant = callMethod(target.getSignature().getReturnKind(), declaringClass.toJava(), target.getName(), parameterTypes, receiver, arguments);
+            Constant constant = callMethod(target.getSignature().getReturnKind(), getMirrorOrFail(declaringClass, null), target.getName(), parameterTypes, receiver, arguments);
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
@@ -189,7 +191,7 @@ public class SnippetIntrinsificationPhase extends Phase {
     private static Class< ? > getNodeClass(ResolvedJavaMethod target, NodeIntrinsic intrinsic) {
         Class< ? > result = intrinsic.value();
         if (result == NodeIntrinsic.class) {
-            result = target.getDeclaringClass().toJava();
+            return getMirrorOrFail(target.getDeclaringClass(), null);
         }
         assert Node.class.isAssignableFrom(result);
         return result;

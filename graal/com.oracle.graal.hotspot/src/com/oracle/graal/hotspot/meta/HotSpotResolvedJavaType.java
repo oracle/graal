@@ -160,17 +160,9 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
         return javaComponentType == null ? null : fromClass(javaComponentType);
     }
 
-    public ResolvedJavaType getElementType() {
-        ResolvedJavaType type = this;
-        while (type.getComponentType() != null) {
-            type = type.getComponentType();
-        }
-        return type;
-    }
-
     private static boolean hasSubtype(ResolvedJavaType type) {
         assert !type.isArrayClass() : type;
-        if (isPrimitive(type)) {
+        if (type.isPrimitive()) {
             return false;
         }
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
@@ -184,8 +176,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     public ResolvedJavaType findUniqueConcreteSubtype() {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
         if (isArrayClass()) {
-            ResolvedJavaType elementType = getElementType();
-            if (hasSubtype(elementType)) {
+            if (hasSubtype(getElementalType(this))) {
                 return null;
             }
             return this;
@@ -227,7 +218,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     public HotSpotResolvedJavaType getSupertype() {
         if (isArrayClass()) {
             ResolvedJavaType componentType = getComponentType();
-            if (javaMirror == Object[].class || componentType instanceof HotSpotTypePrimitive) {
+            if (javaMirror == Object[].class || componentType.isPrimitive()) {
                 return (HotSpotResolvedJavaType) fromClass(Object.class);
             }
             return (HotSpotResolvedJavaType) ((HotSpotResolvedJavaType) componentType).getSupertype().getArrayClass();
@@ -240,7 +231,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
 
     @Override
     public ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType) {
-        if (otherType instanceof HotSpotTypePrimitive) {
+        if (otherType.isPrimitive()) {
             return null;
         } else {
             HotSpotResolvedJavaType t1 = this;
@@ -291,6 +282,11 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     public boolean hasFinalizer() {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
         return (getAccessFlags() & config.klassHasFinalizerFlag) != 0;
+    }
+
+    @Override
+    public boolean isPrimitive() {
+        return false;
     }
 
     @Override
@@ -449,11 +445,6 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
             return Arrays.copyOfRange(instanceFields, myFieldsStart, instanceFields.length);
         }
         return instanceFields;
-    }
-
-    @Override
-    public Class< ? > toJava() {
-        return javaMirror;
     }
 
     @Override
