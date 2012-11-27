@@ -401,7 +401,7 @@ public class SnippetTemplate {
     private static boolean checkVarargs(final ResolvedJavaMethod method, Signature signature, int i, String name, Varargs varargs) {
         Object arg = varargs.getArray();
         ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
-        assert type.isArrayClass() : "varargs parameter must be an array type";
+        assert type.isArray() : "varargs parameter must be an array type";
         assert type.isInstance(Constant.forObject(arg)) : "value for " + name + " is not a " + MetaUtil.toJavaName(type) + " instance: " + arg;
         return true;
     }

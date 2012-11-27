@@ -460,7 +460,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             ValueNode expected = cas.expected();
             if (expected.kind() == Kind.Object && !cas.newValue().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = cas.object().objectStamp().type();
-                if (type != null && !type.isArrayClass() && !type.isClass(Object.class)) {
+                if (type != null && !type.isArray() && !type.isClass(Object.class)) {
                     // Use a field write barrier since it's not an array store
                     FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(cas.object()));
                     graph.addAfterFixed(cas, writeBarrier);
@@ -533,7 +533,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             if (write.value().kind() == Kind.Object && !write.value().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = object.objectStamp().type();
                 WriteBarrier writeBarrier;
-                if (type != null && !type.isArrayClass() && !type.isClass(Object.class)) {
+                if (type != null && !type.isArray() && !type.isClass(Object.class)) {
                     // Use a field write barrier since it's not an array store
                     writeBarrier = graph.add(new FieldWriteBarrier(object));
                 } else {

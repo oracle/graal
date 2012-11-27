@@ -65,7 +65,7 @@ public class MetaUtil {
                 throw (NoClassDefFoundError) new NoClassDefFoundError().initCause(e);
             }
         }
-        if (type.isArrayClass()) {
+        if (type.isArray()) {
             ResolvedJavaType t = type;
             while (t.getComponentType() != null) {
                 elementalClass = Array.newInstance(elementalClass, 0).getClass();

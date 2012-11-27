@@ -97,7 +97,7 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
     }
 
     @Override
-    public boolean isArrayClass() {
+    public boolean isArray() {
         return false;
     }
 

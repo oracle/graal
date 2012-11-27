@@ -1396,7 +1396,7 @@ public final class BytecodeInterpreter implements Interpreter {
 
     private ResolvedJavaType getLastDimensionType(ResolvedJavaType type) {
         ResolvedJavaType result = type;
-        while (result.isArrayClass()) {
+        while (result.isArray()) {
             result = result.getComponentType();
         }
         return result;

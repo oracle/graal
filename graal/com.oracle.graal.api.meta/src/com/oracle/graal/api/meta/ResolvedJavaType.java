@@ -101,7 +101,7 @@ public interface ResolvedJavaType extends JavaType {
      *
      * @return {@code true} if this type is an array class
      */
-    boolean isArrayClass();
+    boolean isArray();
 
     /**
      * Checks whether this type is primitive.
@@ -180,7 +180,7 @@ public interface ResolvedJavaType extends JavaType {
     /**
      * Attempts to get a unique concrete subclass of this type.
      * <p>
-     * For an {@linkplain #isArrayClass() array} type A, the unique concrete subclass is A if
+     * For an {@linkplain #isArray() array} type A, the unique concrete subclass is A if
      * the element type of A is primitive or has no subtype. Otherwise there is no unique concrete subclass.
      * <p>
      * For a non-array type T, the result is the unique concrete type in the complete hierarchy of T.

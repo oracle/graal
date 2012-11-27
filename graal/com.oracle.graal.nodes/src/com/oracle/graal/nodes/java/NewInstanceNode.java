@@ -84,7 +84,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
     @Override
     public ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess) {
         if (instanceClass != null) {
-            assert !instanceClass().isArrayClass();
+            assert !instanceClass().isArray();
             ResolvedJavaField[] fields = instanceClass().getInstanceFields(true);
             ValueNode[] state = new ValueNode[fields.length];
             for (int i = 0; i < state.length; i++) {

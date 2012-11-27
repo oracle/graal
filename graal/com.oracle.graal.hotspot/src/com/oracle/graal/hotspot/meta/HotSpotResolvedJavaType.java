@@ -131,7 +131,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
         this.hasFinalizableSubclass = hasFinalizableSubclass;
         this.sizeOrSpecies = sizeOrSpecies;
         assert name.charAt(0) != '[' || sizeOrSpecies == ARRAY_SPECIES_VALUE : name + " " + Long.toHexString(sizeOrSpecies);
-        assert javaMirror.isArray() == isArrayClass();
+        assert javaMirror.isArray() == isArray();
         assert javaMirror.isInterface() == isInterface();
         //System.out.println("0x" + Long.toHexString(metaspaceKlass) + ": " + name);
     }
@@ -161,7 +161,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     private static boolean hasSubtype(ResolvedJavaType type) {
-        assert !type.isArrayClass() : type;
+        assert !type.isArray() : type;
         if (type.isPrimitive()) {
             return false;
         }
@@ -175,7 +175,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     @Override
     public ResolvedJavaType findUniqueConcreteSubtype() {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-        if (isArrayClass()) {
+        if (isArray()) {
             if (hasSubtype(getElementalType(this))) {
                 return null;
             }
@@ -216,7 +216,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     public HotSpotResolvedJavaType getSupertype() {
-        if (isArrayClass()) {
+        if (isArray()) {
             ResolvedJavaType componentType = getComponentType();
             if (javaMirror == Object[].class || componentType.isPrimitive()) {
                 return (HotSpotResolvedJavaType) fromClass(Object.class);
@@ -251,7 +251,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
 
     @Override
     public ResolvedJavaType asExactType() {
-        if (isArrayClass()) {
+        if (isArray()) {
             return getComponentType().asExactType() != null ? this : null;
         }
         return Modifier.isFinal(getModifiers()) ? this : null;
@@ -290,7 +290,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     @Override
-    public boolean isArrayClass() {
+    public boolean isArray() {
         return sizeOrSpecies == ARRAY_SPECIES_VALUE;
     }
 
@@ -320,7 +320,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
 
     @Override
     public boolean isInstanceClass() {
-        return !isArrayClass() && !isInterface();
+        return !isArray() && !isInterface();
     }
 
     @Override
@@ -366,7 +366,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
      * value gives the size). Must not be called if this is an array or interface type.
      */
     public int instanceSize() {
-        assert !isArrayClass();
+        assert !isArray();
         assert !isInterface();
         return sizeOrSpecies;
     }
@@ -416,7 +416,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     @Override
     public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
         if (instanceFields == null) {
-            if (isArrayClass() || isInterface()) {
+            if (isArray() || isInterface()) {
                 instanceFields = new HotSpotResolvedJavaField[0];
             } else {
                 HotSpotResolvedJavaField[] myFields = HotSpotGraalRuntime.getInstance().getCompilerToVM().getInstanceFields(this);

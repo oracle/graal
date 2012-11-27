@@ -298,7 +298,7 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
     private void checkArray(Object array, long index) {
         nullCheck(array);
         ResolvedJavaType type = metaProvider.lookupJavaType(array.getClass());
-        if (!type.isArrayClass()) {
+        if (!type.isArray()) {
             throw new ArrayStoreException(array.getClass().getName());
         }
         if (index < 0 || index >= arrayLength(array)) {

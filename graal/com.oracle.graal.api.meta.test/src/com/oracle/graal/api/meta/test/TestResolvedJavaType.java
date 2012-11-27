@@ -86,7 +86,7 @@ public class TestResolvedJavaType {
         for (Class c : classes) {
             ResolvedJavaType type = runtime.lookupJavaType(c);
             boolean expected = c.isArray();
-            boolean actual = type.isArrayClass();
+            boolean actual = type.isArray();
             assertEquals(expected, actual);
         }
     }
@@ -268,7 +268,7 @@ public class TestResolvedJavaType {
             }
         }
 
-        if (!type.isArrayClass()) {
+        if (!type.isArray()) {
             ResolvedJavaType arrayType = type.getArrayClass();
             ResolvedJavaType arraySubtype = arrayType.findUniqueConcreteSubtype();
             if (arraySubtype != null) {

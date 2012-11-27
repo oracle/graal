@@ -68,7 +68,7 @@ public final class VirtualObject extends Value {
         if (values == null) {
             buf.append("<uninitialized>");
         } else {
-            if (type.isArrayClass()) {
+            if (type.isArray()) {
                 for (int i = 0; i < values.length; i++) {
                     if (i != 0) {
                         buf.append(',');
@@ -112,7 +112,7 @@ public final class VirtualObject extends Value {
 
     private static boolean checkValues(ResolvedJavaType type, Value[] values) {
         if (values != null) {
-            if (!type.isArrayClass()) {
+            if (!type.isArray()) {
                 ResolvedJavaField[] fields = type.getInstanceFields(true);
                 assert fields.length == values.length : type + ": fields=" + Arrays.toString(fields) + ", field values=" + Arrays.toString(values);
                 for (int i = 0; i < values.length; i++) {
