@@ -120,10 +120,7 @@ public class GraalCompiler {
 
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
             new InliningPhase(target, runtime, null, assumptions, cache, plan, optimisticOpts).apply(graph);
-
-            if (GraalOptions.OptCanonicalizer) {
-                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-            }
+            new DeadCodeEliminationPhase().apply(graph);
 
             if (GraalOptions.CheckCastElimination && GraalOptions.OptCanonicalizer) {
                 new IterativeConditionalEliminationPhase(target, runtime, assumptions).apply(graph);

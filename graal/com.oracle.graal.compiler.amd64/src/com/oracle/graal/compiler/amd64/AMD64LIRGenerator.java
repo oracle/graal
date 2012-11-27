@@ -128,7 +128,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public boolean canInlineConstant(Constant c) {
         switch (c.getKind()) {
-            case Long:   return NumUtil.isInt(c.asLong());
+            case Long:   return NumUtil.isInt(c.asLong()) && !runtime.needsDataPatch(c);
             case Object: return c.isNull();
             default:     return true;
         }
