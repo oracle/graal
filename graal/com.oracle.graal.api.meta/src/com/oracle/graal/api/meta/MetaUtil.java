@@ -37,15 +37,6 @@ import com.oracle.graal.api.meta.ProfilingInfo.ExceptionSeen;
 public class MetaUtil {
 
     /**
-     * Returns true if the specified typed is exactly the type {@link java.lang.Object}.
-     */
-    public static boolean isJavaLangObject(ResolvedJavaType type) {
-        boolean result = type.getSuperclass() == null && !type.isInterface() && type.getKind() == Kind.Object;
-        assert result == type.getName().equals("Ljava/lang/Object;") : type.getName();
-        return result;
-    }
-
-    /**
      * Gets the {@link Class} mirror for a given resolved type.
      *
      * @param type the type for which the Java mirror is requested
