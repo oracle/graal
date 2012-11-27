@@ -184,7 +184,7 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
     }
 
     @Override
-    public ResolvedJavaField findFieldWithOffset(long offset) {
+    public ResolvedJavaField findInstanceFieldWithOffset(long offset) {
         return null;
     }
 

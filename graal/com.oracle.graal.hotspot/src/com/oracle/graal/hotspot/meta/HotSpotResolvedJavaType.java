@@ -497,7 +497,7 @@ public final class HotSpotResolvedJavaType extends HotSpotJavaType implements Re
     }
 
     @Override
-    public ResolvedJavaField findFieldWithOffset(long offset) {
+    public ResolvedJavaField findInstanceFieldWithOffset(long offset) {
         ResolvedJavaField[] declaredFields = getInstanceFields(true);
         for (ResolvedJavaField field : declaredFields) {
             if (((HotSpotResolvedJavaField) field).offset() == offset) {

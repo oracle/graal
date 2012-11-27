@@ -53,7 +53,7 @@ public class TestResolvedJavaType {
                 ResolvedJavaField rf = lookupField(type.getInstanceFields(true), f);
                 assertNotNull(rf);
                 long offset = isStatic(f.getModifiers()) ? unsafe.staticFieldOffset(f) : unsafe.objectFieldOffset(f);
-                ResolvedJavaField result = type.findFieldWithOffset(offset);
+                ResolvedJavaField result = type.findInstanceFieldWithOffset(offset);
                 assertNotNull(result);
                 assertTrue(fieldsEqual(f, result));
             }
