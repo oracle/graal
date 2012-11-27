@@ -35,7 +35,7 @@ public interface ResolvedJavaMethod extends JavaMethod {
     /**
      * Returns the bytecodes of this method, if the method has code. The returned byte array does not contain
      * breakpoints or non-Java bytecodes.
-     * 
+     *
      * @return the bytecodes of the method, or {@code null} if none is available
      */
     byte[] getCode();
@@ -43,21 +43,21 @@ public interface ResolvedJavaMethod extends JavaMethod {
     /**
      * Returns the size of the bytecodes of this method, if the method has code. This is equivalent to
      * {@link #getCode()}. {@code length} if the method has code.
-     * 
+     *
      * @return the size of the bytecodes in bytes, or 0 if no bytecodes is available
      */
     int getCodeSize();
 
     /**
      * Returns the size of the compiled machine code of this method.
-     * 
+     *
      * @return the size of the compiled machine code in bytes, or 0 if no compiled code exists.
      */
     int getCompiledCodeSize();
 
     /**
      * Returns an estimate how complex it is to compile this method.
-     * 
+     *
      * @return A value >= 0, where higher means more complex.
      */
     int getCompilationComplexity();
@@ -79,20 +79,21 @@ public interface ResolvedJavaMethod extends JavaMethod {
 
     /**
      * Returns the Java language modifiers for this method, as an integer. The {@link Modifier} class should be used to
-     * decode the modifiers. Only the flags specified in the JVM specification will be included in the returned mask.
+     * decode the modifiers. Only the {@linkplain Modifier#methodModifiers() method flags} specified in the JVM
+     * specification will be included in the returned mask.
      */
     int getModifiers();
 
     /**
      * Checks whether this method is a class initializer.
-     * 
+     *
      * @return {@code true} if the method is a class initializer
      */
     boolean isClassInitializer();
 
     /**
      * Checks whether this method is a constructor.
-     * 
+     *
      * @return {@code true} if the method is a constructor
      */
     boolean isConstructor();
@@ -100,7 +101,7 @@ public interface ResolvedJavaMethod extends JavaMethod {
     /**
      * Checks whether this method can be statically bound (usually, that means it is final or private or static, but not
      * abstract).
-     * 
+     *
      * @return {@code true} if this method can be statically bound
      */
     boolean canBeStaticallyBound();
@@ -132,7 +133,7 @@ public interface ResolvedJavaMethod extends JavaMethod {
 
     /**
      * Returns the annotation for the specified type of this method, if such an annotation is present.
-     * 
+     *
      * @param annotationClass the Class object corresponding to the annotation type
      * @return this element's annotation for the specified annotation type if present on this method, else {@code null}
      */
@@ -141,7 +142,7 @@ public interface ResolvedJavaMethod extends JavaMethod {
     /**
      * Returns an array of arrays that represent the annotations on the formal parameters, in declaration order, of this
      * method.
-     * 
+     *
      * @see Method#getParameterAnnotations()
      */
     Annotation[][] getParameterAnnotations();
@@ -149,7 +150,7 @@ public interface ResolvedJavaMethod extends JavaMethod {
     /**
      * Returns an array of {@link Type} objects that represent the formal parameter types, in declaration order, of this
      * method.
-     * 
+     *
      * @see Method#getGenericParameterTypes()
      */
     Type[] getGenericParameterTypes();

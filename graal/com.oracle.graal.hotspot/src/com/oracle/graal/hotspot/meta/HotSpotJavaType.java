@@ -41,9 +41,4 @@ public abstract class HotSpotJavaType extends CompilerObject implements JavaType
     public final String getName() {
         return name;
     }
-
-    /**
-     * Gets the address of the C++ Klass object for this type.
-     */
-    public abstract Constant klass();
 }

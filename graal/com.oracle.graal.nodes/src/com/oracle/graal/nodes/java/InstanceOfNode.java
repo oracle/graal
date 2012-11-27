@@ -70,7 +70,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
         ResolvedJavaType stampType = stamp.type();
 
         if (stamp.isExactType()) {
-            boolean subType = stampType.isSubtypeOf(type());
+            boolean subType = stampType.isAssignableTo(type());
 
             if (subType) {
                 if (stamp.nonNull()) {
@@ -87,7 +87,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
                 return ConstantNode.forBoolean(false, graph());
             }
         } else if (stampType != null) {
-            boolean subType = stampType.isSubtypeOf(type());
+            boolean subType = stampType.isAssignableTo(type());
 
             if (subType) {
                 if (stamp.nonNull()) {
@@ -135,7 +135,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
     public void virtualize(VirtualizerTool tool) {
         VirtualObjectNode virtual = tool.getVirtualState(object());
         if (virtual != null) {
-            tool.replaceWithValue(ConstantNode.forBoolean(virtual.type().isSubtypeOf(type()), graph()));
+            tool.replaceWithValue(ConstantNode.forBoolean(virtual.type().isAssignableTo(type()), graph()));
         }
     }
 }
