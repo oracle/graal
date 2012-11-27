@@ -43,6 +43,11 @@ public interface MetaAccessProvider {
     ResolvedJavaMethod lookupJavaMethod(Method reflectionMethod);
 
     /**
+     * Provides the {@link ResolvedJavaMethod} for a {@link Constructor} obtained via reflection.
+     */
+    ResolvedJavaMethod lookupJavaConstructor(Constructor reflectionConstructor);
+
+    /**
      * Provides the {@link ResolvedJavaField} for a {@link Field} obtained via reflection.
      */
     ResolvedJavaField lookupJavaField(Field reflectionField);

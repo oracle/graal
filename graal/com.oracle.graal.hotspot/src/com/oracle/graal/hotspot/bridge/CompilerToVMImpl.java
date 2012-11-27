@@ -38,6 +38,9 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long getMetaspaceMethod(Method reflectionMethod, HotSpotResolvedJavaType[] resultHolder);
 
     @Override
+    public native long getMetaspaceConstructor(Constructor reflectionConstructor, HotSpotResolvedJavaType[] resultHolder);
+
+    @Override
     public native HotSpotResolvedJavaField getJavaField(Field reflectionMethod);
 
     @Override

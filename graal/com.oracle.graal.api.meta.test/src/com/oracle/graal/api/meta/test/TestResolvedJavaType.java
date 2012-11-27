@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,9 @@ import sun.reflect.ConstantPool;
 
 import com.oracle.graal.api.meta.*;
 
+/**
+ * Tests for {@link ResolvedJavaType}.
+ */
 public class TestResolvedJavaType {
 
     public TestResolvedJavaType() {
@@ -239,23 +242,23 @@ public class TestResolvedJavaType {
 
     static void checkConcreteSubtype(ResolvedJavaType type, Class expected) {
         ResolvedJavaType subtype = type.findUniqueConcreteSubtype();
-        if (type.isInterface() && subtype == null) {
-            // A runtime may not record the subtype tree for interfaces in which case
-            // findUniqueConcreteSubtype() will return null for interfaces.
-            return;
+        if (subtype == null) {
+            // findUniqueConcreteSubtype() is conservative
+        } else {
+            if (expected == null) {
+                assertNull(subtype);
+            } else {
+                assertTrue(subtype.isClass(expected));
+            }
         }
 
-        if (expected == null) {
-            assertNull(subtype);
-        } else {
-            assertTrue(subtype.isClass(expected));
-        }
         if (!type.isArrayClass()) {
             ResolvedJavaType arrayType = type.getArrayClass();
-            if (subtype == type) {
-                assertEquals(arrayType.findUniqueConcreteSubtype(), arrayType);
+            ResolvedJavaType arraySubtype = arrayType.findUniqueConcreteSubtype();
+            if (arraySubtype != null) {
+                assertEquals(arraySubtype, arrayType);
             } else {
-                assertNull(arrayType.findUniqueConcreteSubtype());
+                // findUniqueConcreteSubtype() method is conservative
             }
         }
     }
@@ -350,44 +353,8 @@ public class TestResolvedJavaType {
 
     static final Map<Class, VTable> vtables = new HashMap<>();
 
-    static class NameAndSig {
-        final String name;
-        final Class returnType;
-        final Class[] parameterTypes;
-        public NameAndSig(Method m) {
-            this.name = m.getName();
-            this.returnType = m.getReturnType();
-            this.parameterTypes = m.getParameterTypes();
-        }
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof NameAndSig) {
-                NameAndSig s = (NameAndSig) obj;
-                return s.returnType == returnType && name.equals(s.name) && Arrays.equals(s.parameterTypes, parameterTypes);
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return name.hashCode();
-        }
-
-        @Override
-        public String toString() {
-            StringBuilder sb = new StringBuilder(name + "(");
-            String sep = "";
-            for (Class p : parameterTypes) {
-                sb.append(sep);
-                sep = ", ";
-                sb.append(p.getName());
-            }
-            return sb.append(')').append(returnType.getName()).toString();
-        }
-    }
-
     static class VTable {
-        final Map<NameAndSig, Method> methods = new HashMap<>();
+        final Map<NameAndSignature, Method> methods = new HashMap<>();
     }
 
     static synchronized VTable getVTable(Class c) {
@@ -400,7 +367,7 @@ public class TestResolvedJavaType {
             }
             for (Method m : c.getDeclaredMethods()) {
                 if (!isStatic(m.getModifiers()) && !isPrivate(m.getModifiers())) {
-                    Method overridden = vtable.methods.put(new NameAndSig(m), m);
+                    Method overridden = vtable.methods.put(new NameAndSignature(m), m);
                     if (overridden != null) {
                         //System.out.println(m + " overrides " + overridden);
                     }
@@ -413,10 +380,10 @@ public class TestResolvedJavaType {
 
     static Set<Method> findDeclarations(Method impl, Class c) {
         Set<Method> declarations = new HashSet<>();
-        NameAndSig implSig = new NameAndSig(impl);
+        NameAndSignature implSig = new NameAndSignature(impl);
         if (c != null) {
             for (Method m : c.getDeclaredMethods()) {
-                if (new NameAndSig(m).equals(implSig)) {
+                if (new NameAndSignature(m).equals(implSig)) {
                     declarations.add(m);
                     break;
                 }
