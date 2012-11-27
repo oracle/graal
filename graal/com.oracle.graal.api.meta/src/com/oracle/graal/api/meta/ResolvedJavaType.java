@@ -234,4 +234,12 @@ public interface ResolvedJavaType extends JavaType {
      * Returns the {@link java.lang.Class} object representing this type.
      */
     Class< ? > toJava();
+
+    /**
+     * Returns the instance field of this class (or one of its super classes) at the given offset, or {@code null} if there is no such field.
+     *
+     * @param offset the offset of the field to look for
+     * @return the field with the given offset, or {@code null} if there is no such field.
+     */
+    ResolvedJavaField findFieldWithOffset(long offset);
 }
