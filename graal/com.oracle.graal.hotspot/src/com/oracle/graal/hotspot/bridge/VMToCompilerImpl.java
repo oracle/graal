@@ -39,6 +39,7 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
+import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -51,6 +52,7 @@ import com.oracle.graal.snippets.*;
 public class VMToCompilerImpl implements VMToCompiler {
 
     private final HotSpotGraalRuntime graalRuntime;
+    private IntrinsifyArrayCopyPhase intrinsifyArrayCopy;
 
     public final HotSpotResolvedPrimitiveType typeBoolean;
     public final HotSpotResolvedPrimitiveType typeChar;
@@ -135,6 +137,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                 @Override
                 public void run() {
                     Assumptions assumptions = new Assumptions(GraalOptions.OptAssumptions);
+                    VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime, assumptions);
                     SnippetInstaller installer = new SnippetInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
                     GraalIntrinsics.installIntrinsics(installer);
                     runtime.installSnippets(installer, assumptions);
@@ -564,6 +567,9 @@ public class VMToCompilerImpl implements VMToCompiler {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(graalRuntime.getRuntime(), GraphBuilderConfiguration.getDefault(), optimisticOpts));
         if (onStackReplacement) {
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, new OnStackReplacementPhase());
+        }
+        if (GraalOptions.Intrinsify) {
+            phasePlan.addPhase(PhasePosition.HIGH_LEVEL, intrinsifyArrayCopy);
         }
         return phasePlan;
     }
