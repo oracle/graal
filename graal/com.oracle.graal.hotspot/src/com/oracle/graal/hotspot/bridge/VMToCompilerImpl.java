@@ -85,7 +85,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     private static void initMirror(HotSpotTypePrimitive type, long offset) {
-        Class< ? > mirror = type.toJava();
+        Class<?> mirror = type.mirror();
         unsafe.putObject(mirror, offset, type);
         assert unsafe.getObject(mirror, offset) == type;
     }
@@ -441,11 +441,6 @@ public class VMToCompilerImpl implements VMToCompiler {
     @Override
     public JavaMethod createUnresolvedJavaMethod(String name, String signature, JavaType holder) {
         return new HotSpotMethodUnresolved(name, signature, holder);
-    }
-
-    @Override
-    public Signature createSignature(String signature) {
-        return new HotSpotSignature(signature);
     }
 
     @Override

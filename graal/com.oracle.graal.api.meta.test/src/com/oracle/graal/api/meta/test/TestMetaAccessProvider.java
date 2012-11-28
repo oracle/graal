@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,11 +31,32 @@ import java.util.*;
 
 import org.junit.*;
 
+import sun.misc.Unsafe;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 
-
+/**
+ * Tests for {@link MetaAccessProvider}.
+ */
 public class TestMetaAccessProvider {
+
+    public static final Unsafe unsafe;
+    static {
+        Unsafe theUnsafe = null;
+        try {
+            theUnsafe = Unsafe.getUnsafe();
+        } catch (Exception e) {
+            try {
+                Field theUnsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafeField.setAccessible(true);
+                theUnsafe = (Unsafe) theUnsafeField.get(null);
+            } catch (Exception e1) {
+                throw (InternalError) new InternalError("unable to initialize unsafe").initCause(e1);
+            }
+        }
+        unsafe = theUnsafe;
+    }
 
     public TestMetaAccessProvider() {
     }
@@ -165,7 +186,7 @@ public class TestMetaAccessProvider {
             assertNotNull(type);
             assertTrue(type.isClass(c));
             assertEquals(c.getModifiers(), type.getModifiers());
-            if (!type.isArrayClass()) {
+            if (!type.isArray()) {
                 assertEquals(type.getName(), toInternalName(c.getName()));
                 assertEquals(toJavaName(type), c.getName());
             }

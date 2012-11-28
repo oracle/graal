@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.api.meta.test;
+
+import static com.oracle.graal.api.meta.test.TestMetaAccessProvider.*;
+import static org.junit.Assert.*;
+
+import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 
 /**
- * Common interface for all HotSpot {@link JavaType} implementations.
+ * Tests for {@link JavaType}.
  */
-public abstract class HotSpotJavaType extends CompilerObject implements JavaType {
-    private static final long serialVersionUID = -4252886265301910771L;
+public class TestJavaType {
 
-    private final String name;
-
-    public HotSpotJavaType(String name) {
-        this.name = name;
+    public TestJavaType() {
     }
 
-    @Override
-    public final String getName() {
-        return name;
+    @Test
+    public void getKindTest() {
+        for (Class c : classes) {
+            JavaType type = runtime.lookupJavaType(c);
+            Kind expected = Kind.fromJavaClass(c);
+            Kind actual = type.getKind();
+            assertEquals(expected, actual);
+        }
     }
-
-    public abstract Class<?> mirror();
 }

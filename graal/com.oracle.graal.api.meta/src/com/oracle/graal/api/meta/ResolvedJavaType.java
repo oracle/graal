@@ -101,7 +101,14 @@ public interface ResolvedJavaType extends JavaType {
      *
      * @return {@code true} if this type is an array class
      */
-    boolean isArrayClass();
+    boolean isArray();
+
+    /**
+     * Checks whether this type is primitive.
+     *
+     * @return {@code true} if this type is primitive
+     */
+    boolean isPrimitive();
 
     /**
      * Returns the Java language modifiers for this type, as an integer. The {@link Modifier} class should be used to
@@ -171,13 +178,21 @@ public interface ResolvedJavaType extends JavaType {
     ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType);
 
     /**
-     * Gets the unique concrete subclass of this type.
-     *
+     * Attempts to get a unique concrete subclass of this type.
+     * <p>
+     * For an {@linkplain #isArray() array} type A, the unique concrete subclass is A if
+     * the element type of A is primitive or has no subtype. Otherwise there is no unique concrete subclass.
+     * <p>
+     * For a non-array type T, the result is the unique concrete type in the complete hierarchy of T.
+     * <p>
+     * A runtime may decide not to manage or walk a large hierarchy and so the result is conservative.
+     * That is, a non-null result is guaranteed to be the unique concrete class in T's hierarchy
+     * but a null result does not necessarily imply that there is no unique concrete class in T's hierarchy.
      * <p>
      * If the compiler uses the result of this method for its compilation, it must register an assumption because
      * dynamic class loading can invalidate the result of this method.
      *
-     * @return the exact type of this type, if it exists; {@code null} otherwise
+     * @return the unique concrete subclass for this type as described above
      */
     ResolvedJavaType findUniqueConcreteSubtype();
 
@@ -231,7 +246,11 @@ public interface ResolvedJavaType extends JavaType {
     boolean isClass(Class c);
 
     /**
-     * Returns the {@link java.lang.Class} object representing this type.
+     * Returns the instance field of this class (or one of its super classes) at the given
+     * offset, or {@code null} if there is no such field.
+     *
+     * @param offset the offset of the field to look for
+     * @return the field with the given offset, or {@code null} if there is no such field.
      */
-    Class< ? > toJava();
+    ResolvedJavaField findInstanceFieldWithOffset(long offset);
 }

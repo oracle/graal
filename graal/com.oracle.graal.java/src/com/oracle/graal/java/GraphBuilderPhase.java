@@ -145,7 +145,9 @@ public final class GraphBuilderPhase extends Phase {
     private BciBlockMapping createBlockMap() {
         BciBlockMapping map = new BciBlockMapping(method);
         map.build();
-        Debug.dump(map, MetaUtil.format("After block building %f %R %H.%n(%P)", method));
+        if (Debug.isDumpEnabled()) {
+            Debug.dump(map, MetaUtil.format("After block building %f %R %H.%n(%P)", method));
+        }
 
         return map;
     }
@@ -1394,7 +1396,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void createReturn() {
-        if (method.isConstructor() && MetaUtil.isJavaLangObject(method.getDeclaringClass())) {
+        if (method.isConstructor() && method.getDeclaringClass().isClass(Object.class)) {
             callRegisterFinalizer();
         }
         Kind returnKind = method.getSignature().getReturnKind().getStackKind();

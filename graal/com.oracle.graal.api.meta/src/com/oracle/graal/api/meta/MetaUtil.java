@@ -37,19 +37,63 @@ import com.oracle.graal.api.meta.ProfilingInfo.ExceptionSeen;
 public class MetaUtil {
 
     /**
-     * Returns true if the specified typed is exactly the type {@link java.lang.Object}.
+     * Gets the {@link Class} mirror for a given resolved type.
+     *
+     * @param type the type for which the Java mirror is requested
+     * @param loader class loader from which the class must be loaded (null means use the class loader of the {@link MetaUtil} class)
+     * @return the mirror for {@code type}
+     * @throws NoClassDefFoundError if the mirror is not available
      */
-    public static boolean isJavaLangObject(ResolvedJavaType type) {
-        boolean result = type.getSuperclass() == null && !type.isInterface() && type.getKind() == Kind.Object;
-        assert result == type.getName().equals("Ljava/lang/Object;") : type.getName();
-        return result;
+    public static Class getMirrorOrFail(ResolvedJavaType type, ClassLoader loader) throws NoClassDefFoundError {
+        ResolvedJavaType elementalType = getElementalType(type);
+        Class elementalClass;
+        if (elementalType.isPrimitive()) {
+            elementalClass = type.getKind().toJavaClass();
+        } else {
+            try {
+                elementalClass = Class.forName(toJavaName(elementalType), true, loader);
+            } catch (ClassNotFoundException e) {
+                throw (NoClassDefFoundError) new NoClassDefFoundError().initCause(e);
+            }
+        }
+        if (type.isArray()) {
+            ResolvedJavaType t = type;
+            while (t.getComponentType() != null) {
+                elementalClass = Array.newInstance(elementalClass, 0).getClass();
+                t = t.getComponentType();
+            }
+        }
+        assert elementalClass != null : toJavaName(type);
+        return elementalClass;
     }
 
     /**
-     * Determines if a given type represents a primitive type.
+     * Gets the {@link Class} mirror for a given resolved type.
+     *
+     * @param type the type for which the Java mirror is requested
+     * @param loader class loader from which the class must be loaded (null means use the class loader of the {@link MetaUtil} class)
+     * @return the mirror for {@code type} or null if it is not available
      */
-    public static boolean isPrimitive(ResolvedJavaType type) {
-        return type.getSuperclass() == null && !type.isInstanceClass();
+    public static Class getMirror(ResolvedJavaType type, ClassLoader loader) {
+        try {
+            return getMirrorOrFail(type, loader);
+        } catch (NoClassDefFoundError e) {
+            return null;
+        }
+    }
+
+    /**
+     * Gets the elemental type for a given type.
+     * The elemental type of an array type is the corresponding zero dimensional (e.g.,
+     * the elemental type of {@code int[][][]} is {@code int}). A non-array type is its
+     * own elemental type.
+     */
+    public static ResolvedJavaType getElementalType(ResolvedJavaType type) {
+        ResolvedJavaType t = type;
+        while (t.getComponentType() != null) {
+            t = t.getComponentType();
+        }
+        return t;
     }
 
     /**
@@ -425,15 +469,6 @@ public class MetaUtil {
         }
         for (int j = 0; j < args; j++) {
             result[i + j] = signature.getParameterKind(j);
-        }
-        return result;
-    }
-
-    public static Class< ? >[] signatureToTypes(Signature signature, ResolvedJavaType accessingClass) {
-        int count = signature.getParameterCount(false);
-        Class< ? >[] result = new Class< ? >[count];
-        for (int i = 0; i < result.length; ++i) {
-            result[i] = signature.getParameterType(i, accessingClass).resolve(accessingClass).toJava();
         }
         return result;
     }

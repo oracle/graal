@@ -85,7 +85,7 @@ class BlockState extends MergeableBlockState<BlockState> {
     private void materializeChangedBefore(FixedNode fixed, VirtualObjectNode virtual, HashSet<VirtualObjectNode> deferred, GraphEffectList deferredStores, GraphEffectList materializeEffects) {
         trace("materializing %s at %s", virtual, fixed);
         ObjectState obj = getObjectState(virtual);
-        if (obj.getLockCount() > 0 && obj.virtual.type().isArrayClass()) {
+        if (obj.getLockCount() > 0 && obj.virtual.type().isArray()) {
             throw new BailoutException("array materialized with lock");
         }
 

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.snippets;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -79,6 +81,15 @@ public class SnippetIntrinsificationPhase extends Phase {
         }
     }
 
+    public static Class<?>[] signatureToTypes(Signature signature, ResolvedJavaType accessingClass) {
+        int count = signature.getParameterCount(false);
+        Class<?>[] result = new Class< ? >[count];
+        for (int i = 0; i < result.length; ++i) {
+            result[i] = getMirrorOrFail(signature.getParameterType(i, accessingClass).resolve(accessingClass), null);
+        }
+        return result;
+    }
+
     private void tryIntrinsify(Invoke invoke) {
         ResolvedJavaMethod target = invoke.methodCallTarget().targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
@@ -87,7 +98,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             assert target.getAnnotation(Fold.class) == null;
             assert Modifier.isNative(target.getModifiers()) : "node intrinsic " + target + " should be native";
 
-            Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.getSignature(), declaringClass);
+            Class< ? >[] parameterTypes = signatureToTypes(target.getSignature(), declaringClass);
             ResolvedJavaType returnType = target.getSignature().getReturnType(declaringClass).resolve(declaringClass);
 
             // Prepare the arguments for the reflective constructor call on the node class.
@@ -104,7 +115,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnCheckCast(newInstance);
         } else if (target.getAnnotation(Fold.class) != null) {
-            Class< ? >[] parameterTypes = MetaUtil.signatureToTypes(target.getSignature(), declaringClass);
+            Class< ? >[] parameterTypes = signatureToTypes(target.getSignature(), declaringClass);
 
             // Prepare the arguments for the reflective method call
             Object[] arguments = prepareArguments(invoke, parameterTypes, target, true);
@@ -115,7 +126,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             }
 
             // Call the method
-            Constant constant = callMethod(target.getSignature().getReturnKind(), declaringClass.toJava(), target.getName(), parameterTypes, receiver, arguments);
+            Constant constant = callMethod(target.getSignature().getReturnKind(), getMirrorOrFail(declaringClass, null), target.getName(), parameterTypes, receiver, arguments);
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
@@ -180,7 +191,7 @@ public class SnippetIntrinsificationPhase extends Phase {
     private static Class< ? > getNodeClass(ResolvedJavaMethod target, NodeIntrinsic intrinsic) {
         Class< ? > result = intrinsic.value();
         if (result == NodeIntrinsic.class) {
-            result = target.getDeclaringClass().toJava();
+            return getMirrorOrFail(target.getDeclaringClass(), null);
         }
         assert Node.class.isAssignableFrom(result);
         return result;

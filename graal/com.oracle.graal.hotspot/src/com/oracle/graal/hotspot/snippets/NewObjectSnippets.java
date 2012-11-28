@@ -342,7 +342,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         public void lower(InitializeObjectNode initializeNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) initializeNode.graph();
             HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) initializeNode.type();
-            assert !type.isArrayClass();
+            assert !type.isArray();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             int size = type.instanceSize();
             assert (size % wordSize()) == 0;

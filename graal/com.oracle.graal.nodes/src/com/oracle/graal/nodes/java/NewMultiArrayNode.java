@@ -54,7 +54,7 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements Lowera
         super(StampFactory.exactNonNull(type));
         this.type = type;
         this.dimensions = new NodeInputList<>(this, dimensions);
-        assert dimensions.length > 0 && type.isArrayClass();
+        assert dimensions.length > 0 && type.isArray();
     }
 
     @Override

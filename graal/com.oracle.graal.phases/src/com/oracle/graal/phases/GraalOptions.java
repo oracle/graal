@@ -171,6 +171,7 @@ public final class GraalOptions {
     public static boolean GenAssertionCode                   = ____;
     public static boolean AlignCallsForPatching              = true;
     public static boolean ResolveClassBeforeStaticInvoke     = true;
+    public static boolean CanOmitFrame                       = true;
 
     // Translating tableswitch instructions
     public static int     MinimumJumpTableSize               = 5;

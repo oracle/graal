@@ -26,12 +26,13 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * Store of a value at a location specified as an offset relative to an object.
  * No null check is performed before the store.
  */
-public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lowerable {
+public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lowerable, Virtualizable {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;
@@ -94,6 +95,21 @@ public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lo
     @Override
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        VirtualObjectNode virtual = tool.getVirtualState(object());
+        if (virtual != null) {
+            ValueNode indexValue = tool.getReplacedValue(offset());
+            if (indexValue.isConstant()) {
+                int fieldIndex = virtual.fieldIndexForOffset(indexValue.asConstant().asLong());
+                if (fieldIndex != -1) {
+                    tool.setVirtualEntry(virtual, fieldIndex, value());
+                    tool.delete();
+                }
+            }
+        }
     }
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification

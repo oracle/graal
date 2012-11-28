@@ -99,9 +99,8 @@ public class NewMultiArrayTest extends GraalCompilerTest {
     @Override
     protected Object referenceInvoke(Method method, Object receiver, Object... args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         if (bottomType != null) {
-            Class< ? > componentType = bottomType.toJava();
             try {
-                return Array.newInstance(componentType, dimensions);
+                return Array.newInstance(bottomClass, dimensions);
             } catch (Exception e) {
                 throw new InvocationTargetException(e);
             }
@@ -111,11 +110,13 @@ public class NewMultiArrayTest extends GraalCompilerTest {
 
     ResolvedJavaType arrayType;
     ResolvedJavaType bottomType;
+    Class bottomClass;
     int[] dimensions;
 
     @Test
     public void test1() {
         for (Class clazz : new Class[] {byte.class, char.class, short.class, int.class, float.class, long.class, double.class, String.class}) {
+            bottomClass = clazz;
             bottomType = runtime.lookupJavaType(clazz);
             arrayType = bottomType;
             for (int rank : new int[] {1, 2, 10, 50, 100, 200, 254, 255}) {

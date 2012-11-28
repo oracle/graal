@@ -79,7 +79,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             assert Modifier.isStatic(flags);
             if (constant == null) {
                 if (holder.isInitialized() && !holder.getName().equals(SystemClassName)) {
-                    if (Modifier.isFinal(getModifiers()) || assumeStaticFieldsFinal(holder.toJava())) {
+                    if (Modifier.isFinal(getModifiers()) || assumeStaticFieldsFinal(holder.mirror())) {
                         constant = readValue(receiver);
                     }
                 }
@@ -154,7 +154,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
     private Field toJava() {
         try {
-            return holder.toJava().getDeclaredField(name);
+            return holder.mirror().getDeclaredField(name);
         } catch (NoSuchFieldException e) {
             return null;
         }

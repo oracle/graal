@@ -214,17 +214,13 @@ public class BinaryGraphPrinter implements GraphPrinter{
             writeByte(POOL_NULL);
             return;
         }
-        if (object instanceof ResolvedJavaType) {
-            writePoolObject(((ResolvedJavaType) object).toJava());
-            return;
-        }
         Integer id = constantPool.get(object);
         if (id == null) {
             addPoolEntry(object);
         } else {
             if (object instanceof Enum<?>) {
                 writeByte(POOL_ENUM);
-            } else if (object instanceof Class<?>) {
+            } else if (object instanceof Class<?> || object instanceof JavaType) {
                 writeByte(POOL_CLASS);
             } else if (object instanceof NodeClass) {
                 writeByte(POOL_NODE_CLASS);
@@ -270,6 +266,11 @@ public class BinaryGraphPrinter implements GraphPrinter{
             writeByte(POOL_ENUM);
             writePoolObject(object.getClass());
             writeInt(((Enum) object).ordinal());
+        } else if (object instanceof JavaType) {
+            JavaType type = (JavaType) object;
+            writeByte(POOL_CLASS);
+            writeString(MetaUtil.toJavaName(type));
+            writeByte(KLASS);
         } else if (object instanceof NodeClass) {
             NodeClass nodeClass = (NodeClass) object;
             writeByte(POOL_NODE_CLASS);

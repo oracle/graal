@@ -166,6 +166,7 @@ public interface CompilerToVM {
      * @return the metaspace Method result for {@code reflectionMethod}
      */
     long getMetaspaceMethod(Method reflectionMethod, HotSpotResolvedJavaType[] resultHolder);
+    long getMetaspaceConstructor(Constructor reflectionConstructor, HotSpotResolvedJavaType[] resultHolder);
 
     HotSpotResolvedJavaField getJavaField(Field reflectionField);
 

@@ -111,7 +111,7 @@ public class TypeCheckHints {
      * @return true if {@code type} has no subtype(s)
      */
     public static boolean isFinalClass(ResolvedJavaType type) {
-        if (type.isArrayClass()) {
+        if (type.isArray()) {
             return isFinalClass(type.getComponentType());
         }
         return Modifier.isFinal(type.getModifiers());

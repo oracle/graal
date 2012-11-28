@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.virtual;
 
+import sun.misc.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
@@ -69,5 +71,60 @@ public class VirtualArrayNode extends VirtualObjectNode {
     @Override
     public String fieldName(int index) {
         return "[" + index + "]";
+    }
+
+    @Override
+    public int fieldIndexForOffset(long constantOffset) {
+        int baseOffset;
+        int indexScale;
+        switch (componentType.getKind()) {
+            case Boolean:
+                baseOffset = Unsafe.ARRAY_BOOLEAN_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_BOOLEAN_INDEX_SCALE;
+                break;
+            case Byte:
+                baseOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
+                break;
+            case Short:
+                baseOffset = Unsafe.ARRAY_SHORT_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_SHORT_INDEX_SCALE;
+                break;
+            case Char:
+                baseOffset = Unsafe.ARRAY_CHAR_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_CHAR_INDEX_SCALE;
+                break;
+            case Int:
+                baseOffset = Unsafe.ARRAY_INT_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_INT_INDEX_SCALE;
+                break;
+            case Long:
+                baseOffset = Unsafe.ARRAY_LONG_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_LONG_INDEX_SCALE;
+                break;
+            case Float:
+                baseOffset = Unsafe.ARRAY_FLOAT_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_FLOAT_INDEX_SCALE;
+                break;
+            case Double:
+                baseOffset = Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_DOUBLE_INDEX_SCALE;
+                break;
+            case Object:
+                baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+                break;
+            default:
+                return -1;
+        }
+        long index = constantOffset - baseOffset;
+        if (index % indexScale != 0) {
+            return -1;
+        }
+        long elementIndex = index / indexScale;
+        if (elementIndex < 0 || elementIndex >= length) {
+            return -1;
+        }
+        return (int) elementIndex;
     }
 }

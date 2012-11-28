@@ -40,6 +40,10 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
         this.metaProvider = metaProvider;
     }
 
+    public Class< ? > getMirror(ResolvedJavaType type) {
+        return ((HotSpotJavaType) type).mirror();
+    }
+
     public native Object invoke(ResolvedJavaMethod method, Object... args);
 
     public void monitorEnter(Object value) {
@@ -53,7 +57,7 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
     }
 
     public Object newObject(ResolvedJavaType type) throws InstantiationException {
-        return unsafe.allocateInstance(type.toJava());
+        return unsafe.allocateInstance(getMirror(type));
     }
 
     public Object getFieldObject(Object base, ResolvedJavaField field) {
@@ -286,7 +290,7 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
             return;
         }
         ResolvedJavaType type = metaProvider.lookupJavaType(array.getClass()).getComponentType();
-        if (!type.toJava().isAssignableFrom(arrayType)) {
+        if (!getMirror(type).isAssignableFrom(arrayType)) {
             throw new ArrayStoreException(arrayType.getName());
         }
     }
@@ -294,7 +298,7 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
     private void checkArray(Object array, long index) {
         nullCheck(array);
         ResolvedJavaType type = metaProvider.lookupJavaType(array.getClass());
-        if (!type.isArrayClass()) {
+        if (!type.isArray()) {
             throw new ArrayStoreException(array.getClass().getName());
         }
         if (index < 0 || index >= arrayLength(array)) {
@@ -315,10 +319,10 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
         return ((HotSpotResolvedJavaField) field).offset();
     }
 
-    private static Object resolveBase(Object base, ResolvedJavaField field) {
+    private Object resolveBase(Object base, ResolvedJavaField field) {
         Object accessorBase = base;
         if (accessorBase == null) {
-            accessorBase = field.getDeclaringClass().toJava();
+            accessorBase = getMirror(field.getDeclaringClass());
         }
         return accessorBase;
     }
