@@ -263,7 +263,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         int count = sig.getParameterCount(false);
         Class< ? >[] result = new Class< ? >[count];
         for (int i = 0; i < result.length; ++i) {
-            result[i] = ((HotSpotJavaType) sig.getParameterType(i, holder).resolve(holder)).mirror();
+            result[i] = ((HotSpotMirrorHolder) sig.getParameterType(i, holder).resolve(holder)).mirror();
         }
         return result;
     }

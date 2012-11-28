@@ -607,12 +607,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 ValueNode obj = (ValueNode) parameters.get(0);
                 ObjectStamp stamp = (ObjectStamp) obj.stamp();
                 if (stamp.nonNull() && stamp.isExactType()) {
-                    StructuredGraph graph = new StructuredGraph();
                     HotSpotJavaType type = (HotSpotJavaType) stamp.type();
-                    ValueNode result = ConstantNode.forObject(type.mirror(), this, graph);
-                    ReturnNode ret = graph.add(new ReturnNode(result));
-                    graph.start().setNext(ret);
-                    return graph;
+                    if (type instanceof HotSpotMirrorHolder) {
+                        StructuredGraph graph = new StructuredGraph();
+                        ValueNode result = ConstantNode.forObject(((HotSpotMirrorHolder) type).mirror(), this, graph);
+                        ReturnNode ret = graph.add(new ReturnNode(result));
+                        graph.start().setNext(ret);
+                        return graph;
+                    }
                 }
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));

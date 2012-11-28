@@ -31,7 +31,7 @@ import com.oracle.graal.graph.*;
 /**
  * Implementation of {@link JavaType} for primitive HotSpot types.
  */
-public final class HotSpotTypePrimitive extends HotSpotJavaType implements ResolvedJavaType {
+public final class HotSpotTypePrimitive extends HotSpotJavaType implements ResolvedJavaType, HotSpotMirrorHolder {
 
     private static final long serialVersionUID = -6208552348908071473L;
     private final Kind kind;

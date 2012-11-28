@@ -37,7 +37,7 @@ import com.oracle.graal.hotspot.*;
 /**
  * Implementation of {@link JavaType} for resolved non-primitive HotSpot classes.
  */
-public final class HotSpotResolvedJavaType extends HotSpotJavaType implements ResolvedJavaType {
+public final class HotSpotResolvedJavaType extends HotSpotJavaType implements ResolvedJavaType, HotSpotMirrorHolder {
 
     private static final long serialVersionUID = 3481514353553840471L;
 
