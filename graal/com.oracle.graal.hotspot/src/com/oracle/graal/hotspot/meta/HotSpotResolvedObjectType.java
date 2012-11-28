@@ -160,26 +160,11 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return javaComponentType == null ? null : fromClass(javaComponentType);
     }
 
-    private static boolean hasSubtype(ResolvedJavaType type) {
-        assert !type.isArray() : type;
-        if (type.isPrimitive()) {
-            return false;
-        }
-        HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-        if (unsafeReadWord(((HotSpotResolvedObjectType) type).metaspaceKlass + config.subklassOffset) != 0) {
-            return true;
-        }
-        return false;
-    }
-
     @Override
     public ResolvedJavaType findUniqueConcreteSubtype() {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
         if (isArray()) {
-            if (hasSubtype(getElementalType(this))) {
-                return null;
-            }
-            return this;
+            return isFinal(getElementalType(this).getModifiers()) ? this : null;
         } else {
             HotSpotResolvedObjectType type = this;
             while (isAbstract(type.getModifiers())) {
@@ -254,7 +239,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         if (isArray()) {
             return getComponentType().asExactType() != null ? this : null;
         }
-        return Modifier.isFinal(getModifiers()) ? this : null;
+        return isFinal(getModifiers()) ? this : null;
     }
 
     @Override
@@ -402,7 +387,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             fieldCache.put(id, result);
         } else {
             assert result.getName().equals(fieldName);
-            assert result.getModifiers() == (Modifier.fieldModifiers() & flags);
+            assert result.getModifiers() == (fieldModifiers() & flags);
         }
 
         return result;

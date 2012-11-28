@@ -181,12 +181,14 @@ public interface ResolvedJavaType extends JavaType {
      * Attempts to get a unique concrete subclass of this type.
      * <p>
      * For an {@linkplain #isArray() array} type A, the unique concrete subclass is A if
-     * the element type of A is primitive or has no subtype. Otherwise there is no unique concrete subclass.
+     * the {@linkplain MetaUtil#getElementalType(ResolvedJavaType) elemental} type of A
+     * is final (which includes primitive types). Otherwise {@code null} is returned for A.
      * <p>
-     * For a non-array type T, the result is the unique concrete type in the complete hierarchy of T.
+     * For a non-array type T, the result is the unique concrete type in the current hierarchy of T.
      * <p>
      * A runtime may decide not to manage or walk a large hierarchy and so the result is conservative.
      * That is, a non-null result is guaranteed to be the unique concrete class in T's hierarchy
+     * <b>at the current point in time</b>
      * but a null result does not necessarily imply that there is no unique concrete class in T's hierarchy.
      * <p>
      * If the compiler uses the result of this method for its compilation, it must register an assumption because

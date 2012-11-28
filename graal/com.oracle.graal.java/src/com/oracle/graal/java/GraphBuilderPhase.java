@@ -623,7 +623,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private JavaTypeProfile getProfileForTypeCheck(ResolvedJavaType type) {
-        if (!optimisticOpts.useTypeCheckHints() || TypeCheckHints.isFinalClass(type)) {
+        if (!optimisticOpts.useTypeCheckHints() || TypeCheckHints.canHaveSubtype(type)) {
             return null;
         } else {
             ResolvedJavaType uniqueSubtype = type.findUniqueConcreteSubtype();
