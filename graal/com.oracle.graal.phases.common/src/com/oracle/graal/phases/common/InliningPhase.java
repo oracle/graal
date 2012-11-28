@@ -311,6 +311,7 @@ public class InliningPhase extends Phase implements InliningCallback {
             InlineInfo info = InliningUtil.getInlineInfo(invoke, runtime, assumptions, this, optimisticOpts);
             if (info != null) {
                 invokePredecessor = (FixedNode) info.invoke().predecessor();
+                assert invokePredecessor.isAlive();
             }
             return info;
         }
