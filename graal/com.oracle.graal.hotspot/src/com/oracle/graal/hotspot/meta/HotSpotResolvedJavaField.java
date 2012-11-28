@@ -40,14 +40,14 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     private static final int FIELD_INTERNAL_FLAG = 0x80000000;
 
     private static final long serialVersionUID = 7692985878836955683L;
-    private final HotSpotResolvedJavaType holder;
+    private final HotSpotResolvedObjectType holder;
     private final String name;
     private final JavaType type;
     private final int offset;
     private final int flags;
     private Constant constant;
 
-    public HotSpotResolvedJavaField(HotSpotResolvedJavaType holder, String name, JavaType type, int offset, int flags, boolean internal) {
+    public HotSpotResolvedJavaField(HotSpotResolvedObjectType holder, String name, JavaType type, int offset, int flags, boolean internal) {
         assert (flags & FIELD_INTERNAL_FLAG) == 0;
         this.holder = holder;
         this.name = name;

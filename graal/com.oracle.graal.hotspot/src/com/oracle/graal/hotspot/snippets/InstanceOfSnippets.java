@@ -179,7 +179,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
             ValueNode falseValue = replacer.falseValue;
             ValueNode object = instanceOf.object();
             TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), GraalOptions.InstanceOfMinHintHitProbability, GraalOptions.InstanceOfMaxHints);
-            final HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) instanceOf.type();
+            final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, instanceOf.graph());
             boolean checkNull = !object.stamp().nonNull();
             Arguments arguments;

@@ -60,7 +60,7 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
     @Override
     public boolean inferStamp() {
         if (stamp() == defaultStamp && hub.isConstant()) {
-            updateStamp(StampFactory.exactNonNull(HotSpotResolvedJavaType.fromMetaspaceKlass(hub.asConstant())));
+            updateStamp(StampFactory.exactNonNull(HotSpotResolvedObjectType.fromMetaspaceKlass(hub.asConstant())));
             return true;
         }
         return false;

@@ -334,7 +334,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             return null;
         }
         Object o = constant.asObject();
-        return HotSpotResolvedJavaType.fromClass(o.getClass());
+        return HotSpotResolvedObjectType.fromClass(o.getClass());
     }
 
     @Override
@@ -607,14 +607,12 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 ValueNode obj = (ValueNode) parameters.get(0);
                 ObjectStamp stamp = (ObjectStamp) obj.stamp();
                 if (stamp.nonNull() && stamp.isExactType()) {
-                    HotSpotJavaType type = (HotSpotJavaType) stamp.type();
-                    if (type instanceof HotSpotMirrorHolder) {
-                        StructuredGraph graph = new StructuredGraph();
-                        ValueNode result = ConstantNode.forObject(((HotSpotMirrorHolder) type).mirror(), this, graph);
-                        ReturnNode ret = graph.add(new ReturnNode(result));
-                        graph.start().setNext(ret);
-                        return graph;
-                    }
+                    HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) stamp.type();
+                    StructuredGraph graph = new StructuredGraph();
+                    ValueNode result = ConstantNode.forObject(type.mirror(), this, graph);
+                    ReturnNode ret = graph.add(new ReturnNode(result));
+                    graph.start().setNext(ret);
+                    return graph;
                 }
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
@@ -657,7 +655,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     }
 
     public ResolvedJavaType lookupJavaType(Class<?> clazz) {
-        return HotSpotResolvedJavaType.fromClass(clazz);
+        return HotSpotResolvedObjectType.fromClass(clazz);
     }
 
     public Object lookupCallTarget(Object target) {
@@ -674,7 +672,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     public ResolvedJavaMethod lookupJavaMethod(Method reflectionMethod) {
         CompilerToVM c2vm = graalRuntime.getCompilerToVM();
-        HotSpotResolvedJavaType[] resultHolder = {null};
+        HotSpotResolvedObjectType[] resultHolder = {null};
         long metaspaceMethod = c2vm.getMetaspaceMethod(reflectionMethod, resultHolder);
         assert metaspaceMethod != 0L;
         return resultHolder[0].createMethod(metaspaceMethod);
@@ -682,7 +680,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     public ResolvedJavaMethod lookupJavaConstructor(Constructor reflectionConstructor) {
         CompilerToVM c2vm = graalRuntime.getCompilerToVM();
-        HotSpotResolvedJavaType[] resultHolder = {null};
+        HotSpotResolvedObjectType[] resultHolder = {null};
         long metaspaceMethod = c2vm.getMetaspaceConstructor(reflectionConstructor, resultHolder);
         assert metaspaceMethod != 0L;
         return resultHolder[0].createMethod(metaspaceMethod);
@@ -756,6 +754,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     }
 
     public boolean needsDataPatch(Constant constant) {
-        return constant.getPrimitiveAnnotation() instanceof HotSpotResolvedJavaType;
+        return constant.getPrimitiveAnnotation() instanceof HotSpotResolvedObjectType;
     }
 }

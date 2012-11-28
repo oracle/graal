@@ -35,10 +35,10 @@ import com.oracle.graal.hotspot.meta.*;
 public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
-    public native long getMetaspaceMethod(Method reflectionMethod, HotSpotResolvedJavaType[] resultHolder);
+    public native long getMetaspaceMethod(Method reflectionMethod, HotSpotResolvedObjectType[] resultHolder);
 
     @Override
-    public native long getMetaspaceConstructor(Constructor reflectionConstructor, HotSpotResolvedJavaType[] resultHolder);
+    public native long getMetaspaceConstructor(Constructor reflectionConstructor, HotSpotResolvedObjectType[] resultHolder);
 
     @Override
     public native HotSpotResolvedJavaField getJavaField(Field reflectionMethod);
@@ -59,28 +59,28 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native boolean isMethodCompilable(long metaspaceMethod);
 
     @Override
-    public native long getUniqueConcreteMethod(long metaspaceMethod, HotSpotResolvedJavaType[] resultHolder);
+    public native long getUniqueConcreteMethod(long metaspaceMethod, HotSpotResolvedObjectType[] resultHolder);
 
     @Override
     public native int getInvocationCount(long metaspaceMethod);
 
     @Override
-    public native JavaType lookupType(String name, HotSpotResolvedJavaType accessingClass, boolean eagerResolve);
+    public native JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve);
 
     @Override
-    public native Object lookupConstantInPool(HotSpotResolvedJavaType pool, int cpi);
+    public native Object lookupConstantInPool(HotSpotResolvedObjectType pool, int cpi);
 
     @Override
-    public native JavaMethod lookupMethodInPool(HotSpotResolvedJavaType pool, int cpi, byte opcode);
+    public native JavaMethod lookupMethodInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
 
     @Override
-    public native JavaType lookupTypeInPool(HotSpotResolvedJavaType pool, int cpi);
+    public native JavaType lookupTypeInPool(HotSpotResolvedObjectType pool, int cpi);
 
     @Override
-    public native void lookupReferencedTypeInPool(HotSpotResolvedJavaType pool, int cpi, byte opcode);
+    public native void lookupReferencedTypeInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
 
     @Override
-    public native JavaField lookupFieldInPool(HotSpotResolvedJavaType pool, int cpi, byte opcode);
+    public native JavaField lookupFieldInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
 
     @Override
     public native HotSpotInstalledCode installCode(HotSpotCompilationResult comp, HotSpotInstalledCode code, HotSpotCodeInfo info);
@@ -89,13 +89,13 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void initializeConfiguration(HotSpotVMConfig config);
 
     @Override
-    public native JavaMethod resolveMethod(HotSpotResolvedJavaType klass, String name, String signature);
+    public native JavaMethod resolveMethod(HotSpotResolvedObjectType klass, String name, String signature);
 
     @Override
-    public native boolean isTypeInitialized(HotSpotResolvedJavaType klass);
+    public native boolean isTypeInitialized(HotSpotResolvedObjectType klass);
 
     @Override
-    public native void initializeType(HotSpotResolvedJavaType klass);
+    public native void initializeType(HotSpotResolvedObjectType klass);
 
     @Override
     public native void initializeMethod(long metaspaceMethod, HotSpotResolvedJavaMethod method);
@@ -107,7 +107,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native ResolvedJavaType getResolvedType(Class<?> javaClass);
 
     @Override
-    public native HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedJavaType klass);
+    public native HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedObjectType klass);
 
     @Override
     public native int getCompiledCodeSize(long metaspaceMethod);
@@ -137,5 +137,5 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native String decodePC(long pc);
 
     @Override
-    public native long getPrototypeMarkWord(HotSpotResolvedJavaType type);
+    public native long getPrototypeMarkWord(HotSpotResolvedObjectType type);
 }

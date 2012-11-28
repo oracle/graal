@@ -265,7 +265,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         @SuppressWarnings("unused")
         public void lower(NewInstanceNode newInstanceNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) newInstanceNode.graph();
-            HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) newInstanceNode.instanceClass();
+            HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newInstanceNode.instanceClass();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             int size = type.instanceSize();
             assert (size % wordSize()) == 0;
@@ -341,7 +341,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         @SuppressWarnings("unused")
         public void lower(InitializeObjectNode initializeNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) initializeNode.graph();
-            HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) initializeNode.type();
+            HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) initializeNode.type();
             assert !type.isArray();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             int size = type.instanceSize();
@@ -358,7 +358,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         @SuppressWarnings("unused")
         public void lower(InitializeArrayNode initializeNode, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) initializeNode.graph();
-            HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) initializeNode.type();
+            HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) initializeNode.type();
             ResolvedJavaType elementType = type.getComponentType();
             assert elementType != null;
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
@@ -380,7 +380,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             for (int i = 0; i < newmultiarrayNode.dimensionCount(); i++) {
                 dims[i] = newmultiarrayNode.dimension(i);
             }
-            HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) newmultiarrayNode.type();
+            HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newmultiarrayNode.type();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             Key key = new Key(newmultiarray).add("dimensions", vargargs(new int[rank], StampFactory.forKind(Kind.Int))).add("rank", rank);
             Arguments arguments = arguments("dimensions", dims).add("hub", hub);

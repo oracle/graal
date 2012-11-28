@@ -28,13 +28,13 @@ import com.oracle.graal.hotspot.*;
 /**
  * Implementation of {@link JavaType} for unresolved HotSpot classes.
  */
-public class HotSpotTypeUnresolved extends HotSpotJavaType {
+public class HotSpotUnresolvedJavaType extends HotSpotJavaType {
 
     private static final long serialVersionUID = -2320936267633521314L;
     public final String simpleName;
     public final int dimensions;
 
-    public HotSpotTypeUnresolved(String name, String simpleName, int dimensions) {
+    public HotSpotUnresolvedJavaType(String name, String simpleName, int dimensions) {
         super(name);
         assert dimensions >= 0;
         this.simpleName = simpleName;
@@ -54,13 +54,13 @@ public class HotSpotTypeUnresolved extends HotSpotJavaType {
     public JavaType getComponentType() {
         assert dimensions > 0 : "no array class" + getName();
         String name = getFullName(getName(), dimensions - 1);
-        return new HotSpotTypeUnresolved(name, simpleName, dimensions - 1);
+        return new HotSpotUnresolvedJavaType(name, simpleName, dimensions - 1);
     }
 
     @Override
     public JavaType getArrayClass() {
         String name = getFullName(getName(), dimensions + 1);
-        return new HotSpotTypeUnresolved(name, simpleName, dimensions + 1);
+        return new HotSpotUnresolvedJavaType(name, simpleName, dimensions + 1);
     }
 
     @Override
@@ -85,6 +85,6 @@ public class HotSpotTypeUnresolved extends HotSpotJavaType {
 
     @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
-        return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().lookupType(getName(), (HotSpotResolvedJavaType) accessingClass, true);
+        return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().lookupType(getName(), (HotSpotResolvedObjectType) accessingClass, true);
     }
 }

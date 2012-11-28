@@ -250,7 +250,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         public void lower(CheckCastNode checkcast, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) checkcast.graph();
             ValueNode object = checkcast.object();
-            final HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) checkcast.type();
+            final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) checkcast.type();
             TypeCheckHints hintInfo = new TypeCheckHints(checkcast.type(), checkcast.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
             ValueNode hub = ConstantNode.forConstant(type.klass(), runtime, checkcast.graph());
             boolean checkNull = !object.stamp().nonNull();
@@ -297,7 +297,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         static ConstantNode[] createHints(TypeCheckHints hints, MetaAccessProvider runtime, Graph graph) {
             ConstantNode[] hintHubs = new ConstantNode[hints.types.length];
             for (int i = 0; i < hintHubs.length; i++) {
-                hintHubs[i] = ConstantNode.forConstant(((HotSpotResolvedJavaType) hints.types[i]).klass(), runtime, graph);
+                hintHubs[i] = ConstantNode.forConstant(((HotSpotResolvedObjectType) hints.types[i]).klass(), runtime, graph);
             }
             return hintHubs;
         }

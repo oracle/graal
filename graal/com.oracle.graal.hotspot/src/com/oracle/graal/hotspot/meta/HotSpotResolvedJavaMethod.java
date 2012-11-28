@@ -48,7 +48,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      */
     final long metaspaceMethod;
 
-    private final HotSpotResolvedJavaType holder;
+    private final HotSpotResolvedObjectType holder;
     private /*final*/ int codeSize;
     private /*final*/ int exceptionHandlerCount;
     private Signature signature;
@@ -60,7 +60,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     private CompilationTask currentTask;
 
-    HotSpotResolvedJavaMethod(HotSpotResolvedJavaType holder, long metaspaceMethod) {
+    HotSpotResolvedJavaMethod(HotSpotResolvedObjectType holder, long metaspaceMethod) {
         this.metaspaceMethod = metaspaceMethod;
         this.holder = holder;
         HotSpotGraalRuntime.getInstance().getCompilerToVM().initializeMethod(metaspaceMethod, this);
@@ -149,7 +149,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     public ResolvedJavaMethod uniqueConcreteMethod() {
-        HotSpotResolvedJavaType[] resultHolder = {null};
+        HotSpotResolvedObjectType[] resultHolder = {null};
         long ucm = HotSpotGraalRuntime.getInstance().getCompilerToVM().getUniqueConcreteMethod(metaspaceMethod, resultHolder);
         if (ucm != 0L) {
             assert resultHolder[0] != null;
@@ -225,7 +225,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public ConstantPool getConstantPool() {
-        return ((HotSpotResolvedJavaType) getDeclaringClass()).constantPool();
+        return ((HotSpotResolvedObjectType) getDeclaringClass()).constantPool();
     }
 
     @Override
@@ -263,7 +263,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         int count = sig.getParameterCount(false);
         Class< ? >[] result = new Class< ? >[count];
         for (int i = 0; i < result.length; ++i) {
-            result[i] = ((HotSpotMirrorHolder) sig.getParameterType(i, holder).resolve(holder)).mirror();
+            result[i] = ((HotSpotResolvedJavaType) sig.getParameterType(i, holder).resolve(holder)).mirror();
         }
         return result;
     }

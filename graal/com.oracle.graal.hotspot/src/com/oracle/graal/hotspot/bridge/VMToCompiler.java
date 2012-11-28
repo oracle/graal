@@ -33,7 +33,7 @@ import com.oracle.graal.hotspot.meta.*;
  */
 public interface VMToCompiler {
 
-    boolean compileMethod(long metaspaceMethod, HotSpotResolvedJavaType holder, int entryBCI, boolean blocking, int priority) throws Throwable;
+    boolean compileMethod(long metaspaceMethod, HotSpotResolvedObjectType holder, int entryBCI, boolean blocking, int priority) throws Throwable;
 
     void shutdownCompiler() throws Throwable;
 
@@ -61,7 +61,7 @@ public interface VMToCompiler {
      * @param simpleName a simple, unqualified name for the type
      * @param javaMirror the {@link Class} mirror
      * @param hasFinalizableSubclass specifies if the type has a finalizable subtype
-     * @param sizeOrSpecies the size of an instance of the type, or {@link HotSpotResolvedJavaType#INTERFACE_SPECIES_VALUE} or {@link HotSpotResolvedJavaType#ARRAY_SPECIES_VALUE}
+     * @param sizeOrSpecies the size of an instance of the type, or {@link HotSpotResolvedObjectType#INTERFACE_SPECIES_VALUE} or {@link HotSpotResolvedObjectType#ARRAY_SPECIES_VALUE}
      * @return the resolved type associated with {@code javaMirror} which may not be the type instantiated by this call
      *         in the case of another thread racing to create the same type
      */

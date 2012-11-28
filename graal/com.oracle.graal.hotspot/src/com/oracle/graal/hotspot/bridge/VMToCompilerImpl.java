@@ -52,15 +52,15 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     private final HotSpotGraalRuntime graalRuntime;
 
-    public final HotSpotTypePrimitive typeBoolean;
-    public final HotSpotTypePrimitive typeChar;
-    public final HotSpotTypePrimitive typeFloat;
-    public final HotSpotTypePrimitive typeDouble;
-    public final HotSpotTypePrimitive typeByte;
-    public final HotSpotTypePrimitive typeShort;
-    public final HotSpotTypePrimitive typeInt;
-    public final HotSpotTypePrimitive typeLong;
-    public final HotSpotTypePrimitive typeVoid;
+    public final HotSpotResolvedPrimitiveType typeBoolean;
+    public final HotSpotResolvedPrimitiveType typeChar;
+    public final HotSpotResolvedPrimitiveType typeFloat;
+    public final HotSpotResolvedPrimitiveType typeDouble;
+    public final HotSpotResolvedPrimitiveType typeByte;
+    public final HotSpotResolvedPrimitiveType typeShort;
+    public final HotSpotResolvedPrimitiveType typeInt;
+    public final HotSpotResolvedPrimitiveType typeLong;
+    public final HotSpotResolvedPrimitiveType typeVoid;
 
     private ThreadPoolExecutor compileQueue;
     private ThreadPoolExecutor slowCompileQueue;
@@ -73,18 +73,18 @@ public class VMToCompilerImpl implements VMToCompiler {
     public VMToCompilerImpl(HotSpotGraalRuntime compiler) {
         this.graalRuntime = compiler;
 
-        typeBoolean = new HotSpotTypePrimitive(Kind.Boolean);
-        typeChar = new HotSpotTypePrimitive(Kind.Char);
-        typeFloat = new HotSpotTypePrimitive(Kind.Float);
-        typeDouble = new HotSpotTypePrimitive(Kind.Double);
-        typeByte = new HotSpotTypePrimitive(Kind.Byte);
-        typeShort = new HotSpotTypePrimitive(Kind.Short);
-        typeInt = new HotSpotTypePrimitive(Kind.Int);
-        typeLong = new HotSpotTypePrimitive(Kind.Long);
-        typeVoid = new HotSpotTypePrimitive(Kind.Void);
+        typeBoolean = new HotSpotResolvedPrimitiveType(Kind.Boolean);
+        typeChar = new HotSpotResolvedPrimitiveType(Kind.Char);
+        typeFloat = new HotSpotResolvedPrimitiveType(Kind.Float);
+        typeDouble = new HotSpotResolvedPrimitiveType(Kind.Double);
+        typeByte = new HotSpotResolvedPrimitiveType(Kind.Byte);
+        typeShort = new HotSpotResolvedPrimitiveType(Kind.Short);
+        typeInt = new HotSpotResolvedPrimitiveType(Kind.Int);
+        typeLong = new HotSpotResolvedPrimitiveType(Kind.Long);
+        typeVoid = new HotSpotResolvedPrimitiveType(Kind.Void);
     }
 
-    private static void initMirror(HotSpotTypePrimitive type, long offset) {
+    private static void initMirror(HotSpotResolvedPrimitiveType type, long offset) {
         Class<?> mirror = type.mirror();
         unsafe.putObject(mirror, offset, type);
         assert unsafe.getObject(mirror, offset) == type;
@@ -372,7 +372,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public boolean compileMethod(long metaspaceMethod, final HotSpotResolvedJavaType holder, final int entryBCI, boolean blocking, int priority) throws Throwable {
+    public boolean compileMethod(long metaspaceMethod, final HotSpotResolvedObjectType holder, final int entryBCI, boolean blocking, int priority) throws Throwable {
         HotSpotResolvedJavaMethod method = holder.createMethod(metaspaceMethod);
         return compileMethod(method, entryBCI, blocking, priority);
     }
@@ -446,7 +446,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     @Override
     public JavaField createJavaField(JavaType holder, String name, JavaType type, int offset, int flags, boolean internal) {
         if (offset != -1) {
-            HotSpotResolvedJavaType resolved = (HotSpotResolvedJavaType) holder;
+            HotSpotResolvedObjectType resolved = (HotSpotResolvedObjectType) holder;
             return resolved.createField(name, type, offset, flags, internal);
         }
         return new HotSpotUnresolvedField(holder, name, type);
@@ -454,7 +454,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     @Override
     public ResolvedJavaMethod createResolvedJavaMethod(JavaType holder, long metaspaceMethod) {
-        HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) holder;
+        HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) holder;
         return type.createMethod(metaspaceMethod);
     }
 
@@ -485,7 +485,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public HotSpotTypeUnresolved createUnresolvedJavaType(String name) {
+    public HotSpotUnresolvedJavaType createUnresolvedJavaType(String name) {
         int dims = 0;
         int startIndex = 0;
         while (name.charAt(startIndex) == '[') {
@@ -496,20 +496,20 @@ public class VMToCompilerImpl implements VMToCompiler {
         // Decode name if necessary.
         if (name.charAt(name.length() - 1) == ';') {
             assert name.charAt(startIndex) == 'L';
-            return new HotSpotTypeUnresolved(name, name.substring(startIndex + 1, name.length() - 1), dims);
+            return new HotSpotUnresolvedJavaType(name, name.substring(startIndex + 1, name.length() - 1), dims);
         } else {
-            return new HotSpotTypeUnresolved(HotSpotTypeUnresolved.getFullName(name, dims), name, dims);
+            return new HotSpotUnresolvedJavaType(HotSpotUnresolvedJavaType.getFullName(name, dims), name, dims);
         }
     }
 
     @Override
-    public HotSpotResolvedJavaType createResolvedJavaType(long metaspaceKlass,
+    public HotSpotResolvedObjectType createResolvedJavaType(long metaspaceKlass,
                     String name,
                     String simpleName,
                     Class javaMirror,
                     boolean hasFinalizableSubclass,
                     int sizeOrSpecies) {
-        HotSpotResolvedJavaType type = new HotSpotResolvedJavaType(
+        HotSpotResolvedObjectType type = new HotSpotResolvedObjectType(
                                         metaspaceKlass,
                                         name,
                                         simpleName,
@@ -520,7 +520,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         long offset = HotSpotGraalRuntime.getInstance().getConfig().graalMirrorInClassOffset;
         if (!unsafe.compareAndSwapObject(javaMirror, offset, null, type)) {
             // lost the race - return the existing value instead
-            type = (HotSpotResolvedJavaType) unsafe.getObject(javaMirror, offset);
+            type = (HotSpotResolvedObjectType) unsafe.getObject(javaMirror, offset);
         }
         return type;
     }

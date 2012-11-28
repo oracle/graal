@@ -31,14 +31,14 @@ import com.oracle.graal.graph.*;
 /**
  * Implementation of {@link JavaType} for primitive HotSpot types.
  */
-public final class HotSpotTypePrimitive extends HotSpotJavaType implements ResolvedJavaType, HotSpotMirrorHolder {
+public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType {
 
     private static final long serialVersionUID = -6208552348908071473L;
     private final Kind kind;
     private final Class<?> javaMirror;
     private final Class javaArrayMirror;
 
-    public HotSpotTypePrimitive(Kind kind) {
+    public HotSpotResolvedPrimitiveType(Kind kind) {
         super(String.valueOf(Character.toUpperCase(kind.getTypeChar())));
         this.kind = kind;
         this.javaMirror = kind.toJavaClass();
@@ -52,7 +52,7 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
 
     @Override
     public ResolvedJavaType getArrayClass() {
-        return HotSpotResolvedJavaType.fromClass(javaArrayMirror);
+        return HotSpotResolvedObjectType.fromClass(javaArrayMirror);
     }
 
     @Override
@@ -83,7 +83,7 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
 
     @Override
     public Constant getEncoding(Representation r) {
-        throw GraalInternalError.unimplemented("HotSpotTypePrimitive.getEncoding");
+        throw GraalInternalError.unimplemented("HotSpotResolvedPrimitiveType.getEncoding");
     }
 
     @Override
@@ -143,7 +143,7 @@ public final class HotSpotTypePrimitive extends HotSpotJavaType implements Resol
 
     @Override
     public String toString() {
-        return "HotSpotTypePrimitive<" + kind + ">";
+        return "HotSpotResolvedPrimitiveType<" + kind + ">";
     }
 
     @Override
