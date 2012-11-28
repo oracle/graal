@@ -23,6 +23,8 @@
 
 package com.oracle.graal.hotspot.bridge;
 
+import static com.oracle.graal.hotspot.bridge.CompilerToVMImpl.CodeInstallResult.*;
+
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
@@ -33,6 +35,42 @@ import com.oracle.graal.hotspot.meta.*;
  * Entries into the HotSpot VM from Java code.
  */
 public class CompilerToVMImpl implements CompilerToVM {
+
+    // Must be kept in sync with enum in graalEnv.hpp
+    enum CodeInstallResult {
+        OK,
+        DEPENDENCIES_FAILED,
+        CACHE_FULL
+    }
+
+    /**
+     * Number of successive successful installations.
+     */
+    private long successfulInstallations;
+
+    /**
+     * The minimum expected number of successful code installations between each code
+     * installation failure. Warning messages are printed when the failure rate goes
+     * above this threshold. This usually indicates use of some overly optimistic
+     * assumptions during compilation.
+     */
+    private static final int MINIMUM_SUCCESSFUL_INSTALLATIONS_PER_FAILURE = 2000;
+
+    private native int installCode0(HotSpotCompilationResult comp, HotSpotInstalledCode code, HotSpotCodeInfo info);
+
+    @Override
+    public HotSpotInstalledCode installCode(HotSpotCompilationResult comp, HotSpotInstalledCode code, HotSpotCodeInfo info) {
+        int result = installCode0(comp, code, info);
+        if (result != OK.ordinal()) {
+            if (successfulInstallations < MINIMUM_SUCCESSFUL_INSTALLATIONS_PER_FAILURE) {
+                System.err.println("Failed to install compiled code for " + comp.method + " [reason: " + CodeInstallResult.values()[result] + "]");
+            }
+            successfulInstallations = 0L;
+        } else {
+            successfulInstallations++;
+        }
+        return code;
+    }
 
     @Override
     public native long getMetaspaceMethod(Method reflectionMethod, HotSpotResolvedObjectType[] resultHolder);
@@ -81,9 +119,6 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public native JavaField lookupFieldInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
-
-    @Override
-    public native HotSpotInstalledCode installCode(HotSpotCompilationResult comp, HotSpotInstalledCode code, HotSpotCodeInfo info);
 
     @Override
     public native void initializeConfiguration(HotSpotVMConfig config);
