@@ -380,11 +380,16 @@ public class VMToCompilerImpl implements VMToCompiler {
         return compileMethod(method, entryBCI, blocking, priority);
     }
 
+    /**
+     * Compiles a method to machine code.
+     * @return true if the method is in the queue (either added to the queue or already in the queue)
+     */
     public boolean compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, boolean blocking, int priority) throws Throwable {
+        CompilationTask current = method.currentTask();
         boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
         if (osrCompilation && bootstrapRunning) {
             // no OSR compilations during bootstrap - the compiler is just too slow at this point, and we know that there are no endless loops
-            return true;
+            return current != null;
         }
 
         if (CompilationTask.withinEnqueue.get()) {
@@ -392,12 +397,11 @@ public class VMToCompilerImpl implements VMToCompiler {
             // java.util.concurrent.BlockingQueue is used to implement the compilation worker
             // queues. If a compiler thread triggers a compilation, then it may be blocked trying
             // to add something to its own queue.
-            return false;
+            return current != null;
         }
         CompilationTask.withinEnqueue.set(Boolean.TRUE);
 
         try {
-            CompilationTask current = method.currentTask();
             if (!blocking && current != null) {
                 if (current.isInProgress()) {
                     if (current.getEntryBCI() == entryBCI) {
@@ -422,6 +426,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             CompilationTask task = CompilationTask.create(graalRuntime, createPhasePlan(optimisticOpts, osrCompilation), optimisticOpts, method, entryBCI, id, queuePriority);
             if (blocking) {
                 task.runCompilation();
+                return false;
             } else {
                 try {
                     method.setCurrentTask(task);
@@ -430,12 +435,12 @@ public class VMToCompilerImpl implements VMToCompiler {
                     } else {
                         compileQueue.execute(task);
                     }
+                    return task != null;
                 } catch (RejectedExecutionException e) {
                     // The compile queue was already shut down.
                     return false;
                 }
             }
-            return true;
         } finally {
             CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
