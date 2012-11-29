@@ -222,10 +222,10 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             HotSpotResolvedObjectType t1 = this;
             HotSpotResolvedObjectType t2 = (HotSpotResolvedObjectType) otherType;
             while (true) {
-              if (t2.isAssignableTo(t1)) {
+              if (t1.isAssignableFrom(t2)) {
                   return t1;
               }
-              if (t1.isAssignableTo(t2)) {
+              if (t2.isAssignableFrom(t1)) {
                   return t2;
               }
               t1 = t1.getSupertype();
@@ -314,10 +314,10 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
-    public boolean isAssignableTo(ResolvedJavaType other) {
+    public boolean isAssignableFrom(ResolvedJavaType other) {
         if (other instanceof HotSpotResolvedObjectType) {
             HotSpotResolvedObjectType otherType = (HotSpotResolvedObjectType) other;
-            return otherType.javaMirror.isAssignableFrom(javaMirror);
+            return javaMirror.isAssignableFrom(otherType.javaMirror);
         }
         return false;
     }

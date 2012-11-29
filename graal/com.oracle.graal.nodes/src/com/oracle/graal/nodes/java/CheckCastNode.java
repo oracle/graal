@@ -72,7 +72,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
         if (type != null) {
             ResolvedJavaType objectType = object().objectStamp().type();
-            if (objectType != null && objectType.isAssignableTo(type)) {
+            if (objectType != null && type.isAssignableFrom(objectType)) {
                 // we don't have to check for null types here because they will also pass the checkcast.
                 return object();
             }
@@ -102,7 +102,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     @Override
     public void virtualize(VirtualizerTool tool) {
         VirtualObjectNode virtual = tool.getVirtualState(object());
-        if (virtual != null && virtual.type().isAssignableTo(type())) {
+        if (virtual != null && type().isAssignableFrom(virtual.type())) {
             tool.replaceWithVirtual(virtual);
         }
     }

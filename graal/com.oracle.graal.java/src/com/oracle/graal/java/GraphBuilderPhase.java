@@ -1442,7 +1442,7 @@ public final class GraphBuilderPhase extends Phase {
         if (initialized && graphBuilderConfig.getSkippedExceptionTypes() != null) {
             ResolvedJavaType resolvedCatchType = (ResolvedJavaType) catchType;
             for (ResolvedJavaType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
-                initialized &= !resolvedCatchType.isAssignableTo(skippedType);
+                initialized &= !skippedType.isAssignableFrom(resolvedCatchType);
                 if (!initialized) {
                     break;
                 }

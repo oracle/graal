@@ -111,10 +111,10 @@ public class TestResolvedJavaType {
                 ResolvedJavaType t1 = runtime.lookupJavaType(c1);
                 ResolvedJavaType t2 = runtime.lookupJavaType(c2);
                 boolean expected = c1.isAssignableFrom(c2);
-                boolean actual = t2.isAssignableTo(t1);
+                boolean actual = t1.isAssignableFrom(t2);
                 assertEquals(expected, actual);
                 if (expected && t1 != t2) {
-                    assertFalse(t1.isAssignableTo(t2));
+                    assertFalse(t2.isAssignableFrom(t1));
                 }
             }
         }

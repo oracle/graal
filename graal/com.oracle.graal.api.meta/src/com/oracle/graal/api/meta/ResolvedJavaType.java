@@ -130,13 +130,11 @@ public interface ResolvedJavaType extends JavaType {
     void initialize();
 
     /**
-     * Checks whether this type is a subtype of another type.
-     *
-     * @param other the type to test
-     * @return {@code true} if this type a subtype of the specified type
-     * @see Class#isAssignableFrom(Class)
+     * Determines if this type is either the same as, or is a superclass or superinterface of, the type represented by
+     * the specified parameter. This method is identical to {@link Class#isAssignableFrom(Class)} in terms of the value
+     * return for this type.
      */
-    boolean isAssignableTo(ResolvedJavaType other);
+    boolean isAssignableFrom(ResolvedJavaType other);
 
     /**
      * Checks whether the specified object is an instance of this type.
