@@ -32,14 +32,20 @@ import com.oracle.graal.nodes.virtual.*;
  * Store of a value at a location specified as an offset relative to an object.
  * No null check is performed before the store.
  */
-public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lowerable, Virtualizable {
+public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable {
 
-    @Input private ValueNode object;
-    @Input private ValueNode offset;
     @Input private ValueNode value;
-    private final int displacement;
-    private final Kind storeKind;
     @Input(notDataflow = true) private FrameState stateAfter;
+
+    public UnsafeStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value, Kind accessKind) {
+        this(StampFactory.forVoid(), object, displacement, offset, value, accessKind);
+    }
+
+    public UnsafeStoreNode(Stamp stamp, ValueNode object, int displacement, ValueNode offset, ValueNode value, Kind accessKind) {
+        super(stamp, object, displacement, offset, accessKind);
+        assert accessKind != Kind.Void && accessKind != Kind.Illegal;
+        this.value = value;
+    }
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -55,41 +61,8 @@ public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lo
         return true;
     }
 
-    public UnsafeStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value, Kind kind) {
-        super(StampFactory.forVoid());
-        assert kind != Kind.Void && kind != Kind.Illegal;
-        this.object = object;
-        this.displacement = displacement;
-        this.offset = offset;
-        this.value = value;
-        this.storeKind = kind;
-    }
-
-    public ValueNode object() {
-        return object;
-    }
-
-    public int displacement() {
-        return displacement;
-    }
-
-    public ValueNode offset() {
-        return offset;
-    }
-
     public ValueNode value() {
         return value;
-    }
-
-    public Kind storeKind() {
-        return storeKind;
-    }
-
-    @Override
-    public boolean verify() {
-        assertTrue(storeKind != null, "UnsafeStoreNode must have a store kind");
-        assertTrue(object != null, "UnsafeStoreNode should have an object");
-        return super.verify();
     }
 
     @Override
