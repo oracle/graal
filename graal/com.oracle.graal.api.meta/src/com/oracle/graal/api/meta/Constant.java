@@ -194,108 +194,65 @@ public final class Constant extends Value {
     }
 
     /**
-     * Converts this constant to a primitive int.
+     * Returns the primitive int value this constant represents. The constant must have a {@link Kind#getStackKind()} of
+     * {@link Kind#Int}, or kind {@link Kind#Jsr}.
      *
-     * @return the int value of this constant
+     * @return the constant value
      */
     public int asInt() {
-        if (getKind().getStackKind() == Kind.Int || getKind() == Kind.Jsr) {
-            return (int) primitive;
-        }
-        throw new Error("Constant is not int: " + this);
+        assert getKind().getStackKind() == Kind.Int || getKind() == Kind.Jsr;
+        return (int) primitive;
     }
 
     /**
-     * Converts this constant to a primitive boolean.
+     * Returns the primitive boolean value this constant represents. The constant must have kind {@link Kind#Boolean}.
      *
-     * @return the boolean value of this constant
+     * @return the constant value
      */
     public boolean asBoolean() {
-        if (getKind() == Kind.Boolean) {
-            return primitive != 0L;
-        }
-        throw new Error("Constant is not boolean: " + this);
+        assert getKind() == Kind.Boolean;
+        return primitive != 0L;
     }
 
     /**
-     * Converts this constant to a primitive long.
+     * Returns the primitive long value this constant represents. The constant must have kind {@link Kind#Long}, a
+     * {@link Kind#getStackKind()} of {@link Kind#Int}, or kind {@link Kind#Jsr}.
      *
-     * @return the long value of this constant
+     * @return the constant value
      */
     public long asLong() {
-        switch (getKind().getStackKind()) {
-            case Jsr:
-            case Int:
-            case Long:
-                return primitive;
-            case Float:
-                return (long) asFloat();
-            case Double:
-                return (long) asDouble();
-            default:
-                throw new Error("Constant is not long: " + this);
-        }
+        assert getKind() == Kind.Long || getKind().getStackKind() == Kind.Int || getKind() == Kind.Jsr;
+        return primitive;
     }
 
     /**
-     * Converts this constant to a primitive float.
+     * Returns the primitive float value this constant represents. The constant must have kind {@link Kind#Float}.
      *
-     * @return the float value of this constant
+     * @return the constant value
      */
     public float asFloat() {
-        if (getKind() == Kind.Float) {
-            return Float.intBitsToFloat((int) primitive);
-        }
-        throw new Error("Constant is not float: " + this);
+        assert getKind() == Kind.Float;
+        return Float.intBitsToFloat((int) primitive);
     }
 
     /**
-     * Converts this constant to a primitive double.
+     * Returns the primitive double value this constant represents. The constant must have kind {@link Kind#Double}.
      *
-     * @return the double value of this constant
+     * @return the constant value
      */
     public double asDouble() {
-        if (getKind() == Kind.Float) {
-            return Float.intBitsToFloat((int) primitive);
-        }
-        if (getKind() == Kind.Double) {
-            return Double.longBitsToDouble(primitive);
-        }
-        throw new Error("Constant is not double: " + this);
+        assert getKind() == Kind.Double;
+        return Double.longBitsToDouble(primitive);
     }
 
     /**
-     * Converts this constant to the object reference it represents.
+     * Returns the object reference this constant represents. The constant must have kind {@link Kind#Object}.
      *
-     * @return the object which this constant represents
+     * @return the constant value
      */
     public Object asObject() {
-        if (getKind() == Kind.Object) {
-            return object;
-        }
-        throw new Error("Constant is not object: " + this);
-    }
-
-    /**
-     * Converts this constant to the jsr reference it represents.
-     *
-     * @return the object which this constant represents
-     */
-    public int asJsr() {
-        if (getKind() == Kind.Jsr) {
-            return (int) primitive;
-        }
-        throw new Error("Constant is not jsr: " + this);
-    }
-
-    /**
-     * Unchecked access to a primitive value.
-     */
-    public long asPrimitive() {
-        if (getKind() == Kind.Object) {
-            throw new Error("Constant is not primitive: " + this);
-        }
-        return primitive;
+        assert getKind() == Kind.Object;
+        return object;
     }
 
     /**
