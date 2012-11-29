@@ -435,7 +435,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                     } else {
                         compileQueue.execute(task);
                     }
-                    return task != null;
+                    return true;
                 } catch (RejectedExecutionException e) {
                     // The compile queue was already shut down.
                     return false;

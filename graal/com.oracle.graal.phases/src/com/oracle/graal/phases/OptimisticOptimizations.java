@@ -48,7 +48,7 @@ public final class OptimisticOptimizations {
 
         addOptimization(method, DeoptimizationReason.UnreachedCode, Optimization.RemoveNeverExecutedCode);
         addOptimization(method, DeoptimizationReason.TypeCheckedInliningViolated, Optimization.UseTypeCheckedInlining);
-        addOptimization(method, DeoptimizationReason.OptimizedTypeCheckViolated, Optimization.RemoveNeverExecutedCode);
+        addOptimization(method, DeoptimizationReason.OptimizedTypeCheckViolated, Optimization.UseTypeCheckHints);
         addOptimization(method, DeoptimizationReason.NotCompiledExceptionHandler, Optimization.UseExceptionProbability);
     }
 
