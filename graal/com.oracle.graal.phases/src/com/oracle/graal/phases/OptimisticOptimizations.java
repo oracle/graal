@@ -46,38 +46,24 @@ public final class OptimisticOptimizations {
     public OptimisticOptimizations(ResolvedJavaMethod method) {
         this.enabledOpts = EnumSet.noneOf(Optimization.class);
 
-        ProfilingInfo profilingInfo = method.getProfilingInfo();
-        if (checkDeoptimizations(profilingInfo, DeoptimizationReason.UnreachedCode)) {
-            enabledOpts.add(Optimization.RemoveNeverExecutedCode);
-        }
-        if (checkDeoptimizations(profilingInfo, DeoptimizationReason.TypeCheckedInliningViolated)) {
-            enabledOpts.add(Optimization.UseTypeCheckedInlining);
-        }
-        if (checkDeoptimizations(profilingInfo, DeoptimizationReason.OptimizedTypeCheckViolated)) {
-            enabledOpts.add(Optimization.UseTypeCheckHints);
-        }
-        if (checkDeoptimizations(profilingInfo, DeoptimizationReason.NotCompiledExceptionHandler)) {
-            enabledOpts.add(Optimization.UseExceptionProbability);
-        }
+        addOptimization(method, DeoptimizationReason.UnreachedCode, Optimization.RemoveNeverExecutedCode);
+        addOptimization(method, DeoptimizationReason.TypeCheckedInliningViolated, Optimization.UseTypeCheckedInlining);
+        addOptimization(method, DeoptimizationReason.OptimizedTypeCheckViolated, Optimization.RemoveNeverExecutedCode);
+        addOptimization(method, DeoptimizationReason.NotCompiledExceptionHandler, Optimization.UseExceptionProbability);
+    }
 
-        log(method);
+    private void addOptimization(ResolvedJavaMethod method, DeoptimizationReason deoptReason, Optimization optimization) {
+        if (checkDeoptimizations(method.getProfilingInfo(), deoptReason)) {
+            enabledOpts.add(optimization);
+        } else {
+            // TODO (chaeubl): change to Debug.log when we are sure that optimistic optimizations are not disabled unnecessarily
+            TTY.println("WARN: deactivated optimistic optimization %s for %s", optimization.name(), MetaUtil.format("%H.%n(%p)", method));
+            disabledOptimisticOptsMetric.increment();
+        }
     }
 
     private OptimisticOptimizations(Set<Optimization> enabledOpts) {
         this.enabledOpts = enabledOpts;
-    }
-
-    private void log(ResolvedJavaMethod method) {
-        if (Debug.isLogEnabled()) {
-            for (Optimization opt: Optimization.values()) {
-                if (!enabledOpts.contains(opt)) {
-                    if (GraalOptions.PrintDisabledOptimisticOptimizations) {
-                        Debug.log("WARN: deactivated optimistic optimization %s for %s", opt.name(), MetaUtil.format("%H.%n(%p)", method));
-                    }
-                    disabledOptimisticOptsMetric.increment();
-                }
-            }
-        }
     }
 
     public boolean removeNeverExecutedCode() {
