@@ -46,7 +46,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     /**
      * Number of successive successful installations.
      */
-    private long successfulInstallations;
+    private long successfulInstallations = MINIMUM_SUCCESSFUL_INSTALLATIONS_PER_FAILURE;
 
     /**
      * The minimum expected number of successful code installations between each code
