@@ -129,7 +129,7 @@ public class LoweringPhase extends Phase {
 
             processBlock(schedule.getCFG().getStartBlock(), graph.createNodeBitMap(), null, schedule, processed);
             Debug.dump(graph, "Lowering iteration %d", i++);
-            new CanonicalizerPhase(null, runtime, assumptions, mark, null).apply(graph);
+            new CanonicalizerPhase(null, runtime, assumptions, mark).apply(graph);
 
             if (!containsLowerable(graph.getNewNodes(mark))) {
                 // No new lowerable nodes - done!

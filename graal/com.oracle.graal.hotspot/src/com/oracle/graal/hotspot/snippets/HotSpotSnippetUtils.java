@@ -27,6 +27,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.Snippet.Fold;
@@ -154,12 +155,12 @@ public class HotSpotSnippetUtils {
 
     @Fold
     static int arrayBaseOffset(Kind elementKind) {
-        return elementKind.getArrayBaseOffset();
+        return HotSpotRuntime.getArrayBaseOffset(elementKind);
     }
 
     @Fold
     static int arrayIndexScale(Kind elementKind) {
-        return elementKind.getArrayIndexScale();
+        return HotSpotRuntime.getArrayIndexScale(elementKind);
     }
 
     @Fold

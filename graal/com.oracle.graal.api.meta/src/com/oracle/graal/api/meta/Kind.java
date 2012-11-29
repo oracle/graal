@@ -24,8 +24,6 @@ package com.oracle.graal.api.meta;
 
 import java.lang.reflect.*;
 
-import sun.misc.*;
-
 /**
  * Denotes the basic kinds of types in CRI, including the all the Java primitive types, for example, {@link Kind#Int}
  * for {@code int} and {@link Kind#Object} for all object types. A kind has a single character short name, a Java name,
@@ -287,112 +285,6 @@ public enum Kind {
             buf.append(", ...");
         }
         return buf.append('}').toString();
-    }
-
-    /**
-     * The offset from the origin of an array to the first element.
-     *
-     * @return the offset in bytes
-     */
-    public final int getArrayBaseOffset() {
-        switch (this) {
-            case Boolean:
-                return Unsafe.ARRAY_BOOLEAN_BASE_OFFSET;
-            case Byte:
-                return Unsafe.ARRAY_BYTE_BASE_OFFSET;
-            case Char:
-                return Unsafe.ARRAY_CHAR_BASE_OFFSET;
-            case Short:
-                return Unsafe.ARRAY_SHORT_BASE_OFFSET;
-            case Int:
-                return Unsafe.ARRAY_INT_BASE_OFFSET;
-            case Long:
-                return Unsafe.ARRAY_LONG_BASE_OFFSET;
-            case Float:
-                return Unsafe.ARRAY_FLOAT_BASE_OFFSET;
-            case Double:
-                return Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
-            case Object:
-                return Unsafe.ARRAY_OBJECT_BASE_OFFSET;
-            default:
-                assert false : "unexpected kind: " + this;
-                return -1;
-        }
-    }
-
-    /**
-     * The scale used for the index when accessing elements of an array of this kind.
-     *
-     * @return the scale in order to convert the index into a byte offset
-     */
-    public final int getArrayIndexScale() {
-        switch (this) {
-            case Boolean:
-                return Unsafe.ARRAY_BOOLEAN_INDEX_SCALE;
-            case Byte:
-                return Unsafe.ARRAY_BYTE_INDEX_SCALE;
-            case Char:
-                return Unsafe.ARRAY_CHAR_INDEX_SCALE;
-            case Short:
-                return Unsafe.ARRAY_SHORT_INDEX_SCALE;
-            case Int:
-                return Unsafe.ARRAY_INT_INDEX_SCALE;
-            case Long:
-                return Unsafe.ARRAY_LONG_INDEX_SCALE;
-            case Float:
-                return Unsafe.ARRAY_FLOAT_INDEX_SCALE;
-            case Double:
-                return Unsafe.ARRAY_DOUBLE_INDEX_SCALE;
-            case Object:
-                return Unsafe.ARRAY_OBJECT_INDEX_SCALE;
-            default:
-                assert false : "unexpected kind: " + this;
-                return -1;
-        }
-    }
-
-    private static Unsafe unsafeCache;
-
-    private static Unsafe unsafe() {
-        if (unsafeCache == null) {
-            unsafeCache = Unsafe.getUnsafe();
-        }
-        return unsafeCache;
-    }
-
-
-    /**
-     * Utility function for reading a value of this kind using an object and a displacement.
-     *
-     * @param object the object from which the value is read
-     * @param displacement the displacement within the object in bytes
-     * @return the read value encapsulated in a {@link Constant} object
-     */
-    public Constant readUnsafeConstant(Object object, long displacement) {
-        assert object != null : displacement;
-        switch (this) {
-            case Boolean:
-                return Constant.forBoolean(unsafe().getBoolean(object, displacement));
-            case Byte:
-                return Constant.forByte(unsafe().getByte(object, displacement));
-            case Char:
-                return Constant.forChar(unsafe().getChar(object, displacement));
-            case Short:
-                return Constant.forShort(unsafe().getShort(object, displacement));
-            case Int:
-                return Constant.forInt(unsafe().getInt(object, displacement));
-            case Long:
-                return Constant.forLong(unsafe().getLong(object, displacement));
-            case Float:
-                return Constant.forFloat(unsafe().getFloat(object, displacement));
-            case Double:
-                return Constant.forDouble(unsafe().getDouble(object, displacement));
-            case Object:
-                return Constant.forObject(unsafe().getObject(object, displacement));
-            default:
-                assert false : "unexpected kind: " + this;
-                return null;
-        }
     }
 
     /**

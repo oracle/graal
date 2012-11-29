@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import static com.oracle.graal.graph.FieldIntrospection.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -47,6 +48,39 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
         return canonicalizeRead(this, tool);
     }
 
+    /**
+     * Utility function for reading a value of this kind using an object and a displacement.
+     *
+     * @param object the object from which the value is read
+     * @param displacement the displacement within the object in bytes
+     * @return the read value encapsulated in a {@link Constant} object
+     */
+    public static Constant readUnsafeConstant(Kind kind, Object object, long displacement) {
+        assert object != null;
+        switch (kind) {
+            case Boolean:
+                return Constant.forBoolean(unsafe.getBoolean(object, displacement));
+            case Byte:
+                return Constant.forByte(unsafe.getByte(object, displacement));
+            case Char:
+                return Constant.forChar(unsafe.getChar(object, displacement));
+            case Short:
+                return Constant.forShort(unsafe.getShort(object, displacement));
+            case Int:
+                return Constant.forInt(unsafe.getInt(object, displacement));
+            case Long:
+                return Constant.forLong(unsafe.getLong(object, displacement));
+            case Float:
+                return Constant.forFloat(unsafe.getFloat(object, displacement));
+            case Double:
+                return Constant.forDouble(unsafe.getDouble(object, displacement));
+            case Object:
+                return Constant.forObject(unsafe.getObject(object, displacement));
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
     public static ValueNode canonicalizeRead(Access read, CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
         if (runtime != null && read.object() != null && read.object().isConstant() && read.object().kind() == Kind.Object) {
@@ -55,10 +89,8 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
                 if (value != null) {
                     long displacement = read.location().displacement();
                     Kind kind = read.location().getValueKind();
-                    Constant constant = kind.readUnsafeConstant(value, displacement);
-                    if (constant != null) {
-                        return ConstantNode.forConstant(constant, runtime, read.node().graph());
-                    }
+                    Constant constant = readUnsafeConstant(kind, value, displacement);
+                    return ConstantNode.forConstant(constant, runtime, read.node().graph());
                 }
             }
         }
