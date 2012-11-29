@@ -586,7 +586,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitBitScanReverse(Variable result, Value value) {
-        if (value.getKind().isStackInt()) {
+        if (value.getKind().getStackKind() == Kind.Int) {
             append(new AMD64BitScanOp(AMD64BitScanOp.IntrinsicOpcode.IBSR, result, value));
         } else {
             append(new AMD64BitScanOp(AMD64BitScanOp.IntrinsicOpcode.LBSR, result, value));

@@ -46,7 +46,7 @@ public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIR
     }
 
     public UnsafeCastNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        this(object, toType.getKind().isObject() ? StampFactory.object(toType, exactType, nonNull || object.stamp().nonNull()) : StampFactory.forKind(toType.getKind()));
+        this(object, toType.getKind() == Kind.Object ? StampFactory.object(toType, exactType, nonNull || object.stamp().nonNull()) : StampFactory.forKind(toType.getKind()));
     }
 
     @Override

@@ -247,7 +247,7 @@ public enum Condition {
      * {@link Boolean#FALSE} if the comparison is known to be false
      */
     public boolean foldCondition(Constant lt, Constant rt, CodeCacheProvider runtime) {
-        assert !lt.getKind().isFloatOrDouble() && !rt.getKind().isFloatOrDouble();
+        assert lt.getKind() != Kind.Double && lt.getKind() != Kind.Float && rt.getKind() != Kind.Double && rt.getKind() != Kind.Float;
         return foldCondition(lt, rt, runtime, false);
     }
 

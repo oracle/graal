@@ -83,7 +83,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * @return the {@link ResolvedJavaType} corresponding to {@code klassConstant}
      */
     public static ResolvedJavaType fromMetaspaceKlass(Constant metaspaceKlass) {
-        assert metaspaceKlass.getKind().isLong();
+        assert metaspaceKlass.getKind() == Kind.Long;
         return fromMetaspaceKlass(metaspaceKlass.asLong());
     }
 
@@ -297,7 +297,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public boolean isInstance(Constant obj) {
-        if (obj.getKind().isObject() && !obj.isNull()) {
+        if (obj.getKind() == Kind.Object && !obj.isNull()) {
             return javaMirror.isInstance(obj.asObject());
         }
         return false;

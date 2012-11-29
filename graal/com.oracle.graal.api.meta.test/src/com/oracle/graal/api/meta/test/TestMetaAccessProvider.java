@@ -223,7 +223,7 @@ public class TestMetaAccessProvider {
     @Test
     public void lookupJavaTypeConstantTest() {
         for (Constant c : constants) {
-            if (c.getKind().isObject() && !c.isNull()) {
+            if (c.getKind() == Kind.Object && !c.isNull()) {
                 Object o = c.asObject();
                 ResolvedJavaType type = runtime.lookupJavaType(c);
                 assertNotNull(type);
@@ -240,7 +240,7 @@ public class TestMetaAccessProvider {
             for (Constant c2 : constants) {
                 // test symmetry
                 assertEquals(runtime.constantEquals(c1, c2), runtime.constantEquals(c2, c1));
-                if (!c1.getKind().isObject() && !c2.getKind().isObject()) {
+                if (c1.getKind() != Kind.Object && c2.getKind() != Kind.Object) {
                     assertEquals(c1.equals(c2), runtime.constantEquals(c2, c1));
                 }
             }
@@ -250,7 +250,7 @@ public class TestMetaAccessProvider {
     @Test
     public void lookupArrayLengthTest() {
         for (Constant c : constants) {
-            if (!c.getKind().isObject() || c.isNull() || !c.asObject().getClass().isArray()) {
+            if (c.getKind() != Kind.Object || c.isNull() || !c.asObject().getClass().isArray()) {
                 try {
                     int length = runtime.lookupArrayLength(c);
                     fail("Expected " + IllegalArgumentException.class.getName() + " for " + c + ", not " + length);

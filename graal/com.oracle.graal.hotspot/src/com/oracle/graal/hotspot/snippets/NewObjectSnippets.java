@@ -364,7 +364,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             Kind elementKind = elementType.getKind();
             final int headerSize = elementKind.getArrayBaseOffset();
-            Key key = new Key(elementKind.isObject() ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
+            Key key = new Key(elementKind == Kind.Object ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
             ValueNode memory = initializeNode.memory();
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord()).add("size", initializeNode.size()).add("length", initializeNode.length());
             SnippetTemplate template = cache.get(key, assumptions);

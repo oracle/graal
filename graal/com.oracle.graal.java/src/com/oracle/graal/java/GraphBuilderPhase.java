@@ -536,7 +536,7 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode b = mirror ? x : y;
 
         CompareNode condition;
-        assert !a.kind().isFloatOrDouble();
+        assert a.kind() != Kind.Double && a.kind() != Kind.Float;
         if (cond == Condition.EQ || cond == Condition.NE) {
             if (a.kind() == Kind.Object) {
                 condition = new ObjectEqualsNode(a, b);

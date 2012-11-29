@@ -123,7 +123,7 @@ public class TestResolvedJavaType {
     @Test
     public void isInstanceTest() {
         for (Constant c : constants) {
-            if (c.getKind().isObject() && !c.isNull()) {
+            if (c.getKind() == Kind.Object && !c.isNull()) {
                 Object o = c.asObject();
                 Class< ? extends Object> cls = o.getClass();
                 while (cls != null) {

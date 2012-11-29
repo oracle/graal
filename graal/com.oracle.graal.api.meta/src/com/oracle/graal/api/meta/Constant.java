@@ -93,7 +93,7 @@ public final class Constant extends Value {
      */
     public Constant(Kind kind, long primitive) {
         super(kind);
-        assert !kind.isObject();
+        assert kind != Kind.Object;
         this.object = null;
         this.primitive = primitive;
     }
@@ -109,7 +109,7 @@ public final class Constant extends Value {
      */
     public Constant(Kind kind, long primitive, Object annotation) {
         super(kind);
-        assert !kind.isObject();
+        assert kind != Kind.Object;
         assert annotation != null;
         this.object = annotation;
         this.primitive = primitive;
@@ -121,7 +121,7 @@ public final class Constant extends Value {
      * @return {@code true} if this constant is a primitive, or an object constant that is not null
      */
     public boolean isNonNull() {
-        return !getKind().isObject() || object != null;
+        return getKind() != Kind.Object || object != null;
     }
 
     /**
@@ -130,7 +130,7 @@ public final class Constant extends Value {
      * @return {@code true} if this constant is the null constant
      */
     public boolean isNull() {
-        return getKind().isObject() && object == null;
+        return getKind() == Kind.Object && object == null;
     }
 
     /**
@@ -145,7 +145,7 @@ public final class Constant extends Value {
     @Override
     public String toString() {
         String annotationSuffix = "";
-        if (!getKind().isObject() && getPrimitiveAnnotation() != null) {
+        if (getKind() != Kind.Object && getPrimitiveAnnotation() != null) {
             annotationSuffix = "{" + getPrimitiveAnnotation() + "}";
         }
         return getKind().getJavaName() + "[" + getKind().format(asBoxedValue()) + (getKind() != Kind.Object ? "|0x" + Long.toHexString(primitive) : "") + "]" + annotationSuffix;
@@ -187,7 +187,7 @@ public final class Constant extends Value {
         if (!ignoreKind && getKind() != other.getKind()) {
             return false;
         }
-        if (getKind().isObject()) {
+        if (getKind() == Kind.Object) {
             return object == other.object;
         }
         return primitive == other.primitive && getPrimitiveAnnotation() == other.getPrimitiveAnnotation();
@@ -199,7 +199,7 @@ public final class Constant extends Value {
      * @return the int value of this constant
      */
     public int asInt() {
-        if (getKind().getStackKind().isStackInt() || getKind().isJsr()) {
+        if (getKind().getStackKind() == Kind.Int || getKind() == Kind.Jsr) {
             return (int) primitive;
         }
         throw new Error("Constant is not int: " + this);
@@ -243,7 +243,7 @@ public final class Constant extends Value {
      * @return the float value of this constant
      */
     public float asFloat() {
-        if (getKind().isFloat()) {
+        if (getKind() == Kind.Float) {
             return Float.intBitsToFloat((int) primitive);
         }
         throw new Error("Constant is not float: " + this);
@@ -255,10 +255,10 @@ public final class Constant extends Value {
      * @return the double value of this constant
      */
     public double asDouble() {
-        if (getKind().isFloat()) {
+        if (getKind() == Kind.Float) {
             return Float.intBitsToFloat((int) primitive);
         }
-        if (getKind().isDouble()) {
+        if (getKind() == Kind.Double) {
             return Double.longBitsToDouble(primitive);
         }
         throw new Error("Constant is not double: " + this);
@@ -270,7 +270,7 @@ public final class Constant extends Value {
      * @return the object which this constant represents
      */
     public Object asObject() {
-        if (getKind().isObject()) {
+        if (getKind() == Kind.Object) {
             return object;
         }
         throw new Error("Constant is not object: " + this);
@@ -282,7 +282,7 @@ public final class Constant extends Value {
      * @return the object which this constant represents
      */
     public int asJsr() {
-        if (getKind().isJsr()) {
+        if (getKind() == Kind.Jsr) {
             return (int) primitive;
         }
         throw new Error("Constant is not jsr: " + this);
@@ -292,7 +292,7 @@ public final class Constant extends Value {
      * Unchecked access to a primitive value.
      */
     public long asPrimitive() {
-        if (getKind().isObject()) {
+        if (getKind() == Kind.Object) {
             throw new Error("Constant is not primitive: " + this);
         }
         return primitive;
@@ -304,7 +304,7 @@ public final class Constant extends Value {
      * @return null if this constant is not primitive or has no annotation
      */
     public Object getPrimitiveAnnotation() {
-        return getKind().isObject() ? null : object;
+        return getKind() == Kind.Object ? null : object;
     }
 
     /**
@@ -314,7 +314,7 @@ public final class Constant extends Value {
      */
     @Override
     public int hashCode() {
-        if (getKind().isObject()) {
+        if (getKind() == Kind.Object) {
             return System.identityHashCode(object);
         }
         return (int) primitive;

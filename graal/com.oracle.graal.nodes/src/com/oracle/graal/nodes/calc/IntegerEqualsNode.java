@@ -38,8 +38,8 @@ public final class IntegerEqualsNode extends CompareNode {
      */
     public IntegerEqualsNode(ValueNode x, ValueNode y) {
         super(x, y);
-        assert !x.kind().isFloatOrDouble() && x.kind() != Kind.Object;
-        assert !y.kind().isFloatOrDouble() && y.kind() != Kind.Object;
+        assert x.kind() != Kind.Double && x.kind() != Kind.Float && x.kind() != Kind.Object;
+        assert y.kind() != Kind.Double && y.kind() != Kind.Float && y.kind() != Kind.Object;
     }
 
     @Override
@@ -58,7 +58,7 @@ public final class IntegerEqualsNode extends CompareNode {
             ValueNode a = mirrored ? normalizeNode.y() : normalizeNode.x();
             ValueNode b = mirrored ? normalizeNode.x() : normalizeNode.y();
 
-            if (normalizeNode.x().kind().isFloatOrDouble()) {
+            if (normalizeNode.x().kind() == Kind.Double || normalizeNode.x().kind() == Kind.Float) {
                 return graph().unique(new FloatEqualsNode(a, b));
             } else {
                 return graph().unique(new IntegerEqualsNode(a, b));

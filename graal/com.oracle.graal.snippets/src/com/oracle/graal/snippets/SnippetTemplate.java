@@ -390,7 +390,7 @@ public class SnippetTemplate {
     }
 
     private static boolean checkConstantArgument(final ResolvedJavaMethod method, Signature signature, int i, String name, Object arg, Kind kind) {
-        if (kind.isObject()) {
+        if (kind == Kind.Object) {
             ResolvedJavaType type = signature.getParameterType(i, method.getDeclaringClass()).resolve(method.getDeclaringClass());
             assert arg == null || type.isInstance(Constant.forObject(arg)) :
                 method + ": wrong value type for " + name + ": expected " + type.getName() + ", got " + arg.getClass().getName();
@@ -458,7 +458,7 @@ public class SnippetTemplate {
                     replacements.put((LocalNode) parameter, (ValueNode) argument);
                 } else {
                     Kind kind = ((LocalNode) parameter).kind();
-                    assert argument != null || kind.isObject() : this + " cannot accept null for non-object parameter named " + name;
+                    assert argument != null || kind == Kind.Object : this + " cannot accept null for non-object parameter named " + name;
                     Constant constant = Constant.forBoxed(kind, argument);
                     replacements.put((LocalNode) parameter, ConstantNode.forConstant(constant, runtime, replaceeGraph));
                 }

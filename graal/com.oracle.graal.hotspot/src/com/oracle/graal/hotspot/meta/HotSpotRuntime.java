@@ -82,14 +82,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     private final Map<Descriptor, RuntimeCall> runtimeCalls = new HashMap<>();
 
     protected Value ret(Kind kind) {
-        if (kind.isVoid()) {
+        if (kind == Kind.Void) {
             return ILLEGAL;
         }
         return globalStubRegConfig.getReturnRegister(kind).asValue(kind);
     }
 
     protected Value arg(int index, Kind kind) {
-        if (kind.isFloat() || kind.isDouble()) {
+        if (kind == Kind.Float || kind == Kind.Double) {
             return globalStubRegConfig.getCallingConventionRegisters(CallingConvention.Type.RuntimeCall, RegisterFlag.FPU)[index].asValue(kind);
         }
         return globalStubRegConfig.getCallingConventionRegisters(CallingConvention.Type.RuntimeCall, RegisterFlag.CPU)[index].asValue(kind);
@@ -330,7 +330,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     @Override
     public ResolvedJavaType lookupJavaType(Constant constant) {
-        if (!constant.getKind().isObject() || constant.isNull()) {
+        if (constant.getKind() != Kind.Object || constant.isNull()) {
             return null;
         }
         Object o = constant.asObject();
@@ -367,7 +367,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     @Override
     public int lookupArrayLength(Constant array) {
-        if (!array.getKind().isObject() || array.isNull() || !array.asObject().getClass().isArray()) {
+        if (array.getKind() != Kind.Object || array.isNull() || !array.asObject().getClass().isArray()) {
             throw new IllegalArgumentException(array + " is not an array");
         }
         return Array.getLength(array.asObject());

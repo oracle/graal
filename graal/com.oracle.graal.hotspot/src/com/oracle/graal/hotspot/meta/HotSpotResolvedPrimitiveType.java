@@ -42,7 +42,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
         super(String.valueOf(Character.toUpperCase(kind.getTypeChar())));
         this.kind = kind;
         this.javaMirror = kind.toJavaClass();
-        this.javaArrayMirror = kind.isVoid() ? null : Array.newInstance(javaMirror, 0).getClass();
+        this.javaArrayMirror = kind == Kind.Void ? null : Array.newInstance(javaMirror, 0).getClass();
     }
 
     @Override

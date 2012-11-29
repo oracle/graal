@@ -131,22 +131,22 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
     public static CompareNode createCompareNode(Condition condition, ValueNode x, ValueNode y) {
         assert x.kind() == y.kind();
         assert condition.isCanonical() : "condition is not canonical: " + condition;
+        assert x.kind() != Kind.Double && x.kind() != Kind.Float;
 
-        assert !x.kind().isFloatOrDouble();
         CompareNode comparison;
         if (condition == Condition.EQ) {
-            if (x.kind().isObject()) {
+            if (x.kind() == Kind.Object) {
                 comparison = new ObjectEqualsNode(x, y);
             } else {
-                assert x.kind().getStackKind().isStackInt() || x.kind().isLong();
+                assert x.kind().getStackKind() == Kind.Int || x.kind() == Kind.Long;
                 comparison = new IntegerEqualsNode(x, y);
             }
         } else if (condition == Condition.LT) {
-            assert x.kind().getStackKind().isStackInt() || x.kind().isLong();
+            assert x.kind().getStackKind() == Kind.Int || x.kind() == Kind.Long;
             comparison = new IntegerLessThanNode(x, y);
         } else {
             assert condition == Condition.BT;
-            assert x.kind().getStackKind().isStackInt() || x.kind().isLong();
+            assert x.kind().getStackKind() == Kind.Int || x.kind() == Kind.Long;
             comparison = new IntegerBelowThanNode(x, y);
         }
 
