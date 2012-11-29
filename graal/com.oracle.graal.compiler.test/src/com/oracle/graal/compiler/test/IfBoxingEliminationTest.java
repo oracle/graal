@@ -93,7 +93,7 @@ public class IfBoxingEliminationTest extends GraalCompilerTest {
                 new PhiStampPhase().apply(graph);
                 new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
                 Debug.dump(graph, "Graph");
-                new BoxingEliminationPhase().apply(graph);
+                new BoxingEliminationPhase(runtime()).apply(graph);
                 Debug.dump(graph, "Graph");
                 new ExpandBoxingNodesPhase(pool).apply(graph);
                 new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);

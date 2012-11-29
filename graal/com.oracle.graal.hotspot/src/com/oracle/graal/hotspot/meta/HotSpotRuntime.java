@@ -460,7 +460,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             ValueNode expected = cas.expected();
             if (expected.kind() == Kind.Object && !cas.newValue().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = cas.object().objectStamp().type();
-                if (type != null && !type.isArray() && !type.isClass(Object.class)) {
+                if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
                     // Use a field write barrier since it's not an array store
                     FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(cas.object()));
                     graph.addAfterFixed(cas, writeBarrier);
@@ -491,7 +491,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 ResolvedJavaType arrayType = array.objectStamp().type();
                 if (arrayType != null && array.objectStamp().isExactType()) {
                     ResolvedJavaType elementType = arrayType.getComponentType();
-                    if (!elementType.isClass(Object.class)) {
+                    if (!MetaUtil.isJavaLangObject(elementType)) {
                         CheckCastNode checkcast = graph.add(new CheckCastNode(elementType, value, null));
                         graph.addBeforeFixed(storeIndexed, checkcast);
                         value = checkcast;
@@ -533,7 +533,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             if (write.value().kind() == Kind.Object && !write.value().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = object.objectStamp().type();
                 WriteBarrier writeBarrier;
-                if (type != null && !type.isArray() && !type.isClass(Object.class)) {
+                if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
                     // Use a field write barrier since it's not an array store
                     writeBarrier = graph.add(new FieldWriteBarrier(object));
                 } else {
@@ -602,7 +602,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         ResolvedJavaType holder = method.getDeclaringClass();
         String fullName = method.getName() + ((HotSpotSignature) method.getSignature()).asString();
         Kind wordKind = graalRuntime.getTarget().wordKind;
-        if (holder.isClass(Object.class)) {
+        if (MetaUtil.isJavaLangObject(holder)) {
             if (fullName.equals("getClass()Ljava/lang/Class;")) {
                 ValueNode obj = (ValueNode) parameters.get(0);
                 ObjectStamp stamp = (ObjectStamp) obj.stamp();
@@ -624,7 +624,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 hub.setNext(ret);
                 return graph;
             }
-        } else if (holder.isClass(Class.class)) {
+        } else if (holder.equals(lookupJavaType(Class.class))) {
             if (fullName.equals("getModifiers()I")) {
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
@@ -639,7 +639,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 klass.setNext(ret);
                 return graph;
             }
-        } else if (holder.isClass(Thread.class)) {
+        } else if (holder.equals(lookupJavaType(Thread.class))) {
             if (fullName.equals("currentThread()Ljava/lang/Thread;")) {
                 StructuredGraph graph = new StructuredGraph();
                 ReturnNode ret = graph.add(new ReturnNode(graph.unique(new CurrentThread(config.threadObjectOffset, this))));

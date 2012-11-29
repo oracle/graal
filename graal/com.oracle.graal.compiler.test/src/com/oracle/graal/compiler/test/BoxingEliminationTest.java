@@ -128,7 +128,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
                 new InliningPhase(null, runtime(), hints, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
                 new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
                 Debug.dump(graph, "Graph");
-                new BoxingEliminationPhase().apply(graph);
+                new BoxingEliminationPhase(runtime()).apply(graph);
                 Debug.dump(graph, "Graph");
                 new ExpandBoxingNodesPhase(pool).apply(graph);
                 new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);

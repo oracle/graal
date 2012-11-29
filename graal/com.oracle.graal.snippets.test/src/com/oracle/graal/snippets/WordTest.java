@@ -32,6 +32,8 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.snippets.Snippet.DefaultSnippetInliningPolicy;
 import com.oracle.graal.snippets.Snippet.SnippetInliningPolicy;
 
 /**
@@ -114,9 +116,10 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
 
     @Test
     public void test_fromObject() {
-        inliningPolicy.set(new SnippetInliningPolicy() {
+        inliningPolicy.set(new DefaultSnippetInliningPolicy(new BoxingMethodPool(runtime())) {
+            @Override
             public boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller) {
-                return SnippetInliningPolicy.Default.shouldInline(method, caller) && !method.getName().equals("hashCode");
+                return super.shouldInline(method, caller) && !method.getName().equals("hashCode");
             }
         });
         test("fromToObject", "object1", "object2");

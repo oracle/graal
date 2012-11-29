@@ -160,7 +160,7 @@ public class TestResolvedJavaType {
                 assertTrue("exact(" + c.getName() + ") != null", exactType == null);
             } else {
                 assertNotNull(exactType);
-                assertTrue(exactType.isClass(expected));
+                assertTrue(exactType.equals(runtime.lookupJavaType(expected)));
             }
         }
     }
@@ -175,7 +175,7 @@ public class TestResolvedJavaType {
                 assertTrue(actual == null);
             } else {
                 assertNotNull(actual);
-                assertTrue(actual.isClass(expected));
+                assertTrue(actual.equals(runtime.lookupJavaType(expected)));
             }
         }
     }
@@ -188,7 +188,7 @@ public class TestResolvedJavaType {
             ResolvedJavaType[] actual = type.getInterfaces();
             assertEquals(expected.length, actual.length);
             for (int i = 0; i < expected.length; i++) {
-                assertTrue(actual[i].isClass(expected[i]));
+                assertTrue(actual[i].equals(runtime.lookupJavaType(expected[i])));
             }
         }
     }
@@ -242,7 +242,7 @@ public class TestResolvedJavaType {
                     assertTrue(actual == null);
                 } else {
                     assertNotNull(actual);
-                    assertTrue(actual.isClass(expected));
+                    assertTrue(actual.equals(runtime.lookupJavaType(expected)));
                 }
             }
         }
@@ -264,7 +264,7 @@ public class TestResolvedJavaType {
             if (expected == null) {
                 assertNull(subtype);
             } else {
-                assertTrue(subtype.isClass(expected));
+                assertTrue(subtype.equals(runtime.lookupJavaType(expected)));
             }
         }
 
@@ -318,7 +318,7 @@ public class TestResolvedJavaType {
             if (expected == null) {
                 assertNull(actual);
             } else {
-                assertTrue(actual.isClass(expected));
+                assertTrue(actual.equals(runtime.lookupJavaType(expected)));
             }
         }
     }
@@ -330,7 +330,7 @@ public class TestResolvedJavaType {
                 ResolvedJavaType type = runtime.lookupJavaType(c);
                 Class expected = getArrayClass(c);
                 ResolvedJavaType actual = type.getArrayClass();
-                assertTrue(actual.isClass(expected));
+                assertTrue(actual.equals(runtime.lookupJavaType(expected)));
             }
         }
     }
@@ -459,9 +459,9 @@ public class TestResolvedJavaType {
     }
 
     public static boolean fieldsEqual(Field f, ResolvedJavaField rjf) {
-        return rjf.getDeclaringClass().isClass(f.getDeclaringClass()) &&
+        return rjf.getDeclaringClass().equals(runtime.lookupJavaType(f.getDeclaringClass())) &&
                rjf.getName().equals(f.getName()) &&
-               rjf.getType().resolve(rjf.getDeclaringClass()).isClass(f.getType());
+               rjf.getType().resolve(rjf.getDeclaringClass()).equals(runtime.lookupJavaType(f.getType()));
     }
 
     public static ResolvedJavaField lookupField(ResolvedJavaField[] fields, Field key) {
@@ -485,10 +485,10 @@ public class TestResolvedJavaType {
     }
 
     private static boolean isHiddenFromReflection(ResolvedJavaField f) {
-        if (f.getDeclaringClass().isClass(Throwable.class) && f.getName().equals("backtrace")) {
+        if (f.getDeclaringClass().equals(runtime.lookupJavaType(Throwable.class)) && f.getName().equals("backtrace")) {
             return true;
         }
-        if (f.getDeclaringClass().isClass(ConstantPool.class) && f.getName().equals("constantPoolOop")) {
+        if (f.getDeclaringClass().equals(runtime.lookupJavaType(ConstantPool.class)) && f.getName().equals("constantPoolOop")) {
             return true;
         }
         return false;

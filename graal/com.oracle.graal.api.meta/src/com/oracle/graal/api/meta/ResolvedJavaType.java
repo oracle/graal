@@ -243,11 +243,6 @@ public interface ResolvedJavaType extends JavaType {
     <T extends Annotation> T getAnnotation(Class<T> annotationClass);
 
     /**
-     * Determines if this type is the same as that represented by a given {@link Class}.
-     */
-    boolean isClass(Class c);
-
-    /**
      * Returns the instance field of this class (or one of its super classes) at the given
      * offset, or {@code null} if there is no such field.
      *
