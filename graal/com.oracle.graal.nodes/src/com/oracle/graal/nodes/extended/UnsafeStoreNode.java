@@ -23,7 +23,9 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
@@ -32,7 +34,7 @@ import com.oracle.graal.nodes.virtual.*;
  * Store of a value at a location specified as an offset relative to an object.
  * No null check is performed before the store.
  */
-public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable {
+public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, Canonicalizable {
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
@@ -83,6 +85,30 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
                 }
             }
         }
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (offset().isConstant()) {
+            long constantOffset = offset().asConstant().asLong();
+            if (constantOffset != 0) {
+                int intDisplacement = (int) (constantOffset + displacement());
+                if (constantOffset == intDisplacement) {
+                    Graph graph = this.graph();
+                    return graph.add(new UnsafeStoreNode(this.stamp(), object(), intDisplacement, graph.unique(ConstantNode.forInt(0, graph)), value(), accessKind()));
+                }
+            } else if (object().stamp() instanceof ObjectStamp) { // TODO (gd) remove that once UnsafeAccess only have an object base
+                ObjectStamp receiverStamp = object().objectStamp();
+                if (receiverStamp.nonNull()) {
+                    ResolvedJavaType receiverType = receiverStamp.type();
+                    ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(displacement());
+                    if (field != null) {
+                        return this.graph().add(new StoreFieldNode(object(), field, value(), StructuredGraph.INVALID_GRAPH_ID));
+                    }
+                }
+            }
+        }
+        return this;
     }
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification

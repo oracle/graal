@@ -23,7 +23,9 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
@@ -32,7 +34,7 @@ import com.oracle.graal.nodes.virtual.*;
  * Load of a value from a location specified as an offset relative to an object.
  * No null check is performed before the load.
  */
-public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
+public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable, Canonicalizable {
 
     public UnsafeLoadNode(ValueNode object, int displacement, ValueNode offset, boolean nonNull) {
         this(nonNull ? StampFactory.objectNonNull() : StampFactory.object(), object, displacement, offset, Kind.Object);
@@ -69,6 +71,30 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
                 }
             }
         }
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (offset().isConstant()) {
+            long constantOffset = offset().asConstant().asLong();
+            if (constantOffset != 0) {
+                int intDisplacement = (int) (constantOffset + displacement());
+                if (constantOffset == intDisplacement) {
+                    Graph graph = this.graph();
+                    return graph.add(new UnsafeLoadNode(this.stamp(), object(), intDisplacement, graph.unique(ConstantNode.forInt(0, graph)), accessKind()));
+                }
+            } else if (object().stamp() instanceof ObjectStamp) { // TODO (gd) remove that once UnsafeAccess only have an object base
+                ObjectStamp receiverStamp = object().objectStamp();
+                if (receiverStamp.nonNull()) {
+                    ResolvedJavaType receiverType = receiverStamp.type();
+                    ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(displacement());
+                    if (field != null) {
+                        return this.graph().add(new LoadFieldNode(object(), field, StructuredGraph.INVALID_GRAPH_ID));
+                    }
+                }
+            }
+        }
+        return this;
     }
 
     @NodeIntrinsic
