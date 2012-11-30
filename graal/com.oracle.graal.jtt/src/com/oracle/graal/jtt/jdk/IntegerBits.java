@@ -28,20 +28,20 @@ import org.junit.*;
 public class IntegerBits {
     @SuppressWarnings("unused")
     private static int init = Integer.reverseBytes(42);
-    private int original = 0x01020304;
-    private int reversed = 0x04030201;
-    private int v = 0b1000;
-    private int zero = 0;
+    private static int original = 0x01020304;
+    private static int reversed = 0x04030201;
+    private static int v = 0b1000;
+    private static int zero = 0;
 
-    public int test(int o) {
+    public static int test(int o) {
         return Integer.reverseBytes(o);
     }
 
-    public int test2(int o) {
+    public static int test2(int o) {
         return Integer.numberOfLeadingZeros(o);
     }
 
-    public int test3(int o) {
+    public static int test3(int o) {
         return Integer.numberOfTrailingZeros(o);
     }
 

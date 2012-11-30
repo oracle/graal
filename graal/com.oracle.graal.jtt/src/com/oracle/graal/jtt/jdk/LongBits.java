@@ -28,21 +28,21 @@ import org.junit.*;
 public class LongBits {
     @SuppressWarnings("unused")
     private static long init = Long.reverseBytes(42);
-    private long original = 0x0102030405060708L;
-    private long reversed = 0x0807060504030201L;
-    private long v = 0b1000L;
-    private long v2 = 0x0100000000L;
-    private long zero = 0L;
+    private static long original = 0x0102030405060708L;
+    private static long reversed = 0x0807060504030201L;
+    private static long v = 0b1000L;
+    private static long v2 = 0x0100000000L;
+    private static long zero = 0L;
 
-    public long test(long o) {
+    public static long test(long o) {
         return Long.reverseBytes(o);
     }
 
-    public int test2(long o) {
+    public static int test2(long o) {
         return Long.numberOfLeadingZeros(o);
     }
 
-    public int test3(long o) {
+    public static int test3(long o) {
         return Long.numberOfTrailingZeros(o);
     }
 
