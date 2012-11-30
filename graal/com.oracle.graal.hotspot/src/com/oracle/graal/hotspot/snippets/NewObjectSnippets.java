@@ -61,9 +61,9 @@ public class NewObjectSnippets implements SnippetsInterface {
         Word thread = thread();
         Word top = loadWordFromWord(thread, threadTlabTopOffset());
         Word end = loadWordFromWord(thread, threadTlabEndOffset());
-        Word available = end.minus(top);
-        if (available.aboveOrEqual(Word.fromInt(size))) {
-            Word newTop = top.plus(size);
+        Word newTop = top.plus(size);
+        // this check might lead to problems if the TLAB is within 16GB of the address space end (checked in c++ code)
+        if (newTop.belowOrEqual(end)) {
             storeObject(thread, 0, threadTlabTopOffset(), newTop);
             return top;
         }
