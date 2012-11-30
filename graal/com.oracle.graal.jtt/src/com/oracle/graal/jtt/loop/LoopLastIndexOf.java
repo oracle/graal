@@ -29,10 +29,10 @@ import org.junit.*;
  */
 public class LoopLastIndexOf {
 
-    private final char[] v1 = new char[]{'a', 'b', 'c', 'd', 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'};
-    private final char[] v2 = new char[]{'d', 'a'};
-    private final char[] v3 = new char[]{'d', 'b', 'c'};
-    private final char[] v4 = new char[]{'z', 'a', 'b', 'c'};
+    private static final char[] v1 = new char[]{'a', 'b', 'c', 'd', 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'};
+    private static final char[] v2 = new char[]{'d', 'a'};
+    private static final char[] v3 = new char[]{'d', 'b', 'c'};
+    private static final char[] v4 = new char[]{'z', 'a', 'b', 'c'};
 
     public static int test(char[] source, int sourceOffset, int sourceCount, char[] target, int targetOffset, int targetCount, int fromIndexParam) {
         int rightIndex = sourceCount - targetCount;
