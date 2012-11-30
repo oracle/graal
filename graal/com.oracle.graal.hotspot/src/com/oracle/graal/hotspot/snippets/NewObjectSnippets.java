@@ -273,7 +273,7 @@ public class NewObjectSnippets implements SnippetsInterface {
 
             ValueNode memory;
             if (!useTLAB) {
-                memory = ConstantNode.forConstant(new Constant(target.wordKind, 0L), runtime, graph);
+                memory = ConstantNode.defaultForKind(target.wordKind, graph);
             } else {
                 ConstantNode sizeNode = ConstantNode.forInt(size, graph);
                 TLABAllocateNode tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode));
@@ -300,7 +300,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             final Integer length = lengthNode.isConstant() ? Integer.valueOf(lengthNode.asConstant().asInt()) : null;
             int log2ElementSize = CodeUtil.log2(target.sizeInBytes(elementKind));
             if (!useTLAB) {
-                ConstantNode zero = ConstantNode.forConstant(new Constant(target.wordKind, 0L), runtime, graph);
+                ConstantNode zero = ConstantNode.defaultForKind(target.wordKind, graph);
                 // value for 'size' doesn't matter as it isn't used since a stub call will be made anyway
                 // for both allocation and initialization - it just needs to be non-null
                 ConstantNode size = ConstantNode.forInt(-1, graph);

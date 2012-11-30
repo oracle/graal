@@ -448,7 +448,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * Gets the address of the C++ Klass object for this type.
      */
     public Constant klass() {
-        return new Constant(HotSpotGraalRuntime.getInstance().getTarget().wordKind, metaspaceKlass, this);
+        return Constant.forIntegerKind(HotSpotGraalRuntime.getInstance().getTarget().wordKind, metaspaceKlass, this);
     }
 
     public boolean isPrimaryType() {

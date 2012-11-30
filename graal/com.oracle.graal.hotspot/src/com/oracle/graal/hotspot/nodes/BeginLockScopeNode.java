@@ -56,10 +56,11 @@ public final class BeginLockScopeNode extends AbstractStateSplit implements LIRG
     public void generate(LIRGenerator gen) {
         gen.lock();
         StackSlot lockData = gen.peekLock();
-        Value result = eliminated ? new Constant(gen.target().wordKind, 0L) : gen.emitLea(lockData);
-        FrameState stateAfter = stateAfter();
-        assert stateAfter != null;
-        gen.setResult(this, result);
+        assert stateAfter() != null;
+        if (!eliminated) {
+            Value result = gen.emitLea(lockData);
+            gen.setResult(this, result);
+        }
     }
 
     @NodeIntrinsic
