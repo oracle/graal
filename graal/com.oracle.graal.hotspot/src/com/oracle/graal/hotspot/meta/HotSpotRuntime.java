@@ -485,13 +485,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 callTarget.replaceAndDelete(loweredCallTarget);
             }
         } else if (n instanceof LoadFieldNode) {
-            LoadFieldNode field = (LoadFieldNode) n;
-            int displacement = ((HotSpotResolvedJavaField) field.field()).offset();
-            assert field.kind() != Kind.Illegal;
-            ReadNode memoryRead = graph.add(new ReadNode(field.object(), LocationNode.create(field.field(), field.field().getKind(), displacement, graph), field.stamp()));
-            memoryRead.dependencies().add(tool.createNullCheckGuard(field.object(), field.leafGraphId()));
-            graph.replaceFixedWithFixed(field, memoryRead);
-            if (field.isVolatile()) {
+            LoadFieldNode loadField = (LoadFieldNode) n;
+            HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) loadField.field();
+            ValueNode object = loadField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : loadField.object();
+            assert loadField.kind() != Kind.Illegal;
+            ReadNode memoryRead = graph.add(new ReadNode(object, LocationNode.create(field, field.getKind(), field.offset(), graph), loadField.stamp()));
+            memoryRead.dependencies().add(tool.createNullCheckGuard(object, loadField.leafGraphId()));
+            graph.replaceFixedWithFixed(loadField, memoryRead);
+            if (loadField.isVolatile()) {
                 MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_READ));
                 graph.addBeforeFixed(memoryRead, preMembar);
                 MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_READ));
@@ -500,8 +501,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         } else if (n instanceof StoreFieldNode) {
             StoreFieldNode storeField = (StoreFieldNode) n;
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
-            WriteNode memoryWrite = graph.add(new WriteNode(storeField.object(), storeField.value(), LocationNode.create(field, field.getKind(), field.offset(), graph)));
-            memoryWrite.dependencies().add(tool.createNullCheckGuard(storeField.object(), storeField.leafGraphId()));
+            ValueNode object = storeField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : storeField.object();
+            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), LocationNode.create(field, field.getKind(), field.offset(), graph)));
+            memoryWrite.dependencies().add(tool.createNullCheckGuard(object, storeField.leafGraphId()));
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
             FixedWithNextNode last = memoryWrite;

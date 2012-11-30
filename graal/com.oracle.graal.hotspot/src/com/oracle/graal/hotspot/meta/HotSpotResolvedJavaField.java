@@ -27,7 +27,6 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ResolvedJavaType.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
@@ -101,8 +100,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         if (receiver == null) {
             assert Modifier.isStatic(flags);
             if (holder.isInitialized()) {
-                Constant encoding = holder.getEncoding(getKind() == Kind.Object ? Representation.StaticObjectFields : Representation.StaticPrimitiveFields);
-                return ReadNode.readUnsafeConstant(getKind(), encoding.asObject(), offset);
+                return ReadNode.readUnsafeConstant(getKind(), holder.mirror(), offset);
             }
             return null;
         } else {
@@ -116,7 +114,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     }
 
     @Override
-    public ResolvedJavaType getDeclaringClass() {
+    public HotSpotResolvedObjectType getDeclaringClass() {
         return holder;
     }
 

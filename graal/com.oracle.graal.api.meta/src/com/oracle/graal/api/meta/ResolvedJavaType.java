@@ -38,16 +38,6 @@ public interface ResolvedJavaType extends JavaType {
      */
     public enum Representation {
         /**
-         * The runtime representation of the data structure containing the static primitive fields of this type.
-         */
-        StaticPrimitiveFields,
-
-        /**
-         * The runtime representation of the data structure containing the static object fields of this type.
-         */
-        StaticObjectFields,
-
-        /**
          * The runtime representation of the Java class object of this type.
          */
         JavaClass,
