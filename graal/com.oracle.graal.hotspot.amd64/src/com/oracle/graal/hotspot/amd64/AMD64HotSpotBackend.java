@@ -88,19 +88,6 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         }
 
         @Override
-        public void visitBreakpointNode(BreakpointNode i) {
-            Kind[] sig = new Kind[i.arguments.size()];
-            int pos = 0;
-            for (ValueNode arg : i.arguments) {
-                sig[pos++] = arg.kind();
-            }
-
-            CallingConvention cc = frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, Kind.Void, sig, target(), false);
-            Value[] parameters = visitInvokeArguments(cc, i.arguments);
-            append(new AMD64BreakpointOp(parameters));
-        }
-
-        @Override
         public void visitExceptionObject(ExceptionObjectNode x) {
             HotSpotVMConfig config = runtime().config;
             RegisterValue thread = runtime().threadRegister().asValue();
