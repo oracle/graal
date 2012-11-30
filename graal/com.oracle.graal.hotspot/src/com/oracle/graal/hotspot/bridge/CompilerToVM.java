@@ -127,6 +127,13 @@ public interface CompilerToVM {
 
     void lookupReferencedTypeInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
 
+    // Must be kept in sync with enum in graalEnv.hpp
+    public enum CodeInstallResult {
+        OK,
+        DEPENDENCIES_FAILED,
+        CACHE_FULL
+    }
+
     /**
      * Installs the result of a compilation into the code cache.
      *
@@ -134,10 +141,9 @@ public interface CompilerToVM {
      * @param code if not null, then the code is installed as the non-default compiled code for the associated method
      *            and the details of the installation are written to this object
      * @param info additional information about the installation are written to this object if it is not null
-     * @return the value of {@code code} if installation was successful, null if dependency validation failed or the
-     *         code cache is full
+     * @return the outcome of the installation as a {@link CodeInstallResult}.
      */
-    HotSpotInstalledCode installCode(HotSpotCompilationResult compResult, HotSpotInstalledCode code, HotSpotCodeInfo info);
+    CodeInstallResult installCode(HotSpotCompilationResult compResult, HotSpotInstalledCode code, HotSpotCodeInfo info);
 
     void initializeConfiguration(HotSpotVMConfig config);
 
