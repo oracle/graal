@@ -50,7 +50,7 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
 
         BooleanNode equalComp;
         BooleanNode lessComp;
-        if (x().kind().isFloatOrDouble()) {
+        if (x().kind() == Kind.Double || x().kind() == Kind.Float) {
             equalComp = graph.unique(new FloatEqualsNode(x(), y()));
             lessComp = graph.unique(new FloatLessThanNode(x(), y(), isUnorderedLess));
         } else {

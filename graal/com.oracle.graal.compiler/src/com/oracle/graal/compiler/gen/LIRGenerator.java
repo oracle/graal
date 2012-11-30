@@ -507,7 +507,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     @Override
     public void visitReturn(ReturnNode x) {
         Value operand = Value.ILLEGAL;
-        if (!x.kind().isVoid()) {
+        if (x.kind() != Kind.Void) {
             operand = resultOperandFor(x.kind());
             emitMove(operand(x.result()), operand);
         }

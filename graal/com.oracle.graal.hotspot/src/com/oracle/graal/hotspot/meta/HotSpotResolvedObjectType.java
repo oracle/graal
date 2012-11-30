@@ -83,7 +83,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * @return the {@link ResolvedJavaType} corresponding to {@code klassConstant}
      */
     public static ResolvedJavaType fromMetaspaceKlass(Constant metaspaceKlass) {
-        assert metaspaceKlass.getKind().isLong();
+        assert metaspaceKlass.getKind() == Kind.Long;
         return fromMetaspaceKlass(metaspaceKlass.asLong());
     }
 
@@ -222,10 +222,10 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             HotSpotResolvedObjectType t1 = this;
             HotSpotResolvedObjectType t2 = (HotSpotResolvedObjectType) otherType;
             while (true) {
-              if (t2.isAssignableTo(t1)) {
+              if (t1.isAssignableFrom(t2)) {
                   return t1;
               }
-              if (t1.isAssignableTo(t2)) {
+              if (t2.isAssignableFrom(t1)) {
                   return t2;
               }
               t1 = t1.getSupertype();
@@ -249,9 +249,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
                 return Constant.forObject(javaMirror);
             case ObjectHub:
                 return klass();
-            case StaticPrimitiveFields:
-            case StaticObjectFields:
-                return Constant.forObject(javaMirror);
             default:
                 assert false : "Should not reach here.";
                 return null;
@@ -297,7 +294,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public boolean isInstance(Constant obj) {
-        if (obj.getKind().isObject() && !obj.isNull()) {
+        if (obj.getKind() == Kind.Object && !obj.isNull()) {
             return javaMirror.isInstance(obj.asObject());
         }
         return false;
@@ -314,10 +311,10 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
-    public boolean isAssignableTo(ResolvedJavaType other) {
+    public boolean isAssignableFrom(ResolvedJavaType other) {
         if (other instanceof HotSpotResolvedObjectType) {
             HotSpotResolvedObjectType otherType = (HotSpotResolvedObjectType) other;
-            return otherType.javaMirror.isAssignableFrom(javaMirror);
+            return javaMirror.isAssignableFrom(otherType.javaMirror);
         }
         return false;
     }
@@ -438,11 +435,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
-    public boolean isClass(Class c) {
-        return c == javaMirror;
-    }
-
-    @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         return javaMirror.getAnnotation(annotationClass);
     }
@@ -456,7 +448,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * Gets the address of the C++ Klass object for this type.
      */
     public Constant klass() {
-        return new Constant(HotSpotGraalRuntime.getInstance().getTarget().wordKind, metaspaceKlass, this);
+        return Constant.forIntegerKind(HotSpotGraalRuntime.getInstance().getTarget().wordKind, metaspaceKlass, this);
     }
 
     public boolean isPrimaryType() {

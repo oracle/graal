@@ -42,8 +42,16 @@ import com.oracle.graal.snippets.Word.*;
  */
 public class SnippetVerificationPhase extends Phase {
 
+    private final MetaAccessProvider metaAccess;
+
+    public SnippetVerificationPhase(MetaAccessProvider metaAccess) {
+        this.metaAccess = metaAccess;
+    }
+
     @Override
     protected void run(StructuredGraph graph) {
+        ResolvedJavaType wordType = metaAccess.lookupJavaType(Word.class);
+
         for (ValueNode node : graph.getNodes().filter(ValueNode.class)) {
             for (Node usage : node.usages()) {
                 if (usage instanceof AccessMonitorNode) {
@@ -83,7 +91,7 @@ public class SnippetVerificationPhase extends Phase {
                             ValueNode argument = arguments.get(argc);
                             if (argument == node) {
                                 ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
-                                verify((type.isClass(Word.class)) == isWord(argument), node, invoke.node(), "cannot pass word value to non-word parameter " + i + " or vice-versa");
+                                verify(type.equals(wordType) == isWord(argument), node, invoke.node(), "cannot pass word value to non-word parameter " + i + " or vice-versa");
                             }
                             argc++;
                         }

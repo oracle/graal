@@ -89,7 +89,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                         Debug.dump(graph, "after %s", candidate);
                         Iterable<Node> newNodes = graph.getNewNodes(mark);
                         if (GraalOptions.OptCanonicalizer) {
-                            new CanonicalizerPhase(target, runtime, assumptions, mark, null).apply(graph);
+                            new CanonicalizerPhase(target, runtime, assumptions, mark).apply(graph);
                         }
                         metricInliningPerformed.increment();
 

@@ -184,7 +184,6 @@ public class TestMetaAccessProvider {
         for (Class c : classes) {
             ResolvedJavaType type = runtime.lookupJavaType(c);
             assertNotNull(type);
-            assertTrue(type.isClass(c));
             assertEquals(c.getModifiers(), type.getModifiers());
             if (!type.isArray()) {
                 assertEquals(type.getName(), toInternalName(c.getName()));
@@ -202,7 +201,7 @@ public class TestMetaAccessProvider {
                 int expected = reflect.getModifiers() & Modifier.methodModifiers();
                 int actual = method.getModifiers();
                 assertEquals(String.format("%s: 0x%x != 0x%x", reflect, expected, actual), expected, actual);
-                assertTrue(method.getDeclaringClass().isClass(reflect.getDeclaringClass()));
+                assertTrue(method.getDeclaringClass().equals(runtime.lookupJavaType(reflect.getDeclaringClass())));
             }
         }
     }
@@ -216,7 +215,7 @@ public class TestMetaAccessProvider {
                 int expected = reflect.getModifiers() & Modifier.fieldModifiers();
                 int actual = field.getModifiers();
                 assertEquals(String.format("%s: 0x%x != 0x%x", reflect, expected, actual), expected, actual);
-                assertTrue(field.getDeclaringClass().isClass(reflect.getDeclaringClass()));
+                assertTrue(field.getDeclaringClass().equals(runtime.lookupJavaType(reflect.getDeclaringClass())));
             }
         }
     }
@@ -224,11 +223,11 @@ public class TestMetaAccessProvider {
     @Test
     public void lookupJavaTypeConstantTest() {
         for (Constant c : constants) {
-            if (c.getKind().isObject() && !c.isNull()) {
+            if (c.getKind() == Kind.Object && !c.isNull()) {
                 Object o = c.asObject();
                 ResolvedJavaType type = runtime.lookupJavaType(c);
                 assertNotNull(type);
-                assertTrue(type.isClass(o.getClass()));
+                assertTrue(type.equals(runtime.lookupJavaType(o.getClass())));
             } else {
                 assertEquals(runtime.lookupJavaType(c), null);
             }
@@ -241,7 +240,7 @@ public class TestMetaAccessProvider {
             for (Constant c2 : constants) {
                 // test symmetry
                 assertEquals(runtime.constantEquals(c1, c2), runtime.constantEquals(c2, c1));
-                if (!c1.getKind().isObject() && !c2.getKind().isObject()) {
+                if (c1.getKind() != Kind.Object && c2.getKind() != Kind.Object) {
                     assertEquals(c1.equals(c2), runtime.constantEquals(c2, c1));
                 }
             }
@@ -251,7 +250,7 @@ public class TestMetaAccessProvider {
     @Test
     public void lookupArrayLengthTest() {
         for (Constant c : constants) {
-            if (!c.getKind().isObject() || c.isNull() || !c.asObject().getClass().isArray()) {
+            if (c.getKind() != Kind.Object || c.isNull() || !c.asObject().getClass().isArray()) {
                 try {
                     int length = runtime.lookupArrayLength(c);
                     fail("Expected " + IllegalArgumentException.class.getName() + " for " + c + ", not " + length);

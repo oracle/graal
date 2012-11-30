@@ -44,9 +44,9 @@ public class BitScanReverseNode extends FloatingNode implements LIRGenLowerable,
     public ValueNode canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
             long v = value.asConstant().asLong();
-            if (value.kind().isStackInt()) {
+            if (value.kind().getStackKind() == Kind.Int) {
                 return ConstantNode.forInt(31 - Integer.numberOfLeadingZeros((int) v), graph());
-            } else if (value.kind().isLong()) {
+            } else if (value.kind() == Kind.Long) {
                 return ConstantNode.forInt(63 - Long.numberOfLeadingZeros(v), graph());
             }
         }

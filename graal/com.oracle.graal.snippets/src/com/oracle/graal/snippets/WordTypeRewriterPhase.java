@@ -99,7 +99,7 @@ public class WordTypeRewriterPhase extends Phase {
                 switch (opcode) {
                     case ZERO: {
                         assert arguments.size() == 0;
-                        replace(invoke, wordKind.isLong() ? ConstantNode.forLong(0L, graph) : ConstantNode.forInt(0, graph));
+                        replace(invoke, wordKind == Kind.Long ? ConstantNode.forLong(0L, graph) : ConstantNode.forInt(0, graph));
                         break;
                     }
 
@@ -261,12 +261,12 @@ public class WordTypeRewriterPhase extends Phase {
     private ValueNode asWordKind(StructuredGraph graph, ValueNode value) {
         if (value.kind() != wordKind) {
             Op op;
-            if (wordKind.isLong()) {
-                assert value.kind().isStackInt();
+            if (wordKind == Kind.Long) {
+                assert value.kind().getStackKind() == Kind.Int;
                 op = Op.I2L;
             } else {
-                assert wordKind.isStackInt();
-                assert value.kind().isLong();
+                assert wordKind.getStackKind() == Kind.Int;
+                assert value.kind() == Kind.Long;
                 op = Op.L2I;
             }
             return graph.unique(new ConvertNode(op, value));
@@ -278,10 +278,10 @@ public class WordTypeRewriterPhase extends Phase {
         Kind from = value.kind();
         if (from != to) {
             Op op;
-            if (from.isLong()) {
+            if (from == Kind.Long) {
                 op = Op.L2I;
             } else {
-                assert from.isStackInt();
+                assert from.getStackKind() == Kind.Int;
                 op = Op.I2L;
             }
             return graph.unique(new ConvertNode(op, value));
@@ -296,7 +296,7 @@ public class WordTypeRewriterPhase extends Phase {
         if (node instanceof LoadIndexedNode) {
             return isWord(((LoadIndexedNode) node).array().objectStamp().type().getComponentType());
         }
-        if (node.kind().isObject()) {
+        if (node.kind() == Kind.Object) {
             return isWord(node.objectStamp().type());
         }
         return false;

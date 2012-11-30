@@ -267,7 +267,7 @@ public class SnippetTemplate {
             new SnippetIntrinsificationPhase(runtime, new BoxingMethodPool(runtime), false).apply(snippetCopy);
             new WordTypeRewriterPhase(target.wordKind).apply(snippetCopy);
 
-            new CanonicalizerPhase(null, runtime, assumptions, 0, null).apply(snippetCopy);
+            new CanonicalizerPhase(null, runtime, assumptions, 0).apply(snippetCopy);
         }
 
         // Gather the template parameters
@@ -321,7 +321,7 @@ public class SnippetTemplate {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     int mark = snippetCopy.getMark();
                     LoopTransformations.fullUnroll(loop, runtime, null);
-                    new CanonicalizerPhase(null, runtime, assumptions, mark, null).apply(snippetCopy);
+                    new CanonicalizerPhase(null, runtime, assumptions, mark).apply(snippetCopy);
                 }
                 FixedNode explodeLoopNext = explodeLoop.next();
                 explodeLoop.clearSuccessors();
@@ -390,7 +390,7 @@ public class SnippetTemplate {
     }
 
     private static boolean checkConstantArgument(final ResolvedJavaMethod method, Signature signature, int i, String name, Object arg, Kind kind) {
-        if (kind.isObject()) {
+        if (kind == Kind.Object) {
             ResolvedJavaType type = signature.getParameterType(i, method.getDeclaringClass()).resolve(method.getDeclaringClass());
             assert arg == null || type.isInstance(Constant.forObject(arg)) :
                 method + ": wrong value type for " + name + ": expected " + type.getName() + ", got " + arg.getClass().getName();
@@ -458,7 +458,7 @@ public class SnippetTemplate {
                     replacements.put((LocalNode) parameter, (ValueNode) argument);
                 } else {
                     Kind kind = ((LocalNode) parameter).kind();
-                    assert argument != null || kind.isObject() : this + " cannot accept null for non-object parameter named " + name;
+                    assert argument != null || kind == Kind.Object : this + " cannot accept null for non-object parameter named " + name;
                     Constant constant = Constant.forBoxed(kind, argument);
                     replacements.put((LocalNode) parameter, ConstantNode.forConstant(constant, runtime, replaceeGraph));
                 }

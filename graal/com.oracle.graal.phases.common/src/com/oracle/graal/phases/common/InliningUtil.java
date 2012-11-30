@@ -560,7 +560,7 @@ public class InliningUtil {
             result.setProbability(probability);
 
             Kind kind = invoke.node().kind();
-            if (!kind.isVoid()) {
+            if (kind != Kind.Void) {
                 FrameState stateAfter = invoke.stateAfter();
                 stateAfter = stateAfter.duplicate(stateAfter.bci);
                 stateAfter.replaceFirstInput(invoke.node(), result.node());
@@ -658,7 +658,7 @@ public class InliningUtil {
         ObjectStamp receiverStamp = callTarget.receiver().objectStamp();
         ResolvedJavaType receiverType = receiverStamp.type();
         if (receiverStamp.isExactType()) {
-            assert receiverType.isAssignableTo(targetMethod.getDeclaringClass()) : receiverType + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
+            assert targetMethod.getDeclaringClass().isAssignableFrom(receiverType) : receiverType + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
             ResolvedJavaMethod resolved = receiverType.resolveMethod(targetMethod);
             if (!checkTargetConditions(invoke, resolved, optimisticOpts, runtime)) {
                 return null;
@@ -671,7 +671,7 @@ public class InliningUtil {
         if (receiverStamp.type() != null) {
             // the invoke target might be more specific than the holder (happens after inlining: locals lose their declared type...)
             // TODO (lstadler) fix this
-            if (receiverType != null && receiverType.isAssignableTo(holder)) {
+            if (receiverType != null && holder.isAssignableFrom(receiverType)) {
                 holder = receiverType;
             }
         }

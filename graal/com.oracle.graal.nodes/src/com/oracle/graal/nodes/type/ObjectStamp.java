@@ -78,7 +78,7 @@ public class ObjectStamp extends Stamp {
             return false;
         } else if (other.nonNull || nonNull) {
             // One of the two values cannot be null.
-            return !other.type.isInterface() && !type.isInterface() && !other.type.isAssignableTo(type) && !type.isAssignableTo(other.type);
+            return !other.type.isInterface() && !type.isInterface() && !type.isAssignableFrom(other.type) && !other.type.isAssignableFrom(type);
         }
         return false;
     }
@@ -139,7 +139,7 @@ public class ObjectStamp extends Stamp {
             joinType = type;
         } else {
             // both types are != null
-            if (other.type.isAssignableTo(type)) {
+            if (type.isAssignableFrom(other.type)) {
                 joinType = other.type;
             } else {
                 joinType = type;

@@ -68,7 +68,7 @@ public class TestJavaMethod {
         for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
             Class expected = e.getKey().getDeclaringClass();
             ResolvedJavaType actual = e.getValue().getDeclaringClass();
-            assertTrue(actual.isClass(expected));
+            assertTrue(actual.equals(runtime.lookupJavaType(expected)));
         }
     }
 

@@ -98,7 +98,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
             if (stamp.type() != null) {
                 int validKeys = 0;
                 for (int i = 0; i < keyCount(); i++) {
-                    if (keys[i].isAssignableTo(stamp.type())) {
+                    if (stamp.type().isAssignableFrom(keys[i])) {
                         validKeys++;
                     }
                 }
@@ -113,7 +113,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                     double totalProbability = 0;
                     int current = 0;
                     for (int i = 0; i < keyCount() + 1; i++) {
-                        if (i == keyCount() || keys[i].isAssignableTo(stamp.type())) {
+                        if (i == keyCount() || stamp.type().isAssignableFrom(keys[i])) {
                             int index = newSuccessors.indexOf(keySuccessor(i));
                             if (index == -1) {
                                 index = newSuccessors.size();

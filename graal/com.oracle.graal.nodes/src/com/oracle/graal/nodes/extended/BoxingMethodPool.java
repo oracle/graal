@@ -22,32 +22,11 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import java.lang.reflect.*;
 import java.util.*;
-import java.util.Map.Entry;
 
 import com.oracle.graal.api.meta.*;
 
 public class BoxingMethodPool {
-    private static final Map<Kind, BoxingMethod> boxings = new HashMap<>();
-    private static class BoxingMethod {
-        final Class<?> type;
-        final String unboxMethod;
-        public BoxingMethod(Class< ? > type, String unboxMethod) {
-            this.type = type;
-            this.unboxMethod = unboxMethod;
-        }
-    }
-    static {
-        boxings.put(Kind.Boolean, new BoxingMethod(Boolean.class, "booleanValue"));
-        boxings.put(Kind.Byte, new BoxingMethod(Byte.class, "byteValue"));
-        boxings.put(Kind.Char, new BoxingMethod(Character.class, "charValue"));
-        boxings.put(Kind.Short, new BoxingMethod(Short.class, "shortValue"));
-        boxings.put(Kind.Int, new BoxingMethod(Integer.class, "intValue"));
-        boxings.put(Kind.Long, new BoxingMethod(Long.class, "longValue"));
-        boxings.put(Kind.Float, new BoxingMethod(Float.class, "floatValue"));
-        boxings.put(Kind.Double, new BoxingMethod(Double.class, "doubleValue"));
-    }
 
     private final Set<JavaMethod> specialMethods = new HashSet<>();
     private final MetaAccessProvider runtime;
@@ -57,25 +36,22 @@ public class BoxingMethodPool {
 
     public BoxingMethodPool(MetaAccessProvider runtime) {
         this.runtime = runtime;
-        initialize();
-    }
 
-    private void initialize() {
         try {
-            for (Entry<Kind, BoxingMethod> entry : boxings.entrySet()) {
-                Kind kind = entry.getKey();
-                BoxingMethod boxing = entry.getValue();
-                initialize(kind, boxing.type, boxing.unboxMethod);
-            }
-        } catch (SecurityException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchMethodException e) {
+            initialize(Kind.Boolean, Boolean.class, "booleanValue");
+            initialize(Kind.Byte, Byte.class, "byteValue");
+            initialize(Kind.Char, Character.class, "charValue");
+            initialize(Kind.Short, Short.class, "shortValue");
+            initialize(Kind.Int, Integer.class, "intValue");
+            initialize(Kind.Long, Long.class, "longValue");
+            initialize(Kind.Float, Float.class, "floatValue");
+            initialize(Kind.Double, Double.class, "doubleValue");
+        } catch (SecurityException | NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
     }
 
     private void initialize(Kind kind, Class<?> type, String unboxMethod) throws SecurityException, NoSuchMethodException {
-
         // Get boxing method from runtime.
         ResolvedJavaMethod boxingMethod = runtime.lookupJavaMethod(type.getDeclaredMethod("valueOf", kind.toJavaClass()));
         specialMethods.add(boxingMethod);
@@ -115,39 +91,5 @@ public class BoxingMethodPool {
 
     public ResolvedJavaField getBoxField(Kind kind) {
         return boxFields[kind.ordinal()];
-    }
-
-    public static boolean isSpecialMethodStatic(ResolvedJavaMethod method) {
-        return isUnboxingMethodStatic(method) || isBoxingMethodStatic(method);
-    }
-
-    public static boolean isBoxingMethodStatic(ResolvedJavaMethod method) {
-        Signature signature = method.getSignature();
-        if (!Modifier.isStatic(method.getModifiers())
-                        || signature.getReturnKind() == Kind.Object
-                        || signature.getParameterCount(false) != 1) {
-            return false;
-        }
-        Kind kind = signature.getParameterKind(0);
-        BoxingMethod boxing = boxings.get(kind);
-        if (boxing == null) {
-            return false;
-        }
-        return method.getDeclaringClass().isClass(boxing.type) && method.getName().equals("valueOf");
-    }
-
-    public static boolean isUnboxingMethodStatic(ResolvedJavaMethod method) {
-        Signature signature = method.getSignature();
-        if (signature.getReturnKind() == Kind.Object
-                        || signature.getParameterCount(false) != 0
-                        || Modifier.isStatic(method.getModifiers())) {
-            return false;
-        }
-        Kind kind = signature.getReturnKind();
-        BoxingMethod boxing = boxings.get(kind);
-        if (boxing == null) {
-            return false;
-        }
-        return method.getDeclaringClass().isClass(boxing.type) && method.getName().equals(boxing.unboxMethod);
     }
 }

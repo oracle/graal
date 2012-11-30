@@ -273,7 +273,7 @@ public class NewObjectSnippets implements SnippetsInterface {
 
             ValueNode memory;
             if (!useTLAB) {
-                memory = ConstantNode.forConstant(new Constant(target.wordKind, 0L), runtime, graph);
+                memory = ConstantNode.defaultForKind(target.wordKind, graph);
             } else {
                 ConstantNode sizeNode = ConstantNode.forInt(size, graph);
                 TLABAllocateNode tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode));
@@ -296,11 +296,11 @@ public class NewObjectSnippets implements SnippetsInterface {
             ResolvedJavaType arrayType = elementType.getArrayClass();
             Kind elementKind = elementType.getKind();
             final int alignment = target.wordSize;
-            final int headerSize = elementKind.getArrayBaseOffset();
+            final int headerSize = HotSpotRuntime.getArrayBaseOffset(elementKind);
             final Integer length = lengthNode.isConstant() ? Integer.valueOf(lengthNode.asConstant().asInt()) : null;
             int log2ElementSize = CodeUtil.log2(target.sizeInBytes(elementKind));
             if (!useTLAB) {
-                ConstantNode zero = ConstantNode.forConstant(new Constant(target.wordKind, 0L), runtime, graph);
+                ConstantNode zero = ConstantNode.defaultForKind(target.wordKind, graph);
                 // value for 'size' doesn't matter as it isn't used since a stub call will be made anyway
                 // for both allocation and initialization - it just needs to be non-null
                 ConstantNode size = ConstantNode.forInt(-1, graph);
@@ -363,8 +363,8 @@ public class NewObjectSnippets implements SnippetsInterface {
             assert elementType != null;
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             Kind elementKind = elementType.getKind();
-            final int headerSize = elementKind.getArrayBaseOffset();
-            Key key = new Key(elementKind.isObject() ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
+            final int headerSize = HotSpotRuntime.getArrayBaseOffset(elementKind);
+            Key key = new Key(elementKind == Kind.Object ? initializeObjectArray : initializePrimitiveArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
             ValueNode memory = initializeNode.memory();
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord()).add("size", initializeNode.size()).add("length", initializeNode.length());
             SnippetTemplate template = cache.get(key, assumptions);

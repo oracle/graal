@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -40,8 +41,8 @@ public final class FloatLessThanNode extends CompareNode {
      */
     public FloatLessThanNode(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
         super(x, y);
-        assert x.kind().isFloatOrDouble();
-        assert y.kind().isFloatOrDouble();
+        assert x.kind() == Kind.Double || x.kind() == Kind.Float;
+        assert y.kind() == Kind.Double || y.kind() == Kind.Float;
         this.unorderedIsTrue = unorderedIsTrue;
     }
 

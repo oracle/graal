@@ -137,7 +137,9 @@ public class StampFactory {
         } else {
             if (value.getKind() == Kind.Int || value.getKind() == Kind.Long) {
                 return forInteger(value.getKind(), value.asLong(), value.asLong(), value.asLong() & IntegerStamp.defaultMask(value.getKind()));
-            } else if (value.getKind() == Kind.Float || value.getKind() == Kind.Double) {
+            } else if (value.getKind() == Kind.Float) {
+                return forFloat(value.getKind(), value.asFloat(), value.asFloat(), !Float.isNaN(value.asFloat()));
+            } else if (value.getKind() == Kind.Double) {
                 return forFloat(value.getKind(), value.asDouble(), value.asDouble(), !Double.isNaN(value.asDouble()));
             }
             return forKind(value.getKind().getStackKind());

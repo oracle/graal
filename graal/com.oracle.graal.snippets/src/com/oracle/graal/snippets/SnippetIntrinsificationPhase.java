@@ -319,7 +319,7 @@ public class SnippetIntrinsificationPhase extends Phase {
         try {
             ValueNode intrinsicNode = (ValueNode) constructor.newInstance(arguments);
             if (setStampFromReturnType) {
-                if (returnType.getKind().isObject()) {
+                if (returnType.getKind() == Kind.Object) {
                     intrinsicNode.setStamp(StampFactory.declared(returnType));
                 } else {
                     intrinsicNode.setStamp(StampFactory.forKind(returnType.getKind()));

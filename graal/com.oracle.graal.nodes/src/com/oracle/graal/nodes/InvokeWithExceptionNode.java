@@ -177,7 +177,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
 
     @Override
     public void intrinsify(Node node) {
-        assert !(node instanceof ValueNode) || ((ValueNode) node).kind().isVoid() == kind().isVoid();
+        assert !(node instanceof ValueNode) || (((ValueNode) node).kind() == Kind.Void) == (kind() == Kind.Void);
         CallTargetNode call = callTarget;
         FrameState state = stateAfter();
         killExceptionEdge();

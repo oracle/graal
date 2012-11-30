@@ -38,16 +38,6 @@ public interface ResolvedJavaType extends JavaType {
      */
     public enum Representation {
         /**
-         * The runtime representation of the data structure containing the static primitive fields of this type.
-         */
-        StaticPrimitiveFields,
-
-        /**
-         * The runtime representation of the data structure containing the static object fields of this type.
-         */
-        StaticObjectFields,
-
-        /**
          * The runtime representation of the Java class object of this type.
          */
         JavaClass,
@@ -130,13 +120,11 @@ public interface ResolvedJavaType extends JavaType {
     void initialize();
 
     /**
-     * Checks whether this type is a subtype of another type.
-     *
-     * @param other the type to test
-     * @return {@code true} if this type a subtype of the specified type
-     * @see Class#isAssignableFrom(Class)
+     * Determines if this type is either the same as, or is a superclass or superinterface of, the type represented by
+     * the specified parameter. This method is identical to {@link Class#isAssignableFrom(Class)} in terms of the value
+     * return for this type.
      */
-    boolean isAssignableTo(ResolvedJavaType other);
+    boolean isAssignableFrom(ResolvedJavaType other);
 
     /**
      * Checks whether the specified object is an instance of this type.
@@ -241,11 +229,6 @@ public interface ResolvedJavaType extends JavaType {
      * @return this element's annotation for the specified annotation type if present on this class, else {@code null}
      */
     <T extends Annotation> T getAnnotation(Class<T> annotationClass);
-
-    /**
-     * Determines if this type is the same as that represented by a given {@link Class}.
-     */
-    boolean isClass(Class c);
 
     /**
      * Returns the instance field of this class (or one of its super classes) at the given

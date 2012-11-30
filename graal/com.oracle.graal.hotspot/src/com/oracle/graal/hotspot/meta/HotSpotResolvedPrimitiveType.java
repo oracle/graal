@@ -42,7 +42,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
         super(String.valueOf(Character.toUpperCase(kind.getTypeChar())));
         this.kind = kind;
         this.javaMirror = kind.toJavaClass();
-        this.javaArrayMirror = kind.isVoid() ? null : Array.newInstance(javaMirror, 0).getClass();
+        this.javaArrayMirror = kind == Kind.Void ? null : Array.newInstance(javaMirror, 0).getClass();
     }
 
     @Override
@@ -127,7 +127,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
-    public boolean isAssignableTo(ResolvedJavaType other) {
+    public boolean isAssignableFrom(ResolvedJavaType other) {
         return other == this;
     }
 
@@ -164,11 +164,6 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         return javaMirror.getAnnotation(annotationClass);
-    }
-
-    @Override
-    public boolean isClass(Class c) {
-        return c == javaMirror;
     }
 
     @Override

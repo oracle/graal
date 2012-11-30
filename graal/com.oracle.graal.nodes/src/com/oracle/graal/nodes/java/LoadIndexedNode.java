@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -34,7 +32,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * The {@code LoadIndexedNode} represents a read from an element of an array.
  */
-public final class LoadIndexedNode extends AccessIndexedNode implements Canonicalizable, Node.IterableNodeType, Virtualizable {
+public final class LoadIndexedNode extends AccessIndexedNode implements Node.IterableNodeType, Virtualizable {
 
     /**
      * Creates a new LoadIndexedNode.
@@ -52,24 +50,6 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
         } else {
             return StampFactory.forKind(kind);
         }
-    }
-
-    @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
-        MetaAccessProvider runtime = tool.runtime();
-        if (runtime != null && index().isConstant() && array().isConstant() && !array().isNullConstant()) {
-            Constant arrayConst = array().asConstant();
-            if (tool.isImmutable(arrayConst)) {
-                int index = index().asConstant().asInt();
-                Object array = arrayConst.asObject();
-                int length = Array.getLength(array);
-                if (index >= 0 && index < length) {
-                    return ConstantNode.forConstant(elementKind().readUnsafeConstant(array,
-                                    elementKind().getArrayBaseOffset() + index * elementKind().getArrayIndexScale()), runtime, graph());
-                }
-            }
-        }
-        return this;
     }
 
     @Override
