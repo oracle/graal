@@ -27,6 +27,7 @@ import java.util.*;
 
 import com.oracle.graal.graph.Graph.InputChangedListener;
 import com.oracle.graal.graph.NodeClass.*;
+import com.oracle.graal.graph.iterators.*;
 
 
 /**
@@ -131,22 +132,22 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Returns an {@link NodeInputsIterable iterable} which can be used to traverse all non-null input edges of this node.
-     * @return an {@link NodeInputsIterable iterable} for all non-null input edges.
+     * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null input edges of this node.
+     * @return an {@link NodeClassIterable iterable} for all non-null input edges.
      */
-    public NodeInputsIterable inputs() {
+    public NodeClassIterable inputs() {
         return getNodeClass().getInputIterable(this);
     }
 
     /**
-     * Returns an {@link NodeSuccessorsIterable iterable} which can be used to traverse all non-null successor edges of this node.
-     * @return an {@link NodeSuccessorsIterable iterable} for all non-null successor edges.
+     * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null successor edges of this node.
+     * @return an {@link NodeClassIterable iterable} for all non-null successor edges.
      */
-    public NodeSuccessorsIterable successors() {
+    public NodeClassIterable successors() {
         return getNodeClass().getSuccessorIterable(this);
     }
 
-    public final NodeUsagesList usages() {
+    public final NodeIterable<Node> usages() {
         return usages;
     }
 
@@ -551,7 +552,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
 
         if (precision > 0) {
-            if (this.usages.size() > 0) {
+            if (this.usages.count() > 0) {
                 formatter.format(" usages={");
                 int z = 0;
                 for (Node usage : this.usages) {

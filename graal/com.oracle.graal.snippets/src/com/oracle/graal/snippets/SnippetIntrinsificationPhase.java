@@ -206,13 +206,13 @@ public class SnippetIntrinsificationPhase extends Phase {
                     Type boundType = typeVariable.getBounds()[0];
                     if (boundType instanceof Class && ((Class) boundType).getSuperclass() == null) {
                         // Unbound generic => try boxing elimination
-                        if (node.usages().size() == 2) {
+                        if (node.usages().count() == 2) {
                             if (node instanceof Invoke) {
                                 Invoke invokeNode = (Invoke) node;
                                 MethodCallTargetNode callTarget = invokeNode.methodCallTarget();
                                 if (pool.isBoxingMethod(callTarget.targetMethod())) {
                                     FrameState stateAfter = invokeNode.stateAfter();
-                                    assert stateAfter.usages().size() == 1;
+                                    assert stateAfter.usages().count() == 1;
                                     invokeNode.node().replaceAtUsages(null);
                                     ValueNode result = callTarget.arguments().get(0);
                                     StructuredGraph graph = (StructuredGraph) node.graph();

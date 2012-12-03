@@ -151,7 +151,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             StateSplit split = (StateSplit) node;
             FrameState stateAfter = split.stateAfter();
             if (stateAfter != null) {
-                if (stateAfter.usages().size() > 1) {
+                if (stateAfter.usages().count() > 1) {
                     stateAfter = (FrameState) stateAfter.copyWithInputs();
                     split.setStateAfter(stateAfter);
                 }

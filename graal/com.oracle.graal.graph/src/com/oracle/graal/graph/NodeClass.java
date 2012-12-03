@@ -216,6 +216,11 @@ public class NodeClass extends FieldIntrospection {
         return str.toString();
     }
 
+    /**
+     * Describes an edge slot for a {@link NodeClass}.
+     * @see NodeClass#get(Node, Position)
+     * @see NodeClass#getName(Position)
+     */
     public static final class Position {
         public final boolean input;
         public final int index;
@@ -566,9 +571,9 @@ public class NodeClass extends FieldIntrospection {
         }
     }
 
-    public NodeInputsIterable getInputIterable(final Node node) {
+    public NodeClassIterable getInputIterable(final Node node) {
         assert clazz.isInstance(node);
-        return new NodeInputsIterable() {
+        return new NodeClassIterable() {
 
             @Override
             public NodeClassIterator iterator() {
@@ -582,9 +587,9 @@ public class NodeClass extends FieldIntrospection {
         };
     }
 
-    public NodeSuccessorsIterable getSuccessorIterable(final Node node) {
+    public NodeClassIterable getSuccessorIterable(final Node node) {
         assert clazz.isInstance(node);
-        return new NodeSuccessorsIterable() {
+        return new NodeClassIterable() {
             @Override
             public NodeClassIterator iterator() {
                 return new NodeClassIterator(node, successorOffsets, directSuccessorCount);

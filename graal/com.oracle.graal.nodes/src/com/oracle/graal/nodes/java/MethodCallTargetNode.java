@@ -98,7 +98,7 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
 
     @Override
     public boolean verify() {
-        assert usages().size() <= 1 : "call target may only be used by a single invoke";
+        assert usages().count() <= 1 : "call target may only be used by a single invoke";
         for (Node n : usages()) {
             assertTrue(n instanceof Invoke, "call target can only be used from an invoke (%s)", n);
         }

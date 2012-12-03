@@ -382,7 +382,7 @@ public class BinaryGraphPrinter implements GraphPrinter{
                 writePropertyObject(entry.getValue());
             }
             // successors
-            NodeSuccessorsIterable successors = node.successors();
+            NodeClassIterable successors = node.successors();
             writeShort((char) successors.count());
             NodeClassIterator suxIt = successors.iterator();
             while (suxIt.hasNext()) {
@@ -392,7 +392,7 @@ public class BinaryGraphPrinter implements GraphPrinter{
                 writeShort((char) pos.index);
             }
             //inputs
-            NodeInputsIterable inputs = node.inputs();
+            NodeClassIterable inputs = node.inputs();
             writeShort((char) inputs.count());
             NodeClassIterator inIt = inputs.iterator();
             while (inIt.hasNext()) {

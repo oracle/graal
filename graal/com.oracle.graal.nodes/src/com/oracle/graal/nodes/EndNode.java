@@ -45,7 +45,7 @@ public class EndNode extends FixedNode implements Node.IterableNodeType, LIRLowe
 
     @Override
     public boolean verify() {
-        assertTrue(usages().size() <= 1, "at most one usage");
+        assertTrue(usages().count() <= 1, "at most one usage");
         return super.verify();
     }
 

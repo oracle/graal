@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -238,7 +239,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         // Only consider merges with a single usage that is both a phi and an operand of the comparison
-        NodeUsagesList mergeUsages = merge.usages();
+        NodeIterable<Node> mergeUsages = merge.usages();
         if (mergeUsages.count() != 1) {
             return false;
         }
@@ -249,7 +250,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
         // Ensure phi is used by at most the comparison and the merge's frame state (if any)
         PhiNode phi = (PhiNode) singleUsage;
-        NodeUsagesList phiUsages = phi.usages();
+        NodeIterable<Node> phiUsages = phi.usages();
         if (phiUsages.count() > 2) {
             return false;
         }

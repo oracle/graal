@@ -126,7 +126,7 @@ public abstract class GraalCompilerTest {
                     canonicalId.set(node, id);
                 }
                 String name = node instanceof ConstantNode ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
-                result.append("  " + id + "|" + name + "    (" + node.usages().size() + ")\n");
+                result.append("  " + id + "|" + name + "    (" + node.usages().count() + ")\n");
             }
         }
         return result.toString();
