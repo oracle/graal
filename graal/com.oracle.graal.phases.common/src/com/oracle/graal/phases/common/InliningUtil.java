@@ -90,9 +90,13 @@ public class InliningUtil {
     }
 
     private static InlineInfo logNotInlinedMethodAndReturnNull(Invoke invoke, ResolvedJavaMethod method, String msg) {
+        return logNotInlinedMethodAndReturnNull(invoke, method, msg, new Object[0]);
+    }
+
+    private static InlineInfo logNotInlinedMethodAndReturnNull(Invoke invoke, ResolvedJavaMethod method, String msg, Object... args) {
         if (shouldLogInliningDecision()) {
             String methodString = methodName(method, invoke);
-            logInliningDecision(methodString, false, msg, new Object[0]);
+            logInliningDecision(methodString, false, msg, args);
         }
         return null;
     }
@@ -285,7 +289,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "type-checked " + MetaUtil.format("%H.%n(%p):%r", concrete);
+            return "type-checked with type " + type.getName() + " and method " + MetaUtil.format("%H.%n(%p):%r", concrete);
         }
     }
 
@@ -594,10 +598,21 @@ public class InliningUtil {
         @Override
         public String toString() {
             StringBuilder builder = new StringBuilder(shouldFallbackToInvoke() ? "megamorphic" : "polymorphic");
-            builder.append(String.format(", %d methods with %d type checks:", concretes.size(), ptypes.length));
+            builder.append(", ");
+            builder.append(concretes.size());
+            builder.append(" methods [ ");
             for (int i = 0; i < concretes.size(); i++) {
                 builder.append(MetaUtil.format("  %H.%n(%p):%r", concretes.get(i)));
             }
+            builder.append(" ], ");
+            builder.append(ptypes.length);
+            builder.append(" type checks [ ");
+            for (int i = 0; i < ptypes.length; i++) {
+                builder.append("  ");
+                builder.append(ptypes[i].getType().getName());
+                builder.append(ptypes[i].getProbability());
+            }
+            builder.append(" ]");
             return builder.toString();
         }
     }
@@ -720,12 +735,11 @@ public class InliningUtil {
         } else {
             invoke.setPolymorphic(true);
 
-
             if (!optimisticOpts.inlinePolymorphicCalls() && notRecordedTypeProbability == 0) {
-                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining polymorphic calls is disabled");
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.length);
             }
             if (!optimisticOpts.inlineMegamorphicCalls() && notRecordedTypeProbability > 0) {
-                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining megamorphic calls is disabled");
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.length, notRecordedTypeProbability * 100);
             }
 
             // TODO (chaeubl) inlining of multiple methods should work differently
