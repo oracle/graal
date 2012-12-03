@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot;
 
 
 /**
- * Used to communicate configuration details, runtime offsets, etc. to graal upon compileMethod.
+ * Used to communicate configuration details, runtime offsets, etc. to Graal upon compileMethod.
  */
 public final class HotSpotVMConfig extends CompilerObject {
 
@@ -245,8 +245,8 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long inlineCacheMissStub;
     public long handleExceptionStub;
     public long handleDeoptStub;
-    public long fastMonitorEnterStub;
-    public long fastMonitorExitStub;
+    public long monitorEnterStub;
+    public long monitorExitStub;
     public long verifyOopStub;
     public long vmErrorStub;
     public long deoptimizeStub;

@@ -65,11 +65,11 @@ public final class BytecodeInterpreter implements Interpreter {
         GraalRuntime runtime = Graal.getRuntime();
         this.runtimeInterface = runtime.getCapability(RuntimeInterpreterInterface.class);
         if (this.runtimeInterface == null) {
-            throw new UnsupportedOperationException("The provided graal runtime does not support the required capability " + RuntimeInterpreterInterface.class.getName() + ".");
+            throw new UnsupportedOperationException("The provided Graal runtime does not support the required capability " + RuntimeInterpreterInterface.class.getName() + ".");
         }
         this.metaAccessProvider = runtime.getCapability(MetaAccessProvider.class);
         if (this.metaAccessProvider == null) {
-            throw new UnsupportedOperationException("The provided graal runtime does not support the required capability " + MetaAccessProvider.class.getName() + ".");
+            throw new UnsupportedOperationException("The provided Graal runtime does not support the required capability " + MetaAccessProvider.class.getName() + ".");
         }
 
         this.rootMethod = resolveRootMethod();
