@@ -104,6 +104,8 @@ public class LoweringPhase extends Phase {
     private final GraalCodeCacheProvider runtime;
     private final Assumptions assumptions;
 
+    private boolean deferred;
+
     public LoweringPhase(GraalCodeCacheProvider runtime, Assumptions assumptions) {
         this.runtime = runtime;
         this.assumptions = assumptions;
@@ -127,11 +129,12 @@ public class LoweringPhase extends Phase {
             final SchedulePhase schedule = new SchedulePhase();
             schedule.apply(graph, false);
 
+            deferred = false;
             processBlock(schedule.getCFG().getStartBlock(), graph.createNodeBitMap(), null, schedule, processed);
             Debug.dump(graph, "Lowering iteration %d", i++);
             new CanonicalizerPhase(null, runtime, assumptions, mark).apply(graph);
 
-            if (!containsLowerable(graph.getNewNodes(mark))) {
+            if (!deferred && !containsLowerable(graph.getNewNodes(mark))) {
                 // No new lowerable nodes - done!
                 break;
             }
@@ -184,9 +187,14 @@ public class LoweringPhase extends Phase {
                 loweringTool.lastFixedNode = fixed;
             }
 
-            if (node.isAlive() && !processed.isMarked(node)) {
-                processed.mark(node);
-                if (node instanceof Lowerable) {
+            if (node.isAlive() && !processed.isMarked(node) && node instanceof Lowerable) {
+                if (loweringTool.lastFixedNode == null) {
+                    // We cannot lower the node now because we don't have a fixed node to anchor the replacements.
+                    // This can happen when previous lowerings in this lowering iteration deleted the BeginNode of this block.
+                    // In the next iteration, we will have the new BeginNode available, and we can lower this node.
+                    deferred = true;
+                } else {
+                    processed.mark(node);
                     ((Lowerable) node).lower(loweringTool);
                 }
             }
