@@ -106,6 +106,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * @return the {@link HotSpotResolvedObjectType} corresponding to {@code javaClass}
      */
     public static ResolvedJavaType fromClass(Class javaClass) {
+        assert javaClass != null;
         ResolvedJavaType type = (ResolvedJavaType) unsafe.getObject(javaClass, (long) HotSpotGraalRuntime.getInstance().getConfig().graalMirrorInClassOffset);
         if (type == null) {
             type = HotSpotGraalRuntime.getInstance().getCompilerToVM().getResolvedType(javaClass);
