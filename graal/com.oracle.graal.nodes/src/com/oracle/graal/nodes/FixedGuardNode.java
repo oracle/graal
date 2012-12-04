@@ -25,7 +25,6 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -58,6 +57,22 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
         this.leafGraphId = leafGraphId;
         this.condition = condition;
         this.reason = deoptReason;
+    }
+
+    public DeoptimizationReason getReason() {
+        return reason;
+    }
+
+    public DeoptimizationAction getAction() {
+        return action;
+    }
+
+    public boolean isNegated() {
+        return negated;
+    }
+
+    public long getLeafGraphId() {
+        return leafGraphId;
     }
 
     @Override
@@ -93,8 +108,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
 
     @Override
     public void lower(LoweringTool tool) {
-        ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(tool.createGuard(condition, reason, action, negated, leafGraphId)));
-        ((StructuredGraph) graph()).replaceFixedWithFixed(this, newAnchor);
+        tool.getRuntime().lower(this, tool);
     }
 
     @Override

@@ -617,6 +617,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
             ReadNode hub = graph.add(new ReadNode(object, location, StampFactory.forKind(wordKind())));
             hub.dependencies().add(guard);
             graph.replaceFixed(loadHub, hub);
+        } else if (n instanceof FixedGuardNode) {
+            FixedGuardNode node = (FixedGuardNode) n;
+            ValueAnchorNode newAnchor = graph.add(new ValueAnchorNode(tool.createGuard(node.condition(), node.getReason(), node.getAction(), node.isNegated(), node.getLeafGraphId())));
+            graph.replaceFixedWithFixed(node, newAnchor);
         } else if (n instanceof CheckCastNode) {
             checkcastSnippets.lower((CheckCastNode) n, tool);
         } else if (n instanceof CheckCastDynamicNode) {
