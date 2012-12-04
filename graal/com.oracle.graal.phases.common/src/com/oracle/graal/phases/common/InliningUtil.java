@@ -987,7 +987,7 @@ public class InliningUtil {
         return getIntrinsicGraph(invoke, target, runtime) != null;
     }
 
-    private static StructuredGraph getIntrinsicGraph(Invoke invoke, ResolvedJavaMethod target, GraalCodeCacheProvider runtime) {
+    public static StructuredGraph getIntrinsicGraph(Invoke invoke, ResolvedJavaMethod target, GraalCodeCacheProvider runtime) {
         assert invoke.node().isAlive();
 
         StructuredGraph intrinsicGraph = (StructuredGraph) target.getCompilerStorage().get(Graph.class);
