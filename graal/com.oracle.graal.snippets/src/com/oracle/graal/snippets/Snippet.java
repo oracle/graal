@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.snippets;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
-
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 
@@ -73,9 +71,11 @@ public @interface Snippet {
      * </ul>
      */
     public static class DefaultSnippetInliningPolicy implements SnippetInliningPolicy {
+        private final MetaAccessProvider metaAccess;
         private final BoxingMethodPool pool;
 
-        public DefaultSnippetInliningPolicy(BoxingMethodPool pool) {
+        public DefaultSnippetInliningPolicy(MetaAccessProvider metaAccess, BoxingMethodPool pool) {
+            this.metaAccess = metaAccess;
             this.pool = pool;
         }
 
@@ -90,7 +90,7 @@ public @interface Snippet {
             if (method.getAnnotation(NodeIntrinsic.class) != null) {
                 return false;
             }
-            if (Throwable.class.isAssignableFrom(getMirrorOrFail(method.getDeclaringClass(), null))) {
+            if (metaAccess.lookupJavaType(Throwable.class).isAssignableFrom(method.getDeclaringClass())) {
                 if (method.getName().equals("<init>")) {
                     return false;
                 }
