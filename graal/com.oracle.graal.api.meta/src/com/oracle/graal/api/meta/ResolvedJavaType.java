@@ -215,9 +215,12 @@ public interface ResolvedJavaType extends JavaType {
     /**
      * Returns the instance fields of this class, including {@linkplain ResolvedJavaField#isInternal() internal} fields.
      * A zero-length array is returned for array and primitive types. The order of fields returned by this method is
-     * stable. That is, for a single JVM execution the same order is returned each time this method is called.
+     * stable. That is, for a single JVM execution the same order is returned each time this method is called. It is
+     * also the "natural" order, which means that the JVM would expect the fields in this order if no specific order is
+     * given.
      *
-     * @param includeSuperclasses if true, then instance fields for the complete hierarchy of this type are included in the result
+     * @param includeSuperclasses if true, then instance fields for the complete hierarchy of this type are included in
+     *            the result
      * @return an array of instance fields
      */
     ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses);

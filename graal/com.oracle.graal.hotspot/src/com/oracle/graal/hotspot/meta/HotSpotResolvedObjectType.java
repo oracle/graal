@@ -396,6 +396,13 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return ((HotSpotResolvedJavaMethod) method).uniqueConcreteMethod();
     }
 
+    private static class OffsetComparator implements Comparator<HotSpotResolvedJavaField> {
+        @Override
+        public int compare(HotSpotResolvedJavaField o1, HotSpotResolvedJavaField o2) {
+            return o1.offset() - o2.offset();
+        }
+    }
+
     @Override
     public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
         if (instanceFields == null) {
@@ -403,6 +410,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
                 instanceFields = new HotSpotResolvedJavaField[0];
             } else {
                 HotSpotResolvedJavaField[] myFields = HotSpotGraalRuntime.getInstance().getCompilerToVM().getInstanceFields(this);
+                Arrays.sort(myFields, new OffsetComparator());
                 if (javaMirror != Object.class) {
                     HotSpotResolvedJavaField[] superFields = (HotSpotResolvedJavaField[]) getSuperclass().getInstanceFields(true);
                     HotSpotResolvedJavaField[] fields = Arrays.copyOf(superFields, superFields.length + myFields.length);
