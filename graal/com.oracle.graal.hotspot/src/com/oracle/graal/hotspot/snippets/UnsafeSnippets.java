@@ -68,6 +68,12 @@ public class UnsafeSnippets implements SnippetsInterface {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
     }
 
+    public void putOrderedObject(Object o, long offset, Object x) {
+        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        putObject(o, offset, x);
+        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+    }
+
     public int getInt(Object o, long offset) {
         Integer value = UnsafeLoadNode.load(o, 0, offset, Kind.Int);
         return value;
@@ -85,6 +91,12 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public void putIntVolatile(Object o, long offset, int x) {
+        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        putInt(o, offset, x);
+        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+    }
+
+    public void putOrderedInt(Object o, long offset, int x) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
         putInt(o, offset, x);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
@@ -200,6 +212,12 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public void putLongVolatile(Object o, long offset, long x) {
+        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        putLong(o, offset, x);
+        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+    }
+
+    public void putOrderedLong(Object o, long offset, long x) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
         putLong(o, offset, x);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
