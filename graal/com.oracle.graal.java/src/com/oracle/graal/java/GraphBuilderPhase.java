@@ -775,7 +775,7 @@ public final class GraphBuilderPhase extends Phase {
         lastInstr = falseSucc;
 
         if (GraalOptions.OmitHotExceptionStacktrace) {
-            ValueNode exception = ConstantNode.forObject(new NullPointerException(), runtime, currentGraph);
+            ValueNode exception = ConstantNode.forObject(cachedNullPointerException, runtime, currentGraph);
             trueSucc.setNext(handleException(exception, bci()));
         } else {
             RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(CREATE_NULL_POINTER_EXCEPTION));
@@ -784,6 +784,14 @@ public final class GraphBuilderPhase extends Phase {
             call.setNext(handleException(call, bci()));
         }
     }
+
+    private static final ArrayIndexOutOfBoundsException cachedArrayIndexOutOfBoundsException = new ArrayIndexOutOfBoundsException();
+    private static final NullPointerException cachedNullPointerException = new NullPointerException();
+    static {
+        cachedArrayIndexOutOfBoundsException.setStackTrace(new StackTraceElement[0]);
+        cachedNullPointerException.setStackTrace(new StackTraceElement[0]);
+    }
+
 
     private void emitBoundsCheck(ValueNode index, ValueNode length) {
         BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
@@ -794,7 +802,7 @@ public final class GraphBuilderPhase extends Phase {
         lastInstr = trueSucc;
 
         if (GraalOptions.OmitHotExceptionStacktrace) {
-            ValueNode exception = ConstantNode.forObject(new ArrayIndexOutOfBoundsException(), runtime, currentGraph);
+            ValueNode exception = ConstantNode.forObject(cachedArrayIndexOutOfBoundsException, runtime, currentGraph);
             falseSucc.setNext(handleException(exception, bci()));
         } else {
             RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
