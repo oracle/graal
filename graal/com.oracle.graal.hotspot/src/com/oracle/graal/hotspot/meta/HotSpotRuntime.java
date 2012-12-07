@@ -47,7 +47,7 @@ import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.code.CompilationResult.Safepoint;
 import com.oracle.graal.api.code.Register.RegisterFlag;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -85,7 +85,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     private NewInstanceStub newInstanceStub;
 
-    private final Map<Descriptor, HotSpotRuntimeCall> runtimeCalls = new HashMap<>();
+    private final Map<Descriptor, HotSpotRuntimeCallTarget> runtimeCalls = new HashMap<>();
     private final Map<ResolvedJavaMethod, Stub> stubs = new HashMap<>();
 
     /**
@@ -272,7 +272,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         for (int i = 0; i < argKinds.length; i++) {
             assert argKinds[i].equals(args[i].getKind()) : descriptor + " incompatible with argument location " + i + ": " + args[i];
         }
-        HotSpotRuntimeCall runtimeCall = new HotSpotRuntimeCall(descriptor, address, new CallingConvention(temps, 0, ret, args), graalRuntime.getCompilerToVM());
+        HotSpotRuntimeCallTarget runtimeCall = new HotSpotRuntimeCallTarget(descriptor, address, new CallingConvention(temps, 0, ret, args), graalRuntime.getCompilerToVM());
         runtimeCalls.put(descriptor, runtimeCall);
     }
 
@@ -281,8 +281,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
      *
      * @return the linkage information for a call to the stub
      */
-    public HotSpotRuntimeCall registerStub(Descriptor descriptor, Stub stub) {
-        HotSpotRuntimeCall linkage = runtimeCalls.get(descriptor);
+    public HotSpotRuntimeCallTarget registerStub(Descriptor descriptor, Stub stub) {
+        HotSpotRuntimeCallTarget linkage = runtimeCalls.get(descriptor);
         assert linkage != null;
         linkage.setStub(stub);
         stubs.put(stub.getMethod(), stub);
@@ -756,8 +756,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     }
 
     public Object lookupCallTarget(Object callTarget) {
-        if (callTarget instanceof HotSpotRuntimeCall) {
-            return ((HotSpotRuntimeCall) callTarget).getAddress();
+        if (callTarget instanceof HotSpotRuntimeCallTarget) {
+            return ((HotSpotRuntimeCallTarget) callTarget).getAddress();
         }
         return callTarget;
     }
@@ -772,7 +772,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         return stubs.get(method);
     }
 
-    public HotSpotRuntimeCall lookupRuntimeCall(Descriptor descriptor) {
+    public HotSpotRuntimeCallTarget lookupRuntimeCall(Descriptor descriptor) {
         assert runtimeCalls.containsKey(descriptor) : descriptor;
         return runtimeCalls.get(descriptor);
     }

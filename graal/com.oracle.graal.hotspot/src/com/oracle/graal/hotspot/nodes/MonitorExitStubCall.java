@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -47,7 +47,7 @@ public class MonitorExitStubCall extends FixedWithNextNode implements LIRGenLowe
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(MonitorExitStubCall.MONITOREXIT);
+        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(MonitorExitStubCall.MONITOREXIT);
         gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object), gen.emitLea(gen.peekLock()));
     }
 

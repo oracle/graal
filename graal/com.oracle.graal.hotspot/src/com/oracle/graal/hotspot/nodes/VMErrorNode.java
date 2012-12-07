@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -70,7 +70,7 @@ public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowera
             formatArg = gen.operand(format);
         }
 
-        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(VMErrorNode.VM_ERROR);
+        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(VMErrorNode.VM_ERROR);
         gen.emitCall(stub, stub.getCallingConvention(), false, whereArg, formatArg, gen.operand(value));
     }
 

@@ -26,7 +26,7 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
@@ -105,8 +105,8 @@ public class AMD64Call {
 
     public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Object callTarget, LIRFrameState info) {
         int before = masm.codeBuffer.position();
-        if (callTarget instanceof RuntimeCall) {
-            long maxOffset = ((RuntimeCall) callTarget).getMaxCallTargetOffset();
+        if (callTarget instanceof RuntimeCallTarget) {
+            long maxOffset = ((RuntimeCallTarget) callTarget).getMaxCallTargetOffset();
             if (maxOffset != (int) maxOffset) {
                 // offset might not fit a 32-bit immediate, generate an
                 // indirect call with a 64-bit immediate

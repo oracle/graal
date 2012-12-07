@@ -28,7 +28,7 @@ import java.lang.reflect.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
@@ -61,7 +61,7 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
     /**
      * The linkage information for the stub.
      */
-    protected final HotSpotRuntimeCall linkage;
+    protected final HotSpotRuntimeCallTarget linkage;
 
     /**
      * The code installed for the stub.
@@ -97,7 +97,7 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
         return stubMethod;
     }
 
-    public HotSpotRuntimeCall getLinkage() {
+    public HotSpotRuntimeCallTarget getLinkage() {
         return linkage;
     }
 

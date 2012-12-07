@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -45,7 +45,7 @@ public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowera
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(VerifyOopStubCall.VERIFY_OOP);
+        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(VerifyOopStubCall.VERIFY_OOP);
         gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object));
     }
 

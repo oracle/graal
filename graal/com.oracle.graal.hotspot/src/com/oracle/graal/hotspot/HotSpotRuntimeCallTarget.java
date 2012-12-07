@@ -30,7 +30,7 @@ import com.oracle.graal.hotspot.stubs.*;
 /**
  * The details required to link a HotSpot runtime or stub call.
  */
-public class HotSpotRuntimeCall implements RuntimeCall {
+public class HotSpotRuntimeCallTarget implements RuntimeCallTarget {
 
     /**
      * The descriptor of the stub. This is for informational purposes only.
@@ -54,7 +54,7 @@ public class HotSpotRuntimeCall implements RuntimeCall {
 
     private final CompilerToVM vm;
 
-    public HotSpotRuntimeCall(Descriptor descriptor, long address, CallingConvention cc, CompilerToVM vm) {
+    public HotSpotRuntimeCallTarget(Descriptor descriptor, long address, CallingConvention cc, CompilerToVM vm) {
         this.address = address;
         this.descriptor = descriptor;
         this.cc = cc;

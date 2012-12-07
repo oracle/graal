@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -62,7 +62,7 @@ public class NewInstanceSlowStubCall extends FixedWithNextNode implements LIRGen
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(NEW_INSTANCE_SLOW);
+        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NEW_INSTANCE_SLOW);
         Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub));
         gen.setResult(this, result);
     }

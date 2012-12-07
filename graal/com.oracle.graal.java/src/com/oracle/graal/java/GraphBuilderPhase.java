@@ -29,7 +29,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.api.meta.ProfilingInfo.ExceptionSeen;

@@ -741,7 +741,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
-    protected abstract void emitCall(RuntimeCall callTarget, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info);
+    protected abstract void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info);
 
     private static Value toStackKind(Value value) {
         if (value.getKind().getStackKind() != value.getKind()) {
@@ -778,7 +778,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected abstract LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info, Object deoptInfo);
 
     @Override
-    public Variable emitCall(RuntimeCall callTarget, CallingConvention cc, boolean canTrap, Value... args) {
+    public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention cc, boolean canTrap, Value... args) {
         LIRFrameState info = canTrap ? state() : null;
 
         // move the arguments into the correct location
@@ -802,7 +802,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void visitRuntimeCall(RuntimeCallNode x) {
-        RuntimeCall call = runtime.lookupRuntimeCall(x.getDescriptor());
+        RuntimeCallTarget call = runtime.lookupRuntimeCall(x.getDescriptor());
         CallingConvention cc = call.getCallingConvention();
         frameMap.callsMethod(cc);
         Value resultOperand = cc.getReturn();

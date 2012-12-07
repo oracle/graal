@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
@@ -50,7 +50,7 @@ public final class UnwindNode extends FixedNode implements LIRLowerable, Node.It
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        RuntimeCall call = gen.getRuntime().lookupRuntimeCall(UNWIND_EXCEPTION);
+        RuntimeCallTarget call = gen.getRuntime().lookupRuntimeCall(UNWIND_EXCEPTION);
         gen.emitCall(call, call.getCallingConvention(), false, gen.operand(exception()));
     }
 }

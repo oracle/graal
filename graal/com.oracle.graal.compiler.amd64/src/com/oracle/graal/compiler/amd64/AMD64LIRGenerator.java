@@ -29,7 +29,7 @@ import static com.oracle.graal.lir.amd64.AMD64Compare.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -382,11 +382,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new DivOp(LREM, RDX_L, RAX_L, load(b), state()));
                 return emitMove(RDX_L);
             case Float: {
-                RuntimeCall stub = runtime.lookupRuntimeCall(ARITHMETIC_FREM);
+                RuntimeCallTarget stub = runtime.lookupRuntimeCall(ARITHMETIC_FREM);
                 return emitCall(stub, stub.getCallingConvention(), false, a, b);
             }
             case Double: {
-                RuntimeCall stub = runtime.lookupRuntimeCall(ARITHMETIC_DREM);
+                RuntimeCallTarget stub = runtime.lookupRuntimeCall(ARITHMETIC_DREM);
                 return emitCall(stub, stub.getCallingConvention(), false, a, b);
             }
             default:
@@ -571,7 +571,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitCall(RuntimeCall callTarget, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info) {
+    protected void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info) {
         if (isConstant(targetAddress)) {
             append(new DirectCallOp(callTarget, result, arguments, temps, info));
         } else {
