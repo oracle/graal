@@ -731,7 +731,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
-    protected abstract void emitCall(Object targetMethod, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info);
+    protected abstract void emitCall(Object callTarget, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info);
 
     private static Value toStackKind(Value value) {
         if (value.getKind().getStackKind() != value.getKind()) {
@@ -768,7 +768,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected abstract LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info, Object deoptInfo);
 
     @Override
-    public Variable emitCall(@SuppressWarnings("hiding") Object target, CallingConvention cc, boolean canTrap, Value... args) {
+    public Variable emitCall(RuntimeCall callTarget, CallingConvention cc, boolean canTrap, Value... args) {
         LIRFrameState info = canTrap ? state() : null;
 
         // move the arguments into the correct location
@@ -781,7 +781,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             emitMove(arg, loc);
             argLocations[i] = loc;
         }
-        emitCall(target, cc.getReturn(), argLocations, cc.getTemporaries(), Constant.forLong(0), info);
+        emitCall(callTarget, cc.getReturn(), argLocations, cc.getTemporaries(), Constant.forLong(0), info);
 
         if (isLegal(cc.getReturn())) {
             return emitMove(cc.getReturn());
