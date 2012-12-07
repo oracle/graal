@@ -40,59 +40,63 @@ import com.oracle.graal.snippets.*;
  */
 public class HotSpotSnippetUtils {
 
-    @Fold
-    static boolean verifyOops() {
-        return HotSpotGraalRuntime.getInstance().getConfig().verifyOops;
+    public static HotSpotVMConfig config() {
+        return HotSpotGraalRuntime.getInstance().getConfig();
     }
 
     @Fold
-    static int threadTlabTopOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().threadTlabTopOffset;
+    public static boolean verifyOops() {
+        return config().verifyOops;
     }
 
     @Fold
-    static int threadTlabEndOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().threadTlabEndOffset;
+    public static int threadTlabTopOffset() {
+        return config().threadTlabTopOffset;
     }
 
     @Fold
-    static Kind wordKind() {
+    public static int threadTlabEndOffset() {
+        return config().threadTlabEndOffset;
+    }
+
+    @Fold
+    public static Kind wordKind() {
         return HotSpotGraalRuntime.getInstance().getTarget().wordKind;
     }
 
     @Fold
-    static Register threadRegister() {
+    public static Register threadRegister() {
         return HotSpotGraalRuntime.getInstance().getRuntime().threadRegister();
     }
 
     @Fold
-    static Register stackPointerRegister() {
+    public static Register stackPointerRegister() {
         return HotSpotGraalRuntime.getInstance().getRuntime().stackPointerRegister();
     }
 
     @Fold
-    static int wordSize() {
+    public static int wordSize() {
         return HotSpotGraalRuntime.getInstance().getTarget().wordSize;
     }
 
     @Fold
-    static int pageSize() {
+    public static int pageSize() {
         return HotSpotGraalRuntime.getInstance().getTarget().pageSize;
     }
 
     @Fold
-    static int prototypeMarkWordOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().prototypeMarkWordOffset;
+    public static int prototypeMarkWordOffset() {
+        return config().prototypeMarkWordOffset;
     }
 
     @Fold
-    static int markOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().markOffset;
+    public static int markOffset() {
+        return config().markOffset;
     }
 
     @Fold
-    static int unlockedMask() {
-        return HotSpotGraalRuntime.getInstance().getConfig().unlockedMask;
+    public static int unlockedMask() {
+        return config().unlockedMask;
     }
 
     /**
@@ -105,13 +109,13 @@ public class HotSpotSnippetUtils {
      *
      */
     @Fold
-    static int biasedLockMaskInPlace() {
-        return HotSpotGraalRuntime.getInstance().getConfig().biasedLockMaskInPlace;
+    public static int biasedLockMaskInPlace() {
+        return config().biasedLockMaskInPlace;
     }
 
     @Fold
-    static int epochMaskInPlace() {
-        return HotSpotGraalRuntime.getInstance().getConfig().epochMaskInPlace;
+    public static int epochMaskInPlace() {
+        return config().epochMaskInPlace;
     }
 
     /**
@@ -124,88 +128,88 @@ public class HotSpotSnippetUtils {
      *
      */
     @Fold
-    static int biasedLockPattern() {
-        return HotSpotGraalRuntime.getInstance().getConfig().biasedLockPattern;
+    public static int biasedLockPattern() {
+        return config().biasedLockPattern;
     }
 
     @Fold
-    static int ageMaskInPlace() {
-        return HotSpotGraalRuntime.getInstance().getConfig().ageMaskInPlace;
+    public static int ageMaskInPlace() {
+        return config().ageMaskInPlace;
     }
 
     @Fold
-    static int hubOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().hubOffset;
+    public static int hubOffset() {
+        return config().hubOffset;
     }
 
     @Fold
-    static int metaspaceArrayLengthOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().metaspaceArrayLengthOffset;
+    public static int metaspaceArrayLengthOffset() {
+        return config().metaspaceArrayLengthOffset;
     }
 
     @Fold
-    static int metaspaceArrayBaseOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().metaspaceArrayBaseOffset;
+    public static int metaspaceArrayBaseOffset() {
+        return config().metaspaceArrayBaseOffset;
     }
 
     @Fold
-    static int arrayLengthOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().arrayLengthOffset;
+    public static int arrayLengthOffset() {
+        return config().arrayLengthOffset;
     }
 
     @Fold
-    static int arrayBaseOffset(Kind elementKind) {
+    public static int arrayBaseOffset(Kind elementKind) {
         return HotSpotRuntime.getArrayBaseOffset(elementKind);
     }
 
     @Fold
-    static int arrayIndexScale(Kind elementKind) {
+    public static int arrayIndexScale(Kind elementKind) {
         return HotSpotRuntime.getArrayIndexScale(elementKind);
     }
 
     @Fold
-    static int cardTableShift() {
-        return HotSpotGraalRuntime.getInstance().getConfig().cardtableShift;
+    public static int cardTableShift() {
+        return config().cardtableShift;
     }
 
     @Fold
-    static long cardTableStart() {
-        return HotSpotGraalRuntime.getInstance().getConfig().cardtableStartAddress;
+    public static long cardTableStart() {
+        return config().cardtableStartAddress;
     }
 
     @Fold
-    static int superCheckOffsetOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().superCheckOffsetOffset;
+    public static int superCheckOffsetOffset() {
+        return config().superCheckOffsetOffset;
     }
 
     @Fold
-    static int secondarySuperCacheOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().secondarySuperCacheOffset;
+    public static int secondarySuperCacheOffset() {
+        return config().secondarySuperCacheOffset;
     }
 
     @Fold
-    static int secondarySupersOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().secondarySupersOffset;
+    public static int secondarySupersOffset() {
+        return config().secondarySupersOffset;
     }
 
     @Fold
-    static int lockDisplacedMarkOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().basicLockDisplacedHeaderOffset;
+    public static int lockDisplacedMarkOffset() {
+        return config().basicLockDisplacedHeaderOffset;
     }
 
     @Fold
-    static boolean useBiasedLocking() {
-        return HotSpotGraalRuntime.getInstance().getConfig().useBiasedLocking;
+    public static boolean useBiasedLocking() {
+        return config().useBiasedLocking;
     }
 
     /**
      * Loads the hub from a object, null checking it first.
      */
-    static Word loadHub(Object object) {
+    public static Word loadHub(Object object) {
         return loadHubIntrinsic(object, wordKind());
     }
 
-    static Object verifyOop(Object object) {
+    public static Object verifyOop(Object object) {
         if (verifyOops()) {
             VerifyOopStubCall.call(object);
         }
@@ -215,27 +219,27 @@ public class HotSpotSnippetUtils {
     /**
      * Gets the value of the stack pointer register as a Word.
      */
-    static Word stackPointer() {
+    public static Word stackPointer() {
         return HotSpotSnippetUtils.registerAsWord(stackPointerRegister());
     }
 
     /**
      * Gets the value of the thread register as a Word.
      */
-    static Word thread() {
+    public static Word thread() {
         return HotSpotSnippetUtils.registerAsWord(threadRegister());
     }
 
-    static int loadIntFromWord(Word address, int offset) {
+    public static int loadIntFromWord(Word address, int offset) {
         Integer value = UnsafeLoadNode.load(address, 0, offset, Kind.Int);
         return value;
     }
 
-    static Word loadWordFromWord(Word address, int offset) {
+    public static Word loadWordFromWord(Word address, int offset) {
         return loadWordFromWordIntrinsic(address, 0, offset, wordKind());
     }
 
-    static Word loadWordFromObject(Object object, int offset) {
+    public static Word loadWordFromObject(Object object, int offset) {
         return loadWordFromObjectIntrinsic(object, 0, offset, wordKind());
     }
 

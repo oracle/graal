@@ -571,11 +571,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitCall(Object targetMethod, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info) {
+    protected void emitCall(RuntimeCall callTarget, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info) {
         if (isConstant(targetAddress)) {
-            append(new DirectCallOp(targetMethod, result, arguments, temps, info));
+            append(new DirectCallOp(callTarget, result, arguments, temps, info));
         } else {
-            append(new IndirectCallOp(targetMethod, result, arguments, temps, targetAddress, info));
+            append(new IndirectCallOp(callTarget, result, arguments, temps, targetAddress, info));
         }
     }
 

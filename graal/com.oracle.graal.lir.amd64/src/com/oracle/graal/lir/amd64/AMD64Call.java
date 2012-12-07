@@ -44,10 +44,10 @@ public class AMD64Call {
         @Temp protected Value[] temps;
         @State protected LIRFrameState state;
 
-        protected final Object targetMethod;
+        protected final Object callTarget;
 
-        public DirectCallOp(Object targetMethod, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            this.targetMethod = targetMethod;
+        public DirectCallOp(Object callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            this.callTarget = callTarget;
             this.result = result;
             this.parameters = parameters;
             this.state = state;
@@ -58,7 +58,7 @@ public class AMD64Call {
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             emitAlignmentForDirectCall(tasm, masm);
-            directCall(tasm, masm, targetMethod, state);
+            directCall(tasm, masm, callTarget, state);
         }
 
         protected void emitAlignmentForDirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
@@ -79,10 +79,10 @@ public class AMD64Call {
         @Temp protected Value[] temps;
         @State protected LIRFrameState state;
 
-        protected final Object targetMethod;
+        protected final Object callTarget;
 
-        public IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
-            this.targetMethod = targetMethod;
+        public IndirectCallOp(Object callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
+            this.callTarget = callTarget;
             this.result = result;
             this.parameters = parameters;
             this.targetAddress = targetAddress;
@@ -93,7 +93,7 @@ public class AMD64Call {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            indirectCall(tasm, masm, asRegister(targetAddress), targetMethod, state);
+            indirectCall(tasm, masm, asRegister(targetAddress), callTarget, state);
         }
 
         @Override
@@ -103,10 +103,10 @@ public class AMD64Call {
         }
     }
 
-    public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Object target, LIRFrameState info) {
+    public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Object callTarget, LIRFrameState info) {
         int before = masm.codeBuffer.position();
-        if (target instanceof RuntimeCall) {
-            long maxOffset = ((RuntimeCall) target).getMaxCallTargetOffset();
+        if (callTarget instanceof RuntimeCall) {
+            long maxOffset = ((RuntimeCall) callTarget).getMaxCallTargetOffset();
             if (maxOffset != (int) maxOffset) {
                 // offset might not fit a 32-bit immediate, generate an
                 // indirect call with a 64-bit immediate
@@ -122,7 +122,7 @@ public class AMD64Call {
             masm.call();
         }
         int after = masm.codeBuffer.position();
-        tasm.recordDirectCall(before, after, tasm.runtime.lookupCallTarget(target), info);
+        tasm.recordDirectCall(before, after, tasm.runtime.lookupCallTarget(callTarget), info);
         tasm.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
     }
@@ -135,11 +135,11 @@ public class AMD64Call {
         masm.ensureUniquePC();
     }
 
-    public static void indirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Register dst, Object target, LIRFrameState info) {
+    public static void indirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Register dst, Object callTarget, LIRFrameState info) {
         int before = masm.codeBuffer.position();
         masm.call(dst);
         int after = masm.codeBuffer.position();
-        tasm.recordIndirectCall(before, after, tasm.runtime.lookupCallTarget(target), info);
+        tasm.recordIndirectCall(before, after, tasm.runtime.lookupCallTarget(callTarget), info);
         tasm.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
     }

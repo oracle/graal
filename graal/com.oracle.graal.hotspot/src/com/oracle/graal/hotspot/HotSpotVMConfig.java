@@ -222,6 +222,21 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int methodCompiledEntryOffset;
     public int basicLockSize;
     public int basicLockDisplacedHeaderOffset;
+    public long tlabIntArrayMarkWord;
+    public long heapEndAddress;
+    public long heapTopAddress;
+    public int threadTlabStartOffset;
+    public int threadTlabSizeOffset;
+    public int threadAllocatedBytesOffset;
+    public int tlabRefillWasteLimitOffset;
+    public int tlabRefillWasteIncrement;
+    public int tlabAlignmentReserve;
+    public int tlabSlowAllocationsOffset;
+    public int tlabFastRefillWasteOffset;
+    public int tlabNumberOfRefillsOffset;
+    public boolean tlabStats;
+    public int klassInstanceSizeOffset;
+    public boolean inlineContiguousAllocationSupported;
 
     // methodData information
     public int methodDataOopDataOffset;

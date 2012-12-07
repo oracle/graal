@@ -30,24 +30,23 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
 
 /**
- * A call to the {@link NewInstanceStub}.
+ * Node implementing a call to HotSpot's {@code new_instance} stub.
  */
-public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowerable {
+public class NewInstanceSlowStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
     @Input private final ValueNode hub;
 
-    public static final Descriptor NEW_INSTANCE = new Descriptor("new_instance", false, Kind.Object, wordKind());
+    public static final Descriptor NEW_INSTANCE_SLOW = new Descriptor("new_instance_slow", false, Kind.Object, wordKind());
 
-    public NewInstanceStubCall(ValueNode hub) {
+    public NewInstanceSlowStubCall(ValueNode hub) {
         super(defaultStamp);
         this.hub = hub;
     }
@@ -63,7 +62,7 @@ public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowe
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(NEW_INSTANCE);
+        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(NEW_INSTANCE_SLOW);
         Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub));
         gen.setResult(this, result);
     }

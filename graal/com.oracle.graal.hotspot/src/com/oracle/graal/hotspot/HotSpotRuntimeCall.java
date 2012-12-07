@@ -23,7 +23,9 @@
 package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.stubs.*;
 
 /**
  * The details required to link a HotSpot runtime or stub call.
@@ -38,7 +40,12 @@ public class HotSpotRuntimeCall implements RuntimeCall {
     /**
      * The entry point address of the stub.
      */
-    public final long address;
+    private long address;
+
+    /**
+     * Non-null (eventually) iff this is a call to a snippet-based {@linkplain Stub stub}.
+     */
+    private Stub stub;
 
     /**
      * Where the stub gets its arguments and where it places its result.
@@ -56,7 +63,7 @@ public class HotSpotRuntimeCall implements RuntimeCall {
 
     @Override
     public String toString() {
-        return descriptor + "@0x" + Long.toHexString(address) + ":" + cc;
+        return (stub == null ? descriptor.toString() : MetaUtil.format("%h.%n", stub.getMethod())) + "@0x" + Long.toHexString(address) + ":" + cc;
     }
 
     public CallingConvention getCallingConvention() {
@@ -69,5 +76,20 @@ public class HotSpotRuntimeCall implements RuntimeCall {
 
     public Descriptor getDescriptor() {
         return descriptor;
+    }
+
+    public void setStub(Stub stub) {
+        assert address == 0L : "cannot stub for linkage that already has an address: " + this;
+        this.stub = stub;
+    }
+
+    public void setAddress(long address) {
+        assert this.address == 0L : "cannot re-initialize address of " + this;
+        this.address = address;
+    }
+
+    public long getAddress() {
+        assert address != 0L : "address not yet initialized for " + this;
+        return address;
     }
 }

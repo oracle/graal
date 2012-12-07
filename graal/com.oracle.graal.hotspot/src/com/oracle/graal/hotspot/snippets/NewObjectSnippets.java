@@ -225,10 +225,11 @@ public class NewObjectSnippets implements SnippetsInterface {
     /**
      * Formats some allocated memory with an object header zeroes out the rest.
      */
-    private static void formatArray(Word hub, int size, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents) {
+    public static void formatArray(Word hub, int size, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents) {
         storeWord(memory, 0, markOffset(), prototypeMarkWord);
-        storeWord(memory, 0, hubOffset(), hub);
         storeInt(memory, 0, arrayLengthOffset(), length);
+        // store hub last as the concurrent garbage collectors assume length is valid if hub field is not null
+        storeWord(memory, 0, hubOffset(), hub);
         if (fillContents) {
             for (int offset = headerSize; offset < size; offset += wordSize()) {
                 storeWord(memory, 0, offset, Word.zero());

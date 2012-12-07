@@ -63,7 +63,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     private final boolean hasFinalizableSubclass;
 
     /**
-     * The instance size for an instance type, {@link HotSpotResolvedObjectType#INTERFACE_SPECIES_VALUE} denoting
+     * The instance size (in bytes) for an instance type, {@link HotSpotResolvedObjectType#INTERFACE_SPECIES_VALUE} denoting
      * an interface type or {@link HotSpotResolvedObjectType#ARRAY_SPECIES_VALUE} denoting an array type.
      */
     private final int sizeOrSpecies;
