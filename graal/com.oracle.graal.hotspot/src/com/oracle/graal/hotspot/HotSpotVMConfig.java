@@ -254,8 +254,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long debugStub;
     public long instanceofStub;
     public long newInstanceStub;
-    public long newTypeArrayStub;
-    public long newObjectArrayStub;
+    public long newArrayStub;
     public long newMultiArrayStub;
     public long inlineCacheMissStub;
     public long handleExceptionStub;

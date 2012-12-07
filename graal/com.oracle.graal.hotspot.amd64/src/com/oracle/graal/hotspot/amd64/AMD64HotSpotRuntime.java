@@ -85,13 +85,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /* arg0: object */ arg(0, Kind.Object),
                 /* arg1:   lock */ arg(1, word));
 
-        addRuntimeCall(NEW_OBJECT_ARRAY, c.newObjectArrayStub,
-                /*        temps */ new Register[] {rcx, rdi, rsi},
-                /*          ret */ rax.asValue(Kind.Object),
-                /* arg0:    hub */ rdx.asValue(word),
-                /* arg1: length */ rbx.asValue(Kind.Int));
-
-        addRuntimeCall(NEW_TYPE_ARRAY, c.newTypeArrayStub,
+        addRuntimeCall(NEW_ARRAY, c.newArrayStub,
                 /*        temps */ new Register[] {rcx, rdi, rsi},
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(word),
