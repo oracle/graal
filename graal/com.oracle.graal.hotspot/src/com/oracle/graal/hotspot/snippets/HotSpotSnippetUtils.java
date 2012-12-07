@@ -90,6 +90,11 @@ public class HotSpotSnippetUtils {
     }
 
     @Fold
+    public static long arrayPrototypeMarkWord() {
+        return config().arrayPrototypeMarkWord;
+    }
+
+    @Fold
     public static int markOffset() {
         return config().markOffset;
     }
@@ -254,6 +259,149 @@ public class HotSpotSnippetUtils {
 
     @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
     static native Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word);
+
+    @Fold
+    public
+    static int log2WordSize() {
+        return CodeUtil.log2(wordSize());
+    }
+
+    @Fold
+    public
+    static int klassStateOffset() {
+        return config().klassStateOffset;
+    }
+
+    @Fold
+    public
+    static int klassInstanceSizeOffset() {
+        return config().klassInstanceSizeOffset;
+    }
+
+    @Fold
+    public
+    static long heapTopAddress() {
+        return config().heapTopAddress;
+    }
+
+    @Fold
+    public
+    static long heapEndAddress() {
+        return config().heapEndAddress;
+    }
+
+    @Fold
+    public
+    static int threadTlabStartOffset() {
+        return config().threadTlabStartOffset;
+    }
+
+    @Fold
+    public
+    static long tlabIntArrayMarkWord() {
+        return config().tlabIntArrayMarkWord;
+    }
+
+    @Fold
+    public
+    static boolean inlineContiguousAllocationSupported() {
+        return config().inlineContiguousAllocationSupported;
+    }
+
+    @Fold
+    public
+    static int tlabAlignmentReserveInHeapWords() {
+        return config().tlabAlignmentReserve;
+    }
+
+    @Fold
+    public
+    static int threadTlabSizeOffset() {
+        return config().threadTlabSizeOffset;
+    }
+
+    @Fold
+    public
+    static int threadAllocatedBytesOffset() {
+        return config().threadAllocatedBytesOffset;
+    }
+
+    @Fold
+    public
+    static int klassStateFullyInitialized() {
+        return config().klassStateFullyInitialized;
+    }
+
+    @Fold
+    public
+    static int tlabRefillWasteLimitOffset() {
+        return config().tlabRefillWasteLimitOffset;
+    }
+
+    @Fold
+    public
+    static int tlabNumberOfRefillsOffset() {
+        return config().tlabNumberOfRefillsOffset;
+    }
+
+    @Fold
+    public
+    static int tlabFastRefillWasteOffset() {
+        return config().tlabFastRefillWasteOffset;
+    }
+
+    @Fold
+    public
+    static int tlabSlowAllocationsOffset() {
+        return config().tlabSlowAllocationsOffset;
+    }
+
+    @Fold
+    public
+    static int tlabRefillWasteIncrement() {
+        return config().tlabRefillWasteIncrement;
+    }
+
+    @Fold
+    public
+    static boolean tlabStats() {
+        return config().tlabStats;
+    }
+
+    @Fold
+    public static int layoutHelperOffset() {
+        return config().layoutHelperOffset;
+    }
+
+    @Fold
+    public static int layoutHelperHeaderSizeShift() {
+        return config().layoutHelperHeaderSizeShift;
+    }
+
+    @Fold
+    public static int layoutHelperHeaderSizeMask() {
+        return config().layoutHelperHeaderSizeMask;
+    }
+
+    @Fold
+    public static int layoutHelperLog2ElementSizeShift() {
+        return config().layoutHelperLog2ElementSizeShift;
+    }
+
+    @Fold
+    public static int layoutHelperLog2ElementSizeMask() {
+        return config().layoutHelperLog2ElementSizeMask;
+    }
+
+    @Fold
+    public static int layoutHelperElementTypeShift() {
+        return config().layoutHelperElementTypeShift;
+    }
+
+    @Fold
+    public static int layoutHelperElementTypeMask() {
+        return config().layoutHelperElementTypeMask;
+    }
 
     static {
         assert arrayIndexScale(Kind.Byte) == 1;

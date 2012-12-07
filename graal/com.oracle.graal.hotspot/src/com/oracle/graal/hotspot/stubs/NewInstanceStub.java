@@ -35,7 +35,6 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
-import com.oracle.graal.snippets.Snippet.Fold;
 import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 
@@ -67,10 +66,10 @@ public class NewInstanceStub extends Stub {
      */
     @Snippet
     private static Object newInstance(@Parameter("hub") Word hub, @ConstantParameter("intArrayHub") Word intArrayHub) {
-        logf("newInstance: hub=%p\n", hub.toLong());
+        int sizeInBytes = loadIntFromWord(hub, klassInstanceSizeOffset());
+        logf("newInstance: size %d\n", sizeInBytes);
         if (inlineContiguousAllocationSupported()) {
             if (loadIntFromWord(hub, klassStateOffset()) == klassStateFullyInitialized()) {
-                int sizeInBytes = loadIntFromWord(hub, klassInstanceSizeOffset());
                 Word memory;
                 if (refillTLAB(intArrayHub, Word.fromLong(tlabIntArrayMarkWord()), tlabAlignmentReserveInHeapWords() * wordSize())) {
                     memory = allocate(sizeInBytes);
@@ -102,7 +101,7 @@ public class NewInstanceStub extends Stub {
      * @param alignmentReserveInBytes the amount of extra bytes to reserve in a new TLAB
      * @return whether or not a new TLAB was allocated
      */
-    private static boolean refillTLAB(Word intArrayHub, Word intArrayMarkWord, int alignmentReserveInBytes) {
+    static boolean refillTLAB(Word intArrayHub, Word intArrayMarkWord, int alignmentReserveInBytes) {
 
         Word thread = thread();
         Word top = loadWordFromWord(thread, threadTlabTopOffset());
@@ -186,7 +185,7 @@ public class NewInstanceStub extends Stub {
      * @param sizeInBytes the size of the chunk to allocate
      * @return the allocated chunk or {@link Word#zero()} if allocation fails
      */
-    private static Word edenAllocate(Word sizeInBytes) {
+    static Word edenAllocate(Word sizeInBytes) {
         Word heapTopAddress = Word.fromLong(heapTopAddress());
         Word heapEndAddress = Word.fromLong(heapEndAddress());
         logf("edenAllocate: heapTopAddress %p\n", heapTopAddress.toLong());
@@ -222,95 +221,5 @@ public class NewInstanceStub extends Stub {
         if (LOGGING_ENABLED) {
             Log.printf(format, value);
         }
-    }
-
-    @Fold
-    static int log2WordSize() {
-        return CodeUtil.log2(wordSize());
-    }
-
-    @Fold
-    static int klassStateOffset() {
-        return config().klassStateOffset;
-    }
-
-    @Fold
-    static int klassInstanceSizeOffset() {
-        return config().klassInstanceSizeOffset;
-    }
-
-    @Fold
-    static long heapTopAddress() {
-        return config().heapTopAddress;
-    }
-
-    @Fold
-    static long heapEndAddress() {
-        return config().heapEndAddress;
-    }
-
-    @Fold
-    static int threadTlabStartOffset() {
-        return config().threadTlabStartOffset;
-    }
-
-    @Fold
-    static long tlabIntArrayMarkWord() {
-        return config().tlabIntArrayMarkWord;
-    }
-
-    @Fold
-    static boolean inlineContiguousAllocationSupported() {
-        return config().inlineContiguousAllocationSupported;
-    }
-
-    @Fold
-    static int tlabAlignmentReserveInHeapWords() {
-        return config().tlabAlignmentReserve;
-    }
-
-    @Fold
-    static int threadTlabSizeOffset() {
-        return config().threadTlabSizeOffset;
-    }
-
-    @Fold
-    static int threadAllocatedBytesOffset() {
-        return config().threadAllocatedBytesOffset;
-    }
-
-    @Fold
-    static int klassStateFullyInitialized() {
-        return config().klassStateFullyInitialized;
-    }
-
-    @Fold
-    static int tlabRefillWasteLimitOffset() {
-        return config().tlabRefillWasteLimitOffset;
-    }
-
-    @Fold
-    static int tlabNumberOfRefillsOffset() {
-        return config().tlabNumberOfRefillsOffset;
-    }
-
-    @Fold
-    static int tlabFastRefillWasteOffset() {
-        return config().tlabFastRefillWasteOffset;
-    }
-
-    @Fold
-    static int tlabSlowAllocationsOffset() {
-        return config().tlabSlowAllocationsOffset;
-    }
-
-    @Fold
-    static int tlabRefillWasteIncrement() {
-        return config().tlabRefillWasteIncrement;
-    }
-
-    @Fold
-    static boolean tlabStats() {
-        return config().tlabStats;
     }
 }

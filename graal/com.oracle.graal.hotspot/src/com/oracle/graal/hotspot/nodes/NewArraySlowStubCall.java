@@ -30,25 +30,24 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
 
 /**
- * A call to the {@link NewArrayStub}.
+ * Node implementing a call to the {@code new_array} stub.
  */
-public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerable {
+public class NewArraySlowStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
     @Input private final ValueNode hub;
     @Input private final ValueNode length;
 
-    public static final Descriptor NEW_ARRAY = new Descriptor("new_array", false, Kind.Object, wordKind(), Kind.Int);
+    public static final Descriptor NEW_ARRAY_SLOW = new Descriptor("new_array_slow", false, Kind.Object, wordKind(), Kind.Int);
 
-    public NewArrayStubCall(ValueNode hub, ValueNode length) {
+    public NewArraySlowStubCall(ValueNode hub, ValueNode length) {
         super(defaultStamp);
         this.hub = hub;
         this.length = length;
@@ -65,7 +64,7 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NEW_ARRAY);
+        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NEW_ARRAY_SLOW);
         Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub), gen.operand(length));
         gen.setResult(this, result);
     }

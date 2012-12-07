@@ -470,7 +470,12 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     public long prototypeMarkWord() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getPrototypeMarkWord(this);
+        HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
+        if (isArray()) {
+            return config.arrayPrototypeMarkWord;
+        } else {
+            return unsafeReadWord(metaspaceKlass + config.prototypeMarkWordOffset);
+        }
     }
 
     @Override

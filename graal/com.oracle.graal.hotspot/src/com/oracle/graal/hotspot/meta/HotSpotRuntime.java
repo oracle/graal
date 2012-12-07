@@ -84,6 +84,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     private MonitorSnippets.Templates monitorSnippets;
 
     private NewInstanceStub newInstanceStub;
+    private NewArrayStub newArrayStub;
 
     private final Map<Descriptor, HotSpotRuntimeCallTarget> runtimeCalls = new HashMap<>();
     private final Map<ResolvedJavaMethod, Stub> stubs = new HashMap<>();
@@ -300,7 +301,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         installer.install(InstanceOfSnippets.class);
         installer.install(NewObjectSnippets.class);
         installer.install(MonitorSnippets.class);
+
         installer.install(NewInstanceStub.class);
+        installer.install(NewArrayStub.class);
 
         checkcastSnippets = new CheckCastSnippets.Templates(this, assumptions, graalRuntime.getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(this, assumptions, graalRuntime.getTarget());
@@ -308,7 +311,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         monitorSnippets = new MonitorSnippets.Templates(this, assumptions, graalRuntime.getTarget(), config.useFastLocking);
 
         newInstanceStub = new NewInstanceStub(this, assumptions, graalRuntime.getTarget());
+        newArrayStub = new NewArrayStub(this, assumptions, graalRuntime.getTarget());
         newInstanceStub.install(graalRuntime.getCompiler());
+        newArrayStub.install(graalRuntime.getCompiler());
     }
 
     public HotSpotGraalRuntime getGraalRuntime() {

@@ -237,6 +237,14 @@ public final class HotSpotVMConfig extends CompilerObject {
     public boolean tlabStats;
     public int klassInstanceSizeOffset;
     public boolean inlineContiguousAllocationSupported;
+    public long arrayPrototypeMarkWord;
+    public int layoutHelperLog2ElementSizeShift;
+    public int layoutHelperLog2ElementSizeMask;
+    public int layoutHelperElementTypeShift;
+    public int layoutHelperElementTypeMask;
+    public int layoutHelperHeaderSizeShift;
+    public int layoutHelperHeaderSizeMask;
+    public int layoutHelperOffset;
 
     // methodData information
     public int methodDataOopDataOffset;

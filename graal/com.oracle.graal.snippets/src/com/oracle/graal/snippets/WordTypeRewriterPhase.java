@@ -311,7 +311,7 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     private void changeToWord(ValueNode valueNode) {
-        assert !(valueNode instanceof ConstantNode);
+        assert !(valueNode instanceof ConstantNode) : "boxed Word constants should not appear in a snippet graph: " + valueNode + ", stamp: " + valueNode.stamp();
         valueNode.setStamp(StampFactory.forKind(wordKind));
 
         // Propagate word kind.

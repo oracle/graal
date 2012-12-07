@@ -99,26 +99,26 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @Parameter("memory") Word memory,
                     @Parameter("hub") Word hub,
                     @Parameter("length") int length,
-                    @Parameter("size") int size,
+                    @Parameter("allocationSize") int allocationSize,
                     @Parameter("prototypeMarkWord") Word prototypeMarkWord,
                     @ConstantParameter("headerSize") int headerSize,
                     @ConstantParameter("fillContents") boolean fillContents,
                     @ConstantParameter("locked") boolean locked) {
         if (locked) {
-            return initializeArray(memory, hub, length, size, thread().or(biasedLockPattern()), headerSize, fillContents);
+            return initializeArray(memory, hub, length, allocationSize, thread().or(biasedLockPattern()), headerSize, fillContents);
         } else {
-            return initializeArray(memory, hub, length, size, prototypeMarkWord, headerSize, fillContents);
+            return initializeArray(memory, hub, length, allocationSize, prototypeMarkWord, headerSize, fillContents);
         }
     }
 
-    private static Object initializeArray(Word memory, Word hub, int length, int size, Word prototypeMarkWord, int headerSize, boolean fillContents) {
+    private static Object initializeArray(Word memory, Word hub, int length, int allocationSize, Word prototypeMarkWord, int headerSize, boolean fillContents) {
         Object result;
         if (memory == Word.zero()) {
             newarray_stub.inc();
             result = NewArrayStubCall.call(hub, length);
         } else {
             newarray_loopInit.inc();
-            formatArray(hub, size, length, headerSize, memory, prototypeMarkWord, fillContents);
+            formatArray(hub, allocationSize, length, headerSize, memory, prototypeMarkWord, fillContents);
             result = memory.toObject();
         }
         return unsafeArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
@@ -127,7 +127,7 @@ public class NewObjectSnippets implements SnippetsInterface {
     /**
      * Maximum array length for which fast path allocation is used.
      */
-    private static final int MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH = 0x00FFFFFF;
+    public static final int MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH = 0x00FFFFFF;
 
     @Snippet
     public static Object allocateArrayAndInitialize(
@@ -140,12 +140,21 @@ public class NewObjectSnippets implements SnippetsInterface {
             // This handles both negative array sizes and very large array sizes
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.RuntimeConstraint);
         }
-        int size = getArraySize(length, alignment, headerSize, log2ElementSize);
-        Word memory = TLABAllocateNode.allocateVariableSize(size);
-        return InitializeArrayNode.initialize(memory, length, size, type, true, false);
+        int allocationSize = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
+        Word memory = TLABAllocateNode.allocateVariableSize(allocationSize);
+        return InitializeArrayNode.initialize(memory, length, allocationSize, type, true, false);
     }
 
-    public static int getArraySize(int length, int alignment, int headerSize, int log2ElementSize) {
+    /**
+     * Computes the size of the memory chunk allocated for an array. This size accounts for the array
+     * header size, boy size and any padding after the last element to satisfy object alignment requirements.
+     *
+     * @param length the number of elements in the array
+     * @param alignment the object alignment requirement
+     * @param headerSize the size of the array header
+     * @param log2ElementSize log2 of the size of an element in the array
+     */
+    public static int computeArrayAllocationSize(int length, int alignment, int headerSize, int log2ElementSize) {
         int size = (length << log2ElementSize) + headerSize + (alignment - 1);
         int mask = ~(alignment - 1);
         return size & mask;
@@ -200,13 +209,13 @@ public class NewObjectSnippets implements SnippetsInterface {
     /**
      * Formats some allocated memory with an object header zeroes out the rest.
      */
-    public static void formatArray(Word hub, int size, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents) {
+    public static void formatArray(Word hub, int allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents) {
         storeWord(memory, 0, markOffset(), prototypeMarkWord);
         storeInt(memory, 0, arrayLengthOffset(), length);
         // store hub last as the concurrent garbage collectors assume length is valid if hub field is not null
         storeWord(memory, 0, hubOffset(), hub);
         if (fillContents) {
-            for (int offset = headerSize; offset < size; offset += wordSize()) {
+            for (int offset = headerSize; offset < allocationSize; offset += wordSize()) {
                 storeWord(memory, 0, offset, Word.zero());
             }
         }
@@ -282,7 +291,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
             } else if (length != null && belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
                 // Calculate aligned size
-                int size = getArraySize(length, alignment, headerSize, log2ElementSize);
+                int size = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
                 ConstantNode sizeNode = ConstantNode.forInt(size, graph);
                 tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode));
                 graph.addBeforeFixed(newArrayNode, tlabAllocateNode);
@@ -340,7 +349,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             final int headerSize = HotSpotRuntime.getArrayBaseOffset(elementKind);
             Key key = new Key(initializeArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
             ValueNode memory = initializeNode.memory();
-            Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord()).add("size", initializeNode.size()).add("length", initializeNode.length());
+            Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord()).add("allocationSize", initializeNode.allocationSize()).add("length", initializeNode.length());
             SnippetTemplate template = cache.get(key, assumptions);
             Debug.log("Lowering initializeArray in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, arguments);
             template.instantiate(runtime, initializeNode, DEFAULT_REPLACER, arguments);
