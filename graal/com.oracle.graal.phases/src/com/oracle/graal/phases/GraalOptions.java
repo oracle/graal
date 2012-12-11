@@ -199,7 +199,7 @@ public final class GraalOptions {
     public static boolean OptEliminatePartiallyRedundantGuards = true;
 
     // Intrinsification settings
-    public static boolean IntrinsifyArrayCopy                = false;
+    public static boolean IntrinsifyArrayCopy                = true;
     public static boolean IntrinsifyObjectMethods            = true;
     public static boolean IntrinsifySystemMethods            = true;
     public static boolean IntrinsifyClassMethods             = true;

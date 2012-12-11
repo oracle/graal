@@ -369,6 +369,7 @@ public class IntrinsificationTest extends GraalCompilerTest {
                 StructuredGraph graph = parse(snippet);
                 PhasePlan phasePlan = getDefaultPhasePlan();
                 Assumptions assumptions = new Assumptions(true);
+                new ComputeProbabilityPhase().apply(graph);
                 Debug.dump(graph, "Graph");
                 new InliningPhase(null, runtime(), null, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
                 Debug.dump(graph, "Graph");
