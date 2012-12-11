@@ -29,7 +29,6 @@ import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.snippets.SystemSnippets.*;
 import static com.oracle.graal.java.GraphBuilderPhase.*;
-import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.nodes.UnwindNode.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.snippets.Log.*;
@@ -70,7 +69,7 @@ import com.oracle.graal.snippets.*;
 /**
  * HotSpot implementation of {@link GraalCodeCacheProvider}.
  */
-public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
+public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetProvider {
     public final HotSpotVMConfig config;
 
     protected final RegisterConfig regConfig;
@@ -267,9 +266,24 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     protected abstract RegisterConfig createRegisterConfig(boolean globalStubConfig);
 
     public void installSnippets(SnippetInstaller installer, Assumptions assumptions) {
-        installer.install(SystemSnippets.class);
-        installer.install(UnsafeSnippets.class);
-        installer.install(ArrayCopySnippets.class);
+        if (GraalOptions.IntrinsifyObjectMethods) {
+            installer.install(ObjectSnippets.class);
+        }
+        if (GraalOptions.IntrinsifySystemMethods) {
+            installer.install(SystemSnippets.class);
+        }
+        if (GraalOptions.IntrinsifyThreadMethods) {
+            installer.install(ThreadSnippets.class);
+        }
+        if (GraalOptions.IntrinsifyUnsafeMethods) {
+            installer.install(UnsafeSnippets.class);
+        }
+        if (GraalOptions.IntrinsifyClassMethods) {
+            installer.install(ClassSnippets.class);
+        }
+        if (GraalOptions.IntrinsifyArrayCopy) {
+            installer.install(ArrayCopySnippets.class);
+        }
 
         installer.install(CheckCastSnippets.class);
         installer.install(InstanceOfSnippets.class);
@@ -664,54 +678,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     @Override
     public StructuredGraph intrinsicGraph(ResolvedJavaMethod caller, int bci, ResolvedJavaMethod method, List<? extends Node> parameters) {
-        ResolvedJavaType holder = method.getDeclaringClass();
-        String fullName = method.getName() + ((HotSpotSignature) method.getSignature()).asString();
-        Kind wordKind = graalRuntime.getTarget().wordKind;
-        if (MetaUtil.isJavaLangObject(holder)) {
-            if (fullName.equals("getClass()Ljava/lang/Class;")) {
-                ValueNode obj = (ValueNode) parameters.get(0);
-                ObjectStamp stamp = (ObjectStamp) obj.stamp();
-                if (stamp.nonNull() && stamp.isExactType()) {
-                    HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) stamp.type();
-                    StructuredGraph graph = new StructuredGraph();
-                    ValueNode result = ConstantNode.forObject(type.mirror(), this, graph);
-                    ReturnNode ret = graph.add(new ReturnNode(result));
-                    graph.start().setNext(ret);
-                    return graph;
-                }
-                StructuredGraph graph = new StructuredGraph();
-                LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
-                LoadHubNode hub = graph.add(new LoadHubNode(receiver, wordKind));
-                Stamp resultStamp = StampFactory.declaredNonNull(lookupJavaType(Class.class));
-                FloatingReadNode result = graph.unique(new FloatingReadNode(hub, LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Object, config.classMirrorOffset, graph), null, resultStamp));
-                ReturnNode ret = graph.add(new ReturnNode(result));
-                graph.start().setNext(hub);
-                hub.setNext(ret);
-                return graph;
-            }
-        } else if (holder.equals(lookupJavaType(Class.class))) {
-            if (fullName.equals("getModifiers()I")) {
-                StructuredGraph graph = new StructuredGraph();
-                LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
-                SafeReadNode klass = safeRead(graph, wordKind, receiver, config.klassOffset, StampFactory.forKind(wordKind), INVALID_GRAPH_ID);
-                graph.start().setNext(klass);
-                LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Int, config.klassModifierFlagsOffset, graph);
-                FloatingReadNode readModifiers = graph.unique(new FloatingReadNode(klass, location, null, StampFactory.intValue()));
-                CompareNode isZero = CompareNode.createCompareNode(Condition.EQ, klass, ConstantNode.defaultForKind(wordKind, graph));
-                GuardNode guard = graph.unique(new GuardNode(isZero, graph.start(), NullCheckException, InvalidateReprofile, true, INVALID_GRAPH_ID));
-                readModifiers.dependencies().add(guard);
-                ReturnNode ret = graph.add(new ReturnNode(readModifiers));
-                klass.setNext(ret);
-                return graph;
-            }
-        } else if (holder.equals(lookupJavaType(Thread.class))) {
-            if (fullName.equals("currentThread()Ljava/lang/Thread;")) {
-                StructuredGraph graph = new StructuredGraph();
-                ReturnNode ret = graph.add(new ReturnNode(graph.unique(new CurrentThread(config.threadObjectOffset, this))));
-                graph.start().setNext(ret);
-                return graph;
-            }
-        }
         return null;
     }
 

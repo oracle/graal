@@ -174,7 +174,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
                 }
                 type = (HotSpotResolvedObjectType) fromMetaspaceKlass(subklass);
             }
-            if (unsafeReadWord(type.metaspaceKlass + config.subklassOffset) != 0) {
+            if (type.isInterface() || unsafeReadWord(type.metaspaceKlass + config.subklassOffset) != 0) {
                 return null;
             }
             return type;

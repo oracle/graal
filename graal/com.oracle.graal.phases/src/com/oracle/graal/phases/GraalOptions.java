@@ -198,6 +198,15 @@ public final class GraalOptions {
     public static boolean OptTailDuplication                 = true;
     public static boolean OptEliminatePartiallyRedundantGuards = true;
 
+    // Intrinsification settings
+    public static boolean IntrinsifyArrayCopy                = false;
+    public static boolean IntrinsifyObjectMethods            = true;
+    public static boolean IntrinsifySystemMethods            = true;
+    public static boolean IntrinsifyClassMethods             = true;
+    public static boolean IntrinsifyThreadMethods            = true;
+    public static boolean IntrinsifyUnsafeMethods            = true;
+    public static boolean IntrinsifyMathMethods              = true;
+
     /**
      * Counts the various paths taken through snippets.
      */

@@ -32,6 +32,8 @@ import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
+import static com.oracle.graal.hotspot.nodes.IdentityHashCodeStubCall.*;
+import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
 import static com.oracle.graal.lir.amd64.AMD64Call.*;
 
 import com.oracle.graal.api.code.*;
@@ -44,7 +46,6 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
     public AMD64HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
         super(config, graalRuntime);
 
-        HotSpotVMConfig c = config;
         Kind word = graalRuntime.getTarget().wordKind;
 
         addRuntimeCall(DEOPTIMIZE, config.deoptimizeStub,
@@ -78,48 +79,58 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /* arg0: object */ arg(0, Kind.Object),
                 /* arg1:   lock */ arg(1, word));
 
-        addRuntimeCall(MONITOREXIT, c.monitorExitStub,
+        addRuntimeCall(MONITOREXIT, config.monitorExitStub,
                 /*        temps */ new Register[] {rax, rbx},
                 /*          ret */ ret(Kind.Void),
                 /* arg0: object */ arg(0, Kind.Object),
                 /* arg1:   lock */ arg(1, word));
 
-        addRuntimeCall(NEW_OBJECT_ARRAY, c.newObjectArrayStub,
+        addRuntimeCall(NEW_OBJECT_ARRAY, config.newObjectArrayStub,
                 /*        temps */ new Register[] {rcx, rdi, rsi},
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(word),
                 /* arg1: length */ rbx.asValue(Kind.Int));
 
-        addRuntimeCall(NEW_TYPE_ARRAY, c.newTypeArrayStub,
+        addRuntimeCall(NEW_TYPE_ARRAY, config.newTypeArrayStub,
                 /*        temps */ new Register[] {rcx, rdi, rsi},
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(word),
                 /* arg1: length */ rbx.asValue(Kind.Int));
 
-        addRuntimeCall(NEW_INSTANCE, c.newInstanceStub,
+        addRuntimeCall(NEW_INSTANCE, config.newInstanceStub,
                 /*        temps */ null,
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(word));
 
-        addRuntimeCall(NEW_MULTI_ARRAY, c.newMultiArrayStub,
+        addRuntimeCall(NEW_MULTI_ARRAY, config.newMultiArrayStub,
                 /*        temps */ null,
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rax.asValue(word),
                 /* arg1:   rank */ rbx.asValue(Kind.Int),
                 /* arg2:   dims */ rcx.asValue(word));
 
-        addRuntimeCall(VERIFY_OOP, c.verifyOopStub,
+        addRuntimeCall(VERIFY_OOP, config.verifyOopStub,
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void),
                 /* arg0: object */ r13.asValue(Kind.Object));
 
-        addRuntimeCall(VM_ERROR, c.vmErrorStub,
+        addRuntimeCall(VM_ERROR, config.vmErrorStub,
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void),
                 /* arg0:  where */ arg(0, Kind.Object),
                 /* arg1: format */ arg(1, Kind.Object),
                 /* arg2:  value */ arg(2, Kind.Long));
 
+        addRuntimeCall(IDENTITY_HASHCODE, config.identityHashCodeStub,
+                /*        temps */ null,
+                /*          ret */ rax.asValue(Kind.Int),
+                /* arg0:    obj */ rdx.asValue(Kind.Object));
+
+        addRuntimeCall(THREAD_IS_INTERRUPTED, config.threadIsInterruptedStub,
+                /*        temps */ null,
+                /*          ret */ rax.asValue(Kind.Boolean),
+                /* arg0: thread */ rdx.asValue(Kind.Object),
+      /* arg1: clearInterrupted */ rdx.asValue(Kind.Boolean));
     }
 
     @Override

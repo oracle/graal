@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,27 +23,33 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCall.Descriptor;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class CurrentThread extends FloatingNode implements LIRLowerable {
+/**
+ * Node implementing a call to HotSpot's {@code graal_identityhashcode} stub.
+ */
+public class IdentityHashCodeStubCall extends FixedWithNextNode implements LIRGenLowerable {
+    @Input private final ValueNode object;
+    public static final Descriptor IDENTITY_HASHCODE = new Descriptor("identity_hashcode", false, Kind.Int, Kind.Object);
 
-    private int threadObjectOffset;
-
-    public CurrentThread(int threadObjectOffset) {
-        super(StampFactory.declaredNonNull(HotSpotGraalRuntime.getInstance().getRuntime().lookupJavaType(Thread.class)));
-        this.threadObjectOffset = threadObjectOffset;
+    public IdentityHashCodeStubCall(ValueNode object) {
+        super(StampFactory.forKind(Kind.Int));
+        this.object = object;
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        Register thread = HotSpotGraalRuntime.getInstance().getRuntime().threadRegister();
-        gen.setResult(this, gen.emitLoad(new Address(Kind.Object, thread.asValue(gen.target().wordKind), threadObjectOffset), false));
+    public void generate(LIRGenerator gen) {
+        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(IdentityHashCodeStubCall.IDENTITY_HASHCODE);
+        Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object));
+        gen.setResult(this, result);
     }
 
     @NodeIntrinsic
-    public static native Thread get(@ConstantNodeParameter int threadObjectOffset);
+    public static native int call(Object object);
 }

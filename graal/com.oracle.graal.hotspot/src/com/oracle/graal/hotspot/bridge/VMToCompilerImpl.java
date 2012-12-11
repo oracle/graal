@@ -573,7 +573,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         if (onStackReplacement) {
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, new OnStackReplacementPhase());
         }
-        if (GraalOptions.Intrinsify) {
+        if (GraalOptions.Intrinsify && GraalOptions.IntrinsifyArrayCopy) {
             phasePlan.addPhase(PhasePosition.HIGH_LEVEL, intrinsifyArrayCopy);
         }
         return phasePlan;

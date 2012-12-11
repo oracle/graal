@@ -36,6 +36,7 @@ import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.snippets.*;
 
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.
@@ -240,14 +241,11 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getCapability(Class<T> clazz) {
-        if (clazz == GraalCodeCacheProvider.class || clazz == MetaAccessProvider.class) {
+        if (clazz == GraalCodeCacheProvider.class || clazz == MetaAccessProvider.class || clazz == SnippetProvider.class) {
             return (T) getRuntime();
         }
         if (clazz == GraalCompiler.class) {
             return (T) getCompiler();
-        }
-        if (clazz == MetaAccessProvider.class) {
-            return (T) getRuntime();
         }
         if (clazz == RuntimeInterpreterInterface.class) {
             return (T) getRuntimeInterpreterInterface();

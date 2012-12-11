@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,37 +24,20 @@ package com.oracle.graal.hotspot.snippets;
 
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.*;
 
-/**
- * Snippets for {@link java.lang.System} methods.
- */
-@ClassSubstitution(java.lang.System.class)
-public class SystemSnippets implements SnippetsInterface {
-
-    public static final Descriptor JAVA_TIME_MILLIS = new Descriptor("javaTimeMillis", false, Kind.Long);
-    public static final Descriptor JAVA_TIME_NANOS = new Descriptor("javaTimeNanos", false, Kind.Long);
-
-    public static long currentTimeMillis() {
-        return callLong(JAVA_TIME_MILLIS);
+@ClassSubstitution(java.lang.Object.class)
+public class ObjectSnippets implements SnippetsInterface {
+    @InstanceMethodSubstitution("getClass")
+    public static Class<?> getClassSnippet(final Object thisObj) {
+        Word hub = loadHub(thisObj);
+        return (Class<?>) loadObjectFromWord(hub, classMirrorOffset());
     }
 
-    public static long nanoTime() {
-        return callLong(JAVA_TIME_NANOS);
-    }
-
-    public static int identityHashCode(Object x) {
-        if (x == null) {
-            return 0;
-        }
-
-        Word mark = loadWordFromObject(x, markOffset());
+    @InstanceMethodSubstitution
+    public static int hashCode(final Object thisObj) {
+        Word mark = loadWordFromObject(thisObj, markOffset());
 
         // this code is independent from biased locking (although it does not look that way)
         final Word biasedLock = mark.and(biasedLockMaskInPlace());
@@ -65,9 +48,6 @@ public class SystemSnippets implements SnippetsInterface {
             }
         }
 
-        return IdentityHashCodeStubCall.call(x);
+        return IdentityHashCodeStubCall.call(thisObj);
     }
-
-    @NodeIntrinsic(value = RuntimeCallNode.class, setStampFromReturnType = true)
-    public static native long callLong(@ConstantNodeParameter Descriptor descriptor);
 }

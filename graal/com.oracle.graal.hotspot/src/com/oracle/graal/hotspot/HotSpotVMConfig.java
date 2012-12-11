@@ -130,6 +130,16 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int threadObjectOffset;
 
     /**
+     * The value of JavaThread::osthread_offset().
+     */
+    public int osThreadOffset;
+
+    /**
+     * The value of OSThread::interrupted_offset().
+     */
+    public int osThreadInterruptedOffset;
+
+    /**
      * The value of markOopDesc::unlocked_value.
      */
     public int unlockedMask;
@@ -153,6 +163,16 @@ public final class HotSpotVMConfig extends CompilerObject {
      * The value of markOopDesc::biased_lock_pattern.
      */
     public int biasedLockPattern;
+
+    /**
+     * Identity hash code value when uninitialized.
+     */
+    public int uninitializedIdentityHashCodeValue;
+
+    /**
+     * Mark word right shift to get identity hash code.
+     */
+    public int identityHashCodeShift;
 
     /**
      * Offset of _access_flags in metaspace Method object.
@@ -202,6 +222,26 @@ public final class HotSpotVMConfig extends CompilerObject {
      * The offset of the _access_flags field in a Klass.
      */
     public int klassAccessFlagsOffset;
+
+    /**
+     * The offset of the _layout_helper field in a Klass.
+     */
+    public int klassLayoutHelperOffset;
+
+    /**
+     * Bit pattern in the klass layout helper that can be used to identify arrays.
+     */
+    public int arrayKlassLayoutHelperIdentifier;
+
+    /**
+     * The offset of the _componentMirror field in an ArrayKlass.
+     */
+    public int arrayKlassComponentMirrorOffset;
+
+    /**
+     * The offset of the _super field in a Klass.
+     */
+    public int klassSuperKlassOffset;
 
     /**
      * The offset of the injected klass field in a {@link Class}.
@@ -266,6 +306,8 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long logPrimitiveStub;
     public long logObjectStub;
     public long logPrintfStub;
+    public long threadIsInterruptedStub;
+    public long identityHashCodeStub;
 
     public void check() {
         assert vmPageSize >= 16;
