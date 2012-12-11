@@ -25,18 +25,19 @@ package com.oracle.graal.hotspot.nodes;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
 
 /**
- * Node implementing a call to HotSpot's {@code new_[object|type]_array} stub.
+ * A call to the {@link NewArrayStub}.
  */
 public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
@@ -44,15 +45,11 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
 
     @Input private final ValueNode hub;
     @Input private final ValueNode length;
-    private final boolean isObjectArray;
 
-    public static final Descriptor NEW_OBJECT_ARRAY = new Descriptor("new_object_array", false, Kind.Object, wordKind(), Kind.Int);
+    public static final Descriptor NEW_ARRAY = new Descriptor("new_array", false, Kind.Object, wordKind(), Kind.Int);
 
-    public static final Descriptor NEW_TYPE_ARRAY = new Descriptor("new_type_array", false, Kind.Object, wordKind(), Kind.Int);
-
-    public NewArrayStubCall(boolean isObjectArray, ValueNode hub, ValueNode length) {
+    public NewArrayStubCall(ValueNode hub, ValueNode length) {
         super(defaultStamp);
-        this.isObjectArray = isObjectArray;
         this.hub = hub;
         this.length = length;
     }
@@ -68,11 +65,11 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(isObjectArray ? NewArrayStubCall.NEW_OBJECT_ARRAY : NewArrayStubCall.NEW_TYPE_ARRAY);
+        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NEW_ARRAY);
         Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub), gen.operand(length));
         gen.setResult(this, result);
     }
 
     @NodeIntrinsic
-    public static native Object call(@ConstantNodeParameter boolean isObjectArray, Word hub, int length);
+    public static native Object call(Word hub, int length);
 }

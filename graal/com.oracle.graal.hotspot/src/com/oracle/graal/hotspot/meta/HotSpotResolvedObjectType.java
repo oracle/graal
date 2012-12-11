@@ -63,7 +63,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     private final boolean hasFinalizableSubclass;
 
     /**
-     * The instance size for an instance type, {@link HotSpotResolvedObjectType#INTERFACE_SPECIES_VALUE} denoting
+     * The instance size (in bytes) for an instance type, {@link HotSpotResolvedObjectType#INTERFACE_SPECIES_VALUE} denoting
      * an interface type or {@link HotSpotResolvedObjectType#ARRAY_SPECIES_VALUE} denoting an array type.
      */
     private final int sizeOrSpecies;
@@ -106,6 +106,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * @return the {@link HotSpotResolvedObjectType} corresponding to {@code javaClass}
      */
     public static ResolvedJavaType fromClass(Class javaClass) {
+        assert javaClass != null;
         ResolvedJavaType type = (ResolvedJavaType) unsafe.getObject(javaClass, (long) HotSpotGraalRuntime.getInstance().getConfig().graalMirrorInClassOffset);
         if (type == null) {
             type = HotSpotGraalRuntime.getInstance().getCompilerToVM().getResolvedType(javaClass);
@@ -395,6 +396,13 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return ((HotSpotResolvedJavaMethod) method).uniqueConcreteMethod();
     }
 
+    private static class OffsetComparator implements Comparator<HotSpotResolvedJavaField> {
+        @Override
+        public int compare(HotSpotResolvedJavaField o1, HotSpotResolvedJavaField o2) {
+            return o1.offset() - o2.offset();
+        }
+    }
+
     @Override
     public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
         if (instanceFields == null) {
@@ -402,6 +410,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
                 instanceFields = new HotSpotResolvedJavaField[0];
             } else {
                 HotSpotResolvedJavaField[] myFields = HotSpotGraalRuntime.getInstance().getCompilerToVM().getInstanceFields(this);
+                Arrays.sort(myFields, new OffsetComparator());
                 if (javaMirror != Object.class) {
                     HotSpotResolvedJavaField[] superFields = (HotSpotResolvedJavaField[]) getSuperclass().getInstanceFields(true);
                     HotSpotResolvedJavaField[] fields = Arrays.copyOf(superFields, superFields.length + myFields.length);
@@ -461,7 +470,12 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     public long prototypeMarkWord() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getPrototypeMarkWord(this);
+        HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
+        if (isArray()) {
+            return config.arrayPrototypeMarkWord;
+        } else {
+            return unsafeReadWord(metaspaceKlass + config.prototypeMarkWordOffset);
+        }
     }
 
     @Override

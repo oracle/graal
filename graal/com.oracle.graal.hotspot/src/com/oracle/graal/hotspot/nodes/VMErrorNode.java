@@ -23,10 +23,11 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
@@ -60,8 +61,17 @@ public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowera
             where = "in compiled code for " + MetaUtil.format("%H.%n(%p)", gen.method());
         }
 
-        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(VMErrorNode.VM_ERROR);
-        gen.emitCall(stub, stub.getCallingConvention(), false, Constant.forObject(where), gen.operand(format), gen.operand(value));
+        HotSpotRuntime runtime = (HotSpotRuntime) gen.getRuntime();
+        Constant whereArg = Constant.forObject(runtime.registerGCRoot(where));
+        Value formatArg;
+        if (format.isConstant() && format.kind() == Kind.Object) {
+            formatArg = Constant.forObject(runtime.registerGCRoot(format.asConstant().asObject()));
+        } else {
+            formatArg = gen.operand(format);
+        }
+
+        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(VMErrorNode.VM_ERROR);
+        gen.emitCall(stub, stub.getCallingConvention(), false, whereArg, formatArg, gen.operand(value));
     }
 
     @NodeIntrinsic

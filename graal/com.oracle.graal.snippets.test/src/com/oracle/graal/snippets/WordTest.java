@@ -116,7 +116,7 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
 
     @Test
     public void test_fromObject() {
-        inliningPolicy.set(new DefaultSnippetInliningPolicy(new BoxingMethodPool(runtime())) {
+        inliningPolicy.set(new DefaultSnippetInliningPolicy(runtime(), new BoxingMethodPool(runtime())) {
             @Override
             public boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller) {
                 return super.shouldInline(method, caller) && !method.getName().equals("hashCode");

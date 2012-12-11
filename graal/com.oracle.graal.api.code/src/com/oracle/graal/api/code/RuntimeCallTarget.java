@@ -30,7 +30,7 @@ import com.oracle.graal.api.meta.*;
  * The name, signature and calling convention of a call from compiled code to the runtime.
  * The target of such a call may be a leaf stub or a call into the runtime code proper.
  */
-public interface RuntimeCall {
+public interface RuntimeCallTarget {
 
     /**
      * The name and signature of a runtime call.

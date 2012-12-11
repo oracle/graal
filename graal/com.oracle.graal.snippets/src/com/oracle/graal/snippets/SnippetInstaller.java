@@ -142,7 +142,7 @@ public class SnippetInstaller {
             policyClass = snippet.inlining();
         }
         if (policyClass == SnippetInliningPolicy.class) {
-            return new DefaultSnippetInliningPolicy(pool);
+            return new DefaultSnippetInliningPolicy(runtime, pool);
         }
         try {
             return policyClass.getConstructor().newInstance();

@@ -37,6 +37,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -520,7 +521,8 @@ public class MonitorSnippets implements SnippetsInterface {
                     List<ReturnNode> rets = graph.getNodes().filter(ReturnNode.class).snapshot();
                     for (ReturnNode ret : rets) {
                         returnType = checkCounter.getSignature().getReturnType(checkCounter.getDeclaringClass());
-                        ConstantNode errMsg = ConstantNode.forObject("unbalanced monitors in " + MetaUtil.format("%H.%n(%p)", graph.method()) + ", count = %d", runtime, graph);
+                        Object msg = ((HotSpotRuntime) runtime).registerGCRoot("unbalanced monitors in " + MetaUtil.format("%H.%n(%p)", graph.method()) + ", count = %d");
+                        ConstantNode errMsg = ConstantNode.forObject(msg, runtime, graph);
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter, new ValueNode[] {errMsg}, returnType));
                         invoke = graph.add(new InvokeNode(callTarget, 0, -1));
                         List<ValueNode> stack = Collections.emptyList();

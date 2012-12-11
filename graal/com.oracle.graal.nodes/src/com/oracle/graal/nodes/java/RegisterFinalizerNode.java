@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.*;
+import com.oracle.graal.api.code.RuntimeCallTarget.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -49,7 +49,7 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements S
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        RuntimeCall call = gen.getRuntime().lookupRuntimeCall(REGISTER_FINALIZER);
+        RuntimeCallTarget call = gen.getRuntime().lookupRuntimeCall(REGISTER_FINALIZER);
         gen.emitCall(call, call.getCallingConvention(), true, gen.operand(object()));
     }
 

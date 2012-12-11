@@ -23,7 +23,7 @@
 package com.oracle.graal.api.code;
 
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 
 /**
@@ -39,7 +39,7 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      * @param compResult the compilation result to be added
      * @param info the object into which details of the installed code will be written. Ignored if null, otherwise the
      *            info is written to index 0 of this array.
-     * @return a reference to the compiled and ready-to-run code
+     * @return a reference to the compiled and ready-to-run code or null if the code installation failed
      */
     InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, CodeInfo[] info);
 
@@ -61,7 +61,7 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      *
      * @param method the top level method of a compilation
      */
-    RegisterConfig lookupRegisterConfig(JavaMethod method);
+    RegisterConfig lookupRegisterConfig(ResolvedJavaMethod method);
 
     /**
      * Custom area on the stack of each compiled method that the VM can use for its own purposes.
@@ -81,12 +81,12 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     /**
      * Performs any runtime-specific conversion on the object used to describe the target of a call.
      */
-    Object lookupCallTarget(Object target);
+    Object lookupCallTarget(Object callTarget);
 
     /**
      * Gets the signature and linkage information for a runtime call.
      */
-    RuntimeCall lookupRuntimeCall(Descriptor descriptor);
+    RuntimeCallTarget lookupRuntimeCall(Descriptor descriptor);
 
     /**
      * Encodes a deoptimization action and a deoptimization reason in an integer value.

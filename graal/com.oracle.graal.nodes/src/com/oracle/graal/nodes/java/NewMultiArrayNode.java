@@ -45,6 +45,10 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements Lowera
         return dimensions.size();
     }
 
+    public NodeList<ValueNode> dimensions() {
+        return dimensions;
+    }
+
     /**
      * Constructs a new NewMultiArrayNode.
      * @param type the element type of the array

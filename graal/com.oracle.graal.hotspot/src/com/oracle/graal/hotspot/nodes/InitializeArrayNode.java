@@ -37,17 +37,17 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
 
     @Input private final ValueNode memory;
     @Input private final ValueNode length;
-    @Input private final ValueNode size;
+    @Input private final ValueNode allocationSize;
     private final ResolvedJavaType type;
     private final boolean fillContents;
     private final boolean locked;
 
-    public InitializeArrayNode(ValueNode memory, ValueNode length, ValueNode size, ResolvedJavaType type, boolean fillContents, boolean locked) {
+    public InitializeArrayNode(ValueNode memory, ValueNode length, ValueNode allocationSize, ResolvedJavaType type, boolean fillContents, boolean locked) {
         super(StampFactory.exactNonNull(type));
         this.memory = memory;
         this.type = type;
         this.length = length;
-        this.size = size;
+        this.allocationSize = allocationSize;
         this.fillContents = fillContents;
         this.locked = locked;
     }
@@ -61,8 +61,11 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
         return length;
     }
 
-    public ValueNode size() {
-        return size;
+    /**
+     * Gets the size (in bytes) of the memory chunk allocated for the array.
+     */
+    public ValueNode allocationSize() {
+        return allocationSize;
     }
 
     public ResolvedJavaType type() {
@@ -83,5 +86,5 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
     }
 
     @NodeIntrinsic
-    public static native Object initialize(Object memory, int length, int size, @ConstantNodeParameter ResolvedJavaType type, @ConstantNodeParameter boolean fillContents, @ConstantNodeParameter boolean locked);
+    public static native Object initialize(Object memory, int length, int allocationSize, @ConstantNodeParameter ResolvedJavaType type, @ConstantNodeParameter boolean fillContents, @ConstantNodeParameter boolean locked);
 }

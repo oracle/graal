@@ -185,12 +185,17 @@ public class SnippetTemplate {
         protected final Cache cache;
         protected final MetaAccessProvider runtime;
         protected final Assumptions assumptions;
-        protected Class<T> snippetsClass;
+        protected Class<?> snippetsClass;
 
         public AbstractTemplates(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target, Class<T> snippetsClass) {
             this.runtime = runtime;
             this.assumptions = assumptions;
-            this.snippetsClass = snippetsClass;
+            if (snippetsClass == null) {
+                assert this instanceof SnippetsInterface;
+                this.snippetsClass = getClass();
+            } else {
+                this.snippetsClass = snippetsClass;
+            }
             this.cache = new Cache(runtime, target);
         }
 
@@ -243,7 +248,13 @@ public class SnippetTemplate {
                 String name = c.value();
                 Object arg = key.get(name);
                 Kind kind = signature.getParameterKind(i);
-                replacements.put(snippetGraph.getLocal(i), ConstantNode.forConstant(Constant.forBoxed(kind, arg), runtime, snippetCopy));
+                Constant constantArg;
+                if (arg instanceof Constant) {
+                    constantArg = (Constant) arg;
+                } else {
+                    constantArg = Constant.forBoxed(kind, arg);
+                }
+                replacements.put(snippetGraph.getLocal(i), ConstantNode.forConstant(constantArg, runtime, snippetCopy));
             } else {
                 VarargsParameter vp = MetaUtil.getParameterAnnotation(VarargsParameter.class, i, method);
                 if (vp != null) {
@@ -390,8 +401,12 @@ public class SnippetTemplate {
     }
 
     private static boolean checkConstantArgument(final ResolvedJavaMethod method, Signature signature, int i, String name, Object arg, Kind kind) {
+        ResolvedJavaType type = signature.getParameterType(i, method.getDeclaringClass()).resolve(method.getDeclaringClass());
+        if (WordTypeRewriterPhase.isWord(type)) {
+            assert arg instanceof Constant : method + ": word constant parameters must be passed boxed in a Constant value: " + arg;
+            return true;
+        }
         if (kind == Kind.Object) {
-            ResolvedJavaType type = signature.getParameterType(i, method.getDeclaringClass()).resolve(method.getDeclaringClass());
             assert arg == null || type.isInstance(Constant.forObject(arg)) :
                 method + ": wrong value type for " + name + ": expected " + type.getName() + ", got " + arg.getClass().getName();
         } else {
@@ -578,6 +593,13 @@ public class SnippetTemplate {
 
         Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
         return duplicates;
+    }
+
+    /**
+     * Gets a copy of the specialized graph.
+     */
+    public StructuredGraph copySpecializedGraph() {
+        return snippet.copy();
     }
 
     /**

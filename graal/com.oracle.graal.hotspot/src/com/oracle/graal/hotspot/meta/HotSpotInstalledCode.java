@@ -57,7 +57,7 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     @Override
     public String toString() {
-        return "compiled method " + method + " @" + nmethod;
+        return String.format("InstalledCode[method=%s, nmethod=0x%x]", method, nmethod);
     }
 
     @Override

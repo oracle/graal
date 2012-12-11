@@ -40,6 +40,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
@@ -73,7 +74,18 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         }
 
         @Override
+        protected boolean needOnlyOopMaps() {
+            // Stubs only need oop maps
+            return runtime().asStub(method) != null;
+        }
+
+        @Override
         protected CallingConvention createCallingConvention() {
+            Stub stub = runtime().asStub(method);
+            if (stub != null) {
+                return stub.getLinkage().getCallingConvention();
+            }
+
             if (graph.getEntryBCI() == StructuredGraph.INVOCATION_ENTRY_BCI) {
                 return super.createCallingConvention();
             } else {
@@ -219,14 +231,14 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         //  - has no callee-saved registers
         //  - has no incoming arguments passed on the stack
         //  - has no instructions with debug info
-        boolean canOmitFrame = GraalOptions.CanOmitFrame &&
+        boolean omitFrame = GraalOptions.CanOmitFrame &&
             frameMap.frameSize() == frameMap.initialFrameSize &&
             frameMap.registerConfig.getCalleeSaveLayout().registers.length == 0 &&
             !lir.hasArgInCallerFrame() &&
             !lir.hasDebugInfo();
 
         AbstractAssembler masm = new AMD64MacroAssembler(target, frameMap.registerConfig);
-        HotSpotFrameContext frameContext = canOmitFrame ? null : new HotSpotFrameContext();
+        HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext();
         TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, lir.stubs);
         tasm.setFrameSize(frameMap.frameSize());
         tasm.targetMethod.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
@@ -239,11 +251,11 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         FrameMap frameMap = tasm.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
         HotSpotVMConfig config = runtime().config;
-        Label unverifiedStub = new Label();
+        boolean isStatic = Modifier.isStatic(method.getModifiers());
+        Label unverifiedStub = isStatic ? null : new Label();
 
         // Emit the prefix
 
-        boolean isStatic = Modifier.isStatic(method.getModifiers());
         if (!isStatic) {
             tasm.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
             CallingConvention cc = regConfig.getCallingConvention(JavaCallee, Kind.Void, new Kind[] {Kind.Object}, target, false);
@@ -277,7 +289,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             assert !frameMap.accessesCallerFrame();
         }
 
-        if (!isStatic) {
+        if (unverifiedStub != null) {
             asm.bind(unverifiedStub);
             AMD64Call.directJmp(tasm, asm, config.inlineCacheMissStub);
         }
@@ -285,5 +297,6 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         for (int i = 0; i < GraalOptions.MethodEndBreakpointGuards; ++i) {
             asm.int3();
         }
+
     }
 }

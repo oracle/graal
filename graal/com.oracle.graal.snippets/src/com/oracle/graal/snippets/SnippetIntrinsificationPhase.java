@@ -85,7 +85,7 @@ public class SnippetIntrinsificationPhase extends Phase {
         int count = signature.getParameterCount(false);
         Class<?>[] result = new Class< ? >[count];
         for (int i = 0; i < result.length; ++i) {
-            result[i] = getMirrorOrFail(signature.getParameterType(i, accessingClass).resolve(accessingClass), null);
+            result[i] = getMirrorOrFail(signature.getParameterType(i, accessingClass).resolve(accessingClass), Thread.currentThread().getContextClassLoader());
         }
         return result;
     }
@@ -126,7 +126,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             }
 
             // Call the method
-            Constant constant = callMethod(target.getSignature().getReturnKind(), getMirrorOrFail(declaringClass, null), target.getName(), parameterTypes, receiver, arguments);
+            Constant constant = callMethod(target.getSignature().getReturnKind(), getMirrorOrFail(declaringClass, Thread.currentThread().getContextClassLoader()), target.getName(), parameterTypes, receiver, arguments);
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
@@ -191,7 +191,7 @@ public class SnippetIntrinsificationPhase extends Phase {
     private static Class< ? > getNodeClass(ResolvedJavaMethod target, NodeIntrinsic intrinsic) {
         Class< ? > result = intrinsic.value();
         if (result == NodeIntrinsic.class) {
-            return getMirrorOrFail(target.getDeclaringClass(), null);
+            return getMirrorOrFail(target.getDeclaringClass(), Thread.currentThread().getContextClassLoader());
         }
         assert Node.class.isAssignableFrom(result);
         return result;

@@ -262,6 +262,29 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int methodCompiledEntryOffset;
     public int basicLockSize;
     public int basicLockDisplacedHeaderOffset;
+    public long tlabIntArrayMarkWord;
+    public long heapEndAddress;
+    public long heapTopAddress;
+    public int threadTlabStartOffset;
+    public int threadTlabSizeOffset;
+    public int threadAllocatedBytesOffset;
+    public int tlabRefillWasteLimitOffset;
+    public int tlabRefillWasteIncrement;
+    public int tlabAlignmentReserve;
+    public int tlabSlowAllocationsOffset;
+    public int tlabFastRefillWasteOffset;
+    public int tlabNumberOfRefillsOffset;
+    public boolean tlabStats;
+    public int klassInstanceSizeOffset;
+    public boolean inlineContiguousAllocationSupported;
+    public long arrayPrototypeMarkWord;
+    public int layoutHelperLog2ElementSizeShift;
+    public int layoutHelperLog2ElementSizeMask;
+    public int layoutHelperElementTypeShift;
+    public int layoutHelperElementTypeMask;
+    public int layoutHelperHeaderSizeShift;
+    public int layoutHelperHeaderSizeMask;
+    public int layoutHelperOffset;
 
     // methodData information
     public int methodDataOopDataOffset;
@@ -279,8 +302,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long debugStub;
     public long instanceofStub;
     public long newInstanceStub;
-    public long newTypeArrayStub;
-    public long newObjectArrayStub;
+    public long newArrayStub;
     public long newMultiArrayStub;
     public long inlineCacheMissStub;
     public long handleExceptionStub;

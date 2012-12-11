@@ -40,7 +40,7 @@ public final class LoadHubNode extends FixedWithNextNode implements Lowerable, C
     }
 
     public LoadHubNode(ValueNode object, Kind kind) {
-        super(StampFactory.forKind(kind));
+        super(kind == Kind.Object ? StampFactory.objectNonNull() : StampFactory.forKind(kind));
         this.object = object;
     }
 

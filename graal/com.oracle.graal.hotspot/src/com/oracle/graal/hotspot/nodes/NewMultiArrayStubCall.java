@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -66,7 +66,7 @@ public class NewMultiArrayStubCall extends FixedWithNextNode implements LIRGenLo
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(NewMultiArrayStubCall.NEW_MULTI_ARRAY);
+        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NewMultiArrayStubCall.NEW_MULTI_ARRAY);
         Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub), Constant.forInt(rank), gen.operand(dims));
         gen.setResult(this, result);
     }
