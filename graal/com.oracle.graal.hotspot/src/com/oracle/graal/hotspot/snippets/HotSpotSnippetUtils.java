@@ -108,12 +108,12 @@ public class HotSpotSnippetUtils {
     public static long arrayPrototypeMarkWord() {
         return config().arrayPrototypeMarkWord;
     }
-    
+
     @Fold
     public static int klassOffset() {
         return HotSpotGraalRuntime.getInstance().getConfig().klassOffset;
     }
-   
+
     @Fold
     public static int klassModifierFlagsOffset() {
         return HotSpotGraalRuntime.getInstance().getConfig().klassModifierFlagsOffset;
@@ -151,7 +151,7 @@ public class HotSpotSnippetUtils {
 
     @Fold
     public static int markOffset() {
-        return config().markOffset;   
+        return config().markOffset;
     }
 
     @Fold

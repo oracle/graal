@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCall.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -45,7 +45,7 @@ public class ThreadIsInterruptedStubCall extends FixedWithNextNode implements LI
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCall stub = gen.getRuntime().lookupRuntimeCall(ThreadIsInterruptedStubCall.THREAD_IS_INTERRUPTED);
+        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(ThreadIsInterruptedStubCall.THREAD_IS_INTERRUPTED);
         Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(thread));
         gen.setResult(this, result);
     }

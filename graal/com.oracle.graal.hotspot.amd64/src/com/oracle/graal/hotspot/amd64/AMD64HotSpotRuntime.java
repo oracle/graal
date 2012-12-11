@@ -104,7 +104,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(word));
 
-        addRuntimeCall(NEW_INSTANCE_SLOW, c.newInstanceStub,
+        addRuntimeCall(NEW_INSTANCE_SLOW, config.newInstanceStub,
                 /*        temps */ null,
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(word));
