@@ -39,7 +39,6 @@ import com.oracle.graal.phases.*;
  * inspected with the <a href="http://kenai.com/projects/igv">Ideal Graph Visualizer</a>.
  */
 public class GraphPrinterDumpHandler implements DebugDumpHandler {
-    private static final SimpleDateFormat sdf = new SimpleDateFormat("YYYY-MM-dd-HHmm");
 
     private GraphPrinter printer;
     private List<String> previousInlineContext;
@@ -66,12 +65,20 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         }
     }
 
+    // This field must be lazily initialized as this class may be loaded in a version
+    // VM startup phase at which not all required features (such as system properties)
+    // are online.
+    private static SimpleDateFormat sdf;
+
     private void initializeFilePrinter() {
         String ext;
         if (GraalOptions.PrintBinaryGraphs) {
             ext = ".bgv";
         } else {
             ext = ".gv.xml";
+        }
+        if (sdf == null) {
+            sdf = new SimpleDateFormat("YYYY-MM-dd-HHmm");
         }
         String fileName = "Graphs-" + Thread.currentThread().getName() + "-" + sdf.format(new Date()) + ext;
         try {
