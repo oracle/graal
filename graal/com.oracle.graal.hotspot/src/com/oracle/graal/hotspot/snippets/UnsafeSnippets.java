@@ -269,6 +269,18 @@ public class UnsafeSnippets implements SnippetsInterface {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
     }
 
+    public void putByte(long address, byte value) {
+        DirectStoreNode.store(address, value);
+    }
+
+    public void putShort(long address, short value) {
+        DirectStoreNode.store(address, value);
+    }
+
+    public void putChar(long address, char value) {
+        DirectStoreNode.store(address, value);
+    }
+
     public void putInt(long address, int value) {
         DirectStoreNode.store(address, value);
     }
@@ -277,11 +289,39 @@ public class UnsafeSnippets implements SnippetsInterface {
         DirectStoreNode.store(address, value);
     }
 
+    public void putFloat(long address, float value) {
+        DirectStoreNode.store(address, value);
+    }
+
+    public void putDouble(long address, double value) {
+        DirectStoreNode.store(address, value);
+    }
+
+    public byte getByte(long address) {
+        return DirectReadNode.read(address, Kind.Byte);
+    }
+
+    public short getShort(long address) {
+        return DirectReadNode.read(address, Kind.Short);
+    }
+
+    public char getChar(long address) {
+        return DirectReadNode.read(address, Kind.Char);
+    }
+
     public int getInt(long address) {
         return DirectReadNode.read(address, Kind.Int);
     }
 
     public long getLong(long address) {
         return DirectReadNode.read(address, Kind.Long);
+    }
+
+    public float getFloat(long address) {
+        return DirectReadNode.read(address, Kind.Float);
+    }
+
+    public double getDouble(long address) {
+        return DirectReadNode.read(address, Kind.Double);
     }
 }

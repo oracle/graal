@@ -36,20 +36,22 @@ import com.oracle.graal.nodes.type.*;
  */
 public class ThreadIsInterruptedStubCall extends FixedWithNextNode implements LIRGenLowerable {
     @Input private final ValueNode thread;
-    public static final Descriptor THREAD_IS_INTERRUPTED = new Descriptor("thread_is_interrupted", false, Kind.Boolean, Kind.Object, Kind.Boolean);
+    @Input private final ValueNode clearIsInterrupted;
+    public static final Descriptor THREAD_IS_INTERRUPTED = new Descriptor("thread_is_interrupted", false, Kind.Int, Kind.Object, Kind.Boolean);
 
-    public ThreadIsInterruptedStubCall(ValueNode thread) {
-        super(StampFactory.forKind(Kind.Boolean));
+    public ThreadIsInterruptedStubCall(ValueNode thread, ValueNode clearIsInterrupted) {
+        super(StampFactory.forInteger(Kind.Int, 0, 1));
         this.thread = thread;
+        this.clearIsInterrupted = clearIsInterrupted;
     }
 
     @Override
     public void generate(LIRGenerator gen) {
         RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(ThreadIsInterruptedStubCall.THREAD_IS_INTERRUPTED);
-        Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(thread));
+        Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(thread), gen.operand(clearIsInterrupted));
         gen.setResult(this, result);
     }
 
     @NodeIntrinsic
-    public static native boolean call(Thread thread);
+    public static native int call(Thread thread, boolean clearIsInterrupted);
 }

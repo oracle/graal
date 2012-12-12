@@ -135,9 +135,9 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
 
         addRuntimeCall(THREAD_IS_INTERRUPTED, config.threadIsInterruptedStub,
                 /*        temps */ null,
-                /*          ret */ rax.asValue(Kind.Boolean),
-                /* arg0: thread */ rdx.asValue(Kind.Object),
-      /* arg1: clearInterrupted */ rdx.asValue(Kind.Boolean));
+                /*          ret */ rax.asValue(Kind.Int),
+                /* arg0: thread */ arg(0, Kind.Object),
+      /* arg1: clearInterrupted */ arg(1, Kind.Boolean));
     }
 
     @Override

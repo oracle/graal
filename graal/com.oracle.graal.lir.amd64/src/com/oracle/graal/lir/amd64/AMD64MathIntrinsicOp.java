@@ -33,7 +33,7 @@ public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     public enum IntrinsicOpcode  {
         SQRT,
         SIN, COS, TAN,
-        LOG, LOG10;
+        LOG, LOG10
     }
 
     @Opcode private final IntrinsicOpcode opcode;

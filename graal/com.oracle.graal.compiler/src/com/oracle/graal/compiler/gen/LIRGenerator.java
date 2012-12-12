@@ -173,7 +173,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                (isConstant(operand) && x.kind() == operand.getKind().getStackKind()) : operand.getKind() + " for node " + x;
         assert operand(x) == null : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
-        assert operand.getKind().getStackKind() == x.kind();
+        assert operand.getKind().getStackKind() == x.kind() : operand.getKind().getStackKind() + " must match " + x.kind();
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
         return operand;

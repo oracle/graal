@@ -44,13 +44,28 @@ public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
     }
 
     @NodeIntrinsic
-    public static native void store(long address, long value);
+    public static native void store(long address, boolean value);
+
+    @NodeIntrinsic
+    public static native void store(long address, byte value);
+
+    @NodeIntrinsic
+    public static native void store(long address, short value);
+
+    @NodeIntrinsic
+    public static native void store(long address, char value);
 
     @NodeIntrinsic
     public static native void store(long address, int value);
 
     @NodeIntrinsic
-    public static native void store(long address, boolean value);
+    public static native void store(long address, long value);
+
+    @NodeIntrinsic
+    public static native void store(long address, float value);
+
+    @NodeIntrinsic
+    public static native void store(long address, double value);
 
     @Override
     public void generate(LIRGeneratorTool gen) {

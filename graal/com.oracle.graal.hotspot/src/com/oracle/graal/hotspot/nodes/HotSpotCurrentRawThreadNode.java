@@ -20,33 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.snippets;
+package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
-
-import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
 
 
-@ClassSubstitution(java.lang.Thread.class)
-public class ThreadSnippets implements SnippetsInterface {
-    public static Thread currentThread() {
-        return CurrentThread.get(threadObjectOffset());
+public class HotSpotCurrentRawThreadNode extends FloatingNode implements LIRLowerable {
+    public HotSpotCurrentRawThreadNode() {
+        super(StampFactory.forWord());
     }
 
-    @InstanceMethodSubstitution
-    @SuppressWarnings("unused")
-    private static boolean isInterrupted(final Thread thisObject, boolean clearInterrupted) {
-        Word rawThread = HotSpotCurrentRawThreadNode.get();
-        Thread thread = (Thread) loadObjectFromWord(rawThread, threadObjectOffset());
-        if (thisObject == thread) {
-            Word osThread = loadWordFromWord(rawThread, osThreadOffset());
-            boolean interrupted = loadIntFromWord(osThread, osThreadInterruptedOffset()) != 0;
-            if (!interrupted || !clearInterrupted) {
-                return interrupted;
-            }
-        }
-
-        return ThreadIsInterruptedStubCall.call(thisObject, clearInterrupted) != 0;
+    @Override
+    public void generate(LIRGeneratorTool gen) {
+        Register rawThread = HotSpotGraalRuntime.getInstance().getRuntime().threadRegister();
+        gen.setResult(this, rawThread.asValue(this.kind()));
     }
+
+    @NodeIntrinsic
+    public static native Word get();
 }

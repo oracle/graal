@@ -162,8 +162,8 @@ public class IntrinsificationTest extends GraalCompilerTest {
         test("unsafePutDoubleSnippet");
         test("unsafePutObjectSnippet");
 
-        // test("unsafeDirectMemoryReadSnippet");
-        // test("unsafeDirectMemoryWriteSnippet");
+        test("unsafeDirectMemoryReadSnippet");
+        test("unsafeDirectMemoryWriteSnippet");
     }
 
     @SuppressWarnings("all")
