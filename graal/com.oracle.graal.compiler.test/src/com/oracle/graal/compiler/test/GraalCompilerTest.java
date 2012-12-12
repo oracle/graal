@@ -298,16 +298,29 @@ public abstract class GraalCompilerTest {
 
             }
         }
-        InstalledCode installedCode = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(compilationId++), true), new Callable<InstalledCode>() {
+
+        final int id = compilationId++;
+
+        InstalledCode installedCode = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true), new Callable<InstalledCode>() {
             public InstalledCode call() throws Exception {
+                final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
+                if (printCompilation) {
+                    TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s ...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature()));
+                }
+                long start = System.currentTimeMillis();
                 PhasePlan phasePlan = new PhasePlan();
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 editPhasePlan(method, graph, phasePlan);
                 CompilationResult compResult = graalCompiler.compileMethod(method, graph, null, phasePlan, OptimisticOptimizations.ALL);
+                if (printCompilation) {
+                    TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
+                }
                 return addMethod(method, compResult);
             }
         });
+
+
         cache.put(method, installedCode);
         return installedCode;
     }

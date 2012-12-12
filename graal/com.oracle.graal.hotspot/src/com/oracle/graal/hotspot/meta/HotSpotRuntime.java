@@ -839,33 +839,31 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     }
 
     public int convertDeoptAction(DeoptimizationAction action) {
-        // This must be kept in sync with the DeoptAction enum defined in deoptimization.hpp
         switch(action) {
-            case None: return 0;
-            case RecompileIfTooManyDeopts: return 1;
-            case InvalidateReprofile: return 2;
-            case InvalidateRecompile: return 3;
-            case InvalidateStopCompiling: return 4;
+            case None: return config.deoptActionNone;
+            case RecompileIfTooManyDeopts: return config.deoptActionMaybeRecompile;
+            case InvalidateReprofile: return config.deoptActionReinterpret;
+            case InvalidateRecompile: return config.deoptActionMakeNotEntrant;
+            case InvalidateStopCompiling: return config.deoptActionMakeNotCompilable;
             default: throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     public int convertDeoptReason(DeoptimizationReason reason) {
-        // This must be kept in sync with the DeoptReason enum defined in deoptimization.hpp
         switch(reason) {
-            case None: return 0;
-            case NullCheckException: return 1;
-            case BoundsCheckException: return 2;
-            case ClassCastException: return 3;
-            case ArrayStoreException: return 4;
-            case UnreachedCode: return 5;
-            case TypeCheckedInliningViolated: return 6;
-            case OptimizedTypeCheckViolated: return 7;
-            case NotCompiledExceptionHandler: return 8;
-            case Unresolved: return 9;
-            case JavaSubroutineMismatch: return 10;
-            case ArithmeticException: return 11;
-            case RuntimeConstraint: return 12;
+            case None: return config.deoptReasonNone;
+            case NullCheckException: return config.deoptReasonNullCheck;
+            case BoundsCheckException: return config.deoptReasonRangeCheck;
+            case ClassCastException: return config.deoptReasonClassCheck;
+            case ArrayStoreException: return config.deoptReasonArrayCheck;
+            case UnreachedCode: return config.deoptReasonUnreached0;
+            case TypeCheckedInliningViolated: return config.deoptReasonTypeCheckInlining;
+            case OptimizedTypeCheckViolated: return config.deoptReasonOptimizedTypeCheck;
+            case NotCompiledExceptionHandler: return config.deoptReasonNotCompiledExceptionHandler;
+            case Unresolved: return config.deoptReasonUnresolved;
+            case JavaSubroutineMismatch: return config.deoptReasonJsrMismatch;
+            case ArithmeticException: return config.deoptReasonDiv0Check;
+            case RuntimeConstraint: return config.deoptReasonConstraint;
             default: throw GraalInternalError.shouldNotReachHere();
         }
     }

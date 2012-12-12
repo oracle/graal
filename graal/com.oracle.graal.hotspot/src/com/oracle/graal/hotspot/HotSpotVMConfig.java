@@ -38,8 +38,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int codeEntryAlignment;
     public boolean verifyOops;
     public boolean useFastLocking;
-    public boolean useFastNewObjectArray;
-    public boolean useFastNewTypeArray;
     public boolean useTLAB;
     public boolean useBiasedLocking;
 
@@ -288,6 +286,26 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long logPrimitiveStub;
     public long logObjectStub;
     public long logPrintfStub;
+
+    public int deoptReasonNone;
+    public int deoptReasonNullCheck;
+    public int deoptReasonRangeCheck;
+    public int deoptReasonClassCheck;
+    public int deoptReasonArrayCheck;
+    public int deoptReasonUnreached0;
+    public int deoptReasonTypeCheckInlining;
+    public int deoptReasonOptimizedTypeCheck;
+    public int deoptReasonNotCompiledExceptionHandler;
+    public int deoptReasonUnresolved;
+    public int deoptReasonJsrMismatch;
+    public int deoptReasonDiv0Check;
+    public int deoptReasonConstraint;
+
+    public int deoptActionNone;
+    public int deoptActionMaybeRecompile;
+    public int deoptActionReinterpret;
+    public int deoptActionMakeNotEntrant;
+    public int deoptActionMakeNotCompilable;
 
     public void check() {
         assert vmPageSize >= 16;
