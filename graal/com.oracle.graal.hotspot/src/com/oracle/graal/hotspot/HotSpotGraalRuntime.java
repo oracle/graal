@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.graph.FieldIntrospection.*;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.interpreter.*;
@@ -149,8 +150,12 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     private static void printConfig(HotSpotVMConfig config) {
         Field[] fields = config.getClass().getDeclaredFields();
+        Map<String, Field> sortedFields = new TreeMap<>();
         for (Field f : fields) {
             f.setAccessible(true);
+            sortedFields.put(f.getName(), f);
+        }
+        for (Field f : sortedFields.values()) {
             try {
                 Logger.info(String.format("%9s %-40s = %s", f.getType().getSimpleName(), f.getName(), Logger.pretty(f.get(config))));
             } catch (Exception e) {
