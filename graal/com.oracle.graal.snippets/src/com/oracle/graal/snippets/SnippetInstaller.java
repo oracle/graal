@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 import com.oracle.graal.snippets.Snippet.DefaultSnippetInliningPolicy;
 import com.oracle.graal.snippets.Snippet.SnippetInliningPolicy;
 
@@ -105,7 +106,14 @@ public class SnippetInstaller {
                 continue;
             }
             try {
-                Method originalMethod = originalClazz.getDeclaredMethod(method.getName(), method.getParameterTypes());
+                String name = method.getName();
+                MethodSubstitution a = method.getAnnotation(MethodSubstitution.class);
+                if (a != null) {
+                    if (!a.value().equals("")) {
+                        name = a.value();
+                    }
+                }
+                Method originalMethod = originalClazz.getDeclaredMethod(name, method.getParameterTypes());
                 if (!originalMethod.getReturnType().isAssignableFrom(method.getReturnType())) {
                     throw new RuntimeException("Snippet has incompatible return type");
                 }
