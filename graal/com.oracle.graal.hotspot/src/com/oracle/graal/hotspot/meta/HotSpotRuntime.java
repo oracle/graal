@@ -701,11 +701,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
         return guard;
     }
 
-    @Override
-    public StructuredGraph intrinsicGraph(ResolvedJavaMethod caller, int bci, ResolvedJavaMethod method, List<? extends Node> parameters) {
-        return null;
-    }
-
     private static SafeReadNode safeRead(Graph graph, Kind kind, ValueNode value, int offset, Stamp stamp, long leafGraphId) {
         return graph.add(new SafeReadNode(value, LocationNode.create(LocationNode.FINAL_LOCATION, kind, offset, graph), stamp, leafGraphId));
     }
