@@ -294,6 +294,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     public void installSnippets(SnippetInstaller installer, Assumptions assumptions) {
         installer.install(ObjectSnippets.class);
         installer.install(ClassSnippets.class);
+        installer.install(ThreadSnippets.class);
         installer.install(SystemSnippets.class);
         installer.install(UnsafeSnippets.class);
         installer.install(ArrayCopySnippets.class);
@@ -702,16 +703,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
 
     @Override
     public StructuredGraph intrinsicGraph(ResolvedJavaMethod caller, int bci, ResolvedJavaMethod method, List<? extends Node> parameters) {
-        ResolvedJavaType holder = method.getDeclaringClass();
-        String fullName = method.getName() + ((HotSpotSignature) method.getSignature()).asString();
-        if (holder.equals(lookupJavaType(Thread.class))) {
-            if (fullName.equals("currentThread()Ljava/lang/Thread;")) {
-                StructuredGraph graph = new StructuredGraph();
-                ReturnNode ret = graph.add(new ReturnNode(graph.unique(new CurrentThread(config.threadObjectOffset, this))));
-                graph.start().setNext(ret);
-                return graph;
-            }
-        }
         return null;
     }
 
