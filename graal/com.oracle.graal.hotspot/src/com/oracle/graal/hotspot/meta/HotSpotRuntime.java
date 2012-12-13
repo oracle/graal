@@ -29,7 +29,6 @@ import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.snippets.SystemSnippets.*;
 import static com.oracle.graal.java.GraphBuilderPhase.*;
-import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.nodes.UnwindNode.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.snippets.Log.*;
@@ -293,6 +292,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     protected abstract RegisterConfig createRegisterConfig(boolean globalStubConfig);
 
     public void installSnippets(SnippetInstaller installer, Assumptions assumptions) {
+        installer.install(ClassSnippets.class);
         installer.install(SystemSnippets.class);
         installer.install(UnsafeSnippets.class);
         installer.install(ArrayCopySnippets.class);
@@ -724,21 +724,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 graph.start().setNext(hub);
                 hub.setNext(ret);
-                return graph;
-            }
-        } else if (holder.equals(lookupJavaType(Class.class))) {
-            if (fullName.equals("getModifiers()I")) {
-                StructuredGraph graph = new StructuredGraph();
-                LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
-                SafeReadNode klass = safeRead(graph, wordKind, receiver, config.klassOffset, StampFactory.forKind(wordKind), INVALID_GRAPH_ID);
-                graph.start().setNext(klass);
-                LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Int, config.klassModifierFlagsOffset, graph);
-                FloatingReadNode readModifiers = graph.unique(new FloatingReadNode(klass, location, null, StampFactory.intValue()));
-                CompareNode isZero = CompareNode.createCompareNode(Condition.EQ, klass, ConstantNode.defaultForKind(wordKind, graph));
-                GuardNode guard = graph.unique(new GuardNode(isZero, graph.start(), NullCheckException, InvalidateReprofile, true, INVALID_GRAPH_ID));
-                readModifiers.dependencies().add(guard);
-                ReturnNode ret = graph.add(new ReturnNode(readModifiers));
-                klass.setNext(ret);
                 return graph;
             }
         } else if (holder.equals(lookupJavaType(Thread.class))) {

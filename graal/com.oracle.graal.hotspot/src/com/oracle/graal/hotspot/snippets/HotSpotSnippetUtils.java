@@ -274,6 +274,18 @@ public class HotSpotSnippetUtils {
 
     @Fold
     public
+    static int klassModifierFlagsOffset() {
+        return config().klassModifierFlagsOffset;
+    }
+
+    @Fold
+    public
+    static int klassOffset() {
+        return config().klassOffset;
+    }
+
+    @Fold
+    public
     static int klassInstanceSizeOffset() {
         return config().klassInstanceSizeOffset;
     }
