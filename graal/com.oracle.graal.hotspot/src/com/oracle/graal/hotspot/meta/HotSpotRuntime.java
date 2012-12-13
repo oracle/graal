@@ -292,6 +292,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     protected abstract RegisterConfig createRegisterConfig(boolean globalStubConfig);
 
     public void installSnippets(SnippetInstaller installer, Assumptions assumptions) {
+        installer.install(ObjectSnippets.class);
         installer.install(ClassSnippets.class);
         installer.install(SystemSnippets.class);
         installer.install(UnsafeSnippets.class);
@@ -703,30 +704,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider {
     public StructuredGraph intrinsicGraph(ResolvedJavaMethod caller, int bci, ResolvedJavaMethod method, List<? extends Node> parameters) {
         ResolvedJavaType holder = method.getDeclaringClass();
         String fullName = method.getName() + ((HotSpotSignature) method.getSignature()).asString();
-        Kind wordKind = graalRuntime.getTarget().wordKind;
-        if (MetaUtil.isJavaLangObject(holder)) {
-            if (fullName.equals("getClass()Ljava/lang/Class;")) {
-                ValueNode obj = (ValueNode) parameters.get(0);
-                ObjectStamp stamp = (ObjectStamp) obj.stamp();
-                if (stamp.nonNull() && stamp.isExactType()) {
-                    HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) stamp.type();
-                    StructuredGraph graph = new StructuredGraph();
-                    ValueNode result = ConstantNode.forObject(type.mirror(), this, graph);
-                    ReturnNode ret = graph.add(new ReturnNode(result));
-                    graph.start().setNext(ret);
-                    return graph;
-                }
-                StructuredGraph graph = new StructuredGraph();
-                LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
-                LoadHubNode hub = graph.add(new LoadHubNode(receiver, wordKind));
-                Stamp resultStamp = StampFactory.declaredNonNull(lookupJavaType(Class.class));
-                FloatingReadNode result = graph.unique(new FloatingReadNode(hub, LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Object, config.classMirrorOffset, graph), null, resultStamp));
-                ReturnNode ret = graph.add(new ReturnNode(result));
-                graph.start().setNext(hub);
-                hub.setNext(ret);
-                return graph;
-            }
-        } else if (holder.equals(lookupJavaType(Thread.class))) {
+        if (holder.equals(lookupJavaType(Thread.class))) {
             if (fullName.equals("currentThread()Ljava/lang/Thread;")) {
                 StructuredGraph graph = new StructuredGraph();
                 ReturnNode ret = graph.add(new ReturnNode(graph.unique(new CurrentThread(config.threadObjectOffset, this))));
