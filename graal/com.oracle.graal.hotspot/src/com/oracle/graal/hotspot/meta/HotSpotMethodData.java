@@ -82,7 +82,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
     public int getDeoptimizationCount(DeoptimizationReason reason) {
         int reasonIndex = HotSpotGraalRuntime.getInstance().getRuntime().convertDeoptReason(reason);
-        return unsafe.getByte(null, metaspaceMethodData + config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
+        return unsafe.getByte(metaspaceMethodData + config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
     }
 
     public HotSpotMethodDataAccessor getNormalData(int position) {
@@ -119,17 +119,17 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private int readUnsignedByte(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getByte(null, metaspaceMethodData + fullOffsetInBytes) & 0xFF;
+        return unsafe.getByte(metaspaceMethodData + fullOffsetInBytes) & 0xFF;
     }
 
     private int readUnsignedShort(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getShort(null, metaspaceMethodData + fullOffsetInBytes) & 0xFFFF;
+        return unsafe.getShort(metaspaceMethodData + fullOffsetInBytes) & 0xFFFF;
     }
 
     private long readUnsignedInt(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getInt(null, metaspaceMethodData + fullOffsetInBytes) & 0xFFFFFFFFL;
+        return unsafe.getInt(metaspaceMethodData + fullOffsetInBytes) & 0xFFFFFFFFL;
     }
 
     private int readUnsignedIntAsSignedInt(int position, int offsetInBytes) {
@@ -139,7 +139,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private int readInt(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getInt(null, metaspaceMethodData + fullOffsetInBytes);
+        return unsafe.getInt(metaspaceMethodData + fullOffsetInBytes);
     }
 
     private long readWord(int position, int offsetInBytes) {

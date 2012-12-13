@@ -144,7 +144,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     public int getAccessFlags() {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-        return unsafe.getInt(null, metaspaceKlass + config.klassAccessFlagsOffset);
+        return unsafe.getInt(metaspaceKlass + config.klassAccessFlagsOffset);
     }
 
     @Override
@@ -466,7 +466,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     public int superCheckOffset() {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-        return unsafe.getInt(null, metaspaceKlass + config.superCheckOffsetOffset);
+        return unsafe.getInt(metaspaceKlass + config.superCheckOffsetOffset);
     }
 
     public long prototypeMarkWord() {
