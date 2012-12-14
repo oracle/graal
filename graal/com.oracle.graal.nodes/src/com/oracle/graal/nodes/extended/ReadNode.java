@@ -53,32 +53,32 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
     }
 
     /**
-     * Utility function for reading a value of this kind using an object and a displacement.
+     * Utility function for reading a value of this kind using a base address and a displacement.
      *
-     * @param object the object from which the value is read
+     * @param base the base address from which the value is read
      * @param displacement the displacement within the object in bytes
      * @return the read value encapsulated in a {@link Constant} object
      */
-    public static Constant readUnsafeConstant(Kind kind, Object object, long displacement) {
+    public static Constant readUnsafeConstant(Kind kind, Object base, long displacement) {
         switch (kind) {
             case Boolean:
-                return Constant.forBoolean(object == null ? unsafe.getByte(displacement) != 0 : unsafe.getBoolean(object, displacement));
+                return Constant.forBoolean(base == null ? unsafe.getByte(displacement) != 0 : unsafe.getBoolean(base, displacement));
             case Byte:
-                return Constant.forByte(object == null ? unsafe.getByte(displacement) : unsafe.getByte(object, displacement));
+                return Constant.forByte(base == null ? unsafe.getByte(displacement) : unsafe.getByte(base, displacement));
             case Char:
-                return Constant.forChar(object == null ? unsafe.getChar(displacement) : unsafe.getChar(object, displacement));
+                return Constant.forChar(base == null ? unsafe.getChar(displacement) : unsafe.getChar(base, displacement));
             case Short:
-                return Constant.forShort(object == null ? unsafe.getShort(displacement) : unsafe.getShort(object, displacement));
+                return Constant.forShort(base == null ? unsafe.getShort(displacement) : unsafe.getShort(base, displacement));
             case Int:
-                return Constant.forInt(object == null ? unsafe.getInt(displacement) : unsafe.getInt(object, displacement));
+                return Constant.forInt(base == null ? unsafe.getInt(displacement) : unsafe.getInt(base, displacement));
             case Long:
-                return Constant.forLong(object == null ? unsafe.getLong(displacement) : unsafe.getLong(object, displacement));
+                return Constant.forLong(base == null ? unsafe.getLong(displacement) : unsafe.getLong(base, displacement));
             case Float:
-                return Constant.forFloat(object == null ? unsafe.getFloat(displacement) : unsafe.getFloat(object, displacement));
+                return Constant.forFloat(base == null ? unsafe.getFloat(displacement) : unsafe.getFloat(base, displacement));
             case Double:
-                return Constant.forDouble(object == null ? unsafe.getDouble(displacement) : unsafe.getDouble(object, displacement));
+                return Constant.forDouble(base == null ? unsafe.getDouble(displacement) : unsafe.getDouble(base, displacement));
             case Object:
-                return Constant.forObject(unsafe.getObject(object, displacement));
+                return Constant.forObject(unsafe.getObject(base, displacement));
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -91,11 +91,17 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
                 long displacement = read.location().displacement();
                 Kind kind = read.location().getValueKind();
                 if (read.object().kind() == Kind.Object) {
-                    Constant constant = readUnsafeConstant(kind, read.object().asConstant().asObject(), displacement);
-                    return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                    Object base = read.object().asConstant().asObject();
+                    if (base != null) {
+                        Constant constant = readUnsafeConstant(kind, base, displacement);
+                        return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                    }
                 } else if (read.object().kind() == Kind.Long || read.object().kind().getStackKind() == Kind.Int) {
-                    Constant constant = readUnsafeConstant(kind, null, read.object().asConstant().asLong() + displacement);
-                    return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                    long base = read.object().asConstant().asLong();
+                    if (base != 0L) {
+                        Constant constant = readUnsafeConstant(kind, null, base + displacement);
+                        return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                    }
                 }
             }
         }
