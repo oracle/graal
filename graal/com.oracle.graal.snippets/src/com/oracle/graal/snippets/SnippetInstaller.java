@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.snippets.ClassSubstitution.InstanceMethodSubstitution;
+import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 import com.oracle.graal.snippets.Snippet.DefaultSnippetInliningPolicy;
 import com.oracle.graal.snippets.Snippet.SnippetInliningPolicy;
 
@@ -106,24 +106,28 @@ public class SnippetInstaller {
                 continue;
             }
             try {
-                InstanceMethodSubstitution methodSubstitution = method.getAnnotation(InstanceMethodSubstitution.class);
+                MethodSubstitution methodSubstitution = method.getAnnotation(MethodSubstitution.class);
                 String originalName = method.getName();
                 Class<?>[] originalParameters = method.getParameterTypes();
                 if (methodSubstitution != null) {
                     if (!methodSubstitution.value().isEmpty()) {
                         originalName = methodSubstitution.value();
                     }
-                    assert originalParameters.length >= 1 : "must be a static method with the this object as its first parameter";
-                    Class<?>[] newParameters = new Class<?>[originalParameters.length - 1];
-                    System.arraycopy(originalParameters, 1, newParameters, 0, newParameters.length);
-                    originalParameters = newParameters;
+                    if (!methodSubstitution.isStatic()) {
+                        assert originalParameters.length >= 1 : "must be a static method with the this object as its first parameter";
+                        Class<?>[] newParameters = new Class<?>[originalParameters.length - 1];
+                        System.arraycopy(originalParameters, 1, newParameters, 0, newParameters.length);
+                        originalParameters = newParameters;
+                    }
                 }
                 Method originalMethod = originalClazz.getDeclaredMethod(originalName, originalParameters);
                 if (!originalMethod.getReturnType().isAssignableFrom(method.getReturnType())) {
                     throw new RuntimeException("Snippet has incompatible return type");
                 }
                 int modifiers = method.getModifiers();
-                if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
+                if (!Modifier.isStatic(modifiers)) {
+                    throw new RuntimeException("Snippets must be static methods");
+                } else if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
                     throw new RuntimeException("Snippet must not be abstract or native");
                 }
                 ResolvedJavaMethod snippet = runtime.lookupJavaMethod(method);

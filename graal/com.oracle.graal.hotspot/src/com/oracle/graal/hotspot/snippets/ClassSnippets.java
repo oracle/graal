@@ -27,14 +27,14 @@ import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.ClassSubstitution.InstanceMethodSubstitution;
+import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 
 /**
  * Snippets for {@link java.lang.Class} methods.
  */
 @ClassSubstitution(java.lang.Class.class)
 public class ClassSnippets implements SnippetsInterface {
-    @InstanceMethodSubstitution
+    @MethodSubstitution(isStatic = false)
     public static int getModifiers(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         if (klass == Word.zero()) {
@@ -45,7 +45,7 @@ public class ClassSnippets implements SnippetsInterface {
         }
     }
 
-    @InstanceMethodSubstitution
+    @MethodSubstitution(isStatic = false)
     public static boolean isInterface(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         if (klass == Word.zero()) {
@@ -56,7 +56,7 @@ public class ClassSnippets implements SnippetsInterface {
         }
     }
 
-    @InstanceMethodSubstitution
+    @MethodSubstitution(isStatic = false)
     public static boolean isArray(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         if (klass == Word.zero()) {
@@ -67,13 +67,13 @@ public class ClassSnippets implements SnippetsInterface {
         }
     }
 
-    @InstanceMethodSubstitution
+    @MethodSubstitution(isStatic = false)
     public static boolean isPrimitive(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         return klass == Word.zero();
     }
 
-    @InstanceMethodSubstitution
+    @MethodSubstitution(isStatic = false)
     public static Class<?> getSuperclass(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         if (klass != Word.zero()) {
@@ -95,7 +95,7 @@ public class ClassSnippets implements SnippetsInterface {
         return null;
     }
 
-    @InstanceMethodSubstitution
+    @MethodSubstitution(isStatic = false)
     public static Class<?> getComponentType(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         if (klass != Word.zero()) {

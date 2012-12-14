@@ -26,7 +26,7 @@ import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.ClassSubstitution.InstanceMethodSubstitution;
+import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 
 /**
  * Snippets for {@link java.lang.Thread} methods.
@@ -37,7 +37,7 @@ public class ThreadSnippets implements SnippetsInterface {
         return CurrentThread.get();
     }
 
-    @InstanceMethodSubstitution
+    @MethodSubstitution(isStatic = false)
     @SuppressWarnings("unused")
     private static boolean isInterrupted(final Thread thisObject, boolean clearInterrupted) {
         Word rawThread = HotSpotCurrentRawThreadNode.get();

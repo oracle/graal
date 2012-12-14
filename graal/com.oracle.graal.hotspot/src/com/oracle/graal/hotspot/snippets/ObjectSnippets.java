@@ -26,20 +26,20 @@ import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.ClassSubstitution.InstanceMethodSubstitution;
+import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 
 /**
  * Snippets for {@link java.lang.Object} methods.
  */
 @ClassSubstitution(java.lang.Object.class)
 public class ObjectSnippets implements SnippetsInterface {
-    @InstanceMethodSubstitution
+    @MethodSubstitution(isStatic = false)
     public static Class<?> getClass(final Object thisObj) {
         Word hub = loadHub(thisObj);
         return (Class<?>) readFinalObject(hub, classMirrorOffset());
     }
 
-    @InstanceMethodSubstitution
+    @MethodSubstitution(isStatic = false)
     public static int hashCode(final Object thisObj) {
         Word mark = loadWordFromObject(thisObj, markOffset());
 
