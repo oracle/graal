@@ -26,8 +26,9 @@ import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.snippets.*;
+import com.oracle.graal.snippets.ClassSubstitution.InstanceMethodSubstitution;
 
-
+/**
  * Snippets for {@link java.lang.Thread} methods.
  */
 @ClassSubstitution(java.lang.Thread.class)

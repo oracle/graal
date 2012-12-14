@@ -40,7 +40,7 @@ public @interface ClassSubstitution {
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
-    public @interface MethodSubstitution {
+    public @interface InstanceMethodSubstitution {
         /**
          * Get the name of the original method.
          */

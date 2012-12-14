@@ -648,11 +648,10 @@ public class InliningUtil {
     /**
      * Determines if inlining is possible at the given invoke node.
      * @param invoke the invoke that should be inlined
-     * @param runtime a GraalRuntime instance used to determine of the invoke can be inlined and/or should be intrinsified
      * @param inliningPolicy used to determine the weight of a specific inlining
      * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
      */
-    public static InlineInfo getInlineInfo(Invoke invoke, GraalCodeCacheProvider runtime, Assumptions assumptions, InliningPolicy inliningPolicy, OptimisticOptimizations optimisticOpts) {
+    public static InlineInfo getInlineInfo(Invoke invoke, Assumptions assumptions, InliningPolicy inliningPolicy, OptimisticOptimizations optimisticOpts) {
         if (!checkInvokeConditions(invoke)) {
             return null;
         }
@@ -661,7 +660,7 @@ public class InliningUtil {
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
 
         if (callTarget.invokeKind() == InvokeKind.Special || targetMethod.canBeStaticallyBound()) {
-            return getExactInlineInfo(invoke, runtime, inliningPolicy, optimisticOpts, caller, targetMethod);
+            return getExactInlineInfo(invoke, inliningPolicy, optimisticOpts, caller, targetMethod);
         }
 
         assert callTarget.invokeKind() == InvokeKind.Virtual || callTarget.invokeKind() == InvokeKind.Interface;
@@ -675,33 +674,33 @@ public class InliningUtil {
                 holder = receiverType;
                 if (receiverStamp.isExactType()) {
                     assert targetMethod.getDeclaringClass().isAssignableFrom(holder) : holder + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
-                    return getExactInlineInfo(invoke, runtime, inliningPolicy, optimisticOpts, caller, holder.resolveMethod(targetMethod));
+                    return getExactInlineInfo(invoke, inliningPolicy, optimisticOpts, caller, holder.resolveMethod(targetMethod));
                 }
             }
         }
 
         if (holder.isArray()) {
             // arrays can be treated as Objects
-            return getExactInlineInfo(invoke, runtime, inliningPolicy, optimisticOpts, caller, holder.resolveMethod(targetMethod));
+            return getExactInlineInfo(invoke, inliningPolicy, optimisticOpts, caller, holder.resolveMethod(targetMethod));
         }
 
         // TODO (chaeubl): we could also use the type determined after assumptions for the type-checked inlining case as it might have an effect on type filtering
         if (assumptions.useOptimisticAssumptions()) {
             ResolvedJavaType uniqueSubtype = holder.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
-                return getAssumptionInlineInfo(invoke, runtime, inliningPolicy, optimisticOpts, caller, uniqueSubtype.resolveMethod(targetMethod), new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
+                return getAssumptionInlineInfo(invoke, inliningPolicy, optimisticOpts, caller, uniqueSubtype.resolveMethod(targetMethod), new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
             }
 
             ResolvedJavaMethod concrete = holder.findUniqueConcreteMethod(targetMethod);
             if (concrete != null) {
-                return getAssumptionInlineInfo(invoke, runtime, inliningPolicy, optimisticOpts, caller, concrete, new Assumptions.ConcreteMethod(targetMethod, holder, concrete));
+                return getAssumptionInlineInfo(invoke, inliningPolicy, optimisticOpts, caller, concrete, new Assumptions.ConcreteMethod(targetMethod, holder, concrete));
             }
 
             // TODO (chaeubl): C1 has one more assumption in the case of interfaces
         }
 
         // type check based inlining
-        return getTypeCheckedInlineInfo(invoke, inliningPolicy, caller, holder, targetMethod, optimisticOpts, runtime);
+        return getTypeCheckedInlineInfo(invoke, inliningPolicy, caller, holder, targetMethod, optimisticOpts);
     }
 
     private static InlineInfo getAssumptionInlineInfo(Invoke invoke, InliningPolicy inliningPolicy, OptimisticOptimizations optimisticOpts,
@@ -714,10 +713,10 @@ public class InliningUtil {
         return new AssumptionInlineInfo(invoke, weight, concrete, takenAssumption);
     }
 
-    private static InlineInfo getExactInlineInfo(Invoke invoke, GraalCodeCacheProvider runtime, InliningPolicy inliningPolicy, OptimisticOptimizations optimisticOpts,
+    private static InlineInfo getExactInlineInfo(Invoke invoke, InliningPolicy inliningPolicy, OptimisticOptimizations optimisticOpts,
                     ResolvedJavaMethod caller, ResolvedJavaMethod targetMethod) {
         assert !Modifier.isAbstract(targetMethod.getModifiers());
-        if (!checkTargetConditions(invoke, targetMethod, optimisticOpts, runtime)) {
+        if (!checkTargetConditions(invoke, targetMethod, optimisticOpts)) {
             return null;
         }
         double weight = inliningPolicy.inliningWeight(caller, targetMethod, invoke);

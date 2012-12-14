@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
+import com.oracle.graal.snippets.ClassSubstitution.InstanceMethodSubstitution;
 import com.oracle.graal.snippets.Snippet.DefaultSnippetInliningPolicy;
 import com.oracle.graal.snippets.Snippet.SnippetInliningPolicy;
 

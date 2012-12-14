@@ -61,17 +61,17 @@ public class HotSpotSnippetUtils {
 
     @Fold
     public static int threadObjectOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().threadObjectOffset;
+        return config().threadObjectOffset;
     }
 
     @Fold
     public static int osThreadOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().osThreadOffset;
+        return config().osThreadOffset;
     }
 
     @Fold
     public static int osThreadInterruptedOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().osThreadInterruptedOffset;
+        return config().osThreadInterruptedOffset;
     }
 
     @Fold
@@ -110,43 +110,28 @@ public class HotSpotSnippetUtils {
     }
 
     @Fold
-    public static int klassOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().klassOffset;
-    }
-
-    @Fold
-    public static int klassModifierFlagsOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().klassModifierFlagsOffset;
-    }
-
-    @Fold
     public static int klassAccessFlagsOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().klassAccessFlagsOffset;
+        return config().klassAccessFlagsOffset;
     }
 
     @Fold
     public static int klassLayoutHelperOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().klassLayoutHelperOffset;
+        return config().klassLayoutHelperOffset;
     }
 
     @Fold
     public static int arrayKlassLayoutHelperIdentifier() {
-        return HotSpotGraalRuntime.getInstance().getConfig().arrayKlassLayoutHelperIdentifier;
+        return config().arrayKlassLayoutHelperIdentifier;
     }
 
     @Fold
     public static int arrayKlassComponentMirrorOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().arrayKlassComponentMirrorOffset;
+        return config().arrayKlassComponentMirrorOffset;
     }
 
     @Fold
     public static int klassSuperKlassOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().klassSuperKlassOffset;
-    }
-
-    @Fold
-    public static int classMirrorOffset() {
-        return HotSpotGraalRuntime.getInstance().getConfig().classMirrorOffset;
+        return config().klassSuperKlassOffset;
     }
 
     @Fold
@@ -264,12 +249,12 @@ public class HotSpotSnippetUtils {
 
     @Fold
     static int uninitializedIdentityHashCodeValue() {
-        return HotSpotGraalRuntime.getInstance().getConfig().uninitializedIdentityHashCodeValue;
+        return config().uninitializedIdentityHashCodeValue;
     }
 
     @Fold
     static int identityHashCodeShift() {
-        return HotSpotGraalRuntime.getInstance().getConfig().identityHashCodeShift;
+        return config().identityHashCodeShift;
     }
 
     /**

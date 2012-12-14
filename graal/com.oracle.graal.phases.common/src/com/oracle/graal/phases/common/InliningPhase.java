@@ -60,7 +60,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
 
     public InliningPhase(TargetDescription target, GraalCodeCacheProvider runtime, Collection<Invoke> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
-        this(target, runtime, assumptions, cache, plan, createInliningPolicy(runtime, assumptions, optimisticOpts, hints));
+        this(target, runtime, assumptions, cache, plan, createInliningPolicy(assumptions, optimisticOpts, hints));
     }
 
     public InliningPhase(TargetDescription target, GraalCodeCacheProvider runtime, Assumptions assumptions, GraphCache cache, PhasePlan plan, InliningPolicy inliningPolicy) {
@@ -278,7 +278,6 @@ public class InliningPhase extends Phase implements InliningCallback {
         private final InliningDecision inliningDecision;
         private final WeightComputationPolicy weightComputationPolicy;
         private final Collection<Invoke> hints;
-        private final GraalCodeCacheProvider runtime;
         private final Assumptions assumptions;
         private final OptimisticOptimizations optimisticOpts;
         private final Deque<Invoke> sortedInvokes;
@@ -286,11 +285,10 @@ public class InliningPhase extends Phase implements InliningCallback {
         private FixedNode invokePredecessor;
 
         public CFInliningPolicy(InliningDecision inliningPolicy, WeightComputationPolicy weightComputationPolicy, Collection<Invoke> hints,
-                        GraalCodeCacheProvider runtime, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
+                        Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
             this.inliningDecision = inliningPolicy;
             this.weightComputationPolicy = weightComputationPolicy;
             this.hints = hints;
-            this.runtime = runtime;
             this.assumptions = assumptions;
             this.optimisticOpts = optimisticOpts;
             this.sortedInvokes = new ArrayDeque<>();
@@ -308,7 +306,7 @@ public class InliningPhase extends Phase implements InliningCallback {
 
         public InlineInfo next() {
             Invoke invoke = sortedInvokes.pop();
-            InlineInfo info = InliningUtil.getInlineInfo(invoke, runtime, assumptions, this, optimisticOpts);
+            InlineInfo info = InliningUtil.getInlineInfo(invoke, assumptions, this, optimisticOpts);
             if (info != null) {
                 invokePredecessor = (FixedNode) info.invoke().predecessor();
                 assert invokePredecessor.isAlive();
@@ -351,17 +349,15 @@ public class InliningPhase extends Phase implements InliningCallback {
         private final InliningDecision inliningDecision;
         private final WeightComputationPolicy weightComputationPolicy;
         private final Collection<Invoke> hints;
-        private final GraalCodeCacheProvider runtime;
         private final Assumptions assumptions;
         private final OptimisticOptimizations optimisticOpts;
         private final PriorityQueue<InlineInfo> sortedCandidates;
 
         public PriorityInliningPolicy(InliningDecision inliningPolicy, WeightComputationPolicy weightComputationPolicy, Collection<Invoke> hints,
-                        GraalCodeCacheProvider runtime, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
+                        Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
             this.inliningDecision = inliningPolicy;
             this.weightComputationPolicy = weightComputationPolicy;
             this.hints = hints;
-            this.runtime = runtime;
             this.assumptions = assumptions;
             this.optimisticOpts = optimisticOpts;
             sortedCandidates = new PriorityQueue<>();
@@ -380,7 +376,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         public InlineInfo next() {
             // refresh cached info before using it (it might have been in the queue for a long time)
             InlineInfo info = sortedCandidates.remove();
-            return InliningUtil.getInlineInfo(info.invoke(), runtime, assumptions, this, optimisticOpts);
+            return InliningUtil.getInlineInfo(info.invoke(), assumptions, this, optimisticOpts);
         }
 
         @Override
@@ -413,7 +409,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
 
         private void scanInvoke(Invoke invoke) {
-            InlineInfo info = InliningUtil.getInlineInfo(invoke, runtime, assumptions, this, optimisticOpts);
+            InlineInfo info = InliningUtil.getInlineInfo(invoke, assumptions, this, optimisticOpts);
             if (info != null) {
                 sortedCandidates.add(info);
             }
@@ -522,10 +518,10 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
-    private static InliningPolicy createInliningPolicy(GraalCodeCacheProvider runtime, Assumptions assumptions, OptimisticOptimizations optimisticOpts, Collection<Invoke> hints) {
+    private static InliningPolicy createInliningPolicy(Assumptions assumptions, OptimisticOptimizations optimisticOpts, Collection<Invoke> hints) {
         switch(GraalOptions.InliningPolicy) {
-            case 0: return new CFInliningPolicy(createInliningDecision(), createWeightComputationPolicy(), hints, runtime, assumptions, optimisticOpts);
-            case 1: return new PriorityInliningPolicy(createInliningDecision(), createWeightComputationPolicy(), hints, runtime, assumptions, optimisticOpts);
+            case 0: return new CFInliningPolicy(createInliningDecision(), createWeightComputationPolicy(), hints, assumptions, optimisticOpts);
+            case 1: return new PriorityInliningPolicy(createInliningDecision(), createWeightComputationPolicy(), hints, assumptions, optimisticOpts);
             default:
                 GraalInternalError.shouldNotReachHere();
                 return null;
