@@ -173,19 +173,24 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int identityHashCodeShift;
 
     /**
-     * Offset of _access_flags in metaspace Method object.
+     * Offset of _access_flags in a metaspace Method object.
      */
     public int methodAccessFlagsOffset;
 
     /**
-     * Offset of _max_locals in metaspace Method object.
+     * Offset of _max_locals in a metaspace Method object.
      */
     public int methodMaxLocalsOffset;
 
     /**
-     * Offset of _max_stack in metaspace Method object.
+     * Offset of _constMethod in a metaspace Method object.
      */
-    public int methodMaxStackOffset;
+    public int methodConstMethodOffset;
+
+    /**
+     * Offset of _max_stack in a metaspace ConstMethod object.
+     */
+    public int constMethodMaxStackOffset;
 
     /**
      * Value of extra_stack_entries() in method.hpp.
