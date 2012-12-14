@@ -131,7 +131,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         addRuntimeCall(IDENTITY_HASHCODE, config.identityHashCodeStub,
                 /*        temps */ null,
                 /*          ret */ rax.asValue(Kind.Int),
-                /* arg0:    obj */ rdx.asValue(Kind.Object));
+                /* arg0:    obj */ arg(0, Kind.Object));
 
         addRuntimeCall(THREAD_IS_INTERRUPTED, config.threadIsInterruptedStub,
                 /*        temps */ null,
