@@ -33,11 +33,18 @@ import sun.misc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.snippets.nodes.*;
 
-
+/**
+ * Tests if compiler intrinsics are inlined correctly. Most test cases only assert that there are no remaining
+ * invocations in the graph. This is sufficient if the method that is being intrinsified is a native method.
+ * For Java methods, additional checks are necessary.
+ */
 public class IntrinsificationTest extends GraalCompilerTest {
     @Test
     public void testObjectIntrinsics() {
@@ -46,11 +53,11 @@ public class IntrinsificationTest extends GraalCompilerTest {
     }
 
     @SuppressWarnings("all")
-    public static boolean getClassSnippet(Object obj) {
-        return obj.getClass() == String.class;
+    public static boolean getClassSnippet(Object obj, Class<?> clazz) {
+        return obj.getClass() == clazz;
     }
     @SuppressWarnings("all")
-    public static int objectHashCodeSnippet(A obj) {
+    public static int objectHashCodeSnippet(TestClassA obj) {
         return obj.hashCode();
     }
 
@@ -126,7 +133,8 @@ public class IntrinsificationTest extends GraalCompilerTest {
 
     @SuppressWarnings("all")
     public static long systemTimeSnippet() {
-        return System.currentTimeMillis() + System.nanoTime();
+        return System.currentTimeMillis() +
+               System.nanoTime();
     }
     @SuppressWarnings("all")
     public static int systemIdentityHashCode(Object obj) {
@@ -296,13 +304,17 @@ public class IntrinsificationTest extends GraalCompilerTest {
 
     @Test
     public void testMathIntrinsics() {
+        assertInGraph(assertNotInGraph(test("mathAbsSnippet"), IfNode.class), MathIntrinsicNode.class);     // Java
         test("mathSnippet");
     }
 
     @SuppressWarnings("all")
+    public static double mathAbsSnippet(double value) {
+        return Math.abs(value);
+    }
+    @SuppressWarnings("all")
     public static double mathSnippet(double value) {
-        return Math.abs(value) +
-               Math.sqrt(value) +
+        return Math.sqrt(value) +
                Math.log(value) +
                Math.log10(value) +
                Math.sin(value) +
@@ -315,50 +327,75 @@ public class IntrinsificationTest extends GraalCompilerTest {
 
     @Test
     public void testIntegerIntrinsics() {
-        // TODO (chaeubl): some methods have Java implementations -> check more than Invoke nodes
-        test("integerSnippet");
+        assertInGraph(test("integerReverseBytesSnippet"), ReverseBytesNode.class);              // Java
+        assertInGraph(test("integerNumberOfLeadingZerosSnippet"), BitScanReverseNode.class);    // Java
+        assertInGraph(test("integerNumberOfTrailingZerosSnippet"), BitScanForwardNode.class);   // Java
     }
 
     @SuppressWarnings("all")
-    public static int integerSnippet(int value) {
-        return Integer.reverseBytes(value) +
-               Integer.numberOfLeadingZeros(value) +
-               Integer.numberOfTrailingZeros(value);
+    public static int integerReverseBytesSnippet(int value) {
+        return Integer.reverseBytes(value);
+    }
+    @SuppressWarnings("all")
+    public static int integerNumberOfLeadingZerosSnippet(int value) {
+        return Integer.numberOfLeadingZeros(value);
+    }
+    @SuppressWarnings("all")
+    public static int integerNumberOfTrailingZerosSnippet(int value) {
+        return Integer.numberOfTrailingZeros(value);
     }
 
 
     @Test
     public void testLongIntrinsics() {
-        test("longSnippet");
+        assertInGraph(test("longReverseBytesSnippet"), ReverseBytesNode.class);              // Java
+        assertInGraph(test("longNumberOfLeadingZerosSnippet"), BitScanReverseNode.class);    // Java
+        assertInGraph(test("longNumberOfTrailingZerosSnippet"), BitScanForwardNode.class);   // Java
     }
 
     @SuppressWarnings("all")
-    public static long longSnippet(long value) {
-        return Long.reverseBytes(value) +
-               Long.numberOfLeadingZeros(value) +
-               Long.numberOfTrailingZeros(value);
+    public static long longReverseBytesSnippet(long value) {
+        return Long.reverseBytes(value);
+    }
+    @SuppressWarnings("all")
+    public static long longNumberOfLeadingZerosSnippet(long value) {
+        return Long.numberOfLeadingZeros(value);
+    }
+    @SuppressWarnings("all")
+    public static long longNumberOfTrailingZerosSnippet(long value) {
+        return Long.numberOfTrailingZeros(value);
     }
 
 
     @Test
     public void testFloatIntrinsics() {
-        test("floatSnippet");
+        assertInGraph(test("floatToIntBitsSnippet"), ConvertNode.class); // Java
+        test("intBitsToFloatSnippet");
     }
 
     @SuppressWarnings("all")
-    public static float floatSnippet(float value) {
-        return Float.intBitsToFloat(Float.floatToIntBits(value));
+    public static int floatToIntBitsSnippet(float value) {
+        return Float.floatToIntBits(value);
+    }
+    @SuppressWarnings("all")
+    public static float intBitsToFloatSnippet(int value) {
+        return Float.intBitsToFloat(value);
     }
 
 
     @Test
     public void testDoubleIntrinsics() {
-        test("doubleSnippet");
+        assertInGraph(test("doubleToLongBitsSnippet"), ConvertNode.class); // Java
+        test("longBitsToDoubleSnippet");
     }
 
     @SuppressWarnings("all")
-    public static double doubleSnippet(double value) {
-        return Double.longBitsToDouble(Double.doubleToLongBits(value));
+    public static long doubleToLongBitsSnippet(double value) {
+        return Double.doubleToLongBits(value);
+    }
+    @SuppressWarnings("all")
+    public static double longBitsToDoubleSnippet(long value) {
+        return Double.longBitsToDouble(value);
     }
 
 
@@ -376,19 +413,31 @@ public class IntrinsificationTest extends GraalCompilerTest {
                 new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
 
-                assertNoInvokes(graph);
+                assertNotInGraph(graph, Invoke.class);
                 return graph;
             }
         });
     }
 
-    private static boolean assertNoInvokes(StructuredGraph graph) {
-        for (Invoke invoke: graph.getInvokes()) {
-            fail(invoke.toString());
+    private static StructuredGraph assertNotInGraph(StructuredGraph graph, Class<?> clazz) {
+        for (Node node: graph.getNodes()) {
+            if (clazz.isInstance(node)) {
+                fail(node.toString());
+            }
         }
-        return false;
+        return graph;
     }
 
-    private static class A {
+    private static StructuredGraph assertInGraph(StructuredGraph graph, Class<?> clazz) {
+        for (Node node: graph.getNodes()) {
+            if (clazz.isInstance(node)) {
+                return graph;
+            }
+        }
+        fail("Graph does not contain a node of class " + clazz.getName());
+        return graph;
+    }
+
+    private static class TestClassA {
     }
 }

@@ -166,6 +166,8 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
         if (isArray()) {
             return isFinal(getElementalType(this).getModifiers()) ? this : null;
+        } else if (isInterface()) {
+            return HotSpotGraalRuntime.getInstance().getCompilerToVM().getUniqueImplementor(this);
         } else {
             HotSpotResolvedObjectType type = this;
             while (isAbstract(type.getModifiers())) {
@@ -175,7 +177,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
                 }
                 type = (HotSpotResolvedObjectType) fromMetaspaceKlass(subklass);
             }
-            if (type.isInterface() || unsafeReadWord(type.metaspaceKlass + config.subklassOffset) != 0) {
+            if (isAbstract(type.getModifiers()) || type.isInterface() || unsafeReadWord(type.metaspaceKlass + config.subklassOffset) != 0) {
                 return null;
             }
             return type;

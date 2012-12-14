@@ -69,6 +69,9 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long getUniqueConcreteMethod(long metaspaceMethod, HotSpotResolvedObjectType[] resultHolder);
 
     @Override
+    public native ResolvedJavaType getUniqueImplementor(HotSpotResolvedObjectType interfaceType);
+
+    @Override
     public native int getInvocationCount(long metaspaceMethod);
 
     @Override
