@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.graph.FieldIntrospection.*;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.interpreter.*;
@@ -61,6 +62,29 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     protected static void setInstance(HotSpotGraalRuntime runtime) {
         assert instance == null : "runtime already registered";
         instance = runtime;
+
+        // Do deferred initialization
+
+        // Proxies for the VM/Compiler interfaces cannot be initialized
+        // in the constructor as proxy creation causes static
+        // initializers to be executed for all the types involved in the
+        // proxied methods. Some of these static initializers (e.g. in
+        // HotSpotMethodData) rely on the above instance field being set
+        // to retrieve config details.
+        VMToCompiler toCompiler = runtime.vmToCompiler;
+        CompilerToVM toVM = runtime.compilerToVm;
+
+        if (CountingProxy.ENABLED) {
+            toCompiler = CountingProxy.getProxy(VMToCompiler.class, toCompiler);
+            toVM = CountingProxy.getProxy(CompilerToVM.class, toVM);
+        }
+        if (Logger.ENABLED) {
+            toCompiler = LoggingProxy.getProxy(VMToCompiler.class, toCompiler);
+            toVM = LoggingProxy.getProxy(CompilerToVM.class, toVM);
+        }
+
+        runtime.vmToCompiler = toCompiler;
+        runtime.compilerToVm = toVM;
     }
 
     private static Kind wordKind;
@@ -83,8 +107,8 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         return unsafe.getInt(address);
     }
 
-    protected final CompilerToVM compilerToVm;
-    protected final VMToCompiler vmToCompiler;
+    protected /*final*/ CompilerToVM compilerToVm;
+    protected /*final*/ VMToCompiler vmToCompiler;
 
     protected final HotSpotRuntime runtime;
     protected final GraalCompiler compiler;
@@ -101,17 +125,6 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         // initialize VmToCompiler
         VMToCompiler toCompiler = new VMToCompilerImpl(this);
 
-        // logging, etc.
-        if (CountingProxy.ENABLED) {
-            toCompiler = CountingProxy.getProxy(VMToCompiler.class, toCompiler);
-            toVM = CountingProxy.getProxy(CompilerToVM.class, toVM);
-        }
-        if (Logger.ENABLED) {
-            toCompiler = LoggingProxy.getProxy(VMToCompiler.class, toCompiler);
-            toVM = LoggingProxy.getProxy(CompilerToVM.class, toVM);
-        }
-
-        // set the final fields
         compilerToVm = toVM;
         vmToCompiler = toCompiler;
         config = new HotSpotVMConfig();
@@ -138,8 +151,12 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     private static void printConfig(HotSpotVMConfig config) {
         Field[] fields = config.getClass().getDeclaredFields();
+        Map<String, Field> sortedFields = new TreeMap<>();
         for (Field f : fields) {
             f.setAccessible(true);
+            sortedFields.put(f.getName(), f);
+        }
+        for (Field f : sortedFields.values()) {
             try {
                 Logger.info(String.format("%9s %-40s = %s", f.getType().getSimpleName(), f.getName(), Logger.pretty(f.get(config))));
             } catch (Exception e) {

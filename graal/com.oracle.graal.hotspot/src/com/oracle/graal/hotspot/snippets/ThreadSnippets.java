@@ -28,10 +28,12 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.snippets.*;
 
 
+ * Snippets for {@link java.lang.Thread} methods.
+ */
 @ClassSubstitution(java.lang.Thread.class)
 public class ThreadSnippets implements SnippetsInterface {
     public static Thread currentThread() {
-        return CurrentThread.get(threadObjectOffset());
+        return CurrentThread.get();
     }
 
     @InstanceMethodSubstitution

@@ -171,6 +171,7 @@ public final class GraalOptions {
     public static boolean AlignCallsForPatching              = true;
     public static boolean ResolveClassBeforeStaticInvoke     = true;
     public static boolean CanOmitFrame                       = true;
+    public static int     SafepointPollOffset                = 256;
 
     // Translating tableswitch instructions
     public static int     MinimumJumpTableSize               = 5;

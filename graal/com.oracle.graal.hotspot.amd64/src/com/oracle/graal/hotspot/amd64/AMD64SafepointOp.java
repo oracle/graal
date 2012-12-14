@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.amd64.*;
@@ -51,15 +52,18 @@ public class AMD64SafepointOp extends AMD64LIRInstruction {
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm) {
         Register scratch = tasm.frameMap.registerConfig.getScratchRegister();
         int pos = asm.codeBuffer.position();
+        int offset = SafepointPollOffset % tasm.target.pageSize;
         if (config.isPollingPageFar) {
-            asm.movq(scratch, config.safepointPollingAddress);
+            asm.movq(scratch, config.safepointPollingAddress + offset);
             tasm.recordMark(Marks.MARK_POLL_FAR);
             tasm.recordSafepoint(pos, state);
             asm.movq(scratch, new Address(tasm.target.wordKind, scratch.asValue()));
         } else {
             tasm.recordMark(Marks.MARK_POLL_NEAR);
             tasm.recordSafepoint(pos, state);
-            asm.movq(scratch, new Address(tasm.target.wordKind, rip.asValue()));
+            // The C++ code transforms the polling page offset into an RIP displacement
+            // to the real address at that offset in the polling page.
+            asm.movq(scratch, new Address(tasm.target.wordKind, rip.asValue(), offset));
         }
     }
 }

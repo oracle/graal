@@ -32,4 +32,18 @@ import java.lang.annotation.*;
 public @interface ClassSubstitution {
 
     Class<?> value();
+
+    /**
+     * Used to map a substitute method to an original method where the default mapping
+     * of name and signature is not possible due to name clashes with final methods in
+     * {@link Object} or signature types that are not public.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public @interface MethodSubstitution {
+        /**
+         * Get the name of the original method.
+         */
+        String value() default "";
+    }
 }

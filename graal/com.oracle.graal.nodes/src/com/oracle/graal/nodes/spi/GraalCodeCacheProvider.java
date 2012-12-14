@@ -22,12 +22,8 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
 
 /**
  * Graal-specific extensions for the code cache provider interface.
@@ -35,6 +31,4 @@ import com.oracle.graal.nodes.*;
 public interface GraalCodeCacheProvider extends CodeCacheProvider {
 
     void lower(Node n, LoweringTool tool);
-
-    StructuredGraph intrinsicGraph(ResolvedJavaMethod caller, int bci, ResolvedJavaMethod method, List<? extends Node> parameters);
 }

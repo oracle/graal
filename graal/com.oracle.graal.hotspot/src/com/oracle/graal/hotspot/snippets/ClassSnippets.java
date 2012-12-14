@@ -28,12 +28,16 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.snippets.*;
 
+/**
+ * Snippets for {@link java.lang.Class} methods.
+ */
 @ClassSubstitution(java.lang.Class.class)
 public class ClassSnippets implements SnippetsInterface {
     @InstanceMethodSubstitution
     public static int getModifiers(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         if (klass == Word.zero()) {
+            // Class for primitive type
             return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
         } else {
             return loadIntFromWord(klass, klassModifierFlagsOffset());

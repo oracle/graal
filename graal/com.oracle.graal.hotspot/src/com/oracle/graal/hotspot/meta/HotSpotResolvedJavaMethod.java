@@ -74,7 +74,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public int getModifiers() {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-        return unsafe.getInt(null, metaspaceMethod + config.methodAccessFlagsOffset) & Modifier.methodModifiers();
+        return unsafe.getInt(metaspaceMethod + config.methodAccessFlagsOffset) & Modifier.methodModifiers();
     }
 
     @Override
@@ -129,13 +129,13 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public int getMaxLocals() {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-        return unsafe.getShort(null, metaspaceMethod + config.methodMaxLocalsOffset) & 0xFFFF;
+        return unsafe.getShort(metaspaceMethod + config.methodMaxLocalsOffset) & 0xFFFF;
     }
 
     @Override
     public int getMaxStackSize() {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-        return config.extraStackEntries + (unsafe.getShort(null, metaspaceMethod + config.methodMaxStackOffset) & 0xFFFF);
+        return config.extraStackEntries + (unsafe.getShort(metaspaceMethod + config.methodMaxStackOffset) & 0xFFFF);
     }
 
     @Override

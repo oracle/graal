@@ -82,7 +82,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
     public int getDeoptimizationCount(DeoptimizationReason reason) {
         int reasonIndex = HotSpotGraalRuntime.getInstance().getRuntime().convertDeoptReason(reason);
-        return unsafe.getByte(null, metaspaceMethodData + config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
+        return unsafe.getByte(metaspaceMethodData + config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
     }
 
     public HotSpotMethodDataAccessor getNormalData(int position) {
@@ -119,17 +119,17 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private int readUnsignedByte(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getByte(null, metaspaceMethodData + fullOffsetInBytes) & 0xFF;
+        return unsafe.getByte(metaspaceMethodData + fullOffsetInBytes) & 0xFF;
     }
 
     private int readUnsignedShort(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getShort(null, metaspaceMethodData + fullOffsetInBytes) & 0xFFFF;
+        return unsafe.getShort(metaspaceMethodData + fullOffsetInBytes) & 0xFFFF;
     }
 
     private long readUnsignedInt(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getInt(null, metaspaceMethodData + fullOffsetInBytes) & 0xFFFFFFFFL;
+        return unsafe.getInt(metaspaceMethodData + fullOffsetInBytes) & 0xFFFFFFFFL;
     }
 
     private int readUnsignedIntAsSignedInt(int position, int offsetInBytes) {
@@ -139,7 +139,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private int readInt(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getInt(null, metaspaceMethodData + fullOffsetInBytes);
+        return unsafe.getInt(metaspaceMethodData + fullOffsetInBytes);
     }
 
     private long readWord(int position, int offsetInBytes) {
@@ -164,6 +164,9 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private abstract static class AbstractMethodData implements HotSpotMethodDataAccessor {
+        /**
+         * Corresponds to DS_RECOMPILE_BIT defined in deoptimization.cpp.
+         */
         private static final int EXCEPTIONS_MASK = 0x80;
 
         private final int tag;
@@ -323,9 +326,10 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private abstract static class AbstractTypeData extends CounterData {
         private static final int RECEIVER_TYPE_DATA_ROW_SIZE = cellsToBytes(2);
-        private static final int RECEIVER_TYPE_DATA_SIZE = cellIndexToOffset(1) + RECEIVER_TYPE_DATA_ROW_SIZE * config.typeProfileWidth;
-        private static final int RECEIVER_TYPE_DATA_FIRST_RECEIVER_OFFSET = cellIndexToOffset(1);
-        private static final int RECEIVER_TYPE_DATA_FIRST_COUNT_OFFSET = cellIndexToOffset(2);
+        private static final int RECEIVER_TYPE_DATA_SIZE = cellIndexToOffset(2) + RECEIVER_TYPE_DATA_ROW_SIZE * config.typeProfileWidth;
+        protected static final int NONPROFILED_RECEIVER_COUNT_OFFSET = cellIndexToOffset(1);
+        private static final int RECEIVER_TYPE_DATA_FIRST_RECEIVER_OFFSET = cellIndexToOffset(2);
+        private static final int RECEIVER_TYPE_DATA_FIRST_COUNT_OFFSET = cellIndexToOffset(3);
 
         protected AbstractTypeData(int tag) {
             super(tag, RECEIVER_TYPE_DATA_SIZE);
@@ -356,11 +360,7 @@ public final class HotSpotMethodData extends CompilerObject {
             return createTypeProfile(types, counts, totalCount, entries);
         }
 
-        protected long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position) {
-            // checkcast/aastore/instanceof profiling in the HotSpot template-based interpreter was adjusted so that the counter
-            // is incremented to indicate the polymorphic case instead of decrementing it for failed type checks
-            return getCounterValue(data, position);
-        }
+        protected abstract long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position);
 
         private static JavaTypeProfile createTypeProfile(ResolvedJavaType[] types, long[] counts, long totalCount, int entries) {
             if (entries <= 0 || totalCount < GraalOptions.MatureExecutionsTypeProfile) {
@@ -402,6 +402,11 @@ public final class HotSpotMethodData extends CompilerObject {
         public int getExecutionCount(HotSpotMethodData data, int position) {
             return -1;
         }
+
+        @Override
+        protected long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position) {
+            return data.readUnsignedIntAsSignedInt(position, NONPROFILED_RECEIVER_COUNT_OFFSET);
+        }
     }
 
     private static class VirtualCallData extends AbstractTypeData {
@@ -422,6 +427,11 @@ public final class HotSpotMethodData extends CompilerObject {
 
             total += getCounterValue(data, position);
             return truncateLongToInt(total);
+        }
+
+        @Override
+        protected long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position) {
+            return getCounterValue(data, position);
         }
     }
 

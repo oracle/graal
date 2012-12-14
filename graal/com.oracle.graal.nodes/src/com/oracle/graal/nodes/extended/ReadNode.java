@@ -34,8 +34,12 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class ReadNode extends AccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
 
-    public ReadNode(ValueNode object, ValueNode location, Stamp stamp) {
+    public ReadNode(ValueNode object, LocationNode location, Stamp stamp) {
         super(object, location, stamp);
+    }
+
+    public ReadNode(ValueNode object, int displacement, Object locationIdentity, Kind kind) {
+        super(object, object.graph().add(new LocationNode(locationIdentity, kind, displacement)), StampFactory.forKind(kind));
     }
 
     @Override
@@ -49,33 +53,32 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
     }
 
     /**
-     * Utility function for reading a value of this kind using an object and a displacement.
+     * Utility function for reading a value of this kind using a base address and a displacement.
      *
-     * @param object the object from which the value is read
+     * @param base the base address from which the value is read
      * @param displacement the displacement within the object in bytes
      * @return the read value encapsulated in a {@link Constant} object
      */
-    public static Constant readUnsafeConstant(Kind kind, Object object, long displacement) {
-        assert object != null;
+    public static Constant readUnsafeConstant(Kind kind, Object base, long displacement) {
         switch (kind) {
             case Boolean:
-                return Constant.forBoolean(unsafe.getBoolean(object, displacement));
+                return Constant.forBoolean(base == null ? unsafe.getByte(displacement) != 0 : unsafe.getBoolean(base, displacement));
             case Byte:
-                return Constant.forByte(unsafe.getByte(object, displacement));
+                return Constant.forByte(base == null ? unsafe.getByte(displacement) : unsafe.getByte(base, displacement));
             case Char:
-                return Constant.forChar(unsafe.getChar(object, displacement));
+                return Constant.forChar(base == null ? unsafe.getChar(displacement) : unsafe.getChar(base, displacement));
             case Short:
-                return Constant.forShort(unsafe.getShort(object, displacement));
+                return Constant.forShort(base == null ? unsafe.getShort(displacement) : unsafe.getShort(base, displacement));
             case Int:
-                return Constant.forInt(unsafe.getInt(object, displacement));
+                return Constant.forInt(base == null ? unsafe.getInt(displacement) : unsafe.getInt(base, displacement));
             case Long:
-                return Constant.forLong(unsafe.getLong(object, displacement));
+                return Constant.forLong(base == null ? unsafe.getLong(displacement) : unsafe.getLong(base, displacement));
             case Float:
-                return Constant.forFloat(unsafe.getFloat(object, displacement));
+                return Constant.forFloat(base == null ? unsafe.getFloat(displacement) : unsafe.getFloat(base, displacement));
             case Double:
-                return Constant.forDouble(unsafe.getDouble(object, displacement));
+                return Constant.forDouble(base == null ? unsafe.getDouble(displacement) : unsafe.getDouble(base, displacement));
             case Object:
-                return Constant.forObject(unsafe.getObject(object, displacement));
+                return Constant.forObject(unsafe.getObject(base, displacement));
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -83,24 +86,37 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
 
     public static ValueNode canonicalizeRead(Access read, CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
-        if (runtime != null && read.object() != null && read.object().isConstant() && read.object().kind() == Kind.Object) {
+        if (runtime != null && read.object() != null && read.object().isConstant()/* && read.object().kind() == Kind.Object*/) {
             if (read.location().locationIdentity() == LocationNode.FINAL_LOCATION && read.location().getClass() == LocationNode.class) {
-                Object value = read.object().asConstant().asObject();
-                if (value != null) {
-                    long displacement = read.location().displacement();
-                    Kind kind = read.location().getValueKind();
-                    Constant constant = readUnsafeConstant(kind, value, displacement);
-                    return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                long displacement = read.location().displacement();
+                Kind kind = read.location().getValueKind();
+                if (read.object().kind() == Kind.Object) {
+                    Object base = read.object().asConstant().asObject();
+                    if (base != null) {
+                        Constant constant = readUnsafeConstant(kind, base, displacement);
+                        return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                    }
+                } else if (read.object().kind() == Kind.Long || read.object().kind().getStackKind() == Kind.Int) {
+                    long base = read.object().asConstant().asLong();
+                    if (base != 0L) {
+                        Constant constant = readUnsafeConstant(kind, null, base + displacement);
+                        return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                    }
                 }
             }
         }
         return (ValueNode) read;
     }
 
-    private ReadNode(ValueNode object, ValueNode location) {
-        this(object, location, StampFactory.forNodeIntrinsic());
-    }
-
-    @NodeIntrinsic
-    public static native <T> T readMemory(Object object, Object location);
+    /**
+     * Reads a value from memory.
+     *
+     * @param base the base pointer for the memory access
+     * @param displacement the displacement of the access
+     * @param locationIdentity the identity of the access
+     * @param kind the kind of the value read
+     * @return the value read from memory
+     */
+    @NodeIntrinsic(setStampFromReturnType = true)
+    public static native <T> T read(Object base, @ConstantNodeParameter int displacement, @ConstantNodeParameter Object locationIdentity, @ConstantNodeParameter Kind kind);
 }
