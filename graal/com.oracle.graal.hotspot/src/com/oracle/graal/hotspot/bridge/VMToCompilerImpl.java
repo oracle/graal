@@ -339,13 +339,8 @@ public class VMToCompilerImpl implements VMToCompiler {
         long total = 0;
         for (int i = 0; i < maps.size(); i++) {
             DebugValueMap map = maps.get(i);
-            // the top level accumulates some counters -> do not process the children if we find a value
-            long value = map.getCurrentValue(index);
-            if (value == 0) {
-                total += collectTotal(map.getChildren(), index);
-            } else {
-                total += value;
-            }
+            total += map.getCurrentValue(index);
+            total += collectTotal(map.getChildren(), index);
         }
         return total;
     }

@@ -124,12 +124,12 @@ public final class GraalOptions {
     public static boolean PerThreadDebugValues               = ____;
     public static boolean SummarizeDebugValues               = ____;
     public static boolean SummarizePerPhase                  = ____;
-    public static String  Dump                                = null;
-    public static String  Meter                               = null;
-    public static String  Time                                = null;
-    public static String  Log                                 = null;
-    public static String  LogFile                             = null;
-    public static String  MethodFilter                        = null;
+    public static String  Dump                               = null;
+    public static String  Meter                              = null;
+    public static String  Time                               = null;
+    public static String  Log                                = null;
+    public static String  LogFile                            = null;
+    public static String  MethodFilter                       = null;
     public static boolean DumpOnError                        = ____;
 
     // Ideal graph visualizer output settings
