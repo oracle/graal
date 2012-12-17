@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.debug.internal;
 
+import java.lang.management.*;
+
 import com.oracle.graal.debug.*;
 
 public final class TimerImpl extends DebugValue implements DebugTimer {
+    private static final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
 
     public static final TimerCloseable VOID_CLOSEABLE = new TimerCloseable() {
         @Override
@@ -41,20 +44,22 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
     @Override
     public TimerCloseable start() {
         if (Debug.isTimeEnabled()) {
-            final long startTime = System.nanoTime();
+            long startTime;
+            if (threadMXBean.isCurrentThreadCpuTimeSupported()) {
+                startTime = threadMXBean.getCurrentThreadCpuTime();
+            } else {
+                startTime = System.nanoTime();
+            }
             if (valueToSubstract.get() == null) {
                 valueToSubstract.set(0L);
             }
-            final long previousValueToSubstract = valueToSubstract.get();
-            TimerCloseable result = new TimerCloseable() {
-                @Override
-                public void close() {
-                    long timeSpan = System.nanoTime() - startTime;
-                    long oldValueToSubstract = valueToSubstract.get();
-                    valueToSubstract.set(timeSpan + previousValueToSubstract);
-                    TimerImpl.this.addToCurrentValue(timeSpan - oldValueToSubstract);
-                }
-            };
+            long previousValueToSubstract = valueToSubstract.get();
+            AbstractTimer result;
+            if (threadMXBean.isCurrentThreadCpuTimeSupported()) {
+                result = new CpuTimeTimer(startTime, previousValueToSubstract);
+            } else {
+                result = new SystemNanosTimer(startTime, previousValueToSubstract);
+            }
             valueToSubstract.set(0L);
             return result;
         } else {
@@ -65,5 +70,47 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
     @Override
     public String toString(long value) {
         return String.format("%d.%d ms", value / 1000000, (value / 100000) % 10);
+    }
+
+    private abstract class AbstractTimer  implements TimerCloseable {
+        private final long startTime;
+        private final long previousValueToSubstract;
+
+        private AbstractTimer(long startTime, long previousValueToSubstract) {
+            this.startTime = startTime;
+            this.previousValueToSubstract = previousValueToSubstract;
+        }
+
+        @Override
+        public void close() {
+            long timeSpan = currentTime() - startTime;
+            long oldValueToSubstract = valueToSubstract.get();
+            valueToSubstract.set(timeSpan + previousValueToSubstract);
+            TimerImpl.this.addToCurrentValue(timeSpan - oldValueToSubstract);
+        }
+
+        protected abstract long currentTime();
+    }
+
+    private final class SystemNanosTimer extends AbstractTimer {
+        public SystemNanosTimer(long startTime, long previousValueToSubstract) {
+            super(startTime, previousValueToSubstract);
+        }
+
+        @Override
+        protected long currentTime() {
+            return System.nanoTime();
+        }
+    }
+
+    private final class CpuTimeTimer extends AbstractTimer {
+        public CpuTimeTimer(long startTime, long previousValueToSubstract) {
+            super(startTime, previousValueToSubstract);
+        }
+
+        @Override
+        protected long currentTime() {
+            return threadMXBean.getCurrentThreadCpuTime();
+        }
     }
 }
