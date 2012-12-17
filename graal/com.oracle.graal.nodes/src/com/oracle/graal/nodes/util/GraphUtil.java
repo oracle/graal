@@ -76,7 +76,10 @@ public class GraphUtil {
                     loopend.safeDelete();
                 }
                 begin.removeExits();
-                killCFG(begin.next());
+                FixedNode loopBody = begin.next();
+                if (loopBody != null) { // for small infinite loops, the body may be killed while killing the loop ends
+                    killCFG(loopBody);
+                }
                 begin.safeDelete();
             } else if (merge instanceof LoopBeginNode && ((LoopBeginNode) merge).loopEnds().isEmpty()) { // not a loop anymore
                 graph.reduceDegenerateLoopBegin((LoopBeginNode) merge);
