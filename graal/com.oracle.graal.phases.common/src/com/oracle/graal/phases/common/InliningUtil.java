@@ -798,7 +798,7 @@ public class InliningUtil {
         for (int i = 0; i < types.length; i++) {
             ProfiledType ptype = types[i];
             ResolvedJavaType type = ptype.getType();
-            assert !type.isInterface() && !Modifier.isAbstract(type.getModifiers());
+            assert !type.isInterface() && (type.isArray() || !Modifier.isAbstract(type.getModifiers())) : type;
             if (holder.isAssignableFrom(type)) {
                 result.add(ptype);
             }
