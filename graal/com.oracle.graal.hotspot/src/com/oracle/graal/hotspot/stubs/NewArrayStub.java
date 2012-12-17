@@ -33,7 +33,6 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
-import com.oracle.graal.snippets.Snippet.Fold;
 import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 
@@ -82,7 +81,7 @@ public class NewArrayStub extends Stub {
         log(log, "newArray: hub=%p\n", hub.toLong());
 
         // check that array length is small enough for fast path.
-        if (!forceSlowPath() && length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
+        if (length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
             Word memory = refillAllocate(intArrayHub, sizeInBytes, log);
             if (memory != Word.zero()) {
                 log(log, "newArray: allocated new array at %p\n", memory.toLong());
@@ -92,11 +91,5 @@ public class NewArrayStub extends Stub {
         }
         log(log, "newArray: calling new_array_slow", 0L);
         return verifyOop(NewArraySlowStubCall.call(hub, length));
-    }
-
-    @Fold
-    private static boolean forceSlowPath() {
-        // TODO (ds) make default "false" once refill issue is resolved
-        return "true".equalsIgnoreCase(System.getProperty("graal.newArrayStub.forceSlowPath", "true"));
     }
 }
