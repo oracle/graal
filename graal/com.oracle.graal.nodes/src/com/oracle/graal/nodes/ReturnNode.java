@@ -40,13 +40,12 @@ public final class ReturnNode extends FixedNode implements LIRLowerable, Node.It
      * @param result the instruction producing the result for this return; {@code null} if this is a void return
      */
     public ReturnNode(ValueNode result) {
-        super(result == null ? StampFactory.forVoid() : result.stamp());
+        super(StampFactory.forVoid());
         this.result = result;
     }
 
     @Override
     public boolean verify() {
-        assertTrue((result == null && stamp() == StampFactory.forVoid()) || (result != null && kind() == result.kind()), "invalid stamp");
         return super.verify();
     }
 
