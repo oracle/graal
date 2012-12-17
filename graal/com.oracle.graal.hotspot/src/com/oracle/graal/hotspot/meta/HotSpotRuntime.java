@@ -238,7 +238,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    format */ arg(0, Kind.Object),
-                        /* arg1:     value */ arg(1, Kind.Long));
+                        /* arg1:     value */ arg(1, Kind.Long),
+                        /* arg2:     value */ arg(2, Kind.Long),
+                        /* arg3:     value */ arg(3, Kind.Long));
 
         addRuntimeCall(LOG_OBJECT, config.logObjectStub,
                         /*           temps */ null,
