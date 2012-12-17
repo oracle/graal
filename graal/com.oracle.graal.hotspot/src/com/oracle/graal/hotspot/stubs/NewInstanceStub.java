@@ -34,8 +34,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.Snippet.ConstantParameter;
-import com.oracle.graal.snippets.Snippet.Parameter;
+import com.oracle.graal.snippets.Snippet.*;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 
 /**
@@ -70,7 +69,7 @@ public class NewInstanceStub extends Stub {
                     @ConstantParameter("intArrayHub") Word intArrayHub,
                     @ConstantParameter("log") boolean log) {
         int sizeInBytes = loadIntFromWord(hub, klassInstanceSizeOffset());
-        if (inlineContiguousAllocationSupported()) {
+        if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
             if (loadIntFromWord(hub, klassStateOffset()) == klassStateFullyInitialized()) {
                 Word memory;
                 if (refillTLAB(intArrayHub, Word.fromLong(tlabIntArrayMarkWord()), tlabAlignmentReserveInHeapWords() * wordSize(), log)) {
@@ -202,6 +201,11 @@ public class NewInstanceStub extends Stub {
                 return heapTop;
             }
         }
+    }
+
+    @Fold
+    private static boolean forceSlowPath() {
+        return Boolean.getBoolean("graal.newInstanceStub.forceSlowPath");
     }
 
     static void log(boolean enabled, String format, long value) {
