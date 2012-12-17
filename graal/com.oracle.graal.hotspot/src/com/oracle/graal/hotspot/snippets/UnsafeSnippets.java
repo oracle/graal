@@ -89,9 +89,9 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static int getIntVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static int getIntVolatile(final Object thisObj, Object o, long offset) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
-        int result = getInt(o, offset);
+        int result = getInt(thisObj, o, offset);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
         return result;
     }
@@ -102,16 +102,16 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putIntVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, int x) {
+    public static void putIntVolatile(final Object thisObj, Object o, long offset, int x) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
-        putInt(o, offset, x);
+        putInt(thisObj, o, offset, x);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putOrderedInt(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, int x) {
+    public static void putOrderedInt(final Object thisObj, Object o, long offset, int x) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
-        putInt(o, offset, x);
+        putInt(thisObj, o, offset, x);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
     }
 
@@ -150,9 +150,9 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static byte getByteVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static byte getByteVolatile(final Object thisObj, Object o, long offset) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
-        byte result = getByte(o, offset);
+        byte result = getByte(thisObj, o, offset);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
         return result;
     }
@@ -163,9 +163,9 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putByteVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, byte x) {
+    public static void putByteVolatile(final Object thisObj, Object o, long offset, byte x) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
-        putByte(o, offset, x);
+        putByte(thisObj, o, offset, x);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
     }
 
@@ -177,9 +177,9 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static short getShortVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static short getShortVolatile(final Object thisObj, Object o, long offset) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
-        short result = getShort(o, offset);
+        short result = getShort(thisObj, o, offset);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
         return result;
     }
@@ -190,9 +190,9 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putShortVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, short x) {
+    public static void putShortVolatile(final Object thisObj, Object o, long offset, short x) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
-        putShort(o, offset, x);
+        putShort(thisObj, o, offset, x);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
     }
 
@@ -204,9 +204,9 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static char getCharVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static char getCharVolatile(final Object thisObj, Object o, long offset) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
-        char result = getChar(o, offset);
+        char result = getChar(thisObj, o, offset);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
         return result;
     }
@@ -217,9 +217,9 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putCharVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, char x) {
+    public static void putCharVolatile(final Object thisObj, Object o, long offset, char x) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
-        putChar(o, offset, x);
+        putChar(thisObj, o, offset, x);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
     }
 
@@ -231,9 +231,9 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static long getLongVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static long getLongVolatile(final Object thisObj, Object o, long offset) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
-        long result = getLong(o, offset);
+        long result = getLong(thisObj, o, offset);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
         return result;
     }
@@ -244,16 +244,16 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putLongVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, long x) {
+    public static void putLongVolatile(final Object thisObj, Object o, long offset, long x) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
-        putLong(o, offset, x);
+        putLong(thisObj, o, offset, x);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putOrderedLong(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, long x) {
+    public static void putOrderedLong(final Object thisObj, Object o, long offset, long x) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
-        putLong(o, offset, x);
+        putLong(thisObj, o, offset, x);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
     }
 
@@ -265,9 +265,9 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static float getFloatVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static float getFloatVolatile(final Object thisObj, Object o, long offset) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
-        float result = getFloat(o, offset);
+        float result = getFloat(thisObj, o, offset);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
         return result;
     }
@@ -278,9 +278,9 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putFloatVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, float x) {
+    public static void putFloatVolatile(final Object thisObj, Object o, long offset, float x) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
-        putFloat(o, offset, x);
+        putFloat(thisObj, o, offset, x);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
     }
 
@@ -292,9 +292,9 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static double getDoubleVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static double getDoubleVolatile(final Object thisObj, Object o, long offset) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
-        double result = getDouble(o, offset);
+        double result = getDouble(thisObj, o, offset);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
         return result;
     }
@@ -305,9 +305,9 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putDoubleVolatile(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, double x) {
+    public static void putDoubleVolatile(final Object thisObj, Object o, long offset, double x) {
         MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
-        putDouble(o, offset, x);
+        putDouble(thisObj, o, offset, x);
         MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
     }
 
