@@ -123,6 +123,7 @@ public class GraalCompiler {
             new DeadCodeEliminationPhase().apply(graph);
 
             if (GraalOptions.CheckCastElimination && GraalOptions.OptCanonicalizer) {
+                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
                 new IterativeConditionalEliminationPhase(target, runtime, assumptions).apply(graph);
             }
         }
@@ -150,7 +151,10 @@ public class GraalCompiler {
         }
         if (GraalOptions.OptLoopTransform) {
             new LoopTransformHighPhase().apply(graph);
+            new LoopTransformLowPhase().apply(graph);
         }
+        new RemoveValueProxyPhase().apply(graph);
+
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
         }
@@ -168,10 +172,6 @@ public class GraalCompiler {
             if (GraalOptions.OptReadElimination) {
                 new ReadEliminationPhase().apply(graph);
             }
-        }
-
-        if (GraalOptions.OptLoopTransform) {
-            new LoopTransformLowPhase().apply(graph);
         }
         new RemoveValueProxyPhase().apply(graph);
 
