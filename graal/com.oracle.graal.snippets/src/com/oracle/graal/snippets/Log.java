@@ -39,7 +39,7 @@ public final class Log {
 
     public static final Descriptor LOG_PRIMITIVE = new Descriptor("logPrimitive", false, Kind.Void, Kind.Int, Kind.Long, Kind.Boolean);
     public static final Descriptor LOG_OBJECT = new Descriptor("logObject", false, Kind.Void, Kind.Object, Kind.Int);
-    public static final Descriptor LOG_PRINTF = new Descriptor("logPrintf", false, Kind.Void, Kind.Object, Kind.Long);
+    public static final Descriptor LOG_PRINTF = new Descriptor("logPrintf", false, Kind.Void, Kind.Object, Kind.Long, Kind.Long, Kind.Long);
 
     // Note: Must be kept in sync with constants in c1_Runtime1.hpp
     private static final int LOG_OBJECT_NEWLINE = 0x01;
@@ -53,7 +53,7 @@ public final class Log {
     private static native void log(@ConstantNodeParameter Descriptor logPrimitive, int typeChar, long value, boolean newline);
 
     @NodeIntrinsic(RuntimeCallNode.class)
-    private static native void printf(@ConstantNodeParameter Descriptor logPrintf, String format, long value);
+    private static native void printf(@ConstantNodeParameter Descriptor logPrintf, String format, long v1, long v2, long v3);
 
     public static void print(boolean value) {
         log(LOG_PRIMITIVE, Kind.Boolean.getTypeChar(), value ? 1L : 0L, false);
@@ -84,9 +84,16 @@ public final class Log {
      *
      * @param format a C style printf format value that can contain at most one conversion specifier (i.e., a sequence
      *            of characters starting with '%').
+     * @param value the value associated with the conversion specifier
      */
     public static void printf(String format, long value) {
-        printf(LOG_PRINTF, format, value);
+        printf(LOG_PRINTF, format, value, 0L, 0L);
+    }
+    public static void printf(String format, long v1, long v2) {
+        printf(LOG_PRINTF, format, v1, v2, 0L);
+    }
+    public static void printf(String format, long v1, long v2, long v3) {
+        printf(LOG_PRINTF, format, v1, v2, v3);
     }
 
     public static void print(float value) {
