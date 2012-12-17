@@ -138,7 +138,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @ConstantParameter("type") ResolvedJavaType type) {
         if (!belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
             // This handles both negative array sizes and very large array sizes
-            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.RuntimeConstraint);
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         int allocationSize = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
         Word memory = TLABAllocateNode.allocateVariableSize(allocationSize);
