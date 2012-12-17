@@ -53,7 +53,7 @@ public class NewArrayStub extends Stub {
     protected void populateKey(Key key) {
         HotSpotResolvedObjectType intArrayType = (HotSpotResolvedObjectType) runtime.lookupJavaType(int[].class);
         Constant intArrayHub = intArrayType.klass();
-        key.add("intArrayHub", intArrayHub);
+        key.add("intArrayHub", intArrayHub).add("log", Boolean.getBoolean("graal.logNewArrayStub"));
     }
 
     /**
@@ -62,43 +62,40 @@ public class NewArrayStub extends Stub {
      * @param hub the hub of the object to be allocated
      * @param length the length of the array
      * @param intArrayHub the hub for {@code int[].class}
+     * @param log specifies if logging is enabled
      */
     @Snippet
-    private static Object newArray(@Parameter("hub") Word hub, @Parameter("length") int length, @ConstantParameter("intArrayHub") Word intArrayHub) {
+    private static Object newArray(
+                    @Parameter("hub") Word hub,
+                    @Parameter("length") int length,
+                    @ConstantParameter("intArrayHub") Word intArrayHub,
+                    @ConstantParameter("log") boolean log) {
         int layoutHelper = loadIntFromWord(hub, layoutHelperOffset());
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
         int elementKind = (layoutHelper >> layoutHelperElementTypeShift()) & layoutHelperElementTypeMask();
         int sizeInBytes = computeArrayAllocationSize(length, wordSize(), headerSize, log2ElementSize);
-        logf("newArray: element kind %d\n", elementKind);
-        logf("newArray: array length %d\n", length);
-        logf("newArray: array size %d\n", sizeInBytes);
-        logf("newArray: hub=%p\n", hub.toLong());
+        log(log, "newArray: element kind %d\n", elementKind);
+        log(log, "newArray: array length %d\n", length);
+        log(log, "newArray: array size %d\n", sizeInBytes);
+        log(log, "newArray: hub=%p\n", hub.toLong());
 
         // check that array length is small enough for fast path.
         if (length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
             Word memory;
-            if (refillTLAB(intArrayHub, Word.fromLong(tlabIntArrayMarkWord()), tlabAlignmentReserveInHeapWords() * wordSize())) {
+            if (refillTLAB(intArrayHub, Word.fromLong(tlabIntArrayMarkWord()), tlabAlignmentReserveInHeapWords() * wordSize(), log)) {
                 memory = allocate(sizeInBytes);
             } else {
-                logf("newArray: allocating directly in eden\n", 0L);
-                memory = edenAllocate(Word.fromInt(sizeInBytes));
+                log(log, "newArray: allocating directly in eden\n", 0L);
+                memory = edenAllocate(Word.fromInt(sizeInBytes), log);
             }
             if (memory != Word.zero()) {
-                logf("newArray: allocated new array at %p\n", memory.toLong());
+                log(log, "newArray: allocated new array at %p\n", memory.toLong());
                 formatArray(hub, sizeInBytes, length, headerSize, memory, Word.fromLong(arrayPrototypeMarkWord()), true);
                 return verifyOop(memory.toObject());
             }
         }
-        logf("newArray: calling new_array_slow", 0L);
+        log(log, "newArray: calling new_array_slow", 0L);
         return verifyOop(NewArraySlowStubCall.call(hub, length));
-    }
-
-    private static final boolean LOGGING_ENABLED = Boolean.getBoolean("graal.logNewArrayStub");
-
-    private static void logf(String format, long value) {
-        if (LOGGING_ENABLED) {
-            Log.printf(format, value);
-        }
     }
 }
