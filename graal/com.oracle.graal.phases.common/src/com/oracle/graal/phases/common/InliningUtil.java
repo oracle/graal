@@ -826,6 +826,8 @@ public class InliningUtil {
             return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is dead code");
         } else if (!invoke.useForInlining()) {
             return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is marked to be not used for inlining");
+        } else if (invoke.methodCallTarget().receiver() != null && invoke.methodCallTarget().receiver().isConstant() && invoke.methodCallTarget().receiver().asConstant().isNull()) {
+            return logNotInlinedMethodAndReturnFalse(invoke, "receiver is null");
         } else {
             return true;
         }
