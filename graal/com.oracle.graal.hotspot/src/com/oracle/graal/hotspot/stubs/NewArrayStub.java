@@ -83,13 +83,7 @@ public class NewArrayStub extends Stub {
 
         // check that array length is small enough for fast path.
         if (!forceSlowPath() && length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
-            Word memory;
-            if (refillTLAB(intArrayHub, Word.fromLong(tlabIntArrayMarkWord()), tlabAlignmentReserveInHeapWords() * wordSize(), log)) {
-                memory = allocate(sizeInBytes);
-            } else {
-                log(log, "newArray: allocating directly in eden\n", 0L);
-                memory = edenAllocate(Word.fromInt(sizeInBytes), log);
-            }
+            Word memory = refillAllocate(intArrayHub, sizeInBytes, log);
             if (memory != Word.zero()) {
                 log(log, "newArray: allocated new array at %p\n", memory.toLong());
                 formatArray(hub, sizeInBytes, length, headerSize, memory, Word.fromLong(arrayPrototypeMarkWord()), true);

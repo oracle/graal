@@ -71,12 +71,7 @@ public class NewInstanceStub extends Stub {
         int sizeInBytes = loadIntFromWord(hub, klassInstanceSizeOffset());
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
             if (loadIntFromWord(hub, klassStateOffset()) == klassStateFullyInitialized()) {
-                Word memory;
-                if (refillTLAB(intArrayHub, Word.fromLong(tlabIntArrayMarkWord()), tlabAlignmentReserveInHeapWords() * wordSize(), log)) {
-                    memory = allocate(sizeInBytes);
-                } else {
-                    memory = edenAllocate(Word.fromInt(sizeInBytes), log);
-                }
+                Word memory = refillAllocate(intArrayHub, sizeInBytes, log);
                 if (memory != Word.zero()) {
                     Word prototypeMarkWord = loadWordFromWord(hub, prototypeMarkWordOffset());
                     storeWord(memory, 0, markOffset(), prototypeMarkWord);
@@ -92,15 +87,17 @@ public class NewInstanceStub extends Stub {
     }
 
     /**
-     * Attempts to refill the current thread's TLAB.
+     * Attempts to refill the current thread's TLAB and retries the allocation.
      *
      * @param intArrayHub the hub for {@code int[].class}
-     * @param intArrayMarkWord the mark word for the int array placed in the left over TLAB space
-     * @param alignmentReserveInBytes the amount of extra bytes to reserve in a new TLAB
+     * @param sizeInBytes the size of the allocation
      * @param log specifies if logging is enabled
-     * @return whether or not a new TLAB was allocated
+     * @return the newly allocated, uninitialized chunk of memory, or {@link Word#zero()} if the operation was unsuccessful
      */
-    static boolean refillTLAB(Word intArrayHub, Word intArrayMarkWord, int alignmentReserveInBytes, boolean log) {
+    static Word refillAllocate(Word intArrayHub, int sizeInBytes, boolean log) {
+
+        Word intArrayMarkWord = Word.fromLong(tlabIntArrayMarkWord());
+        int alignmentReserveInBytes = tlabAlignmentReserveInHeapWords() * wordSize();
 
         Word thread = thread();
         Word top = loadWordFromWord(thread, threadTlabTopOffset());
@@ -156,9 +153,10 @@ public class NewInstanceStub extends Stub {
 
                 end = top.plus(tlabRefillSizeInBytes.minus(alignmentReserveInBytes));
                 storeWord(thread, 0, threadTlabEndOffset(), end);
-                return true;
+
+                return allocate(sizeInBytes);
             } else {
-                return false;
+                return Word.zero();
             }
         } else {
             // Retain TLAB
@@ -170,7 +168,7 @@ public class NewInstanceStub extends Stub {
                 storeInt(thread, 0, tlabSlowAllocationsOffset(), loadIntFromWord(thread, tlabSlowAllocationsOffset()) + 1);
             }
 
-            return false;
+            return edenAllocate(Word.fromInt(sizeInBytes), log);
         }
     }
 
