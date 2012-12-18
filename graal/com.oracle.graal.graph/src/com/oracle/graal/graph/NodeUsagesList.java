@@ -146,16 +146,6 @@ public final class NodeUsagesList extends AbstractNodeIterable<Node> {
         }
     }
 
-    boolean replaceFirst(Node node, Node other) {
-        for (int i = 0; i < size; i++) {
-            if (nodes[i] == node) {
-                nodes[i] = other;
-                return true;
-            }
-        }
-        return false;
-    }
-
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();

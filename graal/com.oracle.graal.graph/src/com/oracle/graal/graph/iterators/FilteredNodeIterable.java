@@ -53,7 +53,7 @@ public class FilteredNodeIterable<T extends Node> extends AbstractNodeIterable<T
     }
     @Override
     public FilteredNodeIterable<T> nonNull() {
-        this.predicate = this.predicate.or(NodePredicates.isNotNull());
+        this.predicate = this.predicate.and(NodePredicates.isNotNull());
         return this;
     }
     @Override
