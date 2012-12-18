@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.*;
 public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
 
     private final NodeBitMap visitedEnds;
-    private final Deque<FixedNode> nodeQueue;
+    private final Deque<BeginNode> nodeQueue;
     private final IdentityHashMap<FixedNode, T> nodeStates;
     private final FixedNode start;
 
@@ -109,13 +109,13 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
             for (Node node : successors) {
                 if (node != null) {
                     nodeStates.put((FixedNode) node.predecessor(), state);
-                    nodeQueue.addFirst((FixedNode) node);
+                    nodeQueue.addFirst((BeginNode) node);
                 }
             }
         } else {
             for (Node node : x.successors()) {
                 if (node != null) {
-                    nodeQueue.addFirst((FixedNode) node);
+                    nodeQueue.addFirst((BeginNode) node);
                 }
             }
         }
@@ -124,7 +124,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
     private FixedNode nextQueuedNode() {
         int maxIterations = nodeQueue.size();
         while (maxIterations-- > 0) {
-            FixedNode node = nodeQueue.removeFirst();
+            BeginNode node = nodeQueue.removeFirst();
             if (node instanceof MergeNode) {
                 MergeNode merge = (MergeNode) node;
                 state = nodeStates.get(merge.forwardEndAt(0)).clone();

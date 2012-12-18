@@ -22,62 +22,16 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.*;
-
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code ControlSplitNode} is a base class for all instructions that split the control flow (ie. have more than one successor).
  */
 public abstract class ControlSplitNode extends FixedNode {
-    @Successor private final NodeSuccessorList<BeginNode> blockSuccessors;
-    protected double[] branchProbability;
 
-    public BeginNode blockSuccessor(int index) {
-        return blockSuccessors.get(index);
-    }
-
-    public void setBlockSuccessor(int index, BeginNode x) {
-        blockSuccessors.set(index, x);
-    }
-
-    public int blockSuccessorCount() {
-        return blockSuccessors.size();
-    }
-
-    public ControlSplitNode(Stamp stamp, BeginNode[] blockSuccessors, double[] branchProbability) {
+    public ControlSplitNode(Stamp stamp) {
         super(stamp);
-        assert branchProbability.length == blockSuccessors.length;
-        this.blockSuccessors = new NodeSuccessorList<>(this, blockSuccessors);
-        this.branchProbability = branchProbability;
     }
 
-    public double probability(int successorIndex) {
-        return branchProbability[successorIndex];
-    }
-
-    public void setProbability(int successorIndex, double x) {
-        branchProbability[successorIndex] = x;
-    }
-
-    public NodeIterable<BeginNode> blockSuccessors() {
-        return blockSuccessors;
-    }
-
-    public int blockSuccessorIndex(BeginNode successor) {
-        int idx = blockSuccessors.indexOf(successor);
-        if (idx < 0) {
-            throw new IllegalArgumentException();
-        }
-        return idx;
-    }
-
-    @Override
-    public ControlSplitNode clone(Graph into) {
-        ControlSplitNode csn = (ControlSplitNode) super.clone(into);
-        csn.branchProbability = Arrays.copyOf(branchProbability, branchProbability.length);
-        return csn;
-    }
+    public abstract double probability(BeginNode successor);
 }

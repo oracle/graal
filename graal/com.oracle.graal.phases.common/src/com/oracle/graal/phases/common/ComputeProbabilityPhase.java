@@ -244,7 +244,7 @@ public class ComputeProbabilityPhase extends Phase {
         }
 
         @Override
-        public void afterSplit(FixedNode node) {
+        public void afterSplit(BeginNode node) {
             assert node.predecessor() != null;
             Node pred = node.predecessor();
             if (pred instanceof Invoke) {
@@ -255,13 +255,7 @@ public class ComputeProbabilityPhase extends Phase {
             } else {
                 assert pred instanceof ControlSplitNode;
                 ControlSplitNode x = (ControlSplitNode) pred;
-                double sum = 0;
-                for (int i = 0; i < x.blockSuccessorCount(); i++) {
-                    if (x.blockSuccessor(i) == node) {
-                        sum += x.probability(i);
-                    }
-                }
-                probability *= sum;
+                probability *= x.probability(node);
             }
         }
     }
@@ -316,7 +310,7 @@ public class ComputeProbabilityPhase extends Phase {
         }
 
         @Override
-        public void afterSplit(FixedNode node) {
+        public void afterSplit(BeginNode node) {
             // nothing to do...
         }
     }

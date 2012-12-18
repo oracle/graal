@@ -104,7 +104,7 @@ public final class ComputeImmediateDominator {
             //TTY.println("  Already explored, propagate update");
             propagateUpdate(csInfo);
         } else {
-            if (csInfo.parentCount() == cs.blockSuccessorCount()) { // all paths leading to this CS have been explored
+            if (csInfo.parentCount() == cs.successors().count()) { // all paths leading to this CS have been explored
                 //TTY.println("  All parents explored, Enqueue");
                 toExplore.add(next);
                 speculativeExplore.remove(next);

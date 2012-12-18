@@ -38,11 +38,11 @@ import com.oracle.graal.nodes.util.*;
  * comparison.
  */
 public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, Negatable {
-    public static final int TRUE_EDGE = 0;
-    public static final int FALSE_EDGE = 1;
     private final long leafGraphId;
-
+    @Successor private BeginNode trueSuccessor;
+    @Successor private BeginNode falseSuccessor;
     @Input private BooleanNode condition;
+    private double takenProbability;
 
     public BooleanNode condition() {
         return condition;
@@ -54,9 +54,17 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     public IfNode(BooleanNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double takenProbability, long leafGraphId) {
-        super(StampFactory.forVoid(), new BeginNode[] {BeginNode.begin(trueSuccessor), BeginNode.begin(falseSuccessor)}, new double[] {takenProbability, 1 - takenProbability});
+        this(condition, BeginNode.begin(trueSuccessor), BeginNode.begin(falseSuccessor), takenProbability, leafGraphId);
+    }
+
+    public IfNode(BooleanNode condition, BeginNode trueSuccessor, BeginNode falseSuccessor, double takenProbability, long leafGraphId) {
+        super(StampFactory.forVoid());
         this.condition = condition;
+        this.falseSuccessor = falseSuccessor;
+        this.takenProbability = takenProbability;
         this.leafGraphId = leafGraphId;
+        this.trueSuccessor = trueSuccessor;
+
     }
 
     public long leafGraphId() {
@@ -69,7 +77,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @return the true successor
      */
     public BeginNode trueSuccessor() {
-        return blockSuccessor(0);
+        return trueSuccessor;
     }
 
     /**
@@ -78,15 +86,17 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @return the false successor
      */
     public BeginNode falseSuccessor() {
-        return blockSuccessor(1);
+        return falseSuccessor;
     }
 
     public void setTrueSuccessor(BeginNode node) {
-        setBlockSuccessor(0, node);
+        updatePredecessor(trueSuccessor, node);
+        trueSuccessor = node;
     }
 
     public void setFalseSuccessor(BeginNode node) {
-        setBlockSuccessor(1, node);
+        updatePredecessor(falseSuccessor, node);
+        falseSuccessor = node;
     }
 
     /**
@@ -96,7 +106,24 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @return the corresponding successor
      */
     public BeginNode successor(boolean istrue) {
-        return blockSuccessor(istrue ? 0 : 1);
+        return istrue ? trueSuccessor : falseSuccessor;
+    }
+
+    @Override
+    public Negatable negate() {
+        BeginNode trueSucc = trueSuccessor();
+        BeginNode falseSucc = falseSuccessor();
+        setTrueSuccessor(null);
+        setFalseSuccessor(null);
+        setTrueSuccessor(falseSucc);
+        setFalseSuccessor(trueSucc);
+        takenProbability = 1 - takenProbability;
+        return this;
+    }
+
+    @Override
+    public double probability(BeginNode successor) {
+        return successor == trueSuccessor ? takenProbability : 1 - takenProbability;
     }
 
     @Override
@@ -119,11 +146,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (c.asConstant().asBoolean()) {
                 tool.deleteBranch(falseSuccessor());
                 tool.addToWorkList(trueSuccessor());
-                ((StructuredGraph) graph()).removeSplit(this, TRUE_EDGE);
+                ((StructuredGraph) graph()).removeSplit(this, trueSuccessor());
             } else {
                 tool.deleteBranch(trueSuccessor());
                 tool.addToWorkList(falseSuccessor());
-                ((StructuredGraph) graph()).removeSplit(this, FALSE_EDGE);
+                ((StructuredGraph) graph()).removeSplit(this, falseSuccessor());
             }
         } else if (trueSuccessor().guards().isEmpty() && falseSuccessor().guards().isEmpty()) {
             if (removeOrMaterializeIf(tool)) {
@@ -154,7 +181,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     PhiNode singlePhi = phis.next();
                     if (!phis.hasNext()) {
                         // one phi at the merge of an otherwise empty if construct: try to convert into a MaterializeNode
-                        boolean inverted = trueEnd == merge.forwardEndAt(FALSE_EDGE);
+                        boolean inverted = trueEnd == merge.forwardEndAt(1);
                         ValueNode trueValue = singlePhi.valueAt(inverted ? 1 : 0);
                         ValueNode falseValue = singlePhi.valueAt(inverted ? 0 : 1);
                         if (trueValue.kind() != falseValue.kind()) {
@@ -276,8 +303,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
         Map<EndNode, ValueNode> phiValues = new HashMap<>(mergePredecessors.size());
 
-        BeginNode falseSuccessor = falseSuccessor();
-        BeginNode trueSuccessor = trueSuccessor();
+        BeginNode oldFalseSuccessor = falseSuccessor();
+        BeginNode oldTrueSuccessor = trueSuccessor();
 
         setFalseSuccessor(null);
         setTrueSuccessor(null);
@@ -294,8 +321,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
         assert !ends.hasNext();
 
-        connectEnds(falseEnds, phiValues, falseSuccessor, merge, tool);
-        connectEnds(trueEnds, phiValues, trueSuccessor, merge, tool);
+        connectEnds(falseEnds, phiValues, oldFalseSuccessor, merge, tool);
+        connectEnds(trueEnds, phiValues, oldTrueSuccessor, merge, tool);
 
         GraphUtil.killCFG(merge);
 
@@ -382,20 +409,20 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     private void removeEmptyIf(SimplifierTool tool) {
-        BeginNode trueSuccessor = trueSuccessor();
-        BeginNode falseSuccessor = falseSuccessor();
-        assert trueSuccessor.next() instanceof EndNode && falseSuccessor.next() instanceof EndNode;
+        BeginNode originalTrueSuccessor = trueSuccessor();
+        BeginNode originalFalseSuccessor = falseSuccessor();
+        assert originalTrueSuccessor.next() instanceof EndNode && originalFalseSuccessor.next() instanceof EndNode;
 
-        EndNode trueEnd = (EndNode) trueSuccessor.next();
-        EndNode falseEnd = (EndNode) falseSuccessor.next();
+        EndNode trueEnd = (EndNode) originalTrueSuccessor.next();
+        EndNode falseEnd = (EndNode) originalFalseSuccessor.next();
         assert trueEnd.merge() == falseEnd.merge();
 
         FixedWithNextNode pred = (FixedWithNextNode) predecessor();
         MergeNode merge = trueEnd.merge();
         merge.prepareDelete(pred);
         assert merge.usages().isEmpty();
-        trueSuccessor.prepareDelete();
-        falseSuccessor.prepareDelete();
+        originalTrueSuccessor.prepareDelete();
+        originalFalseSuccessor.prepareDelete();
 
         FixedNode next = merge.next();
         merge.setNext(null);
@@ -403,25 +430,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         setFalseSuccessor(null);
         pred.setNext(next);
         safeDelete();
-        trueSuccessor.safeDelete();
-        falseSuccessor.safeDelete();
+        originalTrueSuccessor.safeDelete();
+        originalFalseSuccessor.safeDelete();
         merge.safeDelete();
         trueEnd.safeDelete();
         falseEnd.safeDelete();
         tool.addToWorkList(next);
-    }
-
-    @Override
-    public Negatable negate() {
-        BeginNode trueSucc = trueSuccessor();
-        BeginNode falseSucc = falseSuccessor();
-        setTrueSuccessor(null);
-        setFalseSuccessor(null);
-        setTrueSuccessor(falseSucc);
-        setFalseSuccessor(trueSucc);
-        double prop = branchProbability[TRUE_EDGE];
-        branchProbability[TRUE_EDGE] = branchProbability[FALSE_EDGE];
-        branchProbability[FALSE_EDGE] = prop;
-        return this;
     }
 }
