@@ -99,7 +99,4 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
 
     @NodeIntrinsic
     public static native <T> T load(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native Object loadObject(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter boolean nonNull);
 }

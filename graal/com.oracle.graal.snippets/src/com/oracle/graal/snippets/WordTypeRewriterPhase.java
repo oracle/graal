@@ -212,12 +212,35 @@ public class WordTypeRewriterPhase extends Phase {
                         break;
                     }
 
+                    case READ_INT:
+                    case READ_OBJECT:
+                    case READ_WORD: {
+                        replaceRead(graph, arguments, invoke, LocationNode.ANY_LOCATION);
+                        break;
+                    }
+
+                    case READ_FINAL_OBJECT: {
+                        replaceRead(graph, arguments, invoke, LocationNode.FINAL_LOCATION);
+                        break;
+                    }
+
                     default: {
                         throw new GraalInternalError("Unknown opcode: %s", opcode);
                     }
                 }
             }
         }
+    }
+
+    protected void replaceRead(StructuredGraph graph, NodeInputList<ValueNode> arguments, Invoke invoke, Object locationIdentity) {
+        assert arguments.size() == 2;
+        ValueNode base = arguments.first();
+        IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, invoke.node().kind(), 0, arguments.last(), graph, false);
+        ReadNode read = graph.add(new ReadNode(base, location, invoke.node().stamp()));
+        graph.addBeforeFixed(invoke.node(), read);
+        // The read must not float outside its block otherwise it may float above an explicit zero check on its base address
+        read.dependencies().add(BeginNode.prevBegin(invoke.node()));
+        replace(invoke, read);
     }
 
     protected void replace(Invoke invoke, ValueNode value) {

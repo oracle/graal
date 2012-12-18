@@ -285,25 +285,8 @@ public class HotSpotSnippetUtils {
         return HotSpotSnippetUtils.registerAsWord(threadRegister());
     }
 
-    public static int loadIntFromWord(Word address, int offset) {
-        Integer value = UnsafeLoadNode.load(address, 0, offset, Kind.Int);
-        return value;
-    }
-
-    public static Word loadWordFromWord(Word address, int offset) {
-        return loadWordFromWordIntrinsic(address, 0, offset, wordKind());
-    }
-
-    static Object loadObjectFromWord(Word address, int offset) {
-        return UnsafeLoadNode.load(address, 0, offset, Kind.Object);
-    }
-
     public static Word loadWordFromObject(Object object, int offset) {
         return loadWordFromObjectIntrinsic(object, 0, offset, wordKind());
-    }
-
-    public static Object readFinalObject(Word base, @ConstantNodeParameter int displacement) {
-        return ReadNode.read(base, displacement, LocationNode.FINAL_LOCATION, Kind.Object);
     }
 
     @NodeIntrinsic(value = RegisterNode.class, setStampFromReturnType = true)
@@ -311,9 +294,6 @@ public class HotSpotSnippetUtils {
 
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
     private static native Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind);
-
-    @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
-    private static native Word loadWordFromWordIntrinsic(Word address, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind);
 
     @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
     static native Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word);

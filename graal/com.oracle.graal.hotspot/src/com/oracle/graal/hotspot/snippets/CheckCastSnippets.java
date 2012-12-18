@@ -99,7 +99,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             return object;
         }
         Word objectHub = loadHub(object);
-        if (loadWordFromWord(objectHub, superCheckOffset) != hub) {
+        if (objectHub.readWord(superCheckOffset) != hub) {
             displayMiss.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
         }
@@ -157,12 +157,12 @@ public class CheckCastSnippets implements SnippetsInterface {
     }
 
     static Word loadWordElement(Word metaspaceArray, int index) {
-        return loadWordFromWord(metaspaceArray, metaspaceArrayBaseOffset() + index * wordSize());
+        return metaspaceArray.readWord(metaspaceArrayBaseOffset() + index * wordSize());
     }
 
     static boolean checkSecondarySubType(Word t, Word s) {
         // if (S.cache == T) return true
-        if (loadWordFromWord(s, secondarySuperCacheOffset()) == t) {
+        if (s.readWord(secondarySuperCacheOffset()) == t) {
             cacheHit.inc();
             return true;
         }
@@ -174,8 +174,8 @@ public class CheckCastSnippets implements SnippetsInterface {
         }
 
         // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
-        Word secondarySupers = loadWordFromWord(s, secondarySupersOffset());
-        int length = loadIntFromWord(secondarySupers, metaspaceArrayLengthOffset());
+        Word secondarySupers = s.readWord(secondarySupersOffset());
+        int length = secondarySupers.readInt(metaspaceArrayLengthOffset());
         for (int i = 0; i < length; i++) {
             if (t == loadWordElement(secondarySupers, i)) {
                 DirectObjectStoreNode.storeWord(s, secondarySuperCacheOffset(), 0, t);
@@ -189,11 +189,11 @@ public class CheckCastSnippets implements SnippetsInterface {
 
     static boolean checkUnknownSubType(Word t, Word s) {
         // int off = T.offset
-        int superCheckOffset = UnsafeLoadNode.load(t, 0, superCheckOffsetOffset(), Kind.Int);
+        int superCheckOffset = t.readInt(superCheckOffsetOffset());
         boolean primary = superCheckOffset != secondarySuperCacheOffset();
 
         // if (T = S[off]) return true
-        if (loadWordFromWord(s, superCheckOffset) == t) {
+        if (s.readWord(superCheckOffset) == t) {
             if (primary) {
                 cacheHit.inc();
             } else {
@@ -215,8 +215,8 @@ public class CheckCastSnippets implements SnippetsInterface {
         }
 
         // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
-        Word secondarySupers = loadWordFromWord(s, secondarySupersOffset());
-        int length = loadIntFromWord(secondarySupers, metaspaceArrayLengthOffset());
+        Word secondarySupers = s.readWord(secondarySupersOffset());
+        int length = secondarySupers.readInt(metaspaceArrayLengthOffset());
         for (int i = 0; i < length; i++) {
             if (t == loadWordElement(secondarySupers, i)) {
                 DirectObjectStoreNode.storeWord(s, secondarySuperCacheOffset(), 0, t);

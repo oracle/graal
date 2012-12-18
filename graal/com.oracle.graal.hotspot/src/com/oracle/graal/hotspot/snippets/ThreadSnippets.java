@@ -40,10 +40,10 @@ public class ThreadSnippets implements SnippetsInterface {
     @MethodSubstitution(isStatic = false)
     private static boolean isInterrupted(final Thread thisObject, boolean clearInterrupted) {
         Word rawThread = HotSpotCurrentRawThreadNode.get();
-        Thread thread = (Thread) loadObjectFromWord(rawThread, threadObjectOffset());
+        Thread thread = (Thread) rawThread.readObject(threadObjectOffset());
         if (thisObject == thread) {
-            Word osThread = loadWordFromWord(rawThread, osThreadOffset());
-            boolean interrupted = loadIntFromWord(osThread, osThreadInterruptedOffset()) != 0;
+            Word osThread = rawThread.readWord(osThreadOffset());
+            boolean interrupted = osThread.readInt(osThreadInterruptedOffset()) != 0;
             if (!interrupted || !clearInterrupted) {
                 return interrupted;
             }

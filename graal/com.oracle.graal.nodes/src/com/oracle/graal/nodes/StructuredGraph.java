@@ -311,7 +311,7 @@ public class StructuredGraph extends Graph {
     public void addBeforeFixed(FixedNode node, FixedWithNextNode newNode) {
         assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " before " + node;
         assert node.predecessor() != null && node.predecessor() instanceof FixedWithNextNode : "cannot add " + newNode + " before " + node;
-        assert newNode.next() == null;
+        assert newNode.next() == null : newNode;
         newNode.setProbability(node.probability());
         FixedWithNextNode pred = (FixedWithNextNode) node.predecessor();
         pred.setNext(newNode);

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.phases;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.*;
 import com.oracle.graal.api.meta.*;
@@ -29,6 +31,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -89,7 +92,7 @@ public class OnStackReplacementPhase extends Phase {
         } while (true);
 
 
-        LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(Kind.Long)));
+        LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(wordKind())));
         RuntimeCallNode migrationEnd = graph.add(new RuntimeCallNode(OSR_MIGRATION_END, buffer));
         FrameState osrState = osr.stateAfter();
         migrationEnd.setStateAfter(osrState);

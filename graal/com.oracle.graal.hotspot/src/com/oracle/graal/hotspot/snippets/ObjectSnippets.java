@@ -37,7 +37,7 @@ public class ObjectSnippets implements SnippetsInterface {
     @MethodSubstitution(isStatic = false)
     public static Class<?> getClass(final Object thisObj) {
         Word hub = loadHub(thisObj);
-        return unsafeCast(readFinalObject(hub, classMirrorOffset()), Class.class, true, true);
+        return unsafeCast(hub.readFinalObject(classMirrorOffset()), Class.class, true, true);
     }
 
     @MethodSubstitution(isStatic = false)

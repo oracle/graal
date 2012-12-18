@@ -93,7 +93,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
             return falseValue;
         }
         Word objectHub = loadHub(object);
-        if (loadWordFromWord(objectHub, superCheckOffset) != hub) {
+        if (objectHub.readWord(superCheckOffset) != hub) {
             displayMiss.inc();
             return falseValue;
         }
@@ -134,7 +134,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
 
     static boolean checkSecondarySubType(Word t, Word s) {
         // if (S.cache == T) return true
-        if (loadWordFromWord(s, secondarySuperCacheOffset()) == t) {
+        if (s.readWord(secondarySuperCacheOffset()) == t) {
             cacheHit.inc();
             return true;
         }
@@ -146,8 +146,8 @@ public class InstanceOfSnippets implements SnippetsInterface {
         }
 
         // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
-        Word secondarySupers = loadWordFromWord(s, secondarySupersOffset());
-        int length = loadIntFromWord(secondarySupers, metaspaceArrayLengthOffset());
+        Word secondarySupers = s.readWord(secondarySupersOffset());
+        int length = secondarySupers.readInt(metaspaceArrayLengthOffset());
         for (int i = 0; i < length; i++) {
             if (t == loadWordElement(secondarySupers, i)) {
                 DirectObjectStoreNode.storeObject(s, secondarySuperCacheOffset(), 0, t);
