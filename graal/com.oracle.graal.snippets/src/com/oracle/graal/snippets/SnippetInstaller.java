@@ -93,7 +93,7 @@ public class SnippetInstaller {
                 }
                 ResolvedJavaMethod snippet = runtime.lookupJavaMethod(method);
                 assert snippet.getCompilerStorage().get(Graph.class) == null : method;
-                StructuredGraph graph = makeGraph(snippet, inliningPolicy(snippet));
+                StructuredGraph graph = makeGraph(snippet, inliningPolicy(snippet), false);
                 //System.out.println("snippet: " + graph);
                 snippet.getCompilerStorage().put(Graph.class, graph);
             }
@@ -131,7 +131,7 @@ public class SnippetInstaller {
                     throw new RuntimeException("Snippet must not be abstract or native");
                 }
                 ResolvedJavaMethod snippet = runtime.lookupJavaMethod(method);
-                StructuredGraph graph = makeGraph(snippet, inliningPolicy(snippet));
+                StructuredGraph graph = makeGraph(snippet, inliningPolicy(snippet), true);
                 //System.out.println("snippet: " + graph);
                 runtime.lookupJavaMethod(originalMethod).getCompilerStorage().put(Graph.class, graph);
             } catch (NoSuchMethodException e) {
@@ -156,14 +156,26 @@ public class SnippetInstaller {
         }
     }
 
-    public StructuredGraph makeGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
-        StructuredGraph graph = parseGraph(method, policy);
+    public StructuredGraph makeGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy, final boolean isSubstitutionSnippet) {
+        return Debug.scope("BuildSnippetGraph", new Object[] {method}, new Callable<StructuredGraph>() {
+            @Override
+            public StructuredGraph call() throws Exception {
+                StructuredGraph graph = parseGraph(method, policy);
 
-        new SnippetIntrinsificationPhase(runtime, pool, SnippetTemplate.hasConstantParameter(method)).apply(graph);
+                new SnippetIntrinsificationPhase(runtime, pool, SnippetTemplate.hasConstantParameter(method)).apply(graph);
 
-        Debug.dump(graph, "%s: Final", method.getName());
+                if (isSubstitutionSnippet) {
+                    new SnippetFrameStateCleanupPhase().apply(graph);
+                    new DeadCodeEliminationPhase().apply(graph);
+                }
 
-        return graph;
+                new InsertStateAfterPlaceholderPhase().apply(graph);
+
+                Debug.dump(graph, "%s: Final", method.getName());
+
+                return graph;
+            }
+        });
     }
 
     private StructuredGraph parseGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
@@ -178,54 +190,47 @@ public class SnippetInstaller {
 
     private StructuredGraph buildGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
         final StructuredGraph graph = new StructuredGraph(method);
-        return Debug.scope("BuildSnippetGraph", new Object[] {method, graph}, new Callable<StructuredGraph>() {
-            @Override
-            public StructuredGraph call() throws Exception {
-                GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
-                GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config, OptimisticOptimizations.NONE);
-                graphBuilder.apply(graph);
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
+        GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config, OptimisticOptimizations.NONE);
+        graphBuilder.apply(graph);
 
-                Debug.dump(graph, "%s: %s", method.getName(), GraphBuilderPhase.class.getSimpleName());
+        Debug.dump(graph, "%s: %s", method.getName(), GraphBuilderPhase.class.getSimpleName());
 
-                new SnippetVerificationPhase(runtime).apply(graph);
+        new SnippetVerificationPhase(runtime).apply(graph);
 
-                new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
+        new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
 
-                for (Invoke invoke : graph.getInvokes()) {
-                    MethodCallTargetNode callTarget = invoke.methodCallTarget();
-                    ResolvedJavaMethod callee = callTarget.targetMethod();
-                    if (policy.shouldInline(callee, method)) {
-                        StructuredGraph targetGraph = parseGraph(callee, policy);
-                        InliningUtil.inline(invoke, targetGraph, true);
-                        Debug.dump(graph, "after inlining %s", callee);
-                        if (GraalOptions.OptCanonicalizer) {
-                            new WordTypeRewriterPhase(target.wordKind).apply(graph);
-                            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-                        }
-                    }
-                }
-
-                new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
-
-                new WordTypeRewriterPhase(target.wordKind).apply(graph);
-
-                new DeadCodeEliminationPhase().apply(graph);
+        for (Invoke invoke : graph.getInvokes()) {
+            MethodCallTargetNode callTarget = invoke.methodCallTarget();
+            ResolvedJavaMethod callee = callTarget.targetMethod();
+            if (policy.shouldInline(callee, method)) {
+                StructuredGraph targetGraph = parseGraph(callee, policy);
+                InliningUtil.inline(invoke, targetGraph, true);
+                Debug.dump(graph, "after inlining %s", callee);
                 if (GraalOptions.OptCanonicalizer) {
+                    new WordTypeRewriterPhase(target.wordKind).apply(graph);
                     new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
                 }
-
-                for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {
-                    end.disableSafepoint();
-                }
-
-                new InsertStateAfterPlaceholderPhase().apply(graph);
-
-                if (GraalOptions.ProbabilityAnalysis) {
-                    new DeadCodeEliminationPhase().apply(graph);
-                    new ComputeProbabilityPhase().apply(graph);
-                }
-                return graph;
             }
-        });
+        }
+
+        new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
+
+        new WordTypeRewriterPhase(target.wordKind).apply(graph);
+
+        new DeadCodeEliminationPhase().apply(graph);
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+        }
+
+        for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {
+            end.disableSafepoint();
+        }
+
+        if (GraalOptions.ProbabilityAnalysis) {
+            new DeadCodeEliminationPhase().apply(graph);
+            new ComputeProbabilityPhase().apply(graph);
+        }
+        return graph;
     }
 }

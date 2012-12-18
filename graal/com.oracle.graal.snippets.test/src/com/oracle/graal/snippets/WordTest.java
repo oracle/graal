@@ -53,7 +53,7 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
     @Override
     protected StructuredGraph parse(Method m) {
         ResolvedJavaMethod resolvedMethod = runtime.lookupJavaMethod(m);
-        return installer.makeGraph(resolvedMethod, inliningPolicy.get());
+        return installer.makeGraph(resolvedMethod, inliningPolicy.get(), false);
     }
 
     @Test
