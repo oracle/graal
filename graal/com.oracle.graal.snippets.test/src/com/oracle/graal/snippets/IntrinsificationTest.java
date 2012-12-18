@@ -65,7 +65,7 @@ public class IntrinsificationTest extends GraalCompilerTest {
     @Test
     public void testClassIntrinsics() {
         test("getModifiersSnippet");
-//        test("isInstanceSnippet");
+        test("isInstanceSnippet");
         test("isInterfaceSnippet");
         test("isArraySnippet");
         test("isPrimitiveSnippet");
