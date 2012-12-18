@@ -63,7 +63,7 @@ public abstract class LoopPolicies {
         int inFalseBranch = loop.nodesInLoopFrom(ifNode.falseSuccessor(), postDom).cardinality();
         int loopTotal = loop.size();
         int netDiff = loopTotal - (inTrueBranch + inFalseBranch);
-        double uncertainty = (0.5 - Math.abs(ifNode.probability(IfNode.TRUE_EDGE) - 0.5)) * 2;
+        double uncertainty = (0.5 - Math.abs(ifNode.probability(ifNode.trueSuccessor()) - 0.5)) * 2;
         int maxDiff = GraalOptions.LoopUnswitchMaxIncrease + (int) (GraalOptions.LoopUnswitchUncertaintyBoost * loop.loopBegin().loopFrequency() * uncertainty);
         Debug.log("shouldUnswitch(%s, %s) : delta=%d, max=%d, %.2f%% inside of if", loop, ifNode, netDiff, maxDiff, (double) (inTrueBranch + inFalseBranch) / loopTotal * 100);
         return netDiff <= maxDiff;

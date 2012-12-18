@@ -298,10 +298,6 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         return values.get(localsSize + stackSize + i);
     }
 
-    public MergeNode block() {
-        return usages().filter(MergeNode.class).first();
-    }
-
     public NodeIterable<FrameState> innerFrameStates() {
         return usages().filter(FrameState.class);
     }

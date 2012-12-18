@@ -87,7 +87,7 @@ public class CullFrameStatesPhase extends Phase {
         }
 
         @Override
-        public void afterSplit(FixedNode node) {
+        public void afterSplit(BeginNode node) {
         }
 
         @Override

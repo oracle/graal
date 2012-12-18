@@ -31,5 +31,5 @@ public interface MergeableState <T> {
     boolean merge(MergeNode merge, List<T> withStates);
     void loopBegin(LoopBeginNode loopBegin);
     void loopEnds(LoopBeginNode loopBegin, List<T> loopEndStates);
-    void afterSplit(FixedNode node);
+    void afterSplit(BeginNode node);
 }
