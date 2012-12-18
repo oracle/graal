@@ -28,6 +28,9 @@ package com.oracle.graal.api.code;
 public enum DeoptimizationAction {
     /**
      * Do not invalidate the machine code.
+     * This is typically used when deoptimizing at a point where it's highly likely
+     * nothing will change the likelihood of the deoptimization happening again.
+     * For example, a compiled array allocation where the size is negative.
      */
     None,
 
@@ -43,6 +46,9 @@ public enum DeoptimizationAction {
 
     /**
      * Invalidate the machine code and immediately schedule a recompilation.
+     * This is typically used when deoptimizing to resolve an unresolved symbol in
+     * which case extra profiling is not required to determine that the deoptimization
+     * will not re-occur.
      */
     InvalidateRecompile,
 
