@@ -165,6 +165,8 @@ public class SnippetInstaller {
                 new SnippetIntrinsificationPhase(runtime, pool, SnippetTemplate.hasConstantParameter(method)).apply(graph);
 
                 if (isSubstitutionSnippet) {
+                    // TODO (ds) remove the constraint of only processing substitution snippets
+                    // once issues with the arraycopy snippets have been resolved
                     new SnippetFrameStateCleanupPhase().apply(graph);
                     new DeadCodeEliminationPhase().apply(graph);
                 }
