@@ -31,7 +31,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
