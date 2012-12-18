@@ -198,6 +198,7 @@ public final class GraalOptions {
     public static boolean OptFloatingReads                   = true;
     public static boolean OptTailDuplication                 = true;
     public static boolean OptEliminatePartiallyRedundantGuards = true;
+    public static boolean OptFilterProfiledTypes             = true;
 
     // Intrinsification settings
     public static boolean IntrinsifyArrayCopy                = true;

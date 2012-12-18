@@ -93,6 +93,8 @@ public class InliningTest extends GraalCompilerTest {
         assertInlined(getGraph("invokeSingleImplementorInterfaceSnippet"));
 //        assertInlined(getGraph("invokeConcreteInterfaceMethodSnippet"));
 
+        assertNotInlined(getGraph("invokeOverriddenPublicMethodSnippet"));
+        assertNotInlined(getGraph("invokeOverriddenProtectedMethodSnippet"));
         assertNotInlined(getGraph("invokeOverriddenInterfaceMethodSnippet"));
     }
 
@@ -119,6 +121,14 @@ public class InliningTest extends GraalCompilerTest {
     @SuppressWarnings("all")
     public static int invokeOverriddenInterfaceMethodSnippet(MultipleImplementorsInterface testInterface) {
         return testInterface.publicOverriddenMethod();
+    }
+    @SuppressWarnings("all")
+    public static int invokeOverriddenPublicMethodSnippet(SuperClass superClass) {
+        return superClass.publicOverriddenMethod();
+    }
+    @SuppressWarnings("all")
+    public static int invokeOverriddenProtectedMethodSnippet(SuperClass superClass) {
+        return superClass.protectedOverriddenMethod();
     }
 
     private StructuredGraph getGraph(final String snippet) {
