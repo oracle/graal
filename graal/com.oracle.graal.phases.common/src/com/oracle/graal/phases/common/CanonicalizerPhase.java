@@ -78,7 +78,7 @@ public class CanonicalizerPhase extends Phase {
         this(target, runtime, assumptions, null, newNodesMark);
     }
 
-    private CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, Iterable<Node> workingSet, int newNodesMark) {
+    public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, Iterable<Node> workingSet, int newNodesMark) {
         this.newNodesMark = newNodesMark;
         this.target = target;
         this.assumptions = assumptions;
@@ -91,12 +91,12 @@ public class CanonicalizerPhase extends Phase {
     protected void run(StructuredGraph graph) {
         if (initWorkingSet == null) {
             workList = graph.createNodeWorkList(newNodesMark == 0, MAX_ITERATION_PER_NODE);
-            if (newNodesMark > 0) {
-                workList.addAll(graph.getNewNodes(newNodesMark));
-            }
         } else {
             workList = graph.createNodeWorkList(false, MAX_ITERATION_PER_NODE);
             workList.addAll(initWorkingSet);
+        }
+        if (newNodesMark > 0) {
+            workList.addAll(graph.getNewNodes(newNodesMark));
         }
         tool = new Tool(workList, runtime, target, assumptions);
         processWorkSet(graph);
