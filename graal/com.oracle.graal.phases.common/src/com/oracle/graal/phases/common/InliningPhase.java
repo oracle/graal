@@ -85,11 +85,12 @@ public class InliningPhase extends Phase implements InliningCallback {
                 if (isWorthInlining) {
                     int mark = graph.getMark();
                     try {
+                        List<Node> invokeUsages = candidate.invoke().node().usages().snapshot();
                         candidate.inline(graph, runtime, this, assumptions);
                         Debug.dump(graph, "after %s", candidate);
                         Iterable<Node> newNodes = graph.getNewNodes(mark);
                         if (GraalOptions.OptCanonicalizer) {
-                            new CanonicalizerPhase(target, runtime, assumptions, mark).apply(graph);
+                            new CanonicalizerPhase(target, runtime, assumptions, invokeUsages, mark).apply(graph);
                         }
                         metricInliningPerformed.increment();
 

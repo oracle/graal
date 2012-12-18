@@ -409,6 +409,7 @@ public class TailDuplicationPhase extends Phase {
             MergeNode newBottomMerge = graph.add(new MergeNode());
             newBottomMerge.setProbability(successor.probability());
             EndNode newBottomEnd = graph.add(new EndNode());
+            newBottomEnd.setProbability(successor.probability());
             newBottomMerge.addForwardEnd(newBottomEnd);
             newBottomMerge.setStateAfter(stateAfterMerge);
             ((FixedWithNextNode) successor.predecessor()).setNext(newBottomEnd);
