@@ -111,7 +111,6 @@ public class ClassSnippets implements SnippetsInterface {
 
     @MethodSubstitution(isStatic = false)
     public static boolean isInstance(final Class<?> thisObj, Object obj) {
-        return MaterializeNode.isInstance(thisObj, obj);
+        return !thisObj.isPrimitive() && MaterializeNode.isInstance(thisObj, obj);
     }
-
 }

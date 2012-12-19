@@ -57,6 +57,9 @@ public class InstanceOfDynamicTest extends GraalCompilerTest {
         test("isInstanceDynamic", String.class, null);
         test("isInstanceDynamic", String.class, "object");
         test("isInstanceDynamic", String.class, Object.class);
+        test("isInstanceDynamic", int.class, null);
+        test("isInstanceDynamic", int.class, "Object");
+        test("isInstanceDynamic", int.class, Object.class);
     }
 
     @Test
@@ -64,6 +67,9 @@ public class InstanceOfDynamicTest extends GraalCompilerTest {
         test("isInstanceIntDynamic", String.class, null);
         test("isInstanceIntDynamic", String.class, "object");
         test("isInstanceIntDynamic", String.class, Object.class);
+        test("isInstanceIntDynamic", int.class, null);
+        test("isInstanceIntDynamic", int.class, "Object");
+        test("isInstanceIntDynamic", int.class, Object.class);
     }
 
     public static boolean isStringDynamic(Object o) {
