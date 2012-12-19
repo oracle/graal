@@ -1553,6 +1553,38 @@ public class AMD64Assembler extends AbstractAssembler {
         emitArith(0x0B, 0xC0, dst, src);
     }
 
+    public final void popcntl(Register dst, Address src) {
+        emitByte(0xF3);
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0xB8);
+        emitOperandHelper(dst, src);
+      }
+
+    public final void popcntl(Register dst, Register src) {
+        emitByte(0xF3);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0F);
+        emitByte(0xB8);
+        emitByte(0xC0 | encode);
+      }
+
+    public final void popcntq(Register dst, Address src) {
+        emitByte(0xF3);
+        prefixq(src, dst);
+        emitByte(0x0F);
+        emitByte(0xB8);
+        emitOperandHelper(dst, src);
+    }
+
+    public final void popcntq(Register dst, Register src) {
+        emitByte(0xF3);
+        int encode = prefixqAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0F);
+        emitByte(0xB8);
+        emitByte(0xC0 | encode);
+    }
+
     // generic
     public final void pop(Register dst) {
         int encode = prefixAndEncode(dst.encoding);

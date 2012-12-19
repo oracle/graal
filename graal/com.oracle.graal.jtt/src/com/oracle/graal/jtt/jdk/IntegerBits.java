@@ -45,6 +45,10 @@ public class IntegerBits {
         return Integer.numberOfTrailingZeros(o);
     }
 
+    public static int test4(int o) {
+        return Integer.bitCount(o);
+    }
+
     @Test
     public void run0() {
         Assert.assertEquals(reversed, test(original));
@@ -93,5 +97,10 @@ public class IntegerBits {
     @Test
     public void run9() {
         Assert.assertEquals(32, test2(0));
+    }
+
+    @Test
+    public void run10() {
+        Assert.assertEquals(32, test4(0xffffffff));
     }
 }

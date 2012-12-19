@@ -46,6 +46,10 @@ public class LongBits {
         return Long.numberOfTrailingZeros(o);
     }
 
+    public static int test4(long o) {
+        return Long.bitCount(o);
+    }
+
     @Test
     public void run0() {
         Assert.assertEquals(reversed, test(original));
@@ -114,5 +118,16 @@ public class LongBits {
     @Test
     public void run13() {
         Assert.assertEquals(32, test3(0x0100000000L));
+    }
+
+    @Test
+    public void run14() {
+        Assert.assertEquals(0, test4(0L));
+        Assert.assertEquals(1, test4(1L));
+        Assert.assertEquals(24, test4(0xffff00ffL));
+        Assert.assertEquals(32, test4(0xffffffffL));
+        Assert.assertEquals(34, test4(0x3ffffffffL));
+        Assert.assertEquals(34, test4(0xffffffff3L));
+        Assert.assertEquals(64, test4(0xffffffffffffffffL));
     }
 }

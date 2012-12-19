@@ -26,6 +26,8 @@ package com.oracle.graal.compiler.amd64;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
 import static com.oracle.graal.lir.amd64.AMD64Compare.*;
+import static com.oracle.graal.lir.amd64.AMD64BitManipulationOp.IntrinsicOpcode.*;
+import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
@@ -57,7 +59,6 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.SequentialSwitchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.SwitchRangesOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
-import com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
@@ -580,16 +581,25 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitBitCount(Variable result, Value value) {
+        if (value.getKind().getStackKind() == Kind.Int) {
+            append(new AMD64BitManipulationOp(IPOPCNT, result, value));
+        } else {
+            append(new AMD64BitManipulationOp(LPOPCNT, result, value));
+        }
+    }
+
+    @Override
     public void emitBitScanForward(Variable result, Value value) {
-        append(new AMD64BitScanOp(AMD64BitScanOp.IntrinsicOpcode.BSF, result, value));
+        append(new AMD64BitManipulationOp(BSF, result, value));
     }
 
     @Override
     public void emitBitScanReverse(Variable result, Value value) {
         if (value.getKind().getStackKind() == Kind.Int) {
-            append(new AMD64BitScanOp(AMD64BitScanOp.IntrinsicOpcode.IBSR, result, value));
+            append(new AMD64BitManipulationOp(IBSR, result, value));
         } else {
-            append(new AMD64BitScanOp(AMD64BitScanOp.IntrinsicOpcode.LBSR, result, value));
+            append(new AMD64BitManipulationOp(LBSR, result, value));
         }
     }
 
@@ -600,28 +610,27 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitMathSqrt(Variable result, Variable input) {
-        append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.SQRT, result, input));
+        append(new AMD64MathIntrinsicOp(SQRT, result, input));
     }
 
     @Override
     public void emitMathLog(Variable result, Variable input, boolean base10) {
-        IntrinsicOpcode opcode = base10 ? AMD64MathIntrinsicOp.IntrinsicOpcode.LOG10 : AMD64MathIntrinsicOp.IntrinsicOpcode.LOG;
-        append(new AMD64MathIntrinsicOp(opcode, result, input));
+        append(new AMD64MathIntrinsicOp(base10 ? LOG10 : LOG, result, input));
     }
 
     @Override
     public void emitMathCos(Variable result, Variable input) {
-        append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.COS, result, input));
+        append(new AMD64MathIntrinsicOp(COS, result, input));
     }
 
     @Override
     public void emitMathSin(Variable result, Variable input) {
-        append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.SIN, result, input));
+        append(new AMD64MathIntrinsicOp(SIN, result, input));
     }
 
     @Override
     public void emitMathTan(Variable result, Variable input) {
-        append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.TAN, result, input));
+        append(new AMD64MathIntrinsicOp(TAN, result, input));
     }
 
     @Override

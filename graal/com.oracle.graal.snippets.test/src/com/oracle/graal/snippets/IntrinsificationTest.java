@@ -325,6 +325,7 @@ public class IntrinsificationTest extends GraalCompilerTest {
         assertInGraph(test("integerReverseBytesSnippet"), ReverseBytesNode.class);              // Java
         assertInGraph(test("integerNumberOfLeadingZerosSnippet"), BitScanReverseNode.class);    // Java
         assertInGraph(test("integerNumberOfTrailingZerosSnippet"), BitScanForwardNode.class);   // Java
+        assertInGraph(test("integerBitCountSnippet"), BitCountNode.class);                      // Java
     }
 
     @SuppressWarnings("all")
@@ -339,6 +340,10 @@ public class IntrinsificationTest extends GraalCompilerTest {
     public static int integerNumberOfTrailingZerosSnippet(int value) {
         return Integer.numberOfTrailingZeros(value);
     }
+    @SuppressWarnings("all")
+    public static int integerBitCountSnippet(int value) {
+        return Integer.bitCount(value);
+    }
 
 
     @Test
@@ -346,6 +351,7 @@ public class IntrinsificationTest extends GraalCompilerTest {
         assertInGraph(test("longReverseBytesSnippet"), ReverseBytesNode.class);              // Java
         assertInGraph(test("longNumberOfLeadingZerosSnippet"), BitScanReverseNode.class);    // Java
         assertInGraph(test("longNumberOfTrailingZerosSnippet"), BitScanForwardNode.class);   // Java
+        assertInGraph(test("longBitCountSnippet"), BitCountNode.class);                      // Java
     }
 
     @SuppressWarnings("all")
@@ -359,6 +365,10 @@ public class IntrinsificationTest extends GraalCompilerTest {
     @SuppressWarnings("all")
     public static long longNumberOfTrailingZerosSnippet(long value) {
         return Long.numberOfTrailingZeros(value);
+    }
+    @SuppressWarnings("all")
+    public static int longBitCountSnippet(long value) {
+        return Long.bitCount(value);
     }
 
 

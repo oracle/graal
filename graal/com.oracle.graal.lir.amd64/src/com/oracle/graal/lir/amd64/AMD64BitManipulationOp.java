@@ -27,9 +27,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
-
-public class AMD64BitScanOp extends AMD64LIRInstruction {
+public class AMD64BitManipulationOp extends AMD64LIRInstruction {
     public enum IntrinsicOpcode  {
+        IPOPCNT, LPOPCNT,
         IBSR, LBSR,
         BSF;
     }
@@ -38,7 +38,7 @@ public class AMD64BitScanOp extends AMD64LIRInstruction {
     @Def protected Value result;
     @Use({OperandFlag.REG, OperandFlag.ADDR}) protected Value input;
 
-    public AMD64BitScanOp(IntrinsicOpcode opcode, Value result, Value input) {
+    public AMD64BitManipulationOp(IntrinsicOpcode opcode, Value result, Value input) {
         this.opcode = opcode;
         this.result = result;
         this.input = input;
@@ -50,6 +50,12 @@ public class AMD64BitScanOp extends AMD64LIRInstruction {
         if (ValueUtil.isAddress(input)) {
             Address src = ValueUtil.asAddress(input);
             switch(opcode) {
+                case IPOPCNT:
+                    masm.popcntl(dst, src);
+                    break;
+                case LPOPCNT:
+                    masm.popcntq(dst, src);
+                    break;
                 case BSF:
                     masm.bsfq(dst, src);
                     break;
@@ -63,6 +69,12 @@ public class AMD64BitScanOp extends AMD64LIRInstruction {
         } else {
             Register src = ValueUtil.asRegister(input);
             switch(opcode) {
+                case IPOPCNT:
+                    masm.popcntl(dst, src);
+                    break;
+                case LPOPCNT:
+                    masm.popcntq(dst, src);
+                    break;
                 case BSF:
                     masm.bsfq(dst, src);
                     break;

@@ -44,4 +44,8 @@ public class LongSnippets implements SnippetsInterface{
         }
         return BitScanForwardNode.scan(i);
     }
+
+    public static int bitCount(long i) {
+        return BitCountNode.bitCount(i);
+    }
 }
