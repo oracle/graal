@@ -23,9 +23,11 @@
 package com.oracle.graal.hotspot.snippets;
 
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
+import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 
@@ -41,7 +43,7 @@ public class ClassSnippets implements SnippetsInterface {
             // Class for primitive type
             return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
         } else {
-            return loadIntFromWord(klass, klassModifierFlagsOffset());
+            return klass.readInt(klassModifierFlagsOffset());
         }
     }
 
@@ -51,7 +53,7 @@ public class ClassSnippets implements SnippetsInterface {
         if (klass == Word.zero()) {
             return false;
         } else {
-            int accessFlags = loadIntFromWord(klass, klassAccessFlagsOffset());
+            int accessFlags = klass.readInt(klassAccessFlagsOffset());
             return (accessFlags & Modifier.INTERFACE) != 0;
         }
     }
@@ -62,7 +64,7 @@ public class ClassSnippets implements SnippetsInterface {
         if (klass == Word.zero()) {
             return false;
         } else {
-            int layoutHelper = loadIntFromWord(klass, klassLayoutHelperOffset());
+            int layoutHelper = klass.readInt(klassLayoutHelperOffset());
             return (layoutHelper & arrayKlassLayoutHelperIdentifier()) != 0;
         }
     }
@@ -77,17 +79,17 @@ public class ClassSnippets implements SnippetsInterface {
     public static Class<?> getSuperclass(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         if (klass != Word.zero()) {
-            int accessFlags = loadIntFromWord(klass, klassAccessFlagsOffset());
+            int accessFlags = klass.readInt(klassAccessFlagsOffset());
             if ((accessFlags & Modifier.INTERFACE) == 0) {
-                int layoutHelper = loadIntFromWord(klass, klassLayoutHelperOffset());
+                int layoutHelper = klass.readInt(klassLayoutHelperOffset());
                 if ((layoutHelper & arrayKlassLayoutHelperIdentifier()) != 0) {
                     return Object.class;
                 } else {
-                    Word superKlass = loadWordFromWord(klass, klassSuperKlassOffset());
+                    Word superKlass = klass.readWord(klassSuperKlassOffset());
                     if (superKlass == Word.zero()) {
                         return null;
                     } else {
-                        return (Class<?>) loadObjectFromWord(superKlass, classMirrorOffset());
+                        return unsafeCast(superKlass.readObject(classMirrorOffset()), Class.class, true, true);
                     }
                 }
             }
@@ -99,11 +101,17 @@ public class ClassSnippets implements SnippetsInterface {
     public static Class<?> getComponentType(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         if (klass != Word.zero()) {
-            int layoutHelper = loadIntFromWord(klass, klassLayoutHelperOffset());
+            int layoutHelper = klass.readInt(klassLayoutHelperOffset());
             if ((layoutHelper & arrayKlassLayoutHelperIdentifier()) != 0) {
-                return (Class<?>) loadObjectFromWord(klass, arrayKlassComponentMirrorOffset());
+                return unsafeCast(klass.readObject(arrayKlassComponentMirrorOffset()), Class.class, true, true);
             }
         }
         return null;
     }
+
+    @MethodSubstitution(isStatic = false)
+    public static boolean isInstance(final Class<?> thisObj, Object obj) {
+        return MaterializeNode.isInstance(thisObj, obj);
+    }
+
 }

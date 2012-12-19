@@ -369,7 +369,7 @@ public class NodeClass extends FieldIntrospection {
                 NodeList<Node> list = getNodeList(node, offsets[index]);
                 return list.get(subIndex);
             }
-            return null;
+            throw new NoSuchElementException();
         }
 
         @Override

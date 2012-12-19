@@ -208,7 +208,9 @@ public class SnippetTemplate {
                 throw new GraalInternalError(e);
             }
         }
-}
+    }
+
+    private static final Object UNUSED_PARAMETER = "DEAD PARAMETER";
 
     /**
      * Determines if any parameter of a given method is annotated with {@link ConstantParameter}.
@@ -315,8 +317,12 @@ public class SnippetTemplate {
                 Parameter p = parameterAnnotations[i];
                 if (p != null) {
                     LocalNode local = snippetCopy.getLocal(i);
-                    assert local != null;
-                    parameters.put(p.value(), local);
+                    if (local == null) {
+                        // Parameter value was eliminated
+                        parameters.put(p.value(), UNUSED_PARAMETER);
+                    } else {
+                        parameters.put(p.value(), local);
+                    }
                 }
             }
         }
@@ -431,7 +437,9 @@ public class SnippetTemplate {
 
     /**
      * The named parameters of this template that must be bound to values during instantiation.
-     * Each value in this map is either a {@link LocalNode} instance or a {@link LocalNode} array.
+     * For a parameter that is still live after specialization, the value in this map is either
+     * a {@link LocalNode} instance or a {@link LocalNode} array. For an eliminated parameter,
+     * the value is identical to the key.
      */
     private final Map<String, Object> parameters;
 
@@ -477,8 +485,7 @@ public class SnippetTemplate {
                     Constant constant = Constant.forBoxed(kind, argument);
                     replacements.put((LocalNode) parameter, ConstantNode.forConstant(constant, runtime, replaceeGraph));
                 }
-            } else {
-                assert parameter instanceof LocalNode[];
+            } else if (parameter instanceof LocalNode[]) {
                 LocalNode[] locals = (LocalNode[]) parameter;
                 Object array = argument;
                 assert array != null && array.getClass().isArray();
@@ -496,6 +503,8 @@ public class SnippetTemplate {
                         replacements.put(local, element);
                     }
                 }
+            } else {
+                assert parameter == UNUSED_PARAMETER : "unexpected entry for parameter: " + name + " -> " + parameter;
             }
         }
         return replacements;
@@ -673,7 +682,9 @@ public class SnippetTemplate {
             Object value = e.getValue();
             buf.append(sep);
             sep = ", ";
-            if (value instanceof LocalNode) {
+            if (value == UNUSED_PARAMETER)  {
+                buf.append("<unused> ").append(name);
+            } else if (value instanceof LocalNode) {
                 LocalNode local = (LocalNode) value;
                 buf.append(local.kind().getJavaName()).append(' ').append(name);
             } else {

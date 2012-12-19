@@ -70,7 +70,7 @@ public class NewArrayStub extends Stub {
                     @Parameter("length") int length,
                     @ConstantParameter("intArrayHub") Word intArrayHub,
                     @ConstantParameter("log") boolean log) {
-        int layoutHelper = loadIntFromWord(hub, layoutHelperOffset());
+        int layoutHelper = hub.readInt(layoutHelperOffset());
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
         int elementKind = (layoutHelper >> layoutHelperElementTypeShift()) & layoutHelperElementTypeMask();

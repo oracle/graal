@@ -21,8 +21,11 @@
  * questions.
  */
 package com.oracle.graal.hotspot.snippets;
+import static com.oracle.graal.api.code.DeoptimizationAction.*;
+import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -42,7 +45,6 @@ public class ArrayCopySnippets implements SnippetsInterface{
     private static final Kind VECTOR_KIND = Kind.Long;
     private static final long VECTOR_SIZE = arrayIndexScale(Kind.Long);
 
-    @Snippet
     public static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter("baseKind") Kind baseKind) {
         checkInputs(src, srcPos, dest, destPos, length);
         int header = arrayBaseOffset(baseKind);
@@ -71,13 +73,12 @@ public class ArrayCopySnippets implements SnippetsInterface{
         }
     }
 
-    @Snippet
     public static void checkInputs(Object src, int srcPos, Object dest, int destPos, int length) {
         if (src == null || dest == null) {
             throw new NullPointerException();
         }
         if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > ArrayLengthNode.arrayLength(src) || destPos + length > ArrayLengthNode.arrayLength(dest)) {
-            throw new IndexOutOfBoundsException();
+            throw new ArrayIndexOutOfBoundsException();
         }
     }
 

@@ -59,8 +59,8 @@ public class NewObjectSnippets implements SnippetsInterface {
     @Snippet
     public static Word allocate(@Parameter("size") int size) {
         Word thread = thread();
-        Word top = loadWordFromWord(thread, threadTlabTopOffset());
-        Word end = loadWordFromWord(thread, threadTlabEndOffset());
+        Word top = thread.readWord(threadTlabTopOffset());
+        Word end = thread.readWord(threadTlabEndOffset());
         Word newTop = top.plus(size);
         // this check might lead to problems if the TLAB is within 16GB of the address space end (checked in c++ code)
         if (newTop.belowOrEqual(end)) {
@@ -187,7 +187,7 @@ public class NewObjectSnippets implements SnippetsInterface {
      * Formats some allocated memory with an object header zeroes out the rest.
      */
     private static void formatObject(Word hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents) {
-        Word prototypeMarkWord = useBiasedLocking() ? loadWordFromWord(hub, prototypeMarkWordOffset()) : compileTimePrototypeMarkWord;
+        Word prototypeMarkWord = useBiasedLocking() ? hub.readWord(prototypeMarkWordOffset()) : compileTimePrototypeMarkWord;
         storeWord(memory, 0, markOffset(), prototypeMarkWord);
         storeWord(memory, 0, hubOffset(), hub);
         if (fillContents) {

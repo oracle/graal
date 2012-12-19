@@ -65,7 +65,7 @@ public class IntrinsificationTest extends GraalCompilerTest {
     @Test
     public void testClassIntrinsics() {
         test("getModifiersSnippet");
-//        test("isInstanceSnippet");
+        test("isInstanceSnippet");
         test("isInterfaceSnippet");
         test("isArraySnippet");
         test("isPrimitiveSnippet");
@@ -128,7 +128,6 @@ public class IntrinsificationTest extends GraalCompilerTest {
     public void testSystemIntrinsics() {
         test("systemTimeSnippet");
         test("systemIdentityHashCode");
-//        test("arraycopySnippet");
     }
 
     @SuppressWarnings("all")
@@ -139,10 +138,6 @@ public class IntrinsificationTest extends GraalCompilerTest {
     @SuppressWarnings("all")
     public static int systemIdentityHashCode(Object obj) {
         return System.identityHashCode(obj);
-    }
-    @SuppressWarnings("all")
-    public static void arraycopySnippet(int[] src, int srcPos, int[] dest, int destPos, int length) {
-        System.arraycopy(src, srcPos, dest, destPos, length);
     }
 
 
@@ -400,7 +395,7 @@ public class IntrinsificationTest extends GraalCompilerTest {
 
 
     private StructuredGraph test(final String snippet) {
-        return Debug.scope("IntrinsificationTest", new DebugDumpScope(snippet), new Callable<StructuredGraph>() {
+        return Debug.scope("IntrinsificationTest", runtime.lookupJavaMethod(getMethod(snippet)), new Callable<StructuredGraph>() {
             @Override
             public StructuredGraph call() {
                 StructuredGraph graph = parse(snippet);

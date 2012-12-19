@@ -40,7 +40,6 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
@@ -107,7 +106,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 // The bias pattern is present in the object's mark word. Need to check
                 // whether the bias owner and the epoch are both still current.
                 Word hub = loadHub(object);
-                final Word prototypeMarkWord = loadWordFromWord(hub, prototypeMarkWordOffset());
+                final Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset());
                 final Word thread = thread();
                 final Word tmp = prototypeMarkWord.or(thread).xor(mark).and(~ageMaskInPlace());
                 trace(trace, "prototypeMarkWord: 0x%016lx\n", prototypeMarkWord.toLong());
@@ -293,7 +292,7 @@ public class MonitorSnippets implements SnippetsInterface {
         final Word lock = CurrentLockNode.currentLock();
 
         // Load displaced mark
-        final Word displacedMark = loadWordFromWord(lock, lockDisplacedMarkOffset());
+        final Word displacedMark = lock.readWord(lockDisplacedMarkOffset());
         trace(trace, "    displacedMark: 0x%016lx\n", displacedMark.toLong());
 
         if (displacedMark == Word.zero()) {
@@ -360,7 +359,7 @@ public class MonitorSnippets implements SnippetsInterface {
     private static void incCounter() {
         if (CHECK_BALANCED_MONITORS) {
             final Word counter = MonitorCounterNode.counter();
-            final int count = UnsafeLoadNode.load(counter, 0, 0, Kind.Int);
+            final int count = counter.readInt(0);
             DirectObjectStoreNode.storeInt(counter, 0, 0, count + 1);
         }
     }
@@ -368,7 +367,7 @@ public class MonitorSnippets implements SnippetsInterface {
     private static void decCounter() {
         if (CHECK_BALANCED_MONITORS) {
             final Word counter = MonitorCounterNode.counter();
-            final int count = UnsafeLoadNode.load(counter, 0, 0, Kind.Int);
+            final int count = counter.readInt(0);
             DirectObjectStoreNode.storeInt(counter, 0, 0, count - 1);
         }
     }
@@ -382,7 +381,7 @@ public class MonitorSnippets implements SnippetsInterface {
     @Snippet
     private static void checkCounter(String errMsg) {
         final Word counter = MonitorCounterNode.counter();
-        final int count = UnsafeLoadNode.load(counter, 0, 0, Kind.Int);
+        final int count = counter.readInt(0);
         if (count != 0) {
             vmError(errMsg, count);
         }

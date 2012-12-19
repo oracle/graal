@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
-public final class InstanceOfNode extends BooleanNode implements Canonicalizable, Lowerable, LIRLowerable, Virtualizable {
+public final class InstanceOfNode extends BooleanNode implements Canonicalizable, Lowerable, Virtualizable {
 
     @Input private ValueNode object;
     private final ResolvedJavaType type;
@@ -51,10 +51,6 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
         this.object = object;
         this.profile = profile;
         assert type != null;
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
     }
 
     @Override

@@ -576,11 +576,11 @@ public class InliningUtil {
                 assert exceptionMerge != null && exceptionObjectPhi != null;
 
                 InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
-                BeginNode exceptionEdge = invokeWithException.exceptionEdge();
+                DispatchBeginNode exceptionEdge = invokeWithException.exceptionEdge();
                 ExceptionObjectNode exceptionObject = (ExceptionObjectNode) exceptionEdge.next();
                 FrameState stateAfterException = exceptionObject.stateAfter();
 
-                BeginNode newExceptionEdge = (BeginNode) exceptionEdge.copyWithInputs();
+                DispatchBeginNode newExceptionEdge = (DispatchBeginNode) exceptionEdge.copyWithInputs();
                 ExceptionObjectNode newExceptionObject = (ExceptionObjectNode) exceptionObject.copyWithInputs();
                 // set new state (pop old exception object, push new one)
                 newExceptionObject.setStateAfter(stateAfterException.duplicateModified(stateAfterException.bci, stateAfterException.rethrowException(), Kind.Object, newExceptionObject));

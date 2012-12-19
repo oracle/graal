@@ -38,32 +38,6 @@ import com.oracle.graal.nodes.java.*;
  */
 public class NewMultiArrayTest extends GraalCompilerTest {
 
-    @Override
-    protected void assertEquals(Object expected, Object actual) {
-        Assert.assertTrue(expected != null);
-        Assert.assertTrue(actual != null);
-        super.assertEquals(expected.getClass(), actual.getClass());
-        if (expected instanceof int[]) {
-            Assert.assertArrayEquals((int[]) expected, (int[]) actual);
-        } else if (expected instanceof byte[]) {
-            Assert.assertArrayEquals((byte[]) expected, (byte[]) actual);
-        } else if (expected instanceof char[]) {
-            Assert.assertArrayEquals((char[]) expected, (char[]) actual);
-        } else if (expected instanceof short[]) {
-            Assert.assertArrayEquals((short[]) expected, (short[]) actual);
-        } else if (expected instanceof float[]) {
-            Assert.assertArrayEquals((float[]) expected, (float[]) actual, 0.0f);
-        } else if (expected instanceof long[]) {
-            Assert.assertArrayEquals((long[]) expected, (long[]) actual);
-        } else if (expected instanceof double[]) {
-            Assert.assertArrayEquals((double[]) expected, (double[]) actual, 0.0d);
-        } else if (expected instanceof Object[]) {
-            Assert.assertArrayEquals((Object[]) expected, (Object[]) actual);
-        } else {
-            Assert.fail("non-array value encountered: " + expected);
-        }
-    }
-
     private static int rank(ResolvedJavaType type) {
         String name = type.getName();
         int dims = 0;

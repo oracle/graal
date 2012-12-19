@@ -26,6 +26,7 @@ import static com.oracle.graal.nodes.calc.CompareNode.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.java.*;
 
 public final class MaterializeNode extends ConditionalNode {
 
@@ -35,6 +36,10 @@ public final class MaterializeNode extends ConditionalNode {
 
     private MaterializeNode(BooleanNode condition, ValueNode trueValue, ValueNode falseValue) {
         super(condition, trueValue, falseValue);
+    }
+
+    private MaterializeNode(ValueNode type, ValueNode object) {
+        super(type.graph().add(new InstanceOfDynamicNode(type, object)), ConstantNode.forInt(1, type.graph()), ConstantNode.forInt(0, type.graph()));
     }
 
     public static MaterializeNode create(BooleanNode condition, ValueNode trueValue, ValueNode falseValue) {
@@ -53,4 +58,7 @@ public final class MaterializeNode extends ConditionalNode {
 
     @NodeIntrinsic
     public static native boolean materialize(@ConstantNodeParameter Condition condition, long x, long y);
+
+    @NodeIntrinsic
+    public static native boolean isInstance(Class mirror, Object object);
 }

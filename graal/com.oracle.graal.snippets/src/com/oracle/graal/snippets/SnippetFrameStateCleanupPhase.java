@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.graph;
+package com.oracle.graal.snippets;
 
-import java.util.*;
-
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.phases.*;
 
-public interface MergeableState <T> {
-    T clone();
-    boolean merge(MergeNode merge, List<T> withStates);
-    void loopBegin(LoopBeginNode loopBegin);
-    void loopEnds(LoopBeginNode loopBegin, List<T> loopEndStates);
-    void afterSplit(BeginNode node);
+/**
+ * Removes frame states from {@linkplain StateSplit#hasSideEffect() non-side-effecting} nodes in a snippet.
+ */
+public class SnippetFrameStateCleanupPhase extends Phase {
+
+    @Override
+    protected void run(StructuredGraph graph) {
+        for (Node node : graph.getNodes().filterInterface(StateSplit.class)) {
+            StateSplit stateSplit = (StateSplit) node;
+            FrameState frameState = stateSplit.stateAfter();
+            if (!stateSplit.hasSideEffect()) {
+                if (frameState != null) {
+                    stateSplit.setStateAfter(null);
+                    if (frameState.usages().isEmpty()) {
+                        GraphUtil.killWithUnusedFloatingInputs(frameState);
+                    }
+                }
+            }
+        }
+    }
 }

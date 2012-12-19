@@ -96,7 +96,7 @@ public abstract class LoopTransformations {
         StructuredGraph graph = (StructuredGraph) ifNode.graph();
         BeginNode tempBegin = graph.add(new BeginNode());
         originalLoop.entryPoint().replaceAtPredecessor(tempBegin);
-        double takenProbability = ifNode.probability(ifNode.blockSuccessorIndex(ifNode.trueSuccessor()));
+        double takenProbability = ifNode.probability(ifNode.trueSuccessor());
         IfNode newIf = graph.add(new IfNode(ifNode.condition(), duplicateLoop.entryPoint(), originalLoop.entryPoint(), takenProbability, ifNode.leafGraphId()));
         tempBegin.setNext(newIf);
         ifNode.setCondition(graph.unique(ConstantNode.forBoolean(false, graph)));

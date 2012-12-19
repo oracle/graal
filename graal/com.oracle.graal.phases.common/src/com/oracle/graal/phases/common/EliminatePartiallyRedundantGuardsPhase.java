@@ -149,7 +149,8 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
 
     private static boolean eliminateAtControlSplit(ControlSplitNode controlSplit) {
         Map<Condition, Collection<GuardNode>> conditionToGuard = new HashMap<>();
-        for (BeginNode begin : controlSplit.blockSuccessors()) {
+        for (Node successor : controlSplit.successors()) {
+            BeginNode begin = (BeginNode) successor;
             for (GuardNode guard : begin.guards()) {
                 if (guard.dependencies().size() != 1) {
                     continue;
@@ -196,7 +197,7 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
             if (leafGraphId < 0) {
                 continue;
             }
-            if (begins.size() == controlSplit.blockSuccessors().count()) {
+            if (begins.size() == controlSplit.successors().count()) {
                 hits = true;
                 Condition condition = entry.getKey();
                 GuardNode newGuard = controlSplit.graph().unique(new GuardNode(condition.conditionNode, BeginNode.prevBegin(controlSplit), reason, action, condition.negated, leafGraphId));

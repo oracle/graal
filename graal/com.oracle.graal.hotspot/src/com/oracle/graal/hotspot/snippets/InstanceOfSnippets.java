@@ -93,7 +93,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
             return falseValue;
         }
         Word objectHub = loadHub(object);
-        if (loadWordFromWord(objectHub, superCheckOffset) != hub) {
+        if (objectHub.readWord(superCheckOffset) != hub) {
             displayMiss.inc();
             return falseValue;
         }
@@ -134,7 +134,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
 
     static boolean checkSecondarySubType(Word t, Word s) {
         // if (S.cache == T) return true
-        if (loadWordFromWord(s, secondarySuperCacheOffset()) == t) {
+        if (s.readWord(secondarySuperCacheOffset()) == t) {
             cacheHit.inc();
             return true;
         }
@@ -146,8 +146,8 @@ public class InstanceOfSnippets implements SnippetsInterface {
         }
 
         // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
-        Word secondarySupers = loadWordFromWord(s, secondarySupersOffset());
-        int length = loadIntFromWord(secondarySupers, metaspaceArrayLengthOffset());
+        Word secondarySupers = s.readWord(secondarySupersOffset());
+        int length = secondarySupers.readInt(metaspaceArrayLengthOffset());
         for (int i = 0; i < length; i++) {
             if (t == loadWordElement(secondarySupers, i)) {
                 DirectObjectStoreNode.storeObject(s, secondarySuperCacheOffset(), 0, t);
@@ -159,45 +159,83 @@ public class InstanceOfSnippets implements SnippetsInterface {
         return false;
     }
 
+    /**
+     * Type test used when the type being tested against is not known at compile time.
+     */
+    @Snippet
+    public static Object instanceofDynamic(
+                    @Parameter("mirror") Class mirror,
+                    @Parameter("object") Object object,
+                    @Parameter("trueValue") Object trueValue,
+                    @Parameter("falseValue") Object falseValue,
+                    @ConstantParameter("checkNull") boolean checkNull) {
+        if (checkNull && object == null) {
+            isNull.inc();
+            return falseValue;
+        }
+
+        Word hub = loadWordFromObject(mirror, klassOffset());
+        Word objectHub = loadHub(object);
+        if (!checkUnknownSubType(hub, objectHub)) {
+            return falseValue;
+        }
+        return trueValue;
+    }
+
     public static class Templates extends InstanceOfSnippetsTemplates<InstanceOfSnippets> {
 
         private final ResolvedJavaMethod instanceofExact;
         private final ResolvedJavaMethod instanceofPrimary;
         private final ResolvedJavaMethod instanceofSecondary;
+        private final ResolvedJavaMethod instanceofDynamic;
 
         public Templates(CodeCacheProvider runtime, Assumptions assumptions, TargetDescription target) {
             super(runtime, assumptions, target, InstanceOfSnippets.class);
             instanceofExact = snippet("instanceofExact", Object.class, Word.class, Object.class, Object.class, boolean.class);
             instanceofPrimary = snippet("instanceofPrimary", Word.class, Object.class, Object.class, Object.class, boolean.class, int.class);
             instanceofSecondary = snippet("instanceofSecondary", Word.class, Object.class, Object.class, Object.class, Word[].class, boolean.class);
+            instanceofDynamic = snippet("instanceofDynamic", Class.class, Object.class, Object.class, Object.class, boolean.class);
         }
 
         @Override
         protected KeyAndArguments getKeyAndArguments(InstanceOfUsageReplacer replacer, LoweringTool tool) {
-            InstanceOfNode instanceOf = replacer.instanceOf;
-            ValueNode trueValue = replacer.trueValue;
-            ValueNode falseValue = replacer.falseValue;
-            ValueNode object = instanceOf.object();
-            TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), GraalOptions.InstanceOfMinHintHitProbability, GraalOptions.InstanceOfMaxHints);
-            final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type();
-            ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, instanceOf.graph());
-            boolean checkNull = !object.stamp().nonNull();
-            Arguments arguments;
-            Key key;
-            if (hintInfo.exact) {
-                ConstantNode[] hints = createHints(hintInfo, runtime, hub.graph());
-                assert hints.length == 1;
-                key = new Key(instanceofExact).add("checkNull", checkNull);
-                arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
-            } else if (type.isPrimaryType()) {
-                key = new Key(instanceofPrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
-                arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
+            if (replacer.instanceOf instanceof InstanceOfNode) {
+                InstanceOfNode instanceOf = (InstanceOfNode) replacer.instanceOf;
+                ValueNode trueValue = replacer.trueValue;
+                ValueNode falseValue = replacer.falseValue;
+                ValueNode object = instanceOf.object();
+                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), GraalOptions.InstanceOfMinHintHitProbability, GraalOptions.InstanceOfMaxHints);
+                final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type();
+                ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, instanceOf.graph());
+                boolean checkNull = !object.stamp().nonNull();
+                Arguments arguments;
+                Key key;
+                if (hintInfo.exact) {
+                    ConstantNode[] hints = createHints(hintInfo, runtime, hub.graph());
+                    assert hints.length == 1;
+                    key = new Key(instanceofExact).add("checkNull", checkNull);
+                    arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
+                } else if (type.isPrimaryType()) {
+                    key = new Key(instanceofPrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
+                    arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
+                } else {
+                    ConstantNode[] hints = createHints(hintInfo, runtime, hub.graph());
+                    key = new Key(instanceofSecondary).add("hints", Varargs.vargargs(new Word[hints.length], StampFactory.forKind(wordKind()))).add("checkNull", checkNull);
+                    arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
+                }
+                return new KeyAndArguments(key, arguments);
             } else {
-                ConstantNode[] hints = createHints(hintInfo, runtime, hub.graph());
-                key = new Key(instanceofSecondary).add("hints", Varargs.vargargs(new Word[hints.length], StampFactory.forKind(wordKind()))).add("checkNull", checkNull);
-                arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
+                assert replacer.instanceOf instanceof InstanceOfDynamicNode;
+                InstanceOfDynamicNode instanceOf = (InstanceOfDynamicNode) replacer.instanceOf;
+                ValueNode trueValue = replacer.trueValue;
+                ValueNode falseValue = replacer.falseValue;
+                ValueNode object = instanceOf.object();
+                ValueNode mirror = instanceOf.mirror();
+                boolean checkNull = !object.stamp().nonNull();
+                Key key = new Key(instanceofDynamic).add("checkNull", checkNull);
+                Arguments arguments = arguments("mirror", mirror).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
+                return new KeyAndArguments(key, arguments);
             }
-            return new KeyAndArguments(key, arguments);
         }
     }
 

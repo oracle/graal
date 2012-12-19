@@ -221,7 +221,7 @@ public class SnippetIntrinsificationPhase extends Phase {
                                         InvokeWithExceptionNode invokeWithExceptionNode = (InvokeWithExceptionNode) invokeNode;
 
                                         invokeWithExceptionNode.killExceptionEdge();
-                                        graph.removeSplit(invokeWithExceptionNode, InvokeWithExceptionNode.NORMAL_EDGE);
+                                        graph.removeSplit(invokeWithExceptionNode, invokeWithExceptionNode.next());
                                     } else {
                                         graph.removeFixed((InvokeNode) invokeNode);
                                     }
@@ -381,7 +381,7 @@ public class SnippetIntrinsificationPhase extends Phase {
                             InvokeWithExceptionNode invokeWithExceptionNode = (InvokeWithExceptionNode) invokeNode;
 
                             invokeWithExceptionNode.killExceptionEdge();
-                            graph.removeSplit(invokeWithExceptionNode, InvokeWithExceptionNode.NORMAL_EDGE);
+                            graph.removeSplit(invokeWithExceptionNode, invokeWithExceptionNode.next());
                         } else {
                             graph.removeFixed((InvokeNode) invokeNode);
                         }
