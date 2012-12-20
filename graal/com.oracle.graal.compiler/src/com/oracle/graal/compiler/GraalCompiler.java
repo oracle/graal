@@ -168,7 +168,7 @@ public class GraalCompiler {
         if (GraalOptions.OptFloatingReads) {
             int mark = graph.getMark();
             new FloatingReadPhase().apply(graph);
-            new CanonicalizerPhase(target, runtime, assumptions, mark).apply(graph);
+            new CanonicalizerPhase(target, runtime, assumptions, mark, null).apply(graph);
             if (GraalOptions.OptReadElimination) {
                 new ReadEliminationPhase().apply(graph);
             }
@@ -228,6 +228,7 @@ public class GraalCompiler {
 
             }
         });
+
     }
 
     public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method) {
