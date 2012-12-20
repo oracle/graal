@@ -76,22 +76,22 @@ public class VN_Float01 extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", 0f);
+        runTest("test", 0f);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", 1f);
+        runTest("test", 1f);
     }
 
     @Test
     public void run2() throws Throwable {
-        runTestWithDelta(0, "test", 2f);
+        runTest("test", 2f);
     }
 
     @Test
     public void run3() throws Throwable {
-        runTestWithDelta(0, "test", 3f);
+        runTest("test", 3f);
     }
 
 }

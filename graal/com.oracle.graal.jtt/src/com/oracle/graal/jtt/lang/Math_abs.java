@@ -44,32 +44,32 @@ public class Math_abs extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", 5.0d);
+        runTest("test", 5.0d);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", -5.0d);
+        runTest("test", -5.0d);
     }
 
     @Test
     public void run2() throws Throwable {
-        runTestWithDelta(0, "test", 0.0d);
+        runTest("test", 0.0d);
     }
 
     @Test
     public void run3() throws Throwable {
-        runTestWithDelta(0, "test", -0.0d);
+        runTest("test", -0.0d);
     }
 
     @Test
     public void run4() throws Throwable {
-        runTestWithDelta(0, "test", java.lang.Double.NEGATIVE_INFINITY);
+        runTest("test", java.lang.Double.NEGATIVE_INFINITY);
     }
 
     @Test
     public void run5() throws Throwable {
-        runTestWithDelta(0, "test", java.lang.Double.POSITIVE_INFINITY);
+        runTest("test", java.lang.Double.POSITIVE_INFINITY);
     }
 
     @Test

@@ -38,7 +38,7 @@ public class BC_ldc_02 extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test");
+        runTest("test");
     }
 
 }

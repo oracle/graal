@@ -43,32 +43,32 @@ public class BC_dneg extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", 0.0d, 1.0d, 0);
+        runTest("test", 0.0d, 1.0d, 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", -1.01d, -2.01d, 0);
+        runTest("test", -1.01d, -2.01d, 0);
     }
 
     @Test
     public void run2() throws Throwable {
-        runTestWithDelta(0, "test", 7263.8734d, 8263.8734d, 0);
+        runTest("test", 7263.8734d, 8263.8734d, 0);
     }
 
     @Test
     public void run3() throws Throwable {
-        runTestWithDelta(0, "test", 0.0d, 1.0d, 1);
+        runTest("test", 0.0d, 1.0d, 1);
     }
 
     @Test
     public void run4() throws Throwable {
-        runTestWithDelta(0, "test", -1.01d, -2.01d, 1);
+        runTest("test", -1.01d, -2.01d, 1);
     }
 
     @Test
     public void run5() throws Throwable {
-        runTestWithDelta(0, "test", 7263.8734d, 8263.8734d, 1);
+        runTest("test", 7263.8734d, 8263.8734d, 1);
     }
 
 }

@@ -38,12 +38,12 @@ public class BC_fload extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", -1f);
+        runTest("test", -1f);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", -1.01f);
+        runTest("test", -1.01f);
     }
 
 }

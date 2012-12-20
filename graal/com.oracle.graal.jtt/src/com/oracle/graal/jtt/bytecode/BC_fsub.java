@@ -35,17 +35,17 @@ public class BC_fsub extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", 0.0f, 0.0f);
+        runTest("test", 0.0f, 0.0f);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", 1.0f, 1.0f);
+        runTest("test", 1.0f, 1.0f);
     }
 
     @Test
     public void run2() throws Throwable {
-        runTestWithDelta(0, "test", 253.11f, 54.43f);
+        runTest("test", 253.11f, 54.43f);
     }
 
 }

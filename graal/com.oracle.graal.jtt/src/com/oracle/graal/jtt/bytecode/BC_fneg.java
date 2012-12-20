@@ -35,17 +35,17 @@ public class BC_fneg extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", 0.0f);
+        runTest("test", 0.0f);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", -1.01f);
+        runTest("test", -1.01f);
     }
 
     @Test
     public void run2() throws Throwable {
-        runTestWithDelta(0, "test", 7263.8734f);
+        runTest("test", 7263.8734f);
     }
 
 }

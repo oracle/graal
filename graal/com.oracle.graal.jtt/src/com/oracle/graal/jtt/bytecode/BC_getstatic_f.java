@@ -40,7 +40,7 @@ public class BC_getstatic_f extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test");
+        runTest("test");
     }
 
 }

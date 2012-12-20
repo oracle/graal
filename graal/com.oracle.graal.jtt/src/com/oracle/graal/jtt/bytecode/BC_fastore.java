@@ -38,22 +38,22 @@ public class BC_fastore extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", 0, 0.01f);
+        runTest("test", 0, 0.01f);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", 1, -1.4f);
+        runTest("test", 1, -1.4f);
     }
 
     @Test
     public void run2() throws Throwable {
-        runTestWithDelta(0, "test", 2, 0.01f);
+        runTest("test", 2, 0.01f);
     }
 
     @Test
     public void run3() throws Throwable {
-        runTestWithDelta(0, "test", 3, -1.4f);
+        runTest("test", 3, -1.4f);
     }
 
 }

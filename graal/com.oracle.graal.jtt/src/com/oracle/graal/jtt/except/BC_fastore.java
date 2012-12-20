@@ -49,7 +49,7 @@ public class BC_fastore extends JTTTest {
 
     @Test
     public void run2() throws Throwable {
-        runTestWithDelta(0, "test", 0, 0.01f);
+        runTest("test", 0, 0.01f);
     }
 
     @Test

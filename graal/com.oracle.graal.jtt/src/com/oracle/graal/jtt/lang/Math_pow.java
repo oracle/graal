@@ -35,12 +35,12 @@ public class Math_pow extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", 2d);
+        runTest("test", 2d);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", 3.1d);
+        runTest("test", 3.1d);
     }
 
 }

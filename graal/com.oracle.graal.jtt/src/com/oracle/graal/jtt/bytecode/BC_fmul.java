@@ -35,12 +35,12 @@ public class BC_fmul extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", 311.0f, 10f);
+        runTest("test", 311.0f, 10f);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", 11.2f, 2.0f);
+        runTest("test", 11.2f, 2.0f);
     }
 
 }

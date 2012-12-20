@@ -59,47 +59,47 @@ public class BigMixedParams03 extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", 0, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
+        runTest("test", 0, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", 1, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
+        runTest("test", 1, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run2() throws Throwable {
-        runTestWithDelta(0, "test", 2, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
+        runTest("test", 2, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run3() throws Throwable {
-        runTestWithDelta(0, "test", 3, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
+        runTest("test", 3, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run4() throws Throwable {
-        runTestWithDelta(0, "test", 4, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
+        runTest("test", 4, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run5() throws Throwable {
-        runTestWithDelta(0, "test", 5, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
+        runTest("test", 5, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run6() throws Throwable {
-        runTestWithDelta(0, "test", 6, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
+        runTest("test", 6, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run7() throws Throwable {
-        runTestWithDelta(0, "test", 7, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
+        runTest("test", 7, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run8() throws Throwable {
-        runTestWithDelta(0, "test", 8, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
+        runTest("test", 8, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
 }

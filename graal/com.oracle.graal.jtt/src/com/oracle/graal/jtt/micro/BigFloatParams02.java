@@ -55,47 +55,47 @@ public class BigFloatParams02 extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", 0, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
+        runTest("test", 0, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", 1, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
+        runTest("test", 1, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run2() throws Throwable {
-        runTestWithDelta(0, "test", 2, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
+        runTest("test", 2, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run3() throws Throwable {
-        runTestWithDelta(0, "test", 3, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
+        runTest("test", 3, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run4() throws Throwable {
-        runTestWithDelta(0, "test", 4, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
+        runTest("test", 4, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run5() throws Throwable {
-        runTestWithDelta(0, "test", 5, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
+        runTest("test", 5, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run6() throws Throwable {
-        runTestWithDelta(0, "test", 6, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
+        runTest("test", 6, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run7() throws Throwable {
-        runTestWithDelta(0, "test", 7, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
+        runTest("test", 7, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run8() throws Throwable {
-        runTestWithDelta(0, "test", 8, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
+        runTest("test", 8, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
 }

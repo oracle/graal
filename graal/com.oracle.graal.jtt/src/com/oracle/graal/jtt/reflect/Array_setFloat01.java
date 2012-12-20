@@ -40,17 +40,17 @@ public class Array_setFloat01 extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", 0, 11.1f);
+        runTest("test", 0, 11.1f);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", 1, 21.1f);
+        runTest("test", 1, 21.1f);
     }
 
     @Test
     public void run2() throws Throwable {
-        runTestWithDelta(0, "test", 0, 42.1f);
+        runTest("test", 0, 42.1f);
     }
 
     @Test

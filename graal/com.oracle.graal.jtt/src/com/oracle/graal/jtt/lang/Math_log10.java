@@ -44,17 +44,17 @@ public class Math_log10 extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTestWithDelta(0, "test", 1.0d);
+        runTest("test", 1.0d);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTestWithDelta(0, "test", 10.0d);
+        runTest("test", 10.0d);
     }
 
     @Test
     public void run2() throws Throwable {
-        runTestWithDelta(0, "test", 100.0d);
+        runTest("test", 100.0d);
     }
 
     @Test
@@ -74,17 +74,17 @@ public class Math_log10 extends JTTTest {
 
     @Test
     public void run6() throws Throwable {
-        runTestWithDelta(0, "test", java.lang.Double.POSITIVE_INFINITY);
+        runTest("test", java.lang.Double.POSITIVE_INFINITY);
     }
 
     @Test
     public void run7() throws Throwable {
-        runTestWithDelta(0, "test", 0.0d);
+        runTest("test", 0.0d);
     }
 
     @Test
     public void run8() throws Throwable {
-        runTestWithDelta(0, "test", -0.0d);
+        runTest("test", -0.0d);
     }
 
 }
