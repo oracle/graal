@@ -547,7 +547,7 @@ public class NodeClass extends FieldIntrospection {
         return fieldNames.get(pos.input ? inputOffsets[pos.index] : successorOffsets[pos.index]);
     }
 
-    private void set(Node node, Position pos, Node x) {
+    public void set(Node node, Position pos, Node x) {
         long offset = pos.input ? inputOffsets[pos.index] : successorOffsets[pos.index];
         if (pos.subIndex == NOT_ITERABLE) {
             Node old = getNode(node,  offset);
