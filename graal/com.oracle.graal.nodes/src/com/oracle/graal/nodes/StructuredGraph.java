@@ -337,13 +337,13 @@ public class StructuredGraph extends Graph {
             phi.replaceAtUsages(singleValue);
             phi.safeDelete();
         }
-        EndNode singleEnd = merge.forwardEndAt(0);
-        FixedNode sux = merge.next();
-        FrameState stateAfter = merge.stateAfter();
         // remove loop exits
         if (merge instanceof LoopBeginNode) {
             ((LoopBeginNode) merge).removeExits();
         }
+        EndNode singleEnd = merge.forwardEndAt(0);
+        FixedNode sux = merge.next();
+        FrameState stateAfter = merge.stateAfter();
         // evacuateGuards
         merge.prepareDelete((FixedNode) singleEnd.predecessor());
         merge.safeDelete();
