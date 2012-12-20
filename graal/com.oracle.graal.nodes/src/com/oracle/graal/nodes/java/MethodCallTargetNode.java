@@ -148,4 +148,13 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         }
         return targetMethod().getName();
     }
+
+    public static MethodCallTargetNode find(StructuredGraph graph, ResolvedJavaMethod method) {
+        for (MethodCallTargetNode target : graph.getNodes(MethodCallTargetNode.class)) {
+            if (target.targetMethod == method) {
+                return target;
+            }
+        }
+        return null;
+    }
 }

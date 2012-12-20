@@ -186,29 +186,66 @@ public class GraphUtil {
     /**
      * Gets an approximate source code location for a node if possible.
      *
-     * @return a file name and source line number in stack trace format (e.g. "String.java:32")
-     *          if an approximate source location is found, null otherwise
+     * @return the StackTraceElements if an approximate source location is found, null otherwise
      */
-    public static String approxSourceLocation(Node node) {
+    public static StackTraceElement[] approxSourceStackTraceElement(Node node) {
+        ArrayList<StackTraceElement> elements = new ArrayList<>();
         Node n = node;
         while (n != null) {
             if (n instanceof MethodCallTargetNode) {
+                elements.add(((MethodCallTargetNode) n).targetMethod().asStackTraceElement(-1));
                 n = ((MethodCallTargetNode) n).invoke().node();
             }
 
             if (n instanceof StateSplit) {
-                FrameState stateAfter = ((StateSplit) n).stateAfter();
-                if (stateAfter != null) {
-                    ResolvedJavaMethod method = stateAfter.method();
+                FrameState state = ((StateSplit) n).stateAfter();
+                while (state != null) {
+                    ResolvedJavaMethod method = state.method();
                     if (method != null) {
-                        StackTraceElement stackTraceElement = method.asStackTraceElement(stateAfter.bci);
-                        if (stackTraceElement.getFileName() != null && stackTraceElement.getLineNumber() >= 0) {
-                            return stackTraceElement.getFileName() + ":" + stackTraceElement.getLineNumber();
-                        }
+                        elements.add(method.asStackTraceElement(state.bci - 1));
                     }
+                    state = state.outerFrameState();
                 }
+                break;
             }
             n = n.predecessor();
+        }
+        return elements.toArray(new StackTraceElement[elements.size()]);
+    }
+
+
+    /**
+     * Gets an approximate source code location for a node, encoded as an exception, if possible.
+     *
+     * @return the exception with the location
+     */
+    public static RuntimeException approxSourceException(Node node, Throwable cause) {
+        final StackTraceElement[] elements = approxSourceStackTraceElement(node);
+        @SuppressWarnings("serial")
+        RuntimeException exception = new RuntimeException(cause.getMessage(), cause) {
+
+            @Override
+            public synchronized Throwable fillInStackTrace() {
+                setStackTrace(elements);
+                return this;
+            }
+        };
+        return exception;
+    }
+
+    /**
+     * Gets an approximate source code location for a node if possible.
+     *
+     * @return a file name and source line number in stack trace format (e.g. "String.java:32") if an approximate source
+     *         location is found, null otherwise
+     */
+    public static String approxSourceLocation(Node node) {
+        StackTraceElement[] stackTraceElements = approxSourceStackTraceElement(node);
+        if (stackTraceElements != null && stackTraceElements.length > 0) {
+            StackTraceElement top = stackTraceElements[0];
+            if (top.getFileName() != null && top.getLineNumber() >= 0) {
+                return top.getFileName() + ":" + top.getLineNumber();
+            }
         }
         return null;
     }
