@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.loop;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class DegeneratedLoop {
+public class DegeneratedLoop extends JTTTest {
 
     public static String test(int a) {
         int arg = a;
@@ -47,7 +48,7 @@ public class DegeneratedLoop {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("ok-1", test(0));
+        runTest("test", 0);
     }
 
 }

@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public class Except_Synchronized05 {
+public class Except_Synchronized05 extends JTTTest {
 
     Object field;
 
@@ -64,6 +64,7 @@ public class Except_Synchronized05 {
         }
     }
 
+    @SuppressWarnings("static-method")
     private String foo1(int arg) {
         if (arg == 0) {
             throw null;
@@ -73,12 +74,12 @@ public class Except_Synchronized05 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(2, test(1));
+        runTest("test", 1);
     }
 
 }

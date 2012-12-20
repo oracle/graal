@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class InvokeVirtual_02 {
+public class InvokeVirtual_02 extends JTTTest {
 
     static class A {
 
@@ -70,22 +71,22 @@ public class InvokeVirtual_02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0L, test(0L));
+        runTest("test", 0L);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(11L, test(1L));
+        runTest("test", 1L);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(22L, test(2L));
+        runTest("test", 2L);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(42L, test(3L));
+        runTest("test", 3L);
     }
 
 }

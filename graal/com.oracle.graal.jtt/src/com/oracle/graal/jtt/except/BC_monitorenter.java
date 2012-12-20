@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_monitorenter {
+public class BC_monitorenter extends JTTTest {
 
     static com.oracle.graal.jtt.bytecode.BC_monitorenter object = new com.oracle.graal.jtt.bytecode.BC_monitorenter();
 
@@ -39,12 +40,12 @@ public class BC_monitorenter {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(true));
+        runTest("test", true);
     }
 
-    @Test(expected = java.lang.NullPointerException.class)
+    @Test
     public void run1() throws Throwable {
-        test(false);
+        runTest("test", false);
     }
 
 }

@@ -26,9 +26,10 @@ package com.oracle.graal.jtt.reflect;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Array_getFloat01 {
+public class Array_getFloat01 extends JTTTest {
 
     private static final float[] array = {11.1f, 21.1f, 42.1f};
 
@@ -38,22 +39,22 @@ public class Array_getFloat01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(11.1f, test(0), 0);
+        runTestWithDelta(0, "test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(21.1f, test(1), 0);
+        runTestWithDelta(0, "test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(42.1f, test(2), 0);
+        runTestWithDelta(0, "test", 2);
     }
 
-    @Test(expected = java.lang.ArrayIndexOutOfBoundsException.class)
+    @Test
     public void run3() throws Throwable {
-        test(3);
+        runTest("test", 3);
     }
 
 }

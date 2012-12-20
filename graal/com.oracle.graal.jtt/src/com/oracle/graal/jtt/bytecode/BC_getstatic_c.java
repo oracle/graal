@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_getstatic_c {
+public class BC_getstatic_c extends JTTTest {
 
     private static char field = 11;
 
@@ -39,7 +40,7 @@ public class BC_getstatic_c {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(((char) 11), test());
+        runTest("test");
     }
 
 }

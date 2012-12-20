@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.jdk;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Thread_setName {
+public class Thread_setName extends JTTTest {
 
     public static String test(String name) {
         String oldName = Thread.currentThread().getName();
@@ -42,7 +43,7 @@ public class Thread_setName {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("abc", test("abc"));
+        runTest("test", "abc");
     }
 
 }

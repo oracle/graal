@@ -23,6 +23,7 @@
 package com.oracle.graal.api.meta.test;
 
 import static com.oracle.graal.api.meta.test.TestMetaAccessProvider.*;
+import static java.lang.Integer.*;
 import static java.lang.reflect.Modifier.*;
 import static org.junit.Assert.*;
 
@@ -467,7 +468,7 @@ public class TestResolvedJavaType {
     public static ResolvedJavaField lookupField(ResolvedJavaField[] fields, Field key) {
         for (ResolvedJavaField rf : fields) {
             if (fieldsEqual(key, rf)) {
-                assert key.getModifiers() == rf.getModifiers() : key;
+                assert (fieldModifiers() & key.getModifiers()) == rf.getModifiers() : key + ": " + toHexString(key.getModifiers()) + " != " + toHexString(rf.getModifiers());
                 return rf;
             }
         }
@@ -477,7 +478,7 @@ public class TestResolvedJavaType {
     public static Field lookupField(Set<Field> fields, ResolvedJavaField key) {
         for (Field f : fields) {
             if (fieldsEqual(f, key)) {
-                assert key.getModifiers() == f.getModifiers() : key;
+                assert key.getModifiers() == (fieldModifiers() & f.getModifiers()) : key + ": " + toHexString(key.getModifiers()) + " != " + toHexString(f.getModifiers());
                 return f;
             }
         }

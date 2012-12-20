@@ -24,9 +24,11 @@ package com.oracle.graal.jtt.except;
 
 import org.junit.*;
 
+import com.oracle.graal.jtt.*;
+
 /*
  */
-public class Catch_StackOverflowError_01 {
+public class Catch_StackOverflowError_01 extends JTTTest {
 
     private static void recurse() {
         recurse();
@@ -37,9 +39,9 @@ public class Catch_StackOverflowError_01 {
         return -1;
     }
 
-    @Test(expected = java.lang.StackOverflowError.class)
+    @Test
     public void run0() throws Throwable {
-        test();
+        runTest("test");
     }
 
 }

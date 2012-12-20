@@ -25,9 +25,10 @@
 
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class BC_irem {
+public class BC_irem extends JTTTest {
 
     public static int test(int a, int b) {
         return a % b;
@@ -35,12 +36,12 @@ public class BC_irem {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1, test(1, 2));
+        runTest("test", 1, 2);
     }
 
-    @Test(expected = java.lang.ArithmeticException.class)
+    @Test
     public void run1() throws Throwable {
-        test(11, 0);
+        runTest("test", 11, 0);
     }
 
 }

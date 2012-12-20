@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BigMixedParams03 {
+public class BigMixedParams03 extends JTTTest {
 
     @SuppressWarnings("unused")
     public static double test(int choice, int i0, int i1, int i2, int i3, double p0, double p1, double p2, double p3, int i4, int i5, double p4, double p5, double p6, double p7, double p8) {
@@ -58,47 +59,47 @@ public class BigMixedParams03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1d, test(0, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d), 0);
+        runTestWithDelta(0, "test", 0, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(2d, test(1, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d), 0);
+        runTestWithDelta(0, "test", 1, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(3d, test(2, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d), 0);
+        runTestWithDelta(0, "test", 2, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(4d, test(3, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d), 0);
+        runTestWithDelta(0, "test", 3, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(5d, test(4, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d), 0);
+        runTestWithDelta(0, "test", 4, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(6d, test(5, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d), 0);
+        runTestWithDelta(0, "test", 5, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(7d, test(6, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d), 0);
+        runTestWithDelta(0, "test", 6, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(8d, test(7, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d), 0);
+        runTestWithDelta(0, "test", 7, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertEquals(9d, test(8, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d), 0);
+        runTestWithDelta(0, "test", 8, -1, -1, -1, -1, 1d, 2d, 3d, 4d, -1, -1, 5d, 6d, 7d, 8d, 9d);
     }
 
 }

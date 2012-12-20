@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.threads;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Thread_sleep01 {
+public final class Thread_sleep01 extends JTTTest {
 
     public static boolean test(int i) throws InterruptedException {
         final long before = System.currentTimeMillis();
@@ -37,17 +37,17 @@ public final class Thread_sleep01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(10));
+        runTest("test", 10);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(20));
+        runTest("test", 20);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(100));
+        runTest("test", 100);
     }
 
 }

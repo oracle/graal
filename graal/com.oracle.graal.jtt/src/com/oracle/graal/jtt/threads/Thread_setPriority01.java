@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.threads;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Thread_setPriority01 {
+public final class Thread_setPriority01 extends JTTTest {
 
     public static boolean test(int i) {
         final Thread currentThread = Thread.currentThread();
@@ -37,29 +37,29 @@ public final class Thread_setPriority01 {
         return true;
     }
 
-    @Test(expected = java.lang.IllegalArgumentException.class)
+    @Test
     public void run0() throws Throwable {
-        test(0);
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(5));
+        runTest("test", 5);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(true, test(10));
+        runTest("test", 10);
     }
 
-    @Test(expected = java.lang.IllegalArgumentException.class)
+    @Test
     public void run4() throws Throwable {
-        test(11);
+        runTest("test", 11);
     }
 
 }

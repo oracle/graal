@@ -22,21 +22,22 @@
  */
 package com.oracle.graal.jtt.loop;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
 
-public class LoopPhi {
+public class LoopPhi extends JTTTest {
 
     public static int test(int arg) {
         for (int i = 0; i < arg; i++) {
-            test(1, 1, 1, 1, 1, 1);
+            testHelper(1, 1, 1, 1, 1, 1);
         }
-        return test(1, 1, 1, 1, 1, 1);
+        return testHelper(1, 1, 1, 1, 1, 1);
     }
 
-    public static int test(int j1, int j2, int j3, int j4, int j5, int j6) {
+    public static int testHelper(int j1, int j2, int j3, int j4, int j5, int j6) {
         int i1 = j1;
         int i2 = j2;
         int i3 = j3;
@@ -70,7 +71,7 @@ public class LoopPhi {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(11, test(50000));
+        runTest("test", 50000);
     }
 
 }

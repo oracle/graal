@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Narrow_char03 {
+public class Narrow_char03 extends JTTTest {
 
     static char[] val = new char[4];
 
@@ -37,22 +38,22 @@ public class Narrow_char03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(((char) 0), test(((char) 0)));
+        runTest("test", ((char) 0));
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(((char) 1), test(((char) 1)));
+        runTest("test", ((char) 1));
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(((char) 255), test(((char) 255)));
+        runTest("test", ((char) 255));
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(((char) 65000), test(((char) 65000)));
+        runTest("test", ((char) 65000));
     }
 
 }

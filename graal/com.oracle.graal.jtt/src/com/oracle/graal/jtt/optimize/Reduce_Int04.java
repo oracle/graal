@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests constant folding of integer operations.
  */
-public class Reduce_Int04 {
+public class Reduce_Int04 extends JTTTest {
 
     public static int test(int arg) {
         if (arg == 0) {
@@ -49,12 +50,12 @@ public class Reduce_Int04 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(40, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(655360, test(1));
+        runTest("test", 1);
     }
 
 }

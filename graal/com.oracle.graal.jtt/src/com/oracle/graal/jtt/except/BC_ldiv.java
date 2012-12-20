@@ -25,9 +25,10 @@
 
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class BC_ldiv {
+public class BC_ldiv extends JTTTest {
 
     public static long test(long a, long b) {
         return a / b;
@@ -35,12 +36,12 @@ public class BC_ldiv {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0L, test(1L, 2L));
+        runTest("test", 1L, 2L);
     }
 
-    @Test(expected = java.lang.ArithmeticException.class)
+    @Test
     public void run1() throws Throwable {
-        test(11L, 0L);
+        runTest("test", 11L, 0L);
     }
 
 }

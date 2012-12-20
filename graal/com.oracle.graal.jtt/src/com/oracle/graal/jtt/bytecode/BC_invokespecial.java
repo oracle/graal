@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_invokespecial {
+public class BC_invokespecial extends JTTTest {
 
     static BC_invokespecial object = new BC_invokespecial();
 
@@ -34,34 +35,34 @@ public class BC_invokespecial {
         return object.id(a);
     }
 
-    @SuppressWarnings("static-method")
-    private int id(int i) {
+        @SuppressWarnings("static-method")
+        private int id(int i) {
         return i;
     }
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(2, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(3, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(-4, test(-4));
+        runTest("test", -4);
     }
 
 }

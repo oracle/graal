@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-@SuppressWarnings("static-method")
-public class BC_invokevirtual02 {
+public class BC_invokevirtual02 extends JTTTest {
 
     private static final BC_invokevirtual02 obj = new BC_invokevirtual02();
 
@@ -39,18 +39,19 @@ public class BC_invokevirtual02 {
         return object.method();
     }
 
+    @SuppressWarnings("static-method")
     public final boolean method() {
         return true;
     }
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0));
+        runTest("test", 0);
     }
 
-    @Test(expected = java.lang.NullPointerException.class)
+    @Test
     public void run1() throws Throwable {
-        test(1);
+        runTest("test", 1);
     }
 
 }

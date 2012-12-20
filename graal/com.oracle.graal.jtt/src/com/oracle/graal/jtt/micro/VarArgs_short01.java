@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class VarArgs_short01 {
+public class VarArgs_short01 extends JTTTest {
 
     public static short test(int arg) {
         if (arg == 4) {
@@ -41,27 +42,27 @@ public class VarArgs_short01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(((short) 0), test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(((short) 1), test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(((short) 2), test(2));
+        runTest("test", 2);
     }
 
-    @Test(expected = java.lang.ArrayIndexOutOfBoundsException.class)
+    @Test
     public void run3() throws Throwable {
-        test(3);
+        runTest("test", 3);
     }
 
-    @Test(expected = java.lang.ArrayIndexOutOfBoundsException.class)
+    @Test
     public void run4() throws Throwable {
-        test(4);
+        runTest("test", 4);
     }
 
 }

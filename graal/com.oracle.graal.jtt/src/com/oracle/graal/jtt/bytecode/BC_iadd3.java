@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_iadd3 {
+public class BC_iadd3 extends JTTTest {
 
     public static int test(short a, short b) {
         return a + b;
@@ -37,42 +38,42 @@ public class BC_iadd3 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(3, test(((short) 1), ((short) 2)));
+        runTest("test", ((short) 1), ((short) 2));
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-1, test(((short) 0), ((short) -1)));
+        runTest("test", ((short) 0), ((short) -1));
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(100, test(((short) 33), ((short) 67)));
+        runTest("test", ((short) 33), ((short) 67));
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(0, test(((short) 1), ((short) -1)));
+        runTest("test", ((short) 1), ((short) -1));
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(-127, test(((short) -128), ((short) 1)));
+        runTest("test", ((short) -128), ((short) 1));
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(128, test(((short) 127), ((short) 1)));
+        runTest("test", ((short) 127), ((short) 1));
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(-32767, test(((short) -32768), ((short) 1)));
+        runTest("test", ((short) -32768), ((short) 1));
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(32768, test(((short) 32767), ((short) 1)));
+        runTest("test", ((short) 32767), ((short) 1));
     }
 
 }

@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests constant folding of float conversions
  */
-public class Fold_Convert04 {
+public class Fold_Convert04 extends JTTTest {
 
     public static double test(double arg) {
         if (arg == 0) {
@@ -51,12 +52,12 @@ public class Fold_Convert04 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1024d, test(0), 0);
+        runTestWithDelta(0, "test", 0.0D);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-1.25d, test(1), 0);
+        runTestWithDelta(0, "test", 1.0D);
     }
 
 }

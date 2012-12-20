@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class BC_frem {
+public class BC_frem extends JTTTest {
 
     public static float test(float a, float b) {
         return a % b;
@@ -34,12 +35,12 @@ public class BC_frem {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1.0f, test(311.0f, 10f), 0);
+        runTestWithDelta(0, "test", 311.0f, 10f);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(0.5f, test(12.5f, 6.0f), 0);
+        runTestWithDelta(0, "test", 12.5f, 6.0f);
     }
 
 }

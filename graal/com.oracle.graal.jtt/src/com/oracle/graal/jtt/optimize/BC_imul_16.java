@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_imul_16 {
+public class BC_imul_16 extends JTTTest {
 
     public static int test(int i, int arg) {
         if (i == 0) {
@@ -38,82 +39,82 @@ public class BC_imul_16 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0, 0));
+        runTest("test", 0, 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(256, test(0, 16));
+        runTest("test", 0, 16);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(272, test(0, 17));
+        runTest("test", 0, 17);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(-16, test(0, -1));
+        runTest("test", 0, -1);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(-256, test(0, -16));
+        runTest("test", 0, -16);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(-272, test(0, -17));
+        runTest("test", 0, -17);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(-16, test(0, 2147483647));
+        runTest("test", 0, 2147483647);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(0, test(0, -2147483648));
+        runTest("test", 0, -2147483648);
     }
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertEquals(0, test(1, 0));
+        runTest("test", 1, 0);
     }
 
     @Test
     public void run9() throws Throwable {
-        Assert.assertEquals(256, test(1, 16));
+        runTest("test", 1, 16);
     }
 
     @Test
     public void run10() throws Throwable {
-        Assert.assertEquals(272, test(1, 17));
+        runTest("test", 1, 17);
     }
 
     @Test
     public void run11() throws Throwable {
-        Assert.assertEquals(-16, test(1, -1));
+        runTest("test", 1, -1);
     }
 
     @Test
     public void run12() throws Throwable {
-        Assert.assertEquals(-256, test(1, -16));
+        runTest("test", 1, -16);
     }
 
     @Test
     public void run13() throws Throwable {
-        Assert.assertEquals(-272, test(1, -17));
+        runTest("test", 1, -17);
     }
 
     @Test
     public void run14() throws Throwable {
-        Assert.assertEquals(-16, test(1, 2147483647));
+        runTest("test", 1, 2147483647);
     }
 
     @Test
     public void run15() throws Throwable {
-        Assert.assertEquals(0, test(1, -2147483648));
+        runTest("test", 1, -2147483648);
     }
 
 }

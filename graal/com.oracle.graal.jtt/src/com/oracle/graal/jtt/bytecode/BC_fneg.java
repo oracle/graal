@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_fneg {
+public class BC_fneg extends JTTTest {
 
     public static float test(float a) {
         return -a;
@@ -34,17 +35,17 @@ public class BC_fneg {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(-0.0f, test(0.0f), 0);
+        runTestWithDelta(0, "test", 0.0f);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1.01f, test(-1.01f), 0);
+        runTestWithDelta(0, "test", -1.01f);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(-7263.8734f, test(7263.8734f), 0);
+        runTestWithDelta(0, "test", 7263.8734f);
     }
 
 }

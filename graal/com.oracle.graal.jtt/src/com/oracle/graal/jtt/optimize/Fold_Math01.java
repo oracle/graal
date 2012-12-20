@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Fold_Math01 {
+public class Fold_Math01 extends JTTTest {
 
     public static double test(int arg) {
         switch (arg) {
@@ -108,67 +109,67 @@ public class Fold_Math01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(10d, test(0), 0);
+        runTestWithDelta(0, "test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(0.14943813247359922d, test(1), 0);
+        runTestWithDelta(0, "test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(0.9887710779360422d, test(2), 0);
+        runTestWithDelta(0, "test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(0.15113521805829508d, test(3), 0);
+        runTestWithDelta(0, "test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(0.04834938665190287d, test(4), 0);
+        runTestWithDelta(0, "test", 4);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(12.0d, test(5), 0);
+        runTestWithDelta(0, "test", 5);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(1.1474024528375417d, test(6), 0);
+        runTestWithDelta(0, "test", 6);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(-0.8239087409443188d, test(7), 0);
+        runTestWithDelta(0, "test", 7);
     }
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertEquals(106.62882057436371d, test(8), 0);
+        runTestWithDelta(0, "test", 8);
     }
 
     @Test
     public void run9() throws Throwable {
-        Assert.assertEquals(1.1474024528375417d, test(9), 0);
+        runTestWithDelta(0, "test", 9);
     }
 
     @Test
     public void run10() throws Throwable {
-        Assert.assertEquals(-1.0d, test(10), 0);
+        runTestWithDelta(0, "test", 10);
     }
 
     @Test
     public void run11() throws Throwable {
-        Assert.assertEquals(2.0d, test(11), 0);
+        runTestWithDelta(0, "test", 11);
     }
 
     @Test
     public void run12() throws Throwable {
-        Assert.assertEquals(42d, test(12), 0);
+        runTestWithDelta(0, "test", 12);
     }
 
 }

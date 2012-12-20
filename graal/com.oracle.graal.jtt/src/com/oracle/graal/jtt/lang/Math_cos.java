@@ -24,9 +24,11 @@ package com.oracle.graal.jtt.lang;
 
 import org.junit.*;
 
+import com.oracle.graal.jtt.*;
+
 /*
  */
-public class Math_cos {
+public class Math_cos extends JTTTest {
 
     @SuppressWarnings("serial")
     public static class NaN extends Throwable {
@@ -41,19 +43,19 @@ public class Math_cos {
         return v;
     }
 
-    @Test(expected = com.oracle.graal.jtt.lang.Math_cos.NaN.class)
+    @Test
     public void run0() throws Throwable {
-        test(java.lang.Double.NaN);
+        runTest("test", java.lang.Double.NaN);
     }
 
-    @Test(expected = com.oracle.graal.jtt.lang.Math_cos.NaN.class)
+    @Test
     public void run1() throws Throwable {
-        test(java.lang.Double.NEGATIVE_INFINITY);
+        runTest("test", java.lang.Double.NEGATIVE_INFINITY);
     }
 
-    @Test(expected = com.oracle.graal.jtt.lang.Math_cos.NaN.class)
+    @Test
     public void run2() throws Throwable {
-        test(java.lang.Double.POSITIVE_INFINITY);
+        runTest("test", java.lang.Double.POSITIVE_INFINITY);
     }
 
 }

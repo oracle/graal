@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Except_Locals {
+public class Except_Locals extends JTTTest {
 
     public static int test(String a, String b) {
         int x = 0;
@@ -44,17 +45,17 @@ public class Except_Locals {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1, test(null, null));
+        runTest("test", null, null);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(2, test("", null));
+        runTest("test", "", null);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(-1, test("", ""));
+        runTest("test", "", "");
     }
 
 }

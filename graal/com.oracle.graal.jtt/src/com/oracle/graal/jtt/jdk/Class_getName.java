@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.jdk;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Class_getName {
+public class Class_getName extends JTTTest {
 
     public static String test(int a) {
         if (a == 0) {
@@ -37,7 +38,7 @@ public class Class_getName {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("java.lang.String", test(0));
+        runTest("test", 0);
     }
 
 }

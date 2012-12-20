@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Class_asSubclass01 {
+public final class Class_asSubclass01 extends JTTTest {
 
     public static int test(int i) {
         if (i == 0) {
@@ -53,29 +53,29 @@ public final class Class_asSubclass01 {
         return i;
     }
 
-    @Test(expected = java.lang.ClassCastException.class)
+    @Test
     public void run0() throws Throwable {
-        test(0);
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1, test(1));
+        runTest("test", 1);
     }
 
-    @Test(expected = java.lang.ClassCastException.class)
+    @Test
     public void run2() throws Throwable {
-        test(2);
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(3, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(4, test(4));
+        runTest("test", 4);
     }
 
 }

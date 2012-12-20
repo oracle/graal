@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Object_hashCode01 {
+public final class Object_hashCode01 extends JTTTest {
 
     public static boolean test() {
         final Object o1 = new Object();
@@ -37,7 +37,7 @@ public final class Object_hashCode01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class NCE_FlowSensitive05 {
+public class NCE_FlowSensitive05 extends JTTTest {
 
     public static String test(Object arg) {
 
@@ -41,7 +42,7 @@ public class NCE_FlowSensitive05 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(null, test(null));
+        runTest("test", (Object) null);
     }
 
 }

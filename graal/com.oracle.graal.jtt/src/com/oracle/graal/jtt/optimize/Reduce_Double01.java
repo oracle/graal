@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests optimization of double operations.
  */
-public class Reduce_Double01 {
+public class Reduce_Double01 extends JTTTest {
 
     public static double test(double arg) {
         if (arg == 0) {
@@ -63,22 +64,22 @@ public class Reduce_Double01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(10d, test(0d), 0);
+        runTestWithDelta(0, "test", 0d);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(11d, test(1d), 0);
+        runTestWithDelta(0, "test", 1d);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(12d, test(2d), 0);
+        runTestWithDelta(0, "test", 2d);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(13d, test(3d), 0);
+        runTestWithDelta(0, "test", 3d);
     }
 
 }

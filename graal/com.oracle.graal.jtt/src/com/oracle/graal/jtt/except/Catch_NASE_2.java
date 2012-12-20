@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Catch_NASE_2 {
+public class Catch_NASE_2 extends JTTTest {
 
     @SuppressWarnings("unused")
     public static int test(int a) {
@@ -46,22 +47,22 @@ public class Catch_NASE_2 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(100, test(-1));
+        runTest("test", -1);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(100, test(-34));
+        runTest("test", -34);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(1, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(20, test(20));
+        runTest("test", 20);
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class JDK_ClassLoaders01 {
+public class JDK_ClassLoaders01 extends JTTTest {
 
     public static boolean test(int i) {
         if (i == 0) {
@@ -52,37 +53,37 @@ public class JDK_ClassLoaders01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(true, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(true, test(4));
+        runTest("test", 4);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(true, test(5));
+        runTest("test", 5);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(false, test(6));
+        runTest("test", 6);
     }
 
 }

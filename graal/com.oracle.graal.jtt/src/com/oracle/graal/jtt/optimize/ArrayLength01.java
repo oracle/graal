@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests constant folding of array length operations.
  */
-public class ArrayLength01 {
+public class ArrayLength01 extends JTTTest {
 
     public static final int SIZE = 8;
     public static final byte[] arr = new byte[5];
@@ -53,27 +54,27 @@ public class ArrayLength01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(5, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(6, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(7, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(8, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(4, test(4));
+        runTest("test", 4);
     }
 
 }

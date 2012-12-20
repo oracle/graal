@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.jtt.hotspot;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /**
@@ -32,7 +33,7 @@ import org.junit.*;
  * @run main/othervm -Xbatch Test6753639
  */
 
-public class Test6753639 {
+public class Test6753639 extends JTTTest {
 
     public static int test() {
         int end = Integer.MAX_VALUE;
@@ -48,7 +49,7 @@ public class Test6753639 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(95, test());
+        runTest("test");
     }
 
 }

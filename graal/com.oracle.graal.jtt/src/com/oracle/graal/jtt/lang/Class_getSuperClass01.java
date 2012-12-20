@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Class_getSuperClass01 {
+public final class Class_getSuperClass01 extends JTTTest {
 
     public static String test(int i) {
         Class cl = Object.class;
@@ -55,42 +55,42 @@ public final class Class_getSuperClass01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(null, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(null, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("java.lang.Object", test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(null, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals("java.lang.Number", test(4));
+        runTest("test", 4);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals("java.lang.Object", test(5));
+        runTest("test", 5);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals("java.lang.Object", test(6));
+        runTest("test", 6);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(null, test(7));
+        runTest("test", 7);
     }
 
 }

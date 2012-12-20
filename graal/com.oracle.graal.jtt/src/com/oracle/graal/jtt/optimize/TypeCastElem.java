@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class TypeCastElem {
+public class TypeCastElem extends JTTTest {
 
     interface Int1 {
 
@@ -140,7 +141,7 @@ public class TypeCastElem {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(27183, test(10, 13, 25));
+        runTest("test", 10, 13, 25);
     }
 
 }

@@ -23,11 +23,12 @@
 
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_f2l02 {
+public class BC_f2l02 extends JTTTest {
 
     private static float[] inputs = {-1.3e22f, Float.NEGATIVE_INFINITY, Float.NaN, Float.POSITIVE_INFINITY, 1.3e22f};
 
@@ -37,27 +38,27 @@ public class BC_f2l02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(-9223372036854775808L, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-9223372036854775808L, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(0L, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(9223372036854775807L, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(9223372036854775807L, test(4));
+        runTest("test", 4);
     }
 
 }

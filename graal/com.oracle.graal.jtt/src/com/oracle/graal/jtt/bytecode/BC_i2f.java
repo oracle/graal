@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_i2f {
+public class BC_i2f extends JTTTest {
 
     public static float test(int a) {
         return a;
@@ -34,17 +35,17 @@ public class BC_i2f {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0.0f, test(0), 0);
+        runTestWithDelta(0, "test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1.0f, test(1), 0);
+        runTestWithDelta(0, "test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(-34.0f, test(-34), 0);
+        runTestWithDelta(0, "test", -34);
     }
 
 }

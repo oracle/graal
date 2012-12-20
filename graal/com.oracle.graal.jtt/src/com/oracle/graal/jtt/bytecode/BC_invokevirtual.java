@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_invokevirtual {
+public class BC_invokevirtual extends JTTTest {
 
     static BC_invokevirtual object = new BC_invokevirtual();
 
@@ -38,33 +39,29 @@ public class BC_invokevirtual {
         return i;
     }
 
-    public static void main(String[] args) {
-        test(0);
-    }
-
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(2, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(3, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(-4, test(-4));
+        runTest("test", -4);
     }
 
 }

@@ -24,11 +24,12 @@ package com.oracle.graal.jtt.jdk;
 
 import java.io.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class System_setOut {
+public class System_setOut extends JTTTest {
 
     public static int test(int n) throws Exception {
         PrintStream oldOut = System.out;
@@ -58,7 +59,7 @@ public class System_setOut {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(100000, test(10000));
+        runTest("test", 10000);
     }
 
 }

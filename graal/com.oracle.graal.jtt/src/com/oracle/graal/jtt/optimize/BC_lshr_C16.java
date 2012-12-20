@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_lshr_C16 {
+public class BC_lshr_C16 extends JTTTest {
 
     public static long test(long a) {
         return a >> 16;
@@ -34,7 +35,7 @@ public class BC_lshr_C16 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1330945L, test(87224824140L));
+        runTest("test", 87224824140L);
     }
 
 }

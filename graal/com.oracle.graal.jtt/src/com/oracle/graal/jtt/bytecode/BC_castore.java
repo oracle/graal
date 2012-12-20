@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_castore {
+public class BC_castore extends JTTTest {
 
     static char[] array = {0, 0, 0, 0};
 
@@ -37,22 +38,22 @@ public class BC_castore {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(((char) 97), test(0, ((char) 97)));
+        runTest("test", 0, ((char) 97));
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(((char) 65), test(1, ((char) 65)));
+        runTest("test", 1, ((char) 65));
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(((char) 42), test(2, ((char) 42)));
+        runTest("test", 2, ((char) 42));
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(((char) 120), test(3, ((char) 120)));
+        runTest("test", 3, ((char) 120));
     }
 
 }

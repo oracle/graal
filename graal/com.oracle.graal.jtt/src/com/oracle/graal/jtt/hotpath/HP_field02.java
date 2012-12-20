@@ -23,12 +23,13 @@
 // Checkstyle: stop
 package com.oracle.graal.jtt.hotpath;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Runs: 10 = 55; 20 = 210; 30 = 465; 40 = 820;
  */
-public class HP_field02 {
+public class HP_field02 extends JTTTest {
 
     public int a;
     public int b;
@@ -53,7 +54,7 @@ public class HP_field02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(820, test(40));
+        runTest("test", 40);
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class String_format01 {
+public class String_format01 extends JTTTest {
 
     public static String test(String s) {
         return String.format("Hello %s", s);
@@ -34,12 +35,12 @@ public class String_format01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("Hello World", test("World"));
+        runTest("test", "World");
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("Hello New World Order", test("New World Order"));
+        runTest("test", "New World Order");
     }
 
 }

@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Throw_InNested {
+public class Throw_InNested extends JTTTest {
 
     public static int test(int i) throws Exception {
         return 42 + test2(i);
@@ -49,12 +50,12 @@ public class Throw_InNested {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(47, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(43, test(1));
+        runTest("test", 1);
     }
 
 }

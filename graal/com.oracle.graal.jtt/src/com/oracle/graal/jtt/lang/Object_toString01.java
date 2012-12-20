@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Object_toString01 {
+public class Object_toString01 extends JTTTest {
 
     static final String string = "Object_toString01";
     static final Object object = new Object();
@@ -48,17 +49,17 @@ public class Object_toString01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(false, test(2));
+        runTest("test", 2);
     }
 
 }

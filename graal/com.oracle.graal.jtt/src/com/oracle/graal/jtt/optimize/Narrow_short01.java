@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Narrow_short01 {
+public class Narrow_short01 extends JTTTest {
 
     public static short val;
 
@@ -37,22 +38,22 @@ public class Narrow_short01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(((short) 0), test(((short) 0)));
+        runTest("test", ((short) 0));
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(((short) 1), test(((short) 1)));
+        runTest("test", ((short) 1));
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(((short) -1), test(((short) -1)));
+        runTest("test", ((short) -1));
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(((short) 23110), test(((short) 23110)));
+        runTest("test", ((short) 23110));
     }
 
 }

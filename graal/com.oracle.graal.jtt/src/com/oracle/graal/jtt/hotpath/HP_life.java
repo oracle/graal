@@ -25,11 +25,12 @@ package com.oracle.graal.jtt.hotpath;
 
 import java.util.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class HP_life {
+public class HP_life extends JTTTest {
 
     public static int test(int generations) {
         reset();
@@ -108,7 +109,7 @@ public class HP_life {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(-1756613086, test(5));
+        runTest("test", 5);
     }
 
 }

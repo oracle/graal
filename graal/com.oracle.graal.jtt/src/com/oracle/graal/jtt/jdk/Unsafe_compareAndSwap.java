@@ -24,9 +24,11 @@ package com.oracle.graal.jtt.jdk;
 
 import org.junit.*;
 
+import com.oracle.graal.jtt.*;
+
 import sun.misc.*;
 
-public class Unsafe_compareAndSwap {
+public class Unsafe_compareAndSwap extends JTTTest {
     static final Unsafe unsafe = UnsafeAccess01.getUnsafe();
     static final long valueOffset;
     static {
@@ -35,19 +37,26 @@ public class Unsafe_compareAndSwap {
         } catch (Exception ex) { throw new Error(ex); }
     }
 
-    public static void test(Unsafe_compareAndSwap u, Object o, String expected, String newValue) {
+    public static String test(Unsafe_compareAndSwap u, Object o, String expected, String newValue) {
         // First arg is not an array - can use a field write barrier
         unsafe.compareAndSwapObject(u, valueOffset, expected, newValue);
         // Not known if first arg is an array - different write barrier may be used
         unsafe.compareAndSwapObject(o, valueOffset, expected, newValue);
+
+        return instance.value;
     }
 
-    private String value = "a";
+    private String value;
+
+    private static final Unsafe_compareAndSwap instance = new Unsafe_compareAndSwap();
+
+    @Override
+    protected void before() {
+        instance.value = "a";
+    }
 
     @Test
     public void run0() throws Throwable {
-        Unsafe_compareAndSwap u = new Unsafe_compareAndSwap();
-        test(u, u, "a", "b");
-        Assert.assertEquals(u.value, "b");
+        runTest("test", instance, instance, "a", "b");
     }
 }

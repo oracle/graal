@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_dneg2 {
+public class BC_dneg2 extends JTTTest {
 
 // @NEVER_INLINE
     public static double test(double a) {
@@ -35,12 +36,12 @@ public class BC_dneg2 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(java.lang.Double.POSITIVE_INFINITY, test(-0.0d), 0);
+        runTestWithDelta(0, "test", -0.0d);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(java.lang.Double.NEGATIVE_INFINITY, test(0.0d), 0);
+        runTestWithDelta(0, "test", 0.0d);
     }
 
 }

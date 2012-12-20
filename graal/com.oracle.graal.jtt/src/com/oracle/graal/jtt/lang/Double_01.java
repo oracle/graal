@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Double_01 {
+public class Double_01 extends JTTTest {
 
     public static boolean test() {
         return Double.doubleToLongBits(Double.longBitsToDouble(0x7ff8000000000088L)) == 0x7ff8000000000000L;
@@ -34,7 +35,7 @@ public class Double_01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

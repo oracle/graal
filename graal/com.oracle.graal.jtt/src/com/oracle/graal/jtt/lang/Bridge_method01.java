@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Bridge_method01 {
+public class Bridge_method01 extends JTTTest {
 
     private abstract static class Wrap<T> {
 
@@ -49,7 +50,7 @@ public class Bridge_method01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1, test());
+        runTest("test");
     }
 
 }

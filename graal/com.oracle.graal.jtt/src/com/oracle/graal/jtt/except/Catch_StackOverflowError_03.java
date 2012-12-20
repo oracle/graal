@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /**
  * Some basic checking of the stack trace produced after a StackOverflowError.
  */
-public class Catch_StackOverflowError_03 {
+public class Catch_StackOverflowError_03 extends JTTTest {
 
     private static final int PASS = 0;
     private static final int FAIL = 1;
@@ -82,7 +83,7 @@ public class Catch_StackOverflowError_03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test());
+        runTest("test");
     }
 
 }

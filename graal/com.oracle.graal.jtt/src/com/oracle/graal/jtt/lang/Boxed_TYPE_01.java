@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Boxed_TYPE_01 {
+public class Boxed_TYPE_01 extends JTTTest {
 
     public static String test(int i) {
         if (i == 0) {
@@ -61,47 +62,47 @@ public class Boxed_TYPE_01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("boolean", test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("byte", test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("char", test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals("double", test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals("float", test(4));
+        runTest("test", 4);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals("int", test(5));
+        runTest("test", 5);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals("long", test(6));
+        runTest("test", 6);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals("short", test(7));
+        runTest("test", 7);
     }
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertEquals("void", test(8));
+        runTest("test", 8);
     }
 
 }

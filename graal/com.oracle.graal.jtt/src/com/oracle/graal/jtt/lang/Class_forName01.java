@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Class_forName01 {
+public final class Class_forName01 extends JTTTest {
 
     public static String test(int i) throws ClassNotFoundException {
         if (i == 0) {
@@ -47,27 +47,27 @@ public final class Class_forName01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("class java.lang.Object", test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("class java.lang.String", test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("class com.oracle.graal.jtt.lang.Class_forName01", test(2));
+        runTest("test", 2);
     }
 
-    @Test(expected = java.lang.ClassNotFoundException.class)
+    @Test
     public void run3() throws Throwable {
-        test(3);
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(null, test(4));
+        runTest("test", 4);
     }
 
 }
