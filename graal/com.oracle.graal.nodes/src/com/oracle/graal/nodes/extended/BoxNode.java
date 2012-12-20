@@ -65,6 +65,33 @@ public final class BoxNode extends AbstractStateSplit implements StateSplit, Nod
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
+
+        if (source.isConstant()) {
+            Constant sourceConstant = source.asConstant();
+            switch (sourceKind) {
+                case Boolean:
+                    return ConstantNode.forObject(Boolean.valueOf(sourceConstant.asBoolean()), tool.runtime(), graph());
+                case Byte:
+                    return ConstantNode.forObject(Byte.valueOf((byte) sourceConstant.asInt()), tool.runtime(), graph());
+                case Char:
+                    return ConstantNode.forObject(Character.valueOf((char) sourceConstant.asInt()), tool.runtime(), graph());
+                case Short:
+                    return ConstantNode.forObject(Short.valueOf((short) sourceConstant.asInt()), tool.runtime(), graph());
+                case Int:
+                    return ConstantNode.forObject(Integer.valueOf(sourceConstant.asInt()), tool.runtime(), graph());
+                case Long:
+                    return ConstantNode.forObject(Long.valueOf(sourceConstant.asLong()), tool.runtime(), graph());
+                case Float:
+                    return ConstantNode.forObject(Float.valueOf(sourceConstant.asFloat()), tool.runtime(), graph());
+                case Double:
+                    return ConstantNode.forObject(Double.valueOf(sourceConstant.asDouble()), tool.runtime(), graph());
+                default:
+                    assert false : "Unexpected source kind for boxing";
+                    break;
+
+            }
+        }
+
         for (Node usage : usages()) {
             if (usage != stateAfter()) {
                 return this;
