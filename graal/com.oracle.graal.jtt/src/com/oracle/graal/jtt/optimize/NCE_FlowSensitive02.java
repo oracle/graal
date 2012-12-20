@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class NCE_FlowSensitive02 {
+public class NCE_FlowSensitive02 extends JTTTest {
 
     @SuppressWarnings("all")
     public static String test(String arg) {
@@ -36,19 +37,19 @@ public class NCE_FlowSensitive02 {
         return arg.toString();
     }
 
-    @Test(expected = java.lang.NullPointerException.class)
+    @Test
     public void run0() throws Throwable {
-        test(null);
+        runTest("test", (Object) null);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("x", test("x"));
+        runTest("test", "x");
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("yay", test("yay"));
+        runTest("test", "yay");
     }
 
 }

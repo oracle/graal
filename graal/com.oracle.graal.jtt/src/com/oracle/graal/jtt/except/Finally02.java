@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Finally02 {
+public class Finally02 extends JTTTest {
 
     public static int test() {
         try {
@@ -54,7 +55,7 @@ public class Finally02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(-1, test());
+        runTest("test");
     }
 
 }

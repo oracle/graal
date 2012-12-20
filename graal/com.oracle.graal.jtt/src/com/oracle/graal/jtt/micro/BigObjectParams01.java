@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BigObjectParams01 {
+public class BigObjectParams01 extends JTTTest {
 
     @SuppressWarnings("unused")
     public static String test(String p0, String p1, String p2, String p3, String p4, String p5, String p6, String p7, String p8, String p9) {
@@ -35,12 +36,12 @@ public class BigObjectParams01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("0", test("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"));
+        runTest("test", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("a", test("a", null, null, null, null, null, null, null, null, null));
+        runTest("test", "a", null, null, null, null, null, null, null, null, null);
     }
 
 }

@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_newarray {
+public class BC_newarray extends JTTTest {
 
     public static int test(int a) {
         if (new boolean[a] == null) {
@@ -60,19 +61,19 @@ public class BC_newarray {
         return a;
     }
 
-    @Test(expected = java.lang.NegativeArraySizeException.class)
+    @Test
     public void run0() throws Throwable {
-        test(-1);
+        runTest("test", -1);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(0, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(1, test(1));
+        runTest("test", 1);
     }
 
 }

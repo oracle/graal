@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_fdiv {
+public class BC_fdiv extends JTTTest {
 
     public static float test(float a, float b) {
         return a / b;
@@ -34,7 +35,7 @@ public class BC_fdiv {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(31.1f, test(311.0f, 10f), 0);
+        runTestWithDelta(0, "test", 311.0f, 10f);
     }
 
 }

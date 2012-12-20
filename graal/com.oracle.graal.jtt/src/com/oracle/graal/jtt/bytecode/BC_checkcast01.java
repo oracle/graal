@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_checkcast01 {
+public class BC_checkcast01 extends JTTTest {
 
     static Object object2 = new Object();
     static Object object3 = "";
@@ -52,17 +53,17 @@ public class BC_checkcast01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(-1, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-1, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(4, test(4));
+        runTest("test", 4);
     }
 
 }

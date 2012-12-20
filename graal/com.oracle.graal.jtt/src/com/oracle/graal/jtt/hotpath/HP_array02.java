@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.hotpath;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class HP_array02 {
+public class HP_array02 extends JTTTest {
 
     public static byte[] b = new byte[40];
     public static char[] c = new char[40];
@@ -53,7 +54,7 @@ public class HP_array02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(5460, test(40));
+        runTest("test", 40);
     }
 
 }

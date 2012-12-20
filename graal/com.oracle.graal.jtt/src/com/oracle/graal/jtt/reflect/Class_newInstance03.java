@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.reflect;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Class_newInstance03 {
+public class Class_newInstance03 extends JTTTest {
 
     public abstract static class AbstractClass {
     }
@@ -44,29 +45,29 @@ public class Class_newInstance03 {
         return false;
     }
 
-    @Test(expected = java.lang.InstantiationException.class)
+    @Test
     public void run0() throws Throwable {
-        test(0);
+        runTest("test", 0);
     }
 
-    @Test(expected = java.lang.InstantiationException.class)
+    @Test
     public void run1() throws Throwable {
-        test(1);
+        runTest("test", 1);
     }
 
-    @Test(expected = java.lang.InstantiationException.class)
+    @Test
     public void run2() throws Throwable {
-        test(2);
+        runTest("test", 2);
     }
 
-    @Test(expected = java.lang.InstantiationException.class)
+    @Test
     public void run3() throws Throwable {
-        test(3);
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(false, test(4));
+        runTest("test", 4);
     }
 
 }

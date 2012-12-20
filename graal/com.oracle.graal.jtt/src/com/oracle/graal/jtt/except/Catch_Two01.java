@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Catch_Two01 {
+public class Catch_Two01 extends JTTTest {
 
     public static String test(int arg) {
         try {
@@ -50,17 +51,17 @@ public class Catch_Two01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("java.lang.NullPointerException", test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("java.lang.ArithmeticException", test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("none", test(3));
+        runTest("test", 3);
     }
 
 }

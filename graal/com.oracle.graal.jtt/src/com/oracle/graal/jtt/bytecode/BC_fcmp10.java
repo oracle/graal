@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_fcmp10 {
+public class BC_fcmp10 extends JTTTest {
 
     public static boolean test(int x) {
         float a = 0;
@@ -74,47 +75,47 @@ public class BC_fcmp10 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(false, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(false, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(true, test(4));
+        runTest("test", 4);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(true, test(5));
+        runTest("test", 5);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(false, test(6));
+        runTest("test", 6);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(false, test(7));
+        runTest("test", 7);
     }
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertEquals(false, test(8));
+        runTest("test", 8);
     }
 
 }

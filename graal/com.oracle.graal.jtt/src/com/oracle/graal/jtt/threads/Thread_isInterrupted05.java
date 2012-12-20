@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.jtt.threads;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
 
 // Interrupted during wait, with interrupter joining
-public class Thread_isInterrupted05 {
+public class Thread_isInterrupted05 extends JTTTest {
 
     public static boolean test() throws InterruptedException {
         final WaitInterruptee waitInterruptee = new WaitInterruptee();
@@ -67,7 +68,7 @@ public class Thread_isInterrupted05 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

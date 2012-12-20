@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Object_wait03 {
+public final class Object_wait03 extends JTTTest {
 
     static final Object object = new Object();
 
@@ -40,7 +40,7 @@ public final class Object_wait03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

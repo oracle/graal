@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Matrix01 {
+public class Matrix01 extends JTTTest {
 
     public static class Matrix {
 
@@ -156,32 +157,32 @@ public class Matrix01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(8, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(34, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(152, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(204, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(1547, test(4));
+        runTest("test", 4);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(42, test(5));
+        runTest("test", 5);
     }
 
 }

@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests value numbering of long operations.
  */
-public class VN_Long03 {
+public class VN_Long03 extends JTTTest {
 
     private static boolean cond = true;
 
@@ -133,42 +134,42 @@ public class VN_Long03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(6L, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(0L, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(36L, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(1L, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(0L, test(4));
+        runTest("test", 4);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(5L, test(5));
+        runTest("test", 5);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(7L, test(6));
+        runTest("test", 6);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(0L, test(7));
+        runTest("test", 7);
     }
 
 }

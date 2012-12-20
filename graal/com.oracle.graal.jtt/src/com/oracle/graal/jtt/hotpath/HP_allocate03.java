@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.hotpath;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class HP_allocate03 {
+public class HP_allocate03 extends JTTTest {
 
     public static int test(int count) {
         @SuppressWarnings("unused")
@@ -40,7 +41,7 @@ public class HP_allocate03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(100, test(100));
+        runTest("test", 100);
     }
 
 }

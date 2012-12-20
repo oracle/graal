@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
 
-@SuppressWarnings("static-method")
-public final class Class_getInterfaces01 {
+public final class Class_getInterfaces01 extends JTTTest {
 
     public static String test(int i) {
         switch (i) {
@@ -84,27 +84,27 @@ public final class Class_getInterfaces01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("", test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("com.oracle.graal.jtt.lang.Class_getInterfaces01$I1", test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("com.oracle.graal.jtt.lang.Class_getInterfaces01$I1", test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals("com.oracle.graal.jtt.lang.Class_getInterfaces01$I2", test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals("com.oracle.graal.jtt.lang.Class_getInterfaces01$I1 com.oracle.graal.jtt.lang.Class_getInterfaces01$I2", test(4));
+        runTest("test", 4);
     }
 
 }

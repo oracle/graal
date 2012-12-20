@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
 @SuppressWarnings("unused")
-public class StrangeFrames {
+public class StrangeFrames extends JTTTest {
 
     public static boolean test(int arg) {
         empty();
@@ -59,7 +60,7 @@ public class StrangeFrames {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0));
+        runTest("test", 0);
     }
 
 }

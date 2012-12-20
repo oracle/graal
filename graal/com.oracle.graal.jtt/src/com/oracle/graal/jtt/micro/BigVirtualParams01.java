@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BigVirtualParams01 {
+public class BigVirtualParams01 extends JTTTest {
 
     public static String test(boolean b, String p0, String p1, String p2, String p3, String p4, String p5, String p6, String p7, String p8, String p9) {
         I i = b ? new A() : new B();
@@ -56,12 +57,12 @@ public class BigVirtualParams01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("A0123456789", test(true, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"));
+        runTest("test", true, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("B0123456789", test(false, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"));
+        runTest("test", false, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
     }
 
 }

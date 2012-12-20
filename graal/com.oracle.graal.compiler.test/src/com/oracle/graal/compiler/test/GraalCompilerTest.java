@@ -241,7 +241,20 @@ public abstract class GraalCompilerTest {
         }
     }
 
+    /**
+     * Called before a test is executed.
+     */
+    protected void before() {
+    }
+
+    /**
+     * Called after a test is executed.
+     */
+    protected void after() {
+    }
+
     protected Result executeExpected(Method method, Object receiver, Object... args) {
+        before();
         try {
             // This gives us both the expected return value as well as ensuring that the method to be compiled is fully resolved
             return new Result(referenceInvoke(method, receiver, args), null);
@@ -249,10 +262,31 @@ public abstract class GraalCompilerTest {
             return new Result(null, e.getTargetException());
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            after();
         }
     }
 
     protected Result executeActual(Method method, Object receiver, Object... args) {
+        before();
+        Object[] executeArgs = argsWithReceiver(receiver, args);
+
+        InstalledCode compiledMethod = getCode(runtime.lookupJavaMethod(method), parse(method));
+        try {
+            return new Result(compiledMethod.executeVarargs(executeArgs), null);
+        } catch (Throwable e) {
+            return new Result(null, e);
+        } finally {
+            after();
+        }
+    }
+
+    /**
+     * Prepends a non-null receiver argument to a given list or args.
+     *
+     * @param receiver the receiver argument to prepend if it is non-null
+     */
+    protected Object[] argsWithReceiver(Object receiver, Object... args) {
         Object[] executeArgs;
         if (receiver == null) {
             executeArgs = args;
@@ -263,13 +297,7 @@ public abstract class GraalCompilerTest {
                 executeArgs[i + 1] = args[i];
             }
         }
-
-        InstalledCode compiledMethod = getCode(runtime.lookupJavaMethod(method), parse(method));
-        try {
-            return new Result(compiledMethod.executeVarargs(executeArgs), null);
-        } catch (Throwable e) {
-            return new Result(null, e);
-        }
+        return executeArgs;
     }
 
     protected void test(String name, Object... args) {
@@ -349,8 +377,9 @@ public abstract class GraalCompilerTest {
             }
         });
 
-
-        cache.put(method, installedCode);
+        if (!forceCompile) {
+            cache.put(method, installedCode);
+        }
         return installedCode;
     }
 

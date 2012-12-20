@@ -27,9 +27,10 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class BigParamsAlignment {
+public class BigParamsAlignment extends JTTTest {
 
     public static int test(int num) {
         int sum = 0;
@@ -184,37 +185,37 @@ public class BigParamsAlignment {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(45, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(55, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(45, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(55, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(66, test(4));
+        runTest("test", 4);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(78, test(5));
+        runTest("test", 5);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(0, test(6));
+        runTest("test", 6);
     }
 
 }

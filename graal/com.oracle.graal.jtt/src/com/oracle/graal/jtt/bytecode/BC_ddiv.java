@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_ddiv {
+public class BC_ddiv extends JTTTest {
 
     public static double test(double a, double b) {
         return a / b;
@@ -34,7 +35,7 @@ public class BC_ddiv {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(31.1D, test(311.0D, 10D), 0);
+        runTestWithDelta(0, "test", 311.0D, 10D);
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_dneg {
+public class BC_dneg extends JTTTest {
 
     public static double test(double a, double b, int which) {
         double result1 = -a;
@@ -42,32 +43,32 @@ public class BC_dneg {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(-0.0d, test(0.0d, 1.0d, 0), 0);
+        runTestWithDelta(0, "test", 0.0d, 1.0d, 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1.01d, test(-1.01d, -2.01d, 0), 0);
+        runTestWithDelta(0, "test", -1.01d, -2.01d, 0);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(-7263.8734d, test(7263.8734d, 8263.8734d, 0), 0);
+        runTestWithDelta(0, "test", 7263.8734d, 8263.8734d, 0);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(-1.0d, test(0.0d, 1.0d, 1), 0);
+        runTestWithDelta(0, "test", 0.0d, 1.0d, 1);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(2.01d, test(-1.01d, -2.01d, 1), 0);
+        runTestWithDelta(0, "test", -1.01d, -2.01d, 1);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(-8263.8734d, test(7263.8734d, 8263.8734d, 1), 0);
+        runTestWithDelta(0, "test", 7263.8734d, 8263.8734d, 1);
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_lneg {
+public class BC_lneg extends JTTTest {
 
     public static long test(long a) {
         return -a;
@@ -34,22 +35,22 @@ public class BC_lneg {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0L, test(0L));
+        runTest("test", 0L);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1L, test(-1L));
+        runTest("test", -1L);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(-7263L, test(7263L));
+        runTest("test", 7263L);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(2147483648L, test(-2147483648L));
+        runTest("test", -2147483648L);
     }
 
 }

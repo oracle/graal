@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Except_Synchronized02 {
+public class Except_Synchronized02 extends JTTTest {
 
     static final Except_Synchronized02 object = new Except_Synchronized02();
 
@@ -53,12 +54,12 @@ public class Except_Synchronized02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(2, test(1));
+        runTest("test", 1);
     }
 
 }

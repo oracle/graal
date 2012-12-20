@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Long_reverseBytes01 {
+public class Long_reverseBytes01 extends JTTTest {
 
     public static long test(long val) {
         return Long.reverseBytes(val);
@@ -34,7 +35,7 @@ public class Long_reverseBytes01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0x877665544332211L, test(0x1122334455667708L));
+        runTest("test", 0x1122334455667708L);
     }
 
 }

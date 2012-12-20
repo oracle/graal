@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.reflect;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Class_newInstance01 {
+public final class Class_newInstance01 extends JTTTest {
 
     public static boolean test(int i) throws IllegalAccessException, InstantiationException {
         if (i == 0) {
@@ -38,12 +38,12 @@ public final class Class_newInstance01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(false, test(1));
+        runTest("test", 1);
     }
 
 }

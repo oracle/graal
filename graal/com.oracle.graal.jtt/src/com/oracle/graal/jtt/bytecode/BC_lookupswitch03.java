@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_lookupswitch03 {
+public class BC_lookupswitch03 extends JTTTest {
 
     public static int test(int a) {
         final int b = a + 10;
@@ -49,102 +50,102 @@ public class BC_lookupswitch03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(42, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(42, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(42, test(66));
+        runTest("test", 66);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(0, test(67));
+        runTest("test", 67);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(42, test(68));
+        runTest("test", 68);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(42, test(96));
+        runTest("test", 96);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(1, test(97));
+        runTest("test", 97);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(42, test(98));
+        runTest("test", 98);
     }
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertEquals(42, test(106));
+        runTest("test", 106);
     }
 
     @Test
     public void run9() throws Throwable {
-        Assert.assertEquals(2, test(107));
+        runTest("test", 107);
     }
 
     @Test
     public void run10() throws Throwable {
-        Assert.assertEquals(42, test(108));
+        runTest("test", 108);
     }
 
     @Test
     public void run11() throws Throwable {
-        Assert.assertEquals(42, test(132));
+        runTest("test", 132);
     }
 
     @Test
     public void run12() throws Throwable {
-        Assert.assertEquals(3, test(133));
+        runTest("test", 133);
     }
 
     @Test
     public void run13() throws Throwable {
-        Assert.assertEquals(42, test(134));
+        runTest("test", 134);
     }
 
     @Test
     public void run14() throws Throwable {
-        Assert.assertEquals(42, test(211));
+        runTest("test", 211);
     }
 
     @Test
     public void run15() throws Throwable {
-        Assert.assertEquals(4, test(212));
+        runTest("test", 212);
     }
 
     @Test
     public void run16() throws Throwable {
-        Assert.assertEquals(42, test(213));
+        runTest("test", 213);
     }
 
     @Test
     public void run17() throws Throwable {
-        Assert.assertEquals(42, test(-121));
+        runTest("test", -121);
     }
 
     @Test
     public void run18() throws Throwable {
-        Assert.assertEquals(5, test(-122));
+        runTest("test", -122);
     }
 
     @Test
     public void run19() throws Throwable {
-        Assert.assertEquals(42, test(-123));
+        runTest("test", -123);
     }
 
 }

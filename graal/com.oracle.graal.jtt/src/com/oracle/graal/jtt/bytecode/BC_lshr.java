@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_lshr {
+public class BC_lshr extends JTTTest {
 
     public static long test(long a, int b) {
         return a >> b;
@@ -34,27 +35,27 @@ public class BC_lshr {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0L, test(1L, 2));
+        runTest("test", 1L, 2);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(16L, test(67L, 2));
+        runTest("test", 67L, 2);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(15L, test(31L, 1));
+        runTest("test", 31L, 1);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(0L, test(6L, 4));
+        runTest("test", 6L, 4);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(-32768L, test(-2147483648L, 16));
+        runTest("test", -2147483648L, 16);
     }
 
 }

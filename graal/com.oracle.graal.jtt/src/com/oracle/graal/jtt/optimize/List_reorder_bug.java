@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
 @SuppressWarnings("unused")
-public class List_reorder_bug {
+public class List_reorder_bug extends JTTTest {
 
     static class List {
 
@@ -87,7 +88,7 @@ public class List_reorder_bug {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0));
+        runTest("test", 0);
     }
 
 }

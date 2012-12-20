@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class StackTrace_CCE_00 {
+public class StackTrace_CCE_00 extends JTTTest {
 
     static Object object2 = new Object();
     static Object object3 = "";
@@ -61,22 +62,22 @@ public class StackTrace_CCE_00 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-100, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(-100, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(4, test(4));
+        runTest("test", 4);
     }
 
 }

@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_getstatic_d {
+public class BC_getstatic_d extends JTTTest {
 
     private static double field = 11;
 
@@ -39,7 +40,7 @@ public class BC_getstatic_d {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(11d, test(), 0);
+        runTestWithDelta(0, "test");
     }
 
 }

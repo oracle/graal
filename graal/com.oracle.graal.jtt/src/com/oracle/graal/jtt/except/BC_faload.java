@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class BC_faload {
+public class BC_faload extends JTTTest {
 
     static float[] arr = {0.0f, -1.1f, 4.32f, 6.06f};
 
@@ -35,24 +36,24 @@ public class BC_faload {
         return array[arg];
     }
 
-    @Test(expected = java.lang.NullPointerException.class)
+    @Test
     public void run0() throws Throwable {
-        test(-2);
+        runTest("test", -2);
     }
 
-    @Test(expected = java.lang.ArrayIndexOutOfBoundsException.class)
+    @Test
     public void run1() throws Throwable {
-        test(-1);
+        runTest("test", -1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(0.0f, test(0), 0);
+        runTestWithDelta(0, "test", 0);
     }
 
-    @Test(expected = java.lang.ArrayIndexOutOfBoundsException.class)
+    @Test
     public void run3() throws Throwable {
-        test(4);
+        runTest("test", 4);
     }
 
 }

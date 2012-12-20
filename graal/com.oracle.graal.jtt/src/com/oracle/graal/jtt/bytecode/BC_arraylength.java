@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_arraylength {
+public class BC_arraylength extends JTTTest {
 
     static int[] array1 = {1, 2, 3};
     static char[] array2 = {'a', 'b', 'c', 'd'};
@@ -51,27 +52,27 @@ public class BC_arraylength {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(3, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(4, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(5, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(5, test(4));
+        runTest("test", 4);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(42, test(5));
+        runTest("test", 5);
     }
 
 }

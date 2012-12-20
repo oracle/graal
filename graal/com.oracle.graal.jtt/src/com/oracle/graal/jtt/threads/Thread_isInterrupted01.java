@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.threads;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Thread_isInterrupted01 {
+public final class Thread_isInterrupted01 extends JTTTest {
 
     public static boolean test() {
         return Thread.currentThread().isInterrupted();
@@ -35,7 +35,7 @@ public final class Thread_isInterrupted01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(false, test());
+        runTest("test");
     }
 
 }

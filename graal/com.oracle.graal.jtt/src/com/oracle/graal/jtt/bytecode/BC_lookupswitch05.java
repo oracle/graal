@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_lookupswitch05 {
+public class BC_lookupswitch05 extends JTTTest {
 
     public static Object test(int a) {
         switch (a) {
@@ -37,7 +38,7 @@ public class BC_lookupswitch05 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("", test(0));
+        runTest("test", 0);
     }
 
 }

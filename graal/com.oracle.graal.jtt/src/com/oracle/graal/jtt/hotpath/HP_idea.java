@@ -26,12 +26,12 @@ package com.oracle.graal.jtt.hotpath;
 
 import java.util.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-@SuppressWarnings("static-method")
-public class HP_idea {
+public class HP_idea extends JTTTest {
 
     public boolean test() {
         buildTestData();
@@ -61,7 +61,7 @@ public class HP_idea {
 
     /*
      * buildTestData
-     * 
+     *
      * Builds the data used for the test -- each time the test is run.
      */
 
@@ -116,7 +116,7 @@ public class HP_idea {
 
     /*
      * calcEncryptKey
-     * 
+     *
      * Builds the 52 16-bit encryption subkeys Z[] from the user key and stores in 32-bit int array. The routing
      * corrects an error in the source code in the Schnier book. Basically, the sense of the 7- and 9-bit shifts are
      * reversed. It still works reversed, but would encrypted code would not decrypt with someone else's IDEA code.
@@ -169,7 +169,7 @@ public class HP_idea {
 
     /*
      * calcDecryptKey
-     * 
+     *
      * Builds the 52 16-bit encryption subkeys DK[] from the encryption- subkeys Z[]. DK[] is a 32-bit int array holding
      * 16-bit values as unsigned.
      */
@@ -216,7 +216,7 @@ public class HP_idea {
 
     /*
      * cipher_idea
-     * 
+     *
      * IDEA encryption/decryption algorithm. It processes plaintext in 64-bit blocks, one at a time, breaking the block
      * into four 16-bit unsigned subblocks. It goes through eight rounds of processing using 6 new subkeys each time,
      * plus four for last step. The source text is in array text1, the destination text goes into array text2 The
@@ -224,6 +224,7 @@ public class HP_idea {
      * Multiplication modulo 0x10001 interprets a zero sub-block as 0x10000; it must to fit in 16 bits.
      */
 
+    @SuppressWarnings("static-method")
     private void cipher_idea(byte[] text1, byte[] text2, int[] key) {
 
         int i1 = 0; // Index into first text array.
@@ -356,7 +357,7 @@ public class HP_idea {
 
     /*
      * mul
-     * 
+     *
      * Performs multiplication, modulo (2**16)+1. This code is structured on the assumption that untaken branches are
      * cheaper than taken branches, and that the compiler doesn't schedule branches. Java: Must work with 32-bit int and
      * one 64-bit long to keep 16-bit values and their products "unsigned." The routine assumes that both a and b could
@@ -364,7 +365,7 @@ public class HP_idea {
      * Also, because the routine stores mod (2**16)+1 results in a 2**16 space, the result is truncated to zero whenever
      * the result would zero, be 2**16. And if one of the multiplicands is 0, the result is not zero, but (2**16) + 1
      * minus the other multiplicand (sort of an additive inverse mod 0x10001).
-     * 
+     *
      * NOTE: The java conversion of this routine works correctly, but is half the speed of using Java's modulus division
      * function (%) on the multiplication with a 16-bit masking of the result--running in the Symantec Caje IDE. So it's
      * not called for now; the test uses Java % instead.
@@ -374,19 +375,20 @@ public class HP_idea {
      * private int mul(int a, int b) throws ArithmeticException { long p; // Large enough to catch 16-bit multiply //
      * without hitting sign bit. if (a != 0) { if(b != 0) { p = (long) a * b; b = (int) p & 0xFFFF; // Lower 16 bits. a
      * = (int) p >>> 16; // Upper 16 bits.
-     * 
+     *
      * return (b - a + (b < a ? 1 : 0) & 0xFFFF); } else return ((1 - a) & 0xFFFF); // If b = 0, then same as // 0x10001
      * - a. } else // If a = 0, then return return((1 - b) & 0xFFFF); // same as 0x10001 - b. }
      */
 
     /*
      * inv
-     * 
+     *
      * Compute multiplicative inverse of x, modulo (2**16)+1 using extended Euclid's GCD (greatest common divisor)
      * algorithm. It is unrolled twice to avoid swapping the meaning of the registers. And some subtracts are changed to
      * adds. Java: Though it uses signed 32-bit ints, the interpretation of the bits within is strictly unsigned 16-bit.
      */
 
+    @SuppressWarnings("static-method")
     private int inv(int x) {
         int x2 = x;
         int t0, t1;
@@ -431,7 +433,7 @@ public class HP_idea {
 
     /*
      * freeTestData
-     * 
+     *
      * Nulls arrays and forces garbage collection to free up memory.
      */
 
@@ -450,7 +452,7 @@ public class HP_idea {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

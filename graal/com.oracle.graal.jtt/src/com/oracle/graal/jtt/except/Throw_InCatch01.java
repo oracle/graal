@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Throw_InCatch01 {
+public class Throw_InCatch01 extends JTTTest {
 
     public static boolean test(int i) throws Exception {
         if (i == 0) {
@@ -41,12 +42,12 @@ public class Throw_InCatch01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0));
+        runTest("test", 0);
     }
 
-    @Test(expected = java.lang.Exception.class)
+    @Test
     public void run1() throws Throwable {
-        test(1);
+        runTest("test", 1);
     }
 
 }

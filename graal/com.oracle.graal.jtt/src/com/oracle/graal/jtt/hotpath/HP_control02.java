@@ -23,11 +23,12 @@
 // Checkstyle: stop
 package com.oracle.graal.jtt.hotpath;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class HP_control02 {
+public class HP_control02 extends JTTTest {
 
     public static int test(int count) {
         int sum = 0;
@@ -82,12 +83,12 @@ public class HP_control02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(515, test(60));
+        runTest("test", 60);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(555, test(100));
+        runTest("test", 100);
     }
 
 }

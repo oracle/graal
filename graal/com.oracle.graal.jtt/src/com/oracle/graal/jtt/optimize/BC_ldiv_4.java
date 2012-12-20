@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_ldiv_4 {
+public class BC_ldiv_4 extends JTTTest {
 
     public static long test(long arg) {
         return arg / 4;
@@ -34,37 +35,37 @@ public class BC_ldiv_4 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0L, test(0L));
+        runTest("test", 0L);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1L, test(4L));
+        runTest("test", 4L);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(1L, test(5L));
+        runTest("test", 5L);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(0L, test(-1L));
+        runTest("test", -1L);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(-1L, test(-4L));
+        runTest("test", -4L);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(-1L, test(-5L));
+        runTest("test", -5L);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(-64L, test(-256L));
+        runTest("test", -256L);
     }
 
 }

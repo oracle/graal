@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Class_isInstance06 implements Cloneable {
+public final class Class_isInstance06 extends JTTTest implements Cloneable {
 
     static final String string = "";
     static final Object obj = new Object();
@@ -53,27 +53,27 @@ public final class Class_isInstance06 implements Cloneable {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(false, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(false, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(true, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(false, test(4));
+        runTest("test", 4);
     }
 
 }

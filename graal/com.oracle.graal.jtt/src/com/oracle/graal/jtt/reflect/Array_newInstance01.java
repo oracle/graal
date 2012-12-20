@@ -26,9 +26,10 @@ package com.oracle.graal.jtt.reflect;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Array_newInstance01 {
+public class Array_newInstance01 extends JTTTest {
 
     public static boolean test(int i) {
         return Array.newInstance(Array_newInstance01.class, i) != null;
@@ -36,22 +37,22 @@ public class Array_newInstance01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(3));
+        runTest("test", 3);
     }
 
-    @Test(expected = java.lang.NegativeArraySizeException.class)
+    @Test
     public void run3() throws Throwable {
-        test(-1);
+        runTest("test", -1);
     }
 
 }

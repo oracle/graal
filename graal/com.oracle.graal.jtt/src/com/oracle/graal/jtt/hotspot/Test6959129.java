@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.jtt.hotspot;
 
-import org.junit.*;
+import com.oracle.graal.jtt.*;
 
 /**
  * @test
@@ -33,7 +33,7 @@ import org.junit.*;
  *
  * @run main/othervm -ea Test6959129
  */
-public class Test6959129 {
+public class Test6959129 extends JTTTest {
 
     public static int test() {
         int min = Integer.MAX_VALUE - 30000;
@@ -84,9 +84,9 @@ public class Test6959129 {
         return maxmoves;
     }
 
-    // @Test
+    //@Test
     public void run0() throws Throwable {
-        Assert.assertEquals(95, test());
+        runTest("test");
     }
 
 }

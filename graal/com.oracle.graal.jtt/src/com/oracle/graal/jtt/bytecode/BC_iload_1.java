@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_iload_1 {
+public class BC_iload_1 extends JTTTest {
 
     @SuppressWarnings("unused")
     public static int test(int i, int arg) {
@@ -38,22 +39,22 @@ public class BC_iload_1 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(1, 0));
+        runTest("test", 1, 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-1, test(1, -1));
+        runTest("test", 1, -1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(2, test(1, 2));
+        runTest("test", 1, 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(1000345, test(1, 1000345));
+        runTest("test", 1, 1000345);
     }
 
 }

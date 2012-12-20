@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
@@ -29,7 +30,7 @@ import org.junit.*;
  * it is recognized that the first store changes the field "field1", so it is no longer guaranteed that it
  * has its default value 0.
  */
-public class LLE_01 {
+public class LLE_01 extends JTTTest {
 
     int field1;
 
@@ -42,7 +43,7 @@ public class LLE_01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test());
+        runTest("test");
     }
 
 }

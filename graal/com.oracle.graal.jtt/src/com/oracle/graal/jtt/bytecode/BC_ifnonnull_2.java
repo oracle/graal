@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_ifnonnull_2 {
+public class BC_ifnonnull_2 extends JTTTest {
 
     public static boolean test(Object a) {
         return a != null;
@@ -37,12 +38,12 @@ public class BC_ifnonnull_2 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(false, test(null));
+        runTest("test", (Object) null);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(""));
+        runTest("test", "");
     }
 
 }

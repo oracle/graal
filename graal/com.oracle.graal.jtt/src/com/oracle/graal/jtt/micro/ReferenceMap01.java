@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class ReferenceMap01 {
+public class ReferenceMap01 extends JTTTest {
 
     public static Integer val1 = new Integer(3);
     public static Integer val2 = new Integer(4);
@@ -58,7 +59,7 @@ public class ReferenceMap01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(7878, test());
+        runTest("test");
     }
 
 }

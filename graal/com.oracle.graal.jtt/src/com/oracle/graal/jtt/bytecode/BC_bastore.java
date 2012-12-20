@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_bastore {
+public class BC_bastore extends JTTTest {
 
     static boolean[] array = {false, false, false, false};
 
@@ -37,22 +38,22 @@ public class BC_bastore {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0, true));
+        runTest("test", 0, true);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(false, test(1, false));
+        runTest("test", 1, false);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(2, true));
+        runTest("test", 2, true);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(false, test(3, false));
+        runTest("test", 3, false);
     }
 
 }

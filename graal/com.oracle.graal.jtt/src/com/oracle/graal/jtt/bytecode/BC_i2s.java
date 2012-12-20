@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_i2s {
+public class BC_i2s extends JTTTest {
 
     public static short test(int a) {
         return (short) a;
@@ -34,22 +35,22 @@ public class BC_i2s {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(((short) -1), test(-1));
+        runTest("test", -1);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(((short) 34), test(34));
+        runTest("test", 34);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(((short) -1), test(65535));
+        runTest("test", 65535);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(((short) -32768), test(32768));
+        runTest("test", 32768);
     }
 
 }

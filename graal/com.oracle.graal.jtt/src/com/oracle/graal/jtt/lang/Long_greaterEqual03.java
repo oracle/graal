@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Long_greaterEqual03 {
+public final class Long_greaterEqual03 extends JTTTest {
 
     public static boolean test(long i) {
         if (i >= -5L) {
@@ -38,47 +38,47 @@ public final class Long_greaterEqual03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(false, test(-9223372036854775808L));
+        runTest("test", -9223372036854775808L);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(false, test(-6L));
+        runTest("test", -6L);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(-5L));
+        runTest("test", -5L);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(true, test(-4L));
+        runTest("test", -4L);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(true, test(-1L));
+        runTest("test", -1L);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(true, test(0L));
+        runTest("test", 0L);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(true, test(1L));
+        runTest("test", 1L);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(true, test(2L));
+        runTest("test", 2L);
     }
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertEquals(true, test(9223372036854775807L));
+        runTest("test", 9223372036854775807L);
     }
 
 }

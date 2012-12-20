@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BigMixedParams01 {
+public class BigMixedParams01 extends JTTTest {
 
     public static double test(int num) {
         double sum = 0;
@@ -117,27 +118,27 @@ public class BigMixedParams01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(45D, test(0), 0);
+        runTestWithDelta(0, "test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(45D, test(1), 0);
+        runTestWithDelta(0, "test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(45D, test(2), 0);
+        runTestWithDelta(0, "test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(45D, test(3), 0);
+        runTestWithDelta(0, "test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(0D, test(4), 0);
+        runTestWithDelta(0, "test", 4);
     }
 
 }

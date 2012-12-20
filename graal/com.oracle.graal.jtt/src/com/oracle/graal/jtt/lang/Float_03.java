@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Float_03 {
+public class Float_03 extends JTTTest {
 
     public static boolean test() {
         return Float.floatToIntBits(Float.intBitsToFloat(0x7fc00088)) == 0x7fc00000;
@@ -34,7 +35,7 @@ public class Float_03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }
