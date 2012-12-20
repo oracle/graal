@@ -254,17 +254,16 @@ public class StructuredGraph extends Graph {
         assert node != null;
         assert node.usages().isEmpty();
         assert survivingSuccessor != null;
-        for (Node successor : node.successors().snapshot()) {
-            successor.replaceAtPredecessor(null);
-            if (successor != null && successor != survivingSuccessor && successor.isAlive()) {
-                GraphUtil.killCFG((BeginNode) successor);
+        List<Node> snapshot = node.successors().snapshot();
+        node.clearSuccessors();
+        node.replaceAtPredecessor(survivingSuccessor);
+        node.safeDelete();
+        for (Node successor : snapshot) {
+            if (successor != null && successor.isAlive()) {
+                if (successor != survivingSuccessor) {
+                    GraphUtil.killCFG((BeginNode) successor);
+                }
             }
-        }
-        if (survivingSuccessor.isAlive()) {
-            node.replaceAtPredecessor(survivingSuccessor);
-            node.safeDelete();
-        } else {
-            assert node.isDeleted() : node + " " + survivingSuccessor;
         }
     }
 
