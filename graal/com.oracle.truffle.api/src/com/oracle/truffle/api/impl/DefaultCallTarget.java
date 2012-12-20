@@ -26,12 +26,12 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
-final class DefaultCallTarget extends CallTarget {
+public class DefaultCallTarget extends CallTarget {
 
     protected final RootNode rootNode;
     protected final FrameDescriptor frameDescriptor;
 
-    DefaultCallTarget(RootNode function, FrameDescriptor frameDescriptor) {
+    protected DefaultCallTarget(RootNode function, FrameDescriptor frameDescriptor) {
         this.rootNode = function;
         this.frameDescriptor = frameDescriptor;
     }

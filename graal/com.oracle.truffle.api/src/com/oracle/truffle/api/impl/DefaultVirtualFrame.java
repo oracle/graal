@@ -27,7 +27,7 @@ import java.util.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
-final class DefaultVirtualFrame implements VirtualFrame {
+public final class DefaultVirtualFrame implements VirtualFrame {
 
     private static final Object UNDEFINED_OBJECT = null;
     private static final Boolean UNDEFINED_BOOLEAN = false;
@@ -43,7 +43,7 @@ final class DefaultVirtualFrame implements VirtualFrame {
     protected Object[] locals;
     protected Class[] tags;
 
-    DefaultVirtualFrame(FrameDescriptor descriptor, PackedFrame caller, Arguments arguments) {
+    public DefaultVirtualFrame(FrameDescriptor descriptor, PackedFrame caller, Arguments arguments) {
         this.descriptor = descriptor;
         this.caller = caller;
         this.arguments = arguments;
