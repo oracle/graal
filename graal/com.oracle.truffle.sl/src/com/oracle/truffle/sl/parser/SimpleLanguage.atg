@@ -1,0 +1,158 @@
+COMPILER SimpleLanguage
+
+CHARACTERS
+
+letter = 'A'..'Z' + 'a'..'z'.
+nonZeroDigit = "123456789".
+digit = "0123456789".
+cr = '\r'.
+lf = '\n'.
+tab = '\t'.
+stringChar = ANY - "\"" - '\\' - cr - lf.
+
+TOKENS
+
+identifier = letter {letter | digit}.
+stringLiteral = "\"" { stringChar } "\"".
+numericLiteral = "0" | nonZeroDigit { digit }.
+
+PRAGMAS
+
+COMMENTS FROM "/*" TO "*/"
+COMMENTS FROM "//" TO lf
+IGNORE cr + lf + tab
+
+PRODUCTIONS
+
+SimpleLanguage
+=
+Function 
+{
+	 Function
+}
+.
+
+Function
+=
+"function"                                      (. factory.startFunction(); .)
+identifier                                      (. String name = t.val; .)
+Block<out StatementNode body>                   (. factory.createFunction(body, name); .)
+.
+
+Block<out StatementNode result>
+=                                               (. List<StatementNode> statements = new ArrayList<>(); .)
+"{" 
+{
+    Statement<out StatementNode statement>      (. statements.add(statement); .)
+}
+"}"                                             (. result = factory.createBlock(statements); .)
+.
+
+Statement<out StatementNode result>
+=                                               (. result = null; .)
+(
+    WhileStatement<out result>
+|
+    AssignmentStatement<out result>
+|
+    OutputStatement<out result>
+|
+    ReturnStatement<out result>
+)
+.
+
+WhileStatement<out StatementNode result>
+=
+"while"
+"("
+Expression<out ConditionNode condition>
+")" 
+Block<out StatementNode body>                   (. result = factory.createWhile(condition, body); .)
+.
+
+AssignmentStatement<out StatementNode result>
+=
+identifier                                      (. String name = t.val; .)
+"="
+Expression<out TypedNode rvalue>
+";"                                             (. result = factory.createAssignment(name, rvalue); .)
+.
+
+OutputStatement<out StatementNode result>
+=                                               (. List<TypedNode> expressions = new ArrayList<>(); .)
+"print"
+{
+    Expression<out TypedNode value>             (. expressions.add(value); .)
+}
+";"                                             (. result = factory.createPrint(expressions); .)
+.
+							
+ReturnStatement<out StatementNode result>
+=
+"return"
+Expression<out TypedNode value> ";"             (. result = factory.createReturn(value); .)
+.
+
+Expression<out TypedNode result>
+=
+ValueExpression<out result>
+[
+    ("<" | ">" | "<=" | ">=" | "==" | "!=" )    (.	String op = t.val; .)
+    ValueExpression<out TypedNode right>        (.	result = factory.createBinary(op, result, right); .)
+]
+.
+
+ValueExpression<out TypedNode result>
+=
+Term<out result>
+{
+    ("+" | "-")                                 (. String op = t.val; .)
+    Term<out TypedNode right>                   (. result = factory.createBinary(op, result, right); .)
+}
+.
+
+Term<out TypedNode result>
+=
+Factor<out result>
+{
+    ("*" | "/")                                 (. String op = t.val; .)
+    Factor<out TypedNode right>                 (. result = factory.createBinary(op, result, right); .)
+}
+.
+
+Factor<out TypedNode result>
+=                                               (. result = null; .)
+(
+    TimeRef<out result>
+|
+    VariableRef<out result>
+|
+    StringLiteral<out result>
+|
+    NumericLiteral<out result>
+|
+    "(" Expression<out result> ")"
+)
+.
+
+TimeRef<out TypedNode result>
+=
+"time"                                          (. result = factory.createTime(); .)
+.
+
+VariableRef<out TypedNode result>
+=
+identifier                                      (. result = factory.createLocal(t.val); .)
+.
+
+StringLiteral<out TypedNode result>
+=
+stringLiteral                                   (. result = factory.createStringLiteral(t.val.substring(1, t.val.length() - 1)); .)
+.
+
+NumericLiteral<out TypedNode result>
+=
+numericLiteral                                  (. result = factory.createNumericLiteral(t.val); .)
+.
+
+END SimpleLanguage.
