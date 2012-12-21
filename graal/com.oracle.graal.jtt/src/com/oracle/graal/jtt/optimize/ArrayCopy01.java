@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests calls to the array copy method.
  */
-public class ArrayCopy01 {
+public class ArrayCopy01 extends JTTTest {
 
     public static Object[] src = new Object[]{null, null};
     public static Object[] dest = new Object[]{null, null};
@@ -43,42 +44,42 @@ public class ArrayCopy01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0, 0, 0));
+        runTest("test", 0, 0, 0);
     }
 
-    @Test(expected = java.lang.IndexOutOfBoundsException.class)
+    @Test
     public void run1() throws Throwable {
-        test(0, 0, -1);
+        runTest("test", 0, 0, -1);
     }
 
-    @Test(expected = java.lang.IndexOutOfBoundsException.class)
+    @Test
     public void run2() throws Throwable {
-        test(-1, 0, 0);
+        runTest("test", -1, 0, 0);
     }
 
-    @Test(expected = java.lang.IndexOutOfBoundsException.class)
+    @Test
     public void run3() throws Throwable {
-        test(0, -1, 0);
+        runTest("test", 0, -1, 0);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(0, test(0, 0, 2));
+        runTest("test", 0, 0, 2);
     }
 
-    @Test(expected = java.lang.IndexOutOfBoundsException.class)
+    @Test
     public void run5() throws Throwable {
-        test(0, 1, 2);
+        runTest("test", 0, 1, 2);
     }
 
-    @Test(expected = java.lang.IndexOutOfBoundsException.class)
+    @Test
     public void run6() throws Throwable {
-        test(1, 0, 2);
+        runTest("test", 1, 0, 2);
     }
 
-    @Test(expected = java.lang.IndexOutOfBoundsException.class)
+    @Test
     public void run7() throws Throwable {
-        test(1, 1, -1);
+        runTest("test", 1, 1, -1);
     }
 
 }

@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class BC_athrow2 {
+public class BC_athrow2 extends JTTTest {
 
     static Throwable throwable = new Throwable();
 
@@ -41,17 +42,17 @@ public class BC_athrow2 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0));
+        runTest("test", 0);
     }
 
-    @Test(expected = java.lang.Throwable.class)
+    @Test
     public void run1() throws Throwable {
-        test(2);
+        runTest("test", 2);
     }
 
-    @Test(expected = java.lang.NullPointerException.class)
+    @Test
     public void run2() throws Throwable {
-        test(3);
+        runTest("test", 3);
     }
 
 }

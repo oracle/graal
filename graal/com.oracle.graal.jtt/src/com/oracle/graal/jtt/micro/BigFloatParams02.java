@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BigFloatParams02 {
+public class BigFloatParams02 extends JTTTest {
 
     public static float test(int choice, float p0, float p1, float p2, float p3, float p4, float p5, float p6, float p7, float p8) {
         switch (choice) {
@@ -54,47 +55,47 @@ public class BigFloatParams02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1f, test(0, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f), 0);
+        runTest("test", 0, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(2f, test(1, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f), 0);
+        runTest("test", 1, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(3f, test(2, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f), 0);
+        runTest("test", 2, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(4f, test(3, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f), 0);
+        runTest("test", 3, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(5f, test(4, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f), 0);
+        runTest("test", 4, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(6f, test(5, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f), 0);
+        runTest("test", 5, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(7f, test(6, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f), 0);
+        runTest("test", 6, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(8f, test(7, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f), 0);
+        runTest("test", 7, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertEquals(9f, test(8, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f), 0);
+        runTest("test", 8, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f);
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_ldiv2 {
+public class BC_ldiv2 extends JTTTest {
     public static long MIN = Long.MIN_VALUE;
     public static long MAX = Long.MAX_VALUE;
 
@@ -36,16 +37,16 @@ public class BC_ldiv2 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(MIN, test(MIN, -1));
+        runTest("test", MIN, -1L);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(MIN, test(MIN, 1));
+        runTest("test", MIN, 1L);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(-1, test(MIN, MAX));
+        runTest("test", MIN, MAX);
     }
 }

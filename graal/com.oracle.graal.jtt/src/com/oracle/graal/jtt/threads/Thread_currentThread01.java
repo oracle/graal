@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.threads;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Thread_currentThread01 {
+public final class Thread_currentThread01 extends JTTTest {
 
     public static boolean test() {
         return Thread.currentThread() != null;
@@ -35,7 +35,7 @@ public final class Thread_currentThread01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

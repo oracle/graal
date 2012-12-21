@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Math_sqrt {
+public class Math_sqrt extends JTTTest {
 
     @SuppressWarnings("serial")
     public static class NaN extends Throwable {
@@ -43,37 +44,37 @@ public class Math_sqrt {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(2.0d, test(4.0d), 0);
+        runTest("test", 4.0d);
     }
 
-    @Test(expected = com.oracle.graal.jtt.lang.Math_sqrt.NaN.class)
+    @Test
     public void run1() throws Throwable {
-        test(java.lang.Double.NaN);
+        runTest("test", java.lang.Double.NaN);
     }
 
-    @Test(expected = com.oracle.graal.jtt.lang.Math_sqrt.NaN.class)
+    @Test
     public void run2() throws Throwable {
-        test(-1.0d);
+        runTest("test", -1.0d);
     }
 
-    @Test(expected = com.oracle.graal.jtt.lang.Math_sqrt.NaN.class)
+    @Test
     public void run3() throws Throwable {
-        test(java.lang.Double.NEGATIVE_INFINITY);
+        runTest("test", java.lang.Double.NEGATIVE_INFINITY);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(java.lang.Double.POSITIVE_INFINITY, test(java.lang.Double.POSITIVE_INFINITY), 0);
+        runTest("test", java.lang.Double.POSITIVE_INFINITY);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(0.0d, test(0.0d), 0);
+        runTest("test", 0.0d);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(-0.0d, test(-0.0d), 0);
+        runTest("test", -0.0d);
     }
 
 }

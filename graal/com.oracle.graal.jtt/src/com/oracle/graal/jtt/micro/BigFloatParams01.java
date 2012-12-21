@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BigFloatParams01 {
+public class BigFloatParams01 extends JTTTest {
 
     public static double test(int num) {
         double sum = 0;
@@ -112,27 +113,27 @@ public class BigFloatParams01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(45D, test(0), 0);
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(45D, test(1), 0);
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(45D, test(2), 0);
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(45D, test(3), 0);
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(0D, test(4), 0);
+        runTest("test", 4);
     }
 
 }

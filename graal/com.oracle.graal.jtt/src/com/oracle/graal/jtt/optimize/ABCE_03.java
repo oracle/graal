@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class ABCE_03 {
+public class ABCE_03 extends JTTTest {
 
     private static final int[] ARRAY1 = new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     private static final int[] ARRAY2 = new int[]{1};
@@ -42,17 +43,17 @@ public class ABCE_03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(55, test(10));
+        runTest("test", 10);
     }
 
-    @Test(expected = java.lang.ArrayIndexOutOfBoundsException.class)
+    @Test
     public void run2() throws Throwable {
-        test(20);
+        runTest("test", 20);
     }
 
 }

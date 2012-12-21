@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Catch_NPE_06 {
+public class Catch_NPE_06 extends JTTTest {
 
     public static int test(String string) {
         try {
@@ -41,12 +42,12 @@ public class Catch_NPE_06 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(""));
+        runTest("test", "");
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-1, test(null));
+        runTest("test", (Object) null);
     }
 
 }

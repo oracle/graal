@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_ldc_04 {
+public class BC_ldc_04 extends JTTTest {
 
     public static String test() {
         return "xyz";
@@ -37,7 +38,7 @@ public class BC_ldc_04 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("xyz", test());
+        runTest("test");
     }
 
 }

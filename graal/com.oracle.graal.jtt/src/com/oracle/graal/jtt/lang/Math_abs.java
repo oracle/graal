@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Math_abs {
+public class Math_abs extends JTTTest {
 
     @SuppressWarnings("serial")
     public static class NaN extends Throwable {
@@ -43,37 +44,37 @@ public class Math_abs {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(5.0d, test(5.0d), 0);
+        runTest("test", 5.0d);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(5.0d, test(-5.0d), 0);
+        runTest("test", -5.0d);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(0.0d, test(0.0d), 0);
+        runTest("test", 0.0d);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(0.0d, test(-0.0d), 0);
+        runTest("test", -0.0d);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(java.lang.Double.POSITIVE_INFINITY, test(java.lang.Double.NEGATIVE_INFINITY), 0);
+        runTest("test", java.lang.Double.NEGATIVE_INFINITY);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(java.lang.Double.POSITIVE_INFINITY, test(java.lang.Double.POSITIVE_INFINITY), 0);
+        runTest("test", java.lang.Double.POSITIVE_INFINITY);
     }
 
-    @Test(expected = com.oracle.graal.jtt.lang.Math_abs.NaN.class)
+    @Test
     public void run6() throws Throwable {
-        test(java.lang.Double.NaN);
+        runTest("test", java.lang.Double.NaN);
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.hotpath;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class HP_control01 {
+public class HP_control01 extends JTTTest {
 
     public static int test(int count) {
         int i1 = 1;
@@ -61,12 +62,12 @@ public class HP_control01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(2432, test(40));
+        runTest("test", 40);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(3243, test(80));
+        runTest("test", 80);
     }
 
 }

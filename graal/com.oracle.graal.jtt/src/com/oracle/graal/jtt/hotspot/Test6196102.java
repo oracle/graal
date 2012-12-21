@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.jtt.hotspot;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /**
@@ -32,7 +33,7 @@ import org.junit.*;
  * @run main Test6196102
  */
 
-public class Test6196102 {
+public class Test6196102 extends JTTTest {
 
     public static String test() {
         int i1 = 0;
@@ -49,7 +50,7 @@ public class Test6196102 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("ok", test());
+        runTest("test");
     }
 
 }

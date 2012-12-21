@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Inline02 {
+public class Inline02 extends JTTTest {
 
     public static int test(int arg) {
         return arg + nobranch(true, arg) + nobranch(false, arg) + nobranch(true, arg) + nobranch(false, arg);
@@ -41,17 +42,17 @@ public class Inline02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(2, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(5, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(8, test(2));
+        runTest("test", 2);
     }
 
 }

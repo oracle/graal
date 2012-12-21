@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_idiv_16 {
+public class BC_idiv_16 extends JTTTest {
 
     public static int test(int i, int arg) {
         if (i == 0) {
@@ -38,72 +39,72 @@ public class BC_idiv_16 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0, 0));
+        runTest("test", 0, 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1, test(0, 16));
+        runTest("test", 0, 16);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(1, test(0, 17));
+        runTest("test", 0, 17);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(0, test(0, -1));
+        runTest("test", 0, -1);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(-1, test(0, -16));
+        runTest("test", 0, -16);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(-1, test(0, -17));
+        runTest("test", 0, -17);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(-64, test(0, -1024));
+        runTest("test", 0, -1024);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(0, test(1, 0));
+        runTest("test", 1, 0);
     }
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertEquals(1, test(1, 16));
+        runTest("test", 1, 16);
     }
 
     @Test
     public void run9() throws Throwable {
-        Assert.assertEquals(1, test(1, 17));
+        runTest("test", 1, 17);
     }
 
     @Test
     public void run10() throws Throwable {
-        Assert.assertEquals(0, test(1, -1));
+        runTest("test", 1, -1);
     }
 
     @Test
     public void run11() throws Throwable {
-        Assert.assertEquals(-1, test(1, -16));
+        runTest("test", 1, -16);
     }
 
     @Test
     public void run12() throws Throwable {
-        Assert.assertEquals(-1, test(1, -17));
+        runTest("test", 1, -17);
     }
 
     @Test
     public void run13() throws Throwable {
-        Assert.assertEquals(-64, test(1, -1024));
+        runTest("test", 1, -1024);
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.jdk;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class System_currentTimeMillis02 {
+public class System_currentTimeMillis02 extends JTTTest {
 
     public static boolean test() {
         long start = System.currentTimeMillis();
@@ -41,7 +42,7 @@ public class System_currentTimeMillis02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

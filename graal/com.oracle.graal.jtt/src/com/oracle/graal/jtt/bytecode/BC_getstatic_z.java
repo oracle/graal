@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_getstatic_z {
+public class BC_getstatic_z extends JTTTest {
 
     private static boolean field = true;
 
@@ -39,7 +40,7 @@ public class BC_getstatic_z {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

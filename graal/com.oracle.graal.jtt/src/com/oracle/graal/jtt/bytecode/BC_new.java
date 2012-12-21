@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_new {
+public class BC_new extends JTTTest {
 
     @SuppressWarnings("unused")
     public static int test(int a) {
@@ -36,7 +37,7 @@ public class BC_new {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0));
+        runTest("test", 0);
     }
 
 }

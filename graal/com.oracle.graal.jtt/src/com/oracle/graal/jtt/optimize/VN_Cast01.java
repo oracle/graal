@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests constant folding of integer operations.
  */
-public class VN_Cast01 {
+public class VN_Cast01 extends JTTTest {
 
     static final Object object = new VN_Cast01();
 
@@ -70,17 +71,17 @@ public class VN_Cast01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(18, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(18, test(1));
+        runTest("test", 1);
     }
 
-    @Test(expected = java.lang.NullPointerException.class)
+    @Test
     public void run2() throws Throwable {
-        test(2);
+        runTest("test", 2);
     }
 
 }

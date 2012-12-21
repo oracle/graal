@@ -24,11 +24,12 @@
 
 package com.oracle.graal.jtt.hotpath;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class HP_invoke01 {
+public class HP_invoke01 extends JTTTest {
 
     private static int sum;
 
@@ -105,12 +106,12 @@ public class HP_invoke01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(3049480, test(40));
+        runTest("test", 40);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(6098960, test(80));
+        runTest("test", 80);
     }
 
 }

@@ -26,7 +26,9 @@ package com.oracle.graal.jtt.lang;
 
 import org.junit.*;
 
-public class Object_clone01 {
+import com.oracle.graal.jtt.*;
+
+public class Object_clone01 extends JTTTest {
 
     static final Object_clone01 field = new Object_clone01();
 
@@ -39,9 +41,9 @@ public class Object_clone01 {
         return this == this.clone();
     }
 
-    @Test(expected = java.lang.CloneNotSupportedException.class)
+    @Test
     public void run0() throws Throwable {
-        test(0);
+        runTest("test", 0);
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class String_intern02 {
+public class String_intern02 extends JTTTest {
 
     public static boolean test(int i) {
         return ("id" + i).intern() == ("id" + i).intern();
@@ -34,17 +35,17 @@ public class String_intern02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(2));
+        runTest("test", 2);
     }
 
 }

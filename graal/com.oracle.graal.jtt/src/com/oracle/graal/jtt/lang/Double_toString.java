@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-@SuppressWarnings("static-method")
-public final class Double_toString {
+public final class Double_toString extends JTTTest {
 
     public static String test() {
         double z1 = 0.4363485526704198;
@@ -38,7 +38,7 @@ public final class Double_toString {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("9.834050399508132E-4", test());
+        runTest("test");
     }
 
 }

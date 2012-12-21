@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_laload {
+public class BC_laload extends JTTTest {
 
     static long[] array = {0L, -1L, 4L, 1000000000000L};
 
@@ -36,22 +37,22 @@ public class BC_laload {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0L, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-1L, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(4L, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(1000000000000L, test(3));
+        runTest("test", 3);
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Cmov02 {
+public class Cmov02 extends JTTTest {
 
     public static int test(double a, double b, int v1, int v2) {
         return a < b ? v1 : v2;
@@ -34,17 +35,17 @@ public class Cmov02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1, test(1.0, 1.1, 1, 2));
+        runTest("test", 1.0, 1.1, 1, 2);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(2, test(1.0, -1.1, 1, 2));
+        runTest("test", 1.0, -1.1, 1, 2);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(2, test(1.0, java.lang.Double.NaN, 1, 2));
+        runTest("test", 1.0, java.lang.Double.NaN, 1, 2);
     }
 
 }

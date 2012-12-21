@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * TODO: test roundoff behavior
  */
-public class BC_l2i {
+public class BC_l2i extends JTTTest {
 
     public static int test(long a) {
         return (int) a;
@@ -35,37 +36,37 @@ public class BC_l2i {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1, test(1L));
+        runTest("test", 1L);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(2, test(2L));
+        runTest("test", 2L);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(3, test(3L));
+        runTest("test", 3L);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(-1, test(-1L));
+        runTest("test", -1L);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(-2147483647, test(-2147483647L));
+        runTest("test", -2147483647L);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(-2147483648, test(-2147483648L));
+        runTest("test", -2147483648L);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(2147483647, test(2147483647L));
+        runTest("test", 2147483647L);
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_imul_4 {
+public class BC_imul_4 extends JTTTest {
 
     public static int test(int arg) {
         return arg * 4;
@@ -34,37 +35,37 @@ public class BC_imul_4 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(16, test(4));
+        runTest("test", 4);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(20, test(5));
+        runTest("test", 5);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(-4, test(-1));
+        runTest("test", -1);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(-16, test(-4));
+        runTest("test", -4);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(-20, test(-5));
+        runTest("test", -5);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(-1024, test(-256));
+        runTest("test", -256);
     }
 
 }

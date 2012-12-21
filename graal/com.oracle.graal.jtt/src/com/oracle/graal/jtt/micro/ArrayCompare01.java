@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class ArrayCompare01 {
+public class ArrayCompare01 extends JTTTest {
 
     static final long[] a1 = {1, 2, 3, -5};
     static final long[] a2 = {1, 2, 3, -5};
@@ -56,12 +57,12 @@ public class ArrayCompare01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(false, test(1));
+        runTest("test", 1);
     }
 
 }

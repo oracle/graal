@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class DeadCode02 {
+public class DeadCode02 extends JTTTest {
 
     public static int test() {
         int i = 0;
@@ -45,7 +46,7 @@ public class DeadCode02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1, test());
+        runTest("test");
     }
 
 }

@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_multianewarray {
+public class BC_multianewarray extends JTTTest {
 
     @SuppressWarnings("unused")
     public static int test(int a, int b) {
@@ -42,22 +43,22 @@ public class BC_multianewarray {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0, 0));
+        runTest("test", 0, 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1, test(1, 1));
+        runTest("test", 1, 1);
     }
 
-    @Test(expected = java.lang.NegativeArraySizeException.class)
+    @Test
     public void run2() throws Throwable {
-        test(-1, 0);
+        runTest("test", -1, 0);
     }
 
-    @Test(expected = java.lang.NegativeArraySizeException.class)
+    @Test
     public void run3() throws Throwable {
-        test(0, -1);
+        runTest("test", 0, -1);
     }
 
 }

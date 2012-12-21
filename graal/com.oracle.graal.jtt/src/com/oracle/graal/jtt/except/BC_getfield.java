@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class BC_getfield {
+public class BC_getfield extends JTTTest {
 
     private static BC_getfield object = new BC_getfield();
 
@@ -39,12 +40,12 @@ public class BC_getfield {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(13, test(0));
+        runTest("test", 0);
     }
 
-    @Test(expected = java.lang.NullPointerException.class)
+    @Test
     public void run1() throws Throwable {
-        test(3);
+        runTest("test", 3);
     }
 
 }

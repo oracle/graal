@@ -23,11 +23,12 @@
 
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BigIntParams02 {
+public class BigIntParams02 extends JTTTest {
 
     public static int test(int choice, int p0, int p1, int p2, int p3, int p4, int p5, int p6, int p7, int p8) {
         switch (choice) {
@@ -55,47 +56,47 @@ public class BigIntParams02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1, test(0, 1, 2, 3, 4, 5, 6, 7, -8, -9));
+        runTest("test", 0, 1, 2, 3, 4, 5, 6, 7, -8, -9);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(2, test(1, 1, 2, 3, 4, 5, 6, 7, -8, -9));
+        runTest("test", 1, 1, 2, 3, 4, 5, 6, 7, -8, -9);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(3, test(2, 1, 2, 3, 4, 5, 6, 7, -8, -9));
+        runTest("test", 2, 1, 2, 3, 4, 5, 6, 7, -8, -9);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(4, test(3, 1, 2, 3, 4, 5, 6, 7, -8, -9));
+        runTest("test", 3, 1, 2, 3, 4, 5, 6, 7, -8, -9);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(5, test(4, 1, 2, 3, 4, 5, 6, 7, -8, -9));
+        runTest("test", 4, 1, 2, 3, 4, 5, 6, 7, -8, -9);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(6, test(5, 1, 2, 3, 4, 5, 6, 7, -8, -9));
+        runTest("test", 5, 1, 2, 3, 4, 5, 6, 7, -8, -9);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(7, test(6, 1, 2, 3, 4, 5, 6, 7, -8, -9));
+        runTest("test", 6, 1, 2, 3, 4, 5, 6, 7, -8, -9);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(-8, test(7, 1, 2, 3, 4, 5, 6, 7, -8, -9));
+        runTest("test", 7, 1, 2, 3, 4, 5, 6, 7, -8, -9);
     }
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertEquals(-9, test(8, 1, 2, 3, 4, 5, 6, 7, -8, -9));
+        runTest("test", 8, 1, 2, 3, 4, 5, 6, 7, -8, -9);
     }
 
 }

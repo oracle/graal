@@ -26,8 +26,9 @@ package com.oracle.graal.jtt.lang;
 
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Object_wait01 {
+import com.oracle.graal.jtt.*;
+
+public final class Object_wait01 extends JTTTest {
 
     static final Object object = new Object();
 
@@ -36,9 +37,9 @@ public final class Object_wait01 {
         return true;
     }
 
-    @Test(expected = java.lang.IllegalMonitorStateException.class)
+    @Test
     public void run0() throws Throwable {
-        test();
+        runTest("test");
     }
 
 }

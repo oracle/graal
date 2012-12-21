@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_dcmp05 {
+public class BC_dcmp05 extends JTTTest {
 
     public static boolean test(double a) {
         return (a / a) >= 0.0;
@@ -34,17 +35,17 @@ public class BC_dcmp05 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(-1.0d));
+        runTest("test", -1.0d);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(1.0d));
+        runTest("test", 1.0d);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(false, test(0.0d));
+        runTest("test", 0.0d);
     }
 
 }

@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class BC_drem {
+public class BC_drem extends JTTTest {
 
     public static double test(double a, double b) {
         return a % b;
@@ -34,12 +35,12 @@ public class BC_drem {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1.0D, test(311.0D, 10D), 0);
+        runTest("test", 311.0D, 10D);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1.2D, test(11.2D, 2.0D), 0.000000000000001);
+        runTestWithDelta(0.000000000000001, "test", 11.2D, 2.0D);
     }
 
 }

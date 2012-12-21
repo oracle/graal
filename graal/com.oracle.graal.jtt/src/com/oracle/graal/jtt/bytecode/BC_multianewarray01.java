@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_multianewarray01 {
+public class BC_multianewarray01 extends JTTTest {
 
     public static int test(int a) {
         final BC_multianewarray01[][] v = new BC_multianewarray01[3][3];
@@ -35,12 +36,12 @@ public class BC_multianewarray01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1, test(1));
+        runTest("test", 1);
     }
 
 }

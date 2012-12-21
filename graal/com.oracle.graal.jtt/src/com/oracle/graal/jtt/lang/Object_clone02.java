@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Object_clone02 implements Cloneable {
+public class Object_clone02 extends JTTTest implements Cloneable {
 
     static final Object_clone02 field = new Object_clone02();
 
@@ -41,7 +42,7 @@ public class Object_clone02 implements Cloneable {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(false, test(0));
+        runTest("test", 0);
     }
 
 }

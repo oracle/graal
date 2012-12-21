@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Throw_NPE_01 {
+public class Throw_NPE_01 extends JTTTest {
 
     public static int test(int i) throws Exception {
         int a = test2(i);
@@ -43,17 +44,17 @@ public class Throw_NPE_01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(2, test(1));
+        runTest("test", 1);
     }
 
-    @Test(expected = java.lang.NullPointerException.class)
+    @Test
     public void run2() throws Throwable {
-        test(-1);
+        runTest("test", -1);
     }
 
 }

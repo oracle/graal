@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Float_02 {
+public class Float_02 extends JTTTest {
 
     public static boolean test(float f) {
         return f != 1.0f;
@@ -34,22 +35,22 @@ public class Float_02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(false, test(1.0f));
+        runTest("test", 1.0f);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(2.0f));
+        runTest("test", 2.0f);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(0.5f));
+        runTest("test", 0.5f);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(true, test(java.lang.Float.NaN));
+        runTest("test", java.lang.Float.NaN);
     }
 
 }

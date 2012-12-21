@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class String_intern01 {
+public class String_intern01 extends JTTTest {
 
     public static boolean test() {
         // Checkstyle: stop
@@ -36,7 +37,7 @@ public class String_intern01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Test case for null check elimination.
  */
-public class NCE_02 {
+public class NCE_02 extends JTTTest {
 
     public static NCE_02 object = new NCE_02();
 
@@ -45,7 +46,7 @@ public class NCE_02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(23, test());
+        runTest("test");
     }
 
 }

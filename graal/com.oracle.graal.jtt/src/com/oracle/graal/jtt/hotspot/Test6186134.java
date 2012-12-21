@@ -24,9 +24,10 @@ package com.oracle.graal.jtt.hotspot;
 
 import java.util.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Test6186134 {
+public class Test6186134 extends JTTTest {
 
     public static class TestClass {
 
@@ -67,7 +68,7 @@ public class Test6186134 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(100));
+        runTest("test", 100);
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Math_pow {
+public class Math_pow extends JTTTest {
 
     public static double test(double pow) {
         return Math.pow(2.0d, pow);
@@ -34,12 +35,12 @@ public class Math_pow {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(4.0d, test(2d), 0);
+        runTest("test", 2d);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(8.574187700290345d, test(3.1d), 0);
+        runTest("test", 3.1d);
     }
 
 }

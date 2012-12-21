@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests calls to the array copy method.
  */
-public class ArrayCopy02 {
+public class ArrayCopy02 extends JTTTest {
 
     public static int[] src = new int[]{0, 1, 2, 3, 4, 5};
     public static int[] dest0 = new int[]{5, 4, 3, 2, 1, 0};
@@ -52,77 +53,77 @@ public class ArrayCopy02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertArrayEquals(new int[] {5, 4, 3, 2, 1, 0}, test(0, 0, 0));
+        runTest("test", 0, 0, 0);
     }
 
-    @Test(expected = java.lang.IndexOutOfBoundsException.class)
+    @Test
     public void run1() throws Throwable {
-        test(0, 0, -1);
+        runTest("test", 0, 0, -1);
     }
 
-    @Test(expected = java.lang.IndexOutOfBoundsException.class)
+    @Test
     public void run2() throws Throwable {
-        test(-1, 0, 0);
+        runTest("test", -1, 0, 0);
     }
 
-    @Test(expected = java.lang.IndexOutOfBoundsException.class)
+    @Test
     public void run3() throws Throwable {
-        test(0, -1, 0);
+        runTest("test", 0, -1, 0);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertArrayEquals(new int[] {0, 1, 3, 2, 1, 0}, test(0, 0, 2));
+        runTest("test", 0, 0, 2);
     }
 
-    @Test(expected = java.lang.IndexOutOfBoundsException.class)
+    @Test
     public void run5() throws Throwable {
-        test(0, 1, 6);
+        runTest("test", 0, 1, 6);
     }
 
-    @Test(expected = java.lang.IndexOutOfBoundsException.class)
+    @Test
     public void run6() throws Throwable {
-        test(1, 0, 6);
+        runTest("test", 1, 0, 6);
     }
 
-    @Test(expected = java.lang.IndexOutOfBoundsException.class)
+    @Test
     public void run7() throws Throwable {
-        test(1, 1, -1);
+        runTest("test", 1, 1, -1);
     }
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertArrayEquals(new int[] {5, 0, 1, 2, 1, 0}, test(0, 1, 2));
+        runTest("test", 0, 1, 2);
     }
 
     @Test
     public void run9() throws Throwable {
-        Assert.assertArrayEquals(new int[] {1, 2, 3, 2, 1, 0}, test(1, 0, 2));
+        runTest("test", 1, 0, 2);
     }
 
     @Test
     public void run10() throws Throwable {
-        Assert.assertArrayEquals(new int[] {5, 1, 2, 2, 1, 0}, test(1, 1, 2));
+        runTest("test", 1, 1, 2);
     }
 
     @Test
     public void run11() throws Throwable {
-        Assert.assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5}, test(0, 0, 6));
+        runTest("test", 0, 0, 6);
     }
 
     @Test
     public void run12() throws Throwable {
-        Assert.assertArrayEquals(new int[] {5, 0, 1, 2, 3, 4}, test(0, 1, 5));
+        runTest("test", 0, 1, 5);
     }
 
     @Test
     public void run13() throws Throwable {
-        Assert.assertArrayEquals(new int[] {1, 2, 3, 4, 5, 0}, test(1, 0, 5));
+        runTest("test", 1, 0, 5);
     }
 
     @Test
     public void run14() throws Throwable {
-        Assert.assertArrayEquals(new int[] {5, 1, 2, 3, 4, 5}, test(1, 1, 5));
+        runTest("test", 1, 1, 5);
     }
 
 }

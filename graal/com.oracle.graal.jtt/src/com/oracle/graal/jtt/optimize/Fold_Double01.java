@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests constant folding of float operations.
  */
-public class Fold_Double01 {
+public class Fold_Double01 extends JTTTest {
 
     public static double test(double arg) {
         if (arg == 0) {
@@ -75,27 +76,27 @@ public class Fold_Double01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(10d, test(0d), 0);
+        runTest("test", 0d);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(11d, test(1d), 0);
+        runTest("test", 1d);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(12d, test(2d), 0);
+        runTest("test", 2d);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(13d, test(3d), 0);
+        runTest("test", 3d);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(14d, test(4d), 0);
+        runTest("test", 4d);
     }
 
 }

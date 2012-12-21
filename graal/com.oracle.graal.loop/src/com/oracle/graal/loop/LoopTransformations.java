@@ -25,37 +25,16 @@ package com.oracle.graal.loop;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.NodeClass.NodeClassIterator;
+import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 
 
 public abstract class LoopTransformations {
     private static final int UNROLL_LIMIT = GraalOptions.FullUnrollMaxNodes * 2;
-    private static final SimplifierTool simplifier = new SimplifierTool() {
-        @Override
-        public TargetDescription target() {
-            return null;
-        }
-        @Override
-        public CodeCacheProvider runtime() {
-            return null;
-        }
-        @Override
-        public Assumptions assumptions() {
-            return null;
-        }
-        @Override
-        public void deleteBranch(FixedNode branch) {
-            branch.predecessor().replaceFirstSuccessor(branch, null);
-            GraphUtil.killCFG(branch);
-        }
-        @Override
-        public void addToWorkList(Node node) {
-        }
-    };
 
     private LoopTransformations() {
         // does not need to be instantiated
@@ -88,23 +67,31 @@ public abstract class LoopTransformations {
         }
     }
 
-    public static void unswitch(LoopEx loop, IfNode ifNode) {
-        // duplicate will be true case, original will be false case
-        loop.loopBegin().incUnswitches();
+    public static void unswitch(LoopEx loop, ControlSplitNode controlSplitNode) {
         LoopFragmentWhole originalLoop = loop.whole();
-        LoopFragmentWhole duplicateLoop = originalLoop.duplicate();
-        StructuredGraph graph = (StructuredGraph) ifNode.graph();
-        BeginNode tempBegin = graph.add(new BeginNode());
-        originalLoop.entryPoint().replaceAtPredecessor(tempBegin);
-        double takenProbability = ifNode.probability(ifNode.trueSuccessor());
-        IfNode newIf = graph.add(new IfNode(ifNode.condition(), duplicateLoop.entryPoint(), originalLoop.entryPoint(), takenProbability, ifNode.leafGraphId()));
-        tempBegin.setNext(newIf);
-        ifNode.setCondition(graph.unique(ConstantNode.forBoolean(false, graph)));
-        IfNode duplicateIf = duplicateLoop.getDuplicatedNode(ifNode);
-        duplicateIf.setCondition(graph.unique(ConstantNode.forBoolean(true, graph)));
-        ifNode.simplify(simplifier);
-        duplicateIf.simplify(simplifier);
-        // TODO (gd) probabilities need some amount of fixup.. (probably also in other transforms)
+        //create new control split out of loop
+        ControlSplitNode newControlSplit = (ControlSplitNode) controlSplitNode.copyWithInputs();
+        originalLoop.entryPoint().replaceAtPredecessor(newControlSplit);
+
+        NodeClassIterator successors = controlSplitNode.successors().iterator();
+        assert successors.hasNext();
+        //original loop is used as first successor
+        Position firstPosition = successors.nextPosition();
+        NodeClass controlSplitClass = controlSplitNode.getNodeClass();
+        controlSplitClass.set(newControlSplit, firstPosition, BeginNode.begin(originalLoop.entryPoint()));
+
+        StructuredGraph graph = (StructuredGraph) controlSplitNode.graph();
+        while (successors.hasNext()) {
+            Position position = successors.nextPosition();
+            // create a new loop duplicate, connect it and simplify it
+            LoopFragmentWhole duplicateLoop = originalLoop.duplicate();
+            controlSplitClass.set(newControlSplit, position, BeginNode.begin(duplicateLoop.entryPoint()));
+            ControlSplitNode duplicatedControlSplit = duplicateLoop.getDuplicatedNode(controlSplitNode);
+            graph.removeSplitPropagate(duplicatedControlSplit, (BeginNode) controlSplitClass.get(duplicatedControlSplit, position));
+        }
+        // original loop is simplified last to avoid deleting controlSplitNode too early
+        graph.removeSplitPropagate(controlSplitNode, (BeginNode) controlSplitClass.get(controlSplitNode, firstPosition));
+        //TODO (gd) probabilities need some amount of fixup.. (probably also in other transforms)
     }
 
     public static void unroll(LoopEx loop, int factor) {
@@ -128,10 +115,15 @@ public abstract class LoopTransformations {
         }
     }
 
-    public static IfNode findUnswitchableIf(LoopEx loop) {
+    public static ControlSplitNode findUnswitchable(LoopEx loop) {
         for (IfNode ifNode : loop.whole().nodes().filter(IfNode.class)) {
             if (loop.isOutsideLoop(ifNode.condition())) {
                 return ifNode;
+            }
+        }
+        for (SwitchNode switchNode : loop.whole().nodes().filter(SwitchNode.class)) {
+            if (switchNode.successors().count() > 1 && loop.isOutsideLoop(switchNode.value())) {
+                return switchNode;
             }
         }
         return null;

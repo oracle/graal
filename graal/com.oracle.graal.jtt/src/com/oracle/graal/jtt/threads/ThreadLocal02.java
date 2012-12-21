@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.threads;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class ThreadLocal02 {
+public class ThreadLocal02 extends JTTTest {
 
     public static int test(int i) {
         ThreadLocal<Integer> local = new ThreadLocal<>();
@@ -36,17 +37,17 @@ public class ThreadLocal02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(5, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(6, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(7, test(2));
+        runTest("test", 2);
     }
 
 }

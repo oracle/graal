@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.jdk;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class System_nanoTime02 {
+public class System_nanoTime02 extends JTTTest {
 
     public static boolean test() {
         long minDelta = Long.MAX_VALUE;
@@ -51,7 +52,7 @@ public class System_nanoTime02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

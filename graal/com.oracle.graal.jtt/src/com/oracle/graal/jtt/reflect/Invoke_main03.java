@@ -24,11 +24,12 @@ package com.oracle.graal.jtt.reflect;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Invoke_main03 {
+public class Invoke_main03 extends JTTTest {
 
     static String field;
 
@@ -49,12 +50,12 @@ public class Invoke_main03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("test1", test("test1"));
+        runTest("test", "test1");
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("test2", test("test2"));
+        runTest("test", "test2");
     }
 
 }

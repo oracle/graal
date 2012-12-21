@@ -24,10 +24,10 @@ package com.oracle.graal.jtt.lang;
 
 import java.io.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Class_getModifiers01 {
+public final class Class_getModifiers01 extends JTTTest {
 
     private static class PrivateStatic {}
 
@@ -41,42 +41,42 @@ public final class Class_getModifiers01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(Object.class.getModifiers(), test(Object.class));
-        Assert.assertEquals(Object[].class.getModifiers(), test(Object[].class));
+        runTest("test", Object.class);
+        runTest("test", Object[].class);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(Serializable.class.getModifiers(), test(Serializable.class));
-        Assert.assertEquals(Serializable[].class.getModifiers(), test(Serializable[].class));
+        runTest("test", Serializable.class);
+        runTest("test", Serializable[].class);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(void.class.getModifiers(), test(void.class));
+        runTest("test", void.class);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(int.class.getModifiers(), test(int.class));
-        Assert.assertEquals(int[].class.getModifiers(), test(int[].class));
+        runTest("test", int.class);
+        runTest("test", int[].class);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(Private.class.getModifiers(), test(Private.class));
-        Assert.assertEquals(Private[].class.getModifiers(), test(Private[].class));
+        runTest("test", Private.class);
+        runTest("test", Private[].class);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(PrivateStatic.class.getModifiers(), test(PrivateStatic.class));
-        Assert.assertEquals(PrivateStatic[].class.getModifiers(), test(PrivateStatic[].class));
+        runTest("test", PrivateStatic.class);
+        runTest("test", PrivateStatic[].class);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(PrivateStaticFinal.class.getModifiers(), test(PrivateStaticFinal.class));
-        Assert.assertEquals(PrivateStaticFinal[].class.getModifiers(), test(PrivateStaticFinal[].class));
+        runTest("test", PrivateStaticFinal.class);
+        runTest("test", PrivateStaticFinal[].class);
     }
 }

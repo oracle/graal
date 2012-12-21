@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class BC_fastore {
+public class BC_fastore extends JTTTest {
 
     static float[] arr = {0, 0, 0, 0};
 
@@ -36,24 +37,24 @@ public class BC_fastore {
         return array[arg];
     }
 
-    @Test(expected = java.lang.NullPointerException.class)
+    @Test
     public void run0() throws Throwable {
-        test(-2, 0.01f);
+        runTest("test", -2, 0.01f);
     }
 
-    @Test(expected = java.lang.ArrayIndexOutOfBoundsException.class)
+    @Test
     public void run1() throws Throwable {
-        test(-1, -1.4f);
+        runTest("test", -1, -1.4f);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(0.01f, test(0, 0.01f), 0);
+        runTest("test", 0, 0.01f);
     }
 
-    @Test(expected = java.lang.ArrayIndexOutOfBoundsException.class)
+    @Test
     public void run3() throws Throwable {
-        test(4, 0.01f);
+        runTest("test", 4, 0.01f);
     }
 
 }

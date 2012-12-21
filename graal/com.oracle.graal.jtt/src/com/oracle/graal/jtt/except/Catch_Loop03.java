@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Catch_Loop03 {
+public class Catch_Loop03 extends JTTTest {
 
     public static int test(int arg) {
         int accum = 0;
@@ -49,27 +50,27 @@ public class Catch_Loop03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(-170, test(4));
+        runTest("test", 4);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-150, test(5));
+        runTest("test", 5);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(-140, test(6));
+        runTest("test", 6);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(-240, test(7));
+        runTest("test", 7);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(-700, test(30));
+        runTest("test", 30);
     }
 
 }

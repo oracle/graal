@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.threads;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Monitor_contended01 implements Runnable {
+public final class Monitor_contended01 extends JTTTest implements Runnable {
 
     static final Object cond = new Object();
     static final Object obj = new Object();
@@ -73,7 +73,7 @@ public final class Monitor_contended01 implements Runnable {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }
