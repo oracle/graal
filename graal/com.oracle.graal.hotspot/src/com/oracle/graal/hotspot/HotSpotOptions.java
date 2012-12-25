@@ -46,6 +46,11 @@ public class HotSpotOptions {
         String fieldName = null;
         String valueString = null;
 
+        if (option.equals("+PrintFlags")) {
+            printFlags();
+            return true;
+        }
+
         char first = option.charAt(0);
         if (first == '+' || first == '-') {
             fieldName = option.substring(1);
@@ -113,10 +118,6 @@ public class HotSpotOptions {
         } catch (IllegalAccessException e) {
             Logger.info("Illegal access exception when setting option " + option);
             return false;
-        }
-
-        if (option.equals("+PrintFlags")) {
-            printFlags();
         }
 
         return true;
