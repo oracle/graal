@@ -122,13 +122,13 @@ public class SnippetInstaller {
                 }
                 Method originalMethod = originalClazz.getDeclaredMethod(originalName, originalParameters);
                 if (!originalMethod.getReturnType().isAssignableFrom(method.getReturnType())) {
-                    throw new RuntimeException("Snippet has incompatible return type");
+                    throw new RuntimeException("Snippet has incompatible return type: " + method);
                 }
                 int modifiers = method.getModifiers();
                 if (!Modifier.isStatic(modifiers)) {
-                    throw new RuntimeException("Snippets must be static methods");
+                    throw new RuntimeException("Snippets must be static methods: " + method);
                 } else if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-                    throw new RuntimeException("Snippet must not be abstract or native");
+                    throw new RuntimeException("Snippet must not be abstract or native: " + method);
                 }
                 ResolvedJavaMethod snippet = runtime.lookupJavaMethod(method);
                 StructuredGraph graph = makeGraph(snippet, inliningPolicy(snippet), true);
