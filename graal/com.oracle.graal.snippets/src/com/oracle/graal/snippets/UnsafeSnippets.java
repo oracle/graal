@@ -20,15 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.snippets;
+package com.oracle.graal.snippets;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.ClassSubstitution.*;
+import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
+import com.oracle.graal.snippets.nodes.*;
 
 /**
  * Snippets for {@link sun.misc.Unsafe} methods.
