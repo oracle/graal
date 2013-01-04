@@ -283,7 +283,13 @@ public class WordTypeRewriterPhase extends Phase {
             return true;
         }
         if (node instanceof LoadIndexedNode) {
-            return isWord(((LoadIndexedNode) node).array().objectStamp().type().getComponentType());
+            ValueNode array = ((LoadIndexedNode) node).array();
+            if (array.objectStamp().type() == null) {
+                // There are cases where the array does not have a known type yet. Assume it is not a word type.
+                // TODO disallow LoadIndexedNode for word arrays?
+                return false;
+            }
+            return isWord(array.objectStamp().type().getComponentType());
         }
         if (node.kind() == Kind.Object) {
             return isWord(node.objectStamp().type());

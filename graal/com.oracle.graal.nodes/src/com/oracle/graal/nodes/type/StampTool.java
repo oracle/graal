@@ -135,17 +135,19 @@ public class StampTool {
         if (shift.lowerBound() == shift.upperBound()) {
             long shiftMask = kind == Kind.Int ? 0x1FL : 0x3FL;
             long shiftCount = shift.lowerBound() & shiftMask;
-            long lowerBound;
-            long upperBound;
-            if (value.lowerBound() < 0) {
-                lowerBound = 0;
-                upperBound = IntegerStamp.defaultMask(kind) >>> shiftCount;
-            } else {
-                lowerBound = value.lowerBound() >>> shiftCount;
-                upperBound = value.upperBound() >>> shiftCount;
+            if (shiftCount != 0) {
+                long lowerBound;
+                long upperBound;
+                if (value.lowerBound() < 0) {
+                    lowerBound = 0;
+                    upperBound = IntegerStamp.defaultMask(kind) >>> shiftCount;
+                } else {
+                    lowerBound = value.lowerBound() >>> shiftCount;
+                    upperBound = value.upperBound() >>> shiftCount;
+                }
+                long mask = value.mask() >>> shiftCount;
+                return StampFactory.forInteger(kind, lowerBound, upperBound, mask);
             }
-            long mask = value.mask() >>> shiftCount;
-            return StampFactory.forInteger(kind, lowerBound, upperBound, mask);
         }
         long mask = IntegerStamp.maskFor(kind, value.lowerBound(), value.upperBound());
         return stampForMask(kind, mask);
