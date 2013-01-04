@@ -46,6 +46,17 @@ public class MetaUtil {
     }
 
     /**
+     * Calls {@link MetaAccessProvider#lookupJavaType(Class)} on an array of classes.
+     */
+    public static ResolvedJavaType[] lookupJavaTypes(MetaAccessProvider metaAccess, Class[] classes) {
+        ResolvedJavaType[] result = new ResolvedJavaType[classes.length];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = metaAccess.lookupJavaType(classes[i]);
+        }
+        return result;
+    }
+
+    /**
      * Gets the {@link Class} mirror for a given resolved type.
      *
      * @param type the type for which the Java mirror is requested
@@ -460,26 +471,43 @@ public class MetaUtil {
         return sb.append(" [bci: ").append(bci).append(']');
     }
 
-    public static Kind[] signatureToKinds(ResolvedJavaMethod method) {
-        Kind receiver = isStatic(method.getModifiers()) ? null : method.getDeclaringClass().getKind();
-        return signatureToKinds(method.getSignature(), receiver);
+    public static JavaType[] signatureToTypes(ResolvedJavaMethod method) {
+        JavaType receiver = isStatic(method.getModifiers()) ? null : method.getDeclaringClass();
+        return signatureToTypes(method.getSignature(), receiver);
     }
 
-    public static Kind[] signatureToKinds(Signature signature, Kind receiverKind) {
+    public static JavaType[] signatureToTypes(Signature signature, JavaType receiverType) {
         int args = signature.getParameterCount(false);
-        Kind[] result;
+        JavaType[] result;
         int i = 0;
-        if (receiverKind != null) {
-            result = new Kind[args + 1];
-            result[0] = receiverKind;
+        if (receiverType != null) {
+            result = new JavaType[args + 1];
+            result[0] = receiverType;
             i = 1;
         } else {
-            result = new Kind[args];
+            result = new JavaType[args];
         }
         for (int j = 0; j < args; j++) {
-            result[i + j] = signature.getParameterKind(j);
+            result[i + j] = signature.getParameterType(j, null);
         }
         return result;
+    }
+
+    /**
+     * Converts a {@link Signature} to internal representation, i.e., the signature
+     * <pre>(int, String, double)void</pre> is converted to <pre>(ILjava/lang/String;D)V</pre>.
+     *
+     * @param sig the {@link Signature} to be converted.
+     *
+     * @return the signature's internal representation as a string.
+     */
+    public static String signatureToInternal(Signature sig) {
+        StringBuilder sb = new StringBuilder("(");
+        for (int i = 0; i < sig.getParameterCount(false); ++i) {
+            sb.append(sig.getParameterType(i, null).getName());
+        }
+        sb.append(')').append(sig.getReturnType(null).getName());
+        return sb.toString();
     }
 
     /**

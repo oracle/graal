@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public class IdentityHashCodeStubCall extends FixedWithNextNode implements LIRGenLowerable {
     @Input private final ValueNode object;
-    public static final Descriptor IDENTITY_HASHCODE = new Descriptor("identity_hashcode", false, Kind.Int, Kind.Object);
+    public static final Descriptor IDENTITY_HASHCODE = new Descriptor("identity_hashcode", false, int.class, Object.class);
 
     public IdentityHashCodeStubCall(ValueNode object) {
         super(StampFactory.forKind(Kind.Int));

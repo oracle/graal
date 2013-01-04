@@ -22,16 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.word.*;
 
 /**
  * Node implementing a call to HotSpot's {@code graal_monitorenter} stub.
@@ -40,7 +37,7 @@ public class MonitorEnterStubCall extends FixedWithNextNode implements LIRGenLow
 
     @Input private final ValueNode object;
     @Input private final ValueNode lock;
-    public static final Descriptor MONITORENTER = new Descriptor("monitorenter", true, Kind.Void, Kind.Object, wordKind());
+    public static final Descriptor MONITORENTER = new Descriptor("monitorenter", true, void.class, Object.class, Word.class);
 
     public MonitorEnterStubCall(ValueNode object, ValueNode lock) {
         super(StampFactory.forVoid());

@@ -431,4 +431,32 @@ public final class Constant extends Value {
                 throw new RuntimeException("cannot create Constant for boxed " + kind + " value");
         }
     }
+
+    /**
+     * Returns a constant with the default value for the given kind.
+     */
+    public static Constant defaultForKind(Kind kind) {
+        switch(kind) {
+            case Boolean:
+                return FALSE;
+            case Byte:
+                return forByte((byte) 0);
+            case Char:
+                return forChar((char) 0);
+            case Short:
+                return forShort((short) 0);
+            case Int:
+                return INT_0;
+            case Double:
+                return DOUBLE_0;
+            case Float:
+                return FLOAT_0;
+            case Long:
+                return LONG_0;
+            case Object:
+                return NULL_OBJECT;
+            default:
+                throw new IllegalArgumentException(kind.toString());
+        }
+    }
 }

@@ -31,7 +31,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.Snippet.Fold;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.word.*;
 
 //JaCoCo Exclude
 

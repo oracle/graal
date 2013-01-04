@@ -50,6 +50,7 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
         L2D(Long, Double),
         F2L(Float, Long),
         D2L(Double, Long),
+        UNSIGNED_I2L(Int, Long),
         MOV_I2F(Int, Float),
         MOV_L2D(Long, Double),
         MOV_F2I(Float, Int),
@@ -104,6 +105,7 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
                 case L2D: return ConstantNode.forDouble(c.asLong(), graph());
                 case F2L: return ConstantNode.forLong((long) c.asFloat(), graph());
                 case D2L: return ConstantNode.forLong((long) c.asDouble(), graph());
+                case UNSIGNED_I2L: return ConstantNode.forLong(c.asInt() & 0xffffffffL, graph());
                 case MOV_I2F: return ConstantNode.forFloat(java.lang.Float.intBitsToFloat(c.asInt()), graph());
                 case MOV_L2D: return ConstantNode.forDouble(java.lang.Double.longBitsToDouble(c.asLong()), graph());
                 case MOV_F2I: return ConstantNode.forInt(java.lang.Float.floatToRawIntBits(c.asFloat()), graph());

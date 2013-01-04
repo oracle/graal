@@ -44,6 +44,8 @@ import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.Snippet.Varargs;
 import com.oracle.graal.snippets.Snippet.VarargsParameter;
 import com.oracle.graal.snippets.nodes.*;
+import com.oracle.graal.word.*;
+import com.oracle.graal.word.phases.*;
 
 /**
  * A snippet template is a graph created by parsing a snippet method and then
@@ -239,7 +241,7 @@ public class SnippetTemplate {
         replacements.put(snippetGraph.start(), snippetCopy.start());
 
         int parameterCount = signature.getParameterCount(false);
-        assert checkTemplate(key, parameterCount, method, signature);
+        assert checkTemplate(runtime, key, parameterCount, method, signature);
 
         Parameter[] parameterAnnotations = new Parameter[parameterCount];
         VarargsParameter[] varargsParameterAnnotations = new VarargsParameter[parameterCount];
@@ -278,7 +280,7 @@ public class SnippetTemplate {
         if (!replacements.isEmpty()) {
             // Do deferred intrinsification of node intrinsics
             new SnippetIntrinsificationPhase(runtime, new BoxingMethodPool(runtime), false).apply(snippetCopy);
-            new WordTypeRewriterPhase(target.wordKind).apply(snippetCopy);
+            new WordTypeRewriterPhase(runtime, target.wordKind).apply(snippetCopy);
 
             new CanonicalizerPhase(null, runtime, assumptions, 0).apply(snippetCopy);
         }
@@ -406,9 +408,9 @@ public class SnippetTemplate {
         return true;
     }
 
-    private static boolean checkConstantArgument(final ResolvedJavaMethod method, Signature signature, int i, String name, Object arg, Kind kind) {
+    private static boolean checkConstantArgument(MetaAccessProvider runtime, final ResolvedJavaMethod method, Signature signature, int i, String name, Object arg, Kind kind) {
         ResolvedJavaType type = signature.getParameterType(i, method.getDeclaringClass()).resolve(method.getDeclaringClass());
-        if (WordTypeRewriterPhase.isWord(type)) {
+        if (runtime.lookupJavaType(WordBase.class).isAssignableFrom(type)) {
             assert arg instanceof Constant : method + ": word constant parameters must be passed boxed in a Constant value: " + arg;
             return true;
         }
@@ -487,14 +489,22 @@ public class SnippetTemplate {
                 }
             } else if (parameter instanceof LocalNode[]) {
                 LocalNode[] locals = (LocalNode[]) parameter;
-                Object array = argument;
-                assert array != null && array.getClass().isArray();
                 int length = locals.length;
-                assert Array.getLength(array) == length : length + " != " + Array.getLength(array);
+                List list = null;
+                Object array = null;
+                if (argument instanceof List) {
+                    list = (List) argument;
+                    assert list.size() == length : length + " != " + list.size();
+                } else {
+                    array = argument;
+                    assert array != null && array.getClass().isArray();
+                    assert Array.getLength(array) == length : length + " != " + Array.getLength(array);
+                }
+
                 for (int j = 0; j < length; j++) {
                     LocalNode local = locals[j];
                     assert local != null;
-                    Object value = Array.get(array, j);
+                    Object value = list != null ? list.get(j) : Array.get(array, j);
                     if (value instanceof ValueNode) {
                         replacements.put(local, (ValueNode) value);
                     } else {
@@ -696,7 +706,7 @@ public class SnippetTemplate {
         return buf.append(')').toString();
     }
 
-    private static boolean checkTemplate(SnippetTemplate.Key key, int parameterCount, ResolvedJavaMethod method, Signature signature) {
+    private static boolean checkTemplate(MetaAccessProvider runtime, SnippetTemplate.Key key, int parameterCount, ResolvedJavaMethod method, Signature signature) {
         Set<String> expected = new HashSet<>();
         for (int i = 0; i < parameterCount; i++) {
             ConstantParameter c = MetaUtil.getParameterAnnotation(ConstantParameter.class, i, method);
@@ -708,7 +718,7 @@ public class SnippetTemplate {
                 expected.add(name);
                 Kind kind = signature.getParameterKind(i);
                 assert key.names().contains(name) : "key for " + method + " is missing \"" + name + "\": " + key;
-                assert checkConstantArgument(method, signature, i, c.value(), key.get(name), kind);
+                assert checkConstantArgument(runtime, method, signature, i, c.value(), key.get(name), kind);
             } else if (vp != null) {
                 assert p == null;
                 String name = vp.value();

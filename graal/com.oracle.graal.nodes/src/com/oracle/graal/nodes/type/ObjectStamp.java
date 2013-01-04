@@ -43,6 +43,14 @@ public class ObjectStamp extends Stamp {
     }
 
     @Override
+    public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
+        if (type != null) {
+            return type;
+        }
+        return metaAccess.lookupJavaType(Object.class);
+    }
+
+    @Override
     public boolean nonNull() {
         return nonNull;
     }

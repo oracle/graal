@@ -66,6 +66,7 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.snippets.*;
+import com.oracle.graal.word.*;
 
 /**
  * HotSpot implementation of {@link GraalCodeCacheProvider}.
@@ -264,18 +265,25 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         for (int i = 0; i < temps.length; i++) {
             temps[i] = tempRegs[i].asValue();
         }
-        Kind retKind = ret.getKind();
-        if (retKind == Kind.Illegal) {
-            retKind = Kind.Void;
-        }
-        assert retKind.equals(descriptor.getResultKind()) : descriptor + " incompatible with result location " + ret;
-        Kind[] argKinds = descriptor.getArgumentKinds();
-        assert argKinds.length == args.length : descriptor + " incompatible with number of argument locations: " + args.length;
-        for (int i = 0; i < argKinds.length; i++) {
-            assert argKinds[i].equals(args[i].getKind()) : descriptor + " incompatible with argument location " + i + ": " + args[i];
+        assert checkAssignable(descriptor.getResultType(), ret) : descriptor + " incompatible with result location " + ret;
+        Class[] argTypes = descriptor.getArgumentTypes();
+        assert argTypes.length == args.length : descriptor + " incompatible with number of argument locations: " + args.length;
+        for (int i = 0; i < argTypes.length; i++) {
+            assert checkAssignable(argTypes[i], args[i]) : descriptor + " incompatible with argument location " + i + ": " + args[i];
         }
         HotSpotRuntimeCallTarget runtimeCall = new HotSpotRuntimeCallTarget(descriptor, address, new CallingConvention(temps, 0, ret, args), graalRuntime.getCompilerToVM());
         runtimeCalls.put(descriptor, runtimeCall);
+    }
+
+    private boolean checkAssignable(Class spec, Value value) {
+        Kind kind = value.getKind();
+        if (kind == Kind.Illegal) {
+            kind = Kind.Void;
+        }
+        if (WordBase.class.isAssignableFrom(spec)) {
+            return kind == graalRuntime.getTarget().wordKind;
+        }
+        return kind == Kind.fromJavaClass(spec);
     }
 
     /**
@@ -502,7 +510,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                 if (!callTarget.isStatic() && receiver.kind() == Kind.Object && !receiver.objectStamp().nonNull()) {
                     invoke.node().dependencies().add(tool.createNullCheckGuard(receiver, invoke.leafGraphId()));
                 }
-                Kind[] signature = MetaUtil.signatureToKinds(callTarget.targetMethod().getSignature(), callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass().getKind());
+                JavaType[] signature = MetaUtil.signatureToTypes(callTarget.targetMethod().getSignature(), callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
 
                 AbstractCallTargetNode loweredCallTarget = null;
                 if (callTarget.invokeKind() == InvokeKind.Virtual &&

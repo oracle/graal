@@ -20,9 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.snippets;
-
-import static com.oracle.graal.snippets.WordTypeRewriterPhase.*;
+package com.oracle.graal.word.phases;
 
 import java.lang.reflect.*;
 
@@ -34,24 +32,23 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.snippets.Word.*;
+import com.oracle.graal.word.*;
+import com.oracle.graal.word.Word.Operation;
 
 /**
  * Verifies invariants that must hold for snippet code above and beyond normal
  * bytecode verification.
  */
-public class SnippetVerificationPhase extends Phase {
+public class WordTypeVerificationPhase extends Phase {
 
-    private final MetaAccessProvider metaAccess;
+    private final WordTypeRewriterPhase wordAccess;
 
-    public SnippetVerificationPhase(MetaAccessProvider metaAccess) {
-        this.metaAccess = metaAccess;
+    public WordTypeVerificationPhase(MetaAccessProvider metaAccess, Kind wordKind) {
+        this.wordAccess = new WordTypeRewriterPhase(metaAccess, wordKind);
     }
 
     @Override
     protected void run(StructuredGraph graph) {
-        ResolvedJavaType wordType = metaAccess.lookupJavaType(Word.class);
-
         for (ValueNode node : graph.getNodes().filter(ValueNode.class)) {
             for (Node usage : node.usages()) {
                 if (usage instanceof AccessMonitorNode) {
@@ -81,8 +78,10 @@ public class SnippetVerificationPhase extends Phase {
                         if (!isStatic) {
                             ValueNode receiver = arguments.get(argc);
                             if (receiver == node && isWord(node)) {
-                                Operation operation = method.getAnnotation(Word.Operation.class);
-                                verify(operation != null, node, invoke.node(), "cannot dispatch on word value to non @Operation annotated method " + method);
+                                ResolvedJavaMethod resolvedMethod = wordAccess.getWordImplType().resolveMethod(method);
+                                verify(resolvedMethod != null, node, invoke.node(), "cannot resolve method on Word class: " + MetaUtil.format("%H.%n(%P) %r", method));
+                                Operation operation = resolvedMethod.getAnnotation(Word.Operation.class);
+                                verify(operation != null, node, invoke.node(), "cannot dispatch on word value to non @Operation annotated method " + resolvedMethod);
                             }
                             argc++;
                         }
@@ -91,7 +90,7 @@ public class SnippetVerificationPhase extends Phase {
                             ValueNode argument = arguments.get(argc);
                             if (argument == node) {
                                 ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
-                                verify(type.equals(wordType) == isWord(argument), node, invoke.node(), "cannot pass word value to non-word parameter " + i + " or vice-versa");
+                                verify(isWord(type) == isWord(argument), node, invoke.node(), "cannot pass word value to non-word parameter " + i + " or vice-versa");
                             }
                             argc++;
                         }
@@ -113,6 +112,14 @@ public class SnippetVerificationPhase extends Phase {
                 }
             }
         }
+    }
+
+    private boolean isWord(ValueNode node) {
+        return wordAccess.isWord(node);
+    }
+
+    private boolean isWord(ResolvedJavaType type) {
+        return wordAccess.isWord(type);
     }
 
     private static void verify(boolean condition, Node node, Node usage, String message) {

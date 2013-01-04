@@ -70,14 +70,14 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     }
 
     private boolean checkArgs(Object... args) {
-        Kind[] sig = MetaUtil.signatureToKinds(method);
+        JavaType[] sig = MetaUtil.signatureToTypes(method);
         assert args.length == sig.length : MetaUtil.format("%H.%n(%p): expected ", method) + sig.length + " args, got " + args.length;
         for (int i = 0; i < sig.length; i++) {
             Object arg = args[i];
             if (arg == null) {
-                assert sig[i] == Kind.Object : MetaUtil.format("%H.%n(%p): expected arg ", method) + i + " to be Object, not " + sig[i];
-            } else if (sig[i] != Kind.Object) {
-                assert sig[i].toBoxedJavaClass() == arg.getClass() : MetaUtil.format("%H.%n(%p): expected arg ", method) + i + " to be " + sig[i] + ", not " + arg.getClass();
+                assert sig[i].getKind() == Kind.Object : MetaUtil.format("%H.%n(%p): expected arg ", method) + i + " to be Object, not " + sig[i];
+            } else if (sig[i].getKind() != Kind.Object) {
+                assert sig[i].getKind().toBoxedJavaClass() == arg.getClass() : MetaUtil.format("%H.%n(%p): expected arg ", method) + i + " to be " + sig[i] + ", not " + arg.getClass();
             }
         }
         return true;

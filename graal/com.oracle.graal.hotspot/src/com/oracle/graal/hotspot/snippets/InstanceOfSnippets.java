@@ -43,6 +43,7 @@ import com.oracle.graal.snippets.Snippet.VarargsParameter;
 import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 import com.oracle.graal.snippets.nodes.*;
+import com.oracle.graal.word.*;
 
 /**
  * Snippets used for implementing the type test of an instanceof instruction.
@@ -150,7 +151,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
         int length = secondarySupers.readInt(metaspaceArrayLengthOffset());
         for (int i = 0; i < length; i++) {
             if (t == loadWordElement(secondarySupers, i)) {
-                DirectObjectStoreNode.storeObject(s, secondarySuperCacheOffset(), 0, t);
+                s.writeWord(secondarySuperCacheOffset(), t);
                 secondariesHit.inc();
                 return true;
             }

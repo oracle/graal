@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.type.*;
 public class ThreadIsInterruptedStubCall extends FixedWithNextNode implements LIRGenLowerable {
     @Input private final ValueNode thread;
     @Input private final ValueNode clearIsInterrupted;
-    public static final Descriptor THREAD_IS_INTERRUPTED = new Descriptor("thread_is_interrupted", false, Kind.Int, Kind.Object, Kind.Boolean);
+    public static final Descriptor THREAD_IS_INTERRUPTED = new Descriptor("thread_is_interrupted", false, int.class, Object.class, boolean.class);
 
     public ThreadIsInterruptedStubCall(ValueNode thread, ValueNode clearIsInterrupted) {
         super(StampFactory.forInteger(Kind.Int, 0, 1));

@@ -36,8 +36,8 @@ import com.oracle.graal.phases.*;
 
 public class AMD64DeoptimizationStub extends AMD64Code {
 
-    public static final Descriptor DEOPTIMIZE = new Descriptor("deoptimize", true, Kind.Void);
-    public static final Descriptor SET_DEOPT_INFO = new Descriptor("setDeoptInfo", true, Kind.Void, Kind.Object);
+    public static final Descriptor DEOPTIMIZE = new Descriptor("deoptimize", true, void.class);
+    public static final Descriptor SET_DEOPT_INFO = new Descriptor("setDeoptInfo", true, void.class, Object.class);
 
     public final Label label = new Label();
     public final LIRFrameState info;

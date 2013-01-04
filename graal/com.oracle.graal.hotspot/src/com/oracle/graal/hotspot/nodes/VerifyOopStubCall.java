@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
@@ -36,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
     @Input private final ValueNode object;
-    public static final Descriptor VERIFY_OOP = new Descriptor("verify_oop", false, Kind.Void, Kind.Object);
+    public static final Descriptor VERIFY_OOP = new Descriptor("verify_oop", false, void.class, Object.class);
 
     public VerifyOopStubCall(ValueNode object) {
         super(StampFactory.objectNonNull());

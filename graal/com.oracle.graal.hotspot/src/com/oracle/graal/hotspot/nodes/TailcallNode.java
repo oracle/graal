@@ -60,8 +60,8 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
         ResolvedJavaMethod method = frameState.method();
         boolean isStatic = Modifier.isStatic(method.getModifiers());
 
-        Kind[] signature = MetaUtil.signatureToKinds(method.getSignature(), isStatic ? null : method.getDeclaringClass().getKind());
-        CallingConvention cc = gen.frameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, Kind.Void, signature, gen.target(), false);
+        JavaType[] signature = MetaUtil.signatureToTypes(method.getSignature(), isStatic ? null : method.getDeclaringClass());
+        CallingConvention cc = gen.frameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, signature, gen.target(), false);
         gen.frameMap().callsMethod(cc); // TODO (aw): I think this is unnecessary for a tail call.
         List<ValueNode> parameters = new ArrayList<>();
         for (int i = 0, slot = 0; i < cc.getArgumentCount(); i++, slot += FrameStateBuilder.stackSlots(frameState.localAt(slot).kind())) {

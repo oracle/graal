@@ -105,11 +105,11 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
     }
 
     @Override
-    public CallingConvention getCallingConvention(Type type, Kind returnKind, Kind[] parameters, TargetDescription target, boolean stackOnly) {
+    public CallingConvention getCallingConvention(Type type, JavaType returnType, JavaType[] parameterTypes, TargetDescription target, boolean stackOnly) {
         if (type == Type.NativeCall) {
             throw new UnsupportedOperationException();
         }
-        return callingConvention(returnKind, parameters, type, target, stackOnly);
+        return callingConvention(returnType, parameterTypes, type, target, stackOnly);
     }
 
     public Register[] getCallingConventionRegisters(Type type, RegisterFlag flag) {
@@ -119,15 +119,15 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         return generalParameterRegisters;
     }
 
-    private CallingConvention callingConvention(Kind returnKind, Kind[] kinds, Type type, TargetDescription target, boolean stackOnly) {
-        Value[] locations = new Value[kinds.length];
+    private CallingConvention callingConvention(JavaType returnType, JavaType[] parameterTypes, Type type, TargetDescription target, boolean stackOnly) {
+        Value[] locations = new Value[parameterTypes.length];
 
         int currentGeneral = 0;
         int currentXMM = 0;
         int currentStackOffset = 0;
 
-        for (int i = 0; i < kinds.length; i++) {
-            final Kind kind = kinds[i];
+        for (int i = 0; i < parameterTypes.length; i++) {
+            final Kind kind = parameterTypes[i].getKind();
 
             switch (kind) {
                 case Byte:
@@ -159,6 +159,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
             }
         }
 
+        Kind returnKind = returnType == null ? Kind.Void : returnType.getKind();
         Value returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(returnKind);
         return new CallingConvention(currentStackOffset, returnLocation, locations);
     }

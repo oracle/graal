@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.code;
 
+import java.math.*;
+
 //JaCoCo Exclude
 
 /**
@@ -86,6 +88,38 @@ public class UnsignedMath {
      */
     public static boolean belowOrEqual(long a, long b) {
         return (a <= b) ^ ((a < 0) != (b < 0));
+    }
+
+    /**
+     * Unsigned division for two numbers.
+     */
+    public static int divide(int a, int b) {
+        return (int) ((a & MASK) / (b & MASK));
+    }
+
+    /**
+     * Unsigned remainder for two numbers.
+     */
+    public static int remainder(int a, int b) {
+        return (int) ((a & MASK) % (b & MASK));
+    }
+
+    /**
+     * Unsigned division for two numbers.
+     */
+    public static long divide(long a, long b) {
+        return bi(a).divide(bi(b)).longValue();
+    }
+
+    /**
+     * Unsigned remainder for two numbers.
+     */
+    public static long remainder(long a, long b) {
+        return bi(a).remainder(bi(b)).longValue();
+    }
+
+    private static BigInteger bi(long unsigned) {
+        return unsigned >= 0 ? BigInteger.valueOf(unsigned) : BigInteger.valueOf(unsigned & 0x7fffffffffffffffL).setBit(63);
     }
 }
 

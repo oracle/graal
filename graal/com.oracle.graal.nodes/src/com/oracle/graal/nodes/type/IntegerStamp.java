@@ -52,6 +52,11 @@ public class IntegerStamp extends Stamp {
         this.mask = mask;
     }
 
+    @Override
+    public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
+        return metaAccess.lookupJavaType(kind().toJavaClass());
+    }
+
     /**
      * The (inclusive) lower bound on the value described by this stamp.
      */

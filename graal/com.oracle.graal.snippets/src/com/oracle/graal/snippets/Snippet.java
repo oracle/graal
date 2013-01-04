@@ -29,8 +29,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.Word.Operation;
 import com.oracle.graal.snippets.nodes.*;
+import com.oracle.graal.word.*;
 
 /**
  * A snippet is a Graal graph expressed as a Java source method. Graal snippets can be used for:
@@ -95,7 +95,7 @@ public @interface Snippet {
                     return false;
                 }
             }
-            if (method.getAnnotation(Operation.class) != null) {
+            if (method.getAnnotation(Word.Operation.class) != null) {
                 return false;
             }
             if (pool.isSpecialMethod(method)) {

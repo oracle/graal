@@ -40,6 +40,12 @@ public abstract class Stamp {
         return kind;
     }
 
+    /**
+     * Returns the type of the stamp, guaranteed to be non-null. In some cases, this requires the lookup of class meta
+     * data, therefore the {@link MetaAccessProvider} is mandatory.
+     */
+    public abstract ResolvedJavaType javaType(MetaAccessProvider metaAccess);
+
     public boolean nonNull() {
         return false;
     }
