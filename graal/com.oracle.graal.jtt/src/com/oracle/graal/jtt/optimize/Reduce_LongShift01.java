@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests optimization of integer operations.
  */
-public class Reduce_LongShift01 {
+public class Reduce_LongShift01 extends JTTTest {
 
     public static long test(long arg) {
         if (arg == 0) {
@@ -77,32 +78,32 @@ public class Reduce_LongShift01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(10L, test(0));
+        runTest("test", 0L);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(11L, test(1));
+        runTest("test", 1L);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(12L, test(2));
+        runTest("test", 2L);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(13L, test(3));
+        runTest("test", 3L);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(14L, test(4));
+        runTest("test", 4L);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(15L, test(5));
+        runTest("test", 5L);
     }
 
 }

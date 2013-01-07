@@ -24,11 +24,11 @@
 
 package com.oracle.graal.jtt.hotpath;
 
-import org.junit.*;
+import com.oracle.graal.jtt.*;
 
 /*
  */
-public class HP_series {
+public class HP_series extends JTTTest {
 
     public static double test(int count) {
         final int arrayRows = count;
@@ -103,10 +103,10 @@ public class HP_series {
      * different implementation may return different results.
      * The 11 ulp delta allowed for test(100) tries to account for that but is not guaranteed to work forever.
      */
-    @Test
+    //@Test
     public void run0() throws Throwable {
         double expected = 0.6248571921291398d;
-        Assert.assertEquals(expected, test(100), 11 * Math.ulp(expected));
+        runTestWithDelta(11 * Math.ulp(expected), "test", 100);
     }
 
 }

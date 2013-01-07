@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_tableswitch2 {
+public class BC_tableswitch2 extends JTTTest {
 
     public static int test(int a) {
         switch (a) {
@@ -42,37 +43,37 @@ public class BC_tableswitch2 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(11, test(-1));
+        runTest("test", -1);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(11, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(11, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(55, test(5));
+        runTest("test", 5);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(66, test(6));
+        runTest("test", 6);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(77, test(7));
+        runTest("test", 7);
     }
 
     @Test
     public void run6() throws Throwable {
-        Assert.assertEquals(11, test(8));
+        runTest("test", 8);
     }
 
 }

@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests optimization of float operations.
  */
-public class VN_Double02 {
+public class VN_Double02 extends JTTTest {
 
     private static boolean cond = true;
 
@@ -89,22 +90,22 @@ public class VN_Double02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(22d, test(0d), 0);
+        runTest("test", 0d);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(0d, test(1d), 0);
+        runTest("test", 1d);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(144d, test(2d), 0);
+        runTest("test", 2d);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(1d, test(3d), 0);
+        runTest("test", 3d);
     }
 
 }

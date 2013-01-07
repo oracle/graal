@@ -68,7 +68,7 @@ public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIR
             if (my.nonNull() && !other.nonNull()) {
                 return this;
             }
-            if (my.type() != other.type() && other.type().isAssignableFrom(my.type())) {
+            if (!my.type().isAssignableFrom(other.type())) {
                 return this;
             }
         }

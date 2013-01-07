@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,7 +35,7 @@ public final class RuntimeCallNode extends AbstractCallNode implements LIRLowera
     private final Descriptor descriptor;
 
     public RuntimeCallNode(Descriptor descriptor, ValueNode... arguments) {
-        super(StampFactory.forKind(descriptor.getResultKind()), arguments);
+        super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())), arguments);
         this.descriptor = descriptor;
     }
 

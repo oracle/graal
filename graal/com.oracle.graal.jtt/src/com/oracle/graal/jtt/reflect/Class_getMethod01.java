@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.reflect;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Class_getMethod01 {
+public class Class_getMethod01 extends JTTTest {
 
     static String field;
 
@@ -38,19 +39,19 @@ public class Class_getMethod01 {
         field = args[0];
     }
 
-    @Test(expected = java.lang.NoSuchMethodException.class)
+    @Test
     public void run0() throws Throwable {
-        test("test");
+        runTest("test", "test");
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("main", test("main"));
+        runTest("test", "main");
     }
 
-    @Test(expected = java.lang.NoSuchMethodException.class)
+    @Test
     public void run2() throws Throwable {
-        test("xx");
+        runTest("test", "xx");
     }
 
 }

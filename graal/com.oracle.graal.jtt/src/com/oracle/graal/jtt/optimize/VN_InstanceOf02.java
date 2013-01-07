@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests value numbering of instanceof operations.
  */
-public class VN_InstanceOf02 {
+public class VN_InstanceOf02 extends JTTTest {
 
     private static boolean cond = true;
 
@@ -77,17 +78,17 @@ public class VN_InstanceOf02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(false, test(2));
+        runTest("test", 2);
     }
 
 }

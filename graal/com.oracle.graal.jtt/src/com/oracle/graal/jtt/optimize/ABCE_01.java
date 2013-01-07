@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class ABCE_01 {
+public class ABCE_01 extends JTTTest {
 
     public static int[] array = new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
@@ -40,12 +41,12 @@ public class ABCE_01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(55, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(65, test(10));
+        runTest("test", 10);
     }
 
 }

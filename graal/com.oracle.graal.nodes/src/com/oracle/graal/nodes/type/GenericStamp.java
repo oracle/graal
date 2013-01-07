@@ -42,6 +42,11 @@ public final class GenericStamp extends Stamp {
     }
 
     @Override
+    public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
+        return metaAccess.lookupJavaType(kind().toJavaClass());
+    }
+
+    @Override
     public String toString() {
         return type.toString();
     }

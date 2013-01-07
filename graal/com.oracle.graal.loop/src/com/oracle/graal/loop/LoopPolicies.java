@@ -23,6 +23,7 @@
 package com.oracle.graal.loop;
 
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
@@ -56,16 +57,24 @@ public abstract class LoopPolicies {
         return loop.loopBegin().unswitches() <= GraalOptions.LoopMaxUnswitch;
     }
 
-    public static boolean shouldUnswitch(LoopEx loop, IfNode ifNode) {
-        Block postDomBlock = loop.loopsData().controlFlowGraph().blockFor(ifNode).getPostdominator();
+    public static boolean shouldUnswitch(LoopEx loop, ControlSplitNode controlSplit) {
+        Block postDomBlock = loop.loopsData().controlFlowGraph().blockFor(controlSplit).getPostdominator();
         BeginNode postDom = postDomBlock != null ? postDomBlock.getBeginNode() : null;
-        int inTrueBranch = loop.nodesInLoopFrom(ifNode.trueSuccessor(), postDom).cardinality();
-        int inFalseBranch = loop.nodesInLoopFrom(ifNode.falseSuccessor(), postDom).cardinality();
         int loopTotal = loop.size();
-        int netDiff = loopTotal - (inTrueBranch + inFalseBranch);
-        double uncertainty = (0.5 - Math.abs(ifNode.probability(ifNode.trueSuccessor()) - 0.5)) * 2;
+        int inBranchTotal = 0;
+        double maxProbability = 0;
+        for (Node successor : controlSplit.successors()) {
+            BeginNode branch = (BeginNode) successor;
+            inBranchTotal += loop.nodesInLoopFrom(branch, postDom).cardinality(); //this may count twice because of fall-through in switches
+            double probability = controlSplit.probability(branch);
+            if (probability > maxProbability) {
+                maxProbability = probability;
+            }
+        }
+        int netDiff = loopTotal - (inBranchTotal);
+        double uncertainty = 1 - maxProbability;
         int maxDiff = GraalOptions.LoopUnswitchMaxIncrease + (int) (GraalOptions.LoopUnswitchUncertaintyBoost * loop.loopBegin().loopFrequency() * uncertainty);
-        Debug.log("shouldUnswitch(%s, %s) : delta=%d, max=%d, %.2f%% inside of if", loop, ifNode, netDiff, maxDiff, (double) (inTrueBranch + inFalseBranch) / loopTotal * 100);
+        Debug.log("shouldUnswitch(%s, %s) : delta=%d, max=%d, %.2f%% inside of branches", loop, controlSplit, netDiff, maxDiff, (double) (inBranchTotal) / loopTotal * 100);
         return netDiff <= maxDiff;
     }
 

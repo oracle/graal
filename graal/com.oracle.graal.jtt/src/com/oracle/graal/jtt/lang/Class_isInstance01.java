@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Class_isInstance01 {
+public final class Class_isInstance01 extends JTTTest {
 
     static final String string = "";
     static final Object obj = new Object();
@@ -49,22 +49,22 @@ public final class Class_isInstance01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(false, test(3));
+        runTest("test", 3);
     }
 
 }

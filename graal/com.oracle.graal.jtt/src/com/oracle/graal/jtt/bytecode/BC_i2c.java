@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_i2c {
+public class BC_i2c extends JTTTest {
 
     public static char test(int a) {
         return (char) a;
@@ -34,17 +35,17 @@ public class BC_i2c {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(((char) 65535), test(-1));
+        runTest("test", -1);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(((char) 645), test(645));
+        runTest("test", 645);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(((char) 65535), test(65535));
+        runTest("test", 65535);
     }
 
 }

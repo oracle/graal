@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class String_valueOf01 {
+public class String_valueOf01 extends JTTTest {
 
     public static String test(int i) {
         Object result = null;
@@ -38,12 +39,12 @@ public class String_valueOf01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("null", test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("string", test(1));
+        runTest("test", 1);
     }
 
 }

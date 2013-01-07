@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.loop;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Loop04 {
+public class Loop04 extends JTTTest {
 
     public static int test(int count) {
         int i1 = 1;
@@ -45,17 +46,17 @@ public class Loop04 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(4321, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(2432, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(2432, test(10));
+        runTest("test", 10);
     }
 
 }

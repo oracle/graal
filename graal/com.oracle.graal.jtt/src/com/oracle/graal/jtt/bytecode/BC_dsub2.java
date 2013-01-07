@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_dsub2 {
+public class BC_dsub2 extends JTTTest {
 
     public static double test(double a) {
         return 1.0 / (0.0 - a);
@@ -34,7 +35,7 @@ public class BC_dsub2 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(java.lang.Double.POSITIVE_INFINITY, test(0.0d), 0);
+        runTest("test", 0.0d);
     }
 
 }

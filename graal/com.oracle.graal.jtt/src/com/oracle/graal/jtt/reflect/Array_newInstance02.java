@@ -26,9 +26,10 @@ package com.oracle.graal.jtt.reflect;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Array_newInstance02 {
+public class Array_newInstance02 extends JTTTest {
 
     public static boolean test(int i) {
         Class< ? > javaClass;
@@ -44,17 +45,17 @@ public class Array_newInstance02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(1));
+        runTest("test", 1);
     }
 
-    @Test(expected = java.lang.IllegalArgumentException.class)
+    @Test
     public void run1() throws Throwable {
-        test(2);
+        runTest("test", 2);
     }
 
-    @Test(expected = java.lang.NullPointerException.class)
+    @Test
     public void run2() throws Throwable {
-        test(3);
+        runTest("test", 3);
     }
 
 }

@@ -26,6 +26,8 @@ package com.oracle.graal.compiler.amd64;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
 import static com.oracle.graal.lir.amd64.AMD64Compare.*;
+import static com.oracle.graal.lir.amd64.AMD64BitManipulationOp.IntrinsicOpcode.*;
+import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
@@ -57,7 +59,6 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.SequentialSwitchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.SwitchRangesOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
-import com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
@@ -78,8 +79,8 @@ import com.oracle.graal.phases.util.*;
  */
 public abstract class AMD64LIRGenerator extends LIRGenerator {
 
-    public static final Descriptor ARITHMETIC_FREM = new Descriptor("arithmeticFrem", false, Kind.Float, Kind.Float, Kind.Float);
-    public static final Descriptor ARITHMETIC_DREM = new Descriptor("arithmeticDrem", false, Kind.Double, Kind.Double, Kind.Double);
+    public static final Descriptor ARITHMETIC_FREM = new Descriptor("arithmeticFrem", false, float.class, float.class, float.class);
+    public static final Descriptor ARITHMETIC_DREM = new Descriptor("arithmeticDrem", false, double.class, double.class, double.class);
 
     private static final RegisterValue RAX_I = AMD64.rax.asValue(Kind.Int);
     private static final RegisterValue RAX_L = AMD64.rax.asValue(Kind.Long);
@@ -528,6 +529,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             case MOV_L2D: append(new Op1Reg(MOV_L2D, result, input)); break;
             case MOV_F2I: append(new Op1Reg(MOV_F2I, result, input)); break;
             case MOV_D2L: append(new Op1Reg(MOV_D2L, result, input)); break;
+            case UNSIGNED_I2L:
+                // Instructions that move or generate 32-bit register values also set the upper 32 bits of the register to zero.
+                // Consequently, there is no need for a special zero-extension move.
+                emitMove(input, result);
+                break;
             default: throw GraalInternalError.shouldNotReachHere();
         }
         return result;
@@ -580,16 +586,25 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitBitCount(Variable result, Value value) {
+        if (value.getKind().getStackKind() == Kind.Int) {
+            append(new AMD64BitManipulationOp(IPOPCNT, result, value));
+        } else {
+            append(new AMD64BitManipulationOp(LPOPCNT, result, value));
+        }
+    }
+
+    @Override
     public void emitBitScanForward(Variable result, Value value) {
-        append(new AMD64BitScanOp(AMD64BitScanOp.IntrinsicOpcode.BSF, result, value));
+        append(new AMD64BitManipulationOp(BSF, result, value));
     }
 
     @Override
     public void emitBitScanReverse(Variable result, Value value) {
         if (value.getKind().getStackKind() == Kind.Int) {
-            append(new AMD64BitScanOp(AMD64BitScanOp.IntrinsicOpcode.IBSR, result, value));
+            append(new AMD64BitManipulationOp(IBSR, result, value));
         } else {
-            append(new AMD64BitScanOp(AMD64BitScanOp.IntrinsicOpcode.LBSR, result, value));
+            append(new AMD64BitManipulationOp(LBSR, result, value));
         }
     }
 
@@ -600,28 +615,27 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitMathSqrt(Variable result, Variable input) {
-        append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.SQRT, result, input));
+        append(new AMD64MathIntrinsicOp(SQRT, result, input));
     }
 
     @Override
     public void emitMathLog(Variable result, Variable input, boolean base10) {
-        IntrinsicOpcode opcode = base10 ? AMD64MathIntrinsicOp.IntrinsicOpcode.LOG10 : AMD64MathIntrinsicOp.IntrinsicOpcode.LOG;
-        append(new AMD64MathIntrinsicOp(opcode, result, input));
+        append(new AMD64MathIntrinsicOp(base10 ? LOG10 : LOG, result, input));
     }
 
     @Override
     public void emitMathCos(Variable result, Variable input) {
-        append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.COS, result, input));
+        append(new AMD64MathIntrinsicOp(COS, result, input));
     }
 
     @Override
     public void emitMathSin(Variable result, Variable input) {
-        append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.SIN, result, input));
+        append(new AMD64MathIntrinsicOp(SIN, result, input));
     }
 
     @Override
     public void emitMathTan(Variable result, Variable input) {
-        append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.IntrinsicOpcode.TAN, result, input));
+        append(new AMD64MathIntrinsicOp(TAN, result, input));
     }
 
     @Override
@@ -702,12 +716,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void visitBreakpointNode(BreakpointNode node) {
-        Kind[] sig = new Kind[node.arguments.size()];
+        JavaType[] sig = new JavaType[node.arguments.size()];
         for (int i = 0; i < sig.length; i++) {
-            sig[i] = node.arguments.get(i).kind();
+            sig[i] = node.arguments.get(i).stamp().javaType(runtime);
         }
 
-        CallingConvention cc = frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, Kind.Void, sig, target(), false);
+        CallingConvention cc = frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, target(), false);
         Value[] parameters = visitInvokeArguments(cc, node.arguments);
         append(new AMD64BreakpointOp(parameters));
     }

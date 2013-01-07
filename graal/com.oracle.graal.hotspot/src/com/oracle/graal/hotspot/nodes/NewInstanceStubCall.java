@@ -22,11 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -34,7 +31,7 @@ import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.word.*;
 
 /**
  * A call to the {@link NewInstanceStub}.
@@ -45,7 +42,7 @@ public class NewInstanceStubCall extends FixedWithNextNode implements LIRGenLowe
 
     @Input private final ValueNode hub;
 
-    public static final Descriptor NEW_INSTANCE = new Descriptor("new_instance", false, Kind.Object, wordKind());
+    public static final Descriptor NEW_INSTANCE = new Descriptor("new_instance", false, Object.class, Word.class);
 
     public NewInstanceStubCall(ValueNode hub) {
         super(defaultStamp);

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_getfield {
+public class BC_getfield extends JTTTest {
 
     private static BC_getfield object = new BC_getfield();
 
@@ -38,7 +39,7 @@ public class BC_getfield {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(13, test());
+        runTest("test");
     }
 
 }

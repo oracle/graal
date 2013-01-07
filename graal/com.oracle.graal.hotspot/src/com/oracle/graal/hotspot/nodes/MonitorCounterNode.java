@@ -28,7 +28,7 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.word.*;
 
 /**
  * Node that is used to maintain a stack based counter of how many locks

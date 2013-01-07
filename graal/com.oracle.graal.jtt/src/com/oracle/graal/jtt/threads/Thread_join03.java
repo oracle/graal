@@ -27,9 +27,10 @@
  */
 package com.oracle.graal.jtt.threads;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Thread_join03 implements Runnable {
+public class Thread_join03 extends JTTTest implements Runnable {
 
     static volatile boolean cont;
 
@@ -48,7 +49,7 @@ public class Thread_join03 implements Runnable {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(false, test());
+        runTest("test");
     }
 
 }

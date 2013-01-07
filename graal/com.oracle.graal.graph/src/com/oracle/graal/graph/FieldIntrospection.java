@@ -25,9 +25,7 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import sun.misc.*;
-
-public abstract class FieldIntrospection {
+public abstract class FieldIntrospection extends UnsafeAccess {
 
     /**
      * Interface used by {@link #rescanAllFieldOffsets(CalcOffset)} to determine the offset (in bytes) of a field.
@@ -40,28 +38,6 @@ public abstract class FieldIntrospection {
         @Override
         public long getOffset(Field field) {
             return unsafe.objectFieldOffset(field);
-        }
-    }
-
-    /**
-     * An instance of {@link Unsafe} for use within Graal.
-     */
-    public static final Unsafe unsafe = getUnsafe();
-
-    private static Unsafe getUnsafe() {
-        try {
-            // this will fail if Graal is not part of the boot class path
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-            // nothing to do
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            // currently we rely on being able to use Unsafe...
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
         }
     }
 

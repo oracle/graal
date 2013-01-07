@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_faload {
+public class BC_faload extends JTTTest {
 
     static float[] array = {0.0f, -1.1f, 4.32f, 6.06f};
 
@@ -36,22 +37,22 @@ public class BC_faload {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0.0f, test(0), 0);
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-1.1f, test(1), 0);
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(4.32f, test(2), 0);
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(6.06f, test(3), 0);
+        runTest("test", 3);
     }
 
 }

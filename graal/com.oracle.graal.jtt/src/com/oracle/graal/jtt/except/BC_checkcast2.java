@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_checkcast2 {
+public class BC_checkcast2 extends JTTTest {
 
     static Object object2 = new Object();
     static Object object3 = "";
@@ -52,27 +53,27 @@ public class BC_checkcast2 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(-1, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-1, test(1));
+        runTest("test", 1);
     }
 
-    @Test(expected = java.lang.ClassCastException.class)
+    @Test
     public void run2() throws Throwable {
-        test(2);
+        runTest("test", 2);
     }
 
-    @Test(expected = java.lang.ClassCastException.class)
+    @Test
     public void run3() throws Throwable {
-        test(3);
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(4, test(4));
+        runTest("test", 4);
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Fold_Double03 {
+public class Fold_Double03 extends JTTTest {
 
     private static final double MINUS_ZERO = 1 / Double.NEGATIVE_INFINITY;
 
@@ -42,22 +43,22 @@ public class Fold_Double03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(java.lang.Double.POSITIVE_INFINITY, test(0, 5.0), 0);
+        runTest("test", 0, 5.0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(java.lang.Double.NEGATIVE_INFINITY, test(1, 5.0), 0);
+        runTest("test", 1, 5.0);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(java.lang.Double.NEGATIVE_INFINITY, test(0, -5.0), 0);
+        runTest("test", 0, -5.0);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(java.lang.Double.POSITIVE_INFINITY, test(1, -5.0), 0);
+        runTest("test", 1, -5.0);
     }
 
 }

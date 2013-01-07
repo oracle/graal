@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Phi01 {
+public class Phi01 extends JTTTest {
 
     public static class Phi {
 
@@ -70,32 +71,32 @@ public class Phi01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(8, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(10, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(12, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(8, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(10, test(4));
+        runTest("test", 4);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(14, test(6));
+        runTest("test", 6);
     }
 
 }

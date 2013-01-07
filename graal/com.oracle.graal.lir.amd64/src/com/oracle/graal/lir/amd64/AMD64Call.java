@@ -35,7 +35,7 @@ import com.oracle.graal.lir.asm.*;
 
 public class AMD64Call {
 
-    public static final Descriptor DEBUG = new Descriptor("debug", false, Kind.Void);
+    public static final Descriptor DEBUG = new Descriptor("debug", false, void.class);
 
     @Opcode("CALL_DIRECT")
     public static class DirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {

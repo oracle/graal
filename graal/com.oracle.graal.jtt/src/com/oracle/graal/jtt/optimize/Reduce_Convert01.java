@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests optimization integer conversions.
  */
-public class Reduce_Convert01 {
+public class Reduce_Convert01 extends JTTTest {
 
     public static int test(int arg) {
         if (arg == 0) {
@@ -59,17 +60,17 @@ public class Reduce_Convert01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(10, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(11, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(12, test(2));
+        runTest("test", 2);
     }
 
 }

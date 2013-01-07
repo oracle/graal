@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.threads;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Object_wait04 implements Runnable {
+public class Object_wait04 extends JTTTest implements Runnable {
 
     static volatile boolean done;
     static final Object object = new Object();
@@ -68,32 +69,32 @@ public class Object_wait04 implements Runnable {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(true, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(true, test(4));
+        runTest("test", 4);
     }
 
     @Test
     public void run5() throws Throwable {
-        Assert.assertEquals(true, test(5));
+        runTest("test", 5);
     }
 
 }

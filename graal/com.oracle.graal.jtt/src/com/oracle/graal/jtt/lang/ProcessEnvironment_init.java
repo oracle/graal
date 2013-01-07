@@ -26,10 +26,10 @@ package com.oracle.graal.jtt.lang;
 
 import java.util.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class ProcessEnvironment_init {
+public final class ProcessEnvironment_init extends JTTTest {
 
     private static HashMap<Object, Object> theEnvironment;
     public static Map<Object, Object> theUnmodifiableEnvironment;
@@ -78,7 +78,7 @@ public final class ProcessEnvironment_init {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(7, test(7));
+        runTest("test", 7);
     }
 
 }

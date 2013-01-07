@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.jdk;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class System_nanoTime01 {
+public class System_nanoTime01 extends JTTTest {
 
     public static int test() {
         long start = System.nanoTime();
@@ -40,7 +41,7 @@ public class System_nanoTime01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(1, test());
+        runTest("test");
     }
 
 }

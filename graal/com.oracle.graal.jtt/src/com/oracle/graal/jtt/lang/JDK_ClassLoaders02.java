@@ -44,11 +44,12 @@ package com.oracle.graal.jtt.lang;
 
 import java.net.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class JDK_ClassLoaders02 {
+public class JDK_ClassLoaders02 extends JTTTest {
 
     public static boolean test() {
         ClassLoader classLoader = JDK_ClassLoaders02.class.getClassLoader();
@@ -57,7 +58,7 @@ public class JDK_ClassLoaders02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

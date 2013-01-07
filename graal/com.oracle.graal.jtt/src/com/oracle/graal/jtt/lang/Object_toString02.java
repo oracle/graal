@@ -27,9 +27,10 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Object_toString02 {
+public class Object_toString02 extends JTTTest {
 
     static final Object obj = new Object_toString02();
 
@@ -52,22 +53,22 @@ public class Object_toString02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("XYZ", test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("string", test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("class java.lang.String", test(2));
+        runTest("test", 2);
     }
 
-    @Test(expected = java.lang.NullPointerException.class)
+    @Test
     public void run3() throws Throwable {
-        test(3);
+        runTest("test", 3);
     }
 
 }

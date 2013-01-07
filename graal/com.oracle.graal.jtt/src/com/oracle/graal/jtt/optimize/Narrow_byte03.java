@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Narrow_byte03 {
+public class Narrow_byte03 extends JTTTest {
 
     static byte[] val = new byte[4];
 
@@ -37,22 +38,22 @@ public class Narrow_byte03 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(((byte) 0), test(((byte) 0)));
+        runTest("test", ((byte) 0));
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(((byte) 1), test(((byte) 1)));
+        runTest("test", ((byte) 1));
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(((byte) -1), test(((byte) -1)));
+        runTest("test", ((byte) -1));
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(((byte) 110), test(((byte) 110)));
+        runTest("test", ((byte) 110));
     }
 
 }

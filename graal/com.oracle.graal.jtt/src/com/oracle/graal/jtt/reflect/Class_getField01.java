@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.reflect;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Class_getField01 {
+public class Class_getField01 extends JTTTest {
 
     public static String field;
     public String field2;
@@ -36,24 +37,24 @@ public class Class_getField01 {
         return Class_getField01.class.getField(input).getName();
     }
 
-    @Test(expected = java.lang.NoSuchFieldException.class)
+    @Test
     public void run0() throws Throwable {
-        test("test");
+        runTest("test", "test");
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("field", test("field"));
+        runTest("test", "field");
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("field2", test("field2"));
+        runTest("test", "field2");
     }
 
-    @Test(expected = java.lang.NoSuchFieldException.class)
+    @Test
     public void run3() throws Throwable {
-        test("field3");
+        runTest("test", "field3");
     }
 
 }

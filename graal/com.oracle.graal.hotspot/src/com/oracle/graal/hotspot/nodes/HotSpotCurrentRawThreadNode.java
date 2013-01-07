@@ -27,7 +27,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.word.*;
 
 
 public class HotSpotCurrentRawThreadNode extends FloatingNode implements LIRLowerable {

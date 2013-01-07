@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Math_sin {
+public class Math_sin extends JTTTest {
 
     @SuppressWarnings("serial")
     public static class NaN extends Throwable {
@@ -41,29 +42,29 @@ public class Math_sin {
         return v;
     }
 
-    @Test(expected = com.oracle.graal.jtt.lang.Math_sin.NaN.class)
+    @Test
     public void run0() throws Throwable {
-        test(java.lang.Double.NaN);
+        runTest("test", java.lang.Double.NaN);
     }
 
-    @Test(expected = com.oracle.graal.jtt.lang.Math_sin.NaN.class)
+    @Test
     public void run1() throws Throwable {
-        test(java.lang.Double.NEGATIVE_INFINITY);
+        runTest("test", java.lang.Double.NEGATIVE_INFINITY);
     }
 
-    @Test(expected = com.oracle.graal.jtt.lang.Math_sin.NaN.class)
+    @Test
     public void run2() throws Throwable {
-        test(java.lang.Double.POSITIVE_INFINITY);
+        runTest("test", java.lang.Double.POSITIVE_INFINITY);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(-0.0d, test(-0.0d), 0);
+        runTest("test", -0.0d);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(0.0d, test(0.0d), 0);
+        runTest("test", 0.0d);
     }
 
 }

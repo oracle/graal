@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_monitorenter02 {
+public class BC_monitorenter02 extends JTTTest {
 
     static BC_monitorenter02 object = new BC_monitorenter02();
 
@@ -43,17 +44,17 @@ public class BC_monitorenter02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0, 1));
+        runTest("test", 0, 1);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(1, test(1, 1));
+        runTest("test", 1, 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(-2, test(-2, 1));
+        runTest("test", -2, 1);
     }
 
 }

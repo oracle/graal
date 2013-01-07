@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_dastore {
+public class BC_dastore extends JTTTest {
 
     static double[] array = {0, 0, 0, 0};
 
@@ -37,22 +38,22 @@ public class BC_dastore {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0.01d, test(0, 0.01d), 0);
+        runTest("test", 0, 0.01d);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-1.4d, test(1, -1.4d), 0);
+        runTest("test", 1, -1.4d);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(0.01d, test(2, 0.01d), 0);
+        runTest("test", 2, 0.01d);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(-1.4d, test(3, -1.4d), 0);
+        runTest("test", 3, -1.4d);
     }
 
 }

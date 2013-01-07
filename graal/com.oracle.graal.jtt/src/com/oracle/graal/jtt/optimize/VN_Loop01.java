@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests value numbering of integer operations.
  */
-public class VN_Loop01 {
+public class VN_Loop01 extends JTTTest {
 
     private static boolean cond1 = true;
     private static boolean cond2 = true;
@@ -102,27 +103,27 @@ public class VN_Loop01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(6, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(8, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(10, test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(12, test(3));
+        runTest("test", 3);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(0, test(4));
+        runTest("test", 4);
     }
 
 }

@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.jtt.reflect;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 import sun.reflect.*;
 
 /*
  */
-@SuppressWarnings("static-method")
-public final class Reflection_getCallerClass01 {
+public final class Reflection_getCallerClass01 extends JTTTest {
 
     public static final class Caller1 {
 
@@ -57,17 +57,17 @@ public final class Reflection_getCallerClass01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("sun.reflect.Reflection", test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("com.oracle.graal.jtt.reflect.Reflection_getCallerClass01$Caller1", test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("com.oracle.graal.jtt.reflect.Reflection_getCallerClass01$Caller2", test(2));
+        runTest("test", 2);
     }
 
 }

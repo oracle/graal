@@ -24,9 +24,10 @@
  */
 package com.oracle.graal.jtt.threads;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Monitor_notowner01 {
+public class Monitor_notowner01 extends JTTTest {
 
     static Object monitor = new Object();
     static Object finished = new Object();
@@ -63,7 +64,7 @@ public class Monitor_notowner01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_aastore1 {
+public class BC_aastore1 extends JTTTest {
 
     static Object[] param = {new Object(), null, "h"};
     static Object[] arr = {null, null, null};
@@ -51,52 +52,52 @@ public class BC_aastore1 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(5, test(true, -2));
+        runTest("test", true, -2);
     }
 
-    @Test(expected = java.lang.ArrayIndexOutOfBoundsException.class)
+    @Test
     public void run1() throws Throwable {
-        test(true, -1);
+        runTest("test", true, -1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(0, test(true, 0));
+        runTest("test", true, 0);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(1, test(true, 1));
+        runTest("test", true, 1);
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals(2, test(true, 2));
+        runTest("test", true, 2);
     }
 
-    @Test(expected = java.lang.ArrayIndexOutOfBoundsException.class)
+    @Test
     public void run5() throws Throwable {
-        test(true, 3);
+        runTest("test", true, 3);
     }
 
-    @Test(expected = java.lang.ArrayStoreException.class)
+    @Test
     public void run6() throws Throwable {
-        test(false, 0);
+        runTest("test", false, 0);
     }
 
     @Test
     public void run7() throws Throwable {
-        Assert.assertEquals(1, test(false, 1));
+        runTest("test", false, 1);
     }
 
     @Test
     public void run8() throws Throwable {
-        Assert.assertEquals(2, test(false, 2));
+        runTest("test", false, 2);
     }
 
-    @Test(expected = java.lang.ArrayIndexOutOfBoundsException.class)
+    @Test
     public void run9() throws Throwable {
-        test(false, 3);
+        runTest("test", false, 3);
     }
 
 }

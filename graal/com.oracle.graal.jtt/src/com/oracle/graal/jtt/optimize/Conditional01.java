@@ -24,12 +24,13 @@ package com.oracle.graal.jtt.optimize;
 
 import java.util.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
 @SuppressWarnings("unused")
-public class Conditional01 {
+public class Conditional01 extends JTTTest {
     private static final int RAM_SIZE = 0x100;
     private static final int init = new Random().nextInt();
     private static final int init1 = new Register().val;
@@ -117,22 +118,22 @@ public class Conditional01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(10, test(10));
+        runTest("test", 10);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(20, test(20));
+        runTest("test", 20);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(38, test(40));
+        runTest("test", 40);
     }
 
 }

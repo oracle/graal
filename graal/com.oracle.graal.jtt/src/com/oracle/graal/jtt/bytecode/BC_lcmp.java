@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_lcmp {
+public class BC_lcmp extends JTTTest {
 
     public static boolean test(long a, long b) {
         return a < b;
@@ -34,17 +35,17 @@ public class BC_lcmp {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(false, test(0L, -1L));
+        runTest("test", 0L, -1L);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(77L, 78L));
+        runTest("test", 77L, 78L);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(true, test(-1L, 0L));
+        runTest("test", -1L, 0L);
     }
 
 }

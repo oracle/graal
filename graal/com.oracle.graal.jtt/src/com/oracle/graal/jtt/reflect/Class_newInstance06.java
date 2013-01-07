@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.jtt.reflect;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-@SuppressWarnings("static-method")
-public final class Class_newInstance06 {
+public final class Class_newInstance06 extends JTTTest {
 
     public static final class Class_newInstance {
 
@@ -44,14 +44,14 @@ public final class Class_newInstance06 {
         return false;
     }
 
-    @Test(expected = java.lang.InstantiationException.class)
+    @Test
     public void run0() throws Throwable {
-        test(0);
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(false, test(4));
+        runTest("test", 4);
     }
 
 }

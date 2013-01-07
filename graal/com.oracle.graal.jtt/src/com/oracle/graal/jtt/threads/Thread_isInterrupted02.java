@@ -26,10 +26,11 @@
 
 package com.oracle.graal.jtt.threads;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 //Test all, mainly monitors
-public class Thread_isInterrupted02 {
+public class Thread_isInterrupted02 extends JTTTest {
 
     private static final Object start = new Object();
     private static final Object end = new Object();
@@ -86,12 +87,12 @@ public class Thread_isInterrupted02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test(0, 0));
+        runTest("test", 0, 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(true, test(1, 500));
+        runTest("test", 1, 500);
     }
 
 }

@@ -25,9 +25,10 @@
 
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class BC_idiv2 {
+public class BC_idiv2 extends JTTTest {
 
     public static int test(int a, int b) {
         try {
@@ -39,12 +40,12 @@ public class BC_idiv2 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(0, test(1, 2));
+        runTest("test", 1, 2);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-11, test(11, 0));
+        runTest("test", 11, 0);
     }
 
 }

@@ -44,6 +44,11 @@ public class FloatStamp extends Stamp {
         this.nonNaN = nonNaN;
     }
 
+    @Override
+    public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
+        return metaAccess.lookupJavaType(kind().toJavaClass());
+    }
+
     /**
      * The (inclusive) lower bound on the value described by this stamp.
      */

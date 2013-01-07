@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Tests optimization of integer operations.
  */
-public class VN_Long02 {
+public class VN_Long02 extends JTTTest {
 
     public static long test(int arg) {
         if (arg == 0) {
@@ -65,17 +66,17 @@ public class VN_Long02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(10L, test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(10L, test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals(48L, test(2));
+        runTest("test", 2);
     }
 
 }

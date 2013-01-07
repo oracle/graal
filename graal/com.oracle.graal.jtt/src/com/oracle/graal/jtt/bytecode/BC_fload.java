@@ -25,11 +25,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_fload {
+public class BC_fload extends JTTTest {
 
     public static float test(float arg) {
         return arg;
@@ -37,12 +38,12 @@ public class BC_fload {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(-1f, test(-1f), 0);
+        runTest("test", -1f);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(-1.01f, test(-1.01f), 0);
+        runTest("test", -1.01f);
     }
 
 }

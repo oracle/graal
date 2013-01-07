@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.reflect;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Method_getReturnType01 {
+public class Method_getReturnType01 extends JTTTest {
 
     public static String test(int arg) throws NoSuchMethodException {
         if (arg == 0) {
@@ -52,22 +53,22 @@ public class Method_getReturnType01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("int", test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("java.lang.String", test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("void", test(2));
+        runTest("test", 2);
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals(null, test(3));
+        runTest("test", 3);
     }
 
 }

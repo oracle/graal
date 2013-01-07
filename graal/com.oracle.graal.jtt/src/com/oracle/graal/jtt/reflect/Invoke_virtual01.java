@@ -24,11 +24,12 @@ package com.oracle.graal.jtt.reflect;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class Invoke_virtual01 {
+public class Invoke_virtual01 extends JTTTest {
 
     static final HelperTest helper = new HelperTest(55);
 
@@ -56,7 +57,7 @@ public class Invoke_virtual01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(55, test(1));
+        runTest("test", 1);
     }
 
 }

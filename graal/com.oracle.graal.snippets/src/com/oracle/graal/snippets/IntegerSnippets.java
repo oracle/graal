@@ -44,4 +44,8 @@ public class IntegerSnippets implements SnippetsInterface{
         }
         return BitScanForwardNode.scan(i);
     }
+
+    public static int bitCount(int i) {
+        return BitCountNode.bitCount(i);
+    }
 }

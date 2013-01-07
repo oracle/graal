@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.jtt.threads;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
@@ -30,7 +31,7 @@ import org.junit.*;
 // Interrupted while running, do nothing, just set the flag and continue
 // (thomaswue) This test will exercise deoptimization on HotSpot, because a volatile unloaded field is accessed.
 // (thomaswue) The temporary result variable is needed, because in order to query the isInterrupted flag, the thread must be alive.
-public class Thread_isInterrupted04 {
+public class Thread_isInterrupted04 extends JTTTest {
 
     public static boolean test() throws InterruptedException {
         final Thread1 thread = new Thread1();
@@ -67,7 +68,7 @@ public class Thread_isInterrupted04 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(true, test());
+        runTest("test");
     }
 
 }

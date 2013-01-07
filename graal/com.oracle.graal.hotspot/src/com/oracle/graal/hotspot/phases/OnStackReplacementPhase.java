@@ -41,7 +41,7 @@ import com.oracle.graal.phases.common.*;
 
 public class OnStackReplacementPhase extends Phase {
 
-    public static final Descriptor OSR_MIGRATION_END = new Descriptor("OSR_migration_end", true, Kind.Void, Kind.Long);
+    public static final Descriptor OSR_MIGRATION_END = new Descriptor("OSR_migration_end", true, void.class, long.class);
 
     @Override
     protected void run(StructuredGraph graph) {

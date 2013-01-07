@@ -24,11 +24,12 @@ package com.oracle.graal.jtt.jdk;
 
 import java.util.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class EnumMap02 {
+public class EnumMap02 extends JTTTest {
 
     public static String test(int i) {
         EnumMap<Enum, String> map = new EnumMap<>(Enum.class);
@@ -44,17 +45,17 @@ public class EnumMap02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("A", test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("B", test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("C", test(2));
+        runTest("test", 2);
     }
 
 }

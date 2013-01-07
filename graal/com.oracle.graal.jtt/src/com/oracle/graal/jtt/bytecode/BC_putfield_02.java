@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  */
-public class BC_putfield_02 {
+public class BC_putfield_02 extends JTTTest {
 
     private static BC_putfield_02 object = new BC_putfield_02();
 
@@ -39,22 +40,22 @@ public class BC_putfield_02 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("0", test("0"));
+        runTest("test", "0");
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals(null, test(null));
+        runTest("test", (Object) null);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("string", test("string"));
+        runTest("test", "string");
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals("-4", test("-4"));
+        runTest("test", "-4");
     }
 
 }

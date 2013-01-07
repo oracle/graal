@@ -26,9 +26,10 @@ package com.oracle.graal.jtt.reflect;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-public class Array_get01 {
+public class Array_get01 extends JTTTest {
 
     private static final String[] array = {"0", "1", "2"};
 
@@ -38,22 +39,22 @@ public class Array_get01 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("0", test(0));
+        runTest("test", 0);
     }
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("1", test(1));
+        runTest("test", 1);
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("2", test(2));
+        runTest("test", 2);
     }
 
-    @Test(expected = java.lang.ArrayIndexOutOfBoundsException.class)
+    @Test
     public void run3() throws Throwable {
-        test(3);
+        runTest("test", 3);
     }
 
 }

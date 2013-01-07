@@ -23,13 +23,14 @@
 // Checkstyle: stop
 package com.oracle.graal.jtt.hotpath;
 
+import com.oracle.graal.jtt.*;
 import org.junit.*;
 
 /*
  * Runs: 10 = 55; 20 = 210; 30 = 465; 40 = 820;
  */
 @SuppressWarnings("unused")
-public class HP_count {
+public class HP_count extends JTTTest {
 
     public static int test(int count) {
         float unusedFloat = 0;
@@ -49,7 +50,7 @@ public class HP_count {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(820, test(40));
+        runTest("test", 40);
     }
 
 }
