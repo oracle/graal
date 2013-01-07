@@ -39,6 +39,7 @@ public final class GraalOptions {
 
     // inlining settings
     public static boolean Inline                             = true;
+    public static boolean AlwaysInlineIntrinsics             = ____;
     public static boolean Intrinsify                         = true;
            static boolean InlineMonomorphicCalls             = true;
            static boolean InlinePolymorphicCalls             = true;

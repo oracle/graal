@@ -248,6 +248,10 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static class BytecodeSizeBasedWeightComputationPolicy implements WeightComputationPolicy {
         @Override
         public double computeWeight(ResolvedJavaMethod caller, ResolvedJavaMethod method, Invoke invoke, boolean preferredInvoke) {
+            if (GraalOptions.AlwaysInlineIntrinsics && InliningUtil.canIntrinsify(method)) {
+                return 0;
+            }
+
             double codeSize = method.getCodeSize();
             if (preferredInvoke) {
                 codeSize = codeSize / GraalOptions.BoostInliningForEscapeAnalysis;
@@ -259,6 +263,10 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static class ComplexityBasedWeightComputationPolicy implements WeightComputationPolicy {
         @Override
         public double computeWeight(ResolvedJavaMethod caller, ResolvedJavaMethod method, Invoke invoke, boolean preferredInvoke) {
+            if (GraalOptions.AlwaysInlineIntrinsics && InliningUtil.canIntrinsify(method)) {
+                return 0;
+            }
+
             double complexity = method.getCompilationComplexity();
             if (preferredInvoke) {
                 complexity = complexity / GraalOptions.BoostInliningForEscapeAnalysis;
@@ -270,6 +278,10 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static class CompiledCodeSizeWeightComputationPolicy implements WeightComputationPolicy {
         @Override
         public double computeWeight(ResolvedJavaMethod caller, ResolvedJavaMethod method, Invoke invoke, boolean preferredInvoke) {
+            if (GraalOptions.AlwaysInlineIntrinsics && InliningUtil.canIntrinsify(method)) {
+                return 0;
+            }
+
             int compiledCodeSize = method.getCompiledCodeSize();
             return compiledCodeSize > 0 ? compiledCodeSize : method.getCodeSize() * 10;
         }

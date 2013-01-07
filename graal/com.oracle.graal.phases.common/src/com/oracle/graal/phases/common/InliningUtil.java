@@ -200,11 +200,11 @@ public class InliningUtil {
             return computeInliningLevel(invoke);
         }
 
-        protected static StructuredGraph getGraph(final Invoke invoke, final ResolvedJavaMethod concrete, final InliningCallback callback) {
+        protected static StructuredGraph getGraph(final ResolvedJavaMethod concrete, final InliningCallback callback) {
             return Debug.scope("GetInliningGraph", concrete, new Callable<StructuredGraph>() {
                 @Override
                 public StructuredGraph call() throws Exception {
-                    StructuredGraph result = getIntrinsicGraph(invoke, concrete);
+                    StructuredGraph result = getIntrinsicGraph(concrete);
                     if (result == null) {
                         assert !Modifier.isNative(concrete.getModifiers());
                         result = callback.buildGraph(concrete);
@@ -229,14 +229,14 @@ public class InliningUtil {
 
         @Override
         public void inline(StructuredGraph compilerGraph, GraalCodeCacheProvider runtime, InliningCallback callback, Assumptions assumptions) {
-            StructuredGraph graph = getGraph(invoke, concrete, callback);
+            StructuredGraph graph = getGraph(concrete, callback);
             assumptions.recordMethodContents(concrete);
             InliningUtil.inline(invoke, graph, true);
         }
 
         @Override
         public int compiledCodeSize() {
-            return concrete.getCompiledCodeSize();
+            return InliningUtil.compiledCodeSize(concrete);
         }
 
         @Override
@@ -261,7 +261,7 @@ public class InliningUtil {
 
         @Override
         public int compiledCodeSize() {
-            return concrete.getCompiledCodeSize();
+            return InliningUtil.compiledCodeSize(concrete);
         }
 
         @Override
@@ -283,7 +283,7 @@ public class InliningUtil {
             graph.addBeforeFixed(invoke.node(), guard);
             graph.addBeforeFixed(invoke.node(), anchor);
 
-            StructuredGraph calleeGraph = getGraph(invoke, concrete, callback);
+            StructuredGraph calleeGraph = getGraph(concrete, callback);
             assumptions.recordMethodContents(concrete);
             InliningUtil.inline(invoke, calleeGraph, false);
         }
@@ -320,7 +320,7 @@ public class InliningUtil {
         public int compiledCodeSize() {
             int result = 0;
             for (ResolvedJavaMethod m: concretes) {
-                result += m.getCompiledCodeSize();
+                result += InliningUtil.compiledCodeSize(m);
             }
             return result;
         }
@@ -410,7 +410,7 @@ public class InliningUtil {
             StructuredGraph[] calleeGraphs = new StructuredGraph[numberOfMethods];
             for (int i = 0; i < numberOfMethods; i++) {
                 ResolvedJavaMethod concrete = concretes.get(i);
-                calleeGraphs[i] = getGraph(invoke, concrete, callback);
+                calleeGraphs[i] = getGraph(concrete, callback);
                 assumptions.recordMethodContents(concrete);
             }
 
@@ -512,7 +512,7 @@ public class InliningUtil {
             calleeEntryNode.setNext(invoke.node());
 
             ResolvedJavaMethod concrete = concretes.get(0);
-            StructuredGraph calleeGraph = getGraph(invoke, concrete, callback);
+            StructuredGraph calleeGraph = getGraph(concrete, callback);
             assumptions.recordMethodContents(concrete);
             InliningUtil.inline(invoke, calleeGraph, false);
         }
@@ -836,7 +836,7 @@ public class InliningUtil {
     private static boolean checkTargetConditions(Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
         if (method == null) {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "the method is not resolved");
-        } else if (Modifier.isNative(method.getModifiers()) && (!GraalOptions.Intrinsify || !InliningUtil.canIntrinsify(invoke, method))) {
+        } else if (Modifier.isNative(method.getModifiers()) && (!GraalOptions.Intrinsify || !InliningUtil.canIntrinsify(method))) {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "it is a non-intrinsic native method");
         } else if (Modifier.isAbstract(method.getModifiers())) {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "it is an abstract method");
@@ -1030,12 +1030,19 @@ public class InliningUtil {
         }
     }
 
-    public static boolean canIntrinsify(Invoke invoke, ResolvedJavaMethod target) {
-        return getIntrinsicGraph(invoke, target) != null;
+    public static boolean canIntrinsify(ResolvedJavaMethod target) {
+        return getIntrinsicGraph(target) != null;
     }
 
-    public static StructuredGraph getIntrinsicGraph(Invoke invoke, ResolvedJavaMethod target) {
-        assert invoke.node().isAlive();
+    public static StructuredGraph getIntrinsicGraph(ResolvedJavaMethod target) {
         return (StructuredGraph) target.getCompilerStorage().get(Graph.class);
+    }
+
+    private static int compiledCodeSize(ResolvedJavaMethod target) {
+        if (GraalOptions.AlwaysInlineIntrinsics && canIntrinsify(target)) {
+            return 0;
+        } else {
+            return target.getCompiledCodeSize();
+        }
     }
 }
