@@ -50,12 +50,12 @@ public interface RegisterConfig {
      * Gets the calling convention describing how arguments are passed.
      *
      * @param type the type of calling convention being requested
-     * @param returnKind the return kind
-     * @param parameters the kinds of the arguments of the call
+     * @param returnType the return type (can be null for methods returning {@code void})
+     * @param parameterTypes the types of the arguments of the call
      * @param target the target platform
      * @param stackOnly ignore registers
      */
-    CallingConvention getCallingConvention(Type type, Kind returnKind, Kind[] parameters, TargetDescription target, boolean stackOnly);
+    CallingConvention getCallingConvention(Type type, JavaType returnType, JavaType[] parameterTypes, TargetDescription target, boolean stackOnly);
 
     /**
      * Gets the ordered set of registers that are can be used to pass parameters

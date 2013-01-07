@@ -29,7 +29,6 @@ import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 import static com.oracle.graal.snippets.Snippet.Varargs.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
-import static com.oracle.graal.snippets.nodes.DirectObjectStoreNode.*;
 import static com.oracle.graal.snippets.nodes.ExplodeLoopNode.*;
 
 import com.oracle.graal.api.code.*;
@@ -50,6 +49,7 @@ import com.oracle.graal.snippets.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 import com.oracle.graal.snippets.nodes.*;
+import com.oracle.graal.word.*;
 
 /**
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
@@ -61,10 +61,10 @@ public class NewObjectSnippets implements SnippetsInterface {
         Word thread = thread();
         Word top = thread.readWord(threadTlabTopOffset());
         Word end = thread.readWord(threadTlabEndOffset());
-        Word newTop = top.plus(size);
+        Word newTop = top.add(size);
         // this check might lead to problems if the TLAB is within 16GB of the address space end (checked in c++ code)
         if (newTop.belowOrEqual(end)) {
-            storeObject(thread, 0, threadTlabTopOffset(), newTop);
+            thread.writeWord(threadTlabTopOffset(), newTop);
             return top;
         }
         return Word.zero();
@@ -171,7 +171,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         Word dims = DimensionsNode.allocaDimsArray(rank);
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < rank; i++) {
-            DirectObjectStoreNode.storeInt(dims, 0, i * 4, dimensions[i]);
+            dims.writeInt(i * 4, dimensions[i]);
         }
         return NewMultiArrayStubCall.call(hub, rank, dims);
     }
@@ -188,19 +188,19 @@ public class NewObjectSnippets implements SnippetsInterface {
      */
     private static void formatObject(Word hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents) {
         Word prototypeMarkWord = useBiasedLocking() ? hub.readWord(prototypeMarkWordOffset()) : compileTimePrototypeMarkWord;
-        storeWord(memory, 0, markOffset(), prototypeMarkWord);
-        storeWord(memory, 0, hubOffset(), hub);
+        memory.writeWord(markOffset(), prototypeMarkWord);
+        memory.writeWord(hubOffset(), hub);
         if (fillContents) {
             if (size <= MAX_UNROLLED_OBJECT_ZEROING_SIZE) {
                 new_seqInit.inc();
                 explodeLoop();
                 for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
-                    storeWord(memory, 0, offset, Word.zero());
+                    memory.writeWord(offset, Word.zero());
                 }
             } else {
                 new_loopInit.inc();
                 for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
-                    storeWord(memory, 0, offset, Word.zero());
+                    memory.writeWord(offset, Word.zero());
                 }
             }
         }
@@ -210,13 +210,13 @@ public class NewObjectSnippets implements SnippetsInterface {
      * Formats some allocated memory with an object header zeroes out the rest.
      */
     public static void formatArray(Word hub, int allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents) {
-        storeWord(memory, 0, markOffset(), prototypeMarkWord);
-        storeInt(memory, 0, arrayLengthOffset(), length);
+        memory.writeWord(markOffset(), prototypeMarkWord);
+        memory.writeInt(arrayLengthOffset(), length);
         // store hub last as the concurrent garbage collectors assume length is valid if hub field is not null
-        storeWord(memory, 0, hubOffset(), hub);
+        memory.writeWord(hubOffset(), hub);
         if (fillContents) {
             for (int offset = headerSize; offset < allocationSize; offset += wordSize()) {
-                storeWord(memory, 0, offset, Word.zero());
+                memory.writeWord(offset, Word.zero());
             }
         }
     }

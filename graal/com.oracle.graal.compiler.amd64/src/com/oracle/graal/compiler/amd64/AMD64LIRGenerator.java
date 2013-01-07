@@ -79,8 +79,8 @@ import com.oracle.graal.phases.util.*;
  */
 public abstract class AMD64LIRGenerator extends LIRGenerator {
 
-    public static final Descriptor ARITHMETIC_FREM = new Descriptor("arithmeticFrem", false, Kind.Float, Kind.Float, Kind.Float);
-    public static final Descriptor ARITHMETIC_DREM = new Descriptor("arithmeticDrem", false, Kind.Double, Kind.Double, Kind.Double);
+    public static final Descriptor ARITHMETIC_FREM = new Descriptor("arithmeticFrem", false, float.class, float.class, float.class);
+    public static final Descriptor ARITHMETIC_DREM = new Descriptor("arithmeticDrem", false, double.class, double.class, double.class);
 
     private static final RegisterValue RAX_I = AMD64.rax.asValue(Kind.Int);
     private static final RegisterValue RAX_L = AMD64.rax.asValue(Kind.Long);
@@ -529,6 +529,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             case MOV_L2D: append(new Op1Reg(MOV_L2D, result, input)); break;
             case MOV_F2I: append(new Op1Reg(MOV_F2I, result, input)); break;
             case MOV_D2L: append(new Op1Reg(MOV_D2L, result, input)); break;
+            case UNSIGNED_I2L:
+                // Instructions that move or generate 32-bit register values also set the upper 32 bits of the register to zero.
+                // Consequently, there is no need for a special zero-extension move.
+                emitMove(input, result);
+                break;
             default: throw GraalInternalError.shouldNotReachHere();
         }
         return result;
@@ -711,12 +716,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void visitBreakpointNode(BreakpointNode node) {
-        Kind[] sig = new Kind[node.arguments.size()];
+        JavaType[] sig = new JavaType[node.arguments.size()];
         for (int i = 0; i < sig.length; i++) {
-            sig[i] = node.arguments.get(i).kind();
+            sig[i] = node.arguments.get(i).stamp().javaType(runtime);
         }
 
-        CallingConvention cc = frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, Kind.Void, sig, target(), false);
+        CallingConvention cc = frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, target(), false);
         Value[] parameters = visitInvokeArguments(cc, node.arguments);
         append(new AMD64BreakpointOp(parameters));
     }

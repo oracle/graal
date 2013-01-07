@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.word.*;
 
 /**
  * Allocates some uninitialized area. This is used for TLAB allocation

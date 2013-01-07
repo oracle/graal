@@ -90,7 +90,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             if (graph.getEntryBCI() == StructuredGraph.INVOCATION_ENTRY_BCI) {
                 return super.createCallingConvention();
             } else {
-                return frameMap.registerConfig.getCallingConvention(JavaCallee, method.getSignature().getReturnKind(), new Kind[]{Kind.Long}, target, false);
+                return frameMap.registerConfig.getCallingConvention(JavaCallee, method.getSignature().getReturnType(null), new JavaType[]{runtime.lookupJavaType(long.class)}, target, false);
             }
         }
 
@@ -262,7 +262,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
         if (!isStatic) {
             tasm.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
-            CallingConvention cc = regConfig.getCallingConvention(JavaCallee, Kind.Void, new Kind[] {Kind.Object}, target, false);
+            CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, new JavaType[] {runtime().lookupJavaType(Object.class)}, target, false);
             Register inlineCacheKlass = rax; // see definition of IC_Klass in c1_LIRAssembler_x86.cpp
             Register receiver = asRegister(cc.getArgument(0));
             Address src = new Address(target.wordKind, receiver.asValue(), config.hubOffset);

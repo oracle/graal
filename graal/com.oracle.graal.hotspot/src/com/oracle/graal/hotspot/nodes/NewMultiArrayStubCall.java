@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
@@ -33,7 +31,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.word.*;
 
 /**
  * Node implementing a call to HotSpot's {@code new_multi_array} stub.
@@ -46,7 +44,7 @@ public class NewMultiArrayStubCall extends FixedWithNextNode implements LIRGenLo
     @Input private final ValueNode dims;
     private final int rank;
 
-    public static final Descriptor NEW_MULTI_ARRAY = new Descriptor("new_multi_array", false, Kind.Object, wordKind(), Kind.Int, wordKind());
+    public static final Descriptor NEW_MULTI_ARRAY = new Descriptor("new_multi_array", false, Object.class, Word.class, int.class, Word.class);
 
     public NewMultiArrayStubCall(ValueNode hub, int rank, ValueNode dims) {
         super(defaultStamp);

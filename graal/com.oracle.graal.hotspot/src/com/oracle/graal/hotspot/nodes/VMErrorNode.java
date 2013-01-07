@@ -41,7 +41,7 @@ public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowera
 
     @Input private ValueNode format;
     @Input private ValueNode value;
-    public static final Descriptor VM_ERROR = new Descriptor("vm_error", false, Kind.Void, Kind.Object, Kind.Object, Kind.Long);
+    public static final Descriptor VM_ERROR = new Descriptor("vm_error", false, void.class, Object.class, Object.class, long.class);
 
     public VMErrorNode(ValueNode format, ValueNode value) {
         super(StampFactory.forVoid());

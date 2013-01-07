@@ -35,11 +35,13 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 import com.oracle.graal.snippets.Snippet.DefaultSnippetInliningPolicy;
 import com.oracle.graal.snippets.Snippet.SnippetInliningPolicy;
+import com.oracle.graal.word.phases.*;
 
 /**
  * Utility for snippet {@linkplain #install(Class) installation}.
@@ -122,13 +124,13 @@ public class SnippetInstaller {
                 }
                 Method originalMethod = originalClazz.getDeclaredMethod(originalName, originalParameters);
                 if (!originalMethod.getReturnType().isAssignableFrom(method.getReturnType())) {
-                    throw new RuntimeException("Snippet has incompatible return type");
+                    throw new RuntimeException("Snippet has incompatible return type: " + method);
                 }
                 int modifiers = method.getModifiers();
                 if (!Modifier.isStatic(modifiers)) {
-                    throw new RuntimeException("Snippets must be static methods");
+                    throw new RuntimeException("Snippets must be static methods: " + method);
                 } else if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-                    throw new RuntimeException("Snippet must not be abstract or native");
+                    throw new RuntimeException("Snippet must not be abstract or native: " + method);
                 }
                 ResolvedJavaMethod snippet = runtime.lookupJavaMethod(method);
                 StructuredGraph graph = makeGraph(snippet, inliningPolicy(snippet), true);
@@ -191,6 +193,7 @@ public class SnippetInstaller {
     }
 
     private StructuredGraph buildGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
+        assert !Modifier.isAbstract(method.getModifiers()) && !Modifier.isNative(method.getModifiers()) : method;
         final StructuredGraph graph = new StructuredGraph(method);
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
         GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config, OptimisticOptimizations.NONE);
@@ -198,19 +201,19 @@ public class SnippetInstaller {
 
         Debug.dump(graph, "%s: %s", method.getName(), GraphBuilderPhase.class.getSimpleName());
 
-        new SnippetVerificationPhase(runtime).apply(graph);
+        new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
 
         new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
 
         for (Invoke invoke : graph.getInvokes()) {
             MethodCallTargetNode callTarget = invoke.methodCallTarget();
             ResolvedJavaMethod callee = callTarget.targetMethod();
-            if (policy.shouldInline(callee, method)) {
+            if ((callTarget.invokeKind() == InvokeKind.Static || callTarget.invokeKind() == InvokeKind.Special) && policy.shouldInline(callee, method)) {
                 StructuredGraph targetGraph = parseGraph(callee, policy);
                 InliningUtil.inline(invoke, targetGraph, true);
                 Debug.dump(graph, "after inlining %s", callee);
                 if (GraalOptions.OptCanonicalizer) {
-                    new WordTypeRewriterPhase(target.wordKind).apply(graph);
+                    new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
                     new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
                 }
             }
@@ -218,7 +221,7 @@ public class SnippetInstaller {
 
         new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
 
-        new WordTypeRewriterPhase(target.wordKind).apply(graph);
+        new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
 
         new DeadCodeEliminationPhase().apply(graph);
         if (GraalOptions.OptCanonicalizer) {

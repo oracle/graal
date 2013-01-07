@@ -31,11 +31,11 @@ import com.oracle.graal.nodes.type.*;
 public abstract class AbstractCallTargetNode extends CallTargetNode {
 
     private final Stamp returnStamp;
-    private final Kind[] signature;
+    private final JavaType[] signature;
     private final Object target;
     private final CallingConvention.Type callType;
 
-    public AbstractCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, Kind[] signature, Object target, CallingConvention.Type callType) {
+    public AbstractCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, Object target, CallingConvention.Type callType) {
         super(arguments);
         this.returnStamp = returnStamp;
         this.signature = signature;
@@ -48,7 +48,7 @@ public abstract class AbstractCallTargetNode extends CallTargetNode {
         return returnStamp;
     }
 
-    public Kind[] signature() {
+    public JavaType[] signature() {
         return signature;
     }
 

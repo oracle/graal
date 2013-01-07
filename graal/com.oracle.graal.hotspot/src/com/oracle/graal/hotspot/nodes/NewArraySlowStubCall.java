@@ -22,18 +22,15 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.word.*;
 
 /**
  * Node implementing a call to the {@code new_array} stub.
@@ -45,7 +42,7 @@ public class NewArraySlowStubCall extends FixedWithNextNode implements LIRGenLow
     @Input private final ValueNode hub;
     @Input private final ValueNode length;
 
-    public static final Descriptor NEW_ARRAY_SLOW = new Descriptor("new_array_slow", false, Kind.Object, wordKind(), Kind.Int);
+    public static final Descriptor NEW_ARRAY_SLOW = new Descriptor("new_array_slow", false, Object.class, Word.class, int.class);
 
     public NewArraySlowStubCall(ValueNode hub, ValueNode length) {
         super(defaultStamp);

@@ -26,6 +26,8 @@ import static com.oracle.graal.nodes.MaterializeNode.*;
 import static com.oracle.graal.nodes.calc.Condition.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.calc.*;
 
 /**
  * Snippets for {@link UnsignedMath}.
@@ -82,4 +84,44 @@ public class UnsignedMathSnippets implements SnippetsInterface {
     public static boolean belowOrEqual(long a, long b) {
         return !materialize(BT, b, a);
     }
+
+    /**
+     * Unsigned division for two numbers.
+     */
+    public static int divide(int a, int b) {
+        return unsignedDivide(Kind.Int, a, b);
+    }
+
+    /**
+     * Unsigned remainder for two numbers.
+     */
+    public static int remainder(int a, int b) {
+        return unsignedRemainder(Kind.Int, a, b);
+    }
+
+    /**
+     * Unsigned division for two numbers.
+     */
+    public static long divide(long a, long b) {
+        return unsignedDivide(Kind.Long, a, b);
+    }
+
+    /**
+     * Unsigned remainder for two numbers.
+     */
+    public static long remainder(long a, long b) {
+        return unsignedRemainder(Kind.Long, a, b);
+    }
+
+    @NodeIntrinsic(UnsignedDivNode.class)
+    private static native int unsignedDivide(@ConstantNodeParameter Kind kind, int a, int b);
+
+    @NodeIntrinsic(UnsignedDivNode.class)
+    private static native long unsignedDivide(@ConstantNodeParameter Kind kind, long a, long b);
+
+    @NodeIntrinsic(UnsignedRemNode.class)
+    private static native int unsignedRemainder(@ConstantNodeParameter Kind kind, int a, int b);
+
+    @NodeIntrinsic(UnsignedRemNode.class)
+    private static native long unsignedRemainder(@ConstantNodeParameter Kind kind, long a, long b);
 }

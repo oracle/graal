@@ -37,9 +37,9 @@ import com.oracle.graal.nodes.extended.*;
  */
 public final class Log {
 
-    public static final Descriptor LOG_PRIMITIVE = new Descriptor("logPrimitive", false, Kind.Void, Kind.Int, Kind.Long, Kind.Boolean);
-    public static final Descriptor LOG_OBJECT = new Descriptor("logObject", false, Kind.Void, Kind.Object, Kind.Int);
-    public static final Descriptor LOG_PRINTF = new Descriptor("logPrintf", false, Kind.Void, Kind.Object, Kind.Long, Kind.Long, Kind.Long);
+    public static final Descriptor LOG_PRIMITIVE = new Descriptor("logPrimitive", false, void.class, int.class, long.class, boolean.class);
+    public static final Descriptor LOG_OBJECT = new Descriptor("logObject", false, void.class, Object.class, int.class);
+    public static final Descriptor LOG_PRINTF = new Descriptor("logPrintf", false, void.class, Object.class, long.class, long.class, long.class);
 
     // Note: Must be kept in sync with constants in c1_Runtime1.hpp
     private static final int LOG_OBJECT_NEWLINE = 0x01;

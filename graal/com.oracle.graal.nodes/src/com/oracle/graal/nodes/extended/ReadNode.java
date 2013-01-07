@@ -34,12 +34,18 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class ReadNode extends AccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
 
-    public ReadNode(ValueNode object, LocationNode location, Stamp stamp) {
+    public ReadNode(ValueNode object, ValueNode location, Stamp stamp) {
         super(object, location, stamp);
     }
 
     public ReadNode(ValueNode object, int displacement, Object locationIdentity, Kind kind) {
         super(object, object.graph().add(new LocationNode(locationIdentity, kind, displacement)), StampFactory.forKind(kind));
+    }
+
+    public ReadNode(ValueNode object, ValueNode location) {
+        // Used by node intrinsics. Since the initial value for location is a parameter, i.e., a LocalNode, the
+        // constructor cannot use the declared type LocationNode
+        this(object, location, StampFactory.forNodeIntrinsic());
     }
 
     @Override

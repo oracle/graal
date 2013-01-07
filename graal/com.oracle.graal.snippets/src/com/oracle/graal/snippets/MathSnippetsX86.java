@@ -23,7 +23,6 @@
 package com.oracle.graal.snippets;
 
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.extended.*;
@@ -84,9 +83,9 @@ public class MathSnippetsX86 implements SnippetsInterface {
         }
     }
 
-    public static final Descriptor ARITHMETIC_SIN = new Descriptor("arithmeticSin", false, Kind.Double, Kind.Double);
-    public static final Descriptor ARITHMETIC_COS = new Descriptor("arithmeticCos", false, Kind.Double, Kind.Double);
-    public static final Descriptor ARITHMETIC_TAN = new Descriptor("arithmeticTan", false, Kind.Double, Kind.Double);
+    public static final Descriptor ARITHMETIC_SIN = new Descriptor("arithmeticSin", false, double.class, double.class);
+    public static final Descriptor ARITHMETIC_COS = new Descriptor("arithmeticCos", false, double.class, double.class);
+    public static final Descriptor ARITHMETIC_TAN = new Descriptor("arithmeticTan", false, double.class, double.class);
 
     @NodeIntrinsic(value = RuntimeCallNode.class, setStampFromReturnType = true)
     public static native double callDouble(@ConstantNodeParameter Descriptor descriptor, double value);

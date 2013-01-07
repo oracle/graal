@@ -30,6 +30,7 @@ import java.lang.reflect.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
+import com.oracle.graal.word.*;
 
 /**
  * Snippets for {@link java.lang.Class} methods.

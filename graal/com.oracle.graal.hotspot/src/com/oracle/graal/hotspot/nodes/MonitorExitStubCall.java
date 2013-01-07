@@ -22,15 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.word.*;
 
 /**
  * Node implementing a call to HotSpot's {@code graal_monitorexit} stub.
@@ -38,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
 public class MonitorExitStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
     @Input private final ValueNode object;
-    public static final Descriptor MONITOREXIT = new Descriptor("monitorexit", true, Kind.Void, Kind.Object, wordKind());
+    public static final Descriptor MONITOREXIT = new Descriptor("monitorexit", true, void.class, Object.class, Word.class);
 
     public MonitorExitStubCall(ValueNode object) {
         super(StampFactory.forVoid());
