@@ -319,22 +319,9 @@ public enum AMD64Arithmetic {
 
                 case LDIV:
                 case LREM:
-                    Label continuation = new Label();
-                    if (opcode == LDIV) {
-                        // check for special case of Long.MIN_VALUE / -1
-                        Label normalCase = new Label();
-                        masm.movq(AMD64.rdx, java.lang.Long.MIN_VALUE);
-                        masm.cmpq(AMD64.rax, AMD64.rdx);
-                        masm.jcc(ConditionFlag.notEqual, normalCase);
-                        masm.cmpq(asRegister(src), -1);
-                        masm.jcc(ConditionFlag.equal, continuation);
-                        masm.bind(normalCase);
-                    }
-
                     masm.cdqq();
                     exceptionOffset = masm.codeBuffer.position();
                     masm.idivq(asRegister(src));
-                    masm.bind(continuation);
                     break;
 
                 case IUDIV:
