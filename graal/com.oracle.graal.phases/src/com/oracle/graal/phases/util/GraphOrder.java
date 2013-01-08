@@ -92,6 +92,12 @@ public class GraphOrder implements Iterable<Node> {
             for (Node input : node.inputs()) {
                 visitForward(visited, input);
             }
+            if (node instanceof LoopBeginNode) {
+                LoopBeginNode loopBegin = (LoopBeginNode) node;
+                for (LoopEndNode loopEnd : loopBegin.loopEnds()) {
+                    visitForward(visited, loopEnd);
+                }
+            }
             nodes.add(node);
         }
     }
