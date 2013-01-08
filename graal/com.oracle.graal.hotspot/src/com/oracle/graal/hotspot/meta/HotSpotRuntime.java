@@ -702,6 +702,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
             newObjectSnippets.lower((InitializeArrayNode) n, tool);
         } else if (n instanceof NewMultiArrayNode) {
             newObjectSnippets.lower((NewMultiArrayNode) n, tool);
+        } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
+            // Nothing to do for division nodes. The HotSpot signal handler catches divisions by zero and the MIN_VALUE / -1 cases.
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
             throw GraalInternalError.shouldNotReachHere();
