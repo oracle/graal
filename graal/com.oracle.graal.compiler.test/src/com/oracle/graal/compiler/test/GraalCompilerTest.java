@@ -70,7 +70,6 @@ public abstract class GraalCompilerTest {
 
     public GraalCompilerTest() {
         DebugEnvironment.initialize(System.out);
-        System.out.println("initialized debug environment " + GraalOptions.Dump);
         this.runtime = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
         this.graalCompiler = Graal.getRequiredCapability(GraalCompiler.class);
     }
