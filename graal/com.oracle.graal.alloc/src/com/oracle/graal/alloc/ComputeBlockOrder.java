@@ -261,7 +261,6 @@ public final class ComputeBlockOrder {
         // start processing with standard entry block
         assert workList.isEmpty() : "list must be empty before processing";
 
-        assert readyForProcessing(startBlock);
         sortIntoWorkList(startBlock);
 
         do {

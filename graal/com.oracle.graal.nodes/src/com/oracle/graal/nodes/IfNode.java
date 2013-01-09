@@ -358,10 +358,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
                 PhiNode newPhi = graph().add(new PhiNode(oldPhi.stamp(), newMerge));
 
+                double probability = 0.0;
                 for (EndNode end : ends) {
                     newPhi.addInput(phiValues.get(end));
                     newMerge.addForwardEnd(end);
+                    probability += end.probability();
                 }
+                newMerge.setProbability(probability);
 
                 FrameState stateAfter = oldMerge.stateAfter();
                 if (stateAfter != null) {
