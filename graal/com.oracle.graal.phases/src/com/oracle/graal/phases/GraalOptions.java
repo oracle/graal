@@ -121,6 +121,7 @@ public final class GraalOptions {
 
     // Debug settings:
     public static boolean Debug                              = true;
+    public static boolean DebugSnippets                      = false;
     public static boolean PerThreadDebugValues               = ____;
     public static boolean SummarizeDebugValues               = ____;
     public static boolean SummarizePerPhase                  = ____;
