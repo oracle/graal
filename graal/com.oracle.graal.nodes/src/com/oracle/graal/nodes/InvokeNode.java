@@ -97,6 +97,8 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
         if (callTarget instanceof MethodCallTargetNode && methodCallTarget().targetMethod() != null) {
             debugProperties.put("targetMethod", methodCallTarget().targetMethod());
+        } else if (callTarget instanceof AbstractCallTargetNode) {
+            debugProperties.put("targetMethod", ((AbstractCallTargetNode) callTarget).target());
         }
         return debugProperties;
     }
