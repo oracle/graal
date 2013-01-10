@@ -341,5 +341,10 @@ public class CanonicalizerPhase extends Phase {
         public void addToWorkList(Node node) {
             nodeWorkSet.addAgain(node);
         }
+
+        @Override
+        public void removeIfUnused(Node node) {
+            tryKillUnused(node);
+        }
     }
 }
