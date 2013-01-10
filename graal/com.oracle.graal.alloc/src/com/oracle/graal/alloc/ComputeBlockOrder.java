@@ -58,6 +58,22 @@ public final class ComputeBlockOrder {
 
         countEdges(startBlock, null);
         computeOrder(startBlock);
+
+
+        List<Block> newCodeEmittingOrder = new ArrayList<>();
+        List<Block> outOfLine = new ArrayList<>();
+        for (Block b : codeEmittingOrder) {
+            if (b.getBeginNode().probability() > 0.07) {
+                newCodeEmittingOrder.add(b);
+            } else {
+                outOfLine.add(b);
+            }
+        }
+
+        for (Block b : outOfLine) {
+            newCodeEmittingOrder.add(b);
+        }
+        codeEmittingOrder = newCodeEmittingOrder;
     }
 
     /**

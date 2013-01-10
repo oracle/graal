@@ -60,30 +60,13 @@ public class StandardOp {
         @Override
         public void emitCode(TargetMethodAssembler tasm) {
             if (align) {
-                tasm.asm.align(tasm.target.wordSize);
+                tasm.asm.align(tasm.target.wordSize * 2);
             }
             tasm.asm.bind(label);
         }
 
         public Label getLabel() {
             return label;
-        }
-    }
-
-    public static class PhiLabelOp extends LabelOp {
-        @Def({REG, STACK}) protected Value[] phiDefinitions;
-
-        public PhiLabelOp(Label label, boolean align, Value[] phiDefinitions) {
-            super(label, align);
-            this.phiDefinitions = phiDefinitions;
-        }
-
-        public void markResolved() {
-            phiDefinitions = EMPTY;
-        }
-
-        public Value[] getPhiDefinitions() {
-            return phiDefinitions;
         }
     }
 

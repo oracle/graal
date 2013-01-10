@@ -670,7 +670,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
 
-    public abstract void emitLabel(Label label, boolean align);
     public abstract void emitJump(LabelRef label, LIRFrameState info);
     public abstract void emitBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info);
     public abstract Variable emitCMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);

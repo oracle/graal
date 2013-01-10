@@ -40,7 +40,6 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
-import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Reg;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Stack;
@@ -218,11 +217,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(target().wordKind);
         append(new LeaOp(result, address));
         return result;
-    }
-
-    @Override
-    public void emitLabel(Label label, boolean align) {
-        append(new LabelOp(label, align));
     }
 
     @Override

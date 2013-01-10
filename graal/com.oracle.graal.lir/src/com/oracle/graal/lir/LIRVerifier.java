@@ -113,22 +113,6 @@ public final class LIRVerifier {
             }
 
             assert lir.lir(block).get(0) instanceof StandardOp.LabelOp : "block must start with label";
-            if (block.numberOfPreds() > 1) {
-                assert lir.lir(block).get(0) instanceof StandardOp.PhiLabelOp : "phi mapping required for multiple predecessors";
-                Value[] phiDefinitions = ((StandardOp.PhiLabelOp) lir.lir(block).get(0)).getPhiDefinitions();
-                if (!beforeRegisterAllocation) {
-                    assert phiDefinitions.length == 0;
-                }
-                for (Block pred : block.getPredecessors()) {
-                    assert pred.numberOfSux() == 1;
-                    LIRInstruction last = lir.lir(pred).get(lir.lir(pred).size() - 1);
-                    assert last instanceof StandardOp.PhiJumpOp : "phi mapping required for multiple successors";
-                    Value[] phiUses = ((StandardOp.PhiJumpOp) last).getPhiInputs();
-                    if (!beforeRegisterAllocation) {
-                        assert phiUses.length == 0;
-                    }
-                }
-            }
 
             if (block.numberOfSux() > 0) {
                 LIRInstruction last = lir.lir(block).get(lir.lir(block).size() - 1);
