@@ -23,15 +23,6 @@
 package com.oracle.graal.graph;
 
 
-public class TestNode extends Node implements Node.IterableNodeType {
-    private String name;
-
-    public TestNode(String name) {
-        this.name = name;
-    }
-
-
-    public String getName() {
-        return name;
-    }
+public interface TestNodeInterface {
+    String getName();
 }

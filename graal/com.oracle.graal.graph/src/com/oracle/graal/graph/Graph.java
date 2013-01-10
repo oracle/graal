@@ -310,51 +310,99 @@ public class Graph {
         };
     }
 
-    private static class TypedNodeIterator<T extends IterableNodeType> implements Iterator<T> {
-        private Node current;
-        private final Node start;
+    private static class PlaceHolderNode extends Node {}
+    private static final PlaceHolderNode PLACE_HOLDER = new PlaceHolderNode();
 
-        public TypedNodeIterator(Node start) {
-            if (start != null && start.isDeleted()) {
-                this.current = start;
+    private class TypedNodeIterator<T extends IterableNodeType> implements Iterator<T> {
+        private final int[] ids;
+        private final Node[] current;
+
+        private int currentIdIndex;
+        private boolean needsForward;
+
+        public TypedNodeIterator(NodeClass clazz) {
+            ids = clazz.iterableIds();
+            currentIdIndex = 0;
+            current = new Node[ids.length];
+            Arrays.fill(current, PLACE_HOLDER);
+            needsForward = true;
+        }
+
+        private Node findNext() {
+            if (needsForward) {
+                forward();
             } else {
-                this.current = null;
+                Node c = current();
+                Node afterDeleted = skipDeleted(c);
+                if (afterDeleted == null) {
+                    needsForward = true;
+                } else if (c != afterDeleted) {
+                    setCurrent(afterDeleted);
+                }
             }
-            this.start = start;
+            if (needsForward) {
+                return null;
+            }
+            return current();
+        }
+
+        private Node skipDeleted(Node node) {
+            Node n = node;
+            while (n != null && n.isDeleted()) {
+                n = n.typeCacheNext;
+            }
+            return n;
+        }
+
+        private void forward() {
+            needsForward = false;
+            int startIdx = currentIdIndex;
+            while (true) {
+                Node next;
+                if (current() == PLACE_HOLDER) {
+                    next = getStartNode(ids[currentIdIndex]);
+                } else {
+                    next = current().typeCacheNext;
+                }
+                next = skipDeleted(next);
+                if (next == null) {
+                    currentIdIndex++;
+                    if (currentIdIndex >= ids.length) {
+                        currentIdIndex = 0;
+                    }
+                    if (currentIdIndex == startIdx) {
+                        needsForward = true;
+                        return;
+                    }
+                } else {
+                    setCurrent(next);
+                    break;
+                }
+            }
+        }
+
+        private Node current() {
+            return current[currentIdIndex];
+        }
+
+        private void setCurrent(Node n) {
+            current[currentIdIndex] = n;
         }
 
         @Override
         public boolean hasNext() {
-            if (current != null) {
-                Node next = current.typeCacheNext;
-                if (next != null) {
-                    while (next.isDeleted()) {
-                        next = next.typeCacheNext;
-                        if (next == null) {
-                            return false;
-                        }
-                        current.typeCacheNext = next;
-                    }
-                    return true;
-                }
-                return false;
-            } else {
-                return start != null;
-            }
+            return findNext() != null;
         }
 
         @Override
         @SuppressWarnings("unchecked")
         public T next() {
-            if (current == null) {
-                Node result = start;
-                current = result;
-                return (T) result;
-            } else {
-                Node result = current.typeCacheNext;
-                current = result;
-                return (T) result;
+            Node result = findNext();
+            if (result == null) {
+                throw new NoSuchElementException();
             }
+            needsForward = true;
+            return (T) result;
         }
 
         @Override
@@ -369,11 +417,11 @@ public class Graph {
      * @return an {@link Iterable} providing all the matching nodes.
      */
     public <T extends Node & IterableNodeType> NodeIterable<T> getNodes(final Class<T> type) {
-        final Node start = getStartNode(type);
+        final NodeClass nodeClass = NodeClass.get(type);
         return new AbstractNodeIterable<T>() {
             @Override
             public Iterator<T> iterator() {
-                return new TypedNodeIterator<>(start);
+                return new TypedNodeIterator<>(nodeClass);
             }
         };
     }
@@ -387,10 +435,8 @@ public class Graph {
         return getNodes(type).iterator().hasNext();
     }
 
-    private <T> Node getStartNode(final Class<T> type) {
-        int nodeClassId = NodeClass.get(type).iterableId();
-        assert nodeClassId != -1 : type + " is not iterable within graphs (missing \"implements IterableNodeType\"?)";
-        Node start = nodeCacheFirst.size() <= nodeClassId ? null : nodeCacheFirst.get(nodeClassId);
+    private Node getStartNode(int iterableId) {
+        Node start = nodeCacheFirst.size() <= iterableId ? null : nodeCacheFirst.get(iterableId);
         return start;
     }
 

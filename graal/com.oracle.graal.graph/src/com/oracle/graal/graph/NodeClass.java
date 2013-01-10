@@ -47,8 +47,7 @@ public class NodeClass extends FieldIntrospection {
         }
     }
 
-
-    public static final int NOT_ITERABLE = -1;
+    static final int NOT_ITERABLE = -1;
 
     private static final Class<?> NODE_CLASS = Node.class;
     private static final Class<?> INPUT_LIST_CLASS = NodeInputList.class;
@@ -66,6 +65,7 @@ public class NodeClass extends FieldIntrospection {
     private final String shortName;
     private final String nameTemplate;
     private final int iterableId;
+    private int[] iterableIds;
 
 
     public NodeClass(Class<?> clazz) {
@@ -110,14 +110,27 @@ public class NodeClass extends FieldIntrospection {
         this.shortName = newShortName;
         if (Node.IterableNodeType.class.isAssignableFrom(clazz)) {
             this.iterableId = nextIterableId++;
-            // TODO (lstadler) add type hierarchy - based node iteration
-//            for (NodeClass nodeClass : nodeClasses.values()) {
-//                if (clazz.isAssignableFrom(nodeClass.clazz)) {
-//                    throw new UnsupportedOperationException("iterable non-final Node classes not supported: " + clazz);
-//                }
-//            }
+            List<NodeClass> existingClasses = new LinkedList<>();
+            for (FieldIntrospection nodeClass : allClasses.values()) {
+                if (clazz.isAssignableFrom(nodeClass.clazz)) {
+                    existingClasses.add((NodeClass) nodeClass);
+                }
+                if (nodeClass.clazz.isAssignableFrom(clazz) && Node.IterableNodeType.class.isAssignableFrom(nodeClass.clazz)) {
+                    NodeClass superNodeClass = (NodeClass) nodeClass;
+                    superNodeClass.iterableIds = Arrays.copyOf(superNodeClass.iterableIds, superNodeClass.iterableIds.length + 1);
+                    superNodeClass.iterableIds[superNodeClass.iterableIds.length - 1] = this.iterableId;
+                }
+            }
+            int[] ids = new int[existingClasses.size() + 1];
+            ids[0] = iterableId;
+            int i = 1;
+            for (NodeClass other : existingClasses) {
+                ids[i++] = other.iterableId;
+            }
+            this.iterableIds = ids;
         } else {
             this.iterableId = NOT_ITERABLE;
+            this.iterableIds = null;
         }
     }
 
@@ -143,6 +156,10 @@ public class NodeClass extends FieldIntrospection {
 
     public String shortName() {
         return shortName;
+    }
+
+    public int[] iterableIds() {
+        return iterableIds;
     }
 
     public int iterableId() {
