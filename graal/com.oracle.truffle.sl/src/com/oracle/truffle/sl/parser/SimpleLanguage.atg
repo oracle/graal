@@ -28,7 +28,7 @@ SimpleLanguage
 =
 Function 
 {
-	 Function
+    Function
 }
 .
 
@@ -86,7 +86,7 @@ OutputStatement<out StatementNode result>
 }
 ";"                                             (. result = factory.createPrint(expressions); .)
 .
-							
+
 ReturnStatement<out StatementNode result>
 =
 "return"
@@ -97,8 +97,8 @@ Expression<out TypedNode result>
 =
 ValueExpression<out result>
 [
-    ("<" | ">" | "<=" | ">=" | "==" | "!=" )    (.	String op = t.val; .)
-    ValueExpression<out TypedNode right>        (.	result = factory.createBinary(op, result, right); .)
+    ("<" | ">" | "<=" | ">=" | "==" | "!=" )    (.  String op = t.val; .)
+    ValueExpression<out TypedNode right>        (.  result = factory.createBinary(op, result, right); .)
 ]
 .
 
