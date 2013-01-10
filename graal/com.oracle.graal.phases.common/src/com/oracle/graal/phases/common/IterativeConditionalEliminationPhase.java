@@ -55,7 +55,7 @@ public class IterativeConditionalEliminationPhase extends Phase {
             if (canonicalizationRoots.isEmpty()) {
                 break;
             }
-            new CanonicalizerPhase(target, runtime, assumptions, canonicalizationRoots).apply(graph);
+            new CanonicalizerPhase(target, runtime, assumptions, canonicalizationRoots, null).apply(graph);
             canonicalizationRoots.clear();
         }
     }

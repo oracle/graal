@@ -886,7 +886,7 @@ public class InliningUtil {
      * @param inlineGraph the graph that the invoke will be replaced with
      * @param receiverNullCheck true if a null check needs to be generated for non-static inlinings, false if no such check is required
      */
-    public static void inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck) {
+    public static Map<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck) {
         NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
         StructuredGraph graph = (StructuredGraph) invoke.node().graph();
 
@@ -915,7 +915,7 @@ public class InliningUtil {
                 }
             }
         }
-        replacements.put(entryPointNode, BeginNode.prevBegin(invoke.node())); // ensure proper anchoring of things that where anchored to the StartNode
+        replacements.put(entryPointNode, BeginNode.prevBegin(invoke.node())); // ensure proper anchoring of things that were anchored to the StartNode
 
         assert invoke.node().successors().first() != null : invoke;
         assert invoke.node().predecessor() != null;
@@ -1018,6 +1018,8 @@ public class InliningUtil {
 
         invoke.node().replaceAtUsages(null);
         GraphUtil.killCFG(invoke.node());
+
+        return duplicates;
     }
 
     public static void receiverNullCheck(Invoke invoke) {

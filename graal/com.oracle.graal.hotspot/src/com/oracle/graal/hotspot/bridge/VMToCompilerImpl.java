@@ -44,6 +44,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
+import com.oracle.graal.printer.*;
 import com.oracle.graal.snippets.*;
 
 /**
@@ -123,10 +124,8 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
-        if (GraalOptions.Debug) {
-            Debug.enable();
-            HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter, log);
-            Debug.setConfig(hotspotDebugConfig);
+        if (GraalOptions.Debug && GraalOptions.DebugSnippets) {
+            DebugEnvironment.initialize(log);
         }
         // Install intrinsics.
         GraalCompiler compiler = graalRuntime.getCompiler();

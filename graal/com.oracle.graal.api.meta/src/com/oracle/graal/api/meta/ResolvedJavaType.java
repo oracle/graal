@@ -241,4 +241,9 @@ public interface ResolvedJavaType extends JavaType {
      * @return the field with the given offset, or {@code null} if there is no such field.
      */
     ResolvedJavaField findInstanceFieldWithOffset(long offset);
+
+    /**
+     * Returns name of source file of this type.
+     */
+    String getSourceFileName();
 }

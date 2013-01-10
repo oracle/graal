@@ -446,6 +446,11 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
+    public String getSourceFileName() {
+       return HotSpotGraalRuntime.getInstance().getCompilerToVM().getFileName(this);
+    }
+
+    @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         return javaMirror.getAnnotation(annotationClass);
     }

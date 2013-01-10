@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,23 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
-
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
+package com.oracle.graal.api.meta;
 
 
-public abstract class HotSpotResolvedJavaType extends HotSpotJavaType implements ResolvedJavaType {
-    private static final long serialVersionUID = -6410840212023428347L;
-
-    public HotSpotResolvedJavaType(String name) {
-        super(name);
-    }
-
-    public abstract Class<?> mirror();
-
-    @Override
-    public String getSourceFileName() {
-       return HotSpotGraalRuntime.getInstance().getCompilerToVM().getFileName(this);
-    }
+public interface LineNumberTable {
+    int[] getLineNumberEntries();
+    int[] getBciEntries();
+    int getLineNumber(int bci);
 }

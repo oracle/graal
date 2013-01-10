@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,23 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.hotspot.debug;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 
 
-public abstract class HotSpotResolvedJavaType extends HotSpotJavaType implements ResolvedJavaType {
-    private static final long serialVersionUID = -6410840212023428347L;
+public class LineNumberTableImpl implements LineNumberTable {
+    private final int[] lineNumbers;
+    private final int[] bci;
 
-    public HotSpotResolvedJavaType(String name) {
-        super(name);
+    public LineNumberTableImpl(int[] lineNumbers, int[] bci) {
+        this.lineNumbers = lineNumbers;
+        this.bci = bci;
     }
 
-    public abstract Class<?> mirror();
+    @Override
+    public int[] getLineNumberEntries() {
+        return lineNumbers;
+    }
 
     @Override
-    public String getSourceFileName() {
-       return HotSpotGraalRuntime.getInstance().getCompilerToVM().getFileName(this);
+    public int[] getBciEntries() {
+        return bci;
+    }
+
+    @Override
+    public int getLineNumber(@SuppressWarnings("hiding") int bci) {
+        for (int i = 0; i < this.bci.length - 1; i++) {
+            if (this.bci[i] <= bci && bci < this.bci[i + 1]) {
+                return lineNumbers[i];
+            }
+        }
+        return lineNumbers[lineNumbers.length - 1];
     }
 }

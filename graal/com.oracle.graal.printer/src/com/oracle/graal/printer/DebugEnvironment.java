@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,23 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.printer;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
+import java.io.*;
+import java.util.*;
+
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.phases.*;
 
 
-public abstract class HotSpotResolvedJavaType extends HotSpotJavaType implements ResolvedJavaType {
-    private static final long serialVersionUID = -6410840212023428347L;
+public class DebugEnvironment {
 
-    public HotSpotResolvedJavaType(String name) {
-        super(name);
-    }
-
-    public abstract Class<?> mirror();
-
-    @Override
-    public String getSourceFileName() {
-       return HotSpotGraalRuntime.getInstance().getCompilerToVM().getFileName(this);
+    public static void initialize(PrintStream log) {
+        Debug.enable();
+        List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
+        dumpHandlers.add(new GraphPrinterDumpHandler());
+        if (GraalOptions.PrintCFG) {
+            if (GraalOptions.PrintBinaryGraphs) {
+                TTY.println("CFG dumping slows down PrintBinaryGraphs: use -G:-PrintCFG to disable it");
+            }
+            dumpHandlers.add(new CFGPrinterObserver());
+        }
+        GraalDebugConfig hotspotDebugConfig = new GraalDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter, log, dumpHandlers);
+        Debug.setConfig(hotspotDebugConfig);
     }
 }
