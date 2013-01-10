@@ -60,7 +60,7 @@ public class StandardOp {
         @Override
         public void emitCode(TargetMethodAssembler tasm) {
             if (align) {
-                tasm.asm.align(tasm.target.wordSize);
+                tasm.asm.align(tasm.target.wordSize * 2);
             }
             tasm.asm.bind(label);
         }
