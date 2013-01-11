@@ -30,7 +30,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -121,23 +120,21 @@ public class SnippetInstaller {
 
     private void installSubstitutions(Class< ? extends SnippetsInterface> clazz, Class<?> originalClazz) {
         for (Method method : clazz.getDeclaredMethods()) {
-            if (method.getAnnotation(NodeIntrinsic.class) != null) {
+            MethodSubstitution methodSubstitution = method.getAnnotation(MethodSubstitution.class);
+            if (methodSubstitution == null) {
                 continue;
             }
             try {
-                MethodSubstitution methodSubstitution = method.getAnnotation(MethodSubstitution.class);
                 String originalName = method.getName();
                 Class<?>[] originalParameters = method.getParameterTypes();
-                if (methodSubstitution != null) {
-                    if (!methodSubstitution.value().isEmpty()) {
-                        originalName = methodSubstitution.value();
-                    }
-                    if (!methodSubstitution.isStatic()) {
-                        assert originalParameters.length >= 1 : "must be a static method with the this object as its first parameter";
-                        Class<?>[] newParameters = new Class<?>[originalParameters.length - 1];
-                        System.arraycopy(originalParameters, 1, newParameters, 0, newParameters.length);
-                        originalParameters = newParameters;
-                    }
+                if (!methodSubstitution.value().isEmpty()) {
+                    originalName = methodSubstitution.value();
+                }
+                if (!methodSubstitution.isStatic()) {
+                    assert originalParameters.length >= 1 : "must be a static method with the this object as its first parameter";
+                    Class<?>[] newParameters = new Class<?>[originalParameters.length - 1];
+                    System.arraycopy(originalParameters, 1, newParameters, 0, newParameters.length);
+                    originalParameters = newParameters;
                 }
                 Method originalMethod = originalClazz.getDeclaredMethod(originalName, originalParameters);
                 if (!originalMethod.getReturnType().isAssignableFrom(method.getReturnType())) {

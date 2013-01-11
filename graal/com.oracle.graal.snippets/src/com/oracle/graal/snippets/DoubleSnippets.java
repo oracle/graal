@@ -23,6 +23,7 @@
 package com.oracle.graal.snippets;
 
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.snippets.ClassSubstitution.*;
 
 /**
  * Snippets for {@link java.lang.Double} methods.
@@ -32,6 +33,7 @@ public class DoubleSnippets implements SnippetsInterface {
 
     private static final long NAN_RAW_LONG_BITS = Double.doubleToRawLongBits(Double.NaN);
 
+    @MethodSubstitution
     public static long doubleToRawLongBits(double value) {
         @JavacBug(id = 6995200)
         Long result = ConvertNode.convert(ConvertNode.Op.MOV_D2L, value);
@@ -39,6 +41,7 @@ public class DoubleSnippets implements SnippetsInterface {
     }
 
     // TODO This method is not necessary, since the JDK method does exactly this
+    @MethodSubstitution
     public static long doubleToLongBits(double value) {
         if (value != value) {
             return NAN_RAW_LONG_BITS;
@@ -47,6 +50,7 @@ public class DoubleSnippets implements SnippetsInterface {
         }
     }
 
+    @MethodSubstitution
     public static double longBitsToDouble(long bits) {
         @JavacBug(id = 6995200)
         Double result = ConvertNode.convert(ConvertNode.Op.MOV_L2D, bits);

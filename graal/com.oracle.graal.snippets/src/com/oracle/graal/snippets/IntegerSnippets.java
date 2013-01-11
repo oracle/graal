@@ -22,15 +22,18 @@
  */
 package com.oracle.graal.snippets;
 
+import com.oracle.graal.snippets.ClassSubstitution.*;
 import com.oracle.graal.snippets.nodes.*;
 
 @ClassSubstitution(Integer.class)
 public class IntegerSnippets implements SnippetsInterface{
 
+    @MethodSubstitution
     public static int reverseBytes(int i) {
         return ReverseBytesNode.reverse(i);
     }
 
+    @MethodSubstitution
     public static int numberOfLeadingZeros(int i) {
         if (i == 0) {
             return 32;
@@ -38,6 +41,7 @@ public class IntegerSnippets implements SnippetsInterface{
         return 31 - BitScanReverseNode.scan(i);
     }
 
+    @MethodSubstitution
     public static int numberOfTrailingZeros(int i) {
         if (i == 0) {
             return 32;
@@ -45,6 +49,7 @@ public class IntegerSnippets implements SnippetsInterface{
         return BitScanForwardNode.scan(i);
     }
 
+    @MethodSubstitution
     public static int bitCount(int i) {
         return BitCountNode.bitCount(i);
     }

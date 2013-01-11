@@ -32,9 +32,10 @@ import com.oracle.graal.word.*;
 /**
  * Snippets for {@link java.lang.Thread} methods.
  */
-@SuppressWarnings("unused")
 @ClassSubstitution(java.lang.Thread.class)
 public class ThreadSnippets implements SnippetsInterface {
+
+    @MethodSubstitution
     public static Thread currentThread() {
         return CurrentThread.get();
     }

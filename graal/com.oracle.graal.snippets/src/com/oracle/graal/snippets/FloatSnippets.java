@@ -23,6 +23,7 @@
 package com.oracle.graal.snippets;
 
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.snippets.ClassSubstitution.*;
 
 /**
  * Snippets for {@link java.lang.Float} methods.
@@ -32,6 +33,7 @@ public class FloatSnippets implements SnippetsInterface {
 
     private static final int NAN_RAW_INT_BITS = Float.floatToRawIntBits(Float.NaN);
 
+    @MethodSubstitution
     public static int floatToRawIntBits(float value) {
         @JavacBug(id = 6995200)
         Integer result = ConvertNode.convert(ConvertNode.Op.MOV_F2I, value);
@@ -39,6 +41,7 @@ public class FloatSnippets implements SnippetsInterface {
     }
 
     // TODO This method is not necessary, since the JDK method does exactly this
+    @MethodSubstitution
     public static int floatToIntBits(float value) {
         if (value != value) {
             return NAN_RAW_INT_BITS;
@@ -47,6 +50,7 @@ public class FloatSnippets implements SnippetsInterface {
         }
     }
 
+    @MethodSubstitution
     public static float intBitsToFloat(int bits) {
         @JavacBug(id = 6995200)
         Float result = ConvertNode.convert(ConvertNode.Op.MOV_I2F, bits);

@@ -26,6 +26,7 @@ import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 import com.oracle.graal.snippets.nodes.*;
 import com.oracle.graal.snippets.nodes.MathIntrinsicNode.Operation;
 
@@ -37,18 +38,22 @@ public class MathSnippetsX86 implements SnippetsInterface {
 
     private static final double PI_4 = 0.7853981633974483;
 
+    @MethodSubstitution
     public static double abs(double x) {
         return MathIntrinsicNode.compute(x, Operation.ABS);
     }
 
+    @MethodSubstitution
     public static double sqrt(double x) {
         return MathIntrinsicNode.compute(x, Operation.SQRT);
     }
 
+    @MethodSubstitution
     public static double log(double x) {
         return MathIntrinsicNode.compute(x, Operation.LOG);
     }
 
+    @MethodSubstitution
     public static double log10(double x) {
         return MathIntrinsicNode.compute(x, Operation.LOG10);
     }
@@ -59,6 +64,7 @@ public class MathSnippetsX86 implements SnippetsInterface {
     //   accurate within [-pi/4, pi/4]. Examine the passed value and provide
     //   a slow path for inputs outside of that interval.
 
+    @MethodSubstitution
     public static double sin(double x) {
         if (abs(x) < PI_4) {
             return MathIntrinsicNode.compute(x, Operation.SIN);
@@ -67,6 +73,7 @@ public class MathSnippetsX86 implements SnippetsInterface {
         }
     }
 
+    @MethodSubstitution
     public static double cos(double x) {
         if (abs(x) < PI_4) {
             return MathIntrinsicNode.compute(x, Operation.COS);
@@ -75,6 +82,7 @@ public class MathSnippetsX86 implements SnippetsInterface {
         }
     }
 
+    @MethodSubstitution
     public static double tan(double x) {
         if (abs(x) < PI_4) {
             return MathIntrinsicNode.compute(x, Operation.TAN);
