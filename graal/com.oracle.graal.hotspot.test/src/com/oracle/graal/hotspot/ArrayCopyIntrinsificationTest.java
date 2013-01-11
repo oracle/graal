@@ -153,24 +153,9 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testObjectExact() {
-        Object[] src = {"one", "two", "three", new ArrayList<>(), new HashMap<>()};
-        test("exactObjectArraycopy", (Object) src);
-    }
-
-    @Test
-    public void testString() {
-        String[] src = {"one", "two", "three"};
-        test("stringArraycopy", src, 0, new String[src.length], 0, src.length);
-    }
-
-    @Test
     public void testObject() {
-        mustIntrinsify = false; // a call to arraycopy where dest is not an exact type will not be intrinsified
         Object[] src = {"one", "two", "three", new ArrayList<>(), new HashMap<>()};
-        test("objectArraycopy", src, 0, new Object[src.length], 0, src.length);
-        // Expect ArrayStoreException
-        test("objectArraycopy", src, 0, new String[src.length], 0, src.length);
+        testHelper("objectArraycopy", src);
     }
 
     private static Object newArray(Object proto, int length) {
@@ -199,17 +184,6 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
     }
 
     public static Object[] objectArraycopy(Object[] src, int srcPos, Object[] dst, int dstPos, int length) {
-        System.arraycopy(src, srcPos, dst, dstPos, length);
-        return dst;
-    }
-
-    public static Object[] exactObjectArraycopy(Object[] src) {
-        Object[] dst = new Object[src.length];
-        System.arraycopy(src, 0, dst, 0, src.length);
-        return dst;
-    }
-
-    public static Object[] stringArraycopy(String[] src, int srcPos, String[] dst, int dstPos, int length) {
         System.arraycopy(src, srcPos, dst, dstPos, length);
         return dst;
     }
