@@ -110,11 +110,11 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                                 snippetMethod = doubleArrayCopy;
                             }
                         }
-                    } else if (destType.getComponentType().isAssignableFrom(srcType.getComponentType())) {
-                        if (destStamp.isExactType()) {
+//                    } else if (destType.getComponentType().isAssignableFrom(srcType.getComponentType())) {
+//                        if (destStamp.isExactType()) {
 //                            snippetMethod = objectArrayCopy;
-                        }
-                    }
+//                        }
+//                    }
                 }
             }
 
