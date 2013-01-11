@@ -128,7 +128,7 @@ public class ObjectStamp extends Stamp {
     }
 
     @Override
-    public Stamp join(Stamp otherStamp) {
+    public ObjectStamp join(Stamp otherStamp) {
         if (this == otherStamp) {
             return this;
         }
