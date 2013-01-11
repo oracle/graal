@@ -50,6 +50,19 @@ public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIR
     }
 
     @Override
+    public boolean inferStamp() {
+        if (kind() != Kind.Object || object().kind() != Kind.Object) {
+            return false;
+        }
+        if (object().objectStamp().alwaysNull() && objectStamp().nonNull()) {
+            // a null value flowing into a nonNull UnsafeCastNode should be guarded by a type/isNull guard, but the
+            // compiler might see this situation before the branch is deleted
+            return false;
+        }
+        return updateStamp(stamp().join(object().stamp()));
+    }
+
+    @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (kind() != object.kind()) {
             return this;
