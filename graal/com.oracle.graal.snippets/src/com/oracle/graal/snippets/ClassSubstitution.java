@@ -31,7 +31,24 @@ import java.lang.annotation.*;
 @Target(ElementType.TYPE)
 public @interface ClassSubstitution {
 
-    Class<?> value();
+    /**
+     * Specifies the substituted class.
+     * <p>
+     * If the default value is specified for this element, then a non-default
+     * value must be given for the {@link #className()} element.
+      */
+    Class<?> value() default ClassSubstitution.class;
+
+    /**
+     * Specifies the substituted class.
+     * <p>
+     * This method is provided for cases where the substituted class
+     * is not accessible (according to Java language access control rules).
+     * <p>
+     * If the default value is specified for this element, then a non-default
+     * value must be given for the {@link #value()} element.
+     */
+    String className() default "";
 
     /**
      * Used to map a substitute method to an original method where the default mapping

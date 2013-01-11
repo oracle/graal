@@ -79,11 +79,28 @@ public class SnippetInstaller {
      * annotated with {@link Snippet}.
      */
     public void install(Class<? extends SnippetsInterface> snippetsHolder) {
-        if (snippetsHolder.isAnnotationPresent(ClassSubstitution.class)) {
-            installSubstitutions(snippetsHolder, snippetsHolder.getAnnotation(ClassSubstitution.class).value());
+        ClassSubstitution classSubs = snippetsHolder.getAnnotation(ClassSubstitution.class);
+        if (classSubs != null) {
+            Class< ? > originalClass = getOriginalClass(classSubs);
+            installSubstitutions(snippetsHolder, originalClass);
         } else {
             installSnippets(snippetsHolder);
         }
+    }
+
+    private static Class< ? > getOriginalClass(ClassSubstitution classSubs) throws GraalInternalError {
+        Class<?> originalClass = classSubs.value();
+        if (originalClass == ClassSubstitution.class) {
+            assert !classSubs.className().isEmpty();
+            try {
+                originalClass = Class.forName(classSubs.className());
+            } catch (ClassNotFoundException e) {
+                throw new GraalInternalError("Could not resolve substituted class " + classSubs.className(), e);
+            }
+        } else {
+            assert classSubs.className().isEmpty();
+        }
+        return originalClass;
     }
 
     private void installSnippets(Class< ? extends SnippetsInterface> clazz) {
