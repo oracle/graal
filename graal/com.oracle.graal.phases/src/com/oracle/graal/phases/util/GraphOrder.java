@@ -34,20 +34,6 @@ public class GraphOrder implements Iterable<Node> {
     private GraphOrder() {
     }
 
-    public GraphOrder(Graph graph) {
-        NodeBitMap visited = graph.createNodeBitMap();
-
-        for (ReturnNode node : graph.getNodes(ReturnNode.class)) {
-            visitForward(visited, node);
-        }
-        for (UnwindNode node : graph.getNodes(UnwindNode.class)) {
-            visitForward(visited, node);
-        }
-        for (DeoptimizeNode node : graph.getNodes(DeoptimizeNode.class)) {
-            visitForward(visited, node);
-        }
-    }
-
     public static GraphOrder forwardGraph(Graph graph) {
         GraphOrder result = new GraphOrder();
 
