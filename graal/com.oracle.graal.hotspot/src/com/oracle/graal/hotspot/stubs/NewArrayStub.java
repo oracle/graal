@@ -44,6 +44,7 @@ import com.oracle.graal.word.*;
  * or allocate the object, it calls out to the HotSpot C++ runtime for
  * to complete the allocation.
  */
+@SuppressWarnings("unused")
 public class NewArrayStub extends Stub {
 
     public NewArrayStub(final HotSpotRuntime runtime, Assumptions assumptions, TargetDescription target) {
