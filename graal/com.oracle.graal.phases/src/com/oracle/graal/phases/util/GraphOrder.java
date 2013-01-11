@@ -27,7 +27,7 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
-public class GraphOrder implements Iterable<Node> {
+public final class GraphOrder implements Iterable<Node> {
 
     private final ArrayList<Node> nodes = new ArrayList<>();
 
