@@ -110,10 +110,6 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                                 snippetMethod = doubleArrayCopy;
                             }
                         }
-                    } else if (destType.getComponentType() == srcType.getComponentType() || destType.getComponentType().isAssignableFrom(srcType.getComponentType())) {
-                        if (destStamp.isExactType()) {
-                            snippetMethod = objectArrayCopy;
-                        }
                     }
                 }
             }
