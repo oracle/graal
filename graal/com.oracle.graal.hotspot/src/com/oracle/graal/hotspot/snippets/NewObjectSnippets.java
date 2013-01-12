@@ -289,7 +289,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 ConstantNode size = ConstantNode.forInt(-1, graph);
                 InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(zero, lengthNode, size, arrayType, newArrayNode.fillContents(), newArrayNode.locked()));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
-            } else if (length != null && belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
+            } else if (false && length != null && belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
                 // Calculate aligned size
                 int size = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
                 ConstantNode sizeNode = ConstantNode.forInt(size, graph);
