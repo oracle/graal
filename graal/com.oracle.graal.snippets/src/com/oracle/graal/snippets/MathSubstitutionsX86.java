@@ -31,10 +31,10 @@ import com.oracle.graal.snippets.nodes.*;
 import com.oracle.graal.snippets.nodes.MathIntrinsicNode.Operation;
 
 /**
- * Snippets for {@link java.lang.Math} methods.
+ * Substitutions for {@link java.lang.Math} methods.
  */
 @ClassSubstitution(java.lang.Math.class)
-public class MathSnippetsX86 implements SnippetsInterface {
+public class MathSubstitutionsX86 {
 
     private static final double PI_4 = 0.7853981633974483;
 

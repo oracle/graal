@@ -31,10 +31,10 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.snippets.ClassSubstitution.*;
 
 /**
- * Snippets for {@link UnsignedMath}.
+ * Substitutions for {@link UnsignedMath}.
  */
 @ClassSubstitution(UnsignedMath.class)
-public class UnsignedMathSnippets implements SnippetsInterface {
+public class UnsignedMathSubstitutions {
 
     @MethodSubstitution
     public static boolean aboveThan(int a, int b) {

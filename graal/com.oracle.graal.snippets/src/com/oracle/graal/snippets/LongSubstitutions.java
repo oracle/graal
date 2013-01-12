@@ -26,7 +26,7 @@ import com.oracle.graal.snippets.ClassSubstitution.*;
 import com.oracle.graal.snippets.nodes.*;
 
 @ClassSubstitution(Long.class)
-public class LongSnippets implements SnippetsInterface{
+public class LongSubstitutions {
 
     @MethodSubstitution
     public static long reverseBytes(long i) {

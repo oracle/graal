@@ -26,34 +26,34 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.snippets.ClassSubstitution.*;
 
 /**
- * Snippets for {@link java.lang.Double} methods.
+ * Substitutions for {@link java.lang.Float} methods.
  */
-@ClassSubstitution(java.lang.Double.class)
-public class DoubleSnippets implements SnippetsInterface {
+@ClassSubstitution(java.lang.Float.class)
+public class FloatSubstitutions {
 
-    private static final long NAN_RAW_LONG_BITS = Double.doubleToRawLongBits(Double.NaN);
+    private static final int NAN_RAW_INT_BITS = Float.floatToRawIntBits(Float.NaN);
 
     @MethodSubstitution
-    public static long doubleToRawLongBits(double value) {
+    public static int floatToRawIntBits(float value) {
         @JavacBug(id = 6995200)
-        Long result = ConvertNode.convert(ConvertNode.Op.MOV_D2L, value);
+        Integer result = ConvertNode.convert(ConvertNode.Op.MOV_F2I, value);
         return result;
     }
 
     // TODO This method is not necessary, since the JDK method does exactly this
     @MethodSubstitution
-    public static long doubleToLongBits(double value) {
+    public static int floatToIntBits(float value) {
         if (value != value) {
-            return NAN_RAW_LONG_BITS;
+            return NAN_RAW_INT_BITS;
         } else {
-            return doubleToRawLongBits(value);
+            return floatToRawIntBits(value);
         }
     }
 
     @MethodSubstitution
-    public static double longBitsToDouble(long bits) {
+    public static float intBitsToFloat(int bits) {
         @JavacBug(id = 6995200)
-        Double result = ConvertNode.convert(ConvertNode.Op.MOV_L2D, bits);
+        Float result = ConvertNode.convert(ConvertNode.Op.MOV_I2F, bits);
         return result;
     }
 }

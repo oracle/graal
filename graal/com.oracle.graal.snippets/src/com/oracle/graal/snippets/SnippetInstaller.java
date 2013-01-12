@@ -43,7 +43,8 @@ import com.oracle.graal.snippets.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.word.phases.*;
 
 /**
- * Utility for snippet {@linkplain #install(Class) installation}.
+ * Utility for {@linkplain #installSnippets(Class) snippet} and
+ * {@linkplain #installSubstitutions(Class) substitution} installation.
  */
 public class SnippetInstaller {
 
@@ -55,7 +56,7 @@ public class SnippetInstaller {
     /**
      * A graph cache used by this installer to avoid using the compiler
      * storage for each method processed during snippet installation.
-     * Without this, all processed methods are to be determined as
+     * Without this, all processed methods are determined to be
      * {@linkplain InliningUtil#canIntrinsify intrinsifiable}.
      */
     private final Map<ResolvedJavaMethod, StructuredGraph> graphCache;
@@ -68,26 +69,7 @@ public class SnippetInstaller {
         this.graphCache = new HashMap<>();
     }
 
-    /**
-     * Finds all the snippet methods in a given class, builds a graph for them and
-     * installs the graph with the key value of {@code Graph.class} in the
-     * {@linkplain ResolvedJavaMethod#getCompilerStorage() compiler storage} of each method.
-     * <p>
-     * If {@code snippetsHolder} is annotated with {@link ClassSubstitution}, then all
-     * methods in the class are snippets. Otherwise, the snippets are those methods
-     * annotated with {@link Snippet}.
-     */
-    public void install(Class<? extends SnippetsInterface> snippetsHolder) {
-        ClassSubstitution classSubs = snippetsHolder.getAnnotation(ClassSubstitution.class);
-        if (classSubs != null) {
-            Class< ? > originalClass = getOriginalClass(classSubs);
-            installSubstitutions(snippetsHolder, originalClass);
-        } else {
-            installSnippets(snippetsHolder);
-        }
-    }
-
-    private static Class< ? > getOriginalClass(ClassSubstitution classSubs) throws GraalInternalError {
+    private static Class<?> getOriginalClass(ClassSubstitution classSubs) throws GraalInternalError {
         Class<?> originalClass = classSubs.value();
         if (originalClass == ClassSubstitution.class) {
             assert !classSubs.className().isEmpty();
@@ -102,7 +84,12 @@ public class SnippetInstaller {
         return originalClass;
     }
 
-    private void installSnippets(Class< ? extends SnippetsInterface> clazz) {
+    /**
+     * Finds all the snippet methods in a given class, builds a graph for them and
+     * installs the graph with the key value of {@code Graph.class} in the
+     * {@linkplain ResolvedJavaMethod#getCompilerStorage() compiler storage} of each method.
+     */
+    public void installSnippets(Class< ? extends SnippetsInterface> clazz) {
         for (Method method : clazz.getDeclaredMethods()) {
             if (method.getAnnotation(Snippet.class) != null) {
                 int modifiers = method.getModifiers();
@@ -118,8 +105,16 @@ public class SnippetInstaller {
         }
     }
 
-    private void installSubstitutions(Class< ? extends SnippetsInterface> clazz, Class<?> originalClazz) {
-        for (Method method : clazz.getDeclaredMethods()) {
+    /**
+     * Finds all the {@linkplain MethodSubstitution substitution} methods in a given class,
+     * builds a graph for them. If the original class is resolvable, then the
+     * graph is installed with the key value of {@code Graph.class} in the
+     * {@linkplain ResolvedJavaMethod#getCompilerStorage() compiler storage} of each original method.
+     */
+    public void installSubstitutions(Class<?> substitutions) {
+        ClassSubstitution classSubs = substitutions.getAnnotation(ClassSubstitution.class);
+        Class< ? > originalClass = getOriginalClass(classSubs);
+        for (Method method : substitutions.getDeclaredMethods()) {
             MethodSubstitution methodSubstitution = method.getAnnotation(MethodSubstitution.class);
             if (methodSubstitution == null) {
                 continue;
@@ -136,7 +131,7 @@ public class SnippetInstaller {
                     System.arraycopy(originalParameters, 1, newParameters, 0, newParameters.length);
                     originalParameters = newParameters;
                 }
-                Method originalMethod = originalClazz.getDeclaredMethod(originalName, originalParameters);
+                Method originalMethod = originalClass.getDeclaredMethod(originalName, originalParameters);
                 if (!originalMethod.getReturnType().isAssignableFrom(method.getReturnType())) {
                     throw new RuntimeException("Snippet has incompatible return type: " + method);
                 }
@@ -151,7 +146,7 @@ public class SnippetInstaller {
                 //System.out.println("snippet: " + graph);
                 runtime.lookupJavaMethod(originalMethod).getCompilerStorage().put(Graph.class, graph);
             } catch (NoSuchMethodException e) {
-                throw new GraalInternalError("Could not resolve method in " + originalClazz + " to substitute with " + method, e);
+                throw new GraalInternalError("Could not resolve method in " + originalClass + " to substitute with " + method, e);
             }
         }
     }

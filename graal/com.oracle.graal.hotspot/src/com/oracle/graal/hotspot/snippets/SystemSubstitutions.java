@@ -34,10 +34,10 @@ import com.oracle.graal.snippets.ClassSubstitution.*;
 import com.oracle.graal.word.*;
 
 /**
- * Snippets for {@link java.lang.System} methods.
+ * Substitutions for {@link java.lang.System} methods.
  */
 @ClassSubstitution(java.lang.System.class)
-public class SystemSnippets implements SnippetsInterface {
+public class SystemSubstitutions {
 
     public static final Descriptor JAVA_TIME_MILLIS = new Descriptor("javaTimeMillis", false, long.class);
     public static final Descriptor JAVA_TIME_NANOS = new Descriptor("javaTimeNanos", false, long.class);

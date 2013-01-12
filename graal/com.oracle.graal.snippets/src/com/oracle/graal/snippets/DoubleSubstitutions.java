@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,38 @@
  */
 package com.oracle.graal.snippets;
 
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.snippets.ClassSubstitution.*;
-import com.oracle.graal.snippets.nodes.*;
 
-@ClassSubstitution(Integer.class)
-public class IntegerSnippets implements SnippetsInterface{
+/**
+ * Substitutions for {@link java.lang.Double} methods.
+ */
+@ClassSubstitution(java.lang.Double.class)
+public class DoubleSubstitutions {
+
+    private static final long NAN_RAW_LONG_BITS = Double.doubleToRawLongBits(Double.NaN);
 
     @MethodSubstitution
-    public static int reverseBytes(int i) {
-        return ReverseBytesNode.reverse(i);
+    public static long doubleToRawLongBits(double value) {
+        @JavacBug(id = 6995200)
+        Long result = ConvertNode.convert(ConvertNode.Op.MOV_D2L, value);
+        return result;
     }
 
+    // TODO This method is not necessary, since the JDK method does exactly this
     @MethodSubstitution
-    public static int numberOfLeadingZeros(int i) {
-        if (i == 0) {
-            return 32;
+    public static long doubleToLongBits(double value) {
+        if (value != value) {
+            return NAN_RAW_LONG_BITS;
+        } else {
+            return doubleToRawLongBits(value);
         }
-        return 31 - BitScanReverseNode.scan(i);
     }
 
     @MethodSubstitution
-    public static int numberOfTrailingZeros(int i) {
-        if (i == 0) {
-            return 32;
-        }
-        return BitScanForwardNode.scan(i);
-    }
-
-    @MethodSubstitution
-    public static int bitCount(int i) {
-        return BitCountNode.bitCount(i);
+    public static double longBitsToDouble(long bits) {
+        @JavacBug(id = 6995200)
+        Double result = ConvertNode.convert(ConvertNode.Op.MOV_L2D, bits);
+        return result;
     }
 }
