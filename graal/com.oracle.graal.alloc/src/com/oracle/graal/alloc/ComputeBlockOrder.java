@@ -45,6 +45,23 @@ public final class ComputeBlockOrder {
     private final List<Block> loopHeaders;
     private final boolean reorderLoops;
 
+    private Comparator<Block> blockComparator = new Comparator<Block>() {
+        @Override
+        public int compare(Block o1, Block o2) {
+            // Loop blocks before any loop exit block.
+            int diff = o2.getLoopDepth() - o1.getLoopDepth();
+            if (diff != 0) {
+                return diff;
+            }
+
+            // Blocks with high probability before blocks with low probability.
+            if (o1.getBeginNode().probability() > o2.getBeginNode().probability()) {
+                return -1;
+            } else {
+                return 1;
+            }
+        }};
+
     public ComputeBlockOrder(int maxBlockId, int loopCount, Block startBlock, boolean reorderLoops) {
         loopHeaders = new ArrayList<>(loopCount);
         while (loopHeaders.size() < loopCount) {
@@ -59,21 +76,69 @@ public final class ComputeBlockOrder {
         countEdges(startBlock, null);
         computeOrder(startBlock);
 
+        List<Block> order = new ArrayList<>();
+        PriorityQueue<Block> worklist = new PriorityQueue<>(10, blockComparator);
+        BitSet orderedBlocks = new BitSet(maxBlockId);
+        orderedBlocks.set(startBlock.getId());
+        worklist.add(startBlock);
+        computeCodeEmittingOrder(order, worklist, orderedBlocks);
+        assert codeEmittingOrder.size() == order.size();
+        codeEmittingOrder = order;
+    }
 
-        List<Block> newCodeEmittingOrder = new ArrayList<>();
-        List<Block> outOfLine = new ArrayList<>();
-        for (Block b : codeEmittingOrder) {
-            if (b.getBeginNode().probability() > 0.07) {
-                newCodeEmittingOrder.add(b);
-            } else {
-                outOfLine.add(b);
+    private void computeCodeEmittingOrder(List<Block> order, PriorityQueue<Block> worklist, BitSet orderedBlocks) {
+        while (!worklist.isEmpty()) {
+            Block nextImportantPath = worklist.poll();
+            addImportantPath(nextImportantPath, order, worklist, orderedBlocks);
+        }
+    }
+
+    private void addImportantPath(Block block, List<Block> order, PriorityQueue<Block> worklist, BitSet orderedBlocks) {
+        if (!skipLoopHeader(block)) {
+            if (block.isLoopHeader()) {
+                block.align = true;
+            }
+            order.add(block);
+        }
+        if (block.isLoopEnd() && skipLoopHeader(block.getLoop().header)) {
+            order.add(block.getLoop().header);
+            for (Block succ : block.getLoop().header.getSuccessors()) {
+                if (succ.getLoopDepth() == block.getLoopDepth()) {
+                    succ.align = true;
+                }
+            }
+        }
+        Block bestSucc = null;
+        double bestSuccProb = 0;
+
+        for (Block succ : block.getSuccessors()) {
+            if (!orderedBlocks.get(succ.getId()) && succ.getLoopDepth() >= block.getLoopDepth()) {
+                double curProb = succ.getBeginNode().probability();
+                if (curProb >= bestSuccProb) {
+                    bestSuccProb = curProb;
+                    bestSucc = succ;
+                }
+                assert curProb >= 0 : curProb;
             }
         }
 
-        for (Block b : outOfLine) {
-            newCodeEmittingOrder.add(b);
+        for (Block succ : block.getSuccessors()) {
+            if (!orderedBlocks.get(succ.getId())) {
+                if (succ != bestSucc) {
+                    orderedBlocks.set(succ.getId());
+                    worklist.add(succ);
+                }
+            }
         }
-        codeEmittingOrder = newCodeEmittingOrder;
+
+        if (bestSucc != null) {
+            orderedBlocks.set(bestSucc.getId());
+            addImportantPath(bestSucc, order, worklist, orderedBlocks);
+        }
+    }
+
+    private boolean skipLoopHeader(Block bestSucc) {
+        return (reorderLoops && bestSucc.isLoopHeader() && !bestSucc.isLoopEnd() && bestSucc.getLoop().loopBegin().loopEnds().count() == 1);
     }
 
     /**
@@ -248,9 +313,13 @@ public final class ComputeBlockOrder {
         linearScanOrder.add(cur);
 
         if (cur.isLoopEnd() && cur.isLoopHeader()) {
+            //cur.align = true;
             codeEmittingOrder.add(cur);
         } else {
             if (!cur.isLoopHeader() || ((LoopBeginNode) cur.getBeginNode()).loopEnds().count() > 1 || !reorderLoops) {
+                if (cur.isLoopHeader()) {
+                   // cur.align = true;
+                }
                 codeEmittingOrder.add(cur);
 
                 if (cur.isLoopEnd() && reorderLoops) {
@@ -261,7 +330,7 @@ public final class ComputeBlockOrder {
                         for (int i = 0; i < loopHeader.numberOfSux(); i++) {
                             Block succ = loopHeader.suxAt(i);
                             if (succ.getLoopDepth() == loopHeader.getLoopDepth()) {
-                                succ.align = true;
+                              //  succ.align = true;
                             }
                         }
                     }
