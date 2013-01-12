@@ -70,6 +70,9 @@ public class ComputeProbabilityPhase extends Phase {
     private void correctLoopFrequencies(Loop loop, double parentFrequency, BitSet visitedBlocks) {
         LoopBeginNode loopBegin = ((LoopBeginNode) loop.header.getBeginNode());
         double frequency = parentFrequency * loopBegin.loopFrequency();
+        if (frequency < 1) {
+            frequency = 1;
+        }
         for (Loop child : loop.children) {
             correctLoopFrequencies(child, frequency, visitedBlocks);
         }
