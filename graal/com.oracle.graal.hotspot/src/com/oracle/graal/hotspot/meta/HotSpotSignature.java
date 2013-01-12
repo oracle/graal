@@ -123,7 +123,8 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         return type;
     }
 
-    public String asString() {
+    @Override
+    public String getString() {
         return originalString;
     }
 

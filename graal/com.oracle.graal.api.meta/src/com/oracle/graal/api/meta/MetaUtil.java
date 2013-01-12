@@ -494,23 +494,6 @@ public class MetaUtil {
     }
 
     /**
-     * Converts a {@link Signature} to internal representation, i.e., the signature
-     * <pre>(int, String, double)void</pre> is converted to <pre>(ILjava/lang/String;D)V</pre>.
-     *
-     * @param sig the {@link Signature} to be converted.
-     *
-     * @return the signature's internal representation as a string.
-     */
-    public static String signatureToInternal(Signature sig) {
-        StringBuilder sb = new StringBuilder("(");
-        for (int i = 0; i < sig.getParameterCount(false); ++i) {
-            sb.append(sig.getParameterType(i, null).getName());
-        }
-        sb.append(')').append(sig.getReturnType(null).getName());
-        return sb.toString();
-    }
-
-    /**
      * Formats some profiling information associated as a string.
      *
      * @param info the profiling info to format
