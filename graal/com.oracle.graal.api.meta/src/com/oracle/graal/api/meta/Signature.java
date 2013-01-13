@@ -25,7 +25,7 @@ package com.oracle.graal.api.meta;
 /**
  * Represents a method signature provided by the runtime.
  *
- * @see <a href="http://java.sun.com/docs/books/jvms/second_edition/html/ClassFile.doc.html#7035">Method Descriptors</a>
+ * @see <a href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">Method Descriptors</a>
  */
 public interface Signature {
 
@@ -85,12 +85,13 @@ public interface Signature {
     int getParameterSlots(boolean withReceiver);
 
     /**
-     * Gets this string representation of this signature in the format specified in the JVMS.
+     * Gets the <a href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">method
+     * descriptor</a> corresponding to this signature.
      * For example:
      *
      * <pre>(ILjava/lang/String;D)V</pre>.
      *
      * @return the signature as a string
      */
-    String getString();
+    String getMethodDescriptor();
 }
