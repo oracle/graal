@@ -22,9 +22,13 @@
  */
 package com.oracle.graal.snippets;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
+
+import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -56,7 +60,7 @@ public class SnippetInstaller {
     /**
      * A graph cache used by this installer to avoid using the compiler
      * storage for each method processed during snippet installation.
-     * Without this, all processed methods are determined to be
+     * Without this, all processed methods are to be determined as
      * {@linkplain InliningUtil#canIntrinsify intrinsifiable}.
      */
     private final Map<ResolvedJavaMethod, StructuredGraph> graphCache;
@@ -67,21 +71,6 @@ public class SnippetInstaller {
         this.assumptions = assumptions;
         this.pool = new BoxingMethodPool(runtime);
         this.graphCache = new HashMap<>();
-    }
-
-    private static Class<?> getOriginalClass(ClassSubstitution classSubs) throws GraalInternalError {
-        Class<?> originalClass = classSubs.value();
-        if (originalClass == ClassSubstitution.class) {
-            assert !classSubs.className().isEmpty();
-            try {
-                originalClass = Class.forName(classSubs.className());
-            } catch (ClassNotFoundException e) {
-                throw new GraalInternalError("Could not resolve substituted class " + classSubs.className(), e);
-            }
-        } else {
-            assert classSubs.className().isEmpty();
-        }
-        return originalClass;
     }
 
     /**
@@ -112,42 +101,29 @@ public class SnippetInstaller {
      * {@linkplain ResolvedJavaMethod#getCompilerStorage() compiler storage} of each original method.
      */
     public void installSubstitutions(Class<?> substitutions) {
-        ClassSubstitution classSubs = substitutions.getAnnotation(ClassSubstitution.class);
-        Class< ? > originalClass = getOriginalClass(classSubs);
-        for (Method method : substitutions.getDeclaredMethods()) {
-            MethodSubstitution methodSubstitution = method.getAnnotation(MethodSubstitution.class);
+        ClassSubstitution classSubstitution = substitutions.getAnnotation(ClassSubstitution.class);
+        for (Method substituteMethod : substitutions.getDeclaredMethods()) {
+            MethodSubstitution methodSubstitution = substituteMethod.getAnnotation(MethodSubstitution.class);
             if (methodSubstitution == null) {
                 continue;
             }
-            try {
-                String originalName = method.getName();
-                Class<?>[] originalParameters = method.getParameterTypes();
-                if (!methodSubstitution.value().isEmpty()) {
-                    originalName = methodSubstitution.value();
-                }
-                if (!methodSubstitution.isStatic()) {
-                    assert originalParameters.length >= 1 : "must be a static method with the this object as its first parameter";
-                    Class<?>[] newParameters = new Class<?>[originalParameters.length - 1];
-                    System.arraycopy(originalParameters, 1, newParameters, 0, newParameters.length);
-                    originalParameters = newParameters;
-                }
-                Method originalMethod = originalClass.getDeclaredMethod(originalName, originalParameters);
-                if (!originalMethod.getReturnType().isAssignableFrom(method.getReturnType())) {
-                    throw new RuntimeException("Snippet has incompatible return type: " + method);
-                }
-                int modifiers = method.getModifiers();
-                if (!Modifier.isStatic(modifiers)) {
-                    throw new RuntimeException("Snippets must be static methods: " + method);
-                } else if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-                    throw new RuntimeException("Snippet must not be abstract or native: " + method);
-                }
-                ResolvedJavaMethod snippet = runtime.lookupJavaMethod(method);
-                StructuredGraph graph = makeGraph(snippet, inliningPolicy(snippet), true);
-                //System.out.println("snippet: " + graph);
-                runtime.lookupJavaMethod(originalMethod).getCompilerStorage().put(Graph.class, graph);
-            } catch (NoSuchMethodException e) {
-                throw new GraalInternalError("Could not resolve method in " + originalClass + " to substitute with " + method, e);
+
+            int modifiers = substituteMethod.getModifiers();
+            if (!Modifier.isStatic(modifiers)) {
+                throw new RuntimeException("Substitution methods must be static: " + substituteMethod);
+            } else if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
+                throw new RuntimeException("Substitution method must not be abstract or native: " + substituteMethod);
             }
+
+            String originalName = originalName(substituteMethod, methodSubstitution);
+            Class[] originalParameters = originalParameters(substituteMethod, methodSubstitution);
+            ResolvedJavaMethod substitute = runtime.lookupJavaMethod(substituteMethod);
+            Method originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
+            ResolvedJavaMethod substituted = runtime.lookupJavaMethod(originalMethod);
+            //System.out.println("substitution: " + MetaUtil.format("%H.%n(%p)", substituted) + " --> " + MetaUtil.format("%H.%n(%p)", substitute));
+            StructuredGraph graph = makeGraph(substitute, inliningPolicy(substitute), true);
+            Object oldValue = substituted.getCompilerStorage().put(Graph.class, graph);
+            assert oldValue == null;
         }
     }
 
@@ -167,7 +143,7 @@ public class SnippetInstaller {
         }
     }
 
-    public StructuredGraph makeGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy, final boolean isSubstitutionSnippet) {
+    public StructuredGraph makeGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy, final boolean isSubstitution) {
         return Debug.scope("BuildSnippetGraph", new Object[] {method}, new Callable<StructuredGraph>() {
             @Override
             public StructuredGraph call() throws Exception {
@@ -175,8 +151,8 @@ public class SnippetInstaller {
 
                 new SnippetIntrinsificationPhase(runtime, pool, SnippetTemplate.hasConstantParameter(method)).apply(graph);
 
-                if (isSubstitutionSnippet) {
-                    // TODO (ds) remove the constraint of only processing substitution snippets
+                if (isSubstitution) {
+                    // TODO (ds) remove the constraint of only processing substitutions
                     // once issues with the arraycopy snippets have been resolved
                     new SnippetFrameStateCleanupPhase().apply(graph);
                     new DeadCodeEliminationPhase().apply(graph);
@@ -246,5 +222,66 @@ public class SnippetInstaller {
             new ComputeProbabilityPhase().apply(graph);
         }
         return graph;
+    }
+
+    private static String originalName(Method substituteMethod, MethodSubstitution methodSubstitution) {
+        String name = substituteMethod.getName();
+        if (!methodSubstitution.value().isEmpty()) {
+            name = methodSubstitution.value();
+        }
+        return name;
+    }
+
+    private static Class resolveType(String className) {
+        try {
+            // Need to use launcher class path to handle classes
+            // that are not on the boot class path
+            ClassLoader cl = Launcher.getLauncher().getClassLoader();
+            return Class.forName(className, false, cl);
+        } catch (ClassNotFoundException e) {
+            throw new GraalInternalError("Could not resolve type " + className);
+        }
+    }
+
+    private static Class resolveType(JavaType type) {
+        JavaType base = type;
+        int dimensions = 0;
+        while (base.getComponentType() != null) {
+            base = base.getComponentType();
+            dimensions++;
+        }
+
+        Class baseClass = base.getKind() != Kind.Object ? base.getKind().toJavaClass() : resolveType(toJavaName(base));
+        return dimensions == 0 ? baseClass : Array.newInstance(baseClass, new int[dimensions]).getClass();
+    }
+
+    private Class[] originalParameters(Method substituteMethod, MethodSubstitution methodSubstitution) {
+        Class[] parameters;
+        if (methodSubstitution.signature().isEmpty()) {
+            parameters = substituteMethod.getParameterTypes();
+            if (!methodSubstitution.isStatic()) {
+                assert parameters.length > 0 : "must be a static method with the 'this' object as its first parameter";
+                parameters = Arrays.copyOfRange(parameters, 1, parameters.length);
+            }
+        } else {
+            Signature signature = runtime.parseMethodDescriptor(methodSubstitution.signature());
+            parameters = new Class[signature.getParameterCount(false)];
+            for (int i = 0; i < parameters.length; i++) {
+                parameters[i] = resolveType(signature.getParameterType(i, null));
+            }
+        }
+        return parameters;
+    }
+
+    private static Method originalMethod(ClassSubstitution classSubstitution, String name, Class[] parameters) {
+        Class<?> originalClass = classSubstitution.value();
+        if (originalClass == ClassSubstitution.class) {
+            originalClass = resolveType(classSubstitution.className());
+        }
+        try {
+            return originalClass.getDeclaredMethod(name, parameters);
+        } catch (NoSuchMethodException | SecurityException e) {
+            throw new GraalInternalError(e);
+        }
     }
 }
