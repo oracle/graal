@@ -51,16 +51,21 @@ public class StandardOp {
     public static class LabelOp extends LIRInstruction {
         private final Label label;
         private final boolean align;
+        private final boolean softAlign;
 
-        public LabelOp(Label label, boolean align) {
+        public LabelOp(Label label, boolean align, boolean softAlign) {
             this.label = label;
             this.align = align;
+            this.softAlign = softAlign;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm) {
             if (align) {
                 tasm.asm.align(tasm.target.wordSize * 2);
+            }
+            if (softAlign) {
+                tasm.asm.softAlign(tasm.target.wordSize * 2);
             }
             tasm.asm.bind(label);
         }

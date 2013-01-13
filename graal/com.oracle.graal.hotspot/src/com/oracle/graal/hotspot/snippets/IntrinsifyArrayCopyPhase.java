@@ -31,7 +31,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 
@@ -83,37 +82,34 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                 ValueNode src = methodCallTarget.arguments().get(0);
                 ValueNode dest = methodCallTarget.arguments().get(2);
                 assert src != null && dest != null;
-                ObjectStamp srcStamp = src.objectStamp();
-                ObjectStamp destStamp = dest.objectStamp();
-                ResolvedJavaType srcType = srcStamp.type();
-                ResolvedJavaType destType = destStamp.type();
+                ResolvedJavaType srcType = src.objectStamp().type();
+                ResolvedJavaType destType = dest.objectStamp().type();
                 if (srcType != null
                                 && srcType.isArray()
                                 && destType != null
                                 && destType.isArray()) {
                     Kind componentKind = srcType.getComponentType().getKind();
-                    if (componentKind != Kind.Object) {
-                        if (srcType.getComponentType() == destType.getComponentType()) {
-                            if (componentKind == Kind.Int) {
-                                snippetMethod = intArrayCopy;
-                            } else if (componentKind == Kind.Char) {
-                                snippetMethod = charArrayCopy;
-                            } else if (componentKind == Kind.Long) {
-                                snippetMethod = longArrayCopy;
-                            } else if (componentKind == Kind.Byte) {
-                                snippetMethod = byteArrayCopy;
-                            } else if (componentKind == Kind.Short) {
-                                snippetMethod = shortArrayCopy;
-                            } else if (componentKind == Kind.Float) {
-                                snippetMethod = floatArrayCopy;
-                            } else if (componentKind == Kind.Double) {
-                                snippetMethod = doubleArrayCopy;
-                            }
-                        }
-                    } else if (destType.getComponentType().isAssignableFrom(srcType.getComponentType())) {
-                        if (destStamp.isExactType()) {
+                    if (srcType.getComponentType() == destType.getComponentType()) {
+                        if (componentKind == Kind.Int) {
+                            snippetMethod = intArrayCopy;
+                        } else if (componentKind == Kind.Char) {
+                            snippetMethod = charArrayCopy;
+                        } else if (componentKind == Kind.Long) {
+                            snippetMethod = longArrayCopy;
+                        } else if (componentKind == Kind.Byte) {
+                            snippetMethod = byteArrayCopy;
+                        } else if (componentKind == Kind.Short) {
+                            snippetMethod = shortArrayCopy;
+                        } else if (componentKind == Kind.Float) {
+                            snippetMethod = floatArrayCopy;
+                        } else if (componentKind == Kind.Double) {
+                            snippetMethod = doubleArrayCopy;
+                        } else if (componentKind == Kind.Object) {
                             snippetMethod = objectArrayCopy;
                         }
+                    } else if (componentKind == Kind.Object
+                                    && destType.getComponentType().isAssignableFrom(srcType.getComponentType())) {
+                        snippetMethod = objectArrayCopy;
                     }
                 }
             }

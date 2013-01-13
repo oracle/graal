@@ -45,6 +45,7 @@ public class Block {
 
     // Fields that still need to be worked on, try to remove them later.
     public boolean align;
+    public boolean softAlign;
     public int linearScanNumber;
 
     protected Block() {

@@ -2958,6 +2958,13 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
+    @Override
+    public void softAlign(int modulus) {
+        if (codeBuffer.position() % modulus > modulus / 2) {
+            nop(modulus - (codeBuffer.position() % modulus));
+        }
+    }
+
     public void pushfq() {
         emitByte(0x9c);
     }

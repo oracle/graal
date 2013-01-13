@@ -124,9 +124,13 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
-        if (GraalOptions.Debug && GraalOptions.DebugSnippets) {
-            DebugEnvironment.initialize(log);
+        if (GraalOptions.Debug) {
+            Debug.enable();
+            if (GraalOptions.DebugSnippets) {
+                DebugEnvironment.initialize(log);
+            }
         }
+
         // Install intrinsics.
         GraalCompiler compiler = graalRuntime.getCompiler();
         final HotSpotRuntime runtime = (HotSpotRuntime) compiler.runtime;

@@ -209,6 +209,8 @@ public class GraalCompiler {
         assert startBlock != null;
         assert startBlock.numberOfPreds() == 0;
 
+        new ComputeProbabilityPhase().apply(graph);
+
         return Debug.scope("ComputeLinearScanOrder", new Callable<LIR>() {
 
             @Override
