@@ -208,6 +208,7 @@ public final class GraalOptions {
     public static boolean IntrinsifyThreadMethods            = true;
     public static boolean IntrinsifyUnsafeMethods            = true;
     public static boolean IntrinsifyMathMethods              = true;
+    public static boolean IntrinsifyAESCryptMethods          = false; // TODO (ds) make true once AES stubs are working
 
     /**
      * Counts the various paths taken through snippets.

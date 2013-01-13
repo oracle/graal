@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.compiler.amd64.AMD64DeoptimizationStub.*;
 import static com.oracle.graal.compiler.amd64.AMD64LIRGenerator.*;
+import static com.oracle.graal.hotspot.nodes.IdentityHashCodeStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewArraySlowStubCall.*;
@@ -32,10 +33,11 @@ import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceSlowStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
+import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
-import static com.oracle.graal.hotspot.nodes.IdentityHashCodeStubCall.*;
-import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
+import static com.oracle.graal.hotspot.snippets.AESCryptSubstitutions.DecryptBlockStubCall.*;
+import static com.oracle.graal.hotspot.snippets.AESCryptSubstitutions.EncryptBlockStubCall.*;
 import static com.oracle.graal.lir.amd64.AMD64Call.*;
 
 import com.oracle.graal.api.code.*;
@@ -138,6 +140,20 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /*          ret */ rax.asValue(Kind.Int),
                 /* arg0: thread */ arg(0, Kind.Object),
       /* arg1: clearInterrupted */ arg(1, Kind.Boolean));
+
+        addRuntimeCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub,
+                /*        temps */ null,
+                /*          ret */ ret(Kind.Void),
+                /* arg0:     in */ arg(0, word),
+                /* arg1:    out */ arg(1, word),
+                /* arg2:    key */ arg(2, word));
+
+        addRuntimeCall(DECRYPT_BLOCK, config.aescryptDecryptBlockStub,
+                /*        temps */ null,
+                /*          ret */ ret(Kind.Void),
+                /* arg0:     in */ arg(0, word),
+                /* arg1:    out */ arg(1, word),
+                /* arg2:    key */ arg(2, word));
     }
 
     @Override
