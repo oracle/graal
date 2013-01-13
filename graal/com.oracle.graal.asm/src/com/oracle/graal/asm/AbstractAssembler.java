@@ -50,6 +50,8 @@ public abstract class AbstractAssembler {
 
     public abstract void align(int modulus);
 
+    public abstract void softAlign(int modulus);
+
     public abstract void jmp(Label l);
 
     protected abstract void patchJumpTarget(int branch, int jumpTarget);

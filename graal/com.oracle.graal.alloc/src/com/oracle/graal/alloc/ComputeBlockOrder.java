@@ -98,10 +98,10 @@ public final class ComputeBlockOrder {
             if (block.isLoopHeader()) {
                 block.align = true;
             }
-            order.add(block);
+            addBlock(block, order);
         }
         if (block.isLoopEnd() && skipLoopHeader(block.getLoop().header)) {
-            order.add(block.getLoop().header);
+            addBlock(block.getLoop().header, order);
             for (Block succ : block.getLoop().header.getSuccessors()) {
                 if (succ.getLoopDepth() == block.getLoopDepth()) {
                     succ.align = true;
@@ -135,6 +135,13 @@ public final class ComputeBlockOrder {
             orderedBlocks.set(bestSucc.getId());
             addImportantPath(bestSucc, order, worklist, orderedBlocks);
         }
+    }
+
+    private static void addBlock(Block block, List<Block> order) {
+        if (order.size() > 0 && block.getPredecessors().size() == 1 && block.getPredecessors().get(0) != order.get(order.size() - 1)) {
+            block.softAlign = false;
+        }
+        order.add(block);
     }
 
     private boolean skipLoopHeader(Block bestSucc) {
