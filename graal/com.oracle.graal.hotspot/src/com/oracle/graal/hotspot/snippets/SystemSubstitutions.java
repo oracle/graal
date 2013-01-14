@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.snippets;
 
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
+import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -30,7 +31,7 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.ClassSubstitution.*;
+import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 import com.oracle.graal.word.*;
 
 /**
@@ -55,6 +56,7 @@ public class SystemSubstitutions {
     @MethodSubstitution
     public static int identityHashCode(Object x) {
         if (x == null) {
+            probability(0.01);
             return 0;
         }
 
@@ -63,8 +65,10 @@ public class SystemSubstitutions {
         // this code is independent from biased locking (although it does not look that way)
         final Word biasedLock = mark.and(biasedLockMaskInPlace());
         if (biasedLock == Word.unsigned(unlockedMask())) {
+            probability(0.99);
             int hash = (int) mark.unsignedShiftRight(identityHashCodeShift()).rawValue();
             if (hash != uninitializedIdentityHashCodeValue()) {
+                probability(0.99);
                 return hash;
             }
         }

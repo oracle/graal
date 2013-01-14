@@ -121,6 +121,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return this;
     }
 
+    public void setTakenProbability(double prob) {
+        takenProbability = prob;
+    }
+
     @Override
     public double probability(BeginNode successor) {
         return successor == trueSuccessor ? takenProbability : 1 - takenProbability;
