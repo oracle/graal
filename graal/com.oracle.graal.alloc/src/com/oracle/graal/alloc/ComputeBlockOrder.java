@@ -76,24 +76,27 @@ public final class ComputeBlockOrder {
         countEdges(startBlock, null);
         computeOrder(startBlock);
 
+        List<Block> newLinearScanOrder = new ArrayList<>();
         List<Block> order = new ArrayList<>();
         PriorityQueue<Block> worklist = new PriorityQueue<>(10, blockComparator);
         BitSet orderedBlocks = new BitSet(maxBlockId);
         orderedBlocks.set(startBlock.getId());
         worklist.add(startBlock);
-        computeCodeEmittingOrder(order, worklist, orderedBlocks);
+        computeCodeEmittingOrder(order, newLinearScanOrder, worklist, orderedBlocks);
         assert codeEmittingOrder.size() == order.size();
         codeEmittingOrder = order;
+
+        linearScanOrder = newLinearScanOrder;
     }
 
-    private void computeCodeEmittingOrder(List<Block> order, PriorityQueue<Block> worklist, BitSet orderedBlocks) {
+    private void computeCodeEmittingOrder(List<Block> order, List<Block> newLinearScanOrder, PriorityQueue<Block> worklist, BitSet orderedBlocks) {
         while (!worklist.isEmpty()) {
             Block nextImportantPath = worklist.poll();
-            addImportantPath(nextImportantPath, order, worklist, orderedBlocks);
+            addImportantPath(nextImportantPath, order, newLinearScanOrder, worklist, orderedBlocks);
         }
     }
 
-    private void addImportantPath(Block block, List<Block> order, PriorityQueue<Block> worklist, BitSet orderedBlocks) {
+    private void addImportantPath(Block block, List<Block> order, List<Block> newLinearScanOrder, PriorityQueue<Block> worklist, BitSet orderedBlocks) {
         if (!skipLoopHeader(block)) {
             if (block.isLoopHeader()) {
                 block.align = true;
@@ -108,6 +111,7 @@ public final class ComputeBlockOrder {
                 }
             }
         }
+        newLinearScanOrder.add(block);
         Block bestSucc = null;
         double bestSuccProb = 0;
 
@@ -133,7 +137,7 @@ public final class ComputeBlockOrder {
 
         if (bestSucc != null) {
             orderedBlocks.set(bestSucc.getId());
-            addImportantPath(bestSucc, order, worklist, orderedBlocks);
+            addImportantPath(bestSucc, order, newLinearScanOrder, worklist, orderedBlocks);
         }
     }
 

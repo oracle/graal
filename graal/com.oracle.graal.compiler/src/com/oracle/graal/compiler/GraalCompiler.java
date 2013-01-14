@@ -241,10 +241,21 @@ public class GraalCompiler {
 
             public void run() {
                 for (Block b : lir.linearScanOrder()) {
-                    lirGenerator.doBlock(b);
+                    emitBlock(b);
                 }
 
                 Debug.dump(lir, "After LIR generation");
+            }
+
+            private void emitBlock(Block b) {
+                if (lir.lir(b) == null) {
+                    for (Block pred : b.getPredecessors()) {
+                        if (!b.isLoopHeader() || !pred.isLoopEnd()) {
+                            emitBlock(pred);
+                        }
+                    }
+                    lirGenerator.doBlock(b);
+                }
             }
         });
 
