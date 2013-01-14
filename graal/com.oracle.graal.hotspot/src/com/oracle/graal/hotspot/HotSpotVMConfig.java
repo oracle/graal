@@ -334,6 +334,8 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int deoptReasonNone;
     public long threadIsInterruptedStub;
     public long identityHashCodeStub;
+    public long aescryptEncryptBlockStub;
+    public long aescryptDecryptBlockStub;
 
     public int deoptReasonNullCheck;
     public int deoptReasonRangeCheck;

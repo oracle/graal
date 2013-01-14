@@ -25,30 +25,34 @@ package com.oracle.graal.snippets;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.snippets.ClassSubstitution.*;
 
 /**
- * Snippets for improving the performance of some critical methods in {@link NodeClass} methods.
- * These snippets improve the performance by forcing the relevant methods to be inlined
+ * Substitutions for improving the performance of some critical methods in {@link NodeClass} methods.
+ * These substitutions improve the performance by forcing the relevant methods to be inlined
  * (intrinsification being a special form of inlining) and removing a checked cast.
  * The latter cannot be done directly in Java code as {@link UnsafeCastNode}
  * is not available to the project containing {@link NodeClass}.
  */
-@SuppressWarnings("unused")
 @ClassSubstitution(NodeClass.class)
-public class NodeClassSnippets implements SnippetsInterface {
+public class NodeClassSubstitutions {
 
+    @MethodSubstitution
     private static Node getNode(Node node, long offset) {
         return UnsafeCastNode.unsafeCast(UnsafeLoadNode.load(node, 0, offset, Kind.Object), Node.class, false, false);
     }
 
+    @MethodSubstitution
     private static NodeList getNodeList(Node node, long offset) {
         return UnsafeCastNode.unsafeCast(UnsafeLoadNode.load(node, 0, offset, Kind.Object), NodeList.class, false, false);
     }
 
+    @MethodSubstitution
     private static void putNode(Node node, long offset, Node value) {
         UnsafeStoreNode.store(node, 0, offset, value, Kind.Object);
     }
 
+    @MethodSubstitution
     private static void putNodeList(Node node, long offset, NodeList value) {
         UnsafeStoreNode.store(node, 0, offset, value, Kind.Object);
     }

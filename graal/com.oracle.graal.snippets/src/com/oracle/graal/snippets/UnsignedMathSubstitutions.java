@@ -28,17 +28,20 @@ import static com.oracle.graal.nodes.calc.Condition.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.snippets.ClassSubstitution.*;
 
 /**
- * Snippets for {@link UnsignedMath}.
+ * Substitutions for {@link UnsignedMath}.
  */
 @ClassSubstitution(UnsignedMath.class)
-public class UnsignedMathSnippets implements SnippetsInterface {
+public class UnsignedMathSubstitutions {
 
+    @MethodSubstitution
     public static boolean aboveThan(int a, int b) {
         return materialize(BT, b, a);
     }
 
+    @MethodSubstitution
     public static boolean aboveOrEqual(int a, int b) {
         return !materialize(BT, a, b);
     }
@@ -46,6 +49,7 @@ public class UnsignedMathSnippets implements SnippetsInterface {
     /**
      * Unsigned comparison belowThan for two numbers.
      */
+    @MethodSubstitution
     public static boolean belowThan(int a, int b) {
         return materialize(BT, a, b);
     }
@@ -53,6 +57,7 @@ public class UnsignedMathSnippets implements SnippetsInterface {
     /**
      * Unsigned comparison belowOrEqual for two numbers.
      */
+    @MethodSubstitution
     public static boolean belowOrEqual(int a, int b) {
         return !materialize(BT, b, a);
     }
@@ -60,6 +65,7 @@ public class UnsignedMathSnippets implements SnippetsInterface {
     /**
      * Unsigned comparison aboveThan for two numbers.
      */
+    @MethodSubstitution
     public static boolean aboveThan(long a, long b) {
         return materialize(BT, b, a);
     }
@@ -67,6 +73,7 @@ public class UnsignedMathSnippets implements SnippetsInterface {
     /**
      * Unsigned comparison aboveOrEqual for two numbers.
      */
+    @MethodSubstitution
     public static boolean aboveOrEqual(long a, long b) {
         return !materialize(BT, a, b);
     }
@@ -74,6 +81,7 @@ public class UnsignedMathSnippets implements SnippetsInterface {
     /**
      * Unsigned comparison belowThan for two numbers.
      */
+    @MethodSubstitution
     public static boolean belowThan(long a, long b) {
         return materialize(BT, a, b);
     }
@@ -81,6 +89,7 @@ public class UnsignedMathSnippets implements SnippetsInterface {
     /**
      * Unsigned comparison belowOrEqual for two numbers.
      */
+    @MethodSubstitution
     public static boolean belowOrEqual(long a, long b) {
         return !materialize(BT, b, a);
     }
@@ -88,6 +97,7 @@ public class UnsignedMathSnippets implements SnippetsInterface {
     /**
      * Unsigned division for two numbers.
      */
+    @MethodSubstitution
     public static int divide(int a, int b) {
         return unsignedDivide(Kind.Int, a, b);
     }
@@ -95,6 +105,7 @@ public class UnsignedMathSnippets implements SnippetsInterface {
     /**
      * Unsigned remainder for two numbers.
      */
+    @MethodSubstitution
     public static int remainder(int a, int b) {
         return unsignedRemainder(Kind.Int, a, b);
     }
@@ -102,6 +113,7 @@ public class UnsignedMathSnippets implements SnippetsInterface {
     /**
      * Unsigned division for two numbers.
      */
+    @MethodSubstitution
     public static long divide(long a, long b) {
         return unsignedDivide(Kind.Long, a, b);
     }
@@ -109,6 +121,7 @@ public class UnsignedMathSnippets implements SnippetsInterface {
     /**
      * Unsigned remainder for two numbers.
      */
+    @MethodSubstitution
     public static long remainder(long a, long b) {
         return unsignedRemainder(Kind.Long, a, b);
     }

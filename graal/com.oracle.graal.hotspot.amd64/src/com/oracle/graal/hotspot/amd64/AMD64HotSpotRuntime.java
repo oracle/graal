@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.compiler.amd64.AMD64DeoptimizationStub.*;
 import static com.oracle.graal.compiler.amd64.AMD64LIRGenerator.*;
+import static com.oracle.graal.hotspot.nodes.IdentityHashCodeStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewArraySlowStubCall.*;
@@ -32,10 +33,11 @@ import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceSlowStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
+import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
-import static com.oracle.graal.hotspot.nodes.IdentityHashCodeStubCall.*;
-import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
+import static com.oracle.graal.hotspot.snippets.AESCryptSubstitutions.DecryptBlockStubCall.*;
+import static com.oracle.graal.hotspot.snippets.AESCryptSubstitutions.EncryptBlockStubCall.*;
 import static com.oracle.graal.lir.amd64.AMD64Call.*;
 
 import com.oracle.graal.api.code.*;
@@ -66,26 +68,26 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         addRuntimeCall(ARITHMETIC_FREM, config.arithmeticFremStub,
                 /*           temps */ null,
                 /*             ret */ ret(Kind.Float),
-                /* arg0:         a */ arg(0, Kind.Float),
-                /* arg1:         b */ arg(1, Kind.Float));
+                /* arg0:         a */ jarg(0, Kind.Float),
+                /* arg1:         b */ jarg(1, Kind.Float));
 
         addRuntimeCall(ARITHMETIC_DREM, config.arithmeticDremStub,
                 /*           temps */ null,
                 /*             ret */ ret(Kind.Double),
-                /* arg0:         a */ arg(0, Kind.Double),
-                /* arg1:         b */ arg(1, Kind.Double));
+                /* arg0:         a */ jarg(0, Kind.Double),
+                /* arg1:         b */ jarg(1, Kind.Double));
 
         addRuntimeCall(MONITORENTER, config.monitorEnterStub,
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void),
-                /* arg0: object */ arg(0, Kind.Object),
-                /* arg1:   lock */ arg(1, word));
+                /* arg0: object */ jarg(0, Kind.Object),
+                /* arg1:   lock */ jarg(1, word));
 
         addRuntimeCall(MONITOREXIT, config.monitorExitStub,
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void),
-                /* arg0: object */ arg(0, Kind.Object),
-                /* arg1:   lock */ arg(1, word));
+                /* arg0: object */ jarg(0, Kind.Object),
+                /* arg1:   lock */ jarg(1, word));
 
         addRuntimeCall(NEW_ARRAY, 0L,
                 /*        temps */ null,
@@ -124,20 +126,34 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         addRuntimeCall(VM_ERROR, config.vmErrorStub,
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void),
-                /* arg0:  where */ arg(0, Kind.Object),
-                /* arg1: format */ arg(1, Kind.Object),
-                /* arg2:  value */ arg(2, Kind.Long));
+                /* arg0:  where */ jarg(0, Kind.Object),
+                /* arg1: format */ jarg(1, Kind.Object),
+                /* arg2:  value */ jarg(2, Kind.Long));
 
         addRuntimeCall(IDENTITY_HASHCODE, config.identityHashCodeStub,
                 /*        temps */ null,
                 /*          ret */ rax.asValue(Kind.Int),
-                /* arg0:    obj */ arg(0, Kind.Object));
+                /* arg0:    obj */ jarg(0, Kind.Object));
 
         addRuntimeCall(THREAD_IS_INTERRUPTED, config.threadIsInterruptedStub,
                 /*        temps */ null,
                 /*          ret */ rax.asValue(Kind.Int),
-                /* arg0: thread */ arg(0, Kind.Object),
-      /* arg1: clearInterrupted */ arg(1, Kind.Boolean));
+                /* arg0: thread */ jarg(0, Kind.Object),
+      /* arg1: clearInterrupted */ jarg(1, Kind.Boolean));
+
+        addRuntimeCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub,
+                /*        temps */ null,
+                /*          ret */ ret(Kind.Void),
+                /* arg0:     in */ carg(0, word),
+                /* arg1:    out */ carg(1, word),
+                /* arg2:    key */ carg(2, word));
+
+        addRuntimeCall(DECRYPT_BLOCK, config.aescryptDecryptBlockStub,
+                /*        temps */ null,
+                /*          ret */ ret(Kind.Void),
+                /* arg0:     in */ carg(0, word),
+                /* arg1:    out */ carg(1, word),
+                /* arg2:    key */ carg(2, word));
     }
 
     @Override

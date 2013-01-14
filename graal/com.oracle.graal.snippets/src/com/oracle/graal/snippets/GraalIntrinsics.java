@@ -30,13 +30,13 @@ import com.oracle.graal.phases.*;
 public class GraalIntrinsics {
     public static void installIntrinsics(SnippetInstaller installer) {
         if (GraalOptions.Intrinsify) {
-            installer.install(MathSnippetsX86.class);
-            installer.install(DoubleSnippets.class);
-            installer.install(FloatSnippets.class);
-            installer.install(NodeClassSnippets.class);
-            installer.install(LongSnippets.class);
-            installer.install(IntegerSnippets.class);
-            installer.install(UnsignedMathSnippets.class);
+            installer.installSubstitutions(MathSubstitutionsX86.class);
+            installer.installSubstitutions(DoubleSubstitutions.class);
+            installer.installSubstitutions(FloatSubstitutions.class);
+            installer.installSubstitutions(NodeClassSubstitutions.class);
+            installer.installSubstitutions(LongSubstitutions.class);
+            installer.installSubstitutions(IntegerSubstitutions.class);
+            installer.installSubstitutions(UnsignedMathSubstitutions.class);
         }
     }
 }

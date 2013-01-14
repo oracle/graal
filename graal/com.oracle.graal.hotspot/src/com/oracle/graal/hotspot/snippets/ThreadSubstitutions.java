@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.snippets;
 
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
-import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.snippets.*;
@@ -31,29 +30,28 @@ import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 import com.oracle.graal.word.*;
 
 /**
- * Snippets for {@link java.lang.Object} methods.
+ * Substitutions for {@link java.lang.Thread} methods.
  */
-@ClassSubstitution(java.lang.Object.class)
-public class ObjectSnippets implements SnippetsInterface {
-    @MethodSubstitution(isStatic = false)
-    public static Class<?> getClass(final Object thisObj) {
-        Word hub = loadHub(thisObj);
-        return unsafeCast(hub.readFinalObject(Word.signed(classMirrorOffset())), Class.class, true, true);
+@ClassSubstitution(java.lang.Thread.class)
+public class ThreadSubstitutions {
+
+    @MethodSubstitution
+    public static Thread currentThread() {
+        return CurrentThread.get();
     }
 
     @MethodSubstitution(isStatic = false)
-    public static int hashCode(final Object thisObj) {
-        Word mark = loadWordFromObject(thisObj, markOffset());
-
-        // this code is independent from biased locking (although it does not look that way)
-        final Word biasedLock = mark.and(biasedLockMaskInPlace());
-        if (biasedLock == Word.unsigned(unlockedMask())) {
-            int hash = (int) mark.unsignedShiftRight(identityHashCodeShift()).rawValue();
-            if (hash != uninitializedIdentityHashCodeValue()) {
-                return hash;
+    private static boolean isInterrupted(final Thread thisObject, boolean clearInterrupted) {
+        Word rawThread = HotSpotCurrentRawThreadNode.get();
+        Thread thread = (Thread) rawThread.readObject(threadObjectOffset());
+        if (thisObject == thread) {
+            Word osThread = rawThread.readWord(osThreadOffset());
+            boolean interrupted = osThread.readInt(osThreadInterruptedOffset()) != 0;
+            if (!interrupted || !clearInterrupted) {
+                return interrupted;
             }
         }
 
-        return IdentityHashCodeStubCall.call(thisObj);
+        return ThreadIsInterruptedStubCall.call(thisObject, clearInterrupted) != 0;
     }
 }

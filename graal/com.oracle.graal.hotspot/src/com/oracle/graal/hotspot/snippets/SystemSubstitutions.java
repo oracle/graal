@@ -30,25 +30,29 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.*;
+import com.oracle.graal.snippets.ClassSubstitution.*;
 import com.oracle.graal.word.*;
 
 /**
- * Snippets for {@link java.lang.System} methods.
+ * Substitutions for {@link java.lang.System} methods.
  */
 @ClassSubstitution(java.lang.System.class)
-public class SystemSnippets implements SnippetsInterface {
+public class SystemSubstitutions {
 
     public static final Descriptor JAVA_TIME_MILLIS = new Descriptor("javaTimeMillis", false, long.class);
     public static final Descriptor JAVA_TIME_NANOS = new Descriptor("javaTimeNanos", false, long.class);
 
+    @MethodSubstitution
     public static long currentTimeMillis() {
         return callLong(JAVA_TIME_MILLIS);
     }
 
+    @MethodSubstitution
     public static long nanoTime() {
         return callLong(JAVA_TIME_NANOS);
     }
 
+    @MethodSubstitution
     public static int identityHashCode(Object x) {
         if (x == null) {
             return 0;
