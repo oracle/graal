@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
+import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
@@ -56,17 +58,17 @@ public class AESCryptSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     static void encryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
-        Word kAddr = Word.unsigned(GetObjectAddressNode.get(rcvr) + kOffset);
-        Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + inOffset);
-        Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + outOffset);
+        Word kAddr = Word.fromObject(rcvr).readWord(Word.unsigned(kOffset)).add(arrayBaseOffset(Kind.Byte));
+        Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
+        Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + arrayBaseOffset(Kind.Byte) + outOffset);
         EncryptBlockStubCall.call(inAddr, outAddr, kAddr);
     }
 
     @MethodSubstitution(isStatic = false)
     static void decryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
-        Word kAddr = Word.unsigned(GetObjectAddressNode.get(rcvr) + kOffset);
-        Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + inOffset);
-        Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + outOffset);
+        Word kAddr = Word.unsigned(GetObjectAddressNode.get(rcvr)).readWord(Word.unsigned(kOffset)).add(arrayBaseOffset(Kind.Byte));
+        Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
+        Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + arrayBaseOffset(Kind.Byte) + outOffset);
         DecryptBlockStubCall.call(inAddr, outAddr, kAddr);
     }
 
@@ -88,7 +90,7 @@ public class AESCryptSubstitutions {
         @Override
         public void generate(LIRGenerator gen) {
             RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(ENCRYPT_BLOCK);
-            gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(in), gen.operand(out), gen.operand(key));
+            gen.emitCall(stub, stub.getCallingConvention(), false, gen.operand(in), gen.operand(out), gen.operand(key));
         }
 
         @NodeIntrinsic
@@ -113,7 +115,7 @@ public class AESCryptSubstitutions {
         @Override
         public void generate(LIRGenerator gen) {
             RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(DECRYPT_BLOCK);
-            gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(in), gen.operand(out), gen.operand(key));
+            gen.emitCall(stub, stub.getCallingConvention(), false, gen.operand(in), gen.operand(out), gen.operand(key));
         }
 
         @NodeIntrinsic
