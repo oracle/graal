@@ -117,14 +117,24 @@ public class SnippetInstaller {
 
             String originalName = originalName(substituteMethod, methodSubstitution);
             Class[] originalParameters = originalParameters(substituteMethod, methodSubstitution);
-            ResolvedJavaMethod substitute = runtime.lookupJavaMethod(substituteMethod);
             Method originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
-            ResolvedJavaMethod substituted = runtime.lookupJavaMethod(originalMethod);
-            //System.out.println("substitution: " + MetaUtil.format("%H.%n(%p)", substituted) + " --> " + MetaUtil.format("%H.%n(%p)", substitute));
-            StructuredGraph graph = makeGraph(substitute, inliningPolicy(substitute), true);
-            Object oldValue = substituted.getCompilerStorage().put(Graph.class, graph);
-            assert oldValue == null;
+            installSubstitution(originalMethod, substituteMethod);
         }
+    }
+
+    /**
+     * Installs a method substitution.
+     *
+     * @param originalMethod a method being substituted
+     * @param substituteMethod the substitute method
+     */
+    protected void installSubstitution(Method originalMethod, Method substituteMethod) {
+        ResolvedJavaMethod substitute = runtime.lookupJavaMethod(substituteMethod);
+        ResolvedJavaMethod original = runtime.lookupJavaMethod(originalMethod);
+        //System.out.println("substitution: " + MetaUtil.format("%H.%n(%p)", original) + " --> " + MetaUtil.format("%H.%n(%p)", substitute));
+        StructuredGraph graph = makeGraph(substitute, inliningPolicy(substitute), true);
+        Object oldValue = original.getCompilerStorage().put(Graph.class, graph);
+        assert oldValue == null;
     }
 
     private SnippetInliningPolicy inliningPolicy(ResolvedJavaMethod method) {

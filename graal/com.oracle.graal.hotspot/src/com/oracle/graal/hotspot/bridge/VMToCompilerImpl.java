@@ -142,7 +142,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                     // Snippets cannot have speculative optimizations since they have to be valid for the entire run of the VM.
                     Assumptions assumptions = new Assumptions(false);
                     VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime, assumptions);
-                    SnippetInstaller installer = new SnippetInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
+                    SnippetInstaller installer = new HotSpotSnippetInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
                     GraalIntrinsics.installIntrinsics(installer);
                     runtime.installSnippets(installer, assumptions);
                 }
