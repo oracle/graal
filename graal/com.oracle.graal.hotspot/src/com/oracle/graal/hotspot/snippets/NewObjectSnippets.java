@@ -30,6 +30,7 @@ import static com.oracle.graal.snippets.Snippet.Varargs.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.snippets.nodes.ExplodeLoopNode.*;
+import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -64,6 +65,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         Word newTop = top.add(size);
         // this check might lead to problems if the TLAB is within 16GB of the address space end (checked in c++ code)
         if (newTop.belowOrEqual(end)) {
+            probability(0.99);
             thread.writeWord(threadTlabTopOffset(), newTop);
             return top;
         }
@@ -84,6 +86,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             new_stub.inc();
             result = NewInstanceStubCall.call(hub);
         } else {
+            probability(0.99);
             if (locked) {
                 formatObject(hub, size, memory, thread().or(biasedLockPattern()), fillContents);
             } else {
@@ -117,6 +120,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             newarray_stub.inc();
             result = NewArrayStubCall.call(hub, length);
         } else {
+            probability(0.99);
             newarray_loopInit.inc();
             formatArray(hub, allocationSize, length, headerSize, memory, prototypeMarkWord, fillContents);
             result = memory.toObject();
@@ -140,6 +144,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             // This handles both negative array sizes and very large array sizes
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
+        probability(0.99);
         int allocationSize = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
         Word memory = TLABAllocateNode.allocateVariableSize(allocationSize);
         return InitializeArrayNode.initialize(memory, length, allocationSize, type, true, false);
