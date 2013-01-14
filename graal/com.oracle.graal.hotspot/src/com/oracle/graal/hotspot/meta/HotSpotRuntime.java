@@ -323,12 +323,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
             installer.installSubstitutions(ClassSubstitutions.class);
         }
         if (GraalOptions.IntrinsifyAESCryptMethods) {
-            if (graalRuntime.getConfig().aescryptEncryptBlockStub != 0L) {
-                installer.installSubstitutions(AESCryptSubstitutions.class);
-            } else {
-                // AES not supported on this CPU
-                assert graalRuntime.getConfig().aescryptDecryptBlockStub == 0L;
-            }
+            installer.installSubstitutions(AESCryptSubstitutions.class);
         }
         if (GraalOptions.IntrinsifyArrayCopy) {
             installer.installSnippets(ArrayCopySnippets.class);
