@@ -282,7 +282,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         assert lir.lir(block) == null : "LIR list already computed for this block";
         lir.setLir(block, new ArrayList<LIRInstruction>());
 
-        append(new LabelOp(new Label(), block.align, block.softAlign));
+        append(new LabelOp(new Label(), block.align));
 
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
             TTY.println("BEGIN Generating LIR for block B" + block.getId());
