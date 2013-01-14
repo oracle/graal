@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.code.MemoryBarriers.*;
+import static com.oracle.graal.api.code.Register.RegisterFlag.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
@@ -33,6 +34,7 @@ import static com.oracle.graal.nodes.UnwindNode.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.snippets.Log.*;
 import static com.oracle.graal.snippets.MathSubstitutionsX86.*;
+import static com.oracle.graal.api.code.CallingConvention.Type.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -164,11 +166,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         return globalStubRegConfig.getReturnRegister(kind).asValue(kind);
     }
 
-    protected Value arg(int index, Kind kind) {
-        if (kind == Kind.Float || kind == Kind.Double) {
-            return globalStubRegConfig.getCallingConventionRegisters(CallingConvention.Type.RuntimeCall, RegisterFlag.FPU)[index].asValue(kind);
-        }
-        return globalStubRegConfig.getCallingConventionRegisters(CallingConvention.Type.RuntimeCall, RegisterFlag.CPU)[index].asValue(kind);
+    protected Value jarg(int index, Kind kind) {
+        RegisterFlag flag = kind == Kind.Float || kind == Kind.Double ? FPU : CPU;
+        return globalStubRegConfig.getCallingConventionRegisters(RuntimeCall, flag)[index].asValue(kind);
+    }
+
+    protected Value carg(int index, Kind kind) {
+        RegisterFlag flag = kind == Kind.Float || kind == Kind.Double ? FPU : CPU;
+        return globalStubRegConfig.getCallingConventionRegisters(NativeCall, flag)[index].asValue(kind);
     }
 
     protected Value scratch(Kind kind) {
@@ -184,17 +189,17 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         addRuntimeCall(UNWIND_EXCEPTION, config.unwindExceptionStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0: exception */ arg(0, Kind.Object));
+                        /* arg0: exception */ jarg(0, Kind.Object));
 
         addRuntimeCall(OnStackReplacementPhase.OSR_MIGRATION_END, config.osrMigrationEndStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:      long */ arg(0, Kind.Long));
+                        /* arg0:      long */ jarg(0, Kind.Long));
 
         addRuntimeCall(REGISTER_FINALIZER, config.registerFinalizerStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:    object */ arg(0, Kind.Object));
+                        /* arg0:    object */ jarg(0, Kind.Object));
 
         addRuntimeCall(CREATE_NULL_POINTER_EXCEPTION, config.createNullPointerExceptionStub,
                         /*           temps */ null,
@@ -203,7 +208,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         addRuntimeCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, config.createOutOfBoundsExceptionStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Object),
-                        /* arg0:     index */ arg(0, Kind.Int));
+                        /* arg0:     index */ jarg(0, Kind.Int));
 
         addRuntimeCall(JAVA_TIME_MILLIS, config.javaTimeMillisStub,
                         /*           temps */ null,
@@ -216,38 +221,38 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         addRuntimeCall(ARITHMETIC_SIN, config.arithmeticSinStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Double),
-                        /* arg0:     index */ arg(0, Kind.Double));
+                        /* arg0:     index */ jarg(0, Kind.Double));
 
         addRuntimeCall(ARITHMETIC_COS, config.arithmeticCosStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Double),
-                        /* arg0:     index */ arg(0, Kind.Double));
+                        /* arg0:     index */ jarg(0, Kind.Double));
 
         addRuntimeCall(ARITHMETIC_TAN, config.arithmeticTanStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Double),
-                        /* arg0:     index */ arg(0, Kind.Double));
+                        /* arg0:     index */ jarg(0, Kind.Double));
 
         addRuntimeCall(LOG_PRIMITIVE, config.logPrimitiveStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:  typeChar */ arg(0, Kind.Int),
-                        /* arg1:     value */ arg(1, Kind.Long),
-                        /* arg2:   newline */ arg(2, Kind.Boolean));
+                        /* arg0:  typeChar */ jarg(0, Kind.Int),
+                        /* arg1:     value */ jarg(1, Kind.Long),
+                        /* arg2:   newline */ jarg(2, Kind.Boolean));
 
         addRuntimeCall(LOG_PRINTF, config.logPrintfStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:    format */ arg(0, Kind.Object),
-                        /* arg1:     value */ arg(1, Kind.Long),
-                        /* arg2:     value */ arg(2, Kind.Long),
-                        /* arg3:     value */ arg(3, Kind.Long));
+                        /* arg0:    format */ jarg(0, Kind.Object),
+                        /* arg1:     value */ jarg(1, Kind.Long),
+                        /* arg2:     value */ jarg(2, Kind.Long),
+                        /* arg3:     value */ jarg(3, Kind.Long));
 
         addRuntimeCall(LOG_OBJECT, config.logObjectStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:    object */ arg(0, Kind.Object),
-                        /* arg1:     flags */ arg(1, Kind.Int));
+                        /* arg0:    object */ jarg(0, Kind.Object),
+                        /* arg1:     flags */ jarg(1, Kind.Int));
     }
 
 
