@@ -23,7 +23,7 @@
 
 package com.oracle.graal.hotspot.bridge;
 
-import static com.oracle.graal.graph.FieldIntrospection.*;
+import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import java.io.*;
 import java.lang.reflect.*;

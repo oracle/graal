@@ -49,12 +49,14 @@ public class HotSpotSnippetInstaller extends SnippetInstaller {
                     return;
                 }
             }
-        } else if (substituteMethod.getDeclaringClass() == AESCryptSubstitutions.class) {
+        } else if (substituteMethod.getDeclaringClass() == AESCryptSubstitutions.class || substituteMethod.getDeclaringClass() == CipherBlockChainingSubstitutions.class) {
             if (!config.useAESIntrinsics) {
                 return;
             }
             assert config.aescryptEncryptBlockStub != 0L;
             assert config.aescryptDecryptBlockStub != 0L;
+            assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
+            assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
         }
         super.installSubstitution(originalMethod, substituteMethod);
     }

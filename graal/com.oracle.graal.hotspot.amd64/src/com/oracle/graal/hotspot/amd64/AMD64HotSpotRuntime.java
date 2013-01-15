@@ -38,6 +38,8 @@ import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
 import static com.oracle.graal.hotspot.snippets.AESCryptSubstitutions.DecryptBlockStubCall.*;
 import static com.oracle.graal.hotspot.snippets.AESCryptSubstitutions.EncryptBlockStubCall.*;
+import static com.oracle.graal.hotspot.snippets.CipherBlockChainingSubstitutions.DecryptAESCryptStubCall.*;
+import static com.oracle.graal.hotspot.snippets.CipherBlockChainingSubstitutions.EncryptAESCryptStubCall.*;
 import static com.oracle.graal.lir.amd64.AMD64Call.*;
 
 import com.oracle.graal.api.code.*;
@@ -154,6 +156,24 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /* arg0:     in */ carg(0, word),
                 /* arg1:    out */ carg(1, word),
                 /* arg2:    key */ carg(2, word));
+
+        addRuntimeCall(ENCRYPT, config.cipherBlockChainingEncryptAESCryptStub,
+                /*        temps */ null,
+                /*          ret */ ret(Kind.Void),
+                /* arg0:     in */ carg(0, word),
+                /* arg1:    out */ carg(1, word),
+                /* arg2:    key */ carg(2, word),
+                /* arg3:      r */ carg(3, word),
+              /* arg4: inLength */ carg(4, Kind.Int));
+
+        addRuntimeCall(DECRYPT, config.cipherBlockChainingDecryptAESCryptStub,
+                /*        temps */ null,
+                /*          ret */ ret(Kind.Void),
+                /* arg0:     in */ carg(0, word),
+                /* arg1:    out */ carg(1, word),
+                /* arg2:    key */ carg(2, word),
+                /* arg3:      r */ carg(3, word),
+              /* arg4: inLength */ carg(4, Kind.Int));
     }
 
     @Override
