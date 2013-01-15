@@ -340,7 +340,49 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitDiv(Value a, Value b) {
+    protected boolean peephole(ValueNode valueNode) {
+        if ((valueNode instanceof IntegerDivNode) || (valueNode instanceof IntegerRemNode)) {
+            FixedBinaryNode divRem = (FixedBinaryNode) valueNode;
+            FixedNode node = divRem.next();
+            while (node instanceof FixedWithNextNode) {
+                FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) node;
+                if (((fixedWithNextNode instanceof IntegerDivNode) || (fixedWithNextNode instanceof IntegerRemNode)) && fixedWithNextNode.getClass() != divRem.getClass()) {
+                    FixedBinaryNode otherDivRem = (FixedBinaryNode) fixedWithNextNode;
+                    if (otherDivRem.x() == divRem.x() && otherDivRem.y() == divRem.y() && operand(otherDivRem) == null) {
+                        Value[] results = emitIntegerDivRem(operand(divRem.x()), operand(divRem.y()));
+                        if (divRem instanceof IntegerDivNode) {
+                            setResult(divRem, results[0]);
+                            setResult(otherDivRem, results[1]);
+                        } else {
+                            setResult(divRem, results[1]);
+                            setResult(otherDivRem, results[0]);
+                        }
+                        return true;
+                    }
+                }
+                node = fixedWithNextNode.next();
+            }
+        }
+        return false;
+    }
+
+    public Value[] emitIntegerDivRem(Value a, Value b) {
+        switch(a.getKind()) {
+            case Int:
+                emitMove(a, RAX_I);
+                append(new DivRemOp(IDIVREM, RAX_I, load(b), state()));
+                return new Value[]{emitMove(RAX_I), emitMove(RDX_I)};
+            case Long:
+                emitMove(a, RAX_L);
+                append(new DivRemOp(LDIVREM, RAX_L, load(b), state()));
+                return new Value[]{emitMove(RAX_L), emitMove(RDX_L)};
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    @Override
+    public Value emitDiv(Value a, Value b) {
         switch(a.getKind()) {
             case Int:
                 emitMove(a, RAX_I);
