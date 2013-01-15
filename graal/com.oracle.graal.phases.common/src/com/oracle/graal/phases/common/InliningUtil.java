@@ -1033,7 +1033,8 @@ public class InliningUtil {
     }
 
     public static boolean canIntrinsify(Invoke invoke, ResolvedJavaMethod target) {
-        return getIntrinsicGraph(invoke, target) != null;
+        StructuredGraph intrinsicGraph = getIntrinsicGraph(invoke, target);
+        return intrinsicGraph != null;
     }
 
     public static StructuredGraph getIntrinsicGraph(Invoke invoke, ResolvedJavaMethod target) {
