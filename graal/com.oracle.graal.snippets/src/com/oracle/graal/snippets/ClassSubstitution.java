@@ -27,7 +27,7 @@ import java.lang.annotation.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Denotes a class that substitutes methods of another specified class with snippets.
+ * Denotes a class that substitutes methods of another specified class.
  * The substitute methods are exactly those annotated by {@link MethodSubstitution}.
  */
 @Retention(RetentionPolicy.RUNTIME)
@@ -35,7 +35,7 @@ import com.oracle.graal.api.meta.*;
 public @interface ClassSubstitution {
 
     /**
-     * Specifies the substituted class.
+     * Specifies the original class.
      * <p>
      * If the default value is specified for this element, then a non-default
      * value must be given for the {@link #className()} element.
@@ -43,9 +43,9 @@ public @interface ClassSubstitution {
     Class<?> value() default ClassSubstitution.class;
 
     /**
-     * Specifies the substituted class.
+     * Specifies the original class.
      * <p>
-     * This method is provided for cases where the substituted class
+     * This method is provided for cases where the original class
      * is not accessible (according to Java language access control rules).
      * <p>
      * If the default value is specified for this element, then a non-default
@@ -54,29 +54,30 @@ public @interface ClassSubstitution {
     String className() default "";
 
     /**
-     * Denotes a substitute method.
+     * Denotes a substitute method. A substitute method can call the original/substituted
+     * method by making a recursive call to itself.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
     public @interface MethodSubstitution {
         /**
-         * Gets the name of the substituted method.
+         * Gets the name of the original method.
          * <p>
          * If the default value is specified for this element, then the
-         * name of the substituted method is same as the substitute method.
+         * name of the original method is same as the substitute method.
          */
         String value() default "";
 
         /**
-         * Determines if the substituted method is static.
+         * Determines if the original method is static.
          */
         boolean isStatic() default true;
 
         /**
-         * Gets the {@linkplain Signature#getMethodDescriptor() signature} of the substituted method.
+         * Gets the {@linkplain Signature#getMethodDescriptor() signature} of the original method.
          * <p>
          * If the default value is specified for this element, then the
-         * signature of the substituted method is the same as the substitute method.
+         * signature of the original method is the same as the substitute method.
          */
         String signature() default "";
     }
