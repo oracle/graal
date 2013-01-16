@@ -37,6 +37,7 @@ public class LockEliminationPhase extends Phase {
             if (next instanceof MonitorEnterNode) {
                 MonitorEnterNode monitorEnterNode = (MonitorEnterNode) next;
                 if (monitorEnterNode.object() == node.object()) {
+                    monitorEnterNode.setNext(null);
                     ((FixedWithNextNode) node.predecessor()).setNext(monitorEnterNode.next());
                     FrameState stateAfterFirst = node.stateAfter();
                     FrameState stateAfterSecond = monitorEnterNode.stateAfter();
