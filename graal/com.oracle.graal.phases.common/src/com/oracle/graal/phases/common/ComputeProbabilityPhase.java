@@ -65,6 +65,8 @@ public class ComputeProbabilityPhase extends Phase {
                 }
             }
         }
+
+        new ComputeInliningRelevanceIterator(graph).apply();
     }
 
     private void correctLoopFrequencies(Loop loop, double parentFrequency, BitSet visitedBlocks) {
@@ -364,6 +366,76 @@ public class ComputeProbabilityPhase extends Phase {
         @Override
         public double compute(double probability, double frequency) {
             return probability;
+        }
+    }
+
+    private static class ComputeInliningRelevanceIterator extends ScopedPostOrderNodeIterator {
+        private final HashMap<FixedNode, Double> lowestPathProbabilities;
+        private double currentProbability;
+
+        public ComputeInliningRelevanceIterator(StructuredGraph graph) {
+            super(graph);
+            this.lowestPathProbabilities = computeLowestPathProbabilities(graph);
+        }
+
+        @Override
+        protected void initializeScope() {
+            currentProbability = lowestPathProbabilities.get(currentScope);
+        }
+
+        @Override
+        protected void invoke(Invoke invoke) {
+            assert !Double.isNaN(invoke.probability());
+            invoke.setInliningRelevance(invoke.probability() / currentProbability);
+        }
+
+        private HashMap<FixedNode, Double> computeLowestPathProbabilities(StructuredGraph graph) {
+            HashMap<FixedNode, Double> result = new HashMap<>();
+            Deque<FixedNode> scopes = getScopes(graph);
+
+            while (!scopes.isEmpty()) {
+                FixedNode scopeBegin = scopes.pop();
+                double probability = computeLowestPathProbability(scopeBegin);
+                result.put(scopeBegin, probability);
+            }
+
+            return result;
+        }
+
+        private static double computeLowestPathProbability(FixedNode scopeStart) {
+            double minPathProbability = scopeStart.probability();
+            Node current = scopeStart;
+
+            while (current != null) {
+                if (current instanceof ControlSplitNode) {
+                    ControlSplitNode controlSplit = (ControlSplitNode) current;
+                    current = getMaxProbabilitySux(controlSplit);
+                    if (((FixedNode) current).probability() < minPathProbability) {
+                        minPathProbability = ((FixedNode) current).probability();
+                    }
+                } else {
+                    assert current.successors().count() <= 1;
+                    current = current.successors().first();
+                }
+            }
+
+            return minPathProbability;
+        }
+
+        private static Node getMaxProbabilitySux(ControlSplitNode controlSplit) {
+            Node maxSux = null;
+            double maxProbability = 0.0;
+
+            // TODO: process recursively if we have multiple successors with same probability
+            for (Node sux: controlSplit.successors()) {
+                double probability = controlSplit.probability((BeginNode) sux);
+                if (probability > maxProbability) {
+                    maxProbability = probability;
+                    maxSux = sux;
+                }
+            }
+
+            return maxSux;
         }
     }
 }

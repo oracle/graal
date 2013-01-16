@@ -84,7 +84,7 @@ public class InliningUtil {
 
     private static boolean logNotInlinedMethodAndReturnFalse(Invoke invoke, String msg) {
         if (shouldLogInliningDecision()) {
-            String methodString = invoke.callTarget() == null ? "callTarget=null" : invoke.callTarget().targetName();
+            String methodString = invoke.toString() + (invoke.callTarget() == null ? " callTarget=null" : invoke.callTarget().targetName());
             logInliningDecision(methodString, false, msg, new Object[0]);
         }
         return false;
@@ -563,6 +563,7 @@ public class InliningUtil {
             result.node().replaceFirstInput(result.callTarget(), callTarget);
             result.setUseForInlining(useForInlining);
             result.setProbability(probability);
+            result.setInliningRelevance(invoke.inliningRelevance() * probability);
 
             Kind kind = invoke.node().kind();
             if (kind != Kind.Void) {
@@ -757,6 +758,7 @@ public class InliningUtil {
                 return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.size());
             }
             if (!optimisticOpts.inlineMegamorphicCalls() && notRecordedTypeProbability > 0) {
+                // due to filtering impossible types, notRecordedTypeProbability can be > 0 although the number of types is lower than what can be recorded in a type profile
                 return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.size(), notRecordedTypeProbability * 100);
             }
 
@@ -816,14 +818,14 @@ public class InliningUtil {
     }
 
     private static boolean checkInvokeConditions(Invoke invoke) {
-        if (!(invoke.callTarget() instanceof MethodCallTargetNode)) {
+        if (invoke.predecessor() == null || !invoke.node().isAlive()) {
+            return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is dead code");
+        } else if (!(invoke.callTarget() instanceof MethodCallTargetNode)) {
             return logNotInlinedMethodAndReturnFalse(invoke, "the invoke has already been lowered, or has been created as a low-level node");
         } else if (invoke.methodCallTarget().targetMethod() == null) {
             return logNotInlinedMethodAndReturnFalse(invoke, "target method is null");
         } else if (invoke.stateAfter() == null) {
             return logNotInlinedMethodAndReturnFalse(invoke, "the invoke has no after state");
-        } else if (invoke.predecessor() == null || !invoke.node().isAlive()) {
-            return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is dead code");
         } else if (!invoke.useForInlining()) {
             return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is marked to be not used for inlining");
         } else if (invoke.methodCallTarget().receiver() != null && invoke.methodCallTarget().receiver().isConstant() && invoke.methodCallTarget().receiver().asConstant().isNull()) {
@@ -973,6 +975,14 @@ public class InliningUtil {
                         newProbability = Math.min(newProbability, invokeProbability);
                     }
                     fixed.setProbability(newProbability);
+                }
+                if (node instanceof Invoke) {
+                    Invoke newInvoke = (Invoke) node;
+                    double newRelevance = newInvoke.inliningRelevance() * invoke.inliningRelevance();
+                    if (GraalOptions.LimitInlinedProbability) {
+                        newRelevance = Math.min(newRelevance, invoke.inliningRelevance());
+                    }
+                    newInvoke.setInliningRelevance(newRelevance);
                 }
             }
             if (node instanceof FrameState) {

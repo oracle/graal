@@ -53,6 +53,7 @@ public final class GraalOptions {
     public static int     MaximumRecursiveInlining           = 1;
     public static int     SmallCompiledCodeSize              = 2200;
     public static boolean LimitInlinedProbability            = ____;
+    public static boolean UseRelevanceBasedInlining          = true;
     // WeightBasedInliningPolicy (0)
     public static float   InliningSizePenaltyExp             = 20;
     public static float   MaximumInlineWeight                = 1.25f;
@@ -66,7 +67,7 @@ public final class GraalOptions {
     // Common options for inlining policies 1 to 4
     public static float   NestedInliningSizeRatio            = 1f;
     public static float   BoostInliningForEscapeAnalysis     = 2f;
-    public static float   ProbabilityCapForInlining          = 1f;
+    public static float   RatioCapForInlining                = 1f;
 
     // escape analysis settings
     public static boolean PartialEscapeAnalysis              = true;

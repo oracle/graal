@@ -42,6 +42,7 @@ public abstract class FixedNode extends ValueNode {
 
     public void setProbability(double probability) {
         this.probability = probability;
+        assert !Double.isNaN(probability);
     }
 
     protected void copyInto(FixedNode newNode) {
