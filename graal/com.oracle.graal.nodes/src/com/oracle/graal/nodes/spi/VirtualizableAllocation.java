@@ -22,24 +22,15 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.virtual.*;
+/**
+ * This interface allows a node to convey information about what its effect would be if some of its inputs were
+ * virtualized.
+ *
+ * The difference to {@link Virtualizable} is that the {@link #virtualize(VirtualizerTool)} method will be called
+ * regardless of whether this node had any interaction with virtualized nodes. This interface can therefore be used for
+ * object allocations, for which virtualization introduces new virtualized objects.
+ *
+ */
+public interface VirtualizableAllocation extends Virtualizable {
 
-public interface EscapeAnalyzable {
-
-    public static class ObjectDesc {
-
-        public final VirtualObjectNode virtualObject;
-        public final ValueNode[] entryState;
-        public final int lockCount;
-
-        public ObjectDesc(VirtualObjectNode virtualObject, ValueNode[] entryState, int lockCount) {
-            this.virtualObject = virtualObject;
-            this.entryState = entryState;
-            this.lockCount = lockCount;
-        }
-    }
-
-    ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess);
 }

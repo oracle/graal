@@ -28,7 +28,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
@@ -129,9 +128,9 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        VirtualObjectNode virtual = tool.getVirtualState(object());
-        if (virtual != null) {
-            tool.replaceWithValue(ConstantNode.forBoolean(type().isAssignableFrom(virtual.type()), graph()));
+        State state = tool.getObjectState(object);
+        if (state != null) {
+            tool.replaceWithValue(ConstantNode.forBoolean(type().isAssignableFrom(state.getVirtualObject().type()), graph()));
         }
     }
 }

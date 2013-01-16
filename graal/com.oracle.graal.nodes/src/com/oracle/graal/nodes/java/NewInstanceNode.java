@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code NewInstanceNode} represents the allocation of an instance class object.
  */
 @NodeInfo(nameTemplate = "New {p#instanceClass/s}")
-public final class NewInstanceNode extends FixedWithNextNode implements EscapeAnalyzable, Lowerable, Node.IterableNodeType {
+public final class NewInstanceNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Node.IterableNodeType {
 
     private final ResolvedJavaType instanceClass;
     private final boolean fillContents;
@@ -82,7 +82,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
     }
 
     @Override
-    public ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess) {
+    public void virtualize(VirtualizerTool tool) {
         if (instanceClass != null) {
             assert !instanceClass().isArray();
             ResolvedJavaField[] fields = instanceClass().getInstanceFields(true);
@@ -90,9 +90,9 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
             for (int i = 0; i < state.length; i++) {
                 state[i] = ConstantNode.defaultForKind(fields[i].getType().getKind(), graph());
             }
-            VirtualObjectNode virtualObject = new VirtualInstanceNode(nextVirtualId, instanceClass(), fields);
-            return new ObjectDesc[]{new ObjectDesc(virtualObject, state, 0)};
+            VirtualObjectNode virtualObject = new VirtualInstanceNode(tool.getNextVirtualId(), instanceClass(), fields);
+            tool.createVirtualObject(virtualObject, state, 0);
+            tool.replaceWithVirtual(virtualObject);
         }
-        return null;
     }
 }

@@ -77,7 +77,13 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     }
 
     @Override
-    public int fieldIndexForOffset(long constantOffset) {
+    public int entryIndexForOffset(long constantOffset) {
         return fieldIndex(type.findInstanceFieldWithOffset(constantOffset));
+    }
+
+    @Override
+    public Kind entryKind(int index) {
+        assert index >= 0 && index < fields.length;
+        return fields[index].getKind();
     }
 }

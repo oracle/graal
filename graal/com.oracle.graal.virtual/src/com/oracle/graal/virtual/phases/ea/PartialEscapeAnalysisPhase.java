@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.CanonicalizerPhase.*;
+import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.virtual.phases.ea.EffectList.Effect;
@@ -75,7 +75,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
 
         boolean analyzableNodes = false;
         for (Node node : graph.getNodes()) {
-            if (node instanceof EscapeAnalyzable) {
+            if (node instanceof VirtualizableAllocation) {
                 analyzableNodes = true;
                 break;
             }
