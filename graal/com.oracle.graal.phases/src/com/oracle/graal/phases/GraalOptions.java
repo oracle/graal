@@ -53,7 +53,7 @@ public final class GraalOptions {
     public static int     MaximumRecursiveInlining           = 1;
     public static int     SmallCompiledCodeSize              = 2200;
     public static boolean LimitInlinedProbability            = ____;
-    public static boolean UseRelevanceBasedInlining          = true;
+    public static boolean UseRelevanceBasedInlining          = ____;
     // WeightBasedInliningPolicy (0)
     public static float   InliningSizePenaltyExp             = 20;
     public static float   MaximumInlineWeight                = 1.25f;
