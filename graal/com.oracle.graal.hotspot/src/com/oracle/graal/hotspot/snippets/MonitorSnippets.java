@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.nodes.EndLockScopeNode.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
+import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
 
 import java.util.*;
 
@@ -102,6 +103,7 @@ public class MonitorSnippets implements SnippetsInterface {
             if (biasableLockBits != Word.unsigned(biasedLockPattern())) {
                 // Biasing not enabled -> fall through to lightweight locking
             } else {
+                probability(0.75);
                 // The bias pattern is present in the object's mark word. Need to check
                 // whether the bias owner and the epoch are both still current.
                 Word hub = loadHub(object);
@@ -113,6 +115,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 trace(trace, "              tmp: 0x%016lx\n", tmp);
                 if (tmp == Word.zero()) {
                     // Object is already biased to current thread -> done
+                    probability(0.75);
                     traceObject(trace, "+lock{bias:existing}", object);
                     return;
                 }
@@ -127,6 +130,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 // the prototype header is no longer biasable and we have to revoke
                 // the bias on this object.
                 if (tmp.and(biasedLockMaskInPlace()) == Word.zero()) {
+                    probability(0.75);
                     // Biasing is still enabled for object's type. See whether the
                     // epoch of the current bias is still valid, meaning that the epoch
                     // bits of the mark word are equal to the epoch bits of the
@@ -137,6 +141,7 @@ public class MonitorSnippets implements SnippetsInterface {
                     // otherwise the manipulations it performs on the mark word are
                     // illegal.
                     if (tmp.and(epochMaskInPlace()) == Word.zero()) {
+                        probability(0.75);
                         // The epoch of the current bias is still valid but we know nothing
                         // about the owner; it might be set or it might be clear. Try to
                         // acquire the bias of the object using an atomic operation. If this
@@ -155,6 +160,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         // If the biasing toward our thread failed, this means that another thread
                         // owns the bias and we need to revoke that bias. The revocation will occur
                         // in the interpreter runtime.
+                        probability(0.0001);
                         traceObject(trace, "+lock{stub:revoke}", object);
                         MonitorEnterStubCall.call(object, lock);
                         return;
@@ -175,6 +181,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         // If the biasing toward our thread failed, then another thread
                         // succeeded in biasing it toward itself and we need to revoke that
                         // bias. The revocation will occur in the runtime in the slow case.
+                        probability(0.0001);
                         traceObject(trace, "+lock{stub:epoch-expired}", object);
                         MonitorEnterStubCall.call(object, lock);
                         return;
@@ -232,6 +239,7 @@ public class MonitorSnippets implements SnippetsInterface {
             final Word stackPointer = stackPointer();
             if (currentMark.subtract(stackPointer).and(alignedMask.subtract(pageSize())) != Word.zero()) {
                 // Most likely not a recursive lock, go into a slow runtime call
+                probability(0.001);
                 traceObject(trace, "+lock{stub:failed-cas}", object);
                 MonitorEnterStubCall.call(object, lock);
                 return;
@@ -281,6 +289,7 @@ public class MonitorSnippets implements SnippetsInterface {
             final Word mark = loadWordFromObject(object, markOffset());
             trace(trace, "             mark: 0x%016lx\n", mark);
             if (mark.and(biasedLockMaskInPlace()) == Word.unsigned(biasedLockPattern())) {
+                probability(0.75);
                 endLockScope();
                 decCounter();
                 traceObject(trace, "-lock{bias}", object);
@@ -303,8 +312,9 @@ public class MonitorSnippets implements SnippetsInterface {
             // the displaced mark in the object - if the object's mark word is not pointing to
             // the displaced mark word, do unlocking via runtime call.
             if (DirectCompareAndSwapNode.compareAndSwap(object, markOffset(), lock, displacedMark) != lock) {
-              // The object's mark word was not pointing to the displaced header,
-              // we do unlocking via runtime call.
+                // The object's mark word was not pointing to the displaced header,
+                // we do unlocking via runtime call.
+                probability(0.001);
                 traceObject(trace, "-lock{stub}", object);
                 MonitorExitStubCall.call(object);
             } else {

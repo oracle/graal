@@ -64,8 +64,8 @@ public class StampFactory {
     }
 
     public static Stamp forKind(Kind kind) {
-        assert stampCache[kind.getStackKind().ordinal()] != null : "unexpected forKind(" + kind + ")";
-        return stampCache[kind.getStackKind().ordinal()];
+        assert stampCache[kind.ordinal()] != null : "unexpected forKind(" + kind + ")";
+        return stampCache[kind.ordinal()];
     }
 
     public static Stamp forVoid() {
