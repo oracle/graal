@@ -38,7 +38,7 @@ public class IntegerStamp extends Stamp {
     private final long mask;
 
     public IntegerStamp(Kind kind) {
-        this(kind, kind.getMinValue(), kind.getMaxValue(), defaultMask(kind));
+        this(kind.getStackKind(), kind.getMinValue(), kind.getMaxValue(), defaultMask(kind));
     }
 
     public IntegerStamp(Kind kind, long lowerBound, long upperBound, long mask) {
