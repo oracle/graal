@@ -202,11 +202,11 @@ public abstract class Word implements Signed, Unsigned, Pointer {
         return signedDivide((Word) val);
     }
     @Override
-    @Operation(node = IntegerMulNode.class)
+    @Operation(node = IntegerDivNode.class)
     public Word signedDivide(int val) {
         return signedDivide(intParam(val));
     }
-    @Operation(node = IntegerMulNode.class)
+    @Operation(node = IntegerDivNode.class)
     public Word signedDivide(Word val) {
         return box(unbox() / val.unbox());
     }

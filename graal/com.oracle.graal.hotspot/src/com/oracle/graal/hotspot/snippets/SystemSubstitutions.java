@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,37 +23,59 @@
 package com.oracle.graal.hotspot.snippets;
 
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
-import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
+import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
 
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 import com.oracle.graal.word.*;
 
 /**
- * Snippets for {@link java.lang.Object} methods.
+ * Substitutions for {@link java.lang.System} methods.
  */
-@ClassSubstitution(java.lang.Object.class)
-public class ObjectSnippets implements SnippetsInterface {
-    @MethodSubstitution(isStatic = false)
-    public static Class<?> getClass(final Object thisObj) {
-        Word hub = loadHub(thisObj);
-        return unsafeCast(hub.readFinalObject(Word.signed(classMirrorOffset())), Class.class, true, true);
+@ClassSubstitution(java.lang.System.class)
+public class SystemSubstitutions {
+
+    public static final Descriptor JAVA_TIME_MILLIS = new Descriptor("javaTimeMillis", false, long.class);
+    public static final Descriptor JAVA_TIME_NANOS = new Descriptor("javaTimeNanos", false, long.class);
+
+    @MethodSubstitution
+    public static long currentTimeMillis() {
+        return callLong(JAVA_TIME_MILLIS);
     }
 
-    @MethodSubstitution(isStatic = false)
-    public static int hashCode(final Object thisObj) {
-        Word mark = loadWordFromObject(thisObj, markOffset());
+    @MethodSubstitution
+    public static long nanoTime() {
+        return callLong(JAVA_TIME_NANOS);
+    }
+
+    @MethodSubstitution
+    public static int identityHashCode(Object x) {
+        if (x == null) {
+            probability(0.01);
+            return 0;
+        }
+
+        Word mark = loadWordFromObject(x, markOffset());
 
         // this code is independent from biased locking (although it does not look that way)
         final Word biasedLock = mark.and(biasedLockMaskInPlace());
         if (biasedLock == Word.unsigned(unlockedMask())) {
+            probability(0.99);
             int hash = (int) mark.unsignedShiftRight(identityHashCodeShift()).rawValue();
             if (hash != uninitializedIdentityHashCodeValue()) {
+                probability(0.99);
                 return hash;
             }
         }
 
-        return IdentityHashCodeStubCall.call(thisObj);
+        return IdentityHashCodeStubCall.call(x);
     }
+
+    @NodeIntrinsic(value = RuntimeCallNode.class, setStampFromReturnType = true)
+    public static native long callLong(@ConstantNodeParameter Descriptor descriptor);
 }

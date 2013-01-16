@@ -20,39 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.snippets;
 
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.snippets.ClassSubstitution.*;
 
-public abstract class FixedNode extends ValueNode {
+/**
+ * Substitutions for {@link java.lang.Float} methods.
+ */
+@ClassSubstitution(java.lang.Float.class)
+public class FloatSubstitutions {
 
-    private double probability;
+    private static final int NAN_RAW_INT_BITS = Float.floatToRawIntBits(Float.NaN);
 
-    public FixedNode(Stamp stamp) {
-        super(stamp);
+    @MethodSubstitution
+    public static int floatToRawIntBits(float value) {
+        @JavacBug(id = 6995200)
+        Integer result = ConvertNode.convert(ConvertNode.Op.MOV_F2I, value);
+        return result;
     }
 
-    public FixedNode(Stamp stamp, ValueNode... dependencies) {
-        super(stamp, dependencies);
+    // TODO This method is not necessary, since the JDK method does exactly this
+    @MethodSubstitution
+    public static int floatToIntBits(float value) {
+        if (value != value) {
+            return NAN_RAW_INT_BITS;
+        } else {
+            return floatToRawIntBits(value);
+        }
     }
 
-    public double probability() {
-        return probability;
-    }
-
-    public void setProbability(double probability) {
-        assert probability >= 0 : String.format("Invalid argument %f, because the probability of a node must not be negative.", probability);
-        this.probability = probability;
-        assert !Double.isNaN(probability);
-    }
-
-    protected void copyInto(FixedNode newNode) {
-        newNode.setProbability(probability);
-    }
-
-    @Override
-    public boolean verify() {
-        assertTrue(this.successors().isNotEmpty() || this.predecessor() != null, "FixedNode should not float");
-        return super.verify();
+    @MethodSubstitution
+    public static float intBitsToFloat(int bits) {
+        @JavacBug(id = 6995200)
+        Float result = ConvertNode.convert(ConvertNode.Op.MOV_I2F, bits);
+        return result;
     }
 }

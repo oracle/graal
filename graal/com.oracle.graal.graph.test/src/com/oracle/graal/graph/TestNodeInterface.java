@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.snippets;
+package com.oracle.graal.graph;
 
-import com.oracle.graal.snippets.nodes.*;
 
-@ClassSubstitution(Integer.class)
-public class IntegerSnippets implements SnippetsInterface{
-
-    public static int reverseBytes(int i) {
-        return ReverseBytesNode.reverse(i);
-    }
-
-    public static int numberOfLeadingZeros(int i) {
-        if (i == 0) {
-            return 32;
-        }
-        return 31 - BitScanReverseNode.scan(i);
-    }
-
-    public static int numberOfTrailingZeros(int i) {
-        if (i == 0) {
-            return 32;
-        }
-        return BitScanForwardNode.scan(i);
-    }
-
-    public static int bitCount(int i) {
-        return BitCountNode.bitCount(i);
-    }
+public interface TestNodeInterface {
+    String getName();
 }

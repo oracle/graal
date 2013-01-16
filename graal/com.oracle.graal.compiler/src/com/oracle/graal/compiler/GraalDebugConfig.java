@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.compiler;
 
 import java.io.*;
 import java.util.*;
@@ -31,20 +31,19 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.printer.*;
 
-public class HotSpotDebugConfig implements DebugConfig {
+public class GraalDebugConfig implements DebugConfig {
 
     private final DebugFilter logFilter;
     private final DebugFilter meterFilter;
     private final DebugFilter timerFilter;
     private final DebugFilter dumpFilter;
     private final MethodFilter[] methodFilter;
-    private final List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
+    private final List<DebugDumpHandler> dumpHandlers;
     private final PrintStream output;
     private final Set<Object> extraFilters = new HashSet<>();
 
-    public HotSpotDebugConfig(String logFilter, String meterFilter, String timerFilter, String dumpFilter, String methodFilter, PrintStream output) {
+    public GraalDebugConfig(String logFilter, String meterFilter, String timerFilter, String dumpFilter, String methodFilter, PrintStream output, List<DebugDumpHandler> dumpHandlers) {
         this.logFilter = DebugFilter.parse(logFilter);
         this.meterFilter = DebugFilter.parse(meterFilter);
         this.timerFilter = DebugFilter.parse(timerFilter);
@@ -63,13 +62,7 @@ public class HotSpotDebugConfig implements DebugConfig {
         if (logFilter != null || meterFilter != null || timerFilter != null || dumpFilter != null || methodFilter != null) {
             TTY.println(Thread.currentThread().getName() + ": " + toString());
         }
-        dumpHandlers.add(new GraphPrinterDumpHandler());
-        if (GraalOptions.PrintCFG) {
-            if (GraalOptions.PrintBinaryGraphs) {
-                TTY.println("CFG dumping slows down PrintBinaryGraphs: use -G:-PrintCFG to disable it");
-            }
-            dumpHandlers.add(new CFGPrinterObserver());
-        }
+        this.dumpHandlers = dumpHandlers;
         this.output = output;
     }
 

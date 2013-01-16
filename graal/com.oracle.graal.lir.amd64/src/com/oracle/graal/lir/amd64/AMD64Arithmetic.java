@@ -35,8 +35,8 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 public enum AMD64Arithmetic {
-    IADD, ISUB, IMUL, IDIV, IREM, IUDIV, IUREM, IAND, IOR, IXOR, ISHL, ISHR, IUSHR,
-    LADD, LSUB, LMUL, LDIV, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR,
+    IADD, ISUB, IMUL, IDIV, IDIVREM, IREM, IUDIV, IUREM, IAND, IOR, IXOR, ISHL, ISHR, IUSHR,
+    LADD, LSUB, LMUL, LDIV, LDIVREM, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR,
     FADD, FSUB, FMUL, FDIV, FAND, FOR, FXOR,
     DADD, DSUB, DMUL, DDIV, DAND, DOR, DXOR,
     INEG, LNEG,
@@ -195,6 +195,39 @@ public enum AMD64Arithmetic {
         }
     }
 
+    public static class DivRemOp extends AMD64LIRInstruction {
+        @Opcode private final AMD64Arithmetic opcode;
+        @Def protected Value divResult;
+        @Def protected Value remResult;
+        @Use protected Value x;
+        @Alive protected Value y;
+        @State protected LIRFrameState state;
+
+        public DivRemOp(AMD64Arithmetic opcode, Value x, Value y, LIRFrameState state) {
+            this.opcode = opcode;
+            this.divResult = AMD64.rax.asValue(x.getKind());
+            this.remResult = AMD64.rdx.asValue(x.getKind());
+            this.x = x;
+            this.y = y;
+            this.state = state;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            emit(tasm, masm, opcode, null, y, state);
+        }
+
+        @Override
+        protected void verify() {
+            super.verify();
+            // left input in rax, right input in any register but rax and rdx, result quotient in rax, result remainder in rdx
+            assert asRegister(x) == AMD64.rax;
+            assert differentRegisters(y, AMD64.rax.asValue(), AMD64.rdx.asValue());
+            verifyKind(opcode, divResult, x, y);
+            verifyKind(opcode, remResult, x, y);
+        }
+    }
+
     public static class DivOp extends AMD64LIRInstruction {
         @Opcode private final AMD64Arithmetic opcode;
         @Def protected Value result;
@@ -310,6 +343,7 @@ public enum AMD64Arithmetic {
                 case MOV_F2I: masm.movdl(asIntReg(dst), asFloatReg(src)); break;
                 case MOV_D2L: masm.movdq(asLongReg(dst), asDoubleReg(src)); break;
 
+                case IDIVREM:
                 case IDIV:
                 case IREM:
                     masm.cdql();
@@ -317,24 +351,12 @@ public enum AMD64Arithmetic {
                     masm.idivl(asRegister(src));
                     break;
 
+                case LDIVREM:
                 case LDIV:
                 case LREM:
-                    Label continuation = new Label();
-                    if (opcode == LDIV) {
-                        // check for special case of Long.MIN_VALUE / -1
-                        Label normalCase = new Label();
-                        masm.movq(AMD64.rdx, java.lang.Long.MIN_VALUE);
-                        masm.cmpq(AMD64.rax, AMD64.rdx);
-                        masm.jcc(ConditionFlag.notEqual, normalCase);
-                        masm.cmpq(asRegister(src), -1);
-                        masm.jcc(ConditionFlag.equal, continuation);
-                        masm.bind(normalCase);
-                    }
-
                     masm.cdqq();
                     exceptionOffset = masm.codeBuffer.position();
                     masm.idivq(asRegister(src));
-                    masm.bind(continuation);
                     break;
 
                 case IUDIV:

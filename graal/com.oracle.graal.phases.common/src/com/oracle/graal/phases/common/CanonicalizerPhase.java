@@ -50,14 +50,19 @@ public class CanonicalizerPhase extends Phase {
     private final TargetDescription target;
     private final Assumptions assumptions;
     private final MetaAccessProvider runtime;
+    private final CustomCanonicalizer customCanonicalizer;
     private final Iterable<Node> initWorkingSet;
 
     private NodeWorkList workList;
     private Tool tool;
     private List<Node> snapshotTemp;
 
+    public interface CustomCanonicalizer {
+        ValueNode canonicalize(Node node);
+    }
+
     public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions) {
-        this(target, runtime, assumptions, null, 0);
+        this(target, runtime, assumptions, null, 0, null);
     }
 
     /**
@@ -65,24 +70,26 @@ public class CanonicalizerPhase extends Phase {
      * @param runtime
      * @param assumptions
      * @param workingSet the initial working set of nodes on which the canonicalizer works, should be an auto-grow node bitmap
+     * @param customCanonicalizer
      */
-    public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, Iterable<Node> workingSet) {
-        this(target, runtime, assumptions, workingSet, 0);
+    public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
+        this(target, runtime, assumptions, workingSet, 0, customCanonicalizer);
     }
 
     /**
      * @param newNodesMark only the {@linkplain Graph#getNewNodes(int) new nodes} specified by
      *            this mark are processed otherwise all nodes in the graph are processed
      */
-    public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, int newNodesMark) {
-        this(target, runtime, assumptions, null, newNodesMark);
+    public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
+        this(target, runtime, assumptions, null, newNodesMark, customCanonicalizer);
     }
 
-    public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, Iterable<Node> workingSet, int newNodesMark) {
+    public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, Iterable<Node> workingSet, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
         this.newNodesMark = newNodesMark;
         this.target = target;
         this.assumptions = assumptions;
         this.runtime = runtime;
+        this.customCanonicalizer = customCanonicalizer;
         this.initWorkingSet = workingSet;
         this.snapshotTemp = new ArrayList<>();
     }
@@ -127,7 +134,7 @@ public class CanonicalizerPhase extends Phase {
             int mark = graph.getMark();
             if (!tryKillUnused(node)) {
                 node.inputs().filter(GraphUtil.isFloatingNode()).snapshotTo(snapshotTemp);
-                if (!tryCanonicalize(node, graph, tool)) {
+                if (!tryCanonicalize(node, graph)) {
                     tryInferStamp(node, graph);
                 } else {
                     for (Node in : snapshotTemp) {
@@ -168,7 +175,19 @@ public class CanonicalizerPhase extends Phase {
         return false;
     }
 
-    public static boolean tryCanonicalize(final Node node, final StructuredGraph graph, final SimplifierTool tool) {
+    public boolean tryCanonicalize(final Node node, final StructuredGraph graph) {
+        boolean result = baseTryCanonicalize(node, graph);
+        if (!result && customCanonicalizer != null) {
+            ValueNode canonical = customCanonicalizer.canonicalize(node);
+            if (canonical == node && customCanonicalizer != null) {
+                canonical = customCanonicalizer.canonicalize(node);
+            }
+            result = performReplacement(node, graph, canonical);
+        }
+        return result;
+    }
+
+    public boolean baseTryCanonicalize(final Node node, final StructuredGraph graph) {
         if (node instanceof Canonicalizable) {
             assert !(node instanceof Simplifiable);
             METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
@@ -187,52 +206,9 @@ public class CanonicalizerPhase extends Phase {
 //                          Fixed-connected|   2    |        X        |       6       |
 //                                         --------------------------------------------
 //       X: must not happen (checked with assertions)
-                    if (canonical == node) {
-                        Debug.log("Canonicalizer: work on %s", node);
-                        return false;
-                    } else {
-                        Debug.log("Canonicalizer: replacing %s with %s", node, canonical);
-                        METRIC_CANONICALIZED_NODES.increment();
-                        if (node instanceof FloatingNode) {
-                            if (canonical == null) {
-                                // case 1
-                                graph.removeFloating((FloatingNode) node);
-                            } else {
-                                // case 2
-                                assert !(canonical instanceof FixedNode) || (canonical.predecessor() != null || canonical instanceof StartNode || canonical instanceof MergeNode) : node + " -> " + canonical +
-                                                " : replacement should be floating or fixed and connected";
-                                graph.replaceFloating((FloatingNode) node, canonical);
-                            }
-                        } else {
-                            assert node instanceof FixedWithNextNode && node.predecessor() != null : node + " -> " + canonical + " : node should be fixed & connected (" + node.predecessor() + ")";
-                            FixedWithNextNode fixedWithNext = (FixedWithNextNode) node;
 
-                            // When removing a fixed node, new canonicalization opportunities for its successor may arise
-                            assert fixedWithNext.next() != null;
-                            tool.addToWorkList(fixedWithNext.next());
 
-                            if (canonical == null) {
-                                // case 3
-                                graph.removeFixed(fixedWithNext);
-                            } else if (canonical instanceof FloatingNode) {
-                                // case 4
-                                graph.replaceFixedWithFloating(fixedWithNext, (FloatingNode) canonical);
-                            } else {
-                                assert canonical instanceof FixedNode;
-                                if (canonical.predecessor() == null) {
-                                    assert !canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " shouldn't have successors";
-                                    // case 5
-                                    graph.replaceFixedWithFixed(fixedWithNext, (FixedWithNextNode) canonical);
-                                } else {
-                                    assert canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " should have successors";
-                                    // case 6
-                                    node.replaceAtUsages(canonical);
-                                    graph.removeFixed(fixedWithNext);
-                                }
-                            }
-                        }
-                        return true;
-                    }
+                    return performReplacement(node, graph, canonical);
                 }
             });
         } else if (node instanceof Simplifiable) {
@@ -245,6 +221,55 @@ public class CanonicalizerPhase extends Phase {
             });
         }
         return node.isDeleted();
+    }
+
+    private boolean performReplacement(final Node node, final StructuredGraph graph, ValueNode canonical) {
+        if (canonical == node) {
+            Debug.log("Canonicalizer: work on %s", node);
+            return false;
+        } else {
+            Debug.log("Canonicalizer: replacing %s with %s", node, canonical);
+            METRIC_CANONICALIZED_NODES.increment();
+            if (node instanceof FloatingNode) {
+                if (canonical == null) {
+                    // case 1
+                    graph.removeFloating((FloatingNode) node);
+                } else {
+                    // case 2
+                    assert !(canonical instanceof FixedNode) || (canonical.predecessor() != null || canonical instanceof StartNode || canonical instanceof MergeNode) : node + " -> " + canonical +
+                                    " : replacement should be floating or fixed and connected";
+                    graph.replaceFloating((FloatingNode) node, canonical);
+                }
+            } else {
+                assert node instanceof FixedWithNextNode && node.predecessor() != null : node + " -> " + canonical + " : node should be fixed & connected (" + node.predecessor() + ")";
+                FixedWithNextNode fixedWithNext = (FixedWithNextNode) node;
+
+                // When removing a fixed node, new canonicalization opportunities for its successor may arise
+                assert fixedWithNext.next() != null;
+                tool.addToWorkList(fixedWithNext.next());
+
+                if (canonical == null) {
+                    // case 3
+                    graph.removeFixed(fixedWithNext);
+                } else if (canonical instanceof FloatingNode) {
+                    // case 4
+                    graph.replaceFixedWithFloating(fixedWithNext, (FloatingNode) canonical);
+                } else {
+                    assert canonical instanceof FixedNode;
+                    if (canonical.predecessor() == null) {
+                        assert !canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " shouldn't have successors";
+                        // case 5
+                        graph.replaceFixedWithFixed(fixedWithNext, (FixedWithNextNode) canonical);
+                    } else {
+                        assert canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " should have successors";
+                        // case 6
+                        node.replaceAtUsages(canonical);
+                        graph.removeFixed(fixedWithNext);
+                    }
+                }
+            }
+            return true;
+        }
     }
 
     /**
@@ -315,6 +340,11 @@ public class CanonicalizerPhase extends Phase {
         @Override
         public void addToWorkList(Node node) {
             nodeWorkSet.addAgain(node);
+        }
+
+        @Override
+        public void removeIfUnused(Node node) {
+            tryKillUnused(node);
         }
     }
 }

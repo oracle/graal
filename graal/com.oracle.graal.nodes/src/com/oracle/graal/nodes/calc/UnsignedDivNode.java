@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "|/|")
-public final class UnsignedDivNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
+public class UnsignedDivNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
 
     public UnsignedDivNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
@@ -58,6 +58,11 @@ public final class UnsignedDivNode extends IntegerArithmeticNode implements Cano
             }
         }
         return this;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 
     @Override

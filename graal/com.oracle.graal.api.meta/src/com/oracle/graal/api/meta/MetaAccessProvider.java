@@ -60,6 +60,13 @@ public interface MetaAccessProvider {
     ResolvedJavaType lookupJavaType(Constant constant);
 
     /**
+     * Parses a <a href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">method
+     * descriptor</a> into a {@link Signature}. The behavior of this method is undefined if
+     * the method descriptor is not well formed.
+     */
+    Signature parseMethodDescriptor(String methodDescriptor);
+
+    /**
      * Compares two constants for equality.
      * This is used instead of {@link Constant#equals(Object)} in case the runtime
      * has an interpretation for object equality other than {@code x.asObject() == y.asObject()}.

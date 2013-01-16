@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package com.oracle.graal.snippets;
 
+import com.oracle.graal.snippets.ClassSubstitution.*;
+import com.oracle.graal.snippets.nodes.*;
 
-public class TestNode extends Node implements Node.IterableNodeType {
-    private String name;
+@ClassSubstitution(Integer.class)
+public class IntegerSubstitutions {
 
-    public TestNode(String name) {
-        this.name = name;
+    @MethodSubstitution
+    public static int reverseBytes(int i) {
+        return ReverseBytesNode.reverse(i);
     }
 
+    @MethodSubstitution
+    public static int numberOfLeadingZeros(int i) {
+        if (i == 0) {
+            return 32;
+        }
+        return 31 - BitScanReverseNode.scan(i);
+    }
 
-    public String getName() {
-        return name;
+    @MethodSubstitution
+    public static int numberOfTrailingZeros(int i) {
+        if (i == 0) {
+            return 32;
+        }
+        return BitScanForwardNode.scan(i);
+    }
+
+    @MethodSubstitution
+    public static int bitCount(int i) {
+        return BitCountNode.bitCount(i);
     }
 }

@@ -40,6 +40,8 @@ public final class HotSpotVMConfig extends CompilerObject {
     public boolean useFastLocking;
     public boolean useTLAB;
     public boolean useBiasedLocking;
+    public boolean usePopCountInstruction;
+    public boolean useAESIntrinsics;
 
     // offsets, ...
     public int vmPageSize;
@@ -334,6 +336,10 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int deoptReasonNone;
     public long threadIsInterruptedStub;
     public long identityHashCodeStub;
+    public long aescryptEncryptBlockStub;
+    public long aescryptDecryptBlockStub;
+    public long cipherBlockChainingEncryptAESCryptStub;
+    public long cipherBlockChainingDecryptAESCryptStub;
 
     public int deoptReasonNullCheck;
     public int deoptReasonRangeCheck;

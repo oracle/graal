@@ -42,6 +42,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.printer.*;
 
 /**
  * Base class for Graal compiler unit tests.
@@ -68,7 +69,7 @@ public abstract class GraalCompilerTest {
     protected final GraalCompiler graalCompiler;
 
     public GraalCompilerTest() {
-        Debug.enable();
+        DebugEnvironment.initialize(System.out);
         this.runtime = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
         this.graalCompiler = Graal.getRequiredCapability(GraalCompiler.class);
     }

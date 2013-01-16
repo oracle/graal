@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
+import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -68,11 +69,13 @@ public class CheckCastSnippets implements SnippetsInterface {
                     @Parameter("exactHub") Word exactHub,
                     @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
+            probability(0.1);
             isNull.inc();
             return object;
         }
         Word objectHub = loadHub(object);
         if (objectHub != exactHub) {
+            probability(0.01);
             exactMiss.inc();
             //bkpt(object, exactHub, objectHub);
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);

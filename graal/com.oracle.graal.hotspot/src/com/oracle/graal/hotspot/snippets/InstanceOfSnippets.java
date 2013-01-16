@@ -26,6 +26,7 @@ import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.*;
 import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.Templates.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
+import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -66,11 +67,13 @@ public class InstanceOfSnippets implements SnippetsInterface {
                     @Parameter("falseValue") Object falseValue,
                     @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
+            probability(0.01);
             isNull.inc();
             return falseValue;
         }
         Word objectHub = loadHub(object);
         if (objectHub != exactHub) {
+            probability(0.75);
             exactMiss.inc();
             return falseValue;
         }
@@ -90,11 +93,13 @@ public class InstanceOfSnippets implements SnippetsInterface {
                     @ConstantParameter("checkNull") boolean checkNull,
                     @ConstantParameter("superCheckOffset") int superCheckOffset) {
         if (checkNull && object == null) {
+            probability(0.01);
             isNull.inc();
             return falseValue;
         }
         Word objectHub = loadHub(object);
         if (objectHub.readWord(superCheckOffset) != hub) {
+            probability(0.45);
             displayMiss.inc();
             return falseValue;
         }
@@ -114,6 +119,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
                     @VarargsParameter("hints") Word[] hints,
                     @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
+            probability(0.01);
             isNull.inc();
             return falseValue;
         }
@@ -123,6 +129,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
         for (int i = 0; i < hints.length; i++) {
             Word hintHub = hints[i];
             if (hintHub == objectHub) {
+                probability(0.01);
                 hintsHit.inc();
                 return trueValue;
             }
@@ -151,6 +158,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
         int length = secondarySupers.readInt(metaspaceArrayLengthOffset());
         for (int i = 0; i < length; i++) {
             if (t == loadWordElement(secondarySupers, i)) {
+                probability(0.01);
                 s.writeWord(secondarySuperCacheOffset(), t);
                 secondariesHit.inc();
                 return true;
@@ -171,6 +179,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
                     @Parameter("falseValue") Object falseValue,
                     @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
+            probability(0.01);
             isNull.inc();
             return falseValue;
         }
@@ -240,7 +249,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
         }
     }
 
-    private static final SnippetCounter.Group counters = GraalOptions.SnippetCounters ? new SnippetCounter.Group("Checkcast") : null;
+    private static final SnippetCounter.Group counters = GraalOptions.SnippetCounters ? new SnippetCounter.Group("InstanceOf") : null;
     private static final SnippetCounter hintsHit = new SnippetCounter(counters, "hintsHit", "hit a hint type");
     private static final SnippetCounter exactHit = new SnippetCounter(counters, "exactHit", "exact type test succeeded");
     private static final SnippetCounter exactMiss = new SnippetCounter(counters, "exactMiss", "exact type test failed");

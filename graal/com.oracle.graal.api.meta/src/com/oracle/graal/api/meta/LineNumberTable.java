@@ -20,36 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.snippets;
+package com.oracle.graal.api.meta;
 
-import com.oracle.graal.nodes.calc.*;
 
-/**
- * Snippets for {@link java.lang.Float} methods.
- */
-@ClassSubstitution(java.lang.Float.class)
-public class FloatSnippets implements SnippetsInterface {
-
-    private static final int NAN_RAW_INT_BITS = Float.floatToRawIntBits(Float.NaN);
-
-    public static int floatToRawIntBits(float value) {
-        @JavacBug(id = 6995200)
-        Integer result = ConvertNode.convert(ConvertNode.Op.MOV_F2I, value);
-        return result;
-    }
-
-    // TODO This method is not necessary, since the JDK method does exactly this
-    public static int floatToIntBits(float value) {
-        if (value != value) {
-            return NAN_RAW_INT_BITS;
-        } else {
-            return floatToRawIntBits(value);
-        }
-    }
-
-    public static float intBitsToFloat(int bits) {
-        @JavacBug(id = 6995200)
-        Float result = ConvertNode.convert(ConvertNode.Op.MOV_I2F, bits);
-        return result;
-    }
+public interface LineNumberTable {
+    int[] getLineNumberEntries();
+    int[] getBciEntries();
+    int getLineNumber(int bci);
 }

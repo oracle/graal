@@ -25,8 +25,10 @@ package com.oracle.graal.hotspot;
 import java.io.*;
 import java.util.concurrent.*;
 
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.printer.*;
 
 
 public final class CompilerThread extends Thread {
@@ -56,12 +58,10 @@ public final class CompilerThread extends Thread {
 
     @Override
     public void run() {
-        HotSpotDebugConfig hotspotDebugConfig = null;
+        GraalDebugConfig hotspotDebugConfig = null;
         if (GraalOptions.Debug) {
-            Debug.enable();
             PrintStream log = HotSpotGraalRuntime.getInstance().getVMToCompiler().log();
-            hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter, log);
-            Debug.setConfig(hotspotDebugConfig);
+            DebugEnvironment.initialize(log);
         }
         try {
             super.run();

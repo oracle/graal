@@ -409,7 +409,7 @@ public final class GraphBuilderPhase extends Phase {
 
     }
 
-    private void genArithmeticOp(Kind result, int opcode, boolean canTrap) {
+    private void genArithmeticOp(Kind result, int opcode) {
         ValueNode y = frameState.pop(result);
         ValueNode x = frameState.pop(result);
         boolean isStrictFP = isStrict(method.getModifiers());
@@ -427,21 +427,30 @@ public final class GraphBuilderPhase extends Phase {
             case LMUL: v = new IntegerMulNode(result, x, y); break;
             case FMUL:
             case DMUL: v = new FloatMulNode(result, x, y, isStrictFP); break;
-            case IDIV:
-            case LDIV: v = new IntegerDivNode(result, x, y); break;
             case FDIV:
             case DDIV: v = new FloatDivNode(result, x, y, isStrictFP); break;
-            case IREM:
-            case LREM: v = new IntegerRemNode(result, x, y); break;
             case FREM:
             case DREM: v = new FloatRemNode(result, x, y, isStrictFP); break;
             default:
                 throw new GraalInternalError("should not reach");
         }
         ValueNode result1 = append(currentGraph.unique(v));
-        if (canTrap) {
-            append(currentGraph.add(new ValueAnchorNode(result1)));
+        frameState.push(result, result1);
+    }
+
+    private void genIntegerDivOp(Kind result, int opcode) {
+        ValueNode y = frameState.pop(result);
+        ValueNode x = frameState.pop(result);
+        FixedWithNextNode v;
+        switch(opcode){
+            case IDIV:
+            case LDIV: v = new IntegerDivNode(result, x, y); break;
+            case IREM:
+            case LREM: v = new IntegerRemNode(result, x, y); break;
+            default:
+                throw new GraalInternalError("should not reach");
         }
+        ValueNode result1 = append(currentGraph.add(v));
         frameState.push(result, result1);
     }
 
@@ -1680,24 +1689,24 @@ public final class GraphBuilderPhase extends Phase {
             case SWAP           : stackOp(opcode); break;
             case IADD           : // fall through
             case ISUB           : // fall through
-            case IMUL           : genArithmeticOp(Kind.Int, opcode, false); break;
+            case IMUL           : genArithmeticOp(Kind.Int, opcode); break;
             case IDIV           : // fall through
-            case IREM           : genArithmeticOp(Kind.Int, opcode, true); break;
+            case IREM           : genIntegerDivOp(Kind.Int, opcode); break;
             case LADD           : // fall through
             case LSUB           : // fall through
-            case LMUL           : genArithmeticOp(Kind.Long, opcode, false); break;
+            case LMUL           : genArithmeticOp(Kind.Long, opcode); break;
             case LDIV           : // fall through
-            case LREM           : genArithmeticOp(Kind.Long, opcode, true); break;
+            case LREM           : genIntegerDivOp(Kind.Long, opcode); break;
             case FADD           : // fall through
             case FSUB           : // fall through
             case FMUL           : // fall through
             case FDIV           : // fall through
-            case FREM           : genArithmeticOp(Kind.Float, opcode, false); break;
+            case FREM           : genArithmeticOp(Kind.Float, opcode); break;
             case DADD           : // fall through
             case DSUB           : // fall through
             case DMUL           : // fall through
             case DDIV           : // fall through
-            case DREM           : genArithmeticOp(Kind.Double, opcode, false); break;
+            case DREM           : genArithmeticOp(Kind.Double, opcode); break;
             case INEG           : genNegateOp(Kind.Int); break;
             case LNEG           : genNegateOp(Kind.Long); break;
             case FNEG           : genNegateOp(Kind.Float); break;

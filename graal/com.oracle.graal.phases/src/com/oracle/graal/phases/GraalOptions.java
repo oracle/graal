@@ -123,6 +123,7 @@ public final class GraalOptions {
 
     // Debug settings:
     public static boolean Debug                              = true;
+    public static boolean DebugSnippets                      = false;
     public static boolean PerThreadDebugValues               = ____;
     public static boolean SummarizeDebugValues               = ____;
     public static boolean SummarizePerPhase                  = ____;
@@ -210,6 +211,7 @@ public final class GraalOptions {
     public static boolean IntrinsifyThreadMethods            = true;
     public static boolean IntrinsifyUnsafeMethods            = true;
     public static boolean IntrinsifyMathMethods              = true;
+    public static boolean IntrinsifyAESMethods               = true;
 
     /**
      * Counts the various paths taken through snippets.

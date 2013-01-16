@@ -20,39 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class FixedNode extends ValueNode {
+@NodeInfo(shortName = "/")
+public class FixedBinaryNode extends FixedWithNextNode {
 
-    private double probability;
+    @Input private ValueNode x;
+    @Input private ValueNode y;
 
-    public FixedNode(Stamp stamp) {
-        super(stamp);
+    public ValueNode x() {
+        return x;
     }
 
-    public FixedNode(Stamp stamp, ValueNode... dependencies) {
-        super(stamp, dependencies);
+    public ValueNode y() {
+        return y;
     }
 
-    public double probability() {
-        return probability;
-    }
-
-    public void setProbability(double probability) {
-        assert probability >= 0 : String.format("Invalid argument %f, because the probability of a node must not be negative.", probability);
-        this.probability = probability;
-        assert !Double.isNaN(probability);
-    }
-
-    protected void copyInto(FixedNode newNode) {
-        newNode.setProbability(probability);
-    }
-
-    @Override
-    public boolean verify() {
-        assertTrue(this.successors().isNotEmpty() || this.predecessor() != null, "FixedNode should not float");
-        return super.verify();
+    public FixedBinaryNode(Kind kind, ValueNode x, ValueNode y) {
+        super(StampFactory.forKind(kind));
+        this.x = x;
+        this.y = y;
     }
 }

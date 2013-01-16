@@ -32,11 +32,9 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
-import com.oracle.graal.phases.common.InliningUtil.InlineInfo;
-import com.oracle.graal.phases.common.InliningUtil.InliningCallback;
-import com.oracle.graal.phases.common.InliningUtil.InliningPolicy;
-import com.oracle.graal.phases.common.InliningUtil.WeightComputationPolicy;
+import com.oracle.graal.phases.PhasePlan.*;
+import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
+import com.oracle.graal.phases.common.InliningUtil.*;
 
 public class InliningPhase extends Phase implements InliningCallback {
     /*
@@ -52,6 +50,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private final Assumptions assumptions;
     private final GraphCache cache;
     private final InliningPolicy inliningPolicy;
+    private CustomCanonicalizer customCanonicalizer;
 
     // Metrics
     private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
@@ -61,6 +60,10 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     public InliningPhase(TargetDescription target, GraalCodeCacheProvider runtime, Collection<Invoke> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this(target, runtime, assumptions, cache, plan, createInliningPolicy(assumptions, optimisticOpts, hints));
+    }
+
+    public void setCustomCanonicalizer(CustomCanonicalizer customCanonicalizer) {
+        this.customCanonicalizer = customCanonicalizer;
     }
 
     public InliningPhase(TargetDescription target, GraalCodeCacheProvider runtime, Assumptions assumptions, GraphCache cache, PhasePlan plan, InliningPolicy inliningPolicy) {
@@ -91,7 +94,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                         Debug.dump(graph, "after %s", candidate);
                         Iterable<Node> newNodes = graph.getNewNodes(mark);
                         if (GraalOptions.OptCanonicalizer) {
-                            new CanonicalizerPhase(target, runtime, assumptions, invokeUsages, mark).apply(graph);
+                            new CanonicalizerPhase(target, runtime, assumptions, invokeUsages, mark, customCanonicalizer).apply(graph);
                         }
                         metricInliningPerformed.increment();
 

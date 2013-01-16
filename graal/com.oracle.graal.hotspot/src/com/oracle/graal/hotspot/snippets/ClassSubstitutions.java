@@ -33,10 +33,10 @@ import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 import com.oracle.graal.word.*;
 
 /**
- * Snippets for {@link java.lang.Class} methods.
+ * Substitutions for {@link java.lang.Class} methods.
  */
 @ClassSubstitution(java.lang.Class.class)
-public class ClassSnippets implements SnippetsInterface {
+public class ClassSubstitutions {
     @MethodSubstitution(isStatic = false)
     public static int getModifiers(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());

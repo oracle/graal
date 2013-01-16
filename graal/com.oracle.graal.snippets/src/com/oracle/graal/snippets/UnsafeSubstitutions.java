@@ -30,10 +30,10 @@ import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 import com.oracle.graal.snippets.nodes.*;
 
 /**
- * Snippets for {@link sun.misc.Unsafe} methods.
+ * Substitutions for {@link sun.misc.Unsafe} methods.
  */
 @ClassSubstitution(sun.misc.Unsafe.class)
-public class UnsafeSnippets implements SnippetsInterface {
+public class UnsafeSubstitutions {
     @MethodSubstitution(isStatic = false)
     public static boolean compareAndSwapObject(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, Object expected, Object x) {
         return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x);

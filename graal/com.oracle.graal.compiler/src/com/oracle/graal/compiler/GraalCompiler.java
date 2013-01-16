@@ -168,7 +168,7 @@ public class GraalCompiler {
         if (GraalOptions.OptFloatingReads) {
             int mark = graph.getMark();
             new FloatingReadPhase().apply(graph);
-            new CanonicalizerPhase(target, runtime, assumptions, mark).apply(graph);
+            new CanonicalizerPhase(target, runtime, assumptions, mark, null).apply(graph);
             if (GraalOptions.OptReadElimination) {
                 new ReadEliminationPhase().apply(graph);
             }
@@ -209,6 +209,8 @@ public class GraalCompiler {
         assert startBlock != null;
         assert startBlock.numberOfPreds() == 0;
 
+        new ComputeProbabilityPhase().apply(graph);
+
         return Debug.scope("ComputeLinearScanOrder", new Callable<LIR>() {
 
             @Override
@@ -228,6 +230,7 @@ public class GraalCompiler {
 
             }
         });
+
     }
 
     public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method) {
@@ -238,10 +241,21 @@ public class GraalCompiler {
 
             public void run() {
                 for (Block b : lir.linearScanOrder()) {
-                    lirGenerator.doBlock(b);
+                    emitBlock(b);
                 }
 
                 Debug.dump(lir, "After LIR generation");
+            }
+
+            private void emitBlock(Block b) {
+                if (lir.lir(b) == null) {
+                    for (Block pred : b.getPredecessors()) {
+                        if (!b.isLoopHeader() || !pred.isLoopEnd()) {
+                            emitBlock(pred);
+                        }
+                    }
+                    lirGenerator.doBlock(b);
+                }
             }
         });
 

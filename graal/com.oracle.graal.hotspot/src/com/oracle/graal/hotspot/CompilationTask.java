@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.nodes.StructuredGraph.*;
+
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -127,7 +130,14 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                     @Override
                     public CompilationResult call() throws Exception {
                         graalRuntime.evictDeoptedGraphs();
-                        StructuredGraph graph = new StructuredGraph(method, entryBCI);
+                        StructuredGraph graph = (StructuredGraph) method.getCompilerStorage().get(Graph.class);
+                        if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
+                            graph = new StructuredGraph(method, entryBCI);
+                        } else {
+                            // Compiling an intrinsic graph - must clone the graph
+                            graph = graph.copy();
+                            //System.out.println("compiling intrinsic " + method);
+                        }
                         return graalRuntime.getCompiler().compileMethod(method, graph, graalRuntime.getCache(), plan, optimisticOpts);
                     }
                 });
@@ -183,4 +193,9 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         return id < o.id ? -1 : (id > o.id ? 1 : 0);
     }
 
+    @Override
+    public String toString() {
+        return "Compilation[id=" + id + ", prio=" + priority + " " + MetaUtil.format("%H.%n(%p)", method) +
+                        (entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "@" + entryBCI) + "]";
+    }
 }

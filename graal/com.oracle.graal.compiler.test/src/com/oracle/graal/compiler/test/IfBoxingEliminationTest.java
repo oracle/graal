@@ -97,6 +97,7 @@ public class IfBoxingEliminationTest extends GraalCompilerTest {
                 Debug.dump(graph, "Graph");
                 new ExpandBoxingNodesPhase(pool).apply(graph);
                 new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
+                new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
                 StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
                 new CanonicalizerPhase(null, runtime(), assumptions).apply(referenceGraph);

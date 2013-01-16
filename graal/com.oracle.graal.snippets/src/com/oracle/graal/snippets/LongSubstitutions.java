@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package com.oracle.graal.snippets;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.snippets.ClassSubstitution.*;
+import com.oracle.graal.snippets.nodes.*;
 
+@ClassSubstitution(Long.class)
+public class LongSubstitutions {
 
-public interface CanonicalizerTool {
-    TargetDescription target();
-    Assumptions assumptions();
-    MetaAccessProvider runtime();
-    void removeIfUnused(Node node);
+    @MethodSubstitution
+    public static long reverseBytes(long i) {
+        return ReverseBytesNode.reverse(i);
+    }
+
+    @MethodSubstitution
+    public static int numberOfLeadingZeros(long i) {
+        if (i == 0) {
+            return 64;
+        }
+        return 63 - BitScanReverseNode.scan(i);
+    }
+
+    @MethodSubstitution
+    public static int numberOfTrailingZeros(long i) {
+        if (i == 0) {
+            return 64;
+        }
+        return BitScanForwardNode.scan(i);
+    }
+
+    @MethodSubstitution
+    public static int bitCount(long i) {
+        return BitCountNode.bitCount(i);
+    }
 }

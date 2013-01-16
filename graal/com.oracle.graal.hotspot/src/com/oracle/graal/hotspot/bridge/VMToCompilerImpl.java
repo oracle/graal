@@ -23,7 +23,7 @@
 
 package com.oracle.graal.hotspot.bridge;
 
-import static com.oracle.graal.graph.FieldIntrospection.*;
+import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -44,6 +44,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
+import com.oracle.graal.printer.*;
 import com.oracle.graal.snippets.*;
 
 /**
@@ -125,9 +126,11 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         if (GraalOptions.Debug) {
             Debug.enable();
-            HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter, log);
-            Debug.setConfig(hotspotDebugConfig);
+            if (GraalOptions.DebugSnippets) {
+                DebugEnvironment.initialize(log);
+            }
         }
+
         // Install intrinsics.
         GraalCompiler compiler = graalRuntime.getCompiler();
         final HotSpotRuntime runtime = (HotSpotRuntime) compiler.runtime;
@@ -139,7 +142,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                     // Snippets cannot have speculative optimizations since they have to be valid for the entire run of the VM.
                     Assumptions assumptions = new Assumptions(false);
                     VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime, assumptions);
-                    SnippetInstaller installer = new SnippetInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
+                    SnippetInstaller installer = new HotSpotSnippetInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
                     GraalIntrinsics.installIntrinsics(installer);
                     runtime.installSnippets(installer, assumptions);
                 }

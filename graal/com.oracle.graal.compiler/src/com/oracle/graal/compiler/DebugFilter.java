@@ -20,9 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
-
-import static com.oracle.graal.hotspot.MethodFilter.*;
+package com.oracle.graal.compiler;
 
 import java.util.*;
 import java.util.regex.*;
@@ -140,9 +138,9 @@ class DebugFilter {
             if (filter.isEmpty()) {
                 this.pattern = null;
             } else if (filter.contains("*") || filter.contains("?")) {
-                this.pattern = Pattern.compile(createGlobString(filter));
+                this.pattern = Pattern.compile(MethodFilter.createGlobString(filter));
             } else {
-                this.pattern = Pattern.compile(".*" + createGlobString(filter) + ".*");
+                this.pattern = Pattern.compile(".*" + MethodFilter.createGlobString(filter) + ".*");
             }
         }
 

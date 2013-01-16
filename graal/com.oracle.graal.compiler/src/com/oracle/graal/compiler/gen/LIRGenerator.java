@@ -373,12 +373,20 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 stateAfter = ((StateSplit) instr).stateAfter();
             }
             if (instr instanceof ValueNode) {
-                try {
-                    doRoot((ValueNode) instr);
-                } catch (GraalInternalError e) {
-                    throw e.addContext(instr);
-                } catch (Throwable e) {
-                    throw new GraalInternalError(e).addContext(instr);
+
+                ValueNode valueNode = (ValueNode) instr;
+                if (operand(valueNode) == null) {
+                    if (!peephole(valueNode)) {
+                        try {
+                            doRoot((ValueNode) instr);
+                        } catch (GraalInternalError e) {
+                            throw e.addContext(instr);
+                        } catch (Throwable e) {
+                            throw new GraalInternalError(e).addContext(instr);
+                        }
+                    }
+                } else {
+                    // There can be cases in which the result of an instruction is already set before by other instructions.
                 }
             }
             if (stateAfter != null) {
@@ -415,6 +423,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             TTY.println();
         }
     }
+
+    protected abstract boolean peephole(ValueNode valueNode);
 
     private boolean checkStateReady(FrameState state) {
         FrameState fs = state;
@@ -670,7 +680,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
 
-    public abstract void emitLabel(Label label, boolean align);
     public abstract void emitJump(LabelRef label, LIRFrameState info);
     public abstract void emitBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info);
     public abstract Variable emitCMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);

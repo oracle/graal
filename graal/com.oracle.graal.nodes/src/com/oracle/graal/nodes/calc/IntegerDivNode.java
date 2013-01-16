@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "/")
-public final class IntegerDivNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
+public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
 
     public IntegerDivNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
@@ -87,7 +87,24 @@ public final class IntegerDivNode extends IntegerArithmeticNode implements Canon
                 return shift;
             }
         }
+
+        // Convert the expression ((a - a % b) / b) into (a / b).
+        if (x() instanceof IntegerSubNode) {
+            IntegerSubNode integerSubNode = (IntegerSubNode) x();
+            if (integerSubNode.y() instanceof IntegerRemNode) {
+                IntegerRemNode integerRemNode = (IntegerRemNode) integerSubNode.y();
+                if (integerSubNode.kind() == this.kind() && integerRemNode.kind() == this.kind() && integerSubNode.x() == integerRemNode.x() && this.y() == integerRemNode.y()) {
+                    return graph().add(new IntegerDivNode(kind(), integerSubNode.x(), this.y()));
+                }
+            }
+        }
+
         return this;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 
     @Override
