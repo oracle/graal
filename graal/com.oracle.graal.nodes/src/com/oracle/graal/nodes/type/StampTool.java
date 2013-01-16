@@ -130,6 +130,12 @@ public class StampTool {
         return stampForMask(kind, mask);
     }
 
+    public static Stamp xor(IntegerStamp stamp1, IntegerStamp stamp2) {
+        Kind kind = stamp1.kind();
+        long mask = stamp1.mask() | stamp2.mask();
+        return stampForMask(kind, mask);
+    }
+
     public static Stamp unsignedRightShift(IntegerStamp value, IntegerStamp shift) {
         Kind kind = value.kind();
         if (shift.lowerBound() == shift.upperBound()) {
