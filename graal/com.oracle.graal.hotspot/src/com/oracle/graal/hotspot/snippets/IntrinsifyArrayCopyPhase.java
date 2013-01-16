@@ -118,8 +118,10 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                 StructuredGraph snippetGraph = (StructuredGraph) snippetMethod.getCompilerStorage().get(Graph.class);
                 assert snippetGraph != null : "ArrayCopySnippets should be installed";
                 hits = true;
-                Debug.log("%s > Intinsify (%s)", Debug.currentScope(), snippetMethod.getSignature().getParameterType(0, snippetMethod.getDeclaringClass()).getComponentType());
+                Debug.log("%s > Intrinsify (%s)", Debug.currentScope(), snippetMethod.getSignature().getParameterType(0, snippetMethod.getDeclaringClass()).getComponentType());
                 InliningUtil.inline(methodCallTarget.invoke(), snippetGraph, false);
+            } else {
+                Debug.log("%s > not intrinsifying arraycopy", Debug.currentScope());
             }
         }
         if (GraalOptions.OptCanonicalizer && hits) {

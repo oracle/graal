@@ -136,6 +136,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                         } else {
                             // Compiling an intrinsic graph - must clone the graph
                             graph = graph.copy();
+                            //System.out.println("compiling intrinsic " + method);
                         }
                         return graalRuntime.getCompiler().compileMethod(method, graph, graalRuntime.getCache(), plan, optimisticOpts);
                     }
@@ -192,4 +193,9 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         return id < o.id ? -1 : (id > o.id ? 1 : 0);
     }
 
+    @Override
+    public String toString() {
+        return "Compilation[id=" + id + ", prio=" + priority + " " + MetaUtil.format("%H.%n(%p)", method) +
+                        (entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "@" + entryBCI) + "]";
+    }
 }

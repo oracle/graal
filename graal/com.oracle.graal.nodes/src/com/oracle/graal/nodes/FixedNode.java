@@ -43,6 +43,7 @@ public abstract class FixedNode extends ValueNode {
     public void setProbability(double probability) {
         assert probability >= 0 : String.format("Invalid argument %f, because the probability of a node must not be negative.", probability);
         this.probability = probability;
+        assert !Double.isNaN(probability);
     }
 
     protected void copyInto(FixedNode newNode) {

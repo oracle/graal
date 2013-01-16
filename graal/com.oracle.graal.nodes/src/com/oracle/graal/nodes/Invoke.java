@@ -57,6 +57,10 @@ public interface Invoke extends StateSplit, Lowerable {
 
     void setProbability(double value);
 
+    double inliningRelevance();
+
+    void setInliningRelevance(double value);
+
     boolean useForInlining();
 
     void setUseForInlining(boolean value);

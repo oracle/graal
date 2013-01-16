@@ -166,14 +166,31 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         return globalStubRegConfig.getReturnRegister(kind).asValue(kind);
     }
 
-    protected Value jarg(int index, Kind kind) {
-        RegisterFlag flag = kind == Kind.Float || kind == Kind.Double ? FPU : CPU;
-        return globalStubRegConfig.getCallingConventionRegisters(RuntimeCall, flag)[index].asValue(kind);
+    protected Value[] javaCallingConvention(Kind... arguments) {
+        return callingConvention(arguments, RuntimeCall);
     }
 
-    protected Value carg(int index, Kind kind) {
-        RegisterFlag flag = kind == Kind.Float || kind == Kind.Double ? FPU : CPU;
-        return globalStubRegConfig.getCallingConventionRegisters(NativeCall, flag)[index].asValue(kind);
+    protected Value[] nativeCallingConvention(Kind... arguments) {
+        return callingConvention(arguments, NativeCall);
+    }
+
+    private Value[] callingConvention(Kind[] arguments, CallingConvention.Type type) {
+        Value[] result = new Value[arguments.length];
+
+        TargetDescription target = graalRuntime.getTarget();
+        int currentStackOffset = 0;
+        for (int i = 0; i < arguments.length; i++) {
+            Kind kind = arguments[i];
+            RegisterFlag flag = kind == Kind.Float || kind == Kind.Double ? FPU : CPU;
+            Register[] ccRegs = globalStubRegConfig.getCallingConventionRegisters(type, flag);
+            if (i < ccRegs.length) {
+                result[i] = ccRegs[i].asValue(kind);
+            } else {
+                result[i] = StackSlot.get(kind.getStackKind(), currentStackOffset, false);
+                currentStackOffset += Math.max(target.sizeInBytes(kind), target.wordSize);
+            }
+        }
+        return result;
     }
 
     protected Value scratch(Kind kind) {
@@ -189,17 +206,17 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         addRuntimeCall(UNWIND_EXCEPTION, config.unwindExceptionStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0: exception */ jarg(0, Kind.Object));
+                        /* arg0: exception */ javaCallingConvention(Kind.Object));
 
         addRuntimeCall(OnStackReplacementPhase.OSR_MIGRATION_END, config.osrMigrationEndStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:      long */ jarg(0, Kind.Long));
+                        /* arg0:      long */ javaCallingConvention(Kind.Long));
 
         addRuntimeCall(REGISTER_FINALIZER, config.registerFinalizerStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:    object */ jarg(0, Kind.Object));
+                        /* arg0:    object */ javaCallingConvention(Kind.Object));
 
         addRuntimeCall(CREATE_NULL_POINTER_EXCEPTION, config.createNullPointerExceptionStub,
                         /*           temps */ null,
@@ -208,7 +225,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         addRuntimeCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, config.createOutOfBoundsExceptionStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Object),
-                        /* arg0:     index */ jarg(0, Kind.Int));
+                        /* arg0:     index */ javaCallingConvention(Kind.Int));
 
         addRuntimeCall(JAVA_TIME_MILLIS, config.javaTimeMillisStub,
                         /*           temps */ null,
@@ -221,38 +238,38 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         addRuntimeCall(ARITHMETIC_SIN, config.arithmeticSinStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Double),
-                        /* arg0:     index */ jarg(0, Kind.Double));
+                        /* arg0:     index */ javaCallingConvention(Kind.Double));
 
         addRuntimeCall(ARITHMETIC_COS, config.arithmeticCosStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Double),
-                        /* arg0:     index */ jarg(0, Kind.Double));
+                        /* arg0:     index */ javaCallingConvention(Kind.Double));
 
         addRuntimeCall(ARITHMETIC_TAN, config.arithmeticTanStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Double),
-                        /* arg0:     index */ jarg(0, Kind.Double));
+                        /* arg0:     index */ javaCallingConvention(Kind.Double));
 
         addRuntimeCall(LOG_PRIMITIVE, config.logPrimitiveStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:  typeChar */ jarg(0, Kind.Int),
-                        /* arg1:     value */ jarg(1, Kind.Long),
-                        /* arg2:   newline */ jarg(2, Kind.Boolean));
+                        /* arg0:  typeChar */ javaCallingConvention(Kind.Int,
+                        /* arg1:     value */                       Kind.Long,
+                        /* arg2:   newline */                       Kind.Boolean));
 
         addRuntimeCall(LOG_PRINTF, config.logPrintfStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:    format */ jarg(0, Kind.Object),
-                        /* arg1:     value */ jarg(1, Kind.Long),
-                        /* arg2:     value */ jarg(2, Kind.Long),
-                        /* arg3:     value */ jarg(3, Kind.Long));
+                        /* arg0:    format */ javaCallingConvention(Kind.Object,
+                        /* arg1:     value */                       Kind.Long,
+                        /* arg2:     value */                       Kind.Long,
+                        /* arg3:     value */                       Kind.Long));
 
         addRuntimeCall(LOG_OBJECT, config.logObjectStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:    object */ jarg(0, Kind.Object),
-                        /* arg1:     flags */ jarg(1, Kind.Int));
+                        /* arg0:    object */ javaCallingConvention(Kind.Object,
+                        /* arg1:     flags */                       Kind.Int));
     }
 
 
@@ -322,8 +339,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         if (GraalOptions.IntrinsifyClassMethods) {
             installer.installSubstitutions(ClassSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyAESCryptMethods) {
+        if (GraalOptions.IntrinsifyAESMethods) {
             installer.installSubstitutions(AESCryptSubstitutions.class);
+            installer.installSubstitutions(CipherBlockChainingSubstitutions.class);
         }
         if (GraalOptions.IntrinsifyArrayCopy) {
             installer.installSnippets(ArrayCopySnippets.class);

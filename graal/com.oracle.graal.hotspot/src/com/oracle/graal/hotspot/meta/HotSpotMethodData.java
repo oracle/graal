@@ -379,6 +379,7 @@ public final class HotSpotMethodData extends CompilerObject {
             Arrays.sort(ptypes);
 
             double notRecordedTypeProbability = entries < config.typeProfileWidth ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
+            assert notRecordedTypeProbability == 0 || entries == config.typeProfileWidth;
             return new JavaTypeProfile(notRecordedTypeProbability, ptypes);
         }
 
