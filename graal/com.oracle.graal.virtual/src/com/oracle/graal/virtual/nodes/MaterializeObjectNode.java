@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 
 @NodeInfo(nameTemplate = "Materialize {i#virtualObject}")
-public final class MaterializeObjectNode extends FixedWithNextNode implements EscapeAnalyzable, Lowerable, Node.IterableNodeType, Canonicalizable {
+public final class MaterializeObjectNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Node.IterableNodeType, Canonicalizable, ArrayLengthProvider {
 
     @Input private final NodeInputList<ValueNode> values;
     @Input private final VirtualObjectNode virtualObject;
@@ -46,6 +46,12 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
 
     public NodeInputList<ValueNode> values() {
         return values;
+    }
+
+    @Override
+    public ValueNode length() {
+        assert virtualObject.type().isArray();
+        return ConstantNode.forInt(values.size(), graph());
     }
 
     @Override
@@ -101,7 +107,8 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
     }
 
     @Override
-    public ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess) {
-        return new ObjectDesc[] {new ObjectDesc(virtualObject, values.toArray(new ValueNode[values.size()]), lockCount)};
+    public void virtualize(VirtualizerTool tool) {
+        tool.createVirtualObject(virtualObject, values.toArray(new ValueNode[values.size()]), lockCount);
+        tool.replaceWithVirtual(virtualObject);
     }
 }

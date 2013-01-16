@@ -28,7 +28,6 @@ import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.virtual.*;
 
 /**
  * A value proxy that is inserted in the frame state of a loop exit for any value that is
@@ -87,9 +86,9 @@ public class ValueProxyNode extends FloatingNode implements Node.IterableNodeTyp
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        VirtualObjectNode virtual = tool.getVirtualState(value());
-        if (virtual != null) {
-            tool.replaceWithVirtual(virtual);
+        State state = tool.getObjectState(value);
+        if (state != null && state.getState() == EscapeState.Virtual) {
+            tool.replaceWithVirtual(state.getVirtualObject());
         }
     }
 }

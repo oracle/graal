@@ -96,7 +96,8 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
             }
         }
         for (ValueNode node : dependencies().nonNull().and(isNotA(BeginNode.class))) {
-            if (tool.getVirtualState(node) == null) {
+            State state = tool.getObjectState(node);
+            if (state == null || state.getState() != EscapeState.Virtual) {
                 return;
             }
         }

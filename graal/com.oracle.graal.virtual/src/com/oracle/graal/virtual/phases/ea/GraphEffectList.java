@@ -156,9 +156,8 @@ public class GraphEffectList extends EffectList {
      *
      * @param node The frame state to which the state should be added.
      * @param state The virtual object state to add.
-     * @param reusedVirtualObjects A set of all reused virtual objects.
      */
-    public void addVirtualMapping(final FrameState node, final EscapeObjectState state, final HashSet<VirtualObjectNode> reusedVirtualObjects) {
+    public void addVirtualMapping(final FrameState node, final EscapeObjectState state) {
         add(new Effect() {
 
             @Override
@@ -172,11 +171,7 @@ public class GraphEffectList extends EffectList {
                 FrameState stateAfter = node;
                 for (int i = 0; i < stateAfter.virtualObjectMappingCount(); i++) {
                     if (stateAfter.virtualObjectMappingAt(i).object() == state.object()) {
-                        if (reusedVirtualObjects.contains(state.object())) {
-                            stateAfter.virtualObjectMappings().remove(i);
-                        } else {
-                            throw new GraalInternalError("unexpected duplicate virtual state at: %s for %s", stateAfter, state.object());
-                        }
+                        stateAfter.virtualObjectMappings().remove(i);
                     }
                 }
                 stateAfter.addVirtualObjectMapping(graph.add(state));

@@ -22,11 +22,36 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.virtual.*;
+
 /**
  * This interface allows a node to convey information about what its effect would be if some of its inputs were
- * virtualized.
+ * virtualized. The {@link #virtualize(VirtualizerTool)} method will only be called for nodes that have some interaction
+ * with virtualized nodes. However, the virtualized nodes might have been re-materialized in the meantime.
  */
 public interface Virtualizable {
+
+    public static enum EscapeState {
+        Virtual, ThreadLocal, Global
+    }
+
+    public abstract static class State {
+
+        public abstract EscapeState getState();
+
+        public abstract VirtualObjectNode getVirtualObject();
+
+        public abstract void setEntry(int index, ValueNode value);
+
+        public abstract ValueNode getEntry(int index);
+
+        public abstract int getLockCount();
+
+        public abstract void setLockCount(int lockCount);
+
+        public abstract ValueNode getMaterializedValue();
+    }
 
     /**
      * A node class can implement this method to convey information about what its effect would be if some of its inputs

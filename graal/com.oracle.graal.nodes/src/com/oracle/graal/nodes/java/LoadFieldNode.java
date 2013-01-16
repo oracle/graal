@@ -73,17 +73,11 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        VirtualObjectNode virtual = tool.getVirtualState(object());
-        if (virtual != null) {
-            int fieldIndex = ((VirtualInstanceNode) virtual).fieldIndex(field());
+        State state = tool.getObjectState(object());
+        if (state != null && state.getState() == EscapeState.Virtual) {
+            int fieldIndex = ((VirtualInstanceNode) state.getVirtualObject()).fieldIndex(field());
             if (fieldIndex != -1) {
-                ValueNode result = tool.getVirtualEntry(virtual, fieldIndex);
-                VirtualObjectNode virtualResult = tool.getVirtualState(result);
-                if (virtualResult != null) {
-                    tool.replaceWithVirtual(virtualResult);
-                } else {
-                    tool.replaceWithValue(result);
-                }
+                tool.replaceWith(state.getEntry(fieldIndex));
             }
         }
     }

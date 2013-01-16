@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.spi;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.Virtualizable.State;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
@@ -41,50 +42,46 @@ public interface VirtualizerTool {
      */
     MetaAccessProvider getMetaAccessProvider();
 
+    /**
+     * This method should be used to query the maximum size of virtualized objects before attempting virtualization.
+     *
+     * @return the maximum number of entries for virtualized objects.
+     */
+    int getMaximumEntryCount();
+
+    /**
+     * @return the next id for virtual objects (can be used for the VirtualObject constructor).
+     */
+    int getNextVirtualId();
+
     // methods working on virtualized/materialized objects
+
+    /**
+     * Introduces a new virtual object to the current state.
+     *
+     * @param virtualObject the new virtual object.
+     * @param entryState the initial state of the virtual object's fields.
+     * @param lockCount the initial locking depth.
+     */
+    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int lockCount);
 
     /**
      * Queries the current state of the given value: if it is virtualized (thread-local and the compiler knows all
      * entries) or not.
      *
      * @param value the value whose state should be queried.
-     * @return the {@link VirtualObjectNode} representing the value if it is virtualized, null otherwise.
+     * @return the {@link State} representing the value if it has been virtualized at some point, null otherwise.
      */
-    VirtualObjectNode getVirtualState(ValueNode value);
-
-    /**
-     * Retrieves the entry (field or array element) with the given index in the virtualized object.
-     *
-     * @param virtual the virtualized object
-     * @param index the index to be queried.
-     * @return the entry at the given index.
-     */
-    ValueNode getVirtualEntry(VirtualObjectNode virtual, int index);
+    State getObjectState(ValueNode value);
 
     /**
      * Sets the entry (field or array element) with the given index in the virtualized object.
      *
-     * @param virtual the virtualized object.
+     * @param state the state.
      * @param index the index to be set.
      * @param value the new value for the given index.
      */
-    void setVirtualEntry(VirtualObjectNode virtual, int index, ValueNode value);
-
-    /**
-     * Retrieves the lock count of the given virtualized object.
-     *
-     * @param virtual the virtualized object.
-     * @return the number of locks.
-     */
-    int getVirtualLockCount(VirtualObjectNode virtual);
-
-    /**
-     * Sets the lock count of the given virtualized object.
-     *
-     * @param virtual the virtualized object.
-     * @param lockCount the new lock count.
-     */
-    void setVirtualLockCount(VirtualObjectNode virtual, int lockCount);
+    void setVirtualEntry(State state, int index, ValueNode value);
 
     /**
      * Queries the current state of the given value: if it was materialized or not.
@@ -142,4 +139,12 @@ public interface VirtualizerTool {
      * @param action the custom action.
      */
     void customAction(Runnable action);
+
+    /**
+     * This method performs either {@link #replaceWithValue(ValueNode)} or
+     * {@link #replaceWithVirtual(VirtualObjectNode)}, depending on the given value.
+     *
+     * @param value the replacement value
+     */
+    void replaceWith(ValueNode value);
 }

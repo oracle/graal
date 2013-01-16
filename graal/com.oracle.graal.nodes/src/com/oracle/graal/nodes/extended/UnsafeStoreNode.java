@@ -28,7 +28,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.virtual.*;
 
 /**
  * Store of a value at a location specified as an offset relative to an object.
@@ -74,13 +73,14 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        VirtualObjectNode virtual = tool.getVirtualState(object());
-        if (virtual != null) {
+        State state = tool.getObjectState(object());
+        if (state != null && state.getState() == EscapeState.Virtual) {
             ValueNode indexValue = tool.getReplacedValue(offset());
             if (indexValue.isConstant()) {
-                int fieldIndex = virtual.fieldIndexForOffset(indexValue.asConstant().asLong());
-                if (fieldIndex != -1) {
-                    tool.setVirtualEntry(virtual, fieldIndex, value());
+                long offset = indexValue.asConstant().asLong() + displacement();
+                int entryIndex = state.getVirtualObject().entryIndexForOffset(offset);
+                if (entryIndex != -1 && state.getVirtualObject().entryKind(entryIndex) == accessKind()) {
+                    tool.setVirtualEntry(state, entryIndex, value());
                     tool.delete();
                 }
             }
