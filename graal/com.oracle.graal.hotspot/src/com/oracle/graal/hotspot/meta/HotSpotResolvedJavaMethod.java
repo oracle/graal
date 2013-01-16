@@ -130,7 +130,8 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public int getMaxLocals() {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-        return unsafe.getShort(metaspaceMethod + config.methodMaxLocalsOffset) & 0xFFFF;
+        long metaspaceConstMethod = unsafe.getLong(metaspaceMethod + config.methodConstMethodOffset);
+        return unsafe.getShort(metaspaceConstMethod + config.methodMaxLocalsOffset) & 0xFFFF;
     }
 
     @Override
