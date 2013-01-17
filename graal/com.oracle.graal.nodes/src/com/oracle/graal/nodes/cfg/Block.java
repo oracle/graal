@@ -34,7 +34,6 @@ public final class Block {
     protected BeginNode beginNode;
     protected FixedNode endNode;
     protected Loop loop;
-    protected double probability;
 
     protected List<Block> predecessors;
     protected List<Block> successors;
@@ -185,11 +184,6 @@ public final class Block {
     public int getSuccessorCount() {
         return getSuccessors().size();
     }
-
-    public Block suxAt(int i) {
-        return getSuccessors().get(i);
-    }
-// end to be inlined later on
 
     public boolean dominates(Block block) {
         return block.isDominatedBy(this);

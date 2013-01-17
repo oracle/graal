@@ -807,9 +807,8 @@ public final class LinearScan {
                     // block has successors
                     if (n > 0) {
                         liveOut.clear();
-                        liveOut.or(blockData.get(block.getFirstSuccessor()).liveIn);
-                        for (int j = 1; j < n; j++) {
-                            liveOut.or(blockData.get(block.suxAt(j)).liveIn);
+                        for (Block successor : block.getSuccessors()) {
+                            liveOut.or(blockData.get(successor).liveIn);
                         }
                     } else {
                         liveOut.clear();

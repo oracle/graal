@@ -131,13 +131,6 @@ public class ControlFlowGraph {
                         }
                     }
 
-                    if (cur instanceof FixedNode) {
-                        double probability = ((FixedNode) cur).probability();
-                        if (probability > block.probability) {
-                            block.probability = probability;
-                        }
-                    }
-
                     last = cur;
                     cur = cur.successors().first();
                 } while (cur != null && !(cur instanceof BeginNode));
