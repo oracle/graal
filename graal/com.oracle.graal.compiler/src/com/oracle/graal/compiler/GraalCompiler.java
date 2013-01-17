@@ -210,7 +210,7 @@ public class GraalCompiler {
         final Block[] blocks = schedule.getCFG().getBlocks();
         final Block startBlock = schedule.getCFG().getStartBlock();
         assert startBlock != null;
-        assert startBlock.numberOfPreds() == 0;
+        assert startBlock.getPredecessorCount() == 0;
 
         new ComputeProbabilityPhase().apply(graph);
 
@@ -218,14 +218,8 @@ public class GraalCompiler {
 
             @Override
             public LIR call() {
-                ComputeBlockOrder clso = new ComputeBlockOrder(blocks.length, schedule.getCFG().getLoops().length, startBlock, GraalOptions.OptReorderLoops);
-                List<Block> linearScanOrder = clso.linearScanOrder();
-                List<Block> codeEmittingOrder = clso.codeEmittingOrder();
-
-                int z = 0;
-                for (Block b : linearScanOrder) {
-                    b.linearScanNumber = z++;
-                }
+                List<Block> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
+                List<Block> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
 
                 LIR lir = new LIR(schedule.getCFG(), schedule.getBlockToNodesMap(), linearScanOrder, codeEmittingOrder);
                 Debug.dump(lir, "After linear scan order");

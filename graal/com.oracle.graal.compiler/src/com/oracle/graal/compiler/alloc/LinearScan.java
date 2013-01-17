@@ -802,12 +802,12 @@ public final class LinearScan {
                 changeOccurredInBlock = false;
 
                 // liveOut(block) is the union of liveIn(sux), for successors sux of block
-                int n = block.numberOfSux();
+                int n = block.getSuccessorCount();
                 if (n > 0) {
                     // block has successors
                     if (n > 0) {
                         liveOut.clear();
-                        liveOut.or(blockData.get(block.suxAt(0)).liveIn);
+                        liveOut.or(blockData.get(block.getFirstSuccessor()).liveIn);
                         for (int j = 1; j < n; j++) {
                             liveOut.or(blockData.get(block.suxAt(j)).liveIn);
                         }
@@ -1095,7 +1095,7 @@ public final class LinearScan {
                 StackSlot slot = (StackSlot) move.getInput();
                 if (GraalOptions.DetailedAsserts) {
                     assert op.id() > 0 : "invalid id";
-                    assert blockForId(op.id()).numberOfPreds() == 0 : "move from stack must be in first block";
+                    assert blockForId(op.id()).getPredecessorCount() == 0 : "move from stack must be in first block";
                     assert isVariable(move.getResult()) : "result of move must be a variable";
 
                     if (GraalOptions.TraceLinearScanLevel >= 4) {
@@ -1484,7 +1484,7 @@ public final class LinearScan {
     }
 
     void resolveFindInsertPos(Block fromBlock, Block toBlock, MoveResolver moveResolver) {
-        if (fromBlock.numberOfSux() <= 1) {
+        if (fromBlock.getSuccessorCount() <= 1) {
             if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("inserting moves at end of fromBlock B%d", fromBlock.getId());
             }
@@ -1510,8 +1510,8 @@ public final class LinearScan {
                 // successor edges, blocks which are reached by switch statements
                 // may have be more than one predecessor but it will be guaranteed
                 // that all predecessors will be the same.
-                for (int i = 0; i < toBlock.numberOfPreds(); i++) {
-                    assert fromBlock == toBlock.predAt(i) : "all critical edges must be broken";
+                for (Block predecessor : toBlock.getPredecessors()) {
+                    assert fromBlock == predecessor : "all critical edges must be broken";
                 }
             }
 
@@ -1534,22 +1534,22 @@ public final class LinearScan {
             Block block = blockAt(i);
 
             // check if block has only one predecessor and only one successor
-            if (block.numberOfPreds() == 1 && block.numberOfSux() == 1) {
+            if (block.getPredecessorCount() == 1 && block.getSuccessorCount() == 1) {
                 List<LIRInstruction> instructions = ir.lir(block);
                 assert instructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
                 assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
 
                 // check if block is empty (only label and branch)
                 if (instructions.size() == 2) {
-                    Block pred = block.predAt(0);
-                    Block sux = block.suxAt(0);
+                    Block pred = block.getPredecessors().get(0);
+                    Block sux = block.getSuccessors().get(0);
 
                     // prevent optimization of two consecutive blocks
-                    if (!blockCompleted.get(pred.linearScanNumber) && !blockCompleted.get(sux.linearScanNumber)) {
+                    if (!blockCompleted.get(pred.getLinearScanNumber()) && !blockCompleted.get(sux.getLinearScanNumber())) {
                         if (GraalOptions.TraceLinearScanLevel >= 3) {
                             TTY.println(" optimizing empty block B%d (pred: B%d, sux: B%d)", block.getId(), pred.getId(), sux.getId());
                         }
-                        blockCompleted.set(block.linearScanNumber);
+                        blockCompleted.set(block.getLinearScanNumber());
 
                         // directly resolve between pred and sux (without looking at the empty block between)
                         resolveCollectMappings(pred, sux, moveResolver);
@@ -1568,16 +1568,15 @@ public final class LinearScan {
                 alreadyResolved.clear();
                 alreadyResolved.or(blockCompleted);
 
-                int numSux = fromBlock.numberOfSux();
-                for (int s = 0; s < numSux; s++) {
-                    Block toBlock = fromBlock.suxAt(s);
+                int numSux = fromBlock.getSuccessorCount();
+                for (Block toBlock : fromBlock.getSuccessors()) {
 
                     // check for duplicate edges between the same blocks (can happen with switch blocks)
-                    if (!alreadyResolved.get(toBlock.linearScanNumber)) {
+                    if (!alreadyResolved.get(toBlock.getLinearScanNumber())) {
                         if (GraalOptions.TraceLinearScanLevel >= 3) {
                             TTY.println(" processing edge between B%d and B%d", fromBlock.getId(), toBlock.getId());
                         }
-                        alreadyResolved.set(toBlock.linearScanNumber);
+                        alreadyResolved.set(toBlock.getLinearScanNumber());
 
                         // collect all intervals that have been split between fromBlock and toBlock
                         resolveCollectMappings(fromBlock, toBlock, moveResolver);
@@ -1614,7 +1613,7 @@ public final class LinearScan {
         if (opId != -1) {
             if (GraalOptions.DetailedAsserts) {
                 Block block = blockForId(opId);
-                if (block.numberOfSux() <= 1 && opId == getLastLirInstructionId(block)) {
+                if (block.getSuccessorCount() <= 1 && opId == getLastLirInstructionId(block)) {
                     // check if spill moves could have been appended at the end of this block, but
                     // before the branch instruction. So the split child information for this branch would
                     // be incorrect.
@@ -1708,7 +1707,7 @@ public final class LinearScan {
                 int tempOpId = op.id();
                 OperandMode mode = OperandMode.USE;
                 Block block = blockForId(tempOpId);
-                if (block.numberOfSux() == 1 && tempOpId == getLastLirInstructionId(block)) {
+                if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
                     // generating debug information for the last instruction of a block.
                     // if this instruction is a branch, spill moves are inserted before this branch
                     // and so the wrong operand would be returned (spill moves at block boundaries are not
@@ -1717,7 +1716,7 @@ public final class LinearScan {
                     final LIRInstruction instr = ir.lir(block).get(ir.lir(block).size() - 1);
                     if (instr instanceof StandardOp.JumpOp) {
                         if (blockData.get(block).liveOut.get(operandNumber(operand))) {
-                            tempOpId = getFirstLirInstructionId(block.suxAt(0));
+                            tempOpId = getFirstLirInstructionId(block.getFirstSuccessor());
                             mode = OperandMode.DEF;
                         }
                     }

@@ -60,10 +60,10 @@ public final class EdgeMoveOptimizer {
         for (int i = blockList.size() - 1; i >= 1; i--) {
             Block block = blockList.get(i);
 
-            if (block.numberOfPreds() > 1) {
+            if (block.getPredecessorCount() > 1) {
                 optimizer.optimizeMovesAtBlockEnd(block);
             }
-            if (block.numberOfSux() == 2) {
+            if (block.getSuccessorCount() == 2) {
                 optimizer.optimizeMovesAtBlockBegin(block);
             }
         }
@@ -115,7 +115,7 @@ public final class EdgeMoveOptimizer {
         // clear all internal data structures
         edgeInstructionSeqences.clear();
 
-        int numPreds = block.numberOfPreds();
+        int numPreds = block.getPredecessorCount();
         assert numPreds > 1 : "do not call otherwise";
 
         // setup a list with the LIR instructions of all predecessors
@@ -124,13 +124,13 @@ public final class EdgeMoveOptimizer {
             assert ir.lir(pred) != null;
             List<LIRInstruction> predInstructions = ir.lir(pred);
 
-            if (pred.numberOfSux() != 1) {
+            if (pred.getSuccessorCount() != 1) {
                 // this can happen with switch-statements where multiple edges are between
                 // the same blocks.
                 return;
             }
 
-            assert pred.suxAt(0) == block : "invalid control flow";
+            assert pred.getFirstSuccessor() == block : "invalid control flow";
             assert predInstructions.get(predInstructions.size() - 1) instanceof StandardOp.JumpOp : "block must end with unconditional jump";
 
             if (predInstructions.get(predInstructions.size() - 1).hasState()) {
@@ -177,7 +177,7 @@ public final class EdgeMoveOptimizer {
     private void optimizeMovesAtBlockBegin(Block block) {
 
         edgeInstructionSeqences.clear();
-        int numSux = block.numberOfSux();
+        int numSux = block.getSuccessorCount();
 
         List<LIRInstruction> instructions = ir.lir(block);
 
@@ -203,18 +203,17 @@ public final class EdgeMoveOptimizer {
         int insertIdx = instructions.size() - 2;
 
         // setup a list with the lir-instructions of all successors
-        for (int i = 0; i < numSux; i++) {
-            Block sux = block.suxAt(i);
+        for (Block sux : block.getSuccessors()) {
             List<LIRInstruction> suxInstructions = ir.lir(sux);
 
             assert suxInstructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
 
-            if (sux.numberOfPreds() != 1) {
+            if (sux.getPredecessorCount() != 1) {
                 // this can happen with switch-statements where multiple edges are between
                 // the same blocks.
                 return;
             }
-            assert sux.predAt(0) == block : "invalid control flow";
+            assert sux.getPredecessors().get(0) == block : "invalid control flow";
 
             // ignore the label at the beginning of the block
             List<LIRInstruction> seq = suxInstructions.subList(1, suxInstructions.size());

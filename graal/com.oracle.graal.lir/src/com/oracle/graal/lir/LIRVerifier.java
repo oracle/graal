@@ -114,7 +114,7 @@ public final class LIRVerifier {
 
             assert lir.lir(block).get(0) instanceof StandardOp.LabelOp : "block must start with label";
 
-            if (block.numberOfSux() > 0) {
+            if (block.getSuccessorCount() > 0) {
                 LIRInstruction last = lir.lir(block).get(lir.lir(block).size() - 1);
                 assert last instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
             }

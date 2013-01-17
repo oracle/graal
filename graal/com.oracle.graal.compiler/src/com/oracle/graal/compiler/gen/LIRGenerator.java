@@ -282,7 +282,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         assert lir.lir(block) == null : "LIR list already computed for this block";
         lir.setLir(block, new ArrayList<LIRInstruction>());
 
-        append(new LabelOp(new Label(), block.align));
+        append(new LabelOp(new Label(), block.isAligned()));
 
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
             TTY.println("BEGIN Generating LIR for block B" + block.getId());
@@ -400,7 +400,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 }
             }
         }
-        if (block.numberOfSux() >= 1 && !endsWithJump(block)) {
+        if (block.getSuccessorCount() >= 1 && !endsWithJump(block)) {
             NodeClassIterable successors = block.getEndNode().successors();
             assert successors.isNotEmpty() : "should have at least one successor : " + block.getEndNode();
 

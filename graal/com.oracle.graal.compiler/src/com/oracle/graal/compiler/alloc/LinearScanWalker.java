@@ -265,8 +265,8 @@ final class LinearScanWalker extends IntervalWalker {
     }
 
     int findOptimalSplitPos(Block minBlock, Block maxBlock, int maxSplitPos) {
-        int fromBlockNr = minBlock.linearScanNumber;
-        int toBlockNr = maxBlock.linearScanNumber;
+        int fromBlockNr = minBlock.getLinearScanNumber();
+        int toBlockNr = maxBlock.getLinearScanNumber();
 
         assert 0 <= fromBlockNr && fromBlockNr < blockCount() : "out of range";
         assert 0 <= toBlockNr && toBlockNr < blockCount() : "out of range";
@@ -318,7 +318,7 @@ final class LinearScanWalker extends IntervalWalker {
             // block at this opId)
             Block maxBlock = allocator.blockForId(maxSplitPos - 1);
 
-            assert minBlock.linearScanNumber <= maxBlock.linearScanNumber : "invalid order";
+            assert minBlock.getLinearScanNumber() <= maxBlock.getLinearScanNumber() : "invalid order";
             if (minBlock == maxBlock) {
                 // split position cannot be moved to block boundary : so split as late as possible
                 if (GraalOptions.TraceLinearScanLevel >= 4) {

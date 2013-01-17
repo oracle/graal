@@ -51,9 +51,9 @@ public final class ControlFlowOptimizer {
      * @return whether the block can be deleted
      */
     private static boolean canDeleteBlock(LIR ir, Block block) {
-        if (block.numberOfSux() != 1 ||
-            block.numberOfPreds() == 0 ||
-            block.suxAt(0) == block) {
+        if (block.getSuccessorCount() != 1 ||
+            block.getPredecessorCount() == 0 ||
+            block.getFirstSuccessor() == block) {
             return false;
         }
 
@@ -75,7 +75,7 @@ public final class ControlFlowOptimizer {
             Block block = iterator.next();
             if (canDeleteBlock(ir, block)) {
                 // adjust successor and predecessor lists
-                Block other = block.suxAt(0);
+                Block other = block.getFirstSuccessor();
                 for (Block pred : block.getPredecessors()) {
                     Collections.replaceAll(pred.getSuccessors(), block, other);
                 }

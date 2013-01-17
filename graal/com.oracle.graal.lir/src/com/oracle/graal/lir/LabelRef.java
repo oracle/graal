@@ -72,12 +72,12 @@ public abstract class LabelRef {
         return new LabelRef() {
             @Override
             public Label label() {
-                return ((StandardOp.LabelOp) lir.lir(block.suxAt(suxIndex)).get(0)).getLabel();
+                return ((StandardOp.LabelOp) lir.lir(block.getSuccessors().get(suxIndex)).get(0)).getLabel();
             }
 
             @Override
             public String toString() {
-                return suxIndex < block.numberOfSux() ? block.suxAt(suxIndex).toString() : "?" + block + ":" + suxIndex + "?";
+                return suxIndex < block.getSuccessorCount() ? block.getSuccessors().get(suxIndex).toString() : "?" + block + ":" + suxIndex + "?";
             }
         };
     }
