@@ -20,17 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.codegen.processor.operation;
+package com.oracle.truffle.codegen.processor.node;
 
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.Kind;
 
 
 public class ShortCircuitData extends TemplateMethod {
 
     private ShortCircuitData genericShortCircuitMethod;
-
     private final String valueName;
 
     public ShortCircuitData(TemplateMethod template, String valueName) {
@@ -65,11 +63,9 @@ public class ShortCircuitData extends TemplateMethod {
 
         for (ActualParameter param : getParameters()) {
             ParameterSpec paramSpec = param.getSpecification();
-            if (paramSpec.getKind() == Kind.EXECUTE) {
-                ActualParameter specializationParam = specialization.findParameter(paramSpec.getName());
-                if (!Utils.typeEquals(param.getActualType(), specializationParam.getActualType())) {
-                    return false;
-                }
+            ActualParameter specializationParam = specialization.findParameter(paramSpec.getName());
+            if (!Utils.typeEquals(param.getActualType(), specializationParam.getActualType())) {
+                return false;
             }
         }
         return true;

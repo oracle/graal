@@ -71,7 +71,11 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
 
     @Override
     public ElementKind getKind() {
-        return ElementKind.METHOD;
+        if (getReturnType() == null) {
+            return ElementKind.CONSTRUCTOR;
+        } else {
+            return ElementKind.METHOD;
+        }
     }
 
     @Override
@@ -108,6 +112,7 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
         CodeTreeBuilder builder = new CodeTreeBuilder();
         this.bodyTree = builder.getTree();
         this.bodyTree.setEnclosingElement(this);
+        this.body = null;
         return builder;
     }
 
@@ -147,8 +152,22 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
     }
 
     @Override
-    public void removeParamter(VariableElement parameter) {
+    public void removeParameter(VariableElement parameter) {
         parameters.remove(parameter);
+    }
+
+
+    public void removeParameter(String varName) {
+        VariableElement remove = null;
+        for (VariableElement var : getParameters()) {
+            if (var.getSimpleName().toString().equals(varName)) {
+                remove = var;
+                break;
+            }
+        }
+        if (remove != null) {
+            parameters.remove(remove);
+        }
     }
 
     @Override
@@ -180,7 +199,6 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
     public <R, P> R accept(ElementVisitor<R, P> v, P p) {
         return v.visitExecutable(this, p);
     }
-
 
     public static CodeExecutableElement clone(ProcessingEnvironment env, ExecutableElement method) {
         CodeExecutableElement copy = new CodeExecutableElement(method.getReturnType(), method.getSimpleName().toString());

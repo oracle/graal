@@ -24,8 +24,6 @@ package com.oracle.truffle.api.codegen;
 
 import java.lang.annotation.*;
 
-import com.oracle.truffle.api.nodes.*;
-
 /**
  * <p>
  * Annotates a type system class that represents type information for a node. Generates code for converting and managing
@@ -72,19 +70,6 @@ public @interface TypeSystem {
     /**
      * Sets the types contained by this type system. The order of types also determines the order of specialization.
      */
-    Class[] types();
-
-    /**
-     * Specifies whether the node base class has an executeVoid method or not. Operations derived from this type system
-     * will automatically implement executeVoid for all generated nodes. Defaults to false.
-     */
-    boolean hasVoid() default false;
-
-    /**
-     * Specifies the node base class used for generated code that uses this type system. The node base class must extend
-     * {@link Node} and provide a public non-final method <code>${type} execute${typeName}(VirtualFrame)</code> for all
-     * types specified in the types attribute.
-     */
-    Class< ? extends Node> nodeBaseClass();
+    Class[] value();
 
 }

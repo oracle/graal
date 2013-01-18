@@ -99,12 +99,10 @@ public class CodeTreeBuilder {
     public CodeTreeBuilder startStatement() {
         startGroup();
         registerCallBack(new EndCallback() {
-
             @Override
             public void beforeEnd() {
                 string(";").newLine();
             }
-
             @Override
             public void afterEnd() {
             }
@@ -137,7 +135,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder startStaticCall(ExecutableElement method) {
-        return startStaticCall(Utils.findEnclosingType(method).asType(), method.getSimpleName().toString());
+        return startStaticCall(Utils.findNearestEnclosingType(method).asType(), method.getSimpleName().toString());
     }
 
     public CodeTreeBuilder staticReference(TypeMirror type, String fieldName) {
@@ -317,7 +315,17 @@ public class CodeTreeBuilder {
     public CodeTreeBuilder startReturn() {
         ExecutableElement method = findMethod();
         if (method != null && Utils.isVoid(method.getReturnType())) {
-            startStatement();
+            startGroup();
+            registerCallBack(new EndCallback() {
+                @Override
+                public void beforeEnd() {
+                    string(";").newLine(); // complete statement to execute
+                }
+                @Override
+                public void afterEnd() {
+                    string("return").string(";").newLine(); // emit a return;
+                }
+            });
             return this;
         } else {
             return startStatement().string("return ");
@@ -471,7 +479,7 @@ public class CodeTreeBuilder {
         return statement("return");
     }
 
-    private ExecutableElement findMethod() {
+    public ExecutableElement findMethod() {
         Element element = currentElement;
         while (element != null && (element.getKind() != ElementKind.METHOD)) {
             element = element.getEnclosingElement();

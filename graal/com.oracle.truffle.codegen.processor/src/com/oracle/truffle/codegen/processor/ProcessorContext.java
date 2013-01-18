@@ -45,18 +45,16 @@ public class ProcessorContext {
 
     private final ProcessCallback callback;
     private final Log log;
-    private TruffleTypes truffleTypes;
+    private final TruffleTypes truffleTypes;
 
     public ProcessorContext(ProcessingEnvironment env, ProcessCallback callback) {
         this.environment = env;
         this.callback = callback;
         this.log = new Log(environment);
+        this.truffleTypes = new TruffleTypes(this);
     }
 
     public TruffleTypes getTruffleTypes() {
-        if (truffleTypes == null) {
-            truffleTypes = new TruffleTypes(this);
-        }
         return truffleTypes;
     }
 

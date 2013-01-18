@@ -31,7 +31,7 @@ public interface WritableExecutableElement extends ExecutableElement, WritableEl
     void setDefaultValue(AnnotationValue defaultValue);
 
     void addParameter(VariableElement parameter);
-    void removeParamter(VariableElement parameter);
+    void removeParameter(VariableElement parameter);
 
     void addThrownType(TypeMirror thrownType);
     void removeThrownType(TypeMirror thrownType);

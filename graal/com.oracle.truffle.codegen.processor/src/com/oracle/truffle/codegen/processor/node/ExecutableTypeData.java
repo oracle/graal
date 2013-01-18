@@ -20,47 +20,57 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.codegen.processor.operation;
-
-import java.lang.annotation.*;
+package com.oracle.truffle.codegen.processor.node;
 
 import javax.lang.model.element.*;
 
-import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.Kind;
+import com.oracle.truffle.codegen.processor.typesystem.*;
 
-public class GenericParser extends OperationMethodParser<SpecializationData> {
 
-    public GenericParser(ProcessorContext context, OperationData operation) {
-        super(context, operation);
+public class ExecutableTypeData extends TemplateMethod {
+
+    private final TypeSystemData typeSystem;
+    private final TypeData type;
+
+    public ExecutableTypeData(TemplateMethod method, TypeSystemData typeSystem, TypeData type) {
+        super(method);
+        this.typeSystem = typeSystem;
+        this.type = type;
+    }
+
+    public TypeData getType() {
+        return type;
+    }
+
+    public TypeSystemData getTypeSystem() {
+        return typeSystem;
+    }
+
+    public boolean hasFrame() {
+        return getMethod().getParameters().size() > 0;
+    }
+
+    public boolean hasUnexpectedValue(ProcessorContext context) {
+        return Utils.canThrowType(getMethod().getThrownTypes(), context.getTruffleTypes().getUnexpectedValueException());
+    }
+
+    public boolean isFinal() {
+        return getMethod().getModifiers().contains(Modifier.FINAL);
     }
 
     @Override
-    public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        return createDefaultMethodSpec(null);
+    public int hashCode() {
+        return type.hashCode();
     }
 
     @Override
-    protected ParameterSpec createValueParameterSpec(String valueName) {
-        return new ParameterSpec(valueName, getOperation().getTypeSystem().getGenericType(), Kind.EXECUTE, false);
-    }
-
-    @Override
-    protected ParameterSpec createReturnParameterSpec() {
-        return new ParameterSpec("returnValue", getOperation().getTypeSystem(), Kind.EXECUTE, false, Cardinality.ONE);
-    }
-
-    @Override
-    public SpecializationData create(TemplateMethod method) {
-        return new SpecializationData(method, true, false);
-    }
-
-    @Override
-    public Class< ? extends Annotation> getAnnotationType() {
-        return Generic.class;
+    public boolean equals(Object obj) {
+        if (obj instanceof ExecutableTypeData) {
+            return type.equals(((ExecutableTypeData) obj).type);
+        }
+        return super.equals(obj);
     }
 
 }

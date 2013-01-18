@@ -44,6 +44,12 @@ public abstract class ClassElementFactory<M> extends CodeElementFactory<M> {
     @Override
     protected abstract CodeTypeElement create(M m);
 
+
+    @Override
+    public CodeTypeElement getElement() {
+        return (CodeTypeElement) super.getElement();
+    }
+
     protected CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz) {
         CodeExecutableElement method = new CodeExecutableElement(modifiers, null, clazz.getSimpleName().toString());
         CodeTreeBuilder builder = method.createBuilder();
@@ -81,6 +87,7 @@ public abstract class ClassElementFactory<M> extends CodeElementFactory<M> {
         return method;
     }
 
+
     private static ExecutableElement findConstructor(TypeElement clazz) {
         List<ExecutableElement> constructors = ElementFilter.constructorsIn(clazz.getEnclosedElements());
         if (constructors.isEmpty()) {
@@ -89,6 +96,27 @@ public abstract class ClassElementFactory<M> extends CodeElementFactory<M> {
             return constructors.get(0);
         }
     }
+
+    protected CodeExecutableElement createSuperConstructor(TypeElement type, ExecutableElement element) {
+        if (element.getModifiers().contains(Modifier.PRIVATE)) {
+            return null;
+        }
+
+        CodeExecutableElement executable = CodeExecutableElement.clone(getContext().getEnvironment(), element);
+        executable.setReturnType(null);
+        executable.setSimpleName(CodeNames.of(type.getSimpleName().toString()));
+        CodeTreeBuilder b = executable.createBuilder();
+        b.startStatement();
+        b.startSuperCall();
+        for (VariableElement v : element.getParameters()) {
+            b.string(v.getSimpleName().toString());
+        }
+        b.end();
+        b.end();
+
+        return executable;
+    }
+
 
     protected CodeTypeElement createClass(Template model, Set<Modifier> modifiers, String simpleName, TypeMirror superType, boolean enumType) {
         TypeElement templateType = model.getTemplateType();

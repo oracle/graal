@@ -37,6 +37,11 @@ public abstract class CompilationUnitFactory<M> extends CodeElementFactory<M> {
     }
 
     @Override
+    public CodeCompilationUnit process(CodeElement parent, M m) {
+        return (CodeCompilationUnit) super.process(parent, m);
+    }
+
+    @Override
     protected abstract void createChildren(M m);
 
 }

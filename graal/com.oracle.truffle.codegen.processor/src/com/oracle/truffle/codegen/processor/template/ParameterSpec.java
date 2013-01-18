@@ -22,16 +22,15 @@
  */
 package com.oracle.truffle.codegen.processor.template;
 
+import java.util.*;
+
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
+import com.oracle.truffle.codegen.processor.node.*;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class ParameterSpec {
-
-    public enum Kind {
-        EXECUTE, SIGNATURE, SUPER_ATTRIBUTE, ATTRIBUTE, CONSTRUCTOR_FIELD, SHORT_CIRCUIT
-    }
 
     public enum Cardinality {
         ONE, MULTIPLE;
@@ -40,33 +39,47 @@ public class ParameterSpec {
     private final String name;
     private final TypeMirror[] allowedTypes;
     private final TypeMirror valueType;
-    private final Kind kind;
     private final boolean optional;
     private final Cardinality cardinality;
 
-    public ParameterSpec(String name, TypeMirror[] allowedTypes, TypeMirror valueType, Kind kind, boolean optional, Cardinality cardinality) {
+    public ParameterSpec(String name, TypeMirror[] allowedTypes, TypeMirror valueType, boolean optional, Cardinality cardinality) {
         this.valueType = valueType;
         this.allowedTypes = allowedTypes;
         this.name = name;
-        this.kind = kind;
         this.optional = optional;
         this.cardinality = cardinality;
     }
 
-    public ParameterSpec(String name, TypeMirror singleFixedType, Kind kind, boolean optional) {
-        this(name, new TypeMirror[]{singleFixedType}, singleFixedType, kind, optional, Cardinality.ONE);
+    /** Type constructor. */
+    public ParameterSpec(String name, TypeMirror singleFixedType,  boolean optional) {
+        this(name, new TypeMirror[]{singleFixedType}, singleFixedType, optional, Cardinality.ONE);
     }
 
-    public ParameterSpec(String name, TypeSystemData typeSystem, Kind kind, boolean optional, Cardinality cardinality) {
-        this(name, typeSystem.getPrimitiveTypeMirrors(), typeSystem.getGenericType(), kind, optional, cardinality);
+    /** Type system value constructor. */
+    public ParameterSpec(String name, TypeSystemData typeSystem, boolean optional, Cardinality cardinality) {
+        this(name, typeSystem.getPrimitiveTypeMirrors(), typeSystem.getGenericType(), optional, cardinality);
     }
+
+    /** Node value constructor. */
+    public ParameterSpec(String name, NodeData nodeData, boolean optional, Cardinality cardinality) {
+        this(name, nodeTypeMirrors(nodeData), nodeData.getTypeSystem().getGenericType(), optional, cardinality);
+    }
+
+    private static TypeMirror[] nodeTypeMirrors(NodeData nodeData) {
+        List<TypeMirror> typeMirrors = new ArrayList<>();
+
+        for (ExecutableTypeData typeData : nodeData.getExecutableTypes()) {
+            typeMirrors.add(typeData.getType().getPrimitiveType());
+        }
+
+        typeMirrors.add(nodeData.getTypeSystem().getGenericType());
+
+        return typeMirrors.toArray(new TypeMirror[typeMirrors.size()]);
+    }
+
 
     public final String getName() {
         return name;
-    }
-
-    public Kind getKind() {
-        return kind;
     }
 
     public final boolean isOptional() {

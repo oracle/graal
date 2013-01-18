@@ -31,7 +31,6 @@ import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.Kind;
 
 class TypeCheckParser extends TypeSystemMethodParser<TypeCheckData> {
 
@@ -46,8 +45,8 @@ class TypeCheckParser extends TypeSystemMethodParser<TypeCheckData> {
             return null;
         }
         List<ParameterSpec> specs = new ArrayList<>();
-        specs.add(new ParameterSpec("value", getTypeSystem(), Kind.EXECUTE, false, Cardinality.ONE));
-        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", getContext().getType(boolean.class), Kind.ATTRIBUTE, false);
+        specs.add(new ParameterSpec("value", getTypeSystem(), false, Cardinality.ONE));
+        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", getContext().getType(boolean.class), false);
         MethodSpec spec = new MethodSpec(returnTypeSpec, specs);
         return spec;
     }

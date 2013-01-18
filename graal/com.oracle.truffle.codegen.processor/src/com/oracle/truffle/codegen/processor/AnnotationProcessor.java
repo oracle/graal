@@ -84,7 +84,7 @@ class AnnotationProcessor<M extends Template> {
             context.registerTemplate(type, model);
 
             if (model != null) {
-                CodeCompilationUnit unit = (CodeCompilationUnit) factory.process(model);
+                CodeCompilationUnit unit = factory.process(null, model);
                 unit.setGeneratorAnnotationMirror(model.getTemplateTypeAnnotation());
                 unit.setGeneratorElement(model.getTemplateType());
 

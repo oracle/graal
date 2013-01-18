@@ -20,42 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.codegen.processor.operation;
+package com.oracle.truffle.codegen.processor.node;
 
-import com.oracle.truffle.codegen.processor.typesystem.*;
+import java.lang.annotation.*;
 
-public class SpecializationGuardData {
+import javax.lang.model.element.*;
 
-    private final String guardMethod;
-    private final boolean onSpecialization;
-    private final boolean onExecution;
+import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.codegen.processor.*;
+import com.oracle.truffle.codegen.processor.template.*;
 
-    private GuardData guardDeclaration;
 
-    public SpecializationGuardData(String guardMethod, boolean onSpecialization, boolean onExecution) {
-        this.guardMethod = guardMethod;
-        this.onSpecialization = onSpecialization;
-        this.onExecution = onExecution;
+public class SpecializationListenerParser extends MethodParser<TemplateMethod> {
+
+    private final MethodSpec specification;
+
+    public SpecializationListenerParser(ProcessorContext context, NodeData node) {
+        super(context, node);
+        this.specification = createDefaultMethodSpec(null);
     }
 
-    public String getGuardMethod() {
-        return guardMethod;
+    @Override
+    public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
+        return specification;
     }
 
-    public boolean isOnExecution() {
-        return onExecution;
+    @Override
+    protected ParameterSpec createReturnParameterSpec() {
+        return new ParameterSpec("void", getContext().getType(void.class), false);
     }
 
-    public boolean isOnSpecialization() {
-        return onSpecialization;
+    @Override
+    public TemplateMethod create(TemplateMethod method) {
+        return method;
     }
 
-    void setGuardDeclaration(GuardData compatibleGuard) {
-        this.guardDeclaration = compatibleGuard;
-    }
-
-    public GuardData getGuardDeclaration() {
-        return guardDeclaration;
+    @Override
+    public Class< ? extends Annotation> getAnnotationType() {
+        return SpecializationListener.class;
     }
 
 }

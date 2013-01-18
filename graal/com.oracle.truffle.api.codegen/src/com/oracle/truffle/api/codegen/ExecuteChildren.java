@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.codegen.processor.template;
+package com.oracle.truffle.api.codegen;
 
-import javax.lang.model.type.*;
+import java.lang.annotation.*;
 
-import com.oracle.truffle.codegen.processor.typesystem.*;
+@Retention(RetentionPolicy.CLASS)
+@Target({ElementType.TYPE})
+public @interface ExecuteChildren {
 
-public class ActualParameter {
+    String[] value();
 
-    private final ParameterSpec specification;
-    private final TypeMirror actualType;
-
-    public ActualParameter(ParameterSpec specification, TypeMirror actualType) {
-        this.specification = specification;
-        this.actualType = actualType;
-    }
-
-    public ParameterSpec getSpecification() {
-        return specification;
-    }
-
-    public TypeMirror getActualType() {
-        return actualType;
-    }
-
-    public TypeData getActualTypeData(TypeSystemData typeSystem) {
-        return typeSystem.findTypeData(actualType);
-    }
 }

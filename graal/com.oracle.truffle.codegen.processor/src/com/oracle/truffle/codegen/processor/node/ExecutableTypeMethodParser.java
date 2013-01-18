@@ -20,50 +20,59 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.codegen.processor.typesystem;
+package com.oracle.truffle.codegen.processor.node;
 
 import java.lang.annotation.*;
 import java.util.*;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 
-import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
+import com.oracle.truffle.codegen.processor.typesystem.*;
 
+public class ExecutableTypeMethodParser extends MethodParser<ExecutableTypeData> {
 
-public class GuardParser extends TemplateMethodParser<Template, GuardData> {
-
-    private final TypeSystemData typeSystem;
-
-    public GuardParser(ProcessorContext context, Template template, TypeSystemData typeSystem) {
-        super(context, template);
-        this.typeSystem = typeSystem;
+    public ExecutableTypeMethodParser(ProcessorContext context, NodeData node) {
+        super(context, node);
+        setEmitErrors(false);
+        setParseNullOnError(false);
     }
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        List<ParameterSpec> specs = new ArrayList<>();
-        specs.add(new ParameterSpec("value1", typeSystem, false, Cardinality.ONE));
-        specs.add(new ParameterSpec("valueN", typeSystem, false, Cardinality.MULTIPLE));
-        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", getContext().getType(boolean.class), false);
-        return new MethodSpec(returnTypeSpec, specs);
+        List<TypeMirror> types = new ArrayList<>();
+        types.addAll(Arrays.asList(getNode().getTypeSystem().getPrimitiveTypeMirrors()));
+        types.add(getContext().getType(void.class));
+
+        ParameterSpec returnTypeSpec = new ParameterSpec("executedValue", types.toArray(new TypeMirror[types.size()]),
+                        getNode().getTypeSystem().getGenericType(), false, Cardinality.ONE);
+
+        List<ParameterSpec> parameters = new ArrayList<>();
+        parameters.add(new ParameterSpec("frame", getContext().getTruffleTypes().getFrame(), true));
+        return new MethodSpec(returnTypeSpec, parameters);
     }
 
     @Override
-    public boolean isParsable(ExecutableElement method) {
-        return Utils.findAnnotationMirror(getContext().getEnvironment(), method, getAnnotationType()) != null;
+    public final boolean isParsable(ExecutableElement method) {
+        boolean parsable = method.getSimpleName().toString().startsWith("execute");
+        return parsable;
     }
 
     @Override
-    public GuardData create(TemplateMethod method) {
-        return new GuardData(method, template);
+    public ExecutableTypeData create(TemplateMethod method) {
+        TypeData resolvedType = method.getReturnType().getActualTypeData(getNode().getTypeSystem());
+        if (resolvedType == null) {
+            return null;
+        }
+        return new ExecutableTypeData(method, getNode().getTypeSystem(), resolvedType);
     }
 
     @Override
     public Class< ? extends Annotation> getAnnotationType() {
-        return GuardCheck.class;
+        return null;
     }
 
 }

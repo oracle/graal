@@ -20,32 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.codegen.processor.operation;
+package com.oracle.truffle.api.codegen;
 
-import javax.lang.model.type.*;
+import java.lang.annotation.*;
 
-import com.oracle.truffle.codegen.processor.*;
+@Retention(RetentionPolicy.CLASS)
+@Target({ElementType.TYPE})
+public @interface TypeSystemReference {
 
-public class OperationFieldData {
+    Class<?> value();
 
-    private final String name;
-    private final TypeMirror javaClass;
-
-    public OperationFieldData(String name, TypeMirror javaClass) {
-        this.name = name;
-        this.javaClass = javaClass;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public TypeMirror getJavaClass() {
-        return javaClass;
-    }
-
-    @Override
-    public String toString() {
-        return Utils.getSimpleName(javaClass);
-    }
 }

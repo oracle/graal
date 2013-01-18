@@ -175,6 +175,10 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             writeEmptyLn();
         }
 
+        for (ExecutableElement method : ElementFilter.constructorsIn(e.getEnclosedElements())) {
+            method.accept(this, null);
+        }
+
         for (ExecutableElement method : getInstanceMethods(e)) {
             method.accept(this, null);
         }

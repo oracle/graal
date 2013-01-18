@@ -23,6 +23,7 @@
 package com.oracle.truffle.codegen.processor;
 
 import java.lang.annotation.*;
+import java.util.*;
 
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
@@ -49,7 +50,11 @@ public abstract class AbstractParser<M extends Template> {
     public final M parse(RoundEnvironment env, Element element) {
         this.roundEnv = env;
         try {
-            AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, element.getAnnotationMirrors(), getAnnotationType());
+            AnnotationMirror mirror = null;
+            if (getAnnotationType() != null) {
+                mirror = Utils.findAnnotationMirror(processingEnv, element.getAnnotationMirrors(), getAnnotationType());
+            }
+
             if (!context.getTruffleTypes().verify(context, element, mirror)) {
                 return null;
             }
@@ -60,7 +65,23 @@ public abstract class AbstractParser<M extends Template> {
     }
 
     protected abstract M parse(Element element, AnnotationMirror mirror);
-
     public abstract Class< ? extends Annotation> getAnnotationType();
+
+    public boolean isDelegateToRootDeclaredType() {
+        return false;
+    }
+
+    public List<Class<? extends Annotation>> getAllAnnotationTypes() {
+        List<Class<? extends Annotation>> list = new ArrayList<>();
+        if (getAnnotationType() != null) {
+            list.add(getAnnotationType());
+        }
+        list.addAll(getTypeDelegatedAnnotationTypes());
+        return list;
+    }
+
+    public List<Class<? extends Annotation>> getTypeDelegatedAnnotationTypes() {
+        return Collections.emptyList();
+    }
 
 }

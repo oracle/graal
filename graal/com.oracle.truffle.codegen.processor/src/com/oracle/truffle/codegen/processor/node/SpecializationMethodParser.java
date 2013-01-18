@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.codegen.processor.operation;
+package com.oracle.truffle.codegen.processor.node;
 
 import java.lang.annotation.*;
 import java.util.*;
@@ -31,15 +31,14 @@ import javax.lang.model.type.*;
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.Kind;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
 
-public class SpecializationParser extends OperationMethodParser<SpecializationData> {
+public class SpecializationMethodParser extends MethodParser<SpecializationData> {
 
     private final MethodSpec specification;
 
-    public SpecializationParser(ProcessorContext context, OperationData operation) {
+    public SpecializationMethodParser(ProcessorContext context, NodeData operation) {
         super(context, operation);
         this.specification = createDefaultMethodSpec(null);
     }
@@ -48,6 +47,7 @@ public class SpecializationParser extends OperationMethodParser<SpecializationDa
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         return specification;
     }
+
     public MethodSpec getSpecification() {
         return specification;
     }
@@ -62,14 +62,14 @@ public class SpecializationParser extends OperationMethodParser<SpecializationDa
         return Specialization.class;
     }
 
-    private SpecializationData parseSpecialization(TemplateMethod template) {
-        int order = Utils.getAnnotationValueInt(template.getMarkerAnnotation(), "order");
+    private SpecializationData parseSpecialization(TemplateMethod method) {
+        int order = Utils.getAnnotationValueInt(method.getMarkerAnnotation(), "order");
         if (order < 0 && order != Specialization.DEFAULT_ORDER) {
-            getContext().getLog().error(template.getMethod(), template.getMarkerAnnotation(), "Invalid order attribute %d. The value must be >= 0 or the default value.");
+            getContext().getLog().error(method.getMethod(), method.getMarkerAnnotation(), "Invalid order attribute %d. The value must be >= 0 or the default value.");
             return null;
         }
 
-        List<AnnotationMirror> exceptionDefs = Utils.collectAnnotations(getContext(), template.getMarkerAnnotation(), "exceptions", template.getMethod(), SpecializationThrows.class);
+        List<AnnotationMirror> exceptionDefs = Utils.collectAnnotations(getContext(), method.getMarkerAnnotation(), "exceptions", method.getMethod(), SpecializationThrows.class);
         SpecializationThrowsData[] exceptionData = new SpecializationThrowsData[exceptionDefs.size()];
         for (int i = 0; i < exceptionData.length; i++) {
             AnnotationMirror mirror = exceptionDefs.get(i);
@@ -77,8 +77,8 @@ public class SpecializationParser extends OperationMethodParser<SpecializationDa
             String transitionTo = Utils.getAnnotationValueString(mirror, "transitionTo");
             exceptionData[i] = new SpecializationThrowsData(mirror, javaClass, transitionTo);
 
-            if (!Utils.canThrowType(template.getMethod().getThrownTypes(), javaClass)) {
-                getContext().getLog().error(template.getMethod(), "Method must specify a throws clause with the exception type '%s'.", Utils.getQualifiedName(javaClass));
+            if (!Utils.canThrowType(method.getMethod().getThrownTypes(), javaClass)) {
+                getContext().getLog().error(method.getMethod(), "Method must specify a throws clause with the exception type '%s'.", Utils.getQualifiedName(javaClass));
                 return null;
             }
         }
@@ -89,10 +89,9 @@ public class SpecializationParser extends OperationMethodParser<SpecializationDa
                 return Utils.compareByTypeHierarchy(o1.getJavaClass(), o2.getJavaClass());
             }
         });
-        SpecializationData specialization = new SpecializationData(template, order, exceptionData);
-
+        SpecializationData specialization = new SpecializationData(method, order, exceptionData);
         boolean valid = true;
-        List<AnnotationMirror> guardDefs = Utils.collectAnnotations(getContext(), template.getMarkerAnnotation(), "guards", template.getMethod(), SpecializationGuard.class);
+        List<AnnotationMirror> guardDefs = Utils.collectAnnotations(getContext(), method.getMarkerAnnotation(), "guards", method.getMethod(), SpecializationGuard.class);
         SpecializationGuardData[] guardData = new SpecializationGuardData[guardDefs.size()];
         for (int i = 0; i < guardData.length; i++) {
             AnnotationMirror guardMirror = guardDefs.get(i);
@@ -102,7 +101,7 @@ public class SpecializationParser extends OperationMethodParser<SpecializationDa
 
             if (!onSpecialization && !onExecution) {
                 String message = "Either onSpecialization, onExecution or both must be enabled.";
-                getContext().getLog().error(template.getMethod(), guardMirror, message);
+                getContext().getLog().error(method.getMethod(), guardMirror, message);
                 valid = false;
                 continue;
             }
@@ -127,7 +126,8 @@ public class SpecializationParser extends OperationMethodParser<SpecializationDa
     }
 
     private GuardData matchSpecializationGuard(AnnotationMirror mirror, SpecializationData specialization, SpecializationGuardData specializationGuard)  {
-        List<GuardData> foundGuards = getOperation().findGuards(specializationGuard.getGuardMethod());
+        List<GuardData> foundGuards = getNode().findGuards(specializationGuard.getGuardMethod());
+
         GuardData compatibleGuard = null;
         for (GuardData guardData : foundGuards) {
             if (isGuardCompatible(specialization, guardData)) {
@@ -137,12 +137,12 @@ public class SpecializationParser extends OperationMethodParser<SpecializationDa
         }
 
         if (compatibleGuard == null) {
-            ParameterSpec returnTypeSpec = new ParameterSpec("returnValue", getContext().getType(boolean.class), Kind.ATTRIBUTE, false);
+            ParameterSpec returnTypeSpec = new ParameterSpec("returnValue", getContext().getType(boolean.class), false);
             List<ParameterSpec> expectedParameterSpecs = new ArrayList<>();
 
-            for (ActualParameter param : filterGuardParameters(specialization)) {
+            for (ActualParameter param : specialization.getParameters()) {
                 ParameterSpec spec = param.getSpecification();
-                expectedParameterSpecs.add(new ParameterSpec(spec.getName(), param.getActualType(), Kind.ATTRIBUTE, false));
+                expectedParameterSpecs.add(new ParameterSpec(spec.getName(), param.getActualType(), false));
             }
             String expectedSignature = TemplateMethodParser.createExpectedSignature(specializationGuard.getGuardMethod(), returnTypeSpec, expectedParameterSpecs);
             AnnotationValue value = Utils.getAnnotationValue(mirror, "methodName");
@@ -155,7 +155,7 @@ public class SpecializationParser extends OperationMethodParser<SpecializationDa
 
     private static boolean isGuardCompatible(SpecializationData specialization, GuardData guard) {
         Iterator<ActualParameter> guardParameters = Arrays.asList(guard.getParameters()).iterator();
-        for (ActualParameter param : filterGuardParameters(specialization)) {
+        for (ActualParameter param : specialization.getParameters()) {
             if (!guardParameters.hasNext()) {
                 return false;
             }
@@ -168,18 +168,6 @@ public class SpecializationParser extends OperationMethodParser<SpecializationDa
             return false;
         }
         return true;
-    }
-
-    private static List<ActualParameter> filterGuardParameters(SpecializationData specialization) {
-        List<ActualParameter> parameters = new ArrayList<>();
-        for (ActualParameter param : specialization.getParameters()) {
-            if (param.getSpecification().getKind() != Kind.EXECUTE
-                            && param.getSpecification().getKind() != Kind.SHORT_CIRCUIT) {
-                continue;
-            }
-            parameters.add(param);
-        }
-        return parameters;
     }
 
 

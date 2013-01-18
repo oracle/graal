@@ -33,7 +33,7 @@ public @interface SpecializationGuard {
 
     /**
      * Specifies the name of the guard method annotated by {@link GuardCheck} specified as method in the
-     * {@link TypeSystem} or {@link Operation} class.
+     * {@link TypeSystem} class.
      */
     String methodName();
 

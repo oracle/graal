@@ -50,8 +50,12 @@ public class CodeCompilationUnit extends CodeElement<TypeElement> {
 
     @Override
     public <R, P> R accept(ElementVisitor<R, P> v, P p) {
-        for (TypeElement type : getEnclosedElements()) {
-            type.accept(v, p);
+        for (Element type : getEnclosedElements()) {
+            if (type.getKind().isClass()) {
+                type.accept(v, p);
+            } else {
+                throw new ClassCastException(type.getClass().getName());
+            }
         }
         return null;
     }

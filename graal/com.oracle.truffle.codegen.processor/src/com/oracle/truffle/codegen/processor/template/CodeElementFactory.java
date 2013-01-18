@@ -44,9 +44,12 @@ public abstract class CodeElementFactory<M> {
     protected void createChildren(M m) { }
 
     @SuppressWarnings("unchecked")
-    public final CodeElement<?> process(M m) {
+    public CodeElement<?> process(CodeElement parent, M m) {
         model = m;
         element = (CodeElement<? super Element>) create(model);
+        if (parent != null) {
+            parent.add(element);
+        }
         if (element != null) {
             createChildren(model);
         }
@@ -58,7 +61,7 @@ public abstract class CodeElementFactory<M> {
     }
 
     protected <MO, K extends Element> void add(CodeElementFactory<MO> factory, MO m) {
-        this.element.add(factory.process(m));
+        factory.process(this.element, m);
     }
 
     public ProcessorContext getContext() {

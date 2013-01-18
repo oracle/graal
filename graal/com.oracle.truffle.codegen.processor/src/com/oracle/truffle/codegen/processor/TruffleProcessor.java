@@ -30,7 +30,7 @@ import javax.lang.model.*;
 import javax.lang.model.element.*;
 
 import com.oracle.truffle.codegen.processor.ProcessorContext.ProcessCallback;
-import com.oracle.truffle.codegen.processor.operation.*;
+import com.oracle.truffle.codegen.processor.node.*;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
 /**
@@ -53,15 +53,30 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
         return false;
     }
 
-    @SuppressWarnings("unchecked")
     private void processImpl(RoundEnvironment env) {
         this.round = env;
         // TODO run verifications that other annotations are not processed out of scope of the operation or typelattice.
         try {
             for (AnnotationProcessor generator : getGenerators()) {
-                for (Element e : env.getElementsAnnotatedWith(generator.getParser().getAnnotationType())) {
-                    processElement(env, generator, e, false);
+                AbstractParser<?> parser = generator.getParser();
+                if (parser.getAnnotationType() != null) {
+                    for (Element e : env.getElementsAnnotatedWith(parser.getAnnotationType())) {
+                        processElement(env, generator, e, false);
+                    }
                 }
+
+                for (Class<? extends Annotation> annotationType : parser.getTypeDelegatedAnnotationTypes()) {
+                    for (Element e : env.getElementsAnnotatedWith(annotationType)) {
+                        TypeElement processedType;
+                        if (parser.isDelegateToRootDeclaredType()) {
+                            processedType = Utils.findRootEnclosingType(e);
+                        } else {
+                            processedType = Utils.findNearestEnclosingType(e);
+                        }
+                        processElement(env, generator, processedType, false);
+                    }
+                }
+
             }
         } finally {
             this.round = null;
@@ -85,9 +100,12 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     @Override
     public void callback(TypeElement template) {
         for (AnnotationProcessor generator : generators) {
-            Annotation annotation = template.getAnnotation(generator.getParser().getAnnotationType());
-            if (annotation != null) {
-                processElement(round, generator, template, true);
+            Class annotationType = generator.getParser().getAnnotationType();
+            if (annotationType != null) {
+                Annotation annotation = template.getAnnotation(annotationType);
+                if (annotation != null) {
+                    processElement(round, generator, template, true);
+                }
             }
         }
     }
@@ -96,7 +114,12 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     public Set<String> getSupportedAnnotationTypes() {
         Set<String> annotations = new HashSet<>();
         for (AnnotationProcessor< ? > generator : getGenerators()) {
-            annotations.add(generator.getParser().getAnnotationType().getCanonicalName());
+            for (Class<? extends Annotation> annotationClass : generator.getParser().getAllAnnotationTypes()) {
+                if (annotationClass == null) {
+                    throw new NullPointerException("class is null");
+                }
+                annotations.add(annotationClass.getCanonicalName());
+            }
         }
         return annotations;
     }
@@ -105,7 +128,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
         if (generators == null && processingEnv != null) {
             generators = new ArrayList<>();
             generators.add(new AnnotationProcessor<>(getContext(), new TypeSystemParser(getContext()), new TypeSystemCodeGenerator(getContext())));
-            generators.add(new AnnotationProcessor<>(getContext(), new OperationParser(getContext()), new OperationCodeGenerator(getContext())));
+            generators.add(new AnnotationProcessor<>(getContext(), new NodeParser(getContext()), new NodeCodeGenerator(getContext())));
         }
         return generators;
     }

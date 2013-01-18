@@ -26,13 +26,15 @@ import javax.lang.model.element.*;
 
 public class TemplateMethod {
 
+    private final Template template;
     private final MethodSpec specification;
     private final ExecutableElement method;
     private final AnnotationMirror markerAnnotation;
     private final ActualParameter returnType;
     private final ActualParameter[] parameters;
 
-    public TemplateMethod(MethodSpec specification, ExecutableElement method, AnnotationMirror markerAnnotation, ActualParameter returnType, ActualParameter[] parameters) {
+    public TemplateMethod(Template template, MethodSpec specification, ExecutableElement method, AnnotationMirror markerAnnotation, ActualParameter returnType, ActualParameter[] parameters) {
+        this.template = template;
         this.specification = specification;
         this.method = method;
         this.markerAnnotation = markerAnnotation;
@@ -41,6 +43,7 @@ public class TemplateMethod {
     }
 
     public TemplateMethod(TemplateMethod method) {
+        this.template = method.template;
         this.specification = method.specification;
         this.method = method.method;
         this.markerAnnotation = method.markerAnnotation;
@@ -48,6 +51,9 @@ public class TemplateMethod {
         this.parameters = method.parameters;
     }
 
+    public Template getTemplate() {
+        return template;
+    }
 
     public MethodSpec getSpecification() {
         return specification;

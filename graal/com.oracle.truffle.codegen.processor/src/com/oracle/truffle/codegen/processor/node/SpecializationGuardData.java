@@ -20,21 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.codegen;
+package com.oracle.truffle.codegen.processor.node;
 
-import java.lang.annotation.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.codegen.processor.typesystem.*;
 
-@Retention(RetentionPolicy.CLASS)
-@Target({ElementType.TYPE})
-public @interface Operation {
+public class SpecializationGuardData {
 
-    Class< ? > typeSystem();
+    private final String guardMethod;
+    private final boolean onSpecialization;
+    private final boolean onExecution;
 
-    Class<? extends Node> baseClass() default Node.class;
+    private GuardData guardDeclaration;
 
-    String[] values() default {};
+    public SpecializationGuardData(String guardMethod, boolean onSpecialization, boolean onExecution) {
+        this.guardMethod = guardMethod;
+        this.onSpecialization = onSpecialization;
+        this.onExecution = onExecution;
+    }
 
-    String[] shortCircuitValues() default {};
+    public String getGuardMethod() {
+        return guardMethod;
+    }
+
+    public boolean isOnExecution() {
+        return onExecution;
+    }
+
+    public boolean isOnSpecialization() {
+        return onSpecialization;
+    }
+
+    public void setGuardDeclaration(GuardData compatibleGuard) {
+        this.guardDeclaration = compatibleGuard;
+    }
+
+    public GuardData getGuardDeclaration() {
+        return guardDeclaration;
+    }
 
 }

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.codegen.processor.operation;
+package com.oracle.truffle.codegen.processor.node;
 
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.template.*;
@@ -34,10 +34,10 @@ public class SpecializationData extends TemplateMethod {
     private SpecializationGuardData[] guards;
     private ShortCircuitData[] shortCircuits;
 
-    private OperationData operation;
+    private NodeData node;
 
     public SpecializationData(TemplateMethod template, int order, SpecializationThrowsData[] exceptions) {
-        super(template.getSpecification(), template.getMethod(), template.getMarkerAnnotation(), template.getReturnType(), template.getParameters());
+        super(template);
         this.order = order;
         this.generic = false;
         this.uninitialized = false;
@@ -49,7 +49,7 @@ public class SpecializationData extends TemplateMethod {
     }
 
     public SpecializationData(TemplateMethod template, boolean generic, boolean uninitialized) {
-        super(template.getSpecification(), template.getMethod(), template.getMarkerAnnotation(), template.getReturnType(), template.getParameters());
+        super(template);
         this.order = Specialization.DEFAULT_ORDER;
         this.generic = generic;
         this.uninitialized = uninitialized;
@@ -57,16 +57,16 @@ public class SpecializationData extends TemplateMethod {
         this.guards = new SpecializationGuardData[0];
     }
 
-    public void setOperation(OperationData operation) {
-        this.operation = operation;
+    public NodeData getNode() {
+        return node;
     }
 
-    void setGuards(SpecializationGuardData[] guards) {
+    public void setNode(NodeData node) {
+        this.node = node;
+    }
+
+    public void setGuards(SpecializationGuardData[] guards) {
         this.guards = guards;
-    }
-
-    public OperationData getOperation() {
-        return operation;
     }
 
     public int getOrder() {
@@ -98,13 +98,13 @@ public class SpecializationData extends TemplateMethod {
     }
 
     public SpecializationData findNextSpecialization() {
-        SpecializationData[] allMethods = operation.getAllMethods();
-        for (int i = 0; i < allMethods.length - 1; i++) {
-            if (allMethods[i] == this) {
-                return allMethods[i + 1];
+        SpecializationData[] specializations = node.getSpecializations();
+        for (int i = 0; i < specializations.length - 1; i++) {
+            if (specializations[i] == this) {
+                return specializations[i + 1];
             }
         }
-        throw new IllegalArgumentException();
+        return null;
     }
 
     public boolean hasDynamicGuards() {

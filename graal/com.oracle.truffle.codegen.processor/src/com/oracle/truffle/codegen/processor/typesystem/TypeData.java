@@ -84,5 +84,11 @@ public class TypeData extends Template {
         }
         return Utils.typeEquals(boxedType, getTypeSystem().getVoidType().getBoxedType());
     }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "[" + Utils.getSimpleName(primitiveType) + "]";
+    }
+
 }
 

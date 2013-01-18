@@ -119,9 +119,6 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
     }
 
     void setEnclosingElement(Element parent) {
-        if (this.enclosingElement != null && parent != null) {
-            throw new IllegalStateException("Element already added to " + parent);
-        }
         this.enclosingElement = parent;
     }
 
@@ -161,7 +158,7 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
             return writer;
         }
         public String getString() {
-            return new String(((CharArrayWriter) writer).toCharArray());
+            return new String(((CharArrayWriter) writer).toCharArray()).trim();
         }
 
     }

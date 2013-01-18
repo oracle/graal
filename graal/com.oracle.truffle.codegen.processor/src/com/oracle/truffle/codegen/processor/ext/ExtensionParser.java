@@ -46,11 +46,11 @@ public class ExtensionParser {
         this.extensionContext = new ExtensionContextImpl(context.getEnvironment(), null, factory);
     }
 
-    public List<WritableElement> parseAll(TypeElement typeElement) {
+    public List<WritableElement> parseAll(TypeElement typeElement, List<? extends Element> elements) {
         List<WritableElement> generatedMethods = new ArrayList<>();
         parseElement(generatedMethods, typeElement);
 
-        List<? extends ExecutableElement> methods = ElementFilter.methodsIn(typeElement.getEnclosedElements());
+        List<? extends ExecutableElement> methods = ElementFilter.methodsIn(elements);
         for (ExecutableElement method : methods) {
             for (VariableElement var : method.getParameters()) {
                 parseElement(generatedMethods, var);

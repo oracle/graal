@@ -28,7 +28,6 @@ import javax.lang.model.element.*;
 import javax.lang.model.util.*;
 
 import com.oracle.truffle.codegen.processor.*;
-import com.oracle.truffle.codegen.processor.api.element.*;
 import com.oracle.truffle.codegen.processor.ext.*;
 
 public abstract class TemplateParser<M extends Template> extends AbstractParser<M> {
@@ -91,43 +90,5 @@ public abstract class TemplateParser<M extends Template> extends AbstractParser<
 
         return valid;
     }
-
-    protected <E extends TemplateMethod> List<E> parseMethods(Template template, TemplateMethodParser<E> parser) {
-        TypeElement type = template.getTemplateType();
-
-        List<ExecutableElement> methods = new ArrayList<>();
-        methods.addAll(ElementFilter.methodsIn(type.getEnclosedElements()));
-        if (template.getExtensionElements() != null) {
-            for (WritableElement e : template.getExtensionElements()) {
-                if (e instanceof ExecutableElement) {
-                    methods.add((ExecutableElement) e);
-                }
-            }
-        }
-
-        List<E> parsedMethods = new ArrayList<>();
-        boolean valid = true;
-        for (ExecutableElement method : methods) {
-            AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, parser.getAnnotationType());
-            if (mirror != null) {
-                if (method.getModifiers().contains(Modifier.PRIVATE)) {
-                    log.error(method, "Methods annotated with @%s must not be private.",  parser.getAnnotationType().getSimpleName());
-                    valid = false;
-                    continue;
-                }
-                E parsedMethod = parser.parse(method, mirror, template);
-                if (parsedMethod != null) {
-                    parsedMethods.add(parsedMethod);
-                } else {
-                    valid = false;
-                }
-            }
-        }
-        if (!valid) {
-            return null;
-        }
-        return parsedMethods;
-    }
-
 
 }

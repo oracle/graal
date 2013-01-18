@@ -36,22 +36,17 @@ public class TypeSystemData extends Template {
     private final TypeMirror[] primitiveTypeMirrors;
     private final TypeMirror[] boxedTypeMirrors;
 
-    private final TypeMirror nodeType;
     private final TypeMirror genericType;
 
     private final TypeData voidType;
 
-    private List<GuardData> guards;
-
 
     public TypeSystemData(TypeElement templateType, AnnotationMirror annotation,
-                    TypeData[] types, TypeMirror nodeType, TypeMirror genericType, TypeData voidType) {
+                    TypeData[] types, TypeMirror genericType, TypeData voidType) {
         super(templateType, annotation);
-        this.voidType = voidType;
         this.types = types;
-        this.nodeType = nodeType;
         this.genericType = genericType;
-
+        this.voidType = voidType;
         this.primitiveTypeMirrors = new TypeMirror[types.length];
         for (int i = 0; i < types.length; i++) {
             primitiveTypeMirrors[i] = types[i].getPrimitiveType();
@@ -70,16 +65,12 @@ public class TypeSystemData extends Template {
         }
     }
 
+    public boolean isGeneric(TypeMirror type) {
+        return Utils.typeEquals(getGenericType(), type);
+    }
+
     public TypeData getVoidType() {
         return voidType;
-    }
-
-    void setGuards(List<GuardData> guards) {
-        this.guards = guards;
-    }
-
-    public List<GuardData> getGuards() {
-        return guards;
     }
 
     public TypeData[] getTypes() {
@@ -92,10 +83,6 @@ public class TypeSystemData extends Template {
 
     public TypeMirror[] getBoxedTypeMirrors() {
         return boxedTypeMirrors;
-    }
-
-    public TypeMirror getNodeType() {
-        return nodeType;
     }
 
     public TypeMirror getGenericType() {
@@ -116,6 +103,18 @@ public class TypeSystemData extends Template {
         }
         return null;
     }
+    public TypeData findTypeData(TypeMirror type) {
+        if (Utils.typeEquals(voidType.getPrimitiveType(), type)) {
+            return voidType;
+        }
+
+        int index = findType(type);
+        if (index == -1) {
+            return null;
+        }
+        return types[index];
+    }
+
 
     public int findType(TypeMirror type) {
         for (int i = 0; i < types.length; i++) {
@@ -125,5 +124,12 @@ public class TypeSystemData extends Template {
         }
         return -1;
     }
+
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "[template = " + Utils.getSimpleName(getTemplateType()) + ", types = " + Arrays.toString(types) + "]";
+    }
+
 
 }

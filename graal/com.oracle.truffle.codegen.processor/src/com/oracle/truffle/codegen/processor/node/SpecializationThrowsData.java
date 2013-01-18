@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.codegen.processor.operation;
+package com.oracle.truffle.codegen.processor.node;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
@@ -60,12 +60,12 @@ public class SpecializationThrowsData {
     }
 
     public SpecializationData getTransitionTo() {
-        for (SpecializationData s : specialization.getOperation().getAllMethods()) {
+        for (SpecializationData s : specialization.getNode().getSpecializations()) {
             if (s.getMethodName().equals(transitionTo)) {
                 return s;
             }
         }
-        throw new IllegalArgumentException();
+        return null;
     }
 }
 

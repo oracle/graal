@@ -20,56 +20,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.codegen.processor.operation;
+package com.oracle.truffle.codegen.processor.node;
 
 import java.lang.annotation.*;
-import java.util.*;
 
 import javax.lang.model.element.*;
 
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.Kind;
 
+public class GenericParser extends MethodParser<SpecializationData> {
 
-public class ShortCircuitParser extends OperationMethodParser<ShortCircuitData> {
-
-    private final Set<String> shortCircuitValues;
-
-    public ShortCircuitParser(ProcessorContext context, OperationData operation) {
-        super(context, operation);
-        shortCircuitValues = new HashSet<>(Arrays.asList(operation.getShortCircuitValues()));
+    public GenericParser(ProcessorContext context, NodeData node) {
+        super(context, node);
     }
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        String shortCircuitValue = Utils.getAnnotationValueString(mirror, "value");
+        return createDefaultMethodSpec(null);
+    }
 
-        if (!shortCircuitValues.contains(shortCircuitValue)) {
-            getContext().getLog().error(method, mirror, "Invalid short circuit value %s.", shortCircuitValue);
-            return null;
-        }
-
-        return createDefaultMethodSpec(shortCircuitValue);
+    @Override
+    protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData) {
+        return new ParameterSpec(valueName, nodeData.findGenericExecutableType(getContext()).getType().getPrimitiveType(), false);
     }
 
     @Override
     protected ParameterSpec createReturnParameterSpec() {
-        return new ParameterSpec("has", getContext().getType(boolean.class), Kind.SHORT_CIRCUIT, false);
+        return super.createValueParameterSpec("returnValue", getNode());
     }
 
     @Override
-    public ShortCircuitData create(TemplateMethod method) {
-        String shortCircuitValue = Utils.getAnnotationValueString(method.getMarkerAnnotation(), "value");
-        assert shortCircuitValue != null;
-        assert shortCircuitValues.contains(shortCircuitValue);
-        return new ShortCircuitData(method, shortCircuitValue);
+    public SpecializationData create(TemplateMethod method) {
+        return new SpecializationData(method, true, false);
     }
 
     @Override
     public Class< ? extends Annotation> getAnnotationType() {
-        return ShortCircuit.class;
+        return Generic.class;
     }
 
 }
