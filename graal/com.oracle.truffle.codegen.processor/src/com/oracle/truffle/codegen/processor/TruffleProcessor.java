@@ -113,13 +113,11 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         Set<String> annotations = new HashSet<>();
-        for (AnnotationProcessor< ? > generator : getGenerators()) {
-            for (Class<? extends Annotation> annotationClass : generator.getParser().getAllAnnotationTypes()) {
-                if (annotationClass == null) {
-                    throw new NullPointerException("class is null");
-                }
-                annotations.add(annotationClass.getCanonicalName());
-            }
+        List<Class<? extends Annotation>> annotationsTypes = new ArrayList<>();
+        annotationsTypes.addAll(NodeParser.ANNOTATIONS);
+        annotationsTypes.addAll(TypeSystemParser.ANNOTATIONS);
+        for (Class< ? extends Annotation > type : annotationsTypes) {
+            annotations.add(type.getCanonicalName());
         }
         return annotations;
     }

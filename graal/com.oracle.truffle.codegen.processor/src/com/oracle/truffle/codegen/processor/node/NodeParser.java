@@ -41,7 +41,7 @@ import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class NodeParser extends TemplateParser<NodeData>{
 
-    private static final List<Class<? extends Annotation>> annotations = Arrays.asList(
+    public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(
                     Generic.class, GuardCheck.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class,
                     SpecializationGuard.class, SpecializationListener.class, SpecializationThrows.class);
 
@@ -775,7 +775,7 @@ public class NodeParser extends TemplateParser<NodeData>{
 
     @Override
     public List<Class< ? extends Annotation>> getTypeDelegatedAnnotationTypes() {
-        return annotations;
+        return ANNOTATIONS;
     }
 
 }

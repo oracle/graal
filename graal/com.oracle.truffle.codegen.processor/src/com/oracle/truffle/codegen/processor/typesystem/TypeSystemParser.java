@@ -37,6 +37,8 @@ import com.oracle.truffle.codegen.processor.template.*;
 
 public class TypeSystemParser extends TemplateParser<TypeSystemData> {
 
+    public static final List<Class<TypeSystem>> ANNOTATIONS = Arrays.asList(TypeSystem.class);
+
     public TypeSystemParser(ProcessorContext c) {
         super(c);
     }
