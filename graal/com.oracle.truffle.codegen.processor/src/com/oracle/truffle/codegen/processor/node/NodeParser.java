@@ -694,10 +694,6 @@ public class NodeParser extends TemplateParser<NodeData>{
                     SpecializationData targetSpecialization = specializationMap.get(throwsData.getTransitionToName());
                     AnnotationValue value = Utils.getAnnotationValue(throwsData.getAnnotationMirror(), "transitionTo");
 
-                    if (targetSpecialization != null)  {
-                        log.error("Specialization throws current %s target %s compare %s.", sourceSpecialization.getMethodName(), targetSpecialization.getMethodName(), compareSpecialization(typeSystem, sourceSpecialization, targetSpecialization));
-                    }
-
                     if (targetSpecialization == null) {
                         log.error(throwsData.getSpecialization().getMethod(), throwsData.getAnnotationMirror(), value,
                                         "Specialization with name '%s' not found.", throwsData.getTransitionToName());
