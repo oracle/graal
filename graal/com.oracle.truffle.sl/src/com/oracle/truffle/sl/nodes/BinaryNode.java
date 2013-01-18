@@ -20,22 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.ops;
+package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.sl.types.*;
 
-@Operation(typeSystem = Types.class)
-public class IntegerLiteral {
+@ExecuteChildren({"leftNode", "rightNode"})
+public abstract class BinaryNode extends TypedNode {
 
-    private final int value;
+    @Child
+    protected TypedNode leftNode;
 
-    public IntegerLiteral(int value) {
-        this.value = value;
+    @Child
+    protected TypedNode rightNode;
+
+    public BinaryNode(TypedNode left, TypedNode right) {
+        this.leftNode = adoptChild(left);
+        this.rightNode = adoptChild(right);
     }
 
-    @Specialization
-    protected int doInteger() {
-        return this.value;
+    public BinaryNode(BinaryNode node) {
+        this(node.leftNode, node.rightNode);
     }
+
 }

@@ -20,39 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.ops;
+package com.oracle.truffle.sl.nodes;
 
 import java.math.*;
 
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.sl.types.*;
+import com.oracle.truffle.api.nodes.*;
 
-@Operation(typeSystem = Types.class, baseClass = FrameSlotNode.class)
-public class ReadLocalOp {
+public abstract class TypedNode extends ConditionNode {
 
-    @Specialization(order = 2)
-    public int doInteger(VirtualFrame frame, FrameSlot slot) {
-        return frame.getInt(slot);
+    @Override
+    public final boolean executeCondition(VirtualFrame frame) {
+        try {
+            return executeBoolean(frame);
+        } catch (UnexpectedResultException ex) {
+            throw new RuntimeException("Illegal type for condition: " + ex.getResult().getClass().getSimpleName());
+        }
     }
 
-    @Specialization
-    public BigInteger doBigInteger(VirtualFrame frame, FrameSlot slot) {
-        return (BigInteger) frame.getObject(slot);
+    public abstract boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException;
+
+    public abstract int executeInteger(VirtualFrame frame) throws UnexpectedResultException;
+
+    public abstract BigInteger executeBigInteger(VirtualFrame frame) throws UnexpectedResultException;
+
+    public abstract String executeString(VirtualFrame frame) throws UnexpectedResultException;
+
+    public abstract Object executeGeneric(VirtualFrame frame);
+
+    @GuardCheck
+    public boolean isString(Object a, Object b) {
+        return a instanceof String || b instanceof String;
     }
 
-    @Specialization
-    public boolean doBoolean(VirtualFrame frame, FrameSlot slot) {
-        return frame.getBoolean(slot);
-    }
-
-    @Specialization
-    public String doString(VirtualFrame frame, FrameSlot slot) {
-        return (String) frame.getObject(slot);
-    }
-
-    @Generic
-    public Object doGeneric(VirtualFrame frame, FrameSlot slot) {
-        return frame.getObject(slot);
-    }
 }

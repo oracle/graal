@@ -23,30 +23,42 @@
 package com.oracle.truffle.sl.nodes;
 
 import java.io.*;
-import java.util.*;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.sl.types.*;
+import com.oracle.truffle.api.codegen.*;
 
-public class PrintNode extends StatementNode {
+public abstract class PrintNode extends StatementNode {
 
-    @Children
-    private final TypedNode[] expressions;
+    @Child
+    protected TypedNode expression;
 
     private final PrintStream output;
 
-    public PrintNode(List<TypedNode> expressions, PrintStream output) {
-        this.expressions = adoptChildren(expressions.toArray(new TypedNode[expressions.size()]));
+    public PrintNode(TypedNode expression, PrintStream output) {
+        this.expression = adoptChild(expression);
         this.output = output;
     }
 
-    @ExplodeLoop
-    @Override
-    public void executeVoid(VirtualFrame frame) {
-        for (TypedNode expression : expressions) {
-            output.print(expression.executeGeneric(frame));
-        }
-        output.println();
+    public PrintNode(PrintNode node) {
+        this(node.expression, node.output);
+    }
+
+    @Specialization
+    public void doInt(int value) {
+        output.print(value);
+    }
+
+    @Specialization
+    public void doBoolean(boolean value) {
+        output.print(value);
+    }
+
+    @Specialization
+    public void doString(String value) {
+        output.print(value);
+    }
+
+    @Generic
+    public void doGeneric(Object value) {
+        output.print(value.toString());
     }
 }

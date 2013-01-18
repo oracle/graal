@@ -20,24 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.ops;
+package com.oracle.truffle.sl.test;
 
-import java.math.*;
+import org.junit.*;
 
-import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.sl.types.*;
+public class DivTest extends AbstractTest {
 
-@Operation(typeSystem = Types.class)
-public class BigIntegerLiteral {
+    private static String[] INPUT = new String[] {
+"function main {  ",
+"  print 4 / 2;  ",
+"  print 4 / 4000000000000;  ",
+"  print 3000000000000 / 3;  ",
+"  print 3000000000000 / 3000000000000;  ",
+"}  ",
+    };
 
-    private final BigInteger value;
+    private static String[] OUTPUT = new String[] {
+"2",
+"0",
+"1000000000000",
+"1",
+    };
 
-    public BigIntegerLiteral(BigInteger value) {
-        this.value = value;
-    }
-
-    @Specialization
-    public BigInteger doBigInteger() {
-        return value;
+    @Test
+    public void test() {
+        executeSL(INPUT, OUTPUT, true);
     }
 }

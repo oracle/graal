@@ -22,10 +22,20 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import java.io.*;
+
 import com.oracle.truffle.api.frame.*;
 
-public abstract class ConditionNode extends StatementNode {
+public class PrintLineNode extends StatementNode {
 
-    public abstract boolean executeCondition(VirtualFrame frame);
+    private final PrintStream output;
 
+    public PrintLineNode(PrintStream output) {
+        this.output = output;
+    }
+
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        output.println();
+    }
 }

@@ -25,9 +25,9 @@ package com.oracle.truffle.sl;
 import java.io.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.parser.*;
-import com.oracle.truffle.sl.tools.*;
 
 public class SimpleLanguage {
 
@@ -45,7 +45,7 @@ public class SimpleLanguage {
 
         FunctionDefinitionNode rootNode = factory.findFunction("main");
         if (log) {
-            GraphPrinter.print(rootNode);
+            NodeUtil.printTree(System.out, rootNode);
         }
 
         try {
@@ -67,7 +67,7 @@ public class SimpleLanguage {
 
         } finally {
             if (log) {
-                GraphPrinter.print(rootNode);
+                NodeUtil.printTree(System.out, rootNode);
             }
         }
     }

@@ -20,15 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.ops;
+package com.oracle.truffle.sl.nodes;
 
 import java.math.*;
 
 import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.sl.types.*;
 
-@Operation(typeSystem = Types.class, values = {"left", "right"})
-public class LessThanOp {
+public abstract class LessThanNode extends BinaryNode {
+
+    public LessThanNode(TypedNode left, TypedNode right) {
+        super(left, right);
+    }
+
+    public LessThanNode(LessThanNode node) {
+        this(node.leftNode, node.rightNode);
+    }
 
     @Specialization
     public boolean doInteger(int left, int right) {

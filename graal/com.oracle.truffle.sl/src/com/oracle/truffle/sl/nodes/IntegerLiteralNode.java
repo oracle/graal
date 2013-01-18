@@ -20,41 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.ops;
-
-import java.math.*;
+package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.api.intrinsics.*;
-import com.oracle.truffle.sl.types.*;
 
-@Operation(typeSystem = Types.class, values = {"left", "right"})
-public class AddOp {
+public abstract class IntegerLiteralNode extends TypedNode {
 
-    @Specialization
-    @SpecializationThrows(javaClass = ArithmeticException.class, transitionTo = "doBigInteger")
-    public int doInteger(int left, int right) {
-        return ExactMath.addExact(left, right);
+    private final int value;
+
+    public IntegerLiteralNode(int value) {
+        this.value = value;
     }
 
     @Specialization
-    public BigInteger doBigInteger(BigInteger left, BigInteger right) {
-        return left.add(right);
-    }
-
-    @Specialization
-    public String doStringDirect(String left, String right) {
-        return left + right;
-    }
-
-    @Specialization
-    @SpecializationGuard(methodName = "isString")
-    public String doString(Object left, Object right) {
-        return left.toString() + right.toString();
-    }
-
-    @Generic
-    public Object doGeneric(Object left, Object right) {
-        throw new RuntimeException("addition not defined for types " + left.getClass().getSimpleName() + ", " + right.getClass().getSimpleName());
+    protected int doInteger() {
+        return this.value;
     }
 }

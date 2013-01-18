@@ -20,32 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.types;
+package com.oracle.truffle.sl.nodes;
 
-import java.math.*;
+import com.oracle.truffle.api.codegen.*;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.sl.nodes.*;
+@SuppressWarnings("unused")
+public abstract class LogicalAndNode extends BinaryNode {
 
-public abstract class TypedNode extends ConditionNode {
-
-    @Override
-    public final boolean executeCondition(VirtualFrame frame) {
-        try {
-            return executeBoolean(frame);
-        } catch (UnexpectedResultException ex) {
-            throw new RuntimeException("Illegal type for condition: " + ex.getResult().getClass().getSimpleName());
-        }
+    public LogicalAndNode(TypedNode leftNode, TypedNode rightNode) {
+        super(leftNode, rightNode);
     }
 
-    public abstract boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException;
+    public LogicalAndNode(LogicalAndNode node) {
+        this(node.leftNode, node.rightNode);
+    }
 
-    public abstract int executeInteger(VirtualFrame frame) throws UnexpectedResultException;
+    @ShortCircuit("rightNode")
+    public boolean needsRightNode(boolean left) {
+        return left;
+    }
 
-    public abstract BigInteger executeBigInteger(VirtualFrame frame) throws UnexpectedResultException;
+    @ShortCircuit("rightNode")
+    public boolean needsRightNode(Object left) {
+        return left instanceof Boolean && (Boolean) left;
+    }
 
-    public abstract String executeString(VirtualFrame frame) throws UnexpectedResultException;
+    @Specialization
+    public boolean doBoolean(boolean left, boolean hasRight, boolean right) {
+        return hasRight && right;
+    }
 
-    public abstract Object executeGeneric(VirtualFrame frame);
+    @Generic
+    public Object doGeneric(Object left, boolean hasRight, Object right) {
+        throw new RuntimeException("operation not defined for type " + left.getClass().getSimpleName());
+    }
 }

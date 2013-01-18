@@ -28,7 +28,6 @@ import java.util.*;
 
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.types.*;
 
 // Checkstyle: stop
 public class Parser {
@@ -49,7 +48,7 @@ public class Parser {
     public final Scanner scanner;
     public final Errors errors;
     private final NodeFactory factory;
-	
+
     public Parser(Scanner scanner, NodeFactory factory) {
         this.scanner = scanner;
         this.factory = factory;
@@ -129,29 +128,29 @@ public class Parser {
 
 	void Function() {
 		Expect(4);
-		factory.startFunction(); 
+		factory.startFunction();
 		Expect(1);
-		String name = t.val; 
+		String name = t.val;
 		StatementNode body = Block();
-		factory.createFunction(body, name); 
+		factory.createFunction(body, name);
 	}
 
 	StatementNode  Block() {
 		StatementNode  result;
-		List<StatementNode> statements = new ArrayList<>(); 
+		List<StatementNode> statements = new ArrayList<>();
 		Expect(5);
 		while (StartOf(1)) {
 			StatementNode statement = Statement();
-			statements.add(statement); 
+			statements.add(statement);
 		}
 		Expect(6);
-		result = factory.createBlock(statements); 
+		result = factory.createBlock(statements);
 		return result;
 	}
 
 	StatementNode  Statement() {
 		StatementNode  result;
-		result = null; 
+		result = null;
 		if (la.kind == 7) {
 			result = WhileStatement();
 		} else if (la.kind == 1) {
@@ -171,31 +170,31 @@ public class Parser {
 		ConditionNode condition = Expression();
 		Expect(9);
 		StatementNode body = Block();
-		result = factory.createWhile(condition, body); 
+		result = factory.createWhile(condition, body);
 		return result;
 	}
 
 	StatementNode  AssignmentStatement() {
 		StatementNode  result;
 		Expect(1);
-		String name = t.val; 
+		String name = t.val;
 		Expect(10);
 		TypedNode rvalue = Expression();
 		Expect(11);
-		result = factory.createAssignment(name, rvalue); 
+		result = factory.createAssignment(name, rvalue);
 		return result;
 	}
 
 	StatementNode  OutputStatement() {
 		StatementNode  result;
-		List<TypedNode> expressions = new ArrayList<>(); 
+		List<TypedNode> expressions = new ArrayList<>();
 		Expect(12);
 		while (StartOf(2)) {
 			TypedNode value = Expression();
-			expressions.add(value); 
+			expressions.add(value);
 		}
 		Expect(11);
-		result = factory.createPrint(expressions); 
+		result = factory.createPrint(expressions);
 		return result;
 	}
 
@@ -204,7 +203,7 @@ public class Parser {
 		Expect(13);
 		TypedNode value = Expression();
 		Expect(11);
-		result = factory.createReturn(value); 
+		result = factory.createReturn(value);
 		return result;
 	}
 
@@ -238,9 +237,9 @@ public class Parser {
 				break;
 			}
 			}
-			String op = t.val; 
+			String op = t.val;
 			TypedNode right = ValueExpression();
-			result = factory.createBinary(op, result, right); 
+			result = factory.createBinary(op, result, right);
 		}
 		return result;
 	}
@@ -254,9 +253,9 @@ public class Parser {
 			} else {
 				Get();
 			}
-			String op = t.val; 
+			String op = t.val;
 			TypedNode right = Term();
-			result = factory.createBinary(op, result, right); 
+			result = factory.createBinary(op, result, right);
 		}
 		return result;
 	}
@@ -270,16 +269,16 @@ public class Parser {
 			} else {
 				Get();
 			}
-			String op = t.val; 
+			String op = t.val;
 			TypedNode right = Factor();
-			result = factory.createBinary(op, result, right); 
+			result = factory.createBinary(op, result, right);
 		}
 		return result;
 	}
 
 	TypedNode  Factor() {
 		TypedNode  result;
-		result = null; 
+		result = null;
 		if (la.kind == 24) {
 			result = TimeRef();
 		} else if (la.kind == 1) {
@@ -299,28 +298,28 @@ public class Parser {
 	TypedNode  TimeRef() {
 		TypedNode  result;
 		Expect(24);
-		result = factory.createTime(); 
+		result = factory.createTime();
 		return result;
 	}
 
 	TypedNode  VariableRef() {
 		TypedNode  result;
 		Expect(1);
-		result = factory.createLocal(t.val); 
+		result = factory.createLocal(t.val);
 		return result;
 	}
 
 	TypedNode  StringLiteral() {
 		TypedNode  result;
 		Expect(2);
-		result = factory.createStringLiteral(t.val.substring(1, t.val.length() - 1)); 
+		result = factory.createStringLiteral(t.val.substring(1, t.val.length() - 1));
 		return result;
 	}
 
 	TypedNode  NumericLiteral() {
 		TypedNode  result;
 		Expect(3);
-		result = factory.createNumericLiteral(t.val); 
+		result = factory.createNumericLiteral(t.val);
 		return result;
 	}
 

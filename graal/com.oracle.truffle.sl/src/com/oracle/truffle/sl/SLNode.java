@@ -20,25 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.types;
+package com.oracle.truffle.sl;
 
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.api.nodes.*;
 
-public abstract class FrameSlotNode extends TypedNode implements FrameSlotTypeListener {
-
-    protected final FrameSlot slot;
-
-    public FrameSlotNode(FrameSlot slot) {
-        this.slot = slot;
-        slot.registerOneShotTypeListener(this);
-    }
+@TypeSystemReference(SLTypes.class)
+public class SLNode extends Node {
 
     @Override
-    public void typeChanged(FrameSlot changedSlot, Class< ? > oldType) {
-        if (getParent() != null) {
-            specialize(changedSlot.getType());
-        }
+    public String toString() {
+        return NodeUtil.printTreeToString(this);
     }
 
-    protected abstract void specialize(Class< ? > clazz);
 }

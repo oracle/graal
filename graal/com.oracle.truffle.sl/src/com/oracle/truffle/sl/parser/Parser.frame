@@ -30,7 +30,6 @@ import java.util.*;
 
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.types.*;
 
 // Checkstyle: stop
 public class Parser {
@@ -46,7 +45,7 @@ public class Parser {
     public final Scanner scanner;
     public final Errors errors;
     private final NodeFactory factory;
-    -->declarations
+	-->declarations
     public Parser(Scanner scanner, NodeFactory factory) {
         this.scanner = scanner;
         this.factory = factory;

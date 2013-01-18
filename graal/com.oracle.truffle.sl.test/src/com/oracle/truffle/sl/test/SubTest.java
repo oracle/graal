@@ -20,32 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.ops;
+package com.oracle.truffle.sl.test;
 
-import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.sl.types.*;
+import org.junit.*;
 
-@SuppressWarnings("unused")
-@Operation(typeSystem = Types.class, values = {"left"}, shortCircuitValues = {"right"})
-public class LogicalAndOp {
+public class SubTest extends AbstractTest {
 
-    @ShortCircuit(value = "right")
-    public boolean needsRight(boolean left) {
-        return left;
-    }
+    private static String[] INPUT = new String[] {
+"function main {  ",
+"  print 3 - 4;  ",
+"  print 3 - 4000000000000;  ",
+"  print 3000000000000 - 4;  ",
+"  print 3000000000000 - 4000000000000;  ",
+"}  ",
+    };
 
-    @ShortCircuit(value = "right")
-    public boolean needsRight(Object left) {
-        return TypesGen.TYPES.asBoolean(left);
-    }
+    private static String[] OUTPUT = new String[] {
+"-1",
+"-3999999999997",
+"2999999999996",
+"-1000000000000",
+    };
 
-    @Specialization
-    public boolean doBoolean(boolean left, boolean hasRight, boolean right) {
-        return hasRight && right;
-    }
-
-    @Generic
-    public Object doGeneric(Object left, boolean hasRight, Object right) {
-        throw new RuntimeException("operation not defined for type " + left.getClass().getSimpleName());
+    @Test
+    public void test() {
+        executeSL(INPUT, OUTPUT, true);
     }
 }

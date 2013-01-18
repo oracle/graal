@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.types;
+package com.oracle.truffle.sl;
 
 import java.math.*;
 
 import com.oracle.truffle.api.codegen.*;
 
-@TypeSystem(types = {int.class, BigInteger.class, boolean.class, String.class}, nodeBaseClass = TypedNode.class, hasVoid = true)
-public class Types {
+@TypeSystem({int.class, BigInteger.class, boolean.class, String.class})
+public class SLTypes {
 
     @TypeCheck
     public boolean isInteger(Object value) {
@@ -44,11 +44,6 @@ public class Types {
             assert BigInteger.valueOf(result).equals(value) : "Loosing precision";
             return result;
         }
-    }
-
-    @GuardCheck
-    public boolean isString(Object a, Object b) {
-        return a instanceof String || b instanceof String;
     }
 
     @TypeCheck
@@ -74,5 +69,5 @@ public class Types {
     public boolean isBigInteger(@SuppressWarnings("unused") int value) {
         return true;
     }
-
 }
+

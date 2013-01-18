@@ -20,50 +20,51 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.ops;
+package com.oracle.truffle.sl.nodes;
 
 import java.math.*;
 
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.sl.types.*;
 
-@Operation(typeSystem = Types.class, baseClass = FrameSlotNode.class, values = "right")
-public class WriteLocalOp {
+public abstract class ReadLocalNode extends FrameSlotNode {
 
-    @Specialization
-    public int doInteger(VirtualFrame frame, int right, FrameSlot slot) {
-        frame.setInt(slot, right);
-        return right;
+    public ReadLocalNode(FrameSlot slot) {
+        super(slot);
+    }
+
+    public ReadLocalNode(ReadLocalNode specialized) {
+        this(specialized.slot);
     }
 
     @Specialization
-    public BigInteger doBigInteger(VirtualFrame frame, BigInteger right, FrameSlot slot) {
-        frame.setObject(slot, right);
-        return right;
+    public int doInteger(VirtualFrame frame) {
+        return frame.getInt(slot);
     }
 
     @Specialization
-    public boolean doBoolean(VirtualFrame frame, boolean right, FrameSlot slot) {
-        frame.setBoolean(slot, right);
-        return right;
+    public BigInteger doBigInteger(VirtualFrame frame) {
+        return (BigInteger) frame.getObject(slot);
     }
 
     @Specialization
-    public String doString(VirtualFrame frame, String right, FrameSlot slot) {
-        frame.setObject(slot, right);
-        return right;
+    public boolean doBoolean(VirtualFrame frame) {
+        return frame.getBoolean(slot);
+    }
+
+    @Specialization
+    public String doString(VirtualFrame frame) {
+        return (String) frame.getObject(slot);
     }
 
     @Generic
-    public Object doGeneric(VirtualFrame frame, Object right, FrameSlot slot) {
-        frame.setObject(slot, right);
-        return right;
+    public Object doGeneric(VirtualFrame frame) {
+        return frame.getObject(slot);
     }
 
-    @SpecializationListener
-    protected void onSpecialize(VirtualFrame frame, Object value, FrameSlot slot) {
-        slot.setType(value.getClass());
-        frame.updateToLatestVersion();
+    @Override
+    protected FrameSlotNode specialize(Class< ? > clazz) {
+        return ReadLocalNodeFactory.createSpecialized(this, clazz);
     }
+
 }

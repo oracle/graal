@@ -28,8 +28,7 @@ import java.util.*;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.ops.*;
-import com.oracle.truffle.sl.types.*;
+import com.oracle.truffle.sl.nodes.ArithmeticNodeFactory.*;
 
 public class NodeFactory {
 
@@ -49,7 +48,7 @@ public class NodeFactory {
     }
 
     public void startFunction() {
-        frameDescriptor = new FrameDescriptor(TypesGen.TYPES);
+        frameDescriptor = new FrameDescriptor(SLTypesGen.SLTYPES);
     }
 
     public void createFunction(StatementNode body, String name) {
@@ -57,19 +56,28 @@ public class NodeFactory {
     }
 
     public TypedNode createLocal(String name) {
-        return ReadLocalOpFactory.create(frameDescriptor.findOrAddFrameSlot(name));
+        return ReadLocalNodeFactory.create(frameDescriptor.findOrAddFrameSlot(name));
     }
 
     public TypedNode createStringLiteral(String value) {
-        return StringLiteralFactory.create(value);
+        return StringLiteralNodeFactory.create(value);
     }
 
     public StatementNode createAssignment(String name, TypedNode right) {
-        return WriteLocalOpFactory.create(right, frameDescriptor.findOrAddFrameSlot(name));
+        return WriteLocalNodeFactory.create(frameDescriptor.findOrAddFrameSlot(name), right);
     }
 
     public StatementNode createPrint(List<TypedNode> expressions) {
-        return new PrintNode(expressions, printOutput);
+        if (expressions.size() >= 1) {
+            StatementNode[] nodes = new StatementNode[expressions.size() + 1];
+            for (int i = 0; i < expressions.size(); i++) {
+                nodes[i] = PrintNodeFactory.create(expressions.get(i), printOutput);
+            }
+            nodes[expressions.size()] = new PrintLineNode(printOutput);
+            return new BlockNode(nodes);
+        } else  {
+            return new BlockNode(new StatementNode[]{new PrintLineNode(printOutput)});
+        }
     }
 
     public StatementNode createWhile(ConditionNode condition, StatementNode body) {
@@ -83,13 +91,17 @@ public class NodeFactory {
     public TypedNode createBinary(String operation, TypedNode left, TypedNode right) {
         switch (operation) {
             case "+":
-                return AddOpFactory.create(left, right);
+                return AddNodeFactory.create(left, right);
             case "*":
-                return MulOpFactory.create(left, right);
+                return MulNodeFactory.create(left, right);
+            case "/":
+                return DivNodeFactory.create(left, right);
+            case "-":
+                return SubNodeFactory.create(left, right);
             case "<":
-                return LessThanOpFactory.create(left, right);
+                return LessThanNodeFactory.create(left, right);
             case "&&":
-                return LogicalAndOpFactory.create(left, right);
+                return LogicalAndNodeFactory.create(left, right);
             default:
                 throw new RuntimeException("unexpected operation: " + operation);
         }
@@ -97,22 +109,22 @@ public class NodeFactory {
 
     public TypedNode createNumericLiteral(String value) {
         try {
-            return IntegerLiteralFactory.create(Integer.parseInt(value));
+            return IntegerLiteralNodeFactory.create(Integer.parseInt(value));
         } catch (NumberFormatException ex) {
-            return BigIntegerLiteralFactory.create(new BigInteger(value));
+            return BigIntegerLiteralNodeFactory.create(new BigInteger(value));
         }
     }
 
     public TypedNode createTime() {
-        return TimeOpFactory.create();
+        return TimeNodeFactory.create();
     }
 
     public StatementNode createReturn(TypedNode value) {
         FrameSlot slot = frameDescriptor.findOrAddFrameSlot("<retval>");
         if (returnValue == null) {
-            returnValue = ReadLocalOpFactory.create(slot);
+            returnValue = ReadLocalNodeFactory.create(slot);
         }
-        StatementNode write = WriteLocalOpFactory.create(value, slot);
+        StatementNode write = WriteLocalNodeFactory.create(slot, value);
         return new ReturnNode(write);
     }
 }

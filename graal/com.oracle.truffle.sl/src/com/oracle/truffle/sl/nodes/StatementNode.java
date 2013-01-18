@@ -23,9 +23,10 @@
 package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.*;
 
-public abstract class StatementNode extends Node {
+public abstract class StatementNode extends SLNode {
 
     public abstract void executeVoid(VirtualFrame frame);
+
 }

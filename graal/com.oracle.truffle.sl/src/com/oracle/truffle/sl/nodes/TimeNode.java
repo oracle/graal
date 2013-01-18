@@ -20,22 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.ops;
+package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.sl.types.*;
 
-@Operation(typeSystem = Types.class)
-public class StringLiteral {
+public abstract class TimeNode extends TypedNode {
 
-    private final String value;
-
-    public StringLiteral(String value) {
-        this.value = value;
-    }
+    public static final long START_TIME = System.currentTimeMillis();
 
     @Specialization
-    protected String doString() {
-        return value;
+    public int doInt() {
+        return (int) (System.currentTimeMillis() - START_TIME);
     }
 }

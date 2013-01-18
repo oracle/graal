@@ -20,41 +20,56 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.ops;
+package com.oracle.truffle.sl.nodes;
 
 import java.math.*;
 
 import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.sl.types.*;
 
 @SuppressWarnings("unused")
-@Operation(typeSystem = Types.class, values = {"condition"}, shortCircuitValues = {"ifPart", "elsePart"})
-public class IfOp {
+@ExecuteChildren({"conditionNode", "ifPartNode", "elsePartNode"})
+public abstract class ConditionalNode extends TypedNode {
 
-    @ShortCircuit("ifPart")
+    @Child
+    protected ConditionNode conditionNode;
+
+    @Child
+    protected TypedNode ifPartNode;
+
+    @Child
+    protected TypedNode elsePartNode;
+
+    public ConditionalNode(ConditionNode condition, TypedNode ifPart, TypedNode elsePart) {
+        this.conditionNode = adoptChild(condition);
+        this.ifPartNode = adoptChild(ifPart);
+        this.elsePartNode = adoptChild(elsePart);
+    }
+
+    public ConditionalNode(ConditionalNode condition) {
+        this(condition.conditionNode, condition.ifPartNode, condition.elsePartNode);
+    }
+
+    @ShortCircuit("ifPartNode")
     public boolean needsIfPart(boolean condition) {
         return condition;
     }
 
-    @ShortCircuit("ifPart")
+    @ShortCircuit("ifPartNode")
     public boolean needsIfPart(Object condition) {
-        if (TypesGen.TYPES.isBoolean(condition)) {
-            return TypesGen.TYPES.asBoolean(condition);
-        }
         throw new RuntimeException("operation not defined for type " + condition.getClass().getSimpleName());
     }
 
-    @ShortCircuit("elsePart")
+    @ShortCircuit("elsePartNode")
     public boolean needsElsePart(Object condition, boolean hasIfPart, Object ifPart) {
         return !hasIfPart;
     }
 
-    @ShortCircuit("elsePart")
+    @ShortCircuit("elsePartNode")
     public boolean needsElsePart(boolean condition, boolean hasIfPart, int ifPart) {
         return !hasIfPart;
     }
 
-    @ShortCircuit("elsePart")
+    @ShortCircuit("elsePartNode")
     public boolean needsElsePart(boolean condition, boolean hasIfPart, BigInteger ifPart) {
         return !hasIfPart;
     }
@@ -70,7 +85,7 @@ public class IfOp {
     }
 
     @Generic
-    public Object doGeneric(Object condition, boolean hasIfPart, Object ifPart, boolean hasElsePart, Object elsePart) {
+    public Object doGeneric(boolean condition, boolean hasIfPart, Object ifPart, boolean hasElsePart, Object elsePart) {
         return hasIfPart ? ifPart : elsePart;
     }
 }

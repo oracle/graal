@@ -20,25 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.tools;
+package com.oracle.truffle.sl.nodes;
 
-import com.oracle.truffle.api.nodes.*;
+import java.math.*;
 
-public class GraphPrinter {
+import com.oracle.truffle.api.codegen.*;
 
-    public static void print(Node root) {
-        print(root, 0);
+public abstract class BigIntegerLiteralNode extends TypedNode {
+
+    private final BigInteger value;
+
+    public BigIntegerLiteralNode(BigInteger value) {
+        this.value = value;
     }
 
-    private static void print(Node node, int level) {
-        for (int i = 0; i < level; i++) {
-            System.out.print("    ");
-        }
-        System.out.println(node == null ? "empty" : node.getClass().getSimpleName());
-        if (node != null) {
-            for (Node child : node.getChildren()) {
-                print(child, level + 1);
-            }
-        }
+    @Specialization
+    public BigInteger doBigInteger() {
+        return value;
     }
 }

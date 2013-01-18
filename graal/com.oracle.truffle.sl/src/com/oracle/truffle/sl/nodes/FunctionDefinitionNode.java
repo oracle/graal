@@ -24,16 +24,17 @@ package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.sl.types.*;
 
 public class FunctionDefinitionNode extends RootNode {
 
-    private final FrameDescriptor frameDescriptor;
-    private final String name;
     @Child
     private StatementNode body;
+
     @Child
     private TypedNode returnValue;
+
+    private final FrameDescriptor frameDescriptor;
+    private final String name;
 
     public FunctionDefinitionNode(StatementNode body, FrameDescriptor frameDescriptor, String name, TypedNode returnValue) {
         this.body = adoptChild(body);
@@ -41,6 +42,7 @@ public class FunctionDefinitionNode extends RootNode {
         this.name = name;
         this.returnValue = adoptChild(returnValue);
     }
+
 
     @Override
     public Object execute(VirtualFrame frame) {

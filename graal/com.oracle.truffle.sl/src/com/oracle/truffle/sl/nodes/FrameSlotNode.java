@@ -20,30 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.ops;
+package com.oracle.truffle.sl.nodes;
 
-import java.math.*;
+import com.oracle.truffle.api.frame.*;
 
-import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.api.intrinsics.*;
-import com.oracle.truffle.sl.types.*;
+public abstract class FrameSlotNode extends TypedNode implements FrameSlotTypeListener {
 
-@Operation(typeSystem = Types.class, values = {"left", "right"})
-public class MulOp {
+    protected final FrameSlot slot;
 
-    @Specialization
-    @SpecializationThrows(javaClass = ArithmeticException.class, transitionTo = "doBigInteger")
-    public int doInteger(int left, int right) {
-        return ExactMath.multiplyExact(left, right);
+    public FrameSlotNode(FrameSlot slot) {
+        this.slot = slot;
+        slot.registerOneShotTypeListener(this);
     }
 
-    @Specialization
-    public BigInteger doBigInteger(BigInteger left, BigInteger right) {
-        return left.multiply(right);
+    @Override
+    public void typeChanged(FrameSlot changedSlot, Class< ? > oldType) {
+        if (getParent() != null) {
+            replace(specialize(changedSlot.getType()));
+        }
     }
 
-    @Generic
-    public Object doGeneric(Object left, Object right) {
-        throw new RuntimeException("multiplication not defined for types " + left.getClass().getSimpleName() + ", " + right.getClass().getSimpleName());
-    }
+    protected abstract FrameSlotNode specialize(Class< ? > clazz);
 }

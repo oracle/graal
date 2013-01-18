@@ -28,6 +28,7 @@ public class WhileNode extends StatementNode {
 
     @Child
     private ConditionNode condition;
+
     @Child
     private StatementNode body;
 
