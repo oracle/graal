@@ -29,7 +29,19 @@ import com.oracle.graal.nodes.cfg.*;
 
 /**
  * Computes an ordering of the block that can be used by the linear scan register allocator and the machine code
- * generator.
+ * generator. The machine code generation order will start with the first block and produce a straight sequence
+ * always following the most likely successor. Then it will continue with the most likely path that was left out during
+ * this process. The process iteratively continues until all blocks are scheduled. Additionally, it is guaranteed that
+ * all blocks of a loop are scheduled before any block following the loop is scheduled.
+ *
+ * The machine code generator order includes reordering of loop headers such that the backward jump is a conditional jump if there
+ * is only one loop end block. Additionally, the target of loop backward jumps are always marked as aligned. Aligning the target of conditional
+ * jumps does not bring a measurable benefit and is therefore avoided to keep the code size small.
+ *
+ * The linear scan register allocator order has an additional mechanism that prevents merge nodes from being scheduled if there is
+ * at least one highly likely predecessor still unscheduled. This increases the probability that the merge node and the corresponding
+ * predecessor are more closely together in the schedule thus decreasing the probability for inserted phi moves. Also, the algorithm sets
+ * the linear scan order number of the block that corresponds to its index in the linear scan order.
  */
 public final class ComputeBlockOrder {
 
