@@ -112,7 +112,7 @@ public final class ComputeBlockOrder {
         Block mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks);
         enqueueSuccessors(block, worklist, visitedBlocks);
         if (mostLikelySuccessor != null) {
-            if (!mostLikelySuccessor.isLoopHeader() && mostLikelySuccessor.getPredecessors().size() > 1) {
+            if (!mostLikelySuccessor.isLoopHeader() && mostLikelySuccessor.getPredecessorCount() > 1) {
                 // We are at a merge. Check probabilities of predecessors that are not yet scheduled.
                 double unscheduledSum = 0.0;
                 for (Block pred : mostLikelySuccessor.getPredecessors()) {

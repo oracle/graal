@@ -858,7 +858,7 @@ public final class LinearScan {
                 reportFailure(numBlocks);
             }
 
-            TTY.println("preds=" + startBlock.getPredecessors().size() + ", succs=" + startBlock.getSuccessors().size());
+            TTY.println("preds=" + startBlock.getPredecessorCount() + ", succs=" + startBlock.getSuccessorCount());
             TTY.println("startBlock-ID: " + startBlock.getId());
 
             // bailout of if this occurs in product mode.
@@ -917,7 +917,7 @@ public final class LinearScan {
                                 definedIn.add(successor);
                             }
                         } else {
-                            if (++hitCount[successor.getId()] == successor.getPredecessors().size()) {
+                            if (++hitCount[successor.getId()] == successor.getPredecessorCount()) {
                                 definedIn.add(successor);
                             }
                         }
@@ -1540,8 +1540,8 @@ public final class LinearScan {
 
                 // check if block is empty (only label and branch)
                 if (instructions.size() == 2) {
-                    Block pred = block.getPredecessors().get(0);
-                    Block sux = block.getSuccessors().get(0);
+                    Block pred = block.getFirstPredecessor();
+                    Block sux = block.getFirstSuccessor();
 
                     // prevent optimization of two consecutive blocks
                     if (!blockCompleted.get(pred.getLinearScanNumber()) && !blockCompleted.get(sux.getLinearScanNumber())) {

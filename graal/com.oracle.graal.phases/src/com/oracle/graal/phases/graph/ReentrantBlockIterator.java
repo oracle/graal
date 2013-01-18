@@ -64,8 +64,8 @@ public final class ReentrantBlockIterator {
             info.endStates.add(blockEndStates.get(predecessors.get(i).getEndNode()));
         }
         for (Block loopExit : loop.exits) {
-            assert loopExit.getPredecessors().size() == 1;
-            T exitState = blockEndStates.get(loopExit.getPredecessors().get(0).getEndNode());
+            assert loopExit.getPredecessorCount() == 1;
+            T exitState = blockEndStates.get(loopExit.getFirstPredecessor().getEndNode());
             assert exitState != null;
             info.exitStates.add(exitState);
         }
@@ -102,7 +102,7 @@ public final class ReentrantBlockIterator {
                             int i = 0;
                             assert loop.exits.size() == exitStates.size();
                             for (Block exit : loop.exits) {
-                                blockEndStates.put(exit.getPredecessors().get(0).getEndNode(), exitStates.get(i++));
+                                blockEndStates.put(exit.getFirstPredecessor().getEndNode(), exitStates.get(i++));
                                 blockQueue.addFirst(exit);
                             }
                         }

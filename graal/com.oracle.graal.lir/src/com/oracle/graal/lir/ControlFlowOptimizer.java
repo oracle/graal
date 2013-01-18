@@ -79,7 +79,7 @@ public final class ControlFlowOptimizer {
                 for (Block pred : block.getPredecessors()) {
                     Collections.replaceAll(pred.getSuccessors(), block, other);
                 }
-                for (int i = 0; i < other.getPredecessors().size(); i++) {
+                for (int i = 0; i < other.getPredecessorCount(); i++) {
                     if (other.getPredecessors().get(i) == block) {
                         other.getPredecessors().remove(i);
                         other.getPredecessors().addAll(i, block.getPredecessors());

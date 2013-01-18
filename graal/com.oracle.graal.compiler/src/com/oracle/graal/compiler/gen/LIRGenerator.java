@@ -289,12 +289,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
 
         if (block == lir.cfg.getStartBlock()) {
-            assert block.getPredecessors().size() == 0;
+            assert block.getPredecessorCount() == 0;
             currentLockCount = 0;
             emitPrologue();
 
         } else {
-            assert block.getPredecessors().size() > 0;
+            assert block.getPredecessorCount() > 0;
 
             currentLockCount = -1;
             for (Block pred : block.getPredecessors()) {

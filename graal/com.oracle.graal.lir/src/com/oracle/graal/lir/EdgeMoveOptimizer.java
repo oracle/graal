@@ -213,7 +213,7 @@ public final class EdgeMoveOptimizer {
                 // the same blocks.
                 return;
             }
-            assert sux.getPredecessors().get(0) == block : "invalid control flow";
+            assert sux.getFirstPredecessor() == block : "invalid control flow";
 
             // ignore the label at the beginning of the block
             List<LIRInstruction> seq = suxInstructions.subList(1, suxInstructions.size());

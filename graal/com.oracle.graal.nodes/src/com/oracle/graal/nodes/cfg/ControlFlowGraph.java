@@ -226,9 +226,8 @@ public class ControlFlowGraph {
 
                 for (LoopExitNode exit : loopBegin.loopExits()) {
                     Block exitBlock = nodeToBlock.get(exit);
-                    List<Block> predecessors = exitBlock.getPredecessors();
-                    assert predecessors.size() == 1;
-                    computeLoopBlocks(predecessors.get(0), loop);
+                    assert exitBlock.getPredecessorCount() == 1;
+                    computeLoopBlocks(exitBlock.getFirstPredecessor(), loop);
                     loop.exits.add(exitBlock);
                 }
                 List<Block> unexpected = new LinkedList<>();
@@ -280,15 +279,12 @@ public class ControlFlowGraph {
     }
 
     private void computeDominators() {
-        assert reversePostOrder[0].getPredecessors().size() == 0 : "start block has no predecessor and therefore no dominator";
+        assert reversePostOrder[0].getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
         for (int i = 1; i < reversePostOrder.length; i++) {
             Block block = reversePostOrder[i];
-            List<Block> predecessors = block.getPredecessors();
-            assert predecessors.size() > 0;
-
-            Block dominator = predecessors.get(0);
-            for (int j = 1; j < predecessors.size(); j++) {
-                Block pred = predecessors.get(j);
+            assert block.getPredecessorCount() > 0;
+            Block dominator = null;
+            for (Block pred : block.getPredecessors()) {
                 if (!pred.isLoopEnd()) {
                     dominator = commonDominator(dominator, pred);
                 }
@@ -306,6 +302,12 @@ public class ControlFlowGraph {
     }
 
     public static Block commonDominator(Block a, Block b) {
+        if (a == null) {
+            return b;
+        }
+        if (b == null) {
+            return a;
+        }
         Block iterA = a;
         Block iterB = b;
         while (iterA != iterB) {

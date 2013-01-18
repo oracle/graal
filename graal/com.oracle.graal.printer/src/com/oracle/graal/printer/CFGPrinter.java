@@ -241,7 +241,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println("HIR");
         out.disableIndentation();
 
-        if (block.getPredecessors().size() == 0) {
+        if (block.getPredecessorCount() == 0) {
             // Currently method parameters are not in the schedule, so print them separately here.
             for (ValueNode param : block.getBeginNode().graph().getNodes(LocalNode.class)) {
                 printNode(param, false);
