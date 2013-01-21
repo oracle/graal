@@ -36,9 +36,9 @@ import com.oracle.graal.hotspot.meta.*;
 public final class CompilationStatistics {
 
     private static final long RESOLUTION = 100000000;
-    private static final boolean TIMELINE_ENABLED = System.getProperty("stats.timeline.file") != null;
+    private static final String TIMELINE_FILE = System.getProperty("stats.timeline.file");
     private static final boolean COMPILATIONSTATS_ENABLED = System.getProperty("stats.compilations.file") != null;
-    private static final boolean ENABLED = TIMELINE_ENABLED || COMPILATIONSTATS_ENABLED;
+    private static final boolean ENABLED = TIMELINE_FILE != null || COMPILATIONSTATS_ENABLED;
 
     private static final CompilationStatistics DUMMY = new CompilationStatistics(null);
 
@@ -133,8 +133,8 @@ public final class CompilationStatistics {
             zeroTime = System.nanoTime();
 
             Date now = new Date();
-            String dateString = (now.getYear() + 1900) + "_" + (now.getMonth() + 1) + "_" + now.getDate() + " " + now.getHours() + "_" + now.getMinutes() + "_" + now.getSeconds();
-            try (PrintStream out = new PrintStream("compilations " + dateString + " " + dumpName + ".csv")) {
+            String dateString = (now.getYear() + 1900) + "-" + (now.getMonth() + 1) + "-" + now.getDate() + "-" + now.getHours() + "" + now.getMinutes();
+            try (PrintStream out = new PrintStream("compilations_" + dateString + "_" + dumpName + ".csv")) {
                 // output the list of all compilations
 
                 Field[] declaredFields = CompilationStatistics.class.getDeclaredFields();
@@ -164,11 +164,11 @@ public final class CompilationStatistics {
                 }
             }
 
-            String timelineFile = System.getProperty("stats.timeline.file");
+            String timelineFile = TIMELINE_FILE;
             if (timelineFile == null || timelineFile.isEmpty()) {
-                timelineFile = "timeline " + dateString;
+                timelineFile = "timeline_" + dateString;
             }
-            try (FileOutputStream fos = new FileOutputStream(timelineFile + " " + dumpName + ".csv", true); PrintStream out = new PrintStream(fos)) {
+            try (FileOutputStream fos = new FileOutputStream(timelineFile + "_" + dumpName + ".csv", true); PrintStream out = new PrintStream(fos)) {
 
                 long[] timeSpent = new long[10000];
                 int maxTick = 0;
