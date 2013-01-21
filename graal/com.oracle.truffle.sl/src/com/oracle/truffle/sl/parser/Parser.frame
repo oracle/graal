@@ -45,7 +45,7 @@ public class Parser {
     public final Scanner scanner;
     public final Errors errors;
     private final NodeFactory factory;
-	-->declarations
+    -->declarations
     public Parser(Scanner scanner, NodeFactory factory) {
         this.scanner = scanner;
         this.factory = factory;
