@@ -31,14 +31,14 @@ import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code AccessMonitorNode} is the base class of both monitor acquisition and release.
- * <br>
+ * <p>
  * The VM needs information about monitors in the debug information. This information is built from
  * the nesting level of {@link MonitorEnterNode} when the LIR is constructed. Therefore, monitor
  * nodes must not be removed from the graph unless it is guaranteed that the nesting level does not change.
  * For example, you must not remove a {@link MonitorEnterNode} for a thread-local object or for a recursive locking.
  * Instead, mark the node as {@link #eliminated}. This makes sure that the meta data still contains the complete
  * locking hierarchy.
- * <br>
+ * <p>
  * The Java bytecode specification allows non-balanced locking. Graal does not handle such cases and throws a
  * {@link BailoutException} instead during graph building.
  */

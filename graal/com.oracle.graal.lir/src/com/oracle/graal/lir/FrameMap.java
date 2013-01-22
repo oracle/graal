@@ -38,7 +38,7 @@ import com.oracle.graal.asm.*;
  * Therefore, outgoing arguments are indexed from the stack pointer, while spill slots
  * are indexed from the beginning of the frame (and the total frame size has to be added
  * to get the actual offset from the stack pointer).
- * <br>
+ * <p>
  * This is the format of a stack frame:
  * <pre>
  *   Base       Contents
@@ -68,7 +68,7 @@ import com.oracle.graal.asm.*;
  * </pre>
  * The spill slot area also includes stack allocated memory blocks (ALLOCA blocks). The size
  * of such a block may be greater than the size of a normal spill slot or the word size.
- * <br>
+ * <p>
  * A runtime has two ways to reserve space in the stack frame for its own use: <ul>
  * <li>A memory block somewhere in the frame of size {@link CodeCacheProvider#getCustomStackAreaSize()}. The offset
  *     to this block is returned in {@link CompilationResult#getCustomStackAreaOffset()}.

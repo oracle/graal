@@ -31,11 +31,11 @@ import com.oracle.graal.graph.iterators.*;
 
 
 /**
- * This class is the base class for all nodes, it represent a node which can be inserted in a {@link Graph}.<br>
+ * This class is the base class for all nodes, it represent a node which can be inserted in a {@link Graph}.<p>
  * Once a node has been added to a graph, it has a graph-unique {@link #id()}. Edges in the subclasses are represented
  * with annotated fields. There are two kind of edges : {@link Input} and {@link Successor}. If a field, of a type
  * compatible with {@link Node}, annotated with either {@link Input} and {@link Successor} is not null, then there is an
- * edge from this node to the node this field points to.<br>
+ * edge from this node to the node this field points to.<p>
  * Nodes which are be value numberable should implement the {@link ValueNumberable} interface.
  *
  * <h1>Assertions and Verification</h1>

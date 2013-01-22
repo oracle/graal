@@ -34,7 +34,7 @@ public interface Pointer extends Unsigned {
     Object toObject();
 
     /**
-     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -45,7 +45,7 @@ public interface Pointer extends Unsigned {
     byte readByte(WordBase offset);
 
     /**
-     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -56,7 +56,7 @@ public interface Pointer extends Unsigned {
     char readChar(WordBase offset);
 
     /**
-     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -67,7 +67,7 @@ public interface Pointer extends Unsigned {
     short readShort(WordBase offset);
 
     /**
-     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -78,7 +78,7 @@ public interface Pointer extends Unsigned {
     int readInt(WordBase offset);
 
     /**
-     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -89,7 +89,7 @@ public interface Pointer extends Unsigned {
     long readLong(WordBase offset);
 
     /**
-     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -100,7 +100,7 @@ public interface Pointer extends Unsigned {
     float readFloat(WordBase offset);
 
     /**
-     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -111,7 +111,7 @@ public interface Pointer extends Unsigned {
     double readDouble(WordBase offset);
 
     /**
-     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -122,7 +122,7 @@ public interface Pointer extends Unsigned {
     Word readWord(WordBase offset);
 
     /**
-     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -205,9 +205,9 @@ public interface Pointer extends Unsigned {
     Object readObject(int offset);
 
     /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The caller guarantees that the memory content is final, i.e., never changing. The compiler can therefore
-     * eliminate memory accesses more aggressively. <br>
+     * eliminate memory accesses more aggressively. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -218,9 +218,9 @@ public interface Pointer extends Unsigned {
     byte readFinalByte(WordBase offset);
 
     /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The caller guarantees that the memory content is final, i.e., never changing. The compiler can therefore
-     * eliminate memory accesses more aggressively. <br>
+     * eliminate memory accesses more aggressively. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -231,9 +231,9 @@ public interface Pointer extends Unsigned {
     char readFinalChar(WordBase offset);
 
     /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The caller guarantees that the memory content is final, i.e., never changing. The compiler can therefore
-     * eliminate memory accesses more aggressively. <br>
+     * eliminate memory accesses more aggressively. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -244,9 +244,9 @@ public interface Pointer extends Unsigned {
     short readFinalShort(WordBase offset);
 
     /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The caller guarantees that the memory content is final, i.e., never changing. The compiler can therefore
-     * eliminate memory accesses more aggressively. <br>
+     * eliminate memory accesses more aggressively. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -257,9 +257,9 @@ public interface Pointer extends Unsigned {
     int readFinalInt(WordBase offset);
 
     /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The caller guarantees that the memory content is final, i.e., never changing. The compiler can therefore
-     * eliminate memory accesses more aggressively. <br>
+     * eliminate memory accesses more aggressively. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -270,9 +270,9 @@ public interface Pointer extends Unsigned {
     long readFinalLong(WordBase offset);
 
     /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The caller guarantees that the memory content is final, i.e., never changing. The compiler can therefore
-     * eliminate memory accesses more aggressively. <br>
+     * eliminate memory accesses more aggressively. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -283,9 +283,9 @@ public interface Pointer extends Unsigned {
     float readFinalFloat(WordBase offset);
 
     /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The caller guarantees that the memory content is final, i.e., never changing. The compiler can therefore
-     * eliminate memory accesses more aggressively. <br>
+     * eliminate memory accesses more aggressively. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -296,9 +296,9 @@ public interface Pointer extends Unsigned {
     double readFinalDouble(WordBase offset);
 
     /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The caller guarantees that the memory content is final, i.e., never changing. The compiler can therefore
-     * eliminate memory accesses more aggressively. <br>
+     * eliminate memory accesses more aggressively. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -309,9 +309,9 @@ public interface Pointer extends Unsigned {
     Word readFinalWord(WordBase offset);
 
     /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Reads the constant memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The caller guarantees that the memory content is final, i.e., never changing. The compiler can therefore
-     * eliminate memory accesses more aggressively. <br>
+     * eliminate memory accesses more aggressively. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -322,7 +322,7 @@ public interface Pointer extends Unsigned {
     Object readFinalObject(WordBase offset);
 
     /**
-     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -333,7 +333,7 @@ public interface Pointer extends Unsigned {
     void writeByte(WordBase offset, byte val);
 
     /**
-     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -344,7 +344,7 @@ public interface Pointer extends Unsigned {
     void writeChar(WordBase offset, char val);
 
     /**
-     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -355,7 +355,7 @@ public interface Pointer extends Unsigned {
     void writeShort(WordBase offset, Short val);
 
     /**
-     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -366,7 +366,7 @@ public interface Pointer extends Unsigned {
     void writeInt(WordBase offset, int val);
 
     /**
-     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -377,7 +377,7 @@ public interface Pointer extends Unsigned {
     void writeLong(WordBase offset, long val);
 
     /**
-     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -388,7 +388,7 @@ public interface Pointer extends Unsigned {
     void writeFloat(WordBase offset, float val);
 
     /**
-     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -399,7 +399,7 @@ public interface Pointer extends Unsigned {
     void writeDouble(WordBase offset, double val);
 
     /**
-     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).
@@ -410,7 +410,7 @@ public interface Pointer extends Unsigned {
     void writeWord(WordBase offset, WordBase val);
 
     /**
-     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <br>
+     * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in bytes. <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is {@link WordBase} to avoid the
      * frequent casts to of {@link Unsigned} values (where the caller knows that the highest-order bit of the unsigned
      * value is never used).

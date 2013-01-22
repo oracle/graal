@@ -28,11 +28,11 @@ import java.util.*;
  * A buffer to enqueue updates to a list. This avoids frequent re-sizing of the list and copying of list elements
  * when insertions are done at multiple positions of the list. Additionally, it ensures that the list is not modified
  * while it is, e.g., iterated, and instead only modified once after the iteration is done.
- * <br>
+ * <p>
  * The buffer uses internal data structures to store the enqueued updates. To avoid allocations, a buffer can be re-used.
  * Call the methods in the following order:
  * {@link #init}, {@link #append}, {@link #append}, ..., {@link #finish()}, {@link #init}, ...
- * <br>
+ * <p>
  * Note: This class does not depend on LIRInstruction, so we could make it a generic utility class.
  */
 public final class LIRInsertionBuffer {

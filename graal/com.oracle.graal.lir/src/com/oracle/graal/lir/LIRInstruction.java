@@ -281,7 +281,7 @@ public abstract class LIRInstruction {
     /**
      * Iterates all register hints for the specified value, i.e., all preferred candidates for the register to be
      * assigned to the value.
-     * <br>
+     * <p>
      * Subclasses can override this method. The default implementation processes all Input operands as the hints for
      * an Output operand, and all Output operands as the hints for an Input operand.
      *

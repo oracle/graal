@@ -144,7 +144,7 @@ public interface Unsigned extends WordBase {
     boolean aboveOrEqual(Unsigned val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this + val)}. <br>
+     * Returns a Unsigned whose value is {@code (this + val)}. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -154,7 +154,7 @@ public interface Unsigned extends WordBase {
     Unsigned add(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this - val)}. <br>
+     * Returns a Unsigned whose value is {@code (this - val)}. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -164,7 +164,7 @@ public interface Unsigned extends WordBase {
     Unsigned subtract(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this * val)}. <br>
+     * Returns a Unsigned whose value is {@code (this * val)}. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -174,7 +174,7 @@ public interface Unsigned extends WordBase {
     Unsigned multiply(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this / val)}. <br>
+     * Returns a Unsigned whose value is {@code (this / val)}. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -184,7 +184,7 @@ public interface Unsigned extends WordBase {
     Unsigned unsignedDivide(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this % val)}. <br>
+     * Returns a Unsigned whose value is {@code (this % val)}. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -194,7 +194,7 @@ public interface Unsigned extends WordBase {
     Unsigned unsignedRemainder(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this << n)}. <br>
+     * Returns a Unsigned whose value is {@code (this << n)}. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -204,7 +204,7 @@ public interface Unsigned extends WordBase {
     Unsigned shiftLeft(int n);
 
     /**
-     * Returns a Unsigned whose value is {@code (this >>> n)}. No sign extension is performed. <br>
+     * Returns a Unsigned whose value is {@code (this >>> n)}. No sign extension is performed. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -214,7 +214,7 @@ public interface Unsigned extends WordBase {
     Unsigned unsignedShiftRight(int n);
 
     /**
-     * Returns a Unsigned whose value is {@code (this & val)}. <br>
+     * Returns a Unsigned whose value is {@code (this & val)}. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -224,7 +224,7 @@ public interface Unsigned extends WordBase {
     Unsigned and(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this | val)}. <br>
+     * Returns a Unsigned whose value is {@code (this | val)}. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -234,7 +234,7 @@ public interface Unsigned extends WordBase {
     Unsigned or(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this ^ val)}. <br>
+     * Returns a Unsigned whose value is {@code (this ^ val)}. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -244,7 +244,7 @@ public interface Unsigned extends WordBase {
     Unsigned xor(int val);
 
     /**
-     * Compares this Unsigned with the specified value. <br>
+     * Compares this Unsigned with the specified value. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -254,7 +254,7 @@ public interface Unsigned extends WordBase {
     boolean belowThan(int val);
 
     /**
-     * Compares this Unsigned with the specified value. <br>
+     * Compares this Unsigned with the specified value. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -264,7 +264,7 @@ public interface Unsigned extends WordBase {
     boolean belowOrEqual(int val);
 
     /**
-     * Compares this Unsigned with the specified value. <br>
+     * Compares this Unsigned with the specified value. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *
@@ -274,7 +274,7 @@ public interface Unsigned extends WordBase {
     boolean aboveThan(int val);
 
     /**
-     * Compares this Unsigned with the specified value. <br>
+     * Compares this Unsigned with the specified value. <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
      * is only well-defined for positive right operands.
      *

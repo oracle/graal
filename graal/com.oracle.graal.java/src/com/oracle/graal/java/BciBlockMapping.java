@@ -36,31 +36,31 @@ import com.oracle.graal.phases.*;
 /**
  * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow graph (CFG).
  * It makes one linear passes over the bytecodes to build the CFG where it detects block headers and connects them.
- * <br>
+ * <p>
  * It also creates exception dispatch blocks for exception handling. These blocks are between a bytecode that might
  * throw an exception, and the actual exception handler entries, and are later used to create the type checks with the
  * exception handler catch types. If a bytecode is covered by an exception handler, this bytecode ends the basic block.
  * This guarantees that a) control flow cannot be transferred to an exception dispatch block in the middle of a block, and
  * b) that every block has at most one exception dispatch block (which is always the last entry in the successor list).
- * <br>
+ * <p>
  * If a bytecode is covered by multiple exception handlers, a chain of exception dispatch blocks is created so that
  * multiple exception handler types can be checked. The chains are re-used if multiple bytecodes are covered by the same
  * exception handlers.
- * <br>
+ * <p>
  * Note that exception unwinds, i.e., bytecodes that can throw an exception but the exception is not handled in this method,
  * do not end a basic block. Not modeling the exception unwind block reduces the complexity of the CFG, and there is no
  * algorithm yet where the exception unwind block would matter.
- * <br>
+ * <p>
  * The class also handles subroutines (jsr and ret bytecodes): subroutines are inlined by duplicating the subroutine blocks.
  * This is limited to simple, structured subroutines with a maximum subroutine nesting of 4. Otherwise, a bailout is thrown.
- * <br>
+ * <p>
  * Loops in the methods are detected. If a method contains an irreducible loop (a loop with more than one entry), a bailout is
  * thrown. This simplifies the compiler later on since only structured loops need to be supported.
- * <br>
+ * <p>
  * A data flow analysis computes the live local variables from the point of view of the interpreter. The result is used later
  * to prune frame states, i.e., remove local variable entries that are guaranteed to be never used again (even in the case of
  * deoptimization).
- * <br>
+ * <p>
  * The algorithms and analysis in this class are conservative and do not use any assumptions or profiling information.
  */
 public final class BciBlockMapping {
