@@ -283,6 +283,7 @@ public class NodeData extends Template {
         return specializations;
     }
 
+    // @formatter:off
     public String dump() {
         StringBuilder b = new StringBuilder();
         b.append(String.format("[name = %s\n" +
@@ -300,6 +301,7 @@ public class NodeData extends Template {
                         ));
         return b.toString();
     }
+    // @formatter:on
 
     private static String dumpList(Object[] array) {
         if (array == null) {
