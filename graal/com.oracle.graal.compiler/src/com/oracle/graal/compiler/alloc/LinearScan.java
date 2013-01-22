@@ -653,7 +653,6 @@ public final class LinearScan {
      * Computes local live sets (i.e. {@link BlockData#liveGen} and {@link BlockData#liveKill}) separately for each block.
      */
     void computeLocalLiveSets() {
-        int numBlocks = blockCount();
         int liveSize = liveSetSize();
 
         intervalInLoop = new BitMap2D(operandSize(), numLoops());
