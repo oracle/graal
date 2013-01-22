@@ -29,6 +29,7 @@ package com.oracle.graal.hotspot.bridge;
  */
 public interface Marks {
 
+    // @formatter:off
     // These constants need to correspond to those of the same name in graalCodeInstaller.hpp
     Integer MARK_VERIFIED_ENTRY            = 0x0001;
     Integer MARK_UNVERIFIED_ENTRY          = 0x0002;

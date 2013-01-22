@@ -40,6 +40,7 @@ import com.oracle.graal.lir.StandardOp.FallThroughOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 
+// @formatter:off
 public class AMD64ControlFlow {
 
     public static class ReturnOp extends AMD64LIRInstruction {

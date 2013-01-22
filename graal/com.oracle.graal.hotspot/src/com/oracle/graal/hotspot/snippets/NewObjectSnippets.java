@@ -57,6 +57,8 @@ import com.oracle.graal.word.*;
  */
 public class NewObjectSnippets implements SnippetsInterface {
 
+    // @formatter:off
+
     @Snippet
     public static Word allocate(@Parameter("size") int size) {
         Word thread = thread();
@@ -225,6 +227,8 @@ public class NewObjectSnippets implements SnippetsInterface {
             }
         }
     }
+
+    // @formatter:on
 
     public static class Templates extends AbstractTemplates<NewObjectSnippets> {
 

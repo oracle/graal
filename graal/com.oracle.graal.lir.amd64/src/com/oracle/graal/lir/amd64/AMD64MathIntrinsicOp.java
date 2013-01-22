@@ -29,6 +29,7 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
 
+// @formatter:off
 public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     public enum IntrinsicOpcode  {
         SQRT,

@@ -1380,6 +1380,7 @@ public final class GraphBuilderPhase extends Phase {
     private void connectLoopEndToBegin() {
         for (LoopBeginNode begin : currentGraph.getNodes(LoopBeginNode.class)) {
             if (begin.loopEnds().isEmpty()) {
+                // @formatter:off
                 // Remove loop header without loop ends.
                 // This can happen with degenerated loops like this one:
                 // for (;;) {
@@ -1388,6 +1389,7 @@ public final class GraphBuilderPhase extends Phase {
                 //     } catch (UnresolvedException iioe) {
                 //     }
                 // }
+                // @formatter:on
                 assert begin.forwardEndCount() == 1;
                 currentGraph.reduceDegenerateLoopBegin(begin);
             } else {
@@ -1590,6 +1592,7 @@ public final class GraphBuilderPhase extends Phase {
         int cpi;
 
         // Checkstyle: stop
+        // @formatter:off
         switch (opcode) {
             case NOP            : /* nothing to do */ break;
             case ACONST_NULL    : frameState.apush(appendConstant(Constant.NULL_OBJECT)); break;
@@ -1796,6 +1799,7 @@ public final class GraphBuilderPhase extends Phase {
             default:
                 throw new BailoutException("Unsupported opcode " + opcode + " (" + nameOf(opcode) + ") [bci=" + bci + "]");
         }
+        // @formatter:on
         // Checkstyle: resume
     }
 

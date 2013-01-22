@@ -203,6 +203,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         regConfig = createRegisterConfig(false);
         globalStubRegConfig = createRegisterConfig(true);
 
+        // @formatter:off
+
         addRuntimeCall(UNWIND_EXCEPTION, config.unwindExceptionStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
@@ -270,6 +272,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    object */ javaCallingConvention(Kind.Object,
                         /* arg1:     flags */                       Kind.Int));
+
+        // @formatter:on
     }
 
 

@@ -60,6 +60,8 @@ public class CheckCastSnippets implements SnippetsInterface {
     @NodeIntrinsic(BreakpointNode.class)
     static native void bkpt(Object object, Word hub, Word objectHub);
 
+    // @formatter:off
+
     /**
      * Type test used when the type being tested against is a final type.
      */
@@ -231,6 +233,8 @@ public class CheckCastSnippets implements SnippetsInterface {
         secondariesMiss.inc();
         return false;
     }
+
+    // @formatter:on
 
     public static class Templates extends AbstractTemplates<CheckCastSnippets> {
 

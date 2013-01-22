@@ -63,6 +63,7 @@ public class BytecodeDisassembler {
             String mnemonic = Bytecodes.nameOf(opcode);
             buf.append(String.format("%4d: %-14s", bci, mnemonic));
             if (stream.nextBCI() > bci + 1) {
+                // @formatter:off
                 switch (opcode) {
                     case BIPUSH         : buf.append(stream.readByte()); break;
                     case SIPUSH         : buf.append(stream.readShort()); break;
@@ -221,6 +222,7 @@ public class BytecodeDisassembler {
                         break;
                     }
                 }
+                // @formatter:on
             }
             buf.append(String.format("%n"));
             stream.next();

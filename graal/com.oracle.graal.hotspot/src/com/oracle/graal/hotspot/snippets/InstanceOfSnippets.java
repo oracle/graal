@@ -56,6 +56,8 @@ import com.oracle.graal.word.*;
  */
 public class InstanceOfSnippets implements SnippetsInterface {
 
+    // @formatter:off
+
     /**
      * A test against a final type.
      */
@@ -191,6 +193,8 @@ public class InstanceOfSnippets implements SnippetsInterface {
         }
         return trueValue;
     }
+
+    // @formatter:on
 
     public static class Templates extends InstanceOfSnippetsTemplates<InstanceOfSnippets> {
 

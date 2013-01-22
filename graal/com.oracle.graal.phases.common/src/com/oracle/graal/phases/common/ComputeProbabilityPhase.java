@@ -31,22 +31,23 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 
+/**
+ * Computes probabilities for nodes in a graph.
+ * <p>
+ * The computation of absolute probabilities works in three steps:
+ * <ol>
+ * <li>{@link PropagateProbability} traverses the graph in post order (merges after their ends, ...) and keeps track of the "probability state".
+ *   Whenever it encounters a {@link ControlSplitNode} it uses the split's probability information to divide the probability upon the successors.
+ *   Whenever it encounters an {@link Invoke} it assumes that the exception edge is unlikely and propagates the whole probability to the normal successor.
+ *   Whenever it encounters a {@link MergeNode} it sums up the probability of all predecessors.
+ *   It also maintains a set of active loops (whose {@link LoopBeginNode} has been visited) and builds def/use information for step 2.</li>
+ * <li></li>
+ * <li>{@link PropagateLoopFrequency} propagates the loop frequencies and multiplies each {@link FixedNode}'s probability with its loop frequency.</li>
+ * </ol>
+ * TODO: add exception probability information to Invokes
+ */
 public class ComputeProbabilityPhase extends Phase {
     private static final double EPSILON = 1d / Integer.MAX_VALUE;
-
-    /*
-     * The computation of absolute probabilities works in three steps:
-     *
-     * - The first step, "PropagateProbability", traverses the graph in post order (merges after their ends, ...) and keeps track of the "probability state".
-     *   Whenever it encounters a ControlSplit it uses the split's probability information to divide the probability upon the successors.
-     *   Whenever it encounters an Invoke it assumes that the exception edge is unlikely and propagates the whole probability to the normal successor.
-     *   Whenever it encounters a Merge it sums up the probability of all predecessors.
-     *   It also maintains a set of active loops (whose LoopBegin has been visited) and builds def/use information for the second step.
-     *
-     * - The third step propagates the loop frequencies and multiplies each FixedNode's probability with its loop frequency.
-     *
-     *   TODO: add exception probability information to Invokes
-     */
 
     @Override
     protected void run(StructuredGraph graph) {

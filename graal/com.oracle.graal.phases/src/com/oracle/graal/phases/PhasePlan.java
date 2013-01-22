@@ -30,6 +30,7 @@ import com.oracle.graal.nodes.*;
  * Tells the compiler about additional phases that need to be executed during compilation.
  */
 public class PhasePlan {
+    // @formatter:off
     /**
      * The compilation is split into the following sections:
      * ========================================================================
@@ -52,6 +53,7 @@ public class PhasePlan {
         MID_LEVEL,
         LOW_LEVEL
     }
+    // @formatter:on
 
     @SuppressWarnings("unchecked")
     private final ArrayList<Phase>[] phases = new ArrayList[PhasePosition.values().length];

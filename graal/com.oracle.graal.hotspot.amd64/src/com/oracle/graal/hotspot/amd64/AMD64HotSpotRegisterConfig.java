@@ -34,6 +34,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 
+// @formatter:off
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     // be careful - the contents of this array are duplicated in graal_CodeInstaller.cpp

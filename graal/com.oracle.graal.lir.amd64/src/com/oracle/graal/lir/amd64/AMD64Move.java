@@ -38,6 +38,7 @@ import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.*;
 
+// @formatter:off
 public class AMD64Move {
 
     @Opcode("MOVE")
