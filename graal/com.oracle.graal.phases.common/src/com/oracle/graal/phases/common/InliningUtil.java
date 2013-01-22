@@ -200,16 +200,36 @@ public class InliningUtil {
             return computeInliningLevel(invoke);
         }
 
-        protected static StructuredGraph getGraph(final ResolvedJavaMethod concrete, final InliningCallback callback) {
+        protected static void inline(Invoke invoke, ResolvedJavaMethod concrete, InliningCallback callback, Assumptions assumptions, boolean receiverNullCheck) {
+            Class< ? extends FixedWithNextNode> macroNodeClass = getMacroNodeClass(concrete);
+            if (macroNodeClass != null) {
+                StructuredGraph graph = (StructuredGraph) invoke.graph();
+                assert invoke instanceof InvokeNode;
+                FixedWithNextNode macroNode;
+                try {
+                    macroNode = macroNodeClass.getConstructor(InvokeNode.class).newInstance(invoke);
+                } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
+                    throw new GraalInternalError(e).addContext(invoke.node()).addContext("macroSubstitution", macroNodeClass);
+                }
+                CallTargetNode callTarget = invoke.callTarget();
+                graph.replaceFixedWithFixed((InvokeNode) invoke, graph.add(macroNode));
+                GraphUtil.killWithUnusedFloatingInputs(callTarget);
+            } else {
+                StructuredGraph calleeGraph = getIntrinsicGraph(concrete);
+                if (calleeGraph == null) {
+                    calleeGraph = getGraph(concrete, callback);
+                }
+                assumptions.recordMethodContents(concrete);
+                InliningUtil.inline(invoke, calleeGraph, receiverNullCheck);
+            }
+        }
+
+        private static StructuredGraph getGraph(final ResolvedJavaMethod concrete, final InliningCallback callback) {
             return Debug.scope("GetInliningGraph", concrete, new Callable<StructuredGraph>() {
                 @Override
                 public StructuredGraph call() throws Exception {
-                    StructuredGraph result = getIntrinsicGraph(concrete);
-                    if (result == null) {
-                        assert !Modifier.isNative(concrete.getModifiers());
-                        result = callback.buildGraph(concrete);
-                    }
-                    return result;
+                    assert !Modifier.isNative(concrete.getModifiers());
+                    return callback.buildGraph(concrete);
                 }
             });
         }
@@ -229,9 +249,7 @@ public class InliningUtil {
 
         @Override
         public void inline(StructuredGraph compilerGraph, GraalCodeCacheProvider runtime, InliningCallback callback, Assumptions assumptions) {
-            StructuredGraph graph = getGraph(concrete, callback);
-            assumptions.recordMethodContents(concrete);
-            InliningUtil.inline(invoke, graph, true);
+            inline(invoke, concrete, callback, assumptions, true);
         }
 
         @Override
@@ -283,9 +301,7 @@ public class InliningUtil {
             graph.addBeforeFixed(invoke.node(), guard);
             graph.addBeforeFixed(invoke.node(), anchor);
 
-            StructuredGraph calleeGraph = getGraph(concrete, callback);
-            assumptions.recordMethodContents(concrete);
-            InliningUtil.inline(invoke, calleeGraph, false);
+            inline(invoke, concrete, callback, assumptions, false);
         }
 
         @Override
@@ -405,14 +421,7 @@ public class InliningUtil {
                 GraphUtil.killCFG(invokeWithExceptionNode.exceptionEdge());
             }
 
-            // get all graphs and record assumptions
             assert invoke.node().isAlive();
-            StructuredGraph[] calleeGraphs = new StructuredGraph[numberOfMethods];
-            for (int i = 0; i < numberOfMethods; i++) {
-                ResolvedJavaMethod concrete = concretes.get(i);
-                calleeGraphs[i] = getGraph(concrete, callback);
-                assumptions.recordMethodContents(concrete);
-            }
 
             // replace the invoke with a switch on the type of the actual receiver
             Kind hubKind = invoke.methodCallTarget().targetMethod().getDeclaringClass().getEncoding(Representation.ObjectHub).getKind();
@@ -439,8 +448,8 @@ public class InliningUtil {
                 PiNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver, exact);
                 invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
-                StructuredGraph calleeGraph = calleeGraphs[i];
-                InliningUtil.inline(invokeForInlining, calleeGraph, false);
+                inline(invokeForInlining, concretes.get(i), callback, assumptions, false);
+
                 replacements.add(anchoredReceiver);
             }
             if (shouldFallbackToInvoke()) {
@@ -512,9 +521,7 @@ public class InliningUtil {
             calleeEntryNode.setNext(invoke.node());
 
             ResolvedJavaMethod concrete = concretes.get(0);
-            StructuredGraph calleeGraph = getGraph(concrete, callback);
-            assumptions.recordMethodContents(concrete);
-            InliningUtil.inline(invoke, calleeGraph, false);
+            inline(invoke, concrete, callback, assumptions, false);
         }
 
         private FixedNode createDispatchOnType(StructuredGraph graph, LoadHubNode hub, BeginNode[] successors) {
@@ -1043,8 +1050,7 @@ public class InliningUtil {
     }
 
     public static boolean canIntrinsify(ResolvedJavaMethod target) {
-        StructuredGraph intrinsicGraph = getIntrinsicGraph(target);
-        return intrinsicGraph != null;
+        return getIntrinsicGraph(target) != null || getMacroNodeClass(target) != null;
     }
 
     public static StructuredGraph getIntrinsicGraph(ResolvedJavaMethod target) {
@@ -1057,5 +1063,10 @@ public class InliningUtil {
         } else {
             return target.getCompiledCodeSize();
         }
+    }
+
+    public static Class< ? extends FixedWithNextNode> getMacroNodeClass(ResolvedJavaMethod target) {
+        Object result = target.getCompilerStorage().get(Node.class);
+        return result == null ? null : ((Class< ? >) result).asSubclass(FixedWithNextNode.class);
     }
 }

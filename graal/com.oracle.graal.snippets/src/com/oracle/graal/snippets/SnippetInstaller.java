@@ -41,6 +41,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.snippets.ClassSubstitution.MacroSubstitution;
 import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 import com.oracle.graal.snippets.Snippet.DefaultSnippetInliningPolicy;
 import com.oracle.graal.snippets.Snippet.SnippetInliningPolicy;
@@ -107,21 +108,31 @@ public class SnippetInstaller {
         ClassSubstitution classSubstitution = substitutions.getAnnotation(ClassSubstitution.class);
         for (Method substituteMethod : substitutions.getDeclaredMethods()) {
             MethodSubstitution methodSubstitution = substituteMethod.getAnnotation(MethodSubstitution.class);
-            if (methodSubstitution == null) {
+            MacroSubstitution macroSubstitution = substituteMethod.getAnnotation(MacroSubstitution.class);
+            if (methodSubstitution == null && macroSubstitution == null) {
                 continue;
             }
 
             int modifiers = substituteMethod.getModifiers();
             if (!Modifier.isStatic(modifiers)) {
                 throw new RuntimeException("Substitution methods must be static: " + substituteMethod);
-            } else if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-                throw new RuntimeException("Substitution method must not be abstract or native: " + substituteMethod);
             }
 
-            String originalName = originalName(substituteMethod, methodSubstitution);
-            Class[] originalParameters = originalParameters(substituteMethod, methodSubstitution);
-            Method originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
-            installSubstitution(originalMethod, substituteMethod);
+            if (methodSubstitution != null) {
+                if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
+                    throw new RuntimeException("Substitution method must not be abstract or native: " + substituteMethod);
+                }
+                String originalName = originalName(substituteMethod, methodSubstitution.value());
+                Class[] originalParameters = originalParameters(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
+                Method originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
+                installMethodSubstitution(originalMethod, substituteMethod);
+            }
+            if (macroSubstitution != null) {
+                String originalName = originalName(substituteMethod, macroSubstitution.value());
+                Class[] originalParameters = originalParameters(substituteMethod, macroSubstitution.signature(), macroSubstitution.isStatic());
+                Method originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
+                installMacroSubstitution(originalMethod, macroSubstitution.macro());
+            }
         }
     }
 
@@ -136,7 +147,7 @@ public class SnippetInstaller {
      * @param originalMethod a method being substituted
      * @param substituteMethod the substitute method
      */
-    protected void installSubstitution(Method originalMethod, Method substituteMethod) {
+    protected void installMethodSubstitution(Method originalMethod, Method substituteMethod) {
         substitute = runtime.lookupJavaMethod(substituteMethod);
         original = runtime.lookupJavaMethod(originalMethod);
         try {
@@ -151,8 +162,20 @@ public class SnippetInstaller {
         }
     }
 
+    /**
+     * Installs a macro substitution.
+     *
+     * @param originalMethod a method being substituted
+     * @param macro the substitute macro node class
+     */
+    protected void installMacroSubstitution(Method originalMethod, Class< ? extends FixedWithNextNode> macro) {
+        ResolvedJavaMethod originalJavaMethod = runtime.lookupJavaMethod(originalMethod);
+        Object oldValue = originalJavaMethod.getCompilerStorage().put(Node.class, macro);
+        assert oldValue == null;
+    }
+
     private SnippetInliningPolicy inliningPolicy(ResolvedJavaMethod method) {
-        Class<? extends SnippetInliningPolicy> policyClass = SnippetInliningPolicy.class;
+        Class< ? extends SnippetInliningPolicy> policyClass = SnippetInliningPolicy.class;
         Snippet snippet = method.getAnnotation(Snippet.class);
         if (snippet != null) {
             policyClass = snippet.inlining();
@@ -263,12 +286,12 @@ public class SnippetInstaller {
         return graph;
     }
 
-    private static String originalName(Method substituteMethod, MethodSubstitution methodSubstitution) {
-        String name = substituteMethod.getName();
-        if (!methodSubstitution.value().isEmpty()) {
-            name = methodSubstitution.value();
+    private static String originalName(Method substituteMethod, String methodSubstitution) {
+        if (methodSubstitution.isEmpty()) {
+            return substituteMethod.getName();
+        } else {
+            return methodSubstitution;
         }
-        return name;
     }
 
     private static Class resolveType(String className) {
@@ -294,16 +317,16 @@ public class SnippetInstaller {
         return dimensions == 0 ? baseClass : Array.newInstance(baseClass, new int[dimensions]).getClass();
     }
 
-    private Class[] originalParameters(Method substituteMethod, MethodSubstitution methodSubstitution) {
+    private Class[] originalParameters(Method substituteMethod, String methodSubstitution, boolean isStatic) {
         Class[] parameters;
-        if (methodSubstitution.signature().isEmpty()) {
+        if (methodSubstitution.isEmpty()) {
             parameters = substituteMethod.getParameterTypes();
-            if (!methodSubstitution.isStatic()) {
+            if (!isStatic) {
                 assert parameters.length > 0 : "must be a static method with the 'this' object as its first parameter";
                 parameters = Arrays.copyOfRange(parameters, 1, parameters.length);
             }
         } else {
-            Signature signature = runtime.parseMethodDescriptor(methodSubstitution.signature());
+            Signature signature = runtime.parseMethodDescriptor(methodSubstitution);
             parameters = new Class[signature.getParameterCount(false)];
             for (int i = 0; i < parameters.length; i++) {
                 parameters[i] = resolveType(signature.getParameterType(i, null));

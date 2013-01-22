@@ -33,21 +33,13 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
 
 
 /**
  * Tests intrinsification of {@link System#arraycopy(Object, int, Object, int, int)}.
  */
 public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
-
-    @Override
-    protected void editPhasePlan(ResolvedJavaMethod method, StructuredGraph graph, PhasePlan phasePlan) {
-        phasePlan.addPhase(PhasePosition.HIGH_LEVEL, new IntrinsifyArrayCopyPhase(runtime, new Assumptions(false)));
-    }
 
     @Override
     protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph) {
