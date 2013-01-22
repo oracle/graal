@@ -31,6 +31,7 @@ public class CodeAnnotationValue implements AnnotationValue {
 
     private final Object value;
 
+    // @formatter:off
     public CodeAnnotationValue(Object value) {
         Objects.requireNonNull(value);
         if ((value instanceof AnnotationMirror) || (value instanceof List< ? >)
@@ -45,6 +46,7 @@ public class CodeAnnotationValue implements AnnotationValue {
             throw new IllegalArgumentException("Invalid annotation value type " + value.getClass().getName());
         }
     }
+    // @formatter:on
 
     @Override
     public Object getValue() {
