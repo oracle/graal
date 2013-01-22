@@ -34,6 +34,8 @@ import com.oracle.graal.api.code.Register.*;
  */
 public class AMD64 extends Architecture {
 
+    // @formatter:off
+
     // General purpose CPU registers
     public static final Register rax = new Register(0, 0, 8, "rax", CPU, RegisterFlag.Byte);
     public static final Register rcx = new Register(1, 1, 8, "rcx", CPU, RegisterFlag.Byte);
@@ -114,4 +116,5 @@ public class AMD64 extends Architecture {
               r15.encoding + 1,
               8);
     }
+    // @formatter:on
 }

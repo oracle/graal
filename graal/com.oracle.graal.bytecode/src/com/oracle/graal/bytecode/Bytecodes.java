@@ -40,6 +40,7 @@ import java.lang.reflect.*;
  * information in the second and third bytes.
  */
 public class Bytecodes {
+    // @formatter:off
     public static final int NOP                  =   0; // 0x00
     public static final int ACONST_NULL          =   1; // 0x01
     public static final int ICONST_M1            =   2; // 0x02
@@ -246,6 +247,7 @@ public class Bytecodes {
 
     public static final int ILLEGAL = 255;
     public static final int END = 256;
+    // @formatter:on
 
     /**
      * The last opcode defined by the JVM specification. To iterate over all JVM bytecodes:
@@ -356,6 +358,7 @@ public class Bytecodes {
     private static final int[] compilationComplexityArray = new int[256];
 
     // Checkstyle: stop
+    // @formatter:off
     static {
         def(NOP                 , "nop"             , "b"    , 0);
         def(ACONST_NULL         , "aconst_null"     , "b"    , 0);
@@ -561,6 +564,7 @@ public class Bytecodes {
         def(JSR_W               , "jsr_w"           , "boooo", 0, STOP | BRANCH);
         def(BREAKPOINT          , "breakpoint"      , "b"    , 0, TRAP);
     }
+    // @formatter:on
     // Checkstyle: resume
 
     /**
