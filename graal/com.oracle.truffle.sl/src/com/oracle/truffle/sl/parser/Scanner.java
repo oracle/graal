@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.HashMap;
 
 // Checkstyle: stop
+// @formatter:off
 class Token {
 
     public int kind; // token kind
@@ -338,21 +339,21 @@ public class Scanner {
 		for (int i = 65; i <= 90; ++i) start.set(i, 1);
 		for (int i = 97; i <= 122; ++i) start.set(i, 1);
 		for (int i = 49; i <= 57; ++i) start.set(i, 4);
-		start.set(34, 2); 
-		start.set(48, 5); 
-		start.set(123, 6); 
-		start.set(125, 7); 
-		start.set(40, 8); 
-		start.set(41, 9); 
-		start.set(61, 20); 
-		start.set(59, 10); 
-		start.set(60, 21); 
-		start.set(62, 22); 
-		start.set(33, 14); 
-		start.set(43, 16); 
-		start.set(45, 17); 
-		start.set(42, 18); 
-		start.set(47, 19); 
+		start.set(34, 2);
+		start.set(48, 5);
+		start.set(123, 6);
+		start.set(125, 7);
+		start.set(40, 8);
+		start.set(41, 9);
+		start.set(61, 20);
+		start.set(59, 10);
+		start.set(60, 21);
+		start.set(62, 22);
+		start.set(33, 14);
+		start.set(43, 16);
+		start.set(45, 17);
+		start.set(42, 18);
+		start.set(47, 19);
 		start.set(Buffer.EOF, -1);
 		literals.put("function", new Integer(4));
 		literals.put("while", new Integer(7));
@@ -424,12 +425,12 @@ public class Scanner {
             tval = newBuf;
         }
         if (ch != Buffer.EOF) {
-			tval[tlen++] = (char)ch; 
+			tval[tlen++] = (char)ch;
 
             NextCh();
         }
     }
-	
+
 
 	boolean Comment0() {
 		int level = 1, pos0 = pos, line0 = line, col0 = col, charPos0 = charPos;
@@ -483,7 +484,7 @@ public class Scanner {
     }
 
     Token NextToken() {
-        while (ch == ' ' || 
+        while (ch == ' ' ||
 			ch >= 9 && ch <= 10 || ch == 13
 		) NextCh();
 		if (ch == '/' && Comment0() ||ch == '/' && Comment1()) return NextToken();

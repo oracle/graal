@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.HashMap;
 
 // Checkstyle: stop
+// @formatter:off
 class Token {
 
     public int kind; // token kind

@@ -32,6 +32,7 @@ import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.nodes.*;
 
 // Checkstyle: stop
+// @formatter:off
 public class Parser {
 -->constants
     static final boolean T = true;

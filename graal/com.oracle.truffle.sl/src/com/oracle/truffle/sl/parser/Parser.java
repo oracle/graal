@@ -30,6 +30,7 @@ import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.nodes.*;
 
 // Checkstyle: stop
+// @formatter:off
 public class Parser {
 	public static final int _EOF = 0;
 	public static final int _identifier = 1;
