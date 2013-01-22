@@ -65,9 +65,11 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         ResolvedJavaType destType = dest().objectStamp().type();
         if (srcType != null && srcType.isArray() && destType != null && destType.isArray()) {
             Kind componentKind = srcType.getComponentType().getKind();
-            if (srcType.getComponentType() == destType.getComponentType()) {
-                snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(componentKind));
-            } else if (componentKind == Kind.Object && destType.getComponentType().isAssignableFrom(srcType.getComponentType())) {
+            if (componentKind != Kind.Object) {
+                if (srcType.getComponentType() == destType.getComponentType()) {
+                    snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(componentKind));
+                }
+            } else if (destType.getComponentType().isAssignableFrom(srcType.getComponentType()) && dest().objectStamp().isExactType()) {
                 snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(Kind.Object));
             }
         }

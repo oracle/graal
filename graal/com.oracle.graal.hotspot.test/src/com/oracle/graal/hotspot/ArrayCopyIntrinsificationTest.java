@@ -88,6 +88,8 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
         // Array store checks
         test("genericArraycopy", new Object(), 0, new Object[0], 0, 0);
         test("genericArraycopy", new Object[0], 0, new Object(), 0, 0);
+
+        mustIntrinsify = true;
     }
 
     @Test
@@ -146,8 +148,18 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
 
     @Test
     public void testObject() {
+        mustIntrinsify = false; // a generic call to arraycopy will not be intrinsified
+
         Object[] src = {"one", "two", "three", new ArrayList<>(), new HashMap<>()};
         testHelper("objectArraycopy", src);
+
+        mustIntrinsify = true;
+    }
+
+    @Test
+    public void testObjectExact() {
+        Integer[] src = {1, 2, 3, 4};
+        testHelper("objectArraycopyExact", src);
     }
 
     private static Object newArray(Object proto, int length) {
@@ -176,6 +188,11 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
     }
 
     public static Object[] objectArraycopy(Object[] src, int srcPos, Object[] dst, int dstPos, int length) {
+        System.arraycopy(src, srcPos, dst, dstPos, length);
+        return dst;
+    }
+
+    public static Object[] objectArraycopyExact(Integer[] src, int srcPos, Integer[] dst, int dstPos, int length) {
         System.arraycopy(src, srcPos, dst, dstPos, length);
         return dst;
     }
