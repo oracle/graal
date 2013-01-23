@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
@@ -94,6 +95,9 @@ public class TailDuplicationPhase extends Phase {
             int opportunities = 0;
             while (current instanceof FixedWithNextNode) {
                 current = ((FixedWithNextNode) current).next();
+                if (current instanceof VirtualizableAllocation) {
+                    return false;
+                }
                 for (PhiNode phi : improvements) {
                     for (Node input : current.inputs()) {
                         if (input == phi) {
