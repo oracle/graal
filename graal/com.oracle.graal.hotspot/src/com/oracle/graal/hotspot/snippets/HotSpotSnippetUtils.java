@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
+import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -36,7 +38,7 @@ import com.oracle.graal.word.*;
 //JaCoCo Exclude
 
 /**
- * A collection of methods used in HotSpot snippets.
+ * A collection of methods used in HotSpot snippets and substitutions.
  */
 public class HotSpotSnippetUtils {
 
@@ -453,5 +455,22 @@ public class HotSpotSnippetUtils {
         assert arrayIndexScale(Kind.Long) == 8;
         assert arrayIndexScale(Kind.Float) == 4;
         assert arrayIndexScale(Kind.Double) == 8;
+    }
+
+    static int computeHashCode(Object x) {
+        Word mark = loadWordFromObject(x, markOffset());
+
+        // this code is independent from biased locking (although it does not look that way)
+        final Word biasedLock = mark.and(biasedLockMaskInPlace());
+        if (biasedLock == Word.unsigned(unlockedMask())) {
+            probability(0.99);
+            int hash = (int) mark.unsignedShiftRight(identityHashCodeShift()).rawValue();
+            if (hash != uninitializedIdentityHashCodeValue()) {
+                probability(0.99);
+                return hash;
+            }
+        }
+
+        return IdentityHashCodeStubCall.call(x);
     }
 }
