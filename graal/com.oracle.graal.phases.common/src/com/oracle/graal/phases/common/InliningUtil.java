@@ -207,12 +207,19 @@ public class InliningUtil {
                 assert invoke instanceof InvokeNode;
                 FixedWithNextNode macroNode;
                 try {
-                    macroNode = macroNodeClass.getConstructor(InvokeNode.class).newInstance(invoke);
+                    macroNode = macroNodeClass.getConstructor(Invoke.class).newInstance(invoke);
                 } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
                     throw new GraalInternalError(e).addContext(invoke.node()).addContext("macroSubstitution", macroNodeClass);
                 }
+                macroNode.setProbability(invoke.node().probability());
                 CallTargetNode callTarget = invoke.callTarget();
-                graph.replaceFixedWithFixed((InvokeNode) invoke, graph.add(macroNode));
+                if (invoke instanceof InvokeNode) {
+                    graph.replaceFixedWithFixed((InvokeNode) invoke, graph.add(macroNode));
+                } else {
+                    InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
+                    invokeWithException.killExceptionEdge();
+                    graph.replaceSplitWithFixed(invokeWithException, graph.add(macroNode), invokeWithException.next());
+                }
                 GraphUtil.killWithUnusedFloatingInputs(callTarget);
             } else {
                 StructuredGraph calleeGraph = getIntrinsicGraph(concrete);

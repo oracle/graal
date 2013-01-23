@@ -33,14 +33,14 @@ import com.oracle.graal.nodes.spi.*;
 
 public class MacroNode extends AbstractStateSplit implements Lowerable {
 
-    @Input protected NodeInputList<ValueNode> arguments;
+    @Input protected final NodeInputList<ValueNode> arguments;
 
     private final int bci;
     private final ResolvedJavaMethod targetMethod;
     private final JavaType returnType;
 
-    protected MacroNode(InvokeNode invoke) {
-        super(invoke.stamp(), invoke.stateAfter());
+    protected MacroNode(Invoke invoke) {
+        super(invoke.node().stamp(), invoke.stateAfter());
         this.arguments = new NodeInputList<>(this, invoke.methodCallTarget().arguments());
         this.bci = invoke.bci();
         this.targetMethod = invoke.methodCallTarget().targetMethod();
