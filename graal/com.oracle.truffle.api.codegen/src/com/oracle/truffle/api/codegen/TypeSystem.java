@@ -40,15 +40,15 @@ import java.lang.annotation.*;
  *
  * <pre>
  *
- * &#064;TypeSystem(types = {int.class, BigInteger.class, String.class}, nodeBaseClass = TypedNode.class)
+ * {@literal @}TypeSystem(types = {int.class, BigInteger.class, String.class}, nodeBaseClass = TypedNode.class)
  * public abstract class Types {
  *
- *     &#064;TypeCheck
+ *     {@literal @}TypeCheck
  *     public boolean isInteger(Object value) {
  *         return value instanceof Integer || (value instanceof BigInteger &amp;&amp; ((BigInteger) value).bitLength() &lt; Integer.SIZE);
  *     }
  *
- *     &#064;TypeCast
+ *     {@literal @}TypeCast
  *     public int asInteger(Object value) {
  *         if (value instanceof Integer) {
  *             return (int) value;

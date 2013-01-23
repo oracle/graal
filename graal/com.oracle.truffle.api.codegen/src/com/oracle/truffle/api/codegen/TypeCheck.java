@@ -38,7 +38,7 @@ import java.lang.annotation.*;
  * follows:
  *
  * <pre>
- * &#064;TypeCheck
+ * {@literal @}TypeCheck
  * boolean is${typeName}(Object value) {
  *         return value instanceof ${typeName};
  * }
@@ -54,15 +54,15 @@ import java.lang.annotation.*;
  * <pre>
  *
  *
- * &#064;TypeSystem(types = {int.class, BigInteger.class, String.class}, nodeBaseClass = TypedNode.class)
+ * {@literal @}TypeSystem(types = {int.class, BigInteger.class, String.class}, nodeBaseClass = TypedNode.class)
  * public abstract class Types {
  *
- *     &#064;TypeCheck
+ *     {@literal @}TypeCheck
  *     public boolean isBigInteger(Object value) {
  *         return value instanceof Integer || value instanceof BigInteger;
  *     }
  *
- *     &#064;TypeCheck
+ *     {@literal @}TypeCheck
  *     public boolean isBigInteger(int value) {
  *         return true;
  *     }
