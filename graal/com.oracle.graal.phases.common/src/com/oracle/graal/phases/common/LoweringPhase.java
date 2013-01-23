@@ -43,15 +43,20 @@ public class LoweringPhase extends Phase {
 
     final class LoweringToolImpl implements LoweringTool {
 
-        final FixedNode guardAnchor;
-        final NodeBitMap activeGuards;
-        FixedWithNextNode lastFixedNode;
-        ControlFlowGraph cfg;
+        private final FixedNode guardAnchor;
+        private final NodeBitMap activeGuards;
+        private FixedWithNextNode lastFixedNode;
+        private ControlFlowGraph cfg;
 
         public LoweringToolImpl(FixedNode guardAnchor, NodeBitMap activeGuards, ControlFlowGraph cfg) {
             this.guardAnchor = guardAnchor;
             this.activeGuards = activeGuards;
             this.cfg = cfg;
+        }
+
+        @Override
+        public TargetDescription getTarget() {
+            return target;
         }
 
         @Override
@@ -101,12 +106,14 @@ public class LoweringPhase extends Phase {
         }
     }
 
+    private final TargetDescription target;
     private final GraalCodeCacheProvider runtime;
     private final Assumptions assumptions;
 
     private boolean deferred;
 
-    public LoweringPhase(GraalCodeCacheProvider runtime, Assumptions assumptions) {
+    public LoweringPhase(TargetDescription target, GraalCodeCacheProvider runtime, Assumptions assumptions) {
+        this.target = target;
         this.runtime = runtime;
         this.assumptions = assumptions;
     }

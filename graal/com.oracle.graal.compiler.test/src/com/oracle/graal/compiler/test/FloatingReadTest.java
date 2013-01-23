@@ -55,7 +55,7 @@ public class FloatingReadTest extends GraphScheduleTest {
         Debug.scope("FloatingReadTest", new DebugDumpScope(snippet), new Runnable() {
             public void run() {
                 StructuredGraph graph = parse(snippet);
-                new LoweringPhase(runtime(), new Assumptions(false)).apply(graph);
+                new LoweringPhase(null, runtime(), new Assumptions(false)).apply(graph);
                 new FloatingReadPhase().apply(graph);
 
                 ReturnNode returnNode = null;

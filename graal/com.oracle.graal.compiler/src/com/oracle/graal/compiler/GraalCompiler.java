@@ -162,7 +162,7 @@ public class GraalCompiler {
             new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
         }
 
-        new LoweringPhase(runtime, assumptions).apply(graph);
+        new LoweringPhase(target, runtime, assumptions).apply(graph);
 
         if (GraalOptions.CullFrameStates) {
             new CullFrameStatesPhase().apply(graph);

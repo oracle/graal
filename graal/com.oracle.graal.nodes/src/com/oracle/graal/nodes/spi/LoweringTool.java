@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 
 public interface LoweringTool {
+    TargetDescription getTarget();
     GraalCodeCacheProvider getRuntime();
     ValueNode createNullCheckGuard(ValueNode object, long leafGraphId);
     ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, long leafGraphId);
