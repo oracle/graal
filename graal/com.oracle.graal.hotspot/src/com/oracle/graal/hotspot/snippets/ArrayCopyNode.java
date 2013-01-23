@@ -77,8 +77,12 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
     }
 
     private static void unrollFixedLengthLoop(StructuredGraph snippetGraph, int length, LoweringTool tool) {
-        snippetGraph.replaceFloating(snippetGraph.getLocal(4), ConstantNode.forInt(length, snippetGraph));
-        // the canonicalization before loop unrolling is needed to propagate the length into additions, etc.
+        LocalNode lengthLocal = snippetGraph.getLocal(4);
+        if (lengthLocal != null) {
+            snippetGraph.replaceFloating(lengthLocal, ConstantNode.forInt(length, snippetGraph));
+        }
+        // the canonicalization before loop unrolling is needed to propagate the length into
+        // additions, etc.
         new CanonicalizerPhase(tool.getTarget(), tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
         new LoopFullUnrollPhase(tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
         new CanonicalizerPhase(tool.getTarget(), tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
@@ -90,8 +94,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         if (snippetMethod == null) {
             snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.increaseGenericCallCounterMethod);
             // we will call the generic method. the generic snippet will only increase the counter,
-            // not call the actual
-            // method. therefore we create a second invoke here.
+            // not call the actual method. therefore we create a second invoke here.
             ((StructuredGraph) graph()).addAfterFixed(this, createInvoke());
         }
         if (Debug.isLogEnabled()) {

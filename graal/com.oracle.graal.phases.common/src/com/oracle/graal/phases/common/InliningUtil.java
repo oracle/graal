@@ -222,7 +222,6 @@ public class InliningUtil {
             Class<? extends FixedWithNextNode> macroNodeClass = getMacroNodeClass(concrete);
             if (macroNodeClass != null) {
                 StructuredGraph graph = (StructuredGraph) invoke.graph();
-                assert invoke instanceof InvokeNode;
                 FixedWithNextNode macroNode;
                 try {
                     macroNode = macroNodeClass.getConstructor(Invoke.class).newInstance(invoke);
