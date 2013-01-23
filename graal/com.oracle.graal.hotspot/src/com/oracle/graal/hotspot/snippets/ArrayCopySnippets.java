@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
+import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -88,6 +89,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
         long srcOffset = (long) srcPos * elementSize;
         long destOffset = (long) destPos * elementSize;
         if (src == dest && srcPos < destPos) { // bad aliased case
+            probability(0.1);
             for (long i = byteLength - elementSize; i >= byteLength - nonVectorBytes; i -= elementSize) {
                 UnsafeStoreNode.store(dest, header, i + destOffset, UnsafeLoadNode.load(src, header, i + srcOffset, baseKind), baseKind);
             }
@@ -108,13 +110,40 @@ public class ArrayCopySnippets implements SnippetsInterface{
     }
 
     public static void checkInputs(Object src, int srcPos, Object dest, int destPos, int length) {
-        if (src == null || dest == null) {
+        if (src == null) {
+            probability(0.01);
             checkNPECounter.inc();
-            throw new NullPointerException();
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > ArrayLengthNode.arrayLength(src) || destPos + length > ArrayLengthNode.arrayLength(dest)) {
+        if (dest == null) {
+            probability(0.01);
+            checkNPECounter.inc();
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+        if (srcPos < 0) {
+            probability(0.01);
             checkAIOOBECounter.inc();
-            throw new ArrayIndexOutOfBoundsException();
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+        if (destPos < 0) {
+            probability(0.01);
+            checkAIOOBECounter.inc();
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+        if (length < 0) {
+            probability(0.01);
+            checkAIOOBECounter.inc();
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+        if (srcPos + length > ArrayLengthNode.arrayLength(src)) {
+            probability(0.01);
+            checkAIOOBECounter.inc();
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+        if (destPos + length > ArrayLengthNode.arrayLength(dest)) {
+            probability(0.01);
+            checkAIOOBECounter.inc();
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         checkSuccessCounter.inc();
     }
