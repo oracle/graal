@@ -61,7 +61,7 @@ class TypeCheckParser extends TypeSystemMethodParser<TypeCheckData> {
     }
 
     @Override
-    public Class< ? extends Annotation> getAnnotationType() {
+    public Class<? extends Annotation> getAnnotationType() {
         return TypeCheck.class;
     }
 }

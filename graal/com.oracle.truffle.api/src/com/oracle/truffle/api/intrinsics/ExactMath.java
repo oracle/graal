@@ -23,8 +23,9 @@
 package com.oracle.truffle.api.intrinsics;
 
 /**
- * This class contains methods that will be part of java.lang.Math starting with JDK 8. Until JDK 8 is release, we
- * duplicate them here because they are generally useful for dynamic language implementations.
+ * This class contains methods that will be part of java.lang.Math starting with JDK 8. Until JDK 8
+ * is release, we duplicate them here because they are generally useful for dynamic language
+ * implementations.
  */
 public class ExactMath {
 

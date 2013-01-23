@@ -65,7 +65,8 @@ public abstract class AbstractParser<M extends Template> {
     }
 
     protected abstract M parse(Element element, AnnotationMirror mirror);
-    public abstract Class< ? extends Annotation> getAnnotationType();
+
+    public abstract Class<? extends Annotation> getAnnotationType();
 
     public boolean isDelegateToRootDeclaredType() {
         return false;

@@ -27,7 +27,8 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * Default implementation of the Truffle runtime if the virtual machine does not provide a better performing alternative.
+ * Default implementation of the Truffle runtime if the virtual machine does not provide a better
+ * performing alternative.
  */
 public final class DefaultTruffleRuntime implements TruffleRuntime {
 

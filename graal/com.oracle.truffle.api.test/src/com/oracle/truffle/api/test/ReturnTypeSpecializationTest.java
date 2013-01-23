@@ -30,14 +30,15 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * <h3>Specializing Return Types</h3>
- *
+ * 
  * <p>
- * In order to avoid boxing and/or type casts on the return value of a node, the return value the method for executing a
- * node can have a specific type and need not be of type {@link java.lang.Object}. For dynamically typed languages, this
- * return type is something that should be speculated on. When the speculation fails and the child node cannot return
- * the appropriate type of value, it can use an {@link UnexpectedResultException} to still pass the result to the
- * caller. In such a case, the caller must rewrite itself to a more general version in oder to avoid future failures of
- * this kind.
+ * In order to avoid boxing and/or type casts on the return value of a node, the return value the
+ * method for executing a node can have a specific type and need not be of type
+ * {@link java.lang.Object}. For dynamically typed languages, this return type is something that
+ * should be speculated on. When the speculation fails and the child node cannot return the
+ * appropriate type of value, it can use an {@link UnexpectedResultException} to still pass the
+ * result to the caller. In such a case, the caller must rewrite itself to a more general version in
+ * oder to avoid future failures of this kind.
  * </p>
  */
 public class ReturnTypeSpecializationTest {
@@ -73,6 +74,7 @@ public class ReturnTypeSpecializationTest {
     }
 
     abstract class TestChildNode extends Node {
+
         abstract Object execute(VirtualFrame frame);
 
         int executeInt(VirtualFrame frame) throws UnexpectedResultException {
@@ -85,6 +87,7 @@ public class ReturnTypeSpecializationTest {
     }
 
     abstract class FrameSlotNode extends TestChildNode {
+
         protected final FrameSlot slot;
 
         public FrameSlotNode(FrameSlot slot) {
@@ -102,6 +105,7 @@ public class ReturnTypeSpecializationTest {
     }
 
     class IntAssignLocal extends FrameSlotNode implements FrameSlotTypeListener {
+
         @Child private TestChildNode value;
 
         IntAssignLocal(FrameSlot slot, TestChildNode value) {
@@ -123,7 +127,7 @@ public class ReturnTypeSpecializationTest {
         }
 
         @Override
-        public void typeChanged(FrameSlot changedSlot, Class< ? > oldType) {
+        public void typeChanged(FrameSlot changedSlot, Class<?> oldType) {
             if (changedSlot.getType() == Object.class) {
                 this.replace(new ObjectAssignLocal(changedSlot, value));
             }
@@ -131,6 +135,7 @@ public class ReturnTypeSpecializationTest {
     }
 
     class ObjectAssignLocal extends FrameSlotNode {
+
         @Child private TestChildNode value;
 
         ObjectAssignLocal(FrameSlot slot, TestChildNode value) {
@@ -147,6 +152,7 @@ public class ReturnTypeSpecializationTest {
     }
 
     class IntReadLocal extends FrameSlotNode implements FrameSlotTypeListener {
+
         IntReadLocal(FrameSlot slot) {
             super(slot);
             slot.registerOneShotTypeListener(this);
@@ -163,7 +169,7 @@ public class ReturnTypeSpecializationTest {
         }
 
         @Override
-        public void typeChanged(FrameSlot changedSlot, Class< ? > oldType) {
+        public void typeChanged(FrameSlot changedSlot, Class<?> oldType) {
             if (changedSlot.getType() == Object.class) {
                 this.replace(new ObjectReadLocal(changedSlot));
             }
@@ -171,6 +177,7 @@ public class ReturnTypeSpecializationTest {
     }
 
     class ObjectReadLocal extends FrameSlotNode {
+
         ObjectReadLocal(FrameSlot slot) {
             super(slot);
         }
@@ -181,4 +188,3 @@ public class ReturnTypeSpecializationTest {
         }
     }
 }
-

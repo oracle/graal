@@ -31,7 +31,7 @@ public class JDTCompiler extends AbstractCompiler {
 
     public static boolean isValidElement(Element currentElement) {
         try {
-            Class< ? > elementClass = Class.forName("org.eclipse.jdt.internal.compiler.apt.model.ElementImpl");
+            Class<?> elementClass = Class.forName("org.eclipse.jdt.internal.compiler.apt.model.ElementImpl");
             return elementClass.isAssignableFrom(currentElement.getClass());
         } catch (ClassNotFoundException e) {
             return false;
@@ -48,8 +48,9 @@ public class JDTCompiler extends AbstractCompiler {
             }
 
             /*
-             * AbstractMethodDeclaration decl = ((MethodBinding)(((ElementImpl)method)._binding)).sourceMethod(); int
-             * bodyStart = decl.bodyStart; int bodyEnd = decl.bodyEnd;
+             * AbstractMethodDeclaration decl =
+             * ((MethodBinding)(((ElementImpl)method)._binding)).sourceMethod(); int bodyStart =
+             * decl.bodyStart; int bodyEnd = decl.bodyEnd;
              */
             Object decl = method(field(method, "_binding"), "sourceMethod");
             int bodyStart = (int) field(decl, "bodyStart");
@@ -67,17 +68,17 @@ public class JDTCompiler extends AbstractCompiler {
 
     private static char[] getSource(Element element) throws Exception {
         /*
-         * Binding binding = ((ElementImpl)element)._binding; char[] source = null; if (binding instanceof
-         * MethodBinding) { source = ((MethodBinding)
-         * binding).sourceMethod().compilationResult.getCompilationUnit().getContents(); } else if (binding instanceof
-         * SourceTypeBinding) { source =
-         * ((SourceTypeBinding)binding).scope.referenceContext.compilationResult.compilationUnit.getContents(); } return
-         * source;
+         * Binding binding = ((ElementImpl)element)._binding; char[] source = null; if (binding
+         * instanceof MethodBinding) { source = ((MethodBinding)
+         * binding).sourceMethod().compilationResult.getCompilationUnit().getContents(); } else if
+         * (binding instanceof SourceTypeBinding) { source =
+         * ((SourceTypeBinding)binding).scope.referenceContext
+         * .compilationResult.compilationUnit.getContents(); } return source;
          */
 
         Object binding = field(element, "_binding");
-        Class< ? > methodBindingClass = Class.forName("org.eclipse.jdt.internal.compiler.lookup.MethodBinding");
-        Class< ? > referenceBindingClass = Class.forName("org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding");
+        Class<?> methodBindingClass = Class.forName("org.eclipse.jdt.internal.compiler.lookup.MethodBinding");
+        Class<?> referenceBindingClass = Class.forName("org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding");
 
         char[] source = null;
         if (methodBindingClass.isAssignableFrom(binding.getClass())) {

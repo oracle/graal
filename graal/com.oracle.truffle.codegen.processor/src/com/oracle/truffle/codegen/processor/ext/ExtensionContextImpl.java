@@ -29,7 +29,6 @@ import javax.annotation.processing.*;
 import com.oracle.truffle.codegen.processor.api.*;
 import com.oracle.truffle.codegen.processor.api.element.*;
 
-
 public class ExtensionContextImpl implements ExtensionContext {
 
     private final ProcessingEnvironment env;
@@ -43,7 +42,6 @@ public class ExtensionContextImpl implements ExtensionContext {
         this.round = round;
         this.factory = factory;
     }
-
 
     List<WritableElement> returnElements() {
         List<WritableElement> returnElements = new ArrayList<>(this.elements);

@@ -29,7 +29,6 @@ import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.api.element.*;
 import com.oracle.truffle.codegen.processor.ast.*;
 
-
 final class ExtensionCodeElementFactory implements WritableElementFactory {
 
     private final ProcessorContext context;

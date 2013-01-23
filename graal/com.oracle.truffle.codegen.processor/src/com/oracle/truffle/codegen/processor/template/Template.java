@@ -49,11 +49,11 @@ public abstract class Template {
         return annotation;
     }
 
-    public List< ? extends WritableElement> getExtensionElements() {
+    public List<? extends WritableElement> getExtensionElements() {
         return extensionElements;
     }
 
-    public void setExtensionElements(List< ? extends WritableElement> extensionMethods) {
+    public void setExtensionElements(List<? extends WritableElement> extensionMethods) {
         this.extensionElements = extensionMethods;
     }
 

@@ -58,8 +58,8 @@ public class CodeAnnotationValue implements AnnotationValue {
     public <R, P> R accept(AnnotationValueVisitor<R, P> v, P p) {
         if (value instanceof AnnotationMirror) {
             return v.visitAnnotation((AnnotationMirror) value, p);
-        } else if (value instanceof List< ? >) {
-            return v.visitArray((List< ? extends AnnotationValue>) value, p);
+        } else if (value instanceof List<?>) {
+            return v.visitArray((List<? extends AnnotationValue>) value, p);
         } else if (value instanceof Boolean) {
             return v.visitBoolean((boolean) value, p);
         } else if (value instanceof Byte) {

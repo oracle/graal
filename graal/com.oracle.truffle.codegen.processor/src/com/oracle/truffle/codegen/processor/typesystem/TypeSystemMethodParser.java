@@ -28,7 +28,6 @@ import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 
-
 abstract class TypeSystemMethodParser<E extends TemplateMethod> extends TemplateMethodParser<TypeSystemData, E> {
 
     public TypeSystemMethodParser(ProcessorContext context, TypeSystemData typeSystem) {
@@ -48,8 +47,7 @@ abstract class TypeSystemMethodParser<E extends TemplateMethod> extends Template
         String methodName = method.getSimpleName().toString();
         if (!methodName.startsWith(prefix)) {
             String annotationName = Utils.getSimpleName(annotationMirror.getAnnotationType());
-            getContext().getLog().error(method, "Methods annotated with %s must match the pattern '%s'.",
-                            annotationName, String.format("%s${typeName}", prefix));
+            getContext().getLog().error(method, "Methods annotated with %s must match the pattern '%s'.", annotationName, String.format("%s${typeName}", prefix));
             return null;
         }
         String typeName = methodName.substring(prefix.length(), methodName.length());

@@ -38,7 +38,6 @@ public class SpecializationThrowsData {
         this.transitionTo = transitionTo;
     }
 
-
     void setSpecialization(SpecializationData specialization) {
         this.specialization = specialization;
     }
@@ -68,4 +67,3 @@ public class SpecializationThrowsData {
         return null;
     }
 }
-

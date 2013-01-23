@@ -25,7 +25,8 @@ package com.oracle.truffle.api.frame;
 import java.util.*;
 
 /**
- * Descriptor of the slots of frame objects. Multiple frame instances are associated with one such descriptor.
+ * Descriptor of the slots of frame objects. Multiple frame instances are associated with one such
+ * descriptor.
  */
 public final class FrameDescriptor {
 
@@ -77,7 +78,7 @@ public final class FrameDescriptor {
         return slots.size();
     }
 
-    public List< ? extends FrameSlot> getSlots() {
+    public List<? extends FrameSlot> getSlots() {
         return Collections.unmodifiableList(slots);
     }
 
@@ -100,10 +101,10 @@ class FrameVersionImpl implements FrameVersion {
 class TypeChangeFrameVersionImpl extends FrameVersionImpl implements FrameVersion.TypeChange {
 
     private final FrameSlotImpl slot;
-    private final Class< ? > oldType;
-    private final Class< ? > newType;
+    private final Class<?> oldType;
+    private final Class<?> newType;
 
-    protected TypeChangeFrameVersionImpl(FrameSlotImpl slot, Class< ? > oldType, Class< ? > newType) {
+    protected TypeChangeFrameVersionImpl(FrameSlotImpl slot, Class<?> oldType, Class<?> newType) {
         this.slot = slot;
         this.oldType = oldType;
         this.newType = newType;
@@ -121,10 +122,10 @@ class FrameSlotImpl implements FrameSlot {
     private final FrameDescriptor descriptor;
     private final String name;
     private final int index;
-    private Class< ? > type;
+    private Class<?> type;
     private ArrayList<FrameSlotTypeListener> listeners;
 
-    protected FrameSlotImpl(FrameDescriptor descriptor, String name, int index, Class< ? > type) {
+    protected FrameSlotImpl(FrameDescriptor descriptor, String name, int index, Class<?> type) {
         this.descriptor = descriptor;
         this.name = name;
         this.index = index;
@@ -140,11 +141,11 @@ class FrameSlotImpl implements FrameSlot {
         return index;
     }
 
-    public Class< ? > getType() {
+    public Class<?> getType() {
         return type;
     }
 
-    protected Object getValue(Class< ? > accessType, Frame frame) {
+    protected Object getValue(Class<?> accessType, Frame frame) {
         if (accessType == Integer.class) {
             return frame.getInt(this);
         } else if (accessType == Long.class) {
@@ -158,7 +159,7 @@ class FrameSlotImpl implements FrameSlot {
         }
     }
 
-    protected void setValue(Class< ? > accessType, Frame frame, Object value) {
+    protected void setValue(Class<?> accessType, Frame frame, Object value) {
         Object newValue = descriptor.typeConversion.convertTo(accessType, value);
         if (accessType == Integer.class) {
             frame.setInt(this, (Integer) newValue);
@@ -173,8 +174,8 @@ class FrameSlotImpl implements FrameSlot {
         }
     }
 
-    public void setType(final Class< ? > type) {
-        final Class< ? > oldType = this.type;
+    public void setType(final Class<?> type) {
+        final Class<?> oldType = this.type;
         this.type = type;
         ArrayList<FrameSlotTypeListener> oldListeners = this.listeners;
         this.listeners = null;

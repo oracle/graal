@@ -28,6 +28,7 @@ import javax.lang.model.type.*;
 public interface WritableVariableElement extends VariableElement, WritableElement {
 
     void setSimpleName(Name name);
+
     void setType(TypeMirror type);
 
 }

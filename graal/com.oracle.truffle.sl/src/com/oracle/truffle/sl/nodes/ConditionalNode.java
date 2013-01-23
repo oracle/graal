@@ -30,14 +30,11 @@ import com.oracle.truffle.api.codegen.*;
 @ExecuteChildren({"conditionNode", "ifPartNode", "elsePartNode"})
 public abstract class ConditionalNode extends TypedNode {
 
-    @Child
-    protected ConditionNode conditionNode;
+    @Child protected ConditionNode conditionNode;
 
-    @Child
-    protected TypedNode ifPartNode;
+    @Child protected TypedNode ifPartNode;
 
-    @Child
-    protected TypedNode elsePartNode;
+    @Child protected TypedNode elsePartNode;
 
     public ConditionalNode(ConditionNode condition, TypedNode ifPart, TypedNode elsePart) {
         this.conditionNode = adoptChild(condition);

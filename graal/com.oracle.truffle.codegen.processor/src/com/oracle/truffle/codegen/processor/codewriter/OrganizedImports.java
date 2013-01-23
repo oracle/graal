@@ -143,7 +143,8 @@ public final class OrganizedImports {
     private static boolean processStaticImportElements(Set<String> newElements, Set<String> ambiguousElements, Set<String> declaredElements) {
         boolean allAmbiguous = false;
         if (declaredElements.containsAll(newElements)) {
-            // all types already declared -> we can remove the import completely -> they will all get ambiguous
+            // all types already declared -> we can remove the import completely -> they will all
+            // get ambiguous
             allAmbiguous = true;
         }
         Set<String> newAmbiguous = new HashSet<>();

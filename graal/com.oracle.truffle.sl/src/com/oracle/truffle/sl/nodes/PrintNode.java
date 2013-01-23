@@ -28,8 +28,7 @@ import com.oracle.truffle.api.codegen.*;
 
 public abstract class PrintNode extends StatementNode {
 
-    @Child
-    protected TypedNode expression;
+    @Child protected TypedNode expression;
 
     private final PrintStream output;
 

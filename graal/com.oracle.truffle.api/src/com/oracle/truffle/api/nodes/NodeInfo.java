@@ -33,6 +33,7 @@ public @interface NodeInfo {
 
     /**
      * Short name representing the node that can be used for debugging.
+     * 
      * @return the short name
      */
     String shortName() default "";

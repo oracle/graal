@@ -250,7 +250,6 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             init = ((CodeVariableElement) f).getInit();
         }
 
-
         if (parent.getKind() == ElementKind.ENUM && f.getModifiers().contains(Modifier.STATIC)) {
             write(f.getSimpleName());
             if (init != null) {
@@ -294,6 +293,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 }
 
                 Collections.sort(methodsList, new Comparator<ExecutableElement>() {
+
                     @Override
                     public int compare(ExecutableElement o1, ExecutableElement o2) {
                         return o1.getSimpleName().toString().compareTo(o2.getSimpleName().toString());
@@ -322,46 +322,55 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
     }
 
     private class AnnotationValueWriterVisitor extends AbstractAnnotationValueVisitor7<Void, Void> {
+
         @Override
         public Void visitBoolean(boolean b, Void p) {
             write(Boolean.toString(b));
             return null;
         }
+
         @Override
         public Void visitByte(byte b, Void p) {
             write(Byte.toString(b));
             return null;
         }
+
         @Override
         public Void visitChar(char c, Void p) {
             write(Character.toString(c));
             return null;
         }
+
         @Override
         public Void visitDouble(double d, Void p) {
             write(Double.toString(d));
             return null;
         }
+
         @Override
         public Void visitFloat(float f, Void p) {
             write(Float.toString(f));
             return null;
         }
+
         @Override
         public Void visitInt(int i, Void p) {
             write(Integer.toString(i));
             return null;
         }
+
         @Override
         public Void visitLong(long i, Void p) {
             write(Long.toString(i));
             return null;
         }
+
         @Override
         public Void visitShort(short s, Void p) {
             write(Short.toString(s));
             return null;
         }
+
         @Override
         public Void visitString(String s, Void p) {
             write("\"");
@@ -369,12 +378,14 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             write("\"");
             return null;
         }
+
         @Override
         public Void visitType(TypeMirror t, Void p) {
             write(typeSimpleName(t));
             write(".class");
             return null;
         }
+
         @Override
         public Void visitEnumConstant(VariableElement c, Void p) {
             write(typeSimpleName(c.asType()));
@@ -382,13 +393,15 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             write(c.getSimpleName().toString());
             return null;
         }
+
         @Override
         public Void visitAnnotation(AnnotationMirror a, Void p) {
             AbstractCodeWriter.this.visitAnnotation(a);
             return null;
         }
+
         @Override
-        public Void visitArray(List< ? extends AnnotationValue> vals, Void p) {
+        public Void visitArray(List<? extends AnnotationValue> vals, Void p) {
             write("{");
             for (int i = 0; i < vals.size(); i++) {
                 AnnotationValue value = vals.get(i);
@@ -421,15 +434,15 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         }
     }
 
-//    @Override
-//    public void visitParameter(CodeVariableElement e) {
-//        for (CodeAnnotationMirror annotation : e.getAnnotationMirrors()) {
-//            annotation.accept(this);
-//        }
-//        write(typeSimpleName(e.getType()));
-//        write(" ");
-//        write(e.getSimpleName());
-//    }
+    // @Override
+    // public void visitParameter(CodeVariableElement e) {
+    // for (CodeAnnotationMirror annotation : e.getAnnotationMirrors()) {
+    // annotation.accept(this);
+    // }
+    // write(typeSimpleName(e.getType()));
+    // write(" ");
+    // write(e.getSimpleName());
+    // }
 
     @Override
     public Void visitExecutable(CodeExecutableElement e, Void p) {

@@ -79,7 +79,7 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
     }
 
     @Override
-    public List< ? extends TypeParameterElement> getTypeParameters() {
+    public List<? extends TypeParameterElement> getTypeParameters() {
         return Collections.emptyList();
     }
 
@@ -155,7 +155,6 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
     public void removeParameter(VariableElement parameter) {
         parameters.remove(parameter);
     }
-
 
     public void removeParameter(String varName) {
         VariableElement remove = null;

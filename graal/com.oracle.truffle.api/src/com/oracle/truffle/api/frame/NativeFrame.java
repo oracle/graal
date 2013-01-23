@@ -25,8 +25,8 @@ package com.oracle.truffle.api.frame;
 import com.oracle.truffle.api.*;
 
 /**
- * Represents a native frame without any local variables. Instances of this type must not be stored in a field or cast
- * to {@link java.lang.Object}.
+ * Represents a native frame without any local variables. Instances of this type must not be stored
+ * in a field or cast to {@link java.lang.Object}.
  */
 public class NativeFrame implements VirtualFrame, PackedFrame {
 

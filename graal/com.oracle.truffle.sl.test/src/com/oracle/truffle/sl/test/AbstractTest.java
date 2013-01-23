@@ -29,6 +29,7 @@ import org.junit.*;
 import com.oracle.truffle.sl.*;
 
 public class AbstractTest {
+
     public static final int REPEATS = 10;
     private static final String NEWLINE = System.getProperty("line.separator");
 

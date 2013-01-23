@@ -28,14 +28,11 @@ import com.oracle.truffle.api.frame.*;
 @ExecuteChildren("conditionNode")
 public abstract class IfNode extends StatementNode {
 
-    @Child
-    protected ConditionNode conditionNode;
+    @Child protected ConditionNode conditionNode;
 
-    @Child
-    private StatementNode thenPartNode;
+    @Child private StatementNode thenPartNode;
 
-    @Child
-    private StatementNode elsePartNode;
+    @Child private StatementNode elsePartNode;
 
     public IfNode(ConditionNode condition, StatementNode thenPart, StatementNode elsePart) {
         this.conditionNode = adoptChild(condition);

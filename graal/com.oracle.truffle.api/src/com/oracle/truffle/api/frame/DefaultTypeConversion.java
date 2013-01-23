@@ -38,12 +38,12 @@ public final class DefaultTypeConversion implements TypeConversion {
     }
 
     @Override
-    public Class< ? > getTopType() {
+    public Class<?> getTopType() {
         return Object.class;
     }
 
     @Override
-    public Object convertTo(Class< ? > targetType, Object value) {
+    public Object convertTo(Class<?> targetType, Object value) {
         return value;
     }
 }

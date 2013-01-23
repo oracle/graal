@@ -30,26 +30,29 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * <h3>Storing Values in Frame Slots</h3>
- *
+ * 
  * <p>
- * The frame is the preferred data structure for passing values between nodes. It can in particular be used for storing
- * the values of local variables of the guest language. The {@link FrameDescriptor} represents the current structure of
- * the frame. The method {@link FrameDescriptor#addFrameSlot(String, Class)} can be used to create predefined frame
- * slots. The setter and getter methods in the {@link Frame} class can be used to access the current value of a
- * particular frame slot.
+ * The frame is the preferred data structure for passing values between nodes. It can in particular
+ * be used for storing the values of local variables of the guest language. The
+ * {@link FrameDescriptor} represents the current structure of the frame. The method
+ * {@link FrameDescriptor#addFrameSlot(String, Class)} can be used to create predefined frame slots.
+ * The setter and getter methods in the {@link Frame} class can be used to access the current value
+ * of a particular frame slot.
  * </p>
- *
+ * 
  * <p>
- * There are five primitive types for slots available: {@link java.lang.Boolean}, @{link java.lang.Integer},
- * {@link java.lang.Long}, {@link java.lang.Float}, and {@link java.lang.Double}. It is encouraged to use those types
- * whenever possible. Dynamically typed languages can speculate on the type of a value fitting into a primitive (see
- * {@link FrameSlotTypeSpecializationTest}). When a frame slot is of one of those particular primitive types, its value
- * may only be accessed with the repectively typed getter method ({@link Frame#getBoolean}, {@link Frame#getInt},
- * {@link Frame#getLong}, {@link Frame#getFloat}, or {@link Frame#getDouble}) or setter method ({@link Frame#setBoolean},
- * {@link Frame#setInt}, {@link Frame#setLong}, {@link Frame#setFloat}, or {@link Frame#setDouble}) in the
- * {@link Frame} class.
+ * There are five primitive types for slots available: {@link java.lang.Boolean}, @{link
+ * java.lang.Integer}, {@link java.lang.Long}, {@link java.lang.Float}, and {@link java.lang.Double}
+ * . It is encouraged to use those types whenever possible. Dynamically typed languages can
+ * speculate on the type of a value fitting into a primitive (see
+ * {@link FrameSlotTypeSpecializationTest}). When a frame slot is of one of those particular
+ * primitive types, its value may only be accessed with the repectively typed getter method (
+ * {@link Frame#getBoolean}, {@link Frame#getInt}, {@link Frame#getLong}, {@link Frame#getFloat}, or
+ * {@link Frame#getDouble}) or setter method ({@link Frame#setBoolean}, {@link Frame#setInt},
+ * {@link Frame#setLong}, {@link Frame#setFloat}, or {@link Frame#setDouble}) in the {@link Frame}
+ * class.
  * </p>
- *
+ * 
  * <p>
  * The next part of the Truffle API introduction is at
  * {@link com.oracle.truffle.api.test.FrameSlotTypeSpecializationTest}.
@@ -85,10 +88,12 @@ public class FrameTest {
     }
 
     abstract class TestChildNode extends Node {
+
         abstract int execute(VirtualFrame frame);
     }
 
     abstract class FrameSlotNode extends TestChildNode {
+
         protected final FrameSlot slot;
 
         public FrameSlotNode(FrameSlot slot) {
@@ -97,6 +102,7 @@ public class FrameTest {
     }
 
     class AssignLocal extends FrameSlotNode {
+
         AssignLocal(FrameSlot slot) {
             super(slot);
         }
@@ -109,6 +115,7 @@ public class FrameTest {
     }
 
     class ReadLocal extends FrameSlotNode {
+
         ReadLocal(FrameSlot slot) {
             super(slot);
         }
@@ -119,4 +126,3 @@ public class FrameTest {
         }
     }
 }
-

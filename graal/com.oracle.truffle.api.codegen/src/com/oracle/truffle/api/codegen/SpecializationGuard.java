@@ -32,8 +32,8 @@ import java.lang.annotation.*;
 public @interface SpecializationGuard {
 
     /**
-     * Specifies the name of the guard method annotated by {@link GuardCheck} specified as method in the
-     * {@link TypeSystem} class.
+     * Specifies the name of the guard method annotated by {@link GuardCheck} specified as method in
+     * the {@link TypeSystem} class.
      */
     String methodName();
 

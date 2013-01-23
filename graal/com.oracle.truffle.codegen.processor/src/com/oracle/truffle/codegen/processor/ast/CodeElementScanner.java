@@ -25,7 +25,7 @@ package com.oracle.truffle.codegen.processor.ast;
 import javax.lang.model.element.*;
 import javax.lang.model.util.*;
 
-public abstract class CodeElementScanner<R, P> extends ElementScanner7<R, P>{
+public abstract class CodeElementScanner<R, P> extends ElementScanner7<R, P> {
 
     @Override
     public final R visitExecutable(ExecutableElement e, P p) {

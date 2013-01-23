@@ -45,7 +45,7 @@ public class CodeAnnotationMirror implements WritableAnnotationMirror {
     }
 
     @Override
-    public Map< ? extends ExecutableElement, ? extends AnnotationValue> getElementValues() {
+    public Map<? extends ExecutableElement, ? extends AnnotationValue> getElementValues() {
         return values;
     }
 
@@ -76,6 +76,5 @@ public class CodeAnnotationMirror implements WritableAnnotationMirror {
         }
         return copy;
     }
-
 
 }

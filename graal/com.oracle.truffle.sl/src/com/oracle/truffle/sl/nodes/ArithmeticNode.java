@@ -43,9 +43,11 @@ public abstract class ArithmeticNode extends BinaryNode {
     }
 
     public abstract static class AddNode extends ArithmeticNode {
+
         public AddNode(TypedNode left, TypedNode right) {
             super(left, right);
         }
+
         protected AddNode(AddNode node) {
             super(node);
         }
@@ -74,9 +76,11 @@ public abstract class ArithmeticNode extends BinaryNode {
     }
 
     public abstract static class SubNode extends ArithmeticNode {
+
         public SubNode(TypedNode left, TypedNode right) {
             super(left, right);
         }
+
         protected SubNode(SubNode node) {
             super(node);
         }
@@ -94,9 +98,11 @@ public abstract class ArithmeticNode extends BinaryNode {
     }
 
     public abstract static class DivNode extends ArithmeticNode {
+
         public DivNode(TypedNode left, TypedNode right) {
             super(left, right);
         }
+
         protected DivNode(DivNode node) {
             super(node);
         }
@@ -118,6 +124,7 @@ public abstract class ArithmeticNode extends BinaryNode {
         public MulNode(TypedNode left, TypedNode right) {
             super(left, right);
         }
+
         protected MulNode(MulNode node) {
             super(node);
         }

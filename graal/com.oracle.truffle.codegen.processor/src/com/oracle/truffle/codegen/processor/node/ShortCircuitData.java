@@ -25,7 +25,6 @@ package com.oracle.truffle.codegen.processor.node;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 
-
 public class ShortCircuitData extends TemplateMethod {
 
     private ShortCircuitData genericShortCircuitMethod;

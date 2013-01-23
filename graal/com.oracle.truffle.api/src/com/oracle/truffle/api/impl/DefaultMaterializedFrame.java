@@ -26,6 +26,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
 final class DefaultMaterializedFrame implements MaterializedFrame {
+
     private final DefaultVirtualFrame wrapped;
 
     protected DefaultMaterializedFrame(DefaultVirtualFrame wrapped) {

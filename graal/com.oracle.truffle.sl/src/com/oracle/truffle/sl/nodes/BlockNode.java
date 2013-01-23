@@ -26,8 +26,7 @@ import com.oracle.truffle.api.frame.*;
 
 public class BlockNode extends StatementNode {
 
-    @Children
-    private final StatementNode[] statements;
+    @Children private final StatementNode[] statements;
 
     public BlockNode(StatementNode[] statements) {
         this.statements = adoptChildren(statements);

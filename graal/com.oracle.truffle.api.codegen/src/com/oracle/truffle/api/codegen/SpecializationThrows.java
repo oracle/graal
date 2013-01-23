@@ -28,7 +28,7 @@ import java.lang.annotation.*;
 @Target({ElementType.METHOD})
 public @interface SpecializationThrows {
 
-    Class< ? extends Throwable> javaClass();
+    Class<? extends Throwable> javaClass();
 
     String transitionTo();
 }

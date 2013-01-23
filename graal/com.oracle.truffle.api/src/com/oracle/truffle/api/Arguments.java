@@ -24,22 +24,23 @@ package com.oracle.truffle.api;
 
 /**
  * Base class for arguments passed to guest language methods via the
- * {@link CallTarget#call(com.oracle.truffle.api.frame.PackedFrame, Arguments)} method. A guest language create a
- * subclass with immutable fields representing the arguments passed to a guest language method. The {@link Arguments}
- * object must be created immediately before a method call and it must not be stored in a field or cast to
- * {@link java.lang.Object}.
+ * {@link CallTarget#call(com.oracle.truffle.api.frame.PackedFrame, Arguments)} method. A guest
+ * language create a subclass with immutable fields representing the arguments passed to a guest
+ * language method. The {@link Arguments} object must be created immediately before a method call
+ * and it must not be stored in a field or cast to {@link java.lang.Object}.
  */
 public class Arguments {
 
     /**
      * Constant that can be used as an argument to
-     * {@link CallTarget#call(com.oracle.truffle.api.frame.PackedFrame, Arguments)} in case no arguments should be
-     * supplied.
+     * {@link CallTarget#call(com.oracle.truffle.api.frame.PackedFrame, Arguments)} in case no
+     * arguments should be supplied.
      */
     public static final Arguments EMPTY_ARGUMENTS = new Arguments();
 
     /**
-     * Constructs an empty {@link Arguments} instance. Guest languages should create a subclass to specify their own arguments.
+     * Constructs an empty {@link Arguments} instance. Guest languages should create a subclass to
+     * specify their own arguments.
      */
     protected Arguments() {
     }

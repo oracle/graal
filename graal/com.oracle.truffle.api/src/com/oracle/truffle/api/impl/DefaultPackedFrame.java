@@ -25,6 +25,7 @@ package com.oracle.truffle.api.impl;
 import com.oracle.truffle.api.frame.*;
 
 final class DefaultPackedFrame implements PackedFrame {
+
     private final DefaultVirtualFrame wrapped;
 
     protected DefaultPackedFrame(DefaultVirtualFrame wrapped) {

@@ -77,7 +77,7 @@ public abstract class WriteLocalNode extends FrameSlotNode {
     }
 
     @Override
-    protected FrameSlotNode specialize(Class< ? > clazz) {
+    protected FrameSlotNode specialize(Class<?> clazz) {
         return WriteLocalNodeFactory.createSpecialized(this, clazz);
     }
 

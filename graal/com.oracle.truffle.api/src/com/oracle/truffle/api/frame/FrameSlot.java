@@ -26,9 +26,14 @@ package com.oracle.truffle.api.frame;
  * A slot in a frame that can store a value of a given type.
  */
 public interface FrameSlot {
+
     String getName();
+
     int getIndex();
-    Class< ? > getType();
-    void setType(Class< ? > type);
+
+    Class<?> getType();
+
+    void setType(Class<?> type);
+
     void registerOneShotTypeListener(FrameSlotTypeListener listener);
 }

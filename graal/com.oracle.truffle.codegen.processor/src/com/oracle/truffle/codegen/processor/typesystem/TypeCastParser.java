@@ -32,7 +32,6 @@ import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
 
-
 class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
 
     public TypeCastParser(ProcessorContext context, TypeSystemData typeSystem) {
@@ -60,7 +59,7 @@ class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
     }
 
     @Override
-    public Class< ? extends Annotation> getAnnotationType() {
+    public Class<? extends Annotation> getAnnotationType() {
         return TypeCast.class;
     }
 }

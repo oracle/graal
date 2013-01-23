@@ -138,8 +138,8 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             return null;
         }
 
-        Iterator< ? extends VariableElement> variableIterator = method.getParameters().iterator();
-        Iterator< ? extends ParameterSpec> specificationIterator = parameterSpecs.iterator();
+        Iterator<? extends VariableElement> variableIterator = method.getParameters().iterator();
+        Iterator<? extends ParameterSpec> specificationIterator = parameterSpecs.iterator();
 
         List<ActualParameter> resolvedMirrors = new ArrayList<>();
         VariableElement parameter = null;
@@ -231,7 +231,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         return new ActualParameter(specification, resolvedType);
     }
 
-    public static String createExpectedSignature(String methodName, ParameterSpec returnType, List< ? extends ParameterSpec> parameters) {
+    public static String createExpectedSignature(String methodName, ParameterSpec returnType, List<? extends ParameterSpec> parameters) {
         StringBuilder b = new StringBuilder();
 
         b.append("    ");
@@ -270,7 +270,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
 
         TypeMirror[] types = null;
 
-        //TODO allowed types may differ so different <Any> must be generated.
+        // TODO allowed types may differ so different <Any> must be generated.
         if (returnType.getAllowedTypes().length > 1) {
             types = returnType.getAllowedTypes();
         }
@@ -307,6 +307,5 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         }
         return builder.toString();
     }
-
 
 }

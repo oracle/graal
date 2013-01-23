@@ -28,8 +28,7 @@ public class ReturnNode extends StatementNode {
 
     private static final ReturnException EXCEPTION = new ReturnException();
 
-    @Child
-    private StatementNode expr;
+    @Child private StatementNode expr;
 
     public ReturnNode(StatementNode expr) {
         this.expr = adoptChild(expr);

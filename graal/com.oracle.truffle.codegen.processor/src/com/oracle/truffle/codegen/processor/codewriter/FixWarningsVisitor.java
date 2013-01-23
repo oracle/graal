@@ -34,9 +34,7 @@ import javax.lang.model.type.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.ast.*;
 
-
-public class FixWarningsVisitor extends CodeElementScanner<Void, Void>{
-
+public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
 
     private final Set<String> symbolsUsed = new HashSet<>();
 

@@ -26,5 +26,6 @@ package com.oracle.truffle.api.frame;
  * Listener for the event of a type change of a frame slot.
  */
 public interface FrameSlotTypeListener {
-    void typeChanged(FrameSlot slot, Class< ? > oldType);
+
+    void typeChanged(FrameSlot slot, Class<?> oldType);
 }

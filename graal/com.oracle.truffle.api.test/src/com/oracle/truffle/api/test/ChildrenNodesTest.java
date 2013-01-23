@@ -32,17 +32,19 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * <h3>Creating an Array of Children Nodes</h3>
- *
+ * 
  * <p>
- * An array of children nodes can be used as a field in a parent node. The field has to be annotated with
- * {@link com.oracle.truffle.api.nodes.Node.Children} and must be declared private and final. Before assigning the field
- * in the parent node constructor, {@link Node#adoptChildren} must be called in order to update the parent pointers in
- * the child nodes. After filling the array with its first values, it must never be changed. It is only possible to call
- * {@link Node#replace} on a child node.
+ * An array of children nodes can be used as a field in a parent node. The field has to be annotated
+ * with {@link com.oracle.truffle.api.nodes.Node.Children} and must be declared private and final.
+ * Before assigning the field in the parent node constructor, {@link Node#adoptChildren} must be
+ * called in order to update the parent pointers in the child nodes. After filling the array with
+ * its first values, it must never be changed. It is only possible to call {@link Node#replace} on a
+ * child node.
  * </p>
- *
+ * 
  * <p>
- * The next part of the Truffle API introduction is at {@link com.oracle.truffle.api.test.FinalFieldTest}.
+ * The next part of the Truffle API introduction is at
+ * {@link com.oracle.truffle.api.test.FinalFieldTest}.
  * </p>
  */
 public class ChildrenNodesTest {
@@ -83,9 +85,9 @@ public class ChildrenNodesTest {
     }
 
     class TestChildNode extends Node {
+
         public int execute() {
             return 21;
         }
     }
 }
-

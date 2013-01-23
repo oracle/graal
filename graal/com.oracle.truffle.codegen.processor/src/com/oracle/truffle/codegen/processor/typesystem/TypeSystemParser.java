@@ -44,7 +44,7 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
     }
 
     @Override
-    public Class< ? extends Annotation> getAnnotationType() {
+    public Class<? extends Annotation> getAnnotationType() {
         return TypeSystem.class;
     }
 
@@ -119,11 +119,9 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
                     }
                 }
                 if (!hasGeneric) {
-                    log.error(type.getTypeSystem().getTemplateType(),
-                                    "No generic but specific @%s method %s for type %s specified. " +
-                                    "Specify a generic @%s method with parameter type %s to resolve this.",
-                                    TypeCheck.class.getSimpleName(), TypeSystemCodeGenerator.isTypeMethodName(type), Utils.getSimpleName(type.getBoxedType()),
-                                    TypeCheck.class.getSimpleName(), Object.class.getSimpleName());
+                    log.error(type.getTypeSystem().getTemplateType(), "No generic but specific @%s method %s for type %s specified. "
+                                    + "Specify a generic @%s method with parameter type %s to resolve this.", TypeCheck.class.getSimpleName(), TypeSystemCodeGenerator.isTypeMethodName(type),
+                                    Utils.getSimpleName(type.getBoxedType()), TypeCheck.class.getSimpleName(), Object.class.getSimpleName());
                     valid = false;
                 }
             }
@@ -136,18 +134,15 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
                     }
                 }
                 if (!hasGeneric) {
-                    log.error(type.getTypeSystem().getTemplateType(),
-                                    "No generic but specific @%s method %s for type %s specified. " +
-                                    "Specify a generic @%s method with parameter type %s to resolve this.",
-                                    TypeCast.class.getSimpleName(), TypeSystemCodeGenerator.asTypeMethodName(type), Utils.getSimpleName(type.getBoxedType()),
-                                    TypeCast.class.getSimpleName(), Object.class.getSimpleName());
+                    log.error(type.getTypeSystem().getTemplateType(), "No generic but specific @%s method %s for type %s specified. "
+                                    + "Specify a generic @%s method with parameter type %s to resolve this.", TypeCast.class.getSimpleName(), TypeSystemCodeGenerator.asTypeMethodName(type),
+                                    Utils.getSimpleName(type.getBoxedType()), TypeCast.class.getSimpleName(), Object.class.getSimpleName());
                     valid = false;
                 }
             }
         }
         return valid;
     }
-
 
     private TypeData[] parseTypes(TypeElement templateType, AnnotationMirror templateTypeAnnotation) {
         List<TypeMirror> typeMirrors = Utils.getAnnotationValueList(templateTypeAnnotation, "value");
@@ -163,8 +158,7 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
         for (TypeMirror primitiveType : typeMirrors) {
 
             if (isPrimitiveWrapper(primitiveType)) {
-                log.error(templateType, templateTypeAnnotation, annotationValue,
-                                "Types must not contain primitive wrapper types.");
+                log.error(templateType, templateTypeAnnotation, annotationValue, "Types must not contain primitive wrapper types.");
                 continue;
             }
 
@@ -174,8 +168,7 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
             }
 
             if (Utils.typeEquals(boxedType, objectType)) {
-                log.error(templateType, templateTypeAnnotation, annotationValue,
-                                "Types must not contain the generic type java.lang.Object.");
+                log.error(templateType, templateTypeAnnotation, annotationValue, "Types must not contain the generic type java.lang.Object.");
                 continue;
             }
 
@@ -196,8 +189,7 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
             TypeData typeData = types.get(i);
             TypeMirror type = typeData.getBoxedType();
             if (invalidTypes.containsKey(Utils.getQualifiedName(type))) {
-                log.error(templateType, templateTypeAnnotation, annotationValue,
-                                "Invalid type order. The type(s) %s are inherited from a earlier defined type %s.",
+                log.error(templateType, templateTypeAnnotation, annotationValue, "Invalid type order. The type(s) %s are inherited from a earlier defined type %s.",
                                 invalidTypes.get(Utils.getQualifiedName(type)), Utils.getQualifiedName(type));
             }
             List<String> nextInvalidTypes = Utils.getQualifiedSuperTypeNames(Utils.fromTypeMirror(type));
@@ -226,7 +218,6 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
         }
         return false;
     }
-
 
     private boolean verifyMethodSignatures(Element element, TypeData[] types) {
         Set<String> generatedIsMethodNames = new HashSet<>();

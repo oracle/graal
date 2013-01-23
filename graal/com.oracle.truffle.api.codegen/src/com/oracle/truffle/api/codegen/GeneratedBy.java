@@ -31,6 +31,6 @@ import java.lang.annotation.*;
 @Target({ElementType.TYPE})
 public @interface GeneratedBy {
 
-    Class< ? > value();
+    Class<?> value();
 
 }

@@ -28,16 +28,18 @@ import com.oracle.truffle.api.*;
 
 /**
  * <h3>Accessing the Truffle Runtime</h3>
- *
+ * 
  * <p>
  * The Truffle runtime can be accessed at any point in time globally using the static method
- * {@link Truffle#getRuntime()}. This method is guaranteed to return a non-null Truffle runtime object with an
- * identifying name. A Java Virtual Machine implementation can chose to replace the default implementation of the
- * {@link TruffleRuntime} interface with its own implementation for providing improved performance.
+ * {@link Truffle#getRuntime()}. This method is guaranteed to return a non-null Truffle runtime
+ * object with an identifying name. A Java Virtual Machine implementation can chose to replace the
+ * default implementation of the {@link TruffleRuntime} interface with its own implementation for
+ * providing improved performance.
  * </p>
- *
+ * 
  * <p>
- * The next part of the Truffle API introduction is at {@link com.oracle.truffle.api.test.RootNodeTest}.
+ * The next part of the Truffle API introduction is at
+ * {@link com.oracle.truffle.api.test.RootNodeTest}.
  * </p>
  */
 public class TruffleRuntimeTest {

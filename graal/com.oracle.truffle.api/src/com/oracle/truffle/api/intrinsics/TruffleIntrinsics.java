@@ -28,14 +28,16 @@ package com.oracle.truffle.api.intrinsics;
 public final class TruffleIntrinsics {
 
     /**
-     * Specifies that the compiler should put a deoptimization point at this position that will continue execution in the interpreter.
-     * Should be used to cut off cold paths that should not be part of the compiled machine code.
+     * Specifies that the compiler should put a deoptimization point at this position that will
+     * continue execution in the interpreter. Should be used to cut off cold paths that should not
+     * be part of the compiled machine code.
      */
     public static void deoptimize() {
     }
 
     /**
-     * Checks whether the Thread has been interrupted in the interpreter in order to avoid endless loops. The compiled code may choose a more efficient implementation.
+     * Checks whether the Thread has been interrupted in the interpreter in order to avoid endless
+     * loops. The compiled code may choose a more efficient implementation.
      */
     public static void checkThreadInterrupted() {
         if (Thread.currentThread().isInterrupted()) {

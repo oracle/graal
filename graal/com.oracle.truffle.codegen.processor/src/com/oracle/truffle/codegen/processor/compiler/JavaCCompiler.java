@@ -27,7 +27,6 @@ import javax.lang.model.element.*;
 
 import com.oracle.truffle.codegen.processor.*;
 
-
 public class JavaCCompiler extends AbstractCompiler {
 
     public static boolean isValidElement(Element currentElement) {
@@ -46,15 +45,13 @@ public class JavaCCompiler extends AbstractCompiler {
     public String getMethodBody(ProcessingEnvironment env, ExecutableElement method) {
         try {
             /*
-            if (false) {
-            Pair<JCTree, JCCompilationUnit> treeAndTopLevel = ((JavacElements) env.getElementUtils()).getTreeAndTopLevel(method, null, null);
-            JCBlock block = ((JCMethodDecl) treeAndTopLevel.fst).getBody();
-            int startPos = block.pos;
-            int endPos = block.endpos;
-            String methodBody = treeAndTopLevel.snd.getSourceFile().getCharContent(true).subSequence(startPos + 1, endPos).toString();
-            return methodBody;
-            }
-            */
+             * if (false) { Pair<JCTree, JCCompilationUnit> treeAndTopLevel = ((JavacElements)
+             * env.getElementUtils()).getTreeAndTopLevel(method, null, null); JCBlock block =
+             * ((JCMethodDecl) treeAndTopLevel.fst).getBody(); int startPos = block.pos; int endPos
+             * = block.endpos; String methodBody =
+             * treeAndTopLevel.snd.getSourceFile().getCharContent(true).subSequence(startPos + 1,
+             * endPos).toString(); return methodBody; }
+             */
 
             Object treeAndTopLevel = getTreeAndTopLevel(env, method);
             Object block = method(field(treeAndTopLevel, "fst"), "getBody");
@@ -75,7 +72,8 @@ public class JavaCCompiler extends AbstractCompiler {
 
     private static Object getTreeAndTopLevel(ProcessingEnvironment env, Element element) throws Exception {
         /*
-         * Pair<JCTree, JCCompilationUnit> treeAndTopLevel = ((JavacElements) env.getElementUtils()).getTreeAndTopLevel(method, null, null);
+         * Pair<JCTree, JCCompilationUnit> treeAndTopLevel = ((JavacElements)
+         * env.getElementUtils()).getTreeAndTopLevel(method, null, null);
          */
         return method(method(env, "getElementUtils"), "getTreeAndTopLevel", getTreeAndTopLevelSignature, element, null, null);
     }

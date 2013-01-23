@@ -24,7 +24,6 @@ package com.oracle.truffle.codegen.processor.api;
 
 import javax.lang.model.element.*;
 
-
 public interface ExtensionProcessor {
 
     void process(ExtensionContext context, AnnotationMirror mirror, Element element);

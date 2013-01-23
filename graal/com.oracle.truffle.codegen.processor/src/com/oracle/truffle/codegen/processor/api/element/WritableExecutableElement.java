@@ -28,17 +28,22 @@ import javax.lang.model.type.*;
 public interface WritableExecutableElement extends ExecutableElement, WritableElement {
 
     void setReturnType(TypeMirror type);
+
     void setDefaultValue(AnnotationValue defaultValue);
 
     void addParameter(VariableElement parameter);
+
     void removeParameter(VariableElement parameter);
 
     void addThrownType(TypeMirror thrownType);
+
     void removeThrownType(TypeMirror thrownType);
 
     void setSimpleName(Name name);
+
     void setVarArgs(boolean varargs);
 
     void setBody(String body);
+
     String getBody();
 }

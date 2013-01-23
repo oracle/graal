@@ -26,12 +26,14 @@ import com.oracle.truffle.api.frame.*;
 
 /**
  * Represents the target of a call. Instances of this interface can be created using the
- * {@link TruffleRuntime#createCallTarget(com.oracle.truffle.api.nodes.RootNode, FrameDescriptor)} method.
+ * {@link TruffleRuntime#createCallTarget(com.oracle.truffle.api.nodes.RootNode, FrameDescriptor)}
+ * method.
  */
 public abstract class CallTarget {
 
     /**
      * Calls this target as a root method and without arguments.
+     * 
      * @return the return result of the call
      */
     public final Object call() {
@@ -40,6 +42,7 @@ public abstract class CallTarget {
 
     /**
      * Calls this target with a caller frame and no arguments.
+     * 
      * @param caller the caller frame
      * @return the return result of the call
      */
@@ -49,6 +52,7 @@ public abstract class CallTarget {
 
     /**
      * Calls this target as a root method passing arguments.
+     * 
      * @param arguments the arguments that should be passed to the callee
      * @return the return result of the call
      */
@@ -58,6 +62,7 @@ public abstract class CallTarget {
 
     /**
      * Calls this target passing a caller frame and arguments.
+     * 
      * @param caller the caller frame
      * @param arguments the arguments that should be passed to the callee
      * @return the return result of the call

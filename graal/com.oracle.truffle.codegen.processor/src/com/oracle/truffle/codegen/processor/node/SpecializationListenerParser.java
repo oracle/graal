@@ -30,7 +30,6 @@ import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 
-
 public class SpecializationListenerParser extends MethodParser<TemplateMethod> {
 
     private final MethodSpec specification;
@@ -56,7 +55,7 @@ public class SpecializationListenerParser extends MethodParser<TemplateMethod> {
     }
 
     @Override
-    public Class< ? extends Annotation> getAnnotationType() {
+    public Class<? extends Annotation> getAnnotationType() {
         return SpecializationListener.class;
     }
 

@@ -41,7 +41,8 @@ public abstract class CodeElementFactory<M> {
     protected abstract CodeElement<?> create(M m);
 
     @SuppressWarnings("unused")
-    protected void createChildren(M m) { }
+    protected void createChildren(M m) {
+    }
 
     @SuppressWarnings("unchecked")
     public CodeElement<?> process(CodeElement parent, M m) {

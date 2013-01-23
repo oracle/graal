@@ -51,7 +51,7 @@ public class ParameterSpec {
     }
 
     /** Type constructor. */
-    public ParameterSpec(String name, TypeMirror singleFixedType,  boolean optional) {
+    public ParameterSpec(String name, TypeMirror singleFixedType, boolean optional) {
         this(name, new TypeMirror[]{singleFixedType}, singleFixedType, optional, Cardinality.ONE);
     }
 
@@ -76,7 +76,6 @@ public class ParameterSpec {
 
         return typeMirrors.toArray(new TypeMirror[typeMirrors.size()]);
     }
-
 
     public final String getName() {
         return name;

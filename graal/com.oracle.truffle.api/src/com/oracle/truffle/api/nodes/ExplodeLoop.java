@@ -25,7 +25,8 @@ package com.oracle.truffle.api.nodes;
 import java.lang.annotation.*;
 
 /**
- * Specifies for a method that the loops with constant number of invocations should be fully unrolled.
+ * Specifies for a method that the loops with constant number of invocations should be fully
+ * unrolled.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

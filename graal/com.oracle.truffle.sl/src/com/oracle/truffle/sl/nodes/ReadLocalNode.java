@@ -63,7 +63,7 @@ public abstract class ReadLocalNode extends FrameSlotNode {
     }
 
     @Override
-    protected FrameSlotNode specialize(Class< ? > clazz) {
+    protected FrameSlotNode specialize(Class<?> clazz) {
         return ReadLocalNodeFactory.createSpecialized(this, clazz);
     }
 

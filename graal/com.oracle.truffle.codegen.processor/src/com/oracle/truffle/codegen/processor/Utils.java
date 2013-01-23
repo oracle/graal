@@ -47,10 +47,8 @@ public class Utils {
         }
     }
 
-    public static List<AnnotationMirror> collectAnnotations(
-                    ProcessorContext context,
-                    AnnotationMirror markerAnnotation, String elementName, Element element,
-                    Class< ? extends Annotation> annotationClass) {
+    public static List<AnnotationMirror> collectAnnotations(ProcessorContext context, AnnotationMirror markerAnnotation, String elementName, Element element,
+                    Class<? extends Annotation> annotationClass) {
         List<AnnotationMirror> result = Utils.getAnnotationValueList(markerAnnotation, elementName);
         AnnotationMirror explicit = Utils.findAnnotationMirror(context.getEnvironment(), element, annotationClass);
         if (explicit != null) {
@@ -159,7 +157,6 @@ public class Utils {
                 throw new RuntimeException("Unknown type specified " + mirror.getKind() + " mirror: " + mirror);
         }
     }
-
 
     private static String getGenericName(TypeElement element) {
         String simpleName = element.getSimpleName().toString();
@@ -346,7 +343,7 @@ public class Utils {
     }
 
     public static String createConstantName(String simpleName) {
-        //TODO use camel case to produce underscores.
+        // TODO use camel case to produce underscores.
         return simpleName.toString().toUpperCase();
     }
 
@@ -364,7 +361,7 @@ public class Utils {
     @SuppressWarnings("unchecked")
     public static <T> List<T> getAnnotationValueList(AnnotationMirror mirror, String name) {
         List<T> result = new ArrayList<>();
-        List< ? extends AnnotationValue> values = (List< ? extends AnnotationValue>) getAnnotationValue(mirror, name).getValue();
+        List<? extends AnnotationValue> values = (List<? extends AnnotationValue>) getAnnotationValue(mirror, name).getValue();
         for (AnnotationValue value : values) {
             result.add((T) value.getValue());
         }
@@ -419,11 +416,11 @@ public class Utils {
         return e.getMessage() + "\r\n" + string.toString();
     }
 
-    public static AnnotationMirror findAnnotationMirror(ProcessingEnvironment processingEnv, Element element, Class< ? > annotationClass) {
+    public static AnnotationMirror findAnnotationMirror(ProcessingEnvironment processingEnv, Element element, Class<?> annotationClass) {
         return findAnnotationMirror(processingEnv, element.getAnnotationMirrors(), annotationClass);
     }
 
-    public static AnnotationMirror findAnnotationMirror(ProcessingEnvironment processingEnv, List< ? extends AnnotationMirror> mirrors, Class< ? > annotationClass) {
+    public static AnnotationMirror findAnnotationMirror(ProcessingEnvironment processingEnv, List<? extends AnnotationMirror> mirrors, Class<?> annotationClass) {
         TypeElement expectedAnnotationType = processingEnv.getElementUtils().getTypeElement(annotationClass.getCanonicalName());
         for (AnnotationMirror mirror : mirrors) {
             DeclaredType annotationType = mirror.getAnnotationType();
@@ -526,7 +523,6 @@ public class Utils {
         return qualified1.equals(qualified2);
     }
 
-
     public static int compareByTypeHierarchy(TypeMirror t1, TypeMirror t2) {
         if (typeEquals(t1, t2)) {
             return 0;
@@ -542,7 +538,6 @@ public class Utils {
         }
         return 0;
     }
-
 
     public static boolean canThrowType(List<? extends TypeMirror> thrownTypes, TypeMirror exceptionType) {
         if (Utils.containsType(thrownTypes, exceptionType)) {
@@ -603,6 +598,5 @@ public class Utils {
         }
         return true;
     }
-
 
 }

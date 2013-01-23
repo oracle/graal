@@ -24,7 +24,6 @@ package com.oracle.truffle.codegen.processor.api.element;
 
 import javax.lang.model.element.*;
 
-
 public interface WritableElement extends Element {
 
     void addAnnotationMirror(AnnotationMirror annotationMirror);

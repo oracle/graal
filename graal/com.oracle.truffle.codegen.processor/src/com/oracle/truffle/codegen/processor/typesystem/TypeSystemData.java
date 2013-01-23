@@ -40,9 +40,7 @@ public class TypeSystemData extends Template {
 
     private final TypeData voidType;
 
-
-    public TypeSystemData(TypeElement templateType, AnnotationMirror annotation,
-                    TypeData[] types, TypeMirror genericType, TypeData voidType) {
+    public TypeSystemData(TypeElement templateType, AnnotationMirror annotation, TypeData[] types, TypeMirror genericType, TypeData voidType) {
         super(templateType, annotation);
         this.types = types;
         this.genericType = genericType;
@@ -60,7 +58,7 @@ public class TypeSystemData extends Template {
         for (TypeData type : types) {
             type.typeSystem = this;
         }
-        if (voidType != null)  {
+        if (voidType != null) {
             voidType.typeSystem = this;
         }
     }
@@ -103,6 +101,7 @@ public class TypeSystemData extends Template {
         }
         return null;
     }
+
     public TypeData findTypeData(TypeMirror type) {
         if (Utils.typeEquals(voidType.getPrimitiveType(), type)) {
             return voidType;
@@ -115,7 +114,6 @@ public class TypeSystemData extends Template {
         return types[index];
     }
 
-
     public int findType(TypeMirror type) {
         for (int i = 0; i < types.length; i++) {
             if (Utils.typeEquals(types[i].getPrimitiveType(), type)) {
@@ -125,11 +123,9 @@ public class TypeSystemData extends Template {
         return -1;
     }
 
-
     @Override
     public String toString() {
         return getClass().getSimpleName() + "[template = " + Utils.getSimpleName(getTemplateType()) + ", types = " + Arrays.toString(types) + "]";
     }
-
 
 }

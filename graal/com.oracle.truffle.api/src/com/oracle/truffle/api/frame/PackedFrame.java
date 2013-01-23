@@ -23,14 +23,16 @@
 package com.oracle.truffle.api.frame;
 
 /**
- * Represents a packed frame that represents a virtual frame. A packed frame instance can be retrieved with the
- * {@link VirtualFrame#pack()} method. It can be converted back into a virtual frame using {@link PackedFrame#unpack()}.
- * Instances of this type must not be stored in a field or cast to {@link java.lang.Object}.
+ * Represents a packed frame that represents a virtual frame. A packed frame instance can be
+ * retrieved with the {@link VirtualFrame#pack()} method. It can be converted back into a virtual
+ * frame using {@link PackedFrame#unpack()}. Instances of this type must not be stored in a field or
+ * cast to {@link java.lang.Object}.
  */
 public interface PackedFrame {
 
     /**
      * Unpacks this frame and converts it back to a virtual frame.
+     * 
      * @return the virtual frame that was the content of this packed frame
      */
     VirtualFrame unpack();

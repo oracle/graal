@@ -24,13 +24,14 @@ package com.oracle.truffle.codegen.processor.ast;
 
 import javax.lang.model.element.*;
 
-
 public interface GeneratedElement {
 
     AnnotationMirror getGeneratorAnnotationMirror();
+
     void setGeneratorAnnotationMirror(AnnotationMirror mirror);
 
     Element getGeneratorElement();
+
     void setGeneratorElement(Element element);
 
 }

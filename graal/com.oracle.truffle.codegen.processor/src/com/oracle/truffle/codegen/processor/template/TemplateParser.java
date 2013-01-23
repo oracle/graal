@@ -43,7 +43,7 @@ public abstract class TemplateParser<M extends Template> extends AbstractParser<
         return extensionParser;
     }
 
-    protected boolean verifyExclusiveMethodAnnotation(TypeElement type, Class<?> ... annotationTypes) {
+    protected boolean verifyExclusiveMethodAnnotation(TypeElement type, Class<?>... annotationTypes) {
         boolean valid = true;
         List<ExecutableElement> methods = ElementFilter.methodsIn(type.getEnclosedElements());
         for (ExecutableElement method : methods) {

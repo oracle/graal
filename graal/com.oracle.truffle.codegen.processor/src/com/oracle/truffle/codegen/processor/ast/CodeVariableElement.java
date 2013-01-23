@@ -140,5 +140,4 @@ public final class CodeVariableElement extends CodeElement<Element> implements W
         return copy;
     }
 
-
 }

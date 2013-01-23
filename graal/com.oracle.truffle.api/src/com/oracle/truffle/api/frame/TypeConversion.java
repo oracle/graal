@@ -26,6 +26,7 @@ package com.oracle.truffle.api.frame;
  * Interface for defining type conversions for frame slot values.
  */
 public interface TypeConversion {
+
     Class<?> getTopType();
 
     Object convertTo(Class<?> targetType, Object value);

@@ -147,7 +147,7 @@ public class ProcessorContext {
         return null;
     }
 
-    public TypeMirror getType(Class< ? > element) {
+    public TypeMirror getType(Class<?> element) {
         TypeMirror mirror;
         if (element.isPrimitive()) {
             if (element == boolean.class) {

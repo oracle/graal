@@ -99,10 +99,12 @@ public class CodeTreeBuilder {
     public CodeTreeBuilder startStatement() {
         startGroup();
         registerCallBack(new EndCallback() {
+
             @Override
             public void beforeEnd() {
                 string(";").newLine();
             }
+
             @Override
             public void afterEnd() {
             }
@@ -195,9 +197,11 @@ public class CodeTreeBuilder {
         startGroup();
         string("(").startGroup();
         registerCallBack(new EndCallback() {
+
             @Override
             public void beforeEnd() {
             }
+
             @Override
             public void afterEnd() {
                 string(")");
@@ -210,9 +214,11 @@ public class CodeTreeBuilder {
     public CodeTreeBuilder startDoubleQuote() {
         startGroup().string("\"");
         registerCallBack(new EndCallback() {
+
             @Override
             public void beforeEnd() {
             }
+
             @Override
             public void afterEnd() {
                 string("\"");
@@ -293,10 +299,12 @@ public class CodeTreeBuilder {
     public CodeTreeBuilder startCase() {
         startGroup().string("case ");
         registerCallBack(new EndCallback() {
+
             @Override
             public void beforeEnd() {
                 string(" :").newLine();
             }
+
             @Override
             public void afterEnd() {
             }
@@ -317,10 +325,12 @@ public class CodeTreeBuilder {
         if (method != null && Utils.isVoid(method.getReturnType())) {
             startGroup();
             registerCallBack(new EndCallback() {
+
                 @Override
                 public void beforeEnd() {
                     string(";").newLine(); // complete statement to execute
                 }
+
                 @Override
                 public void afterEnd() {
                     string("return").string(";").newLine(); // emit a return;
@@ -374,9 +384,11 @@ public class CodeTreeBuilder {
         startGroup();
         string("{").newLine().startIndention();
         registerCallBack(new EndCallback() {
+
             @Override
             public void beforeEnd() {
             }
+
             @Override
             public void afterEnd() {
                 string("}").newLine();

@@ -26,7 +26,7 @@ import java.lang.annotation.*;
 
 /**
  * 
- *
+ * 
  * @see SpecializationGuard
  */
 @Retention(RetentionPolicy.CLASS)

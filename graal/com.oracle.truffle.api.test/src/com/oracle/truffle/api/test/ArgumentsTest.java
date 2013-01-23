@@ -28,25 +28,26 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
-
 /**
  * <h3>Passing Arguments</h3>
- *
+ * 
  * <p>
- * A guest language can pass its own custom arguments when invoking a Truffle method by creating a subclass of
- * {@link Arguments}. When invoking a call target with {@link CallTarget#call(Arguments)}, the arguments can be passed.
- * A Truffle node can access the arguments passed into the Truffle method by using {@link VirtualFrame#getArguments()}.
+ * A guest language can pass its own custom arguments when invoking a Truffle method by creating a
+ * subclass of {@link Arguments}. When invoking a call target with
+ * {@link CallTarget#call(Arguments)}, the arguments can be passed. A Truffle node can access the
+ * arguments passed into the Truffle method by using {@link VirtualFrame#getArguments()}.
  * </p>
- *
+ * 
  * <p>
- * The arguments class should only contain fields that are declared as final. This allows the Truffle runtime to improve
- * optimizations around guest language method calls. Also, the arguments object must never be stored into a field. It
- * should be created immediately before invoking {@link CallTarget#call(Arguments)} and no longer be accessed
- * afterwards.
+ * The arguments class should only contain fields that are declared as final. This allows the
+ * Truffle runtime to improve optimizations around guest language method calls. Also, the arguments
+ * object must never be stored into a field. It should be created immediately before invoking
+ * {@link CallTarget#call(Arguments)} and no longer be accessed afterwards.
  * </p>
- *
+ * 
  * <p>
- * The next part of the Truffle API introduction is at {@link com.oracle.truffle.api.test.FrameTest}.
+ * The next part of the Truffle API introduction is at {@link com.oracle.truffle.api.test.FrameTest}
+ * .
  * </p>
  */
 public class ArgumentsTest {
@@ -61,7 +62,9 @@ public class ArgumentsTest {
     }
 
     class TestArguments extends Arguments {
+
         final int[] values;
+
         TestArguments(int... values) {
             this.values = values;
         }
@@ -86,6 +89,7 @@ public class ArgumentsTest {
     }
 
     class TestArgumentNode extends Node {
+
         private final int index;
 
         TestArgumentNode(int index) {
@@ -97,4 +101,3 @@ public class ArgumentsTest {
         }
     }
 }
-

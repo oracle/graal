@@ -32,7 +32,6 @@ import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.api.*;
 import com.oracle.truffle.codegen.processor.api.element.*;
 
-
 public class ExtensionParser {
 
     private final Map<String, ExtensionProcessor> extensions = new HashMap<>();
@@ -114,6 +113,5 @@ public class ExtensionParser {
         }
         return processor;
     }
-
 
 }

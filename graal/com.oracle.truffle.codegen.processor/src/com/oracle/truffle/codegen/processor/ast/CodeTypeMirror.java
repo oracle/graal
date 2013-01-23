@@ -81,7 +81,7 @@ public class CodeTypeMirror implements TypeMirror {
         }
 
         @Override
-        public List< ? extends TypeMirror> getTypeArguments() {
+        public List<? extends TypeMirror> getTypeArguments() {
             return Collections.emptyList();
         }
 

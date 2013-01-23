@@ -31,8 +31,7 @@ import com.oracle.truffle.codegen.processor.node.NodeFieldData.ExecutionKind;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
 
-
-public abstract class MethodParser<E extends TemplateMethod> extends TemplateMethodParser<NodeData, E>{
+public abstract class MethodParser<E extends TemplateMethod> extends TemplateMethodParser<NodeData, E> {
 
     public MethodParser(ProcessorContext context, NodeData node) {
         super(context, node);
@@ -41,7 +40,6 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
     public NodeData getNode() {
         return template;
     }
-
 
     protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData) {
         return new ParameterSpec(valueName, nodeData, false, Cardinality.ONE);
@@ -74,8 +72,7 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
                     break;
                 }
 
-                defaultParameters.add(new ParameterSpec(shortCircuitValueName(valueName),
-                                getContext().getType(boolean.class), false));
+                defaultParameters.add(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class), false));
 
                 defaultParameters.add(createValueParameterSpec(valueName, field.getNodeData()));
             } else {

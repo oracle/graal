@@ -44,7 +44,6 @@ public abstract class ClassElementFactory<M> extends CodeElementFactory<M> {
     @Override
     protected abstract CodeTypeElement create(M m);
 
-
     @Override
     public CodeTypeElement getElement() {
         return (CodeTypeElement) super.getElement();
@@ -87,7 +86,6 @@ public abstract class ClassElementFactory<M> extends CodeElementFactory<M> {
         return method;
     }
 
-
     private static ExecutableElement findConstructor(TypeElement clazz) {
         List<ExecutableElement> constructors = ElementFilter.constructorsIn(clazz.getEnclosedElements());
         if (constructors.isEmpty()) {
@@ -116,7 +114,6 @@ public abstract class ClassElementFactory<M> extends CodeElementFactory<M> {
 
         return executable;
     }
-
 
     protected CodeTypeElement createClass(Template model, Set<Modifier> modifiers, String simpleName, TypeMirror superType, boolean enumType) {
         TypeElement templateType = model.getTemplateType();

@@ -24,9 +24,7 @@ package com.oracle.truffle.codegen.processor.compiler;
 
 import java.lang.reflect.*;
 
-
 public abstract class AbstractCompiler implements Compiler {
-
 
     protected static Object method(Object o, String methodName) throws Exception {
         Method method = o.getClass().getMethod(methodName);
@@ -34,7 +32,7 @@ public abstract class AbstractCompiler implements Compiler {
         return method.invoke(o);
     }
 
-    protected static Object method(Object o, String methodName, Class[] paramTypes, Object ... values) throws Exception {
+    protected static Object method(Object o, String methodName, Class[] paramTypes, Object... values) throws Exception {
         Method method = o.getClass().getMethod(methodName, paramTypes);
         method.setAccessible(true);
         return method.invoke(o, values);

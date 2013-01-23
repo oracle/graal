@@ -24,7 +24,6 @@ package com.oracle.truffle.api.codegen;
 
 import java.lang.annotation.*;
 
-
 /**
  *
  *
@@ -33,6 +32,5 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})
 public @interface TypeCast {
-
 
 }

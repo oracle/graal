@@ -37,7 +37,6 @@ import com.oracle.truffle.codegen.processor.node.NodeFieldData.ExecutionKind;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
-
 public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
     private static final String THIS_NODE_LOCAL_VAR_NAME = "thisNode";
@@ -67,8 +66,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
         }
         name += nodeClassName(specialization.getNode());
-        if (name.equals(Utils.getSimpleName(specialization.getNode().getNodeType()))
-                        || name.equals(Utils.getSimpleName(specialization.getNode().getTemplateType()))) {
+        if (name.equals(Utils.getSimpleName(specialization.getNode().getNodeType())) || name.equals(Utils.getSimpleName(specialization.getNode().getTemplateType()))) {
             name = name + "Impl";
         }
 
@@ -149,7 +147,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         body.startCall(method.getMethodName());
     }
 
-    private static void startCallTypeSystemMethod(ProcessorContext context, CodeTreeBuilder body,  NodeData node, String methodName) {
+    private static void startCallTypeSystemMethod(ProcessorContext context, CodeTreeBuilder body, NodeData node, String methodName) {
         VariableElement singleton = TypeSystemCodeGenerator.findSingleton(context, node.getTypeSystem());
         assert singleton != null;
 
@@ -170,8 +168,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
 
             body.string(andOperator);
-            startCallTypeSystemMethod(context, body, specialization.getNode(),
-                            TypeSystemCodeGenerator.isTypeMethodName(type));
+            startCallTypeSystemMethod(context, body, specialization.getNode(), TypeSystemCodeGenerator.isTypeMethodName(type));
             body.string(valueName(specialization, param));
             body.end().end(); // call
             andOperator = " && ";
@@ -180,8 +177,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         if (specialization.getGuards().length > 0) {
             // Explicitly specified guards
             for (SpecializationGuardData guard : specialization.getGuards()) {
-                if ((guard.isOnSpecialization() && onSpecialization)
-                                || (guard.isOnExecution() && !onSpecialization)) {
+                if ((guard.isOnSpecialization() && onSpecialization) || (guard.isOnExecution() && !onSpecialization)) {
                     body.string(andOperator);
 
                     startCallOperationMethod(body, guard.getGuardDeclaration());
@@ -236,8 +232,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 CodeExecutableElement superConstructor = createSuperConstructor(clazz, executable);
 
                 if (superConstructor != null) {
-                    if (superConstructor.getParameters().size() == 1
-                                    && Utils.typeEquals(superConstructor.getParameters().get(0).asType(), node.getTemplateType().asType())) {
+                    if (superConstructor.getParameters().size() == 1 && Utils.typeEquals(superConstructor.getParameters().get(0).asType(), node.getTemplateType().asType())) {
                         String originalName = superConstructor.getParameters().get(0).getSimpleName().toString();
                         superConstructor.getParameters().clear();
                         superConstructor.getParameters().add(new CodeVariableElement(clazz.asType(), originalName));
@@ -328,8 +323,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 }
 
                 // skip node rewrite constructor
-                if (constructor.getParameters().size() == 1
-                                && typeEquals(constructor.getParameters().get(0).asType(), node.getNodeType())) {
+                if (constructor.getParameters().size() == 1 && typeEquals(constructor.getParameters().get(0).asType(), node.getNodeType())) {
                     continue;
                 }
 
@@ -427,7 +421,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return method;
         }
 
-
         private CodeExecutableElement createGeneratedGenericMethod(NodeData node) {
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PRIVATE, STATIC), node.getGenericSpecialization().getReturnType().getActualType(), "generatedGeneric");
             method.addParameter(new CodeVariableElement(node.getNodeType(), THIS_NODE_LOCAL_VAR_NAME));
@@ -481,7 +474,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
     }
 
     private class SpecializedNodeFactory extends ClassElementFactory<SpecializationData> {
-
 
         public SpecializedNodeFactory(ProcessorContext context) {
             super(context);
@@ -675,8 +667,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         private void buildGenericValueExecute(CodeTreeBuilder builder, SpecializationData specialization, NodeFieldData field, NodeFieldData exceptionSpec) {
             ActualParameter specParameter = specialization.findParameter(field.getName());
 
-            boolean shortCircuit = startShortCircuit(builder, specialization,
-                            field, exceptionSpec);
+            boolean shortCircuit = startShortCircuit(builder, specialization, field, exceptionSpec);
 
             builder.startStatement();
             if (!shortCircuit) {
@@ -715,7 +706,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.end();
         }
 
-
         private void buildSpecializedValueExecute(CodeTreeBuilder builder, SpecializationData specialization, NodeFieldData field) {
             ActualParameter param = specialization.findParameter(field.getName());
             boolean shortCircuit = startShortCircuit(builder, specialization, field, null);
@@ -733,7 +723,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.startStatement().string(valueName(field)).string(" = ");
             buildExecute(builder, field, execType);
             builder.end();
-
 
             if (execType.hasUnexpectedValue(getContext())) {
                 builder.end().startCatchBlock(getUnexpectedValueException(), "ex");
@@ -756,9 +745,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.newLine();
         }
 
-
-        private boolean startShortCircuit(CodeTreeBuilder builder, SpecializationData specialization,
-                        NodeFieldData forField, NodeFieldData exceptionField) {
+        private boolean startShortCircuit(CodeTreeBuilder builder, SpecializationData specialization, NodeFieldData forField, NodeFieldData exceptionField) {
             if (forField.getExecutionKind() != ExecutionKind.SHORT_CIRCUIT) {
                 return false;
             }
@@ -785,14 +772,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             builder.end(); // statement
 
-            builder.declaration(parameter.getActualType(), valueName(specialization, parameter),
-                            CodeTreeBuilder.createBuilder().defaultValue(parameter.getActualType()));
+            builder.declaration(parameter.getActualType(), valueName(specialization, parameter), CodeTreeBuilder.createBuilder().defaultValue(parameter.getActualType()));
             builder.startIf().string(shortCircuitParam.getSpecification().getName()).end();
             builder.startBlock();
 
             return true;
         }
-
 
         private void endShortCircuit(CodeTreeBuilder builder, boolean shortCircuit) {
             if (shortCircuit) {

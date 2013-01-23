@@ -33,7 +33,6 @@ import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
-
 public class SpecializationMethodParser extends MethodParser<SpecializationData> {
 
     private final MethodSpec specification;
@@ -58,7 +57,7 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
     }
 
     @Override
-    public Class< ? extends Annotation> getAnnotationType() {
+    public Class<? extends Annotation> getAnnotationType() {
         return Specialization.class;
     }
 
@@ -84,6 +83,7 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
         }
 
         Arrays.sort(exceptionData, new Comparator<SpecializationThrowsData>() {
+
             @Override
             public int compare(SpecializationThrowsData o1, SpecializationThrowsData o2) {
                 return Utils.compareByTypeHierarchy(o1.getJavaClass(), o2.getJavaClass());
@@ -125,7 +125,7 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
         return specialization;
     }
 
-    private GuardData matchSpecializationGuard(AnnotationMirror mirror, SpecializationData specialization, SpecializationGuardData specializationGuard)  {
+    private GuardData matchSpecializationGuard(AnnotationMirror mirror, SpecializationData specialization, SpecializationGuardData specializationGuard) {
         List<GuardData> foundGuards = getNode().findGuards(specializationGuard.getGuardMethod());
 
         GuardData compatibleGuard = null;
@@ -169,6 +169,5 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
         }
         return true;
     }
-
 
 }

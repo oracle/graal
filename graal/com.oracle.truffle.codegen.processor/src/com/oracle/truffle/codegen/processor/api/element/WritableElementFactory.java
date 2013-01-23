@@ -25,19 +25,24 @@ package com.oracle.truffle.codegen.processor.api.element;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
-
 public interface WritableElementFactory {
 
     WritableExecutableElement cloneExecutableElement(ExecutableElement method);
+
     WritableVariableElement cloneVariableElement(VariableElement parameter);
+
     WritableAnnotationMirror cloneAnnotationMirror(AnnotationMirror mirror);
 
     WritableVariableElement createParameter(TypeMirror type, String simpleName);
+
     WritableExecutableElement createExecutableElement(TypeMirror returnType, String methodName);
+
     WritableAnnotationMirror createAnnotationMirror(DeclaredType annotationClass);
 
     Name createName(String name);
+
     AnnotationValue createAnnotationValue(Object value);
+
     TypeMirror createTypeMirror(Class<?> javaClass);
 
 }

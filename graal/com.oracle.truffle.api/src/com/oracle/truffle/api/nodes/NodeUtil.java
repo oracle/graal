@@ -43,11 +43,11 @@ public class NodeUtil {
         private final Class[] nodeArrayFieldClasses;
         private final long parentOffset;
         private final long[] nodeDataFieldOffsets;
-        private final Class< ? >[] nodeDataFieldClasses;
+        private final Class<?>[] nodeDataFieldClasses;
 
-        private static final Map<Class< ? >, NodeClass> nodeClasses = new IdentityHashMap<>();
+        private static final Map<Class<?>, NodeClass> nodeClasses = new IdentityHashMap<>();
 
-        public static NodeClass get(Class< ? > clazz) {
+        public static NodeClass get(Class<?> clazz) {
             NodeClass nodeClass = nodeClasses.get(clazz);
             if (nodeClass == null) {
                 nodeClass = new NodeClass(clazz);
@@ -56,15 +56,15 @@ public class NodeUtil {
             return nodeClass;
         }
 
-        private NodeClass(Class< ? > clazz) {
+        private NodeClass(Class<?> clazz) {
             // scan object fields
-            Class< ? > parentClassTmp = null;
+            Class<?> parentClassTmp = null;
             List<Long> nodeFieldOffsetsList = new ArrayList<>();
-            List<Class< ? >> nodeFieldClassesList = new ArrayList<>();
+            List<Class<?>> nodeFieldClassesList = new ArrayList<>();
             List<Long> nodeArrayFieldOffsetsList = new ArrayList<>();
-            List<Class< ? >> nodeArrayFieldClassesList = new ArrayList<>();
+            List<Class<?>> nodeArrayFieldClassesList = new ArrayList<>();
             List<Long> nodeDataFieldOffsetList = new ArrayList<>();
-            List<Class< ? >> nodeDataFieldClassList = new ArrayList<>();
+            List<Class<?>> nodeDataFieldClassList = new ArrayList<>();
             Field[] fields = getAllFields(clazz);
             long parentOffsetTemp = -1;
             for (Field field : fields) {
@@ -95,7 +95,7 @@ public class NodeUtil {
             this.nodeArrayFieldOffsets = toLongArray(nodeArrayFieldOffsetsList);
             this.nodeArrayFieldClasses = nodeArrayFieldClassesList.toArray(new Class[nodeArrayFieldClassesList.size()]);
             this.nodeDataFieldOffsets = toLongArray(nodeDataFieldOffsetList);
-            this.nodeDataFieldClasses = nodeDataFieldClassList.toArray(new Class< ? >[nodeDataFieldClassList.size()]);
+            this.nodeDataFieldClasses = nodeDataFieldClassList.toArray(new Class<?>[nodeDataFieldClassList.size()]);
 
             this.parentOffset = parentOffsetTemp;
         }
@@ -198,7 +198,7 @@ public class NodeUtil {
 
     @SuppressWarnings("unchecked")
     public static <T extends Node> T cloneNode(T orig) {
-        Class< ? extends Node> clazz = orig.getClass();
+        Class<? extends Node> clazz = orig.getClass();
         NodeClass nodeClass = NodeClass.get(clazz);
         Node clone = orig.copy();
         if (clone == null) {
@@ -279,49 +279,49 @@ public class NodeUtil {
         }
     }
 
-    public static long[] getNodeDataFieldOffsets(Class< ? > nodeClass) {
+    public static long[] getNodeDataFieldOffsets(Class<?> nodeClass) {
         NodeClass clazz = NodeClass.get(nodeClass);
         return Arrays.copyOf(clazz.nodeDataFieldOffsets, clazz.nodeDataFieldClasses.length);
     }
 
-    public static Class[] getNodeDataFieldClasses(Class< ? > nodeClass) {
+    public static Class[] getNodeDataFieldClasses(Class<?> nodeClass) {
         NodeClass clazz = NodeClass.get(nodeClass);
         return Arrays.copyOf(clazz.nodeDataFieldClasses, clazz.nodeDataFieldClasses.length);
     }
 
-    public static long getNodeParentOffset(Class< ? > nodeClass) {
+    public static long getNodeParentOffset(Class<?> nodeClass) {
         NodeClass clazz = NodeClass.get(nodeClass);
         return clazz.parentOffset;
     }
 
     /** Returns the number of Node field declarations in the class hierarchy. */
-    public static long[] getNodeFieldOffsets(Class< ? > nodeClass) {
+    public static long[] getNodeFieldOffsets(Class<?> nodeClass) {
         NodeClass clazz = NodeClass.get(nodeClass);
         return Arrays.copyOf(clazz.nodeFieldOffsets, clazz.nodeFieldOffsets.length);
     }
 
     /** Returns the number of Node[] declaration in the class hierarchy. */
-    public static long[] getNodeFieldArrayOffsets(Class< ? > nodeClass) {
+    public static long[] getNodeFieldArrayOffsets(Class<?> nodeClass) {
         NodeClass clazz = NodeClass.get(nodeClass);
         return Arrays.copyOf(clazz.nodeArrayFieldOffsets, clazz.nodeArrayFieldOffsets.length);
     }
 
-    public static Class[] getNodeFieldArrayClasses(Class< ? > nodeClass) {
+    public static Class[] getNodeFieldArrayClasses(Class<?> nodeClass) {
         NodeClass clazz = NodeClass.get(nodeClass);
         return Arrays.copyOf(clazz.nodeArrayFieldClasses, clazz.nodeArrayFieldClasses.length);
     }
 
-    public static Class getNodeParentClass(Class< ? > nodeClass) {
+    public static Class getNodeParentClass(Class<?> nodeClass) {
         return NodeClass.get(nodeClass).parentClass;
     }
 
-    public static Class[] getNodeFieldClasses(Class< ? > nodeClass) {
+    public static Class[] getNodeFieldClasses(Class<?> nodeClass) {
         NodeClass clazz = NodeClass.get(nodeClass);
         return Arrays.copyOf(clazz.nodeFieldClasses, clazz.nodeFieldClasses.length);
     }
 
     /** Returns all declared fields in the class hierarchy. */
-    public static Field[] getAllFields(Class< ? extends Object> clazz) {
+    public static Field[] getAllFields(Class<? extends Object> clazz) {
         Field[] declaredFields = clazz.getDeclaredFields();
         if (clazz.getSuperclass() != null) {
             return concat(getAllFields(clazz.getSuperclass()), declaredFields);
@@ -336,11 +336,11 @@ public class NodeUtil {
     }
 
     /** find annotation in class/interface hierarchy. */
-    public static <T extends Annotation> T findAnnotation(Class< ? > clazz, Class<T> annotationClass) {
+    public static <T extends Annotation> T findAnnotation(Class<?> clazz, Class<T> annotationClass) {
         if (clazz.getAnnotation(annotationClass) != null) {
             return clazz.getAnnotation(annotationClass);
         } else {
-            for (Class< ? > intf : clazz.getInterfaces()) {
+            for (Class<?> intf : clazz.getInterfaces()) {
                 if (intf.getAnnotation(annotationClass) != null) {
                     return intf.getAnnotation(annotationClass);
                 }
@@ -468,9 +468,9 @@ public class NodeUtil {
     }
 
     /**
-     * Prints a human readable form of a {@link Node} AST to the given {@link PrintStream}. This print method does not
-     * check for cycles in the node structure.
-     *
+     * Prints a human readable form of a {@link Node} AST to the given {@link PrintStream}. This
+     * print method does not check for cycles in the node structure.
+     * 
      * @param p the {@link PrintStream} to print to.
      * @param node the root node to write
      */
@@ -479,9 +479,10 @@ public class NodeUtil {
     }
 
     /**
-     * Prints a human readable form of a tree to the given {@link PrintStream}. The {@link TreeResolver} interface needs
-     * to be implemented to specify how the method can read the tree from plain a object.
-     *
+     * Prints a human readable form of a tree to the given {@link PrintStream}. The
+     * {@link TreeResolver} interface needs to be implemented to specify how the method can read the
+     * tree from plain a object.
+     * 
      * @param p the {@link PrintStream} to print to.
      * @param o the root object to be printed.
      * @param resolver an implementation of a tree resolver
@@ -537,7 +538,7 @@ public class NodeUtil {
         // I refetch the fields to get declaration order.
         for (int i = 0; i < childFields.size(); i++) {
             Field field = childFields.get(i);
-            Class< ? > fieldClass = field.getType();
+            Class<?> fieldClass = field.getType();
             String name = field.getName();
 
             long offset = unsafe.objectFieldOffset(field);
@@ -576,7 +577,7 @@ public class NodeUtil {
         }
     }
 
-    private static Object getObjectValue(Object base, Class< ? > fieldClass, long offset) {
+    private static Object getObjectValue(Object base, Class<?> fieldClass, long offset) {
         if (fieldClass == boolean.class) {
             return unsafe.getBoolean(base, offset);
         } else if (fieldClass == byte.class) {
@@ -648,42 +649,42 @@ public class NodeUtil {
 
         /**
          * Returns true if a {@link Field} is filtered from the tree.
-         *
+         * 
          * @param f the field to check
          */
         boolean isFiltered(Field f);
 
         /**
-         * Returns true if a {@link Field} is a field that contains a data value which should not be traversed
-         * recursively.
-         *
+         * Returns true if a {@link Field} is a field that contains a data value which should not be
+         * traversed recursively.
+         * 
          * @param f the field to check
          * @return true if a the given field is a data field else false.
          */
         boolean isDataField(Field f);
 
         /**
-         * Returns true if a {@link Field} is a field that contains an {@link Object} which should be recursively
-         * visited.
-         *
+         * Returns true if a {@link Field} is a field that contains an {@link Object} which should
+         * be recursively visited.
+         * 
          * @param f the field to check
          * @return true if a the given field is a child field else false.
          */
         boolean isChildObject(Field f);
 
         /**
-         * Returns true if a {@link Field} is a field that contains any kind of list/array structure which itself holds
-         * values that should be recursively visited.
-         *
+         * Returns true if a {@link Field} is a field that contains any kind of list/array structure
+         * which itself holds values that should be recursively visited.
+         * 
          * @param f the field to check
          * @return true if a the given field is a child array/list field else false.
          */
         boolean isChildArrayObject(Field f);
 
         /**
-         * Converts an given child array object to array which can be traversed. This is especially useful to convert
-         * any kind of list structure to a traversable array.
-         *
+         * Converts an given child array object to array which can be traversed. This is especially
+         * useful to convert any kind of list structure to a traversable array.
+         * 
          * @param f the field for meta data needed to convert the data {@link Object}.
          * @param value the actual value of the child array/list object.
          * @return the converted {@link Object} array.
@@ -692,7 +693,7 @@ public class NodeUtil {
 
         /**
          * Returns a human readable string for any data field object in the tree.
-         *
+         * 
          * @param o the object to convert to string.
          * @return the converted string
          */

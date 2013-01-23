@@ -46,7 +46,6 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
         this.modifiers = new LinkedHashSet<>();
     }
 
-
     @Override
     public void setGeneratorAnnotationMirror(AnnotationMirror mirror) {
         this.generatorAnnotationMirror = mirror;
@@ -128,8 +127,7 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
 
     public CodeTypeElement getEnclosingClass() {
         Element p = enclosingElement;
-        while (p != null && p.getKind() != ElementKind.CLASS
-                        && p.getKind() != ElementKind.ENUM) {
+        while (p != null && p.getKind() != ElementKind.CLASS && p.getKind() != ElementKind.ENUM) {
             p = p.getEnclosingElement();
         }
         return (CodeTypeElement) p;
@@ -138,7 +136,6 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
     <T> List<T> parentableList(Element parent, List<T> list) {
         return new ParentableList<>(parent, list);
     }
-
 
     @Override
     public String toString() {
@@ -157,12 +154,12 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
         protected Writer createWriter(CodeTypeElement clazz) throws IOException {
             return writer;
         }
+
         public String getString() {
             return new String(((CharArrayWriter) writer).toCharArray()).trim();
         }
 
     }
-
 
     private static class ParentableList<T> implements List<T> {
 
@@ -234,12 +231,12 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
         }
 
         @Override
-        public boolean containsAll(Collection< ? > c) {
+        public boolean containsAll(Collection<?> c) {
             return delegate.containsAll(c);
         }
 
         @Override
-        public boolean addAll(Collection< ? extends T> c) {
+        public boolean addAll(Collection<? extends T> c) {
             if (c != null) {
                 for (T t : c) {
                     addImpl(t);
@@ -249,7 +246,7 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
         }
 
         @Override
-        public boolean addAll(int index, Collection< ? extends T> c) {
+        public boolean addAll(int index, Collection<? extends T> c) {
             if (c != null) {
                 for (T t : c) {
                     addImpl(t);
@@ -259,7 +256,7 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
         }
 
         @Override
-        public boolean removeAll(Collection< ? > c) {
+        public boolean removeAll(Collection<?> c) {
             if (c != null) {
                 for (Object t : c) {
                     removeImpl(t);
@@ -274,7 +271,7 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
         }
 
         @Override
-        public boolean retainAll(Collection< ? > c) {
+        public boolean retainAll(Collection<?> c) {
             throw new UnsupportedOperationException("Not supported by parentable list");
         }
 
@@ -337,6 +334,5 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
         }
 
     }
-
 
 }

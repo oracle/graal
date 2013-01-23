@@ -34,11 +34,11 @@ public abstract class FrameSlotNode extends TypedNode implements FrameSlotTypeLi
     }
 
     @Override
-    public void typeChanged(FrameSlot changedSlot, Class< ? > oldType) {
+    public void typeChanged(FrameSlot changedSlot, Class<?> oldType) {
         if (getParent() != null) {
             replace(specialize(changedSlot.getType()));
         }
     }
 
-    protected abstract FrameSlotNode specialize(Class< ? > clazz);
+    protected abstract FrameSlotNode specialize(Class<?> clazz);
 }

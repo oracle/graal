@@ -30,18 +30,20 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * <h3>Creating a Root Node</h3>
- *
+ * 
  * <p>
- * A Truffle root node is the entry point into a Truffle tree that represents a guest language method. It contains a
- * {@link RootNode#execute(VirtualFrame)} method that can return a {@link java.lang.Object} value as the result of the
- * guest language method invocation. This method must however never be called directly. Instead, the Truffle runtime
- * must be used to create a {@link CallTarget} object from a root node using the
- * {@link TruffleRuntime#createCallTarget(RootNode)} method. This call target object can then be executed using the
- * {@link CallTarget#call()} method or one of its overloads.
+ * A Truffle root node is the entry point into a Truffle tree that represents a guest language
+ * method. It contains a {@link RootNode#execute(VirtualFrame)} method that can return a
+ * {@link java.lang.Object} value as the result of the guest language method invocation. This method
+ * must however never be called directly. Instead, the Truffle runtime must be used to create a
+ * {@link CallTarget} object from a root node using the
+ * {@link TruffleRuntime#createCallTarget(RootNode)} method. This call target object can then be
+ * executed using the {@link CallTarget#call()} method or one of its overloads.
  * </p>
- *
+ * 
  * <p>
- * The next part of the Truffle API introduction is at {@link com.oracle.truffle.api.test.ChildNodeTest}.
+ * The next part of the Truffle API introduction is at
+ * {@link com.oracle.truffle.api.test.ChildNodeTest}.
  * </p>
  */
 public class RootNodeTest {

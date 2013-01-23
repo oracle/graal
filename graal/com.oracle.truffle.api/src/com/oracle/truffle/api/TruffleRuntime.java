@@ -26,25 +26,34 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * Interface representing a Truffle runtime object. The runtime is responsible for creating call targets and performing optimizations for them.
+ * Interface representing a Truffle runtime object. The runtime is responsible for creating call
+ * targets and performing optimizations for them.
  */
 public interface TruffleRuntime {
+
     /**
      * Name describing this runtime implementation for debugging purposes.
+     * 
      * @return the name as a String
      */
     String getName();
 
     /**
      * Creates a new call target for a given root node.
-     * @param rootNode the root node whose {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame)} method represents the entry point
+     * 
+     * @param rootNode the root node whose
+     *            {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame)} method
+     *            represents the entry point
      * @return the new call target object
      */
     CallTarget createCallTarget(RootNode rootNode);
 
     /**
      * Creates a new call target for a given root node and a given frame descriptor.
-     * @param rootNode the root node whose {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame)} method represents the entry point
+     * 
+     * @param rootNode the root node whose
+     *            {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame)} method
+     *            represents the entry point
      * @param frameDescriptor the descriptor used for creating a new frame at each invocation
      * @return the new call target object
      */

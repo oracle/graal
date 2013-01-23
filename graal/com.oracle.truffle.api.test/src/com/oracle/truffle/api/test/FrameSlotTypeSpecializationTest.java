@@ -28,22 +28,23 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
-
 /**
  * <h3>Specializing Frame Slot Types</h3>
- *
+ * 
  * <p>
- * Dynamically typed languages can speculate on the type of a frame slot and only fall back at run time to a more
- * generic type if necessary. The new type of a frame slot can be set using the {@link FrameSlot#setType(Class)} method.
- * It is the responsibility of the language implementor to update the content of currently active frames (using
- * {@link Frame#updateToLatestVersion()}). Also, nodes that depend a specific type of a frame slot must be replaced.
- * Such node can register a listener that implements {@link FrameSlotTypeListener} using
- * {@link FrameSlot#registerOneShotTypeListener(FrameSlotTypeListener)}. The event of a type change on the frame slot
- * will fire only once for the next upcoming change.
+ * Dynamically typed languages can speculate on the type of a frame slot and only fall back at run
+ * time to a more generic type if necessary. The new type of a frame slot can be set using the
+ * {@link FrameSlot#setType(Class)} method. It is the responsibility of the language implementor to
+ * update the content of currently active frames (using {@link Frame#updateToLatestVersion()}).
+ * Also, nodes that depend a specific type of a frame slot must be replaced. Such node can register
+ * a listener that implements {@link FrameSlotTypeListener} using
+ * {@link FrameSlot#registerOneShotTypeListener(FrameSlotTypeListener)}. The event of a type change
+ * on the frame slot will fire only once for the next upcoming change.
  * </p>
- *
+ * 
  * <p>
- * The next part of the Truffle API introduction is at {@link com.oracle.truffle.api.test.ReturnTypeSpecializationTest}.
+ * The next part of the Truffle API introduction is at
+ * {@link com.oracle.truffle.api.test.ReturnTypeSpecializationTest}.
  * </p>
  */
 public class FrameSlotTypeSpecializationTest {
@@ -79,10 +80,12 @@ public class FrameSlotTypeSpecializationTest {
     }
 
     abstract class TestChildNode extends Node {
+
         abstract Object execute(VirtualFrame frame);
     }
 
     abstract class FrameSlotNode extends TestChildNode {
+
         protected final FrameSlot slot;
 
         public FrameSlotNode(FrameSlot slot) {
@@ -100,6 +103,7 @@ public class FrameSlotTypeSpecializationTest {
     }
 
     class IntAssignLocal extends FrameSlotNode implements FrameSlotTypeListener {
+
         @Child private TestChildNode value;
 
         IntAssignLocal(FrameSlot slot, TestChildNode value) {
@@ -122,7 +126,7 @@ public class FrameSlotTypeSpecializationTest {
         }
 
         @Override
-        public void typeChanged(FrameSlot changedSlot, Class< ? > oldType) {
+        public void typeChanged(FrameSlot changedSlot, Class<?> oldType) {
             if (changedSlot.getType() == Object.class) {
                 this.replace(new ObjectAssignLocal(changedSlot, value));
             }
@@ -130,6 +134,7 @@ public class FrameSlotTypeSpecializationTest {
     }
 
     class ObjectAssignLocal extends FrameSlotNode {
+
         @Child private TestChildNode value;
 
         ObjectAssignLocal(FrameSlot slot, TestChildNode value) {
@@ -146,6 +151,7 @@ public class FrameSlotTypeSpecializationTest {
     }
 
     class IntReadLocal extends FrameSlotNode implements FrameSlotTypeListener {
+
         IntReadLocal(FrameSlot slot) {
             super(slot);
             slot.registerOneShotTypeListener(this);
@@ -157,7 +163,7 @@ public class FrameSlotTypeSpecializationTest {
         }
 
         @Override
-        public void typeChanged(FrameSlot changedSlot, Class< ? > oldType) {
+        public void typeChanged(FrameSlot changedSlot, Class<?> oldType) {
             if (changedSlot.getType() == Object.class) {
                 this.replace(new ObjectReadLocal(changedSlot));
             }
@@ -165,6 +171,7 @@ public class FrameSlotTypeSpecializationTest {
     }
 
     class ObjectReadLocal extends FrameSlotNode {
+
         ObjectReadLocal(FrameSlot slot) {
             super(slot);
         }
@@ -175,4 +182,3 @@ public class FrameSlotTypeSpecializationTest {
         }
     }
 }
-

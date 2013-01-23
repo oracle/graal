@@ -28,7 +28,6 @@ import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
-
 public class ExecutableTypeData extends TemplateMethod {
 
     private final TypeSystemData typeSystem;

@@ -23,9 +23,9 @@
 package com.oracle.truffle.api.nodes;
 
 /**
- * An exception that should be thrown if the return value cannot be represented as a value of the return type. The
- * Truffle optimizer has special knowledge of this exception class and will never compile a catch block that catches this
- * exception type.
+ * An exception that should be thrown if the return value cannot be represented as a value of the
+ * return type. The Truffle optimizer has special knowledge of this exception class and will never
+ * compile a catch block that catches this exception type.
  */
 public final class UnexpectedResultException extends SlowPathException {
 
@@ -33,7 +33,9 @@ public final class UnexpectedResultException extends SlowPathException {
     private final Object result;
 
     /**
-     * Creates the exception with the alternative result that cannot be respresented as a value of the return type.
+     * Creates the exception with the alternative result that cannot be respresented as a value of
+     * the return type.
+     * 
      * @param result the alternative result
      */
     public UnexpectedResultException(Object result) {

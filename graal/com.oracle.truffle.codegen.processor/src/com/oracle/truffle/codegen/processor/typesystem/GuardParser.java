@@ -32,7 +32,6 @@ import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
 
-
 public class GuardParser extends TemplateMethodParser<Template, GuardData> {
 
     private final TypeSystemData typeSystem;
@@ -62,7 +61,7 @@ public class GuardParser extends TemplateMethodParser<Template, GuardData> {
     }
 
     @Override
-    public Class< ? extends Annotation> getAnnotationType() {
+    public Class<? extends Annotation> getAnnotationType() {
         return GuardCheck.class;
     }
 

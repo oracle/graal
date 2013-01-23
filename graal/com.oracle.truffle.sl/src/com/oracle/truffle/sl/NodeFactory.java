@@ -75,7 +75,7 @@ public class NodeFactory {
             }
             nodes[expressions.size()] = new PrintLineNode(printOutput);
             return new BlockNode(nodes);
-        } else  {
+        } else {
             return new BlockNode(new StatementNode[]{new PrintLineNode(printOutput)});
         }
     }

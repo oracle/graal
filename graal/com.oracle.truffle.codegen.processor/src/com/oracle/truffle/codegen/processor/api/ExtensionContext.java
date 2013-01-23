@@ -26,7 +26,6 @@ import javax.annotation.processing.*;
 
 import com.oracle.truffle.codegen.processor.api.element.*;
 
-
 public interface ExtensionContext {
 
     ProcessingEnvironment getProcessingEnvironment();

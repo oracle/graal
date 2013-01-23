@@ -25,7 +25,6 @@ package com.oracle.truffle.codegen.processor.node;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
-
 public class NodeFieldData {
 
     public enum FieldKind {
@@ -44,8 +43,7 @@ public class NodeFieldData {
     private final ExecutionKind executionKind;
     private final NodeData nodeData;
 
-    public NodeFieldData(NodeData typeNodeData, VariableElement fieldElement, Element accessElement, AnnotationMirror childAnnotationMirror,
-                    FieldKind fieldKind, ExecutionKind executionKind) {
+    public NodeFieldData(NodeData typeNodeData, VariableElement fieldElement, Element accessElement, AnnotationMirror childAnnotationMirror, FieldKind fieldKind, ExecutionKind executionKind) {
         this.fieldElement = fieldElement;
         this.accessElement = accessElement;
         this.childAnnotationMirror = childAnnotationMirror;
@@ -85,7 +83,6 @@ public class NodeFieldData {
     public String getName() {
         return fieldElement.getSimpleName().toString();
     }
-
 
     @Override
     public String toString() {

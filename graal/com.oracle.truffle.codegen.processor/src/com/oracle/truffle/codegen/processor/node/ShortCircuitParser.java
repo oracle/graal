@@ -32,7 +32,6 @@ import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.node.NodeFieldData.ExecutionKind;
 import com.oracle.truffle.codegen.processor.template.*;
 
-
 public class ShortCircuitParser extends MethodParser<ShortCircuitData> {
 
     private final Set<String> shortCircuitValues;
@@ -73,7 +72,7 @@ public class ShortCircuitParser extends MethodParser<ShortCircuitData> {
     }
 
     @Override
-    public Class< ? extends Annotation> getAnnotationType() {
+    public Class<? extends Annotation> getAnnotationType() {
         return ShortCircuit.class;
     }
 

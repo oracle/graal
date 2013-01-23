@@ -235,7 +235,8 @@ public class GraphPrintVisitor {
 
     protected void setNodeProperty(Object node, String propertyName, Object value) {
         Element nodeElem = getElementByObject(node);
-        Element propElem = getPropertyElement(node, propertyName); // if property exists, replace its value
+        Element propElem = getPropertyElement(node, propertyName); // if property exists, replace
+                                                                   // its value
         if (null == propElem) { // if property doesn't exist, create one
             propElem = dom.createElement("p");
             propElem.setAttribute("name", propertyName);
@@ -347,37 +348,46 @@ public class GraphPrintVisitor {
     }
 
     public class GraphPrintAdapter {
+
         public void createElementForNode(Object node) {
             GraphPrintVisitor.this.createElementForNode(node);
         }
+
         public void visit(Object node) {
             GraphPrintVisitor.this.visit(node);
         }
+
         public void connectNodes(Object node, Object child) {
             GraphPrintVisitor.this.connectNodes(node, child);
         }
+
         public void setNodeProperty(Object node, String propertyName, Object value) {
             GraphPrintVisitor.this.setNodeProperty(node, propertyName, value);
         }
     }
 
     public interface GraphPrintHandler {
+
         void visit(Object node, GraphPrintAdapter gPrinter);
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public @interface CustomGraphPrintHandler {
+
         Class<? extends GraphPrintHandler> handler();
     }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public @interface NullGraphPrintHandler {
     }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public @interface GraphDuplicate {
     }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public @interface HiddenField {

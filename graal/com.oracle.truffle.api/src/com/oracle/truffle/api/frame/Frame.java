@@ -25,8 +25,8 @@ package com.oracle.truffle.api.frame;
 import com.oracle.truffle.api.*;
 
 /**
- * Represents a frame containing values of local variables of the guest language. Instances of this type must not be
- * stored in a field or cast to {@link java.lang.Object}.
+ * Represents a frame containing values of local variables of the guest language. Instances of this
+ * type must not be stored in a field or cast to {@link java.lang.Object}.
  */
 public interface Frame {
 
@@ -37,7 +37,7 @@ public interface Frame {
 
     /**
      * Read access to a local variable of type {@link Object}.
-     *
+     * 
      * @param slot the slot of the local variable
      * @return the current value of the local variable
      */
@@ -45,7 +45,7 @@ public interface Frame {
 
     /**
      * Write access to a local variable of type {@link Object}.
-     *
+     * 
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      */
@@ -53,7 +53,7 @@ public interface Frame {
 
     /**
      * Read access to a local variable of type boolean.
-     *
+     * 
      * @param slot the slot of the local variable
      * @return the current value of the local variable
      */
@@ -61,7 +61,7 @@ public interface Frame {
 
     /**
      * Write access to a local variable of type boolean.
-     *
+     * 
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      */
@@ -69,7 +69,7 @@ public interface Frame {
 
     /**
      * Read access to a local variable of type int.
-     *
+     * 
      * @param slot the slot of the local variable
      * @return the current value of the local variable
      */
@@ -77,7 +77,7 @@ public interface Frame {
 
     /**
      * Write access to a local variable of type int.
-     *
+     * 
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      */
@@ -85,7 +85,7 @@ public interface Frame {
 
     /**
      * Read access to a local variable of type long.
-     *
+     * 
      * @param slot the slot of the local variable
      * @return the current value of the local variable
      */
@@ -93,7 +93,7 @@ public interface Frame {
 
     /**
      * Write access to a local variable of type long.
-     *
+     * 
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      */
@@ -101,7 +101,7 @@ public interface Frame {
 
     /**
      * Read access to a local variable of type float.
-     *
+     * 
      * @param slot the slot of the local variable
      * @return the current value of the local variable
      */
@@ -109,7 +109,7 @@ public interface Frame {
 
     /**
      * Write access to a local variable of type float.
-     *
+     * 
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      */
@@ -117,7 +117,7 @@ public interface Frame {
 
     /**
      * Read access to a local variable of type double.
-     *
+     * 
      * @param slot the slot of the local variable
      * @return the current value of the local variable
      */
@@ -125,7 +125,7 @@ public interface Frame {
 
     /**
      * Write access to a local variable of type double.
-     *
+     * 
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      */

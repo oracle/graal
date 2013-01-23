@@ -25,7 +25,6 @@ package com.oracle.truffle.codegen.processor.compiler;
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
 
-
 public interface Compiler {
 
     String getMethodBody(ProcessingEnvironment env, ExecutableElement method);
