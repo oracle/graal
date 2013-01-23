@@ -40,7 +40,8 @@ public abstract class EscapeObjectState extends VirtualState implements Node.Ite
 
     @Override
     public void generate(LIRGeneratorTool generator) {
-        // Nothing to do, virtual object states are processed as part of the handling of StateSplit nodes.
+        // Nothing to do, virtual object states are processed as part of the handling of StateSplit
+        // nodes.
     }
 
     @Override

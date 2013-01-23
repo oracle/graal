@@ -31,9 +31,9 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.word.*;
 
 /**
- * A special purpose store node that differs from {@link CompareAndSwapNode} in that
- * it is not a {@link StateSplit} and it {@linkplain #compareAndSwap(Object, long, Word, Word) returns}
- * either the expected value or the compared against value instead of a boolean.
+ * A special purpose store node that differs from {@link CompareAndSwapNode} in that it is not a
+ * {@link StateSplit} and it {@linkplain #compareAndSwap(Object, long, Word, Word) returns} either
+ * the expected value or the compared against value instead of a boolean.
  */
 public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGenLowerable, MemoryCheckpoint {
 
@@ -49,7 +49,6 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGe
         this.expectedValue = expected;
         this.newValue = newValue;
     }
-
 
     @Override
     public void generate(LIRGenerator gen) {
@@ -73,11 +72,11 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGe
     }
 
     /**
-     * Compares an expected value with the actual value in a location denoted by an object and a given offset.
-     * Iff they are same, {@code newValue} is placed into the location and the {@code expectedValue} is returned.
-     * Otherwise, the actual value is returned.
-     * All of the above is performed in one atomic hardware transaction.
-     *
+     * Compares an expected value with the actual value in a location denoted by an object and a
+     * given offset. Iff they are same, {@code newValue} is placed into the location and the
+     * {@code expectedValue} is returned. Otherwise, the actual value is returned. All of the above
+     * is performed in one atomic hardware transaction.
+     * 
      * @param object the object containing a field to be atomically tested and updated
      * @param offset offset from {@code object} of the field
      * @param expectedValue if this value is currently in the field, perform the swap

@@ -41,7 +41,8 @@ public class ReplacingStreams {
 
     public ReplacingStreams(OutputStream outputStream, InputStream inputStream) throws IOException {
         output = new ReplacingOutputStream(new BufferedOutputStream(outputStream));
-        // required, because creating an ObjectOutputStream writes a header, but doesn't flush the stream
+        // required, because creating an ObjectOutputStream writes a header, but doesn't flush the
+        // stream
         output.flush();
         input = new ReplacingInputStream(new BufferedInputStream(inputStream));
         invocation = new InvocationSocket(output, input);
@@ -97,6 +98,7 @@ public class ReplacingStreams {
     }
 
     public static class NewDummyPlaceholder implements Serializable {
+
         private static final long serialVersionUID = 2692666726573532288L;
     }
 
@@ -112,7 +114,8 @@ public class ReplacingStreams {
 
         @Override
         protected Object resolveObject(Object obj) throws IOException {
-            // see ReplacingInputStream.replaceObject for details on when these types of objects are created
+            // see ReplacingInputStream.replaceObject for details on when these types of objects are
+            // created
 
             if (obj instanceof Placeholder) {
                 Placeholder placeholder = (Placeholder) obj;
@@ -191,7 +194,8 @@ public class ReplacingStreams {
     }
 
     private Object createRemoteCallPlaceholder(Object obj) {
-        // collect all interfaces that this object's class implements (proxies only support interfaces)
+        // collect all interfaces that this object's class implements (proxies only support
+        // interfaces)
         objectMap.put(obj, new Placeholder(objectList.size()));
         objectList.add(obj);
         return new NewRemoteCallPlaceholder(ProxyUtil.getAllInterfaces(obj.getClass()));

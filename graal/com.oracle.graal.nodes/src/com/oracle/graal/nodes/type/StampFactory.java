@@ -27,8 +27,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.GenericStamp.GenericStampType;
 
-
 public class StampFactory {
+
     private static final Stamp[] stampCache = new Stamp[Kind.values().length];
     private static final Stamp objectStamp = new ObjectStamp(null, false, false, false);
     private static final Stamp objectNonNullStamp = new ObjectStamp(null, false, true, false);
@@ -73,16 +73,16 @@ public class StampFactory {
     }
 
     /**
-     * A stamp used only in the graph of intrinsics, e.g., snippets. It is then replaced by an actual stamp when the
-     * intrinsic is used, i.e., when the snippet template is instantiated.
+     * A stamp used only in the graph of intrinsics, e.g., snippets. It is then replaced by an
+     * actual stamp when the intrinsic is used, i.e., when the snippet template is instantiated.
      */
     public static Stamp forNodeIntrinsic() {
         return nodeIntrinsicStamp;
     }
 
     /**
-     * A stamp used only in the graph of intrinsics, e.g., snippets. It is then replaced by the actual primitive type
-     * stamp for the target-specific {@link TargetDescription#wordKind}.
+     * A stamp used only in the graph of intrinsics, e.g., snippets. It is then replaced by the
+     * actual primitive type stamp for the target-specific {@link TargetDescription#wordKind}.
      */
     public static Stamp forWord() {
         return wordStamp;

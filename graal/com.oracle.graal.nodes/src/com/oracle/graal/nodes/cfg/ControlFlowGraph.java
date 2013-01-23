@@ -36,7 +36,6 @@ public class ControlFlowGraph {
     private Block[] reversePostOrder;
     private Loop[] loops;
 
-
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
         ControlFlowGraph cfg = new ControlFlowGraph(graph);
         cfg.identifyBlocks();
@@ -71,10 +70,13 @@ public class ControlFlowGraph {
 
     public Iterable<Block> postOrder() {
         return new Iterable<Block>() {
+
             @Override
             public Iterator<Block> iterator() {
                 return new Iterator<Block>() {
+
                     private int nextIndex = reversePostOrder.length - 1;
+
                     @Override
                     public boolean hasNext() {
                         return nextIndex >= 0;
@@ -156,7 +158,8 @@ public class ControlFlowGraph {
                 }
                 block.id = BLOCK_ID_VISITED;
             } else if (block.id == BLOCK_ID_VISITED) {
-                // Second time we see this block: All successors have been processed, so add block to postorder list.
+                // Second time we see this block: All successors have been processed, so add block
+                // to postorder list.
                 stack.remove(stack.size() - 1);
                 postOrder.add(block);
             } else {

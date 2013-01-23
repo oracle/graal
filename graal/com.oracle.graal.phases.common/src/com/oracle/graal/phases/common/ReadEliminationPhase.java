@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
 
 public class ReadEliminationPhase extends Phase {
+
     private Queue<PhiNode> newPhis;
 
     @Override

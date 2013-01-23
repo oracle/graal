@@ -27,35 +27,43 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 
 public abstract class AbstractNodeIterable<T extends Node> implements NodeIterable<T> {
+
     @Override
     public NodeIterable<T> until(final T u) {
         return new FilteredNodeIterable<>(this).until(u);
     }
+
     @Override
     public NodeIterable<T> until(final Class<? extends T> clazz) {
         return new FilteredNodeIterable<>(this).until(clazz);
     }
+
     @Override
     @SuppressWarnings("unchecked")
     public <F extends T> NodeIterable<F> filter(Class<F> clazz) {
         return (NodeIterable<F>) new FilteredNodeIterable<>(this).and(NodePredicates.isA(clazz));
     }
+
     @Override
     public NodeIterable<T> filterInterface(Class<?> iface) {
         return new FilteredNodeIterable<>(this).and(NodePredicates.isAInterface(iface));
     }
+
     @Override
     public FilteredNodeIterable<T> filter(NodePredicate predicate) {
         return new FilteredNodeIterable<>(this).and(predicate);
     }
+
     @Override
     public FilteredNodeIterable<T> nonNull() {
         return new FilteredNodeIterable<>(this).and(NodePredicates.isNotNull());
     }
+
     @Override
     public NodeIterable<T> distinct() {
         return new FilteredNodeIterable<>(this).distinct();
     }
+
     @Override
     public List<T> snapshot() {
         ArrayList<T> list = new ArrayList<>();
@@ -64,12 +72,14 @@ public abstract class AbstractNodeIterable<T extends Node> implements NodeIterab
         }
         return list;
     }
+
     @Override
     public void snapshotTo(List<T> to) {
         for (T n : this) {
             to.add(n);
         }
     }
+
     @Override
     public T first() {
         Iterator<T> iterator = iterator();
@@ -78,6 +88,7 @@ public abstract class AbstractNodeIterable<T extends Node> implements NodeIterab
         }
         return null;
     }
+
     @Override
     public int count() {
         int count = 0;
@@ -88,14 +99,17 @@ public abstract class AbstractNodeIterable<T extends Node> implements NodeIterab
         }
         return count;
     }
+
     @Override
     public boolean isEmpty() {
         return !iterator().hasNext();
     }
+
     @Override
     public boolean isNotEmpty() {
         return iterator().hasNext();
     }
+
     @Override
     public boolean contains(T node) {
         return this.filter(NodePredicates.equals(node)).isNotEmpty();

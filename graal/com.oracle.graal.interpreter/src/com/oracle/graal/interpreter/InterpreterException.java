@@ -23,8 +23,8 @@
 package com.oracle.graal.interpreter;
 
 /**
- * Thrown if executed byte code caused an error in {@link BytecodeInterpreter}. The actual execution exception is
- * accessible using {@link #getCause()} or {@link #getExecutionThrowable()}.
+ * Thrown if executed byte code caused an error in {@link BytecodeInterpreter}. The actual execution
+ * exception is accessible using {@link #getCause()} or {@link #getExecutionThrowable()}.
  */
 public class InterpreterException extends RuntimeException {
 

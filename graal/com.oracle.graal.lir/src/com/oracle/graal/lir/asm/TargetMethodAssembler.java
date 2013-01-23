@@ -37,6 +37,7 @@ import com.oracle.graal.lir.LIR.Code;
 public class TargetMethodAssembler {
 
     private static class ExceptionInfo {
+
         public final int codeOffset;
         public final LabelRef exceptionEdge;
 
@@ -58,8 +59,8 @@ public class TargetMethodAssembler {
     public final List<Code> stubs;
 
     /**
-     * The object that emits code for managing a method's frame.
-     * If null, no frame is used by the method.
+     * The object that emits code for managing a method's frame. If null, no frame is used by the
+     * method.
      */
     public final FrameContext frameContext;
 

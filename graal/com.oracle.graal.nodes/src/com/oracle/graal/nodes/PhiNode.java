@@ -29,16 +29,15 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code PhiNode} represents the merging of dataflow in the graph. It refers to a merge
- * and a variable.
+ * The {@code PhiNode} represents the merging of dataflow in the graph. It refers to a merge and a
+ * variable.
  */
 @NodeInfo(nameTemplate = "{p#type/s}Phi({i#values})")
 public final class PhiNode extends FloatingNode implements Canonicalizable, Node.IterableNodeType {
 
     public static enum PhiType {
         Value(null), // normal value phis
-        Guard(StampFactory.dependency()),
-        Memory(StampFactory.dependency());
+        Guard(StampFactory.dependency()), Memory(StampFactory.dependency());
 
         public final Stamp stamp;
 
@@ -53,6 +52,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
 
     /**
      * Create a value phi ({@link PhiType#Value}) with the specified kind.
+     * 
      * @param kind the kind of the value
      * @param merge the merge that the new phi belongs to
      */
@@ -69,6 +69,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
 
     /**
      * Create a non-value phi ({@link PhiType#Memory} with the specified kind.
+     * 
      * @param type the type of the new phi
      * @param merge the merge that the new phi belongs to
      */
@@ -122,8 +123,9 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
     }
 
     /**
-     * Get the instruction that produces the value associated with the i'th predecessor of the merge.
-     *
+     * Get the instruction that produces the value associated with the i'th predecessor of the
+     * merge.
+     * 
      * @param i the index of the predecessor
      * @return the instruction that produced the value in the i'th predecessor
      */
@@ -133,6 +135,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
 
     /**
      * Sets the value at the given index and makes sure that the values list is large enough.
+     * 
      * @param i the index at which to set the value
      * @param x the new phi input value for the given location
      */
@@ -153,7 +156,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
 
     /**
      * Get the number of inputs to this phi (i.e. the number of predecessors to the merge).
-     *
+     * 
      * @return the number of inputs in this phi
      */
     public int valueCount() {
@@ -185,7 +188,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
     }
 
     public void addInput(ValueNode x) {
-        assert !(x instanceof PhiNode) || ((PhiNode) x).merge() instanceof LoopBeginNode ||  ((PhiNode) x).merge() != this.merge();
+        assert !(x instanceof PhiNode) || ((PhiNode) x).merge() instanceof LoopBeginNode || ((PhiNode) x).merge() != this.merge();
         values.add(x);
     }
 

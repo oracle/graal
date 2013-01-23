@@ -81,7 +81,8 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
             BeginNode otherBegin = ifNode.trueSuccessor();
             BooleanNode conditionNode = ifNode.condition();
             if (conditionNode instanceof InstanceOfNode) {
-                // TODO The lowering currently does not support a FixedGuard as the usage of an InstanceOfNode. Relax this restriction.
+                // TODO The lowering currently does not support a FixedGuard as the usage of an
+                // InstanceOfNode. Relax this restriction.
                 return;
             }
             boolean negated = false;
@@ -90,7 +91,8 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
                 otherBegin = ifNode.falseSuccessor();
             }
             BeginNode ifBlockBegin = findBeginNode(ifNode);
-            Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s. IfBegin=%s", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin, ifBlockBegin);
+            Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s. IfBegin=%s", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin,
+                            ifBlockBegin);
             FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.reason(), deopt.action(), negated, deopt.leafGraphId()));
             otherBegin.replaceAtUsages(ifBlockBegin);
             FixedNode next = otherBegin.next();

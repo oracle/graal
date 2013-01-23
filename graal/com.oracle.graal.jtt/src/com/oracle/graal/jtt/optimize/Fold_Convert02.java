@@ -29,6 +29,7 @@ import org.junit.*;
  * Tests constant folding of integer operations.
  */
 public class Fold_Convert02 extends JTTTest {
+
     public static long test(long arg) {
         if (arg == 0) {
             return i2l();
@@ -39,20 +40,24 @@ public class Fold_Convert02 extends JTTTest {
         if (arg == 2) {
             return d2l();
         }
-        return  0;
+        return 0;
     }
+
     public static long i2l() {
         int x = 0x80000000;
         return x;
     }
+
     public static long f2l() {
         float x = -33.1f;
         return (long) x;
     }
+
     public static long d2l() {
         double x = -78.1d;
         return (long) x;
     }
+
     @Test
     public void run0() throws Throwable {
         runTest("test", 0L);

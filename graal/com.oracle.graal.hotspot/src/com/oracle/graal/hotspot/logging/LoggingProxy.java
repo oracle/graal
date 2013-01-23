@@ -25,7 +25,8 @@ package com.oracle.graal.hotspot.logging;
 import java.lang.reflect.*;
 
 /**
- * A java.lang.reflect proxy that hierarchically logs all method invocations along with their parameters and return values.
+ * A java.lang.reflect proxy that hierarchically logs all method invocations along with their
+ * parameters and return values.
  */
 public class LoggingProxy<T> implements InvocationHandler {
 
@@ -65,7 +66,8 @@ public class LoggingProxy<T> implements InvocationHandler {
     }
 
     /**
-     * The object returned by this method will implement all interfaces that are implemented by delegate.
+     * The object returned by this method will implement all interfaces that are implemented by
+     * delegate.
      */
     public static <T> T getProxy(Class<T> interf, T delegate) {
         Class<?>[] interfaces = ProxyUtil.getAllInterfaces(delegate.getClass());

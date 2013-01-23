@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
  * Implementation of {@link JavaMethod} for unresolved HotSpot methods.
  */
 public final class HotSpotMethodUnresolved extends HotSpotMethod {
+
     private static final long serialVersionUID = 5610263481791970079L;
     private final Signature signature;
     protected JavaType holder;

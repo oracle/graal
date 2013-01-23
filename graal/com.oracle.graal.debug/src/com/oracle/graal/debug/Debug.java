@@ -93,7 +93,7 @@ public class Debug {
     }
 
     public static void scope(String name, Object context, Runnable runnable) {
-        scope(name, new Object[] {context}, runnable);
+        scope(name, new Object[]{context}, runnable);
     }
 
     public static void scope(String name, Object[] context, Runnable runnable) {
@@ -113,7 +113,7 @@ public class Debug {
     }
 
     public static <T> T scope(String name, Object context, Callable<T> callable) {
-        return scope(name, new Object[] {context}, callable);
+        return scope(name, new Object[]{context}, callable);
     }
 
     public static <T> T scope(String name, Object[] context, Callable<T> callable) {
@@ -160,8 +160,8 @@ public class Debug {
     }
 
     /**
-     * Searches the current debug scope, bottom up, for a context object that is an instance of a given type.
-     * The first such object found is returned.
+     * Searches the current debug scope, bottom up, for a context object that is an instance of a
+     * given type. The first such object found is returned.
      */
     @SuppressWarnings("unchecked")
     public static <T> T contextLookup(Class<T> clazz) {
@@ -189,7 +189,8 @@ public class Debug {
         }
     }
 
-    public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled, final Collection<DebugDumpHandler> dumpHandlers, final PrintStream output) {
+    public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled,
+                    final Collection<DebugDumpHandler> dumpHandlers, final PrintStream output) {
         return new DebugConfig() {
 
             @Override

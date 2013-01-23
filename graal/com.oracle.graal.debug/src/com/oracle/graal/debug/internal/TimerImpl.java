@@ -27,9 +27,11 @@ import java.lang.management.*;
 import com.oracle.graal.debug.*;
 
 public final class TimerImpl extends DebugValue implements DebugTimer {
+
     private static final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
 
     public static final TimerCloseable VOID_CLOSEABLE = new TimerCloseable() {
+
         @Override
         public void close() {
         }
@@ -72,7 +74,8 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
         return String.format("%d.%d ms", value / 1000000, (value / 100000) % 10);
     }
 
-    private abstract class AbstractTimer  implements TimerCloseable {
+    private abstract class AbstractTimer implements TimerCloseable {
+
         private final long startTime;
         private final long previousValueToSubstract;
 
@@ -93,6 +96,7 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
     }
 
     private final class SystemNanosTimer extends AbstractTimer {
+
         public SystemNanosTimer(long startTime, long previousValueToSubstract) {
             super(startTime, previousValueToSubstract);
         }
@@ -104,6 +108,7 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
     }
 
     private final class CpuTimeTimer extends AbstractTimer {
+
         public CpuTimeTimer(long startTime, long previousValueToSubstract) {
             super(startTime, previousValueToSubstract);
         }

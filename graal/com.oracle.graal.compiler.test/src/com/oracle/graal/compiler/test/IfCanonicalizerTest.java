@@ -33,8 +33,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
 
 /**
- * In the following tests, the usages of local variable "a" are replaced with the integer constant 0.
- * Then canonicalization is applied and it is verified that the resulting graph is equal to the
+ * In the following tests, the usages of local variable "a" are replaced with the integer constant
+ * 0. Then canonicalization is applied and it is verified that the resulting graph is equal to the
  * graph of the method that just has a "return 1" statement in it.
  */
 public class IfCanonicalizerTest extends GraalCompilerTest {

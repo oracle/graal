@@ -29,8 +29,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
-
 public class HotSpotCurrentRawThreadNode extends FloatingNode implements LIRLowerable {
+
     public HotSpotCurrentRawThreadNode() {
         super(StampFactory.forWord());
     }

@@ -30,8 +30,8 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.spi.*;
 
-
 public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, LIRLowerable {
+
     private double loopFrequency;
     private int nextEndIndex;
     private int unswitches;
@@ -49,8 +49,10 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     }
 
     /**
-     * Returns the <b>unordered</b> set of {@link LoopEndNode} that correspond to back-edges for this loop.
-     * The order of the back-edges is unspecified, if you need to get an ordering compatible for {@link PhiNode} creation, use {@link #orderedLoopEnds()}.
+     * Returns the <b>unordered</b> set of {@link LoopEndNode} that correspond to back-edges for
+     * this loop. The order of the back-edges is unspecified, if you need to get an ordering
+     * compatible for {@link PhiNode} creation, use {@link #orderedLoopEnds()}.
+     * 
      * @return the set of {@code LoopEndNode} that correspond to back-edges for this loop
      */
     public NodeIterable<LoopEndNode> loopEnds() {
@@ -67,13 +69,16 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     }
 
     /**
-     * Returns the set of {@link LoopEndNode} that correspond to back-edges for this loop, ordered in increasing {@link #phiPredecessorIndex}.
-     * This method is suited to create new loop {@link PhiNode}.
+     * Returns the set of {@link LoopEndNode} that correspond to back-edges for this loop, ordered
+     * in increasing {@link #phiPredecessorIndex}. This method is suited to create new loop
+     * {@link PhiNode}.
+     * 
      * @return the set of {@code LoopEndNode} that correspond to back-edges for this loop
      */
     public List<LoopEndNode> orderedLoopEnds() {
         List<LoopEndNode> snapshot = loopEnds().snapshot();
         Collections.sort(snapshot, new Comparator<LoopEndNode>() {
+
             @Override
             public int compare(LoopEndNode o1, LoopEndNode o2) {
                 return o1.endIndex() - o2.endIndex();

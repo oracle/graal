@@ -31,11 +31,11 @@ public interface MetaAccessProvider {
 
     /**
      * Returns the resolved Java type representing a given Java class.
-     *
+     * 
      * @param clazz the Java class object
      * @return the resolved Java type object
      */
-    ResolvedJavaType lookupJavaType(Class< ? > clazz);
+    ResolvedJavaType lookupJavaType(Class<?> clazz);
 
     /**
      * Provides the {@link ResolvedJavaMethod} for a {@link Method} obtained via reflection.
@@ -54,32 +54,33 @@ public interface MetaAccessProvider {
 
     /**
      * Returns the resolved Java type of the given {@link Constant} object.
-     *
+     * 
      * @return {@code null} if {@code constant.isNull() || !constant.kind.isObject()}
      */
     ResolvedJavaType lookupJavaType(Constant constant);
 
     /**
-     * Parses a <a href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">method
-     * descriptor</a> into a {@link Signature}. The behavior of this method is undefined if
-     * the method descriptor is not well formed.
+     * Parses a <a
+     * href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">method
+     * descriptor</a> into a {@link Signature}. The behavior of this method is undefined if the
+     * method descriptor is not well formed.
      */
     Signature parseMethodDescriptor(String methodDescriptor);
 
     /**
-     * Compares two constants for equality.
-     * This is used instead of {@link Constant#equals(Object)} in case the runtime
-     * has an interpretation for object equality other than {@code x.asObject() == y.asObject()}.
-     * For primitive constants, this is equivalent to calling {@code x.equals(y)}.
-     * The equality relationship is symmetric.
-     *
-     * @return {@code true} if the two parameters represent the same runtime object, {@code false} otherwise
+     * Compares two constants for equality. This is used instead of {@link Constant#equals(Object)}
+     * in case the runtime has an interpretation for object equality other than
+     * {@code x.asObject() == y.asObject()}. For primitive constants, this is equivalent to calling
+     * {@code x.equals(y)}. The equality relationship is symmetric.
+     * 
+     * @return {@code true} if the two parameters represent the same runtime object, {@code false}
+     *         otherwise
      */
     boolean constantEquals(Constant x, Constant y);
 
     /**
      * Returns the length of an array that is wrapped in a {@link Constant} object.
-     *
+     * 
      * @throws IllegalArgumentException if {@code array} is not an array
      */
     int lookupArrayLength(Constant array);

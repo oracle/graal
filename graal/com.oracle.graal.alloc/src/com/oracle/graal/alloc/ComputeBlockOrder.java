@@ -28,20 +28,24 @@ import java.util.*;
 import com.oracle.graal.nodes.cfg.*;
 
 /**
- * Computes an ordering of the block that can be used by the linear scan register allocator and the machine code
- * generator. The machine code generation order will start with the first block and produce a straight sequence
- * always following the most likely successor. Then it will continue with the most likely path that was left out during
- * this process. The process iteratively continues until all blocks are scheduled. Additionally, it is guaranteed that
- * all blocks of a loop are scheduled before any block following the loop is scheduled.
- *
- * The machine code generator order includes reordering of loop headers such that the backward jump is a conditional jump if there
- * is only one loop end block. Additionally, the target of loop backward jumps are always marked as aligned. Aligning the target of conditional
- * jumps does not bring a measurable benefit and is therefore avoided to keep the code size small.
- *
- * The linear scan register allocator order has an additional mechanism that prevents merge nodes from being scheduled if there is
- * at least one highly likely predecessor still unscheduled. This increases the probability that the merge node and the corresponding
- * predecessor are more closely together in the schedule thus decreasing the probability for inserted phi moves. Also, the algorithm sets
- * the linear scan order number of the block that corresponds to its index in the linear scan order.
+ * Computes an ordering of the block that can be used by the linear scan register allocator and the
+ * machine code generator. The machine code generation order will start with the first block and
+ * produce a straight sequence always following the most likely successor. Then it will continue
+ * with the most likely path that was left out during this process. The process iteratively
+ * continues until all blocks are scheduled. Additionally, it is guaranteed that all blocks of a
+ * loop are scheduled before any block following the loop is scheduled.
+ * 
+ * The machine code generator order includes reordering of loop headers such that the backward jump
+ * is a conditional jump if there is only one loop end block. Additionally, the target of loop
+ * backward jumps are always marked as aligned. Aligning the target of conditional jumps does not
+ * bring a measurable benefit and is therefore avoided to keep the code size small.
+ * 
+ * The linear scan register allocator order has an additional mechanism that prevents merge nodes
+ * from being scheduled if there is at least one highly likely predecessor still unscheduled. This
+ * increases the probability that the merge node and the corresponding predecessor are more closely
+ * together in the schedule thus decreasing the probability for inserted phi moves. Also, the
+ * algorithm sets the linear scan order number of the block that corresponds to its index in the
+ * linear scan order.
  */
 public final class ComputeBlockOrder {
 
@@ -51,15 +55,15 @@ public final class ComputeBlockOrder {
     private static final int INITIAL_WORKLIST_CAPACITY = 10;
 
     /**
-     * Divisor used for degrading the probability of the current path versus unscheduled paths at a merge node when
-     * calculating the linear scan order. A high value means that predecessors of merge nodes are more likely to be
-     * scheduled before the merge node.
+     * Divisor used for degrading the probability of the current path versus unscheduled paths at a
+     * merge node when calculating the linear scan order. A high value means that predecessors of
+     * merge nodes are more likely to be scheduled before the merge node.
      */
     private static final int PENALTY_VERSUS_UNSCHEDULED = 10;
 
     /**
      * Computes the block order used for the linear scan register allocator.
-     *
+     * 
      * @return sorted list of blocks
      */
     public static List<Block> computeLinearScanOrder(int blockCount, Block startBlock) {
@@ -73,7 +77,7 @@ public final class ComputeBlockOrder {
 
     /**
      * Computes the block order used for code emission.
-     *
+     * 
      * @return sorted list of blocks
      */
     public static List<Block> computeCodeEmittingOrder(int blockCount, Block startBlock) {
@@ -125,7 +129,8 @@ public final class ComputeBlockOrder {
         enqueueSuccessors(block, worklist, visitedBlocks);
         if (mostLikelySuccessor != null) {
             if (!mostLikelySuccessor.isLoopHeader() && mostLikelySuccessor.getPredecessorCount() > 1) {
-                // We are at a merge. Check probabilities of predecessors that are not yet scheduled.
+                // We are at a merge. Check probabilities of predecessors that are not yet
+                // scheduled.
                 double unscheduledSum = 0.0;
                 for (Block pred : mostLikelySuccessor.getPredecessors()) {
                     if (!visitedBlocks.get(pred.getId())) {
@@ -148,7 +153,8 @@ public final class ComputeBlockOrder {
      */
     private static void addPathToCodeEmittingOrder(Block block, List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks) {
 
-        // Skip loop headers if there is only a single loop end block to make the backward jump be a conditional jump.
+        // Skip loop headers if there is only a single loop end block to make the backward jump be a
+        // conditional jump.
         if (!skipLoopHeader(block)) {
 
             // Align unskipped loop headers as they are the target of the backward jump.
@@ -161,10 +167,12 @@ public final class ComputeBlockOrder {
         Loop loop = block.getLoop();
         if (block.isLoopEnd() && skipLoopHeader(loop.header)) {
 
-            // This is the only loop end of a skipped loop header. Add the header immediately afterwards.
+            // This is the only loop end of a skipped loop header. Add the header immediately
+            // afterwards.
             addBlock(loop.header, order);
 
-            // Make sure the loop successors of the loop header are aligned as they are the target of the backward jump.
+            // Make sure the loop successors of the loop header are aligned as they are the target
+            // of the backward jump.
             for (Block successor : loop.header.getSuccessors()) {
                 if (successor.getLoopDepth() == block.getLoopDepth()) {
                     successor.setAlign(true);
@@ -217,7 +225,8 @@ public final class ComputeBlockOrder {
     }
 
     /**
-     * Skip the loop header block if the loop consists of more than one block and it has only a single loop end block.
+     * Skip the loop header block if the loop consists of more than one block and it has only a
+     * single loop end block.
      */
     private static boolean skipLoopHeader(Block block) {
         return (block.isLoopHeader() && !block.isLoopEnd() && block.getLoop().loopBegin().loopEnds().count() == 1);

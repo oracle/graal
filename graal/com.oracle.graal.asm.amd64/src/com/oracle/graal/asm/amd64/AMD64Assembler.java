@@ -37,8 +37,10 @@ import com.oracle.graal.asm.*;
  * This class implements an assembler that can encode most X86 instructions.
  */
 public class AMD64Assembler extends AbstractAssembler {
+
     /**
-     * The kind for pointers and raw registers.  Since we know we are 64 bit here, we can hardcode it.
+     * The kind for pointers and raw registers. Since we know we are 64 bit here, we can hardcode
+     * it.
      */
     private static final Kind Word = Kind.Long;
 
@@ -48,26 +50,9 @@ public class AMD64Assembler extends AbstractAssembler {
      * The x86 condition codes used for conditional jumps/moves.
      */
     public enum ConditionFlag {
-        zero(0x4, "|zero|"),
-        notZero(0x5, "|nzero|"),
-        equal(0x4, "="),
-        notEqual(0x5, "!="),
-        less(0xc, "<"),
-        lessEqual(0xe, "<="),
-        greater(0xf, ">"),
-        greaterEqual(0xd, ">="),
-        below(0x2, "|<|"),
-        belowEqual(0x6, "|<=|"),
-        above(0x7, "|>|"),
-        aboveEqual(0x3, "|>=|"),
-        overflow(0x0, "|of|"),
-        noOverflow(0x1, "|nof|"),
-        carrySet(0x2, "|carry|"),
-        carryClear(0x3, "|ncarry|"),
-        negative(0x8, "|neg|"),
-        positive(0x9, "|pos|"),
-        parity(0xa, "|par|"),
-        noParity(0xb, "|npar|");
+        zero(0x4, "|zero|"), notZero(0x5, "|nzero|"), equal(0x4, "="), notEqual(0x5, "!="), less(0xc, "<"), lessEqual(0xe, "<="), greater(0xf, ">"), greaterEqual(0xd, ">="), below(0x2, "|<|"), belowEqual(
+                        0x6, "|<=|"), above(0x7, "|>|"), aboveEqual(0x3, "|>=|"), overflow(0x0, "|of|"), noOverflow(0x1, "|nof|"), carrySet(0x2, "|carry|"), carryClear(0x3, "|ncarry|"), negative(0x8,
+                        "|neg|"), positive(0x9, "|pos|"), parity(0xa, "|par|"), noParity(0xb, "|npar|");
 
         public final int value;
         public final String operator;
@@ -78,27 +63,47 @@ public class AMD64Assembler extends AbstractAssembler {
         }
 
         public ConditionFlag negate() {
-            switch(this) {
-                case zero: return notZero;
-                case notZero: return zero;
-                case equal: return notEqual;
-                case notEqual: return equal;
-                case less: return greaterEqual;
-                case lessEqual: return greater;
-                case greater: return lessEqual;
-                case greaterEqual: return less;
-                case below: return aboveEqual;
-                case belowEqual: return above;
-                case above: return belowEqual;
-                case aboveEqual: return below;
-                case overflow: return noOverflow;
-                case noOverflow: return overflow;
-                case carrySet: return carryClear;
-                case carryClear: return carrySet;
-                case negative: return positive;
-                case positive: return negative;
-                case parity: return noParity;
-                case noParity: return parity;
+            switch (this) {
+                case zero:
+                    return notZero;
+                case notZero:
+                    return zero;
+                case equal:
+                    return notEqual;
+                case notEqual:
+                    return equal;
+                case less:
+                    return greaterEqual;
+                case lessEqual:
+                    return greater;
+                case greater:
+                    return lessEqual;
+                case greaterEqual:
+                    return less;
+                case below:
+                    return aboveEqual;
+                case belowEqual:
+                    return above;
+                case above:
+                    return belowEqual;
+                case aboveEqual:
+                    return below;
+                case overflow:
+                    return noOverflow;
+                case noOverflow:
+                    return overflow;
+                case carrySet:
+                    return carryClear;
+                case carryClear:
+                    return carrySet;
+                case negative:
+                    return positive;
+                case positive:
+                    return negative;
+                case parity:
+                    return noParity;
+                case noParity:
+                    return parity;
             }
             throw new IllegalArgumentException();
         }
@@ -108,6 +113,7 @@ public class AMD64Assembler extends AbstractAssembler {
      * Constants for X86 prefix bytes.
      */
     private static class Prefix {
+
         private static final int REX = 0x40;
         private static final int REXB = 0x41;
         private static final int REXX = 0x42;
@@ -133,10 +139,11 @@ public class AMD64Assembler extends AbstractAssembler {
 
     /**
      * Constructs an assembler for the AMD64 architecture.
-     *
+     * 
      * @param registerConfig the register configuration used to bind {@link Register#Frame} and
-     *            {@link Register#CallerFrame} to physical registers. This value can be null if this assembler
-     *            instance will not be used to assemble instructions using these logical registers.
+     *            {@link Register#CallerFrame} to physical registers. This value can be null if this
+     *            assembler instance will not be used to assemble instructions using these logical
+     *            registers.
      */
     public AMD64Assembler(TargetDescription target, RegisterConfig registerConfig) {
         super(target);
@@ -204,10 +211,11 @@ public class AMD64Assembler extends AbstractAssembler {
         if (base == Register.Frame) {
             assert frameRegister != null : "cannot use register " + Register.Frame + " in assembler with null register configuration";
             base = frameRegister;
-//        } else if (base == Register.CallerFrame) {
-//            assert frameRegister != null : "cannot use register " + Register.Frame + " in assembler with null register configuration";
-//            base = frameRegister;
-//            disp += targetMethod.frameSize() + 8;
+            // } else if (base == Register.CallerFrame) {
+            // assert frameRegister != null : "cannot use register " + Register.Frame +
+            // " in assembler with null register configuration";
+            // base = frameRegister;
+            // disp += targetMethod.frameSize() + 8;
         }
 
         // Encode the registers as needed in the fields they are used in
@@ -441,7 +449,6 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC0 | encode);
     }
 
-
     public final void bsrq(Register dst, Address src) {
         prefixq(src, dst);
         emitByte(0xBD);
@@ -454,7 +461,6 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xBD);
         emitByte(0xC0 | encode);
     }
-
 
     public final void bsrl(Register dst, Address src) {
         prefix(src, dst);
@@ -1052,10 +1058,10 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     /**
-     * New CPUs require use of movsd and movss to avoid partial register stall
-     * when loading from memory. But for old Opteron use movlpd instead of movsd.
-     * The selection is done in {@link AMD64MacroAssembler#movdbl(Register, Address)}
-     * and {@link AMD64MacroAssembler#movflt(Register, Register)}.
+     * New CPUs require use of movsd and movss to avoid partial register stall when loading from
+     * memory. But for old Opteron use movlpd instead of movsd. The selection is done in
+     * {@link AMD64MacroAssembler#movdbl(Register, Address)} and
+     * {@link AMD64MacroAssembler#movflt(Register, Register)}.
      */
     public final void movlpd(Register dst, Address src) {
         assert dst.isFpu();
@@ -1559,7 +1565,7 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x0F);
         emitByte(0xB8);
         emitOperandHelper(dst, src);
-      }
+    }
 
     public final void popcntl(Register dst, Register src) {
         emitByte(0xF3);
@@ -1567,7 +1573,7 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x0F);
         emitByte(0xB8);
         emitByte(0xC0 | encode);
-      }
+    }
 
     public final void popcntq(Register dst, Address src) {
         emitByte(0xF3);
@@ -2230,9 +2236,9 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     /**
-     * Creates prefix and the encoding of the lower 6 bits of the ModRM-Byte. It emits an operand prefix. If the given
-     * operands exceed 3 bits, the 4th bit is encoded in the prefix.
-     *
+     * Creates prefix and the encoding of the lower 6 bits of the ModRM-Byte. It emits an operand
+     * prefix. If the given operands exceed 3 bits, the 4th bit is encoded in the prefix.
+     * 
      * @param regEncoding the encoding of the register part of the ModRM-Byte
      * @param rmEncoding the encoding of the r/m part of the ModRM-Byte
      * @return the lower 6 bits of the ModRM-Byte that should be emitted
@@ -2268,7 +2274,6 @@ public class AMD64Assembler extends AbstractAssembler {
     private static boolean needsRex(Value value) {
         return isRegister(value) && asRegister(value).encoding >= MinEncodingNeedsRex;
     }
-
 
     private void prefix(Address adr) {
         if (needsRex(adr.getBase())) {
@@ -2917,11 +2922,12 @@ public class AMD64Assembler extends AbstractAssembler {
     protected final void patchJumpTarget(int branch, int branchTarget) {
         int op = codeBuffer.getByte(branch);
         assert op == 0xE8 // call
-            || op == 0x00 // jump table entry
-            || op == 0xE9 // jmp
-            || op == 0xEB // short jmp
-            || (op & 0xF0) == 0x70 // short jcc
-            || op == 0x0F && (codeBuffer.getByte(branch + 1) & 0xF0) == 0x80 // jcc
+                        ||
+                        op == 0x00 // jump table entry
+                        || op == 0xE9 // jmp
+                        || op == 0xEB // short jmp
+                        || (op & 0xF0) == 0x70 // short jcc
+                        || op == 0x0F && (codeBuffer.getByte(branch + 1) & 0xF0) == 0x80 // jcc
         : "Invalid opcode at patch point branch=" + branch + ", branchTarget=" + branchTarget + ", op=" + op;
 
         if (op == 0x00) {
@@ -2979,9 +2985,9 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     /**
-     * Emits a direct call instruction. Note that the actual call target is not specified, because all calls
-     * need patching anyway. Therefore, 0 is emitted as the call target, and the user is responsible
-     * to add the call address to the appropriate patching tables.
+     * Emits a direct call instruction. Note that the actual call target is not specified, because
+     * all calls need patching anyway. Therefore, 0 is emitted as the call target, and the user is
+     * responsible to add the call address to the appropriate patching tables.
      */
     public final void call() {
         emitByte(0xE8);

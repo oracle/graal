@@ -29,7 +29,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code ExceptionObject} instruction represents the incoming exception object to an exception handler.
+ * The {@code ExceptionObject} instruction represents the incoming exception object to an exception
+ * handler.
  */
 public class ExceptionObjectNode extends AbstractStateSplit implements StateSplit, LIRLowerable, MemoryCheckpoint {
 

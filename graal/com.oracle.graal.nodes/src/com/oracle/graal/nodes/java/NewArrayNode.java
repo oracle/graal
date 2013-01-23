@@ -46,8 +46,9 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
 
     /**
      * Constructs a new NewArrayNode.
-     *
-     * @param elementType the the type of the elements of the newly created array (not the type of the array itself).
+     * 
+     * @param elementType the the type of the elements of the newly created array (not the type of
+     *            the array itself).
      * @param length the node that produces the length for this allocation.
      * @param fillContents determines whether the array elements should be initialized to zero/null.
      * @param locked determines whether the array should be locked immediately.
@@ -84,7 +85,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
 
     /**
      * Gets the element type of the array.
-     *
+     * 
      * @return the element type of the array
      */
     public ResolvedJavaType elementType() {

@@ -23,7 +23,8 @@
 package com.oracle.graal.api.meta;
 
 /**
- * An implementation of {@link ProfilingInfo} that can used in the absence of real profile information.
+ * An implementation of {@link ProfilingInfo} that can used in the absence of real profile
+ * information.
  */
 public final class DefaultProfilingInfo implements ProfilingInfo {
 

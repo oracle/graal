@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
 
-
 /**
  * A implementation of {@link JavaField} for an unresolved field.
  */

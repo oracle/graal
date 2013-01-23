@@ -27,6 +27,7 @@ import com.oracle.graal.loop.InductionVariable.Direction;
 import com.oracle.graal.nodes.*;
 
 public class CountedLoopInfo {
+
     private final LoopEx loop;
     private InductionVariable iv;
     private ValueNode end;
@@ -40,9 +41,10 @@ public class CountedLoopInfo {
     }
 
     public ValueNode maxTripCountNode() {
-        //TODO (gd) stuarte and respect oneOff
+        // TODO (gd) stuarte and respect oneOff
         throw GraalInternalError.unimplemented("division is a fixed node that needs to be inserted into the control flow");
-        // return IntegerArithmeticNode.div(IntegerArithmeticNode.sub(end, iv.initNode()), iv.strideNode());
+        // return IntegerArithmeticNode.div(IntegerArithmeticNode.sub(end, iv.initNode()),
+        // iv.strideNode());
     }
 
     public boolean isConstantMaxTripCount() {

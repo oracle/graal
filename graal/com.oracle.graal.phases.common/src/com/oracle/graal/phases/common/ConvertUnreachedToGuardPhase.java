@@ -30,8 +30,8 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 
-
 public class ConvertUnreachedToGuardPhase extends Phase {
+
     private OptimisticOptimizations opt;
 
     public ConvertUnreachedToGuardPhase(OptimisticOptimizations opt) {
@@ -58,7 +58,8 @@ public class ConvertUnreachedToGuardPhase extends Phase {
                     delete = ifNode.falseSuccessor();
                 }
                 if (insertGuard != null) {
-                    GuardNode guard = graph.unique(new GuardNode(ifNode.condition(), BeginNode.prevBegin(ifNode), DeoptimizationReason.UnreachedCode, DeoptimizationAction.InvalidateReprofile, inverted, ifNode.leafGraphId()));
+                    GuardNode guard = graph.unique(new GuardNode(ifNode.condition(), BeginNode.prevBegin(ifNode), DeoptimizationReason.UnreachedCode, DeoptimizationAction.InvalidateReprofile,
+                                    inverted, ifNode.leafGraphId()));
                     graph.addBeforeFixed(ifNode, graph.add(new ValueAnchorNode(guard)));
                     GraphUtil.killCFG(delete);
                     graph.removeSplit(ifNode, inverted ? ifNode.falseSuccessor() : ifNode.trueSuccessor());

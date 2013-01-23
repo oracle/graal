@@ -28,9 +28,9 @@ import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
- * This class describes the state of a virtual object while iterating over the graph.
- * It describes the fields or array elements (called "entries") and the lock count if the object is still virtual.
- * If the object was materialized, it contains the current materialized value.
+ * This class describes the state of a virtual object while iterating over the graph. It describes
+ * the fields or array elements (called "entries") and the lock count if the object is still
+ * virtual. If the object was materialized, it contains the current materialized value.
  */
 class ObjectState extends Virtualizable.State {
 

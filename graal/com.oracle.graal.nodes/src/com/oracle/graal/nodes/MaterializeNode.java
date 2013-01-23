@@ -54,10 +54,12 @@ public final class MaterializeNode extends ConditionalNode {
     }
 
     @NodeIntrinsic
-    public static native boolean materialize(@ConstantNodeParameter Condition condition, int x, int y);
+    public static native boolean materialize(@ConstantNodeParameter
+    Condition condition, int x, int y);
 
     @NodeIntrinsic
-    public static native boolean materialize(@ConstantNodeParameter Condition condition, long x, long y);
+    public static native boolean materialize(@ConstantNodeParameter
+    Condition condition, long x, long y);
 
     @NodeIntrinsic
     public static native boolean isInstance(Class mirror, Object object);

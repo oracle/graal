@@ -25,7 +25,8 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code ControlSplitNode} is a base class for all instructions that split the control flow (ie. have more than one successor).
+ * The {@code ControlSplitNode} is a base class for all instructions that split the control flow
+ * (ie. have more than one successor).
  */
 public abstract class ControlSplitNode extends FixedNode {
 

@@ -50,7 +50,7 @@ public class EndNode extends FixedNode implements Node.IterableNodeType, LIRLowe
     }
 
     @Override
-    public Iterable< ? extends Node> cfgSuccessors() {
+    public Iterable<? extends Node> cfgSuccessors() {
         return Arrays.asList(merge());
     }
 }

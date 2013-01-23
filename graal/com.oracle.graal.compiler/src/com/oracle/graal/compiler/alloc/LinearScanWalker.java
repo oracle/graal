@@ -57,7 +57,6 @@ final class LinearScanWalker extends IntervalWalker {
 
     private MoveResolver moveResolver; // for ordering spill moves
 
-
     // accessors mapped to same functions in class LinearScan
     int blockCount() {
         return allocator.blockCount();
@@ -74,7 +73,8 @@ final class LinearScanWalker extends IntervalWalker {
     LinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
 
-        // If all allocatable registers are caller saved, then no registers are live across a call site.
+        // If all allocatable registers are caller saved, then no registers are live across a call
+        // site.
         // The register allocator can save time not trying to find a register at a call site.
         HashSet<Register> registers = new HashSet<>(Arrays.asList(allocator.frameMap.registerConfig.getAllocatableRegisters()));
         registers.removeAll(Arrays.asList(allocator.frameMap.registerConfig.getCallerSaveRegisters()));
@@ -309,7 +309,8 @@ final class LinearScanWalker extends IntervalWalker {
 
             // reason for using minSplitPos - 1: when the minimal split pos is exactly at the
             // beginning of a block, then minSplitPos is also a possible split position.
-            // Use the block before as minBlock, because then minBlock.lastLirInstructionId() + 2 == minSplitPos
+            // Use the block before as minBlock, because then minBlock.lastLirInstructionId() + 2 ==
+            // minSplitPos
             Block minBlock = allocator.blockForId(minSplitPos - 1);
 
             // reason for using maxSplitPos - 1: otherwise there would be an assert on failure
@@ -330,7 +331,8 @@ final class LinearScanWalker extends IntervalWalker {
                 if (interval.hasHoleBetween(maxSplitPos - 1, maxSplitPos) && !allocator.isBlockBegin(maxSplitPos)) {
                     // Do not move split position if the interval has a hole before maxSplitPos.
                     // Intervals resulting from Phi-Functions have more than one definition (marked
-                    // as mustHaveRegister) with a hole before each definition. When the register is needed
+                    // as mustHaveRegister) with a hole before each definition. When the register is
+                    // needed
                     // for the second definition : an earlier reloading is unnecessary.
                     if (GraalOptions.TraceLinearScanLevel >= 4) {
                         TTY.println("      interval has hole just before maxSplitPos, so splitting at maxSplitPos");
@@ -344,7 +346,8 @@ final class LinearScanWalker extends IntervalWalker {
                     }
 
                     if (doLoopOptimization) {
-                        // Loop optimization: if a loop-end marker is found between min- and max-position :
+                        // Loop optimization: if a loop-end marker is found between min- and
+                        // max-position :
                         // then split before this loop
                         int loopEndPos = interval.nextUsageExact(RegisterPriority.LiveAtLoopEnd, allocator.getLastLirInstructionId(minBlock) + 2);
                         if (GraalOptions.TraceLinearScanLevel >= 4) {
@@ -354,14 +357,17 @@ final class LinearScanWalker extends IntervalWalker {
                         assert loopEndPos > minSplitPos : "invalid order";
                         if (loopEndPos < maxSplitPos) {
                             // loop-end marker found between min- and max-position
-                            // if it is not the end marker for the same loop as the min-position : then move
+                            // if it is not the end marker for the same loop as the min-position :
+                            // then move
                             // the max-position to this loop block.
-                            // Desired result: uses tagged as shouldHaveRegister inside a loop cause a reloading
+                            // Desired result: uses tagged as shouldHaveRegister inside a loop cause
+                            // a reloading
                             // of the interval (normally, only mustHaveRegister causes a reloading)
                             Block loopBlock = allocator.blockForId(loopEndPos);
 
                             if (GraalOptions.TraceLinearScanLevel >= 4) {
-                                TTY.println("      interval is used in loop that ends in block B%d, so trying to move maxBlock back from B%d to B%d", loopBlock.getId(), maxBlock.getId(), loopBlock.getId());
+                                TTY.println("      interval is used in loop that ends in block B%d, so trying to move maxBlock back from B%d to B%d", loopBlock.getId(), maxBlock.getId(),
+                                                loopBlock.getId());
                             }
                             assert loopBlock != minBlock : "loopBlock and minBlock must be different because block boundary is needed between";
 
@@ -428,7 +434,8 @@ final class LinearScanWalker extends IntervalWalker {
             return;
         }
 
-        // must calculate this before the actual split is performed and before split position is moved to odd opId
+        // must calculate this before the actual split is performed and before split position is
+        // moved to odd opId
         boolean moveNecessary = !allocator.isBlockBegin(optimalSplitPos) && !interval.hasHoleBetween(optimalSplitPos - 1, optimalSplitPos);
 
         if (!allocator.isBlockBegin(optimalSplitPos)) {
@@ -460,10 +467,10 @@ final class LinearScanWalker extends IntervalWalker {
         }
     }
 
-// split an interval at the optimal position between minSplitPos and
-// maxSplitPos in two parts:
-// 1) the left part has already a location assigned
-// 2) the right part is always on the stack and therefore ignored in further processing
+    // split an interval at the optimal position between minSplitPos and
+    // maxSplitPos in two parts:
+    // 1) the left part has already a location assigned
+    // 2) the right part is always on the stack and therefore ignored in further processing
 
     void splitForSpilling(Interval interval) {
         // calculate allowed range of splitting position
@@ -508,7 +515,8 @@ final class LinearScanWalker extends IntervalWalker {
                         }
                         allocator.assignSpillSlot(parent);
                     } else {
-                        // do not go further back because the register is actually used by the interval
+                        // do not go further back because the register is actually used by the
+                        // interval
                         parent = null;
                     }
                 }
@@ -611,7 +619,8 @@ final class LinearScanWalker extends IntervalWalker {
 
         // usePos contains the start of the next interval that has this register assigned
         // (either as a fixed register or a normal allocated register in the past)
-        // only intervals overlapping with cur are processed, non-overlapping invervals can be ignored safely
+        // only intervals overlapping with cur are processed, non-overlapping invervals can be
+        // ignored safely
         if (GraalOptions.TraceLinearScanLevel >= 4) {
             TTY.println("      state of registers:");
             for (Register register : availableRegs) {
@@ -701,7 +710,7 @@ final class LinearScanWalker extends IntervalWalker {
         // collect current usage of registers
         initUseLists(false);
         spillExcludeActiveFixed();
-        //  spillBlockUnhandledFixed(cur);
+        // spillBlockUnhandledFixed(cur);
         assert unhandledLists.get(RegisterBinding.Fixed) == Interval.EndMarker : "must not have unhandled fixed intervals because all fixed intervals have a use at position 0";
         spillBlockInactiveFixed(interval);
         spillCollectActiveAny();
@@ -767,7 +776,7 @@ final class LinearScanWalker extends IntervalWalker {
 
         interval.assignLocation(reg.asValue(interval.kind()));
         if (needSplit) {
-            // register not available for full interval :  so split it
+            // register not available for full interval : so split it
             splitWhenPartialRegisterAvailable(interval, splitPos);
         }
 
@@ -860,7 +869,8 @@ final class LinearScanWalker extends IntervalWalker {
         assert endHint.firstUsage(RegisterPriority.MustHaveRegister) == endPos : "must have use position at begin of interval because of move";
 
         if (isRegister(beginHint.location())) {
-            // registerHint is not spilled at beginPos : so it would not be benefitial to immediately spill cur
+            // registerHint is not spilled at beginPos : so it would not be benefitial to
+            // immediately spill cur
             return;
         }
         assert registerHint.spillSlot() != null : "must be set when part of interval was spilled";
@@ -888,7 +898,8 @@ final class LinearScanWalker extends IntervalWalker {
 
         final Value operand = interval.operand;
         if (interval.location() != null && isStackSlot(interval.location())) {
-            // activating an interval that has a stack slot assigned . split it at first use position
+            // activating an interval that has a stack slot assigned . split it at first use
+            // position
             // used for method parameters
             if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("      interval has spill slot assigned (method parameter) . split it before first use");

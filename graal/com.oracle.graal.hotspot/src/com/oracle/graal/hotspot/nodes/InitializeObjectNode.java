@@ -28,9 +28,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Initializes the header and body of an uninitialized object cell.
- * This node calls out to a stub to do both the allocation and formatting
- * if the memory address it is given is zero/null (e.g. due to
+ * Initializes the header and body of an uninitialized object cell. This node calls out to a stub to
+ * do both the allocation and formatting if the memory address it is given is zero/null (e.g. due to
  * {@linkplain TLABAllocateNode TLAB allocation} failing).
  */
 public final class InitializeObjectNode extends FixedWithNextNode implements Lowerable {

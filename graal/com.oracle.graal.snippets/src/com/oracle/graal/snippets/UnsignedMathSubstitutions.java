@@ -127,14 +127,18 @@ public class UnsignedMathSubstitutions {
     }
 
     @NodeIntrinsic(UnsignedDivNode.class)
-    private static native int unsignedDivide(@ConstantNodeParameter Kind kind, int a, int b);
+    private static native int unsignedDivide(@ConstantNodeParameter
+    Kind kind, int a, int b);
 
     @NodeIntrinsic(UnsignedDivNode.class)
-    private static native long unsignedDivide(@ConstantNodeParameter Kind kind, long a, long b);
+    private static native long unsignedDivide(@ConstantNodeParameter
+    Kind kind, long a, long b);
 
     @NodeIntrinsic(UnsignedRemNode.class)
-    private static native int unsignedRemainder(@ConstantNodeParameter Kind kind, int a, int b);
+    private static native int unsignedRemainder(@ConstantNodeParameter
+    Kind kind, int a, int b);
 
     @NodeIntrinsic(UnsignedRemNode.class)
-    private static native long unsignedRemainder(@ConstantNodeParameter Kind kind, long a, long b);
+    private static native long unsignedRemainder(@ConstantNodeParameter
+    Kind kind, long a, long b);
 }

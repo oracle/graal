@@ -39,8 +39,7 @@ import com.oracle.graal.snippets.CheckCastTest.Depth13;
 import com.oracle.graal.snippets.CheckCastTest.Depth14;
 
 /**
- * Tests the implementation of instanceof, allowing profiling information to
- * be manually specified.
+ * Tests the implementation of instanceof, allowing profiling information to be manually specified.
  */
 public class InstanceOfTest extends TypeCheckTest {
 
@@ -60,112 +59,112 @@ public class InstanceOfTest extends TypeCheckTest {
 
     @Test
     public void test1() {
-        test("isString",    profile(),                        "object");
-        test("isString",    profile(String.class),            "object");
+        test("isString", profile(), "object");
+        test("isString", profile(String.class), "object");
 
-        test("isString",    profile(),                        Object.class);
-        test("isString",    profile(String.class),            Object.class);
+        test("isString", profile(), Object.class);
+        test("isString", profile(String.class), Object.class);
     }
 
     @Test
     public void test2() {
-        test("isStringInt",    profile(),                        "object");
-        test("isStringInt",    profile(String.class),            "object");
+        test("isStringInt", profile(), "object");
+        test("isStringInt", profile(String.class), "object");
 
-        test("isStringInt",    profile(),                        Object.class);
-        test("isStringInt",    profile(String.class),            Object.class);
+        test("isStringInt", profile(), Object.class);
+        test("isStringInt", profile(String.class), Object.class);
     }
 
     @Test
     public void test2_1() {
-        test("isStringIntComplex",    profile(),                        "object");
-        test("isStringIntComplex",    profile(String.class),            "object");
+        test("isStringIntComplex", profile(), "object");
+        test("isStringIntComplex", profile(String.class), "object");
 
-        test("isStringIntComplex",    profile(),                        Object.class);
-        test("isStringIntComplex",    profile(String.class),            Object.class);
+        test("isStringIntComplex", profile(), Object.class);
+        test("isStringIntComplex", profile(String.class), Object.class);
     }
 
     @Test
     public void test3() {
         Throwable throwable = new Exception();
-        test("isThrowable",    profile(),                             throwable);
-        test("isThrowable",    profile(Throwable.class),              throwable);
-        test("isThrowable",    profile(Exception.class, Error.class), throwable);
+        test("isThrowable", profile(), throwable);
+        test("isThrowable", profile(Throwable.class), throwable);
+        test("isThrowable", profile(Exception.class, Error.class), throwable);
 
-        test("isThrowable",    profile(),                             Object.class);
-        test("isThrowable",    profile(Throwable.class),              Object.class);
-        test("isThrowable",    profile(Exception.class, Error.class), Object.class);
+        test("isThrowable", profile(), Object.class);
+        test("isThrowable", profile(Throwable.class), Object.class);
+        test("isThrowable", profile(Exception.class, Error.class), Object.class);
     }
 
     @Test
     public void test3_1() {
         onlyFirstIsException(new Exception(), new Error());
-        test("onlyFirstIsException",    profile(),                             new Exception(), new Error());
-        test("onlyFirstIsException",    profile(),                             new Error(), new Exception());
-        test("onlyFirstIsException",    profile(),                             new Exception(), new Exception());
-        test("onlyFirstIsException",    profile(),                             new Error(), new Error());
+        test("onlyFirstIsException", profile(), new Exception(), new Error());
+        test("onlyFirstIsException", profile(), new Error(), new Exception());
+        test("onlyFirstIsException", profile(), new Exception(), new Exception());
+        test("onlyFirstIsException", profile(), new Error(), new Error());
     }
 
     @Test
     public void test4() {
         Throwable throwable = new Exception();
-        test("isThrowableInt",    profile(),                             throwable);
-        test("isThrowableInt",    profile(Throwable.class),              throwable);
-        test("isThrowableInt",    profile(Exception.class, Error.class), throwable);
+        test("isThrowableInt", profile(), throwable);
+        test("isThrowableInt", profile(Throwable.class), throwable);
+        test("isThrowableInt", profile(Exception.class, Error.class), throwable);
 
-        test("isThrowableInt",    profile(),                             Object.class);
-        test("isThrowableInt",    profile(Throwable.class),              Object.class);
-        test("isThrowableInt",    profile(Exception.class, Error.class), Object.class);
+        test("isThrowableInt", profile(), Object.class);
+        test("isThrowableInt", profile(Throwable.class), Object.class);
+        test("isThrowableInt", profile(Exception.class, Error.class), Object.class);
     }
 
     @Test
     public void test5() {
         Map map = new HashMap<>();
-        test("isMap",    profile(),                             map);
-        test("isMap",    profile(HashMap.class),                map);
-        test("isMap",    profile(TreeMap.class, HashMap.class), map);
+        test("isMap", profile(), map);
+        test("isMap", profile(HashMap.class), map);
+        test("isMap", profile(TreeMap.class, HashMap.class), map);
 
-        test("isMap",    profile(),                             Object.class);
-        test("isMap",    profile(HashMap.class),                Object.class);
-        test("isMap",    profile(TreeMap.class, HashMap.class), Object.class);
+        test("isMap", profile(), Object.class);
+        test("isMap", profile(HashMap.class), Object.class);
+        test("isMap", profile(TreeMap.class, HashMap.class), Object.class);
     }
 
     @Test
     public void test6() {
         Map map = new HashMap<>();
-        test("isMapInt",    profile(),                             map);
-        test("isMapInt",    profile(HashMap.class),                map);
-        test("isMapInt",    profile(TreeMap.class, HashMap.class), map);
+        test("isMapInt", profile(), map);
+        test("isMapInt", profile(HashMap.class), map);
+        test("isMapInt", profile(TreeMap.class, HashMap.class), map);
 
-        test("isMapInt",    profile(),                             Object.class);
-        test("isMapInt",    profile(HashMap.class),                Object.class);
-        test("isMapInt",    profile(TreeMap.class, HashMap.class), Object.class);
+        test("isMapInt", profile(), Object.class);
+        test("isMapInt", profile(HashMap.class), Object.class);
+        test("isMapInt", profile(TreeMap.class, HashMap.class), Object.class);
     }
 
     @Test
     public void test7() {
         Object o = new Depth13();
-        test("isDepth12",   profile(), o);
-        test("isDepth12",   profile(Depth13.class), o);
-        test("isDepth12",   profile(Depth13.class, Depth14.class), o);
+        test("isDepth12", profile(), o);
+        test("isDepth12", profile(Depth13.class), o);
+        test("isDepth12", profile(Depth13.class, Depth14.class), o);
 
         o = "not a depth";
-        test("isDepth12",   profile(), o);
-        test("isDepth12",   profile(Depth13.class), o);
-        test("isDepth12",   profile(Depth13.class, Depth14.class), o);
+        test("isDepth12", profile(), o);
+        test("isDepth12", profile(Depth13.class), o);
+        test("isDepth12", profile(Depth13.class, Depth14.class), o);
     }
 
     @Test
     public void test8() {
         Object o = new Depth13();
-        test("isDepth12Int",   profile(), o);
-        test("isDepth12Int",   profile(Depth13.class), o);
-        test("isDepth12Int",   profile(Depth13.class, Depth14.class), o);
+        test("isDepth12Int", profile(), o);
+        test("isDepth12Int", profile(Depth13.class), o);
+        test("isDepth12Int", profile(Depth13.class, Depth14.class), o);
 
         o = "not a depth";
-        test("isDepth12Int",   profile(), o);
-        test("isDepth12Int",   profile(Depth13.class), o);
-        test("isDepth12Int",   profile(Depth13.class, Depth14.class), o);
+        test("isDepth12Int", profile(), o);
+        test("isDepth12Int", profile(Depth13.class), o);
+        test("isDepth12Int", profile(Depth13.class, Depth14.class), o);
     }
 
     public static boolean isString(Object o) {
@@ -232,25 +231,30 @@ public class InstanceOfTest extends TypeCheckTest {
     }
 
     abstract static class MySite {
+
         final int offset;
+
         MySite(int offset) {
             this.offset = offset;
         }
     }
 
     static class MyMark extends MySite {
+
         MyMark(int offset) {
             super(offset);
         }
     }
 
     abstract static class MySafepoint extends MySite {
+
         MySafepoint(int offset) {
             super(offset);
         }
     }
 
     static class MyCall extends MySafepoint {
+
         MyCall(int offset) {
             super(offset);
         }
@@ -260,10 +264,10 @@ public class InstanceOfTest extends TypeCheckTest {
     public void test9() {
         MyCall callAt63 = new MyCall(63);
         MyMark markAt63 = new MyMark(63);
-        test("compareMySites",  callAt63, callAt63);
-        test("compareMySites",  callAt63, markAt63);
-        test("compareMySites",  markAt63, callAt63);
-        test("compareMySites",  markAt63, markAt63);
+        test("compareMySites", callAt63, callAt63);
+        test("compareMySites", callAt63, markAt63);
+        test("compareMySites", markAt63, callAt63);
+        test("compareMySites", markAt63, markAt63);
     }
 
     public static int compareMySites(MySite s1, MySite s2) {
@@ -278,10 +282,10 @@ public class InstanceOfTest extends TypeCheckTest {
         Mark[] noMarks = {};
         Call callAt63 = new Call("ignore", 63, 5, true, null);
         Mark markAt63 = new Mark(63, "1", noMarks);
-        test("compareSites",  callAt63, callAt63);
-        test("compareSites",  callAt63, markAt63);
-        test("compareSites",  markAt63, callAt63);
-        test("compareSites",  markAt63, markAt63);
+        test("compareSites", callAt63, callAt63);
+        test("compareSites", callAt63, markAt63);
+        test("compareSites", markAt63, callAt63);
+        test("compareSites", markAt63, markAt63);
     }
 
     public static int compareSites(Site s1, Site s2) {
@@ -295,15 +299,15 @@ public class InstanceOfTest extends TypeCheckTest {
      * This test exists to show the kind of pattern that is be optimizable by
      * {@code removeIntermediateMaterialization()} in {@link IfNode}.
      * <p>
-     * The test exists in this source file as the transformation was originally motivated by the need to
-     * remove use of special JumpNodes in the {@code InstanceOfSnippets}.
+     * The test exists in this source file as the transformation was originally motivated by the
+     * need to remove use of special JumpNodes in the {@code InstanceOfSnippets}.
      */
     @Test
     public void test_removeIntermediateMaterialization() {
         List<String> list = Arrays.asList("1", "2", "3", "4");
-        test("removeIntermediateMaterialization",    profile(),                        list, "2", "yes", "no");
-        test("removeIntermediateMaterialization",    profile(),                        list, null, "yes", "no");
-        test("removeIntermediateMaterialization",    profile(),                        null, "2", "yes", "no");
+        test("removeIntermediateMaterialization", profile(), list, "2", "yes", "no");
+        test("removeIntermediateMaterialization", profile(), list, null, "yes", "no");
+        test("removeIntermediateMaterialization", profile(), null, "2", "yes", "no");
     }
 
     public static String removeIntermediateMaterialization(List<Object> list, Object e, String a, String b) {
@@ -325,10 +329,17 @@ public class InstanceOfTest extends TypeCheckTest {
         return b;
     }
 
-    abstract static class A {}
-    static class B extends A {}
-    static class C extends B {}
-    abstract static class D extends C {}
+    abstract static class A {
+    }
+
+    static class B extends A {
+    }
+
+    static class C extends B {
+    }
+
+    abstract static class D extends C {
+    }
 
     public static boolean isArrayOfA(Object o) {
         return o instanceof A[];

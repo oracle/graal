@@ -25,6 +25,7 @@ package com.oracle.graal.lir;
 import com.oracle.graal.api.meta.*;
 
 public final class LIRValueUtil {
+
     public static boolean isVariable(Value value) {
         assert value != null;
         return value instanceof Variable;

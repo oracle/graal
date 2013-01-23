@@ -75,7 +75,8 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         }
         if (snippetMethod == null) {
             snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.increaseGenericCallCounterMethod);
-            // we will call the generic method. the generic snippet will only increase the counter, not call the actual
+            // we will call the generic method. the generic snippet will only increase the counter,
+            // not call the actual
             // method. therefore we create a second invoke here.
             ((StructuredGraph) graph()).addAfterFixed(this, createInvoke());
         } else {

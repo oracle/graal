@@ -31,8 +31,8 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
- * Intrinsic for allocating an on-stack array of integers to hold the dimensions
- * of a multianewarray instruction.
+ * Intrinsic for allocating an on-stack array of integers to hold the dimensions of a multianewarray
+ * instruction.
  */
 public final class DimensionsNode extends FixedWithNextNode implements LIRGenLowerable {
 
@@ -52,5 +52,6 @@ public final class DimensionsNode extends FixedWithNextNode implements LIRGenLow
     }
 
     @NodeIntrinsic
-    public static native Word allocaDimsArray(@ConstantNodeParameter int rank);
+    public static native Word allocaDimsArray(@ConstantNodeParameter
+    int rank);
 }

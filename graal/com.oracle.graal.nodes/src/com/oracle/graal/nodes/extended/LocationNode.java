@@ -30,8 +30,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * A location for a memory access in terms of the kind of value accessed and the displacement
- * (in bytes) from a base object or address.
+ * A location for a memory access in terms of the kind of value accessed and the displacement (in
+ * bytes) from a base object or address.
  */
 @NodeInfo(nameTemplate = "Loc {p#locationIdentity/s}")
 public class LocationNode extends FloatingNode implements LIRLowerable, ValueNumberable {
@@ -41,10 +41,11 @@ public class LocationNode extends FloatingNode implements LIRLowerable, ValueNum
     private Object locationIdentity;
 
     /**
-     * Denotes any location. A write to such a location kills all values in a memory map
-     * during an analysis of memory accesses in a graph.
+     * Denotes any location. A write to such a location kills all values in a memory map during an
+     * analysis of memory accesses in a graph.
      */
     public static final Object ANY_LOCATION = new Object() {
+
         @Override
         public String toString() {
             return "ANY_LOCATION";
@@ -55,6 +56,7 @@ public class LocationNode extends FloatingNode implements LIRLowerable, ValueNum
      * Denotes the location of a value that is guaranteed to be final.
      */
     public static final Object FINAL_LOCATION = new Object() {
+
         @Override
         public String toString() {
             return "FINAL_LOCATION";

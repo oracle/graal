@@ -57,7 +57,6 @@ public final class GraphBuilderPhase extends Phase {
     public static final Descriptor CREATE_NULL_POINTER_EXCEPTION = new Descriptor("createNullPointerException", true, Object.class);
     public static final Descriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new Descriptor("createOutOfBoundsException", true, Object.class, int.class);
 
-
     /**
      * The minimum value to which {@link GraalOptions#TraceBytecodeParserLevel} must be set to trace
      * the bytecode instructions as they are parsed.
@@ -95,12 +94,13 @@ public final class GraphBuilderPhase extends Phase {
     private long graphId;
 
     /**
-     * Node that marks the begin of block during bytecode parsing.  When a block is identified the first
-     * time as a jump target, the placeholder is created and used as the successor for the jump.  When the
-     * block is seen the second time, a MergeNode is created to correctly merge the now two different
-     * predecessor states.
+     * Node that marks the begin of block during bytecode parsing. When a block is identified the
+     * first time as a jump target, the placeholder is created and used as the successor for the
+     * jump. When the block is seen the second time, a MergeNode is created to correctly merge the
+     * now two different predecessor states.
      */
     private static class BlockPlaceholderNode extends FixedWithNextNode implements Node.IterableNodeType {
+
         public BlockPlaceholderNode() {
             super(StampFactory.forVoid());
         }
@@ -177,8 +177,10 @@ public final class GraphBuilderPhase extends Phase {
         currentBlock = blockMap.startBlock;
         blockMap.startBlock.entryState = frameState;
         if (blockMap.startBlock.isLoopHeader) {
-            // TODO(lstadler,gduboscq) createTarget might not be safe at this position, since it expects currentBlock,
-            // etc. to be set up correctly. A better solution to this problem of start blocks that are loop headers
+            // TODO(lstadler,gduboscq) createTarget might not be safe at this position, since it
+            // expects currentBlock,
+            // etc. to be set up correctly. A better solution to this problem of start blocks that
+            // are loop headers
             // would be to create a dummy block in BciBlockMapping.
             appendGoto(createTarget(blockMap.startBlock, frameState));
         } else {
@@ -258,7 +260,8 @@ public final class GraphBuilderPhase extends Phase {
         Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, profilingInfo.getExceptionSeen(bci));
 
         Block dispatchBlock = currentBlock.exceptionDispatchBlock();
-        // The exception dispatch block is always for the last bytecode of a block, so if we are not at the endBci yet,
+        // The exception dispatch block is always for the last bytecode of a block, so if we are not
+        // at the endBci yet,
         // there is no exception handler for this bci and we can unwind immediately.
         if (bci != currentBlock.endBci || dispatchBlock == null) {
             dispatchBlock = unwindBlock(bci);
@@ -414,23 +417,39 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode x = frameState.pop(result);
         boolean isStrictFP = isStrict(method.getModifiers());
         ArithmeticNode v;
-        switch(opcode){
+        switch (opcode) {
             case IADD:
-            case LADD: v = new IntegerAddNode(result, x, y); break;
+            case LADD:
+                v = new IntegerAddNode(result, x, y);
+                break;
             case FADD:
-            case DADD: v = new FloatAddNode(result, x, y, isStrictFP); break;
+            case DADD:
+                v = new FloatAddNode(result, x, y, isStrictFP);
+                break;
             case ISUB:
-            case LSUB: v = new IntegerSubNode(result, x, y); break;
+            case LSUB:
+                v = new IntegerSubNode(result, x, y);
+                break;
             case FSUB:
-            case DSUB: v = new FloatSubNode(result, x, y, isStrictFP); break;
+            case DSUB:
+                v = new FloatSubNode(result, x, y, isStrictFP);
+                break;
             case IMUL:
-            case LMUL: v = new IntegerMulNode(result, x, y); break;
+            case LMUL:
+                v = new IntegerMulNode(result, x, y);
+                break;
             case FMUL:
-            case DMUL: v = new FloatMulNode(result, x, y, isStrictFP); break;
+            case DMUL:
+                v = new FloatMulNode(result, x, y, isStrictFP);
+                break;
             case FDIV:
-            case DDIV: v = new FloatDivNode(result, x, y, isStrictFP); break;
+            case DDIV:
+                v = new FloatDivNode(result, x, y, isStrictFP);
+                break;
             case FREM:
-            case DREM: v = new FloatRemNode(result, x, y, isStrictFP); break;
+            case DREM:
+                v = new FloatRemNode(result, x, y, isStrictFP);
+                break;
             default:
                 throw new GraalInternalError("should not reach");
         }
@@ -442,11 +461,15 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode y = frameState.pop(result);
         ValueNode x = frameState.pop(result);
         FixedWithNextNode v;
-        switch(opcode){
+        switch (opcode) {
             case IDIV:
-            case LDIV: v = new IntegerDivNode(result, x, y); break;
+            case LDIV:
+                v = new IntegerDivNode(result, x, y);
+                break;
             case IREM:
-            case LREM: v = new IntegerRemNode(result, x, y); break;
+            case LREM:
+                v = new IntegerRemNode(result, x, y);
+                break;
             default:
                 throw new GraalInternalError("should not reach");
         }
@@ -462,13 +485,19 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode s = frameState.ipop();
         ValueNode x = frameState.pop(kind);
         ShiftNode v;
-        switch(opcode){
+        switch (opcode) {
             case ISHL:
-            case LSHL: v = new LeftShiftNode(kind, x, s); break;
+            case LSHL:
+                v = new LeftShiftNode(kind, x, s);
+                break;
             case ISHR:
-            case LSHR: v = new RightShiftNode(kind, x, s); break;
+            case LSHR:
+                v = new RightShiftNode(kind, x, s);
+                break;
             case IUSHR:
-            case LUSHR: v = new UnsignedRightShiftNode(kind, x, s); break;
+            case LUSHR:
+                v = new UnsignedRightShiftNode(kind, x, s);
+                break;
             default:
                 throw new GraalInternalError("should not reach");
         }
@@ -479,13 +508,19 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode y = frameState.pop(kind);
         ValueNode x = frameState.pop(kind);
         LogicNode v;
-        switch(opcode){
+        switch (opcode) {
             case IAND:
-            case LAND: v = new AndNode(kind, x, y); break;
+            case LAND:
+                v = new AndNode(kind, x, y);
+                break;
             case IOR:
-            case LOR: v = new OrNode(kind, x, y); break;
+            case LOR:
+                v = new OrNode(kind, x, y);
+                break;
             case IXOR:
-            case LXOR: v = new XorNode(kind, x, y); break;
+            case LXOR:
+                v = new XorNode(kind, x, y);
+                break;
             default:
                 throw new GraalInternalError("should not reach");
         }
@@ -586,7 +621,8 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genThrow() {
         ValueNode exception = frameState.apop();
-        FixedGuardNode node = currentGraph.add(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true, graphId));
+        FixedGuardNode node = currentGraph.add(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile,
+                        true, graphId));
         append(node);
         append(handleException(exception, bci()));
     }
@@ -619,11 +655,11 @@ public final class GraphBuilderPhase extends Phase {
         return result;
     }
 
-//    private void eagerResolving(int cpi, int bytecode) {
-//        if (graphBuilderConfig.eagerResolving()) {
-//            constantPool.loadReferencedType(cpi, bytecode);
-//        }
-//    }
+    // private void eagerResolving(int cpi, int bytecode) {
+    // if (graphBuilderConfig.eagerResolving()) {
+    // constantPool.loadReferencedType(cpi, bytecode);
+    // }
+    // }
 
     private void eagerResolvingForSnippets(int cpi, int bytecode) {
         if (graphBuilderConfig.eagerResolvingForSnippets()) {
@@ -690,29 +726,39 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     /**
-     * Gets the kind of array elements for the array type code that appears
-     * in a {@link Bytecodes#NEWARRAY} bytecode.
+     * Gets the kind of array elements for the array type code that appears in a
+     * {@link Bytecodes#NEWARRAY} bytecode.
+     * 
      * @param code the array type code
      * @return the kind from the array type code
      */
-    public static Class< ? > arrayTypeCodeToClass(int code) {
+    public static Class<?> arrayTypeCodeToClass(int code) {
         // Checkstyle: stop
         switch (code) {
-            case 4:  return boolean.class;
-            case 5:  return char.class;
-            case 6:  return float.class;
-            case 7:  return double.class;
-            case 8:  return byte.class;
-            case 9:  return short.class;
-            case 10: return int.class;
-            case 11: return long.class;
-            default: throw new IllegalArgumentException("unknown array type code: " + code);
+            case 4:
+                return boolean.class;
+            case 5:
+                return char.class;
+            case 6:
+                return float.class;
+            case 7:
+                return double.class;
+            case 8:
+                return byte.class;
+            case 9:
+                return short.class;
+            case 10:
+                return int.class;
+            case 11:
+                return long.class;
+            default:
+                throw new IllegalArgumentException("unknown array type code: " + code);
         }
         // Checkstyle: resume
     }
 
     private void genNewPrimitiveArray(int typeCode) {
-        Class< ? > clazz = arrayTypeCodeToClass(typeCode);
+        Class<?> clazz = arrayTypeCodeToClass(typeCode);
         ResolvedJavaType elementType = runtime.lookupJavaType(clazz);
         NewPrimitiveArrayNode nta = currentGraph.add(new NewPrimitiveArrayNode(elementType, frameState.ipop(), true, false));
         frameState.apush(append(nta));
@@ -800,7 +846,6 @@ public final class GraphBuilderPhase extends Phase {
         cachedArrayIndexOutOfBoundsException.setStackTrace(new StackTraceElement[0]);
         cachedNullPointerException.setStackTrace(new StackTraceElement[0]);
     }
-
 
     private void emitBoundsCheck(ValueNode index, ValueNode length) {
         BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
@@ -991,7 +1036,8 @@ public final class GraphBuilderPhase extends Phase {
             returnType = returnType.resolve(targetMethod.getDeclaringClass());
         }
         MethodCallTargetNode callTarget = currentGraph.add(new MethodCallTargetNode(invokeKind, targetMethod, args, returnType));
-        // be conservative if information was not recorded (could result in endless recompiles otherwise)
+        // be conservative if information was not recorded (could result in endless recompiles
+        // otherwise)
         if (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == ExceptionSeen.FALSE) {
             ValueNode result = appendWithBCI(currentGraph.add(new InvokeNode(callTarget, bci(), graphId)));
             frameState.pushReturn(resultType, result);
@@ -1060,7 +1106,8 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode local = frameState.loadLocal(localIndex);
         JsrScope scope = currentBlock.jsrScope;
         int retAddress = scope.nextReturnAddress();
-        append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new IntegerEqualsNode(local, ConstantNode.forJsr(retAddress, currentGraph))), DeoptimizationReason.JavaSubroutineMismatch, DeoptimizationAction.InvalidateReprofile, graphId)));
+        append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new IntegerEqualsNode(local, ConstantNode.forJsr(retAddress, currentGraph))), DeoptimizationReason.JavaSubroutineMismatch,
+                        DeoptimizationAction.InvalidateReprofile, graphId)));
         if (!successor.jsrScope.equals(scope.pop())) {
             throw new JsrNotSupportedBailout("unstructured control flow (ret leaves more than one scope)");
         }
@@ -1143,6 +1190,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private static class SuccessorInfo {
+
         int blockIndex;
         int actualIndex;
 
@@ -1180,8 +1228,10 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private static class Target {
+
         FixedNode fixed;
         FrameStateBuilder state;
+
         public Target(FixedNode fixed, FrameStateBuilder state) {
             this.fixed = fixed;
             this.state = state;
@@ -1207,6 +1257,7 @@ public final class GraphBuilderPhase extends Phase {
                 } while (exits != 0);
 
                 Collections.sort(exitLoops, new Comparator<Block>() {
+
                     @Override
                     public int compare(Block o1, Block o2) {
                         return Long.bitCount(o2.loops) - Long.bitCount(o1.loops);
@@ -1260,7 +1311,8 @@ public final class GraphBuilderPhase extends Phase {
 
         if (block.firstInstruction == null) {
             // This is the first time we see this block as a branch target.
-            // Create and return a placeholder that later can be replaced with a MergeNode when we see this block again.
+            // Create and return a placeholder that later can be replaced with a MergeNode when we
+            // see this block again.
             block.firstInstruction = currentGraph.add(new BlockPlaceholderNode());
             Target target = checkLoopExit(block.firstInstruction, block, state);
             FixedNode result = target.fixed;
@@ -1278,7 +1330,8 @@ public final class GraphBuilderPhase extends Phase {
 
         if (block.firstInstruction instanceof LoopBeginNode) {
             assert block.isLoopHeader && currentBlock.blockID >= block.blockID : "must be backward branch";
-            // Backward loop edge. We need to create a special LoopEndNode and merge with the loop begin node created before.
+            // Backward loop edge. We need to create a special LoopEndNode and merge with the loop
+            // begin node created before.
             LoopBeginNode loopBegin = (LoopBeginNode) block.firstInstruction;
             Target target = checkLoopExit(currentGraph.add(new LoopEndNode(loopBegin)), block, state);
             FixedNode result = target.fixed;
@@ -1291,14 +1344,16 @@ public final class GraphBuilderPhase extends Phase {
         assert block.firstInstruction.next() == null : "bytecodes already parsed for block";
 
         if (block.firstInstruction instanceof BlockPlaceholderNode) {
-            // This is the second time we see this block. Create the actual MergeNode and the End Node for the already existing edge.
-            // For simplicity, we leave the placeholder in the graph and just append the new nodes after the placeholder.
+            // This is the second time we see this block. Create the actual MergeNode and the End
+            // Node for the already existing edge.
+            // For simplicity, we leave the placeholder in the graph and just append the new nodes
+            // after the placeholder.
             BlockPlaceholderNode placeholder = (BlockPlaceholderNode) block.firstInstruction;
 
             // The EndNode for the already existing edge.
             EndNode end = currentGraph.add(new EndNode());
             // The MergeNode that replaces the placeholder.
-            MergeNode mergeNode  = currentGraph.add(new MergeNode());
+            MergeNode mergeNode = currentGraph.add(new MergeNode());
             FixedNode next = placeholder.next();
 
             placeholder.setNext(end);
@@ -1322,15 +1377,15 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     /**
-     * Returns a block begin node with the specified state.  If the specified probability is 0, the block
-     * deoptimizes immediately.
+     * Returns a block begin node with the specified state. If the specified probability is 0, the
+     * block deoptimizes immediately.
      */
     private BeginNode createBlockTarget(double probability, Block block, FrameStateBuilder stateAfter) {
         FixedNode target = createTarget(probability, block, stateAfter);
         BeginNode begin = BeginNode.begin(target);
 
-        assert !(target instanceof DeoptimizeNode && begin.stateAfter() != null) :
-            "We are not allowed to set the stateAfter of the begin node, because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
+        assert !(target instanceof DeoptimizeNode && begin.stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node, because we have to deoptimize "
+                        + "to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
         return begin;
     }
 
@@ -1501,7 +1556,8 @@ public final class GraphBuilderPhase extends Phase {
 
     private void iterateBytecodesForBlock(Block block) {
         if (block.isLoopHeader) {
-            // Create the loop header block, which later will merge the backward branches of the loop.
+            // Create the loop header block, which later will merge the backward branches of the
+            // loop.
             EndNode preLoopEnd = currentGraph.add(new EndNode());
             LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
             lastInstr.setNext(preLoopEnd);
@@ -1513,10 +1569,12 @@ public final class GraphBuilderPhase extends Phase {
             frameState.insertLoopPhis(loopBegin);
             loopBegin.setStateAfter(frameState.create(block.startBci));
 
-            // We have seen all forward branches. All subsequent backward branches will merge to the loop header.
+            // We have seen all forward branches. All subsequent backward branches will merge to the
+            // loop header.
             // This ensures that the loop header has exactly one non-loop predecessor.
             block.firstInstruction = loopBegin;
-            // We need to preserve the frame state builder of the loop header so that we can merge values for
+            // We need to preserve the frame state builder of the loop header so that we can merge
+            // values for
             // phi functions, so make a copy of it.
             block.entryState = frameState.copy();
 

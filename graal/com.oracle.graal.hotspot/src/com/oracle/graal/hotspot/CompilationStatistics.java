@@ -67,10 +67,8 @@ public final class CompilationStatistics {
     private final String holder;
     private final String name;
     private final String signature;
-    @AbsoluteTimeValue
-    private final long startTime;
-    @TimeValue
-    private long duration;
+    @AbsoluteTimeValue private final long startTime;
+    @TimeValue private long duration;
     private int startInvCount;
     private int endInvCount;
     private int bytecodeCount;

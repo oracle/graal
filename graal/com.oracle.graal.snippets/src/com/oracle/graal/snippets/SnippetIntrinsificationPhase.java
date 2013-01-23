@@ -46,7 +46,8 @@ public class SnippetIntrinsificationPhase extends Phase {
     private final boolean intrinsificationOrFoldingCanBeDeferred;
 
     /**
-     * @param intrinsificationOrFoldingCanBeDeferred if true, then {@link NonConstantParameterError}s are not fatal
+     * @param intrinsificationOrFoldingCanBeDeferred if true, then {@link NonConstantParameterError}
+     *            s are not fatal
      */
     public SnippetIntrinsificationPhase(MetaAccessProvider runtime, BoxingMethodPool pool, boolean intrinsificationOrFoldingCanBeDeferred) {
         this.runtime = runtime;
@@ -70,8 +71,8 @@ public class SnippetIntrinsificationPhase extends Phase {
     }
 
     /**
-     * Exception raised when an argument to a {@linkplain Fold foldable} or
-     * {@link NodeIntrinsic} method is not a constant.
+     * Exception raised when an argument to a {@linkplain Fold foldable} or {@link NodeIntrinsic}
+     * method is not a constant.
      */
     @SuppressWarnings("serial")
     public static class NonConstantParameterError extends Error {
@@ -83,7 +84,7 @@ public class SnippetIntrinsificationPhase extends Phase {
 
     public static Class<?>[] signatureToTypes(Signature signature, ResolvedJavaType accessingClass) {
         int count = signature.getParameterCount(false);
-        Class<?>[] result = new Class< ? >[count];
+        Class<?>[] result = new Class<?>[count];
         for (int i = 0; i < result.length; ++i) {
             result[i] = getMirrorOrFail(signature.getParameterType(i, accessingClass).resolve(accessingClass), Thread.currentThread().getContextClassLoader());
         }
@@ -98,14 +99,14 @@ public class SnippetIntrinsificationPhase extends Phase {
             assert target.getAnnotation(Fold.class) == null;
             assert Modifier.isNative(target.getModifiers()) : "node intrinsic " + target + " should be native";
 
-            Class< ? >[] parameterTypes = signatureToTypes(target.getSignature(), declaringClass);
+            Class<?>[] parameterTypes = signatureToTypes(target.getSignature(), declaringClass);
             ResolvedJavaType returnType = target.getSignature().getReturnType(declaringClass).resolve(declaringClass);
 
             // Prepare the arguments for the reflective constructor call on the node class.
             Object[] nodeConstructorArguments = prepareArguments(invoke, parameterTypes, target, false);
 
             // Create the new node instance.
-            Class< ? > c = getNodeClass(target, intrinsic);
+            Class<?> c = getNodeClass(target, intrinsic);
             Node newInstance = createNodeInstance(c, parameterTypes, returnType, intrinsic.setStampFromReturnType(), nodeConstructorArguments);
 
             // Replace the invoke with the new node.
@@ -115,7 +116,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnCheckCast(newInstance);
         } else if (target.getAnnotation(Fold.class) != null) {
-            Class< ? >[] parameterTypes = signatureToTypes(target.getSignature(), declaringClass);
+            Class<?>[] parameterTypes = signatureToTypes(target.getSignature(), declaringClass);
 
             // Prepare the arguments for the reflective method call
             Object[] arguments = prepareArguments(invoke, parameterTypes, target, true);
@@ -126,7 +127,8 @@ public class SnippetIntrinsificationPhase extends Phase {
             }
 
             // Call the method
-            Constant constant = callMethod(target.getSignature().getReturnKind(), getMirrorOrFail(declaringClass, Thread.currentThread().getContextClassLoader()), target.getName(), parameterTypes, receiver, arguments);
+            Constant constant = callMethod(target.getSignature().getReturnKind(), getMirrorOrFail(declaringClass, Thread.currentThread().getContextClassLoader()), target.getName(), parameterTypes,
+                            receiver, arguments);
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
@@ -145,10 +147,10 @@ public class SnippetIntrinsificationPhase extends Phase {
     /**
      * Converts the arguments of an invoke node to object values suitable for use as the arguments
      * to a reflective invocation of a Java constructor or method.
-     *
+     * 
      * @param folding specifies if the invocation is for handling a {@link Fold} annotation
      */
-    private Object[] prepareArguments(Invoke invoke, Class< ? >[] parameterTypes, ResolvedJavaMethod target, boolean folding) {
+    private Object[] prepareArguments(Invoke invoke, Class<?>[] parameterTypes, ResolvedJavaMethod target, boolean folding) {
         NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
         Object[] reflectionCallArguments = new Object[arguments.size()];
         for (int i = 0; i < reflectionCallArguments.length; ++i) {
@@ -159,13 +161,14 @@ public class SnippetIntrinsificationPhase extends Phase {
             ValueNode argument = tryBoxingElimination(parameterIndex, target, arguments.get(i));
             if (folding || MetaUtil.getParameterAnnotation(ConstantNodeParameter.class, parameterIndex, target) != null) {
                 if (!(argument instanceof ConstantNode)) {
-                    throw new NonConstantParameterError("parameter " + parameterIndex + " must be a compile time constant for calling " + invoke.methodCallTarget().targetMethod() + " at " + sourceLocation(invoke.node()) + ": " + argument);
+                    throw new NonConstantParameterError("parameter " + parameterIndex + " must be a compile time constant for calling " + invoke.methodCallTarget().targetMethod() + " at " +
+                                    sourceLocation(invoke.node()) + ": " + argument);
                 }
                 ConstantNode constantNode = (ConstantNode) argument;
                 Constant constant = constantNode.asConstant();
                 Object o = constant.asBoxedValue();
-                if (o instanceof Class< ? >) {
-                    reflectionCallArguments[i] = runtime.lookupJavaType((Class< ? >) o);
+                if (o instanceof Class<?>) {
+                    reflectionCallArguments[i] = runtime.lookupJavaType((Class<?>) o);
                     parameterTypes[i] = ResolvedJavaType.class;
                 } else {
                     if (parameterTypes[i] == boolean.class) {
@@ -188,8 +191,8 @@ public class SnippetIntrinsificationPhase extends Phase {
         return reflectionCallArguments;
     }
 
-    private static Class< ? > getNodeClass(ResolvedJavaMethod target, NodeIntrinsic intrinsic) {
-        Class< ? > result = intrinsic.value();
+    private static Class<?> getNodeClass(ResolvedJavaMethod target, NodeIntrinsic intrinsic) {
+        Class<?> result = intrinsic.value();
         if (result == NodeIntrinsic.class) {
             return getMirrorOrFail(target.getDeclaringClass(), Thread.currentThread().getContextClassLoader());
         }
@@ -270,11 +273,10 @@ public class SnippetIntrinsificationPhase extends Phase {
 
     static final int VARARGS = 0x00000080;
 
-    private static Node createNodeInstance(Class< ? > nodeClass, Class< ? >[] parameterTypes, ResolvedJavaType returnType, boolean setStampFromReturnType, Object[] nodeConstructorArguments) {
+    private static Node createNodeInstance(Class<?> nodeClass, Class<?>[] parameterTypes, ResolvedJavaType returnType, boolean setStampFromReturnType, Object[] nodeConstructorArguments) {
         Object[] arguments = null;
-        Constructor< ? > constructor = null;
-        nextConstructor:
-        for (Constructor c : nodeClass.getDeclaredConstructors()) {
+        Constructor<?> constructor = null;
+        nextConstructor: for (Constructor c : nodeClass.getDeclaredConstructors()) {
             Class[] signature = c.getParameterTypes();
             if ((c.getModifiers() & VARARGS) != 0) {
                 int fixedArgs = signature.length - 1;
@@ -334,7 +336,7 @@ public class SnippetIntrinsificationPhase extends Phase {
     /**
      * Calls a Java method via reflection.
      */
-    private static Constant callMethod(Kind returnKind, Class< ? > holder, String name, Class< ? >[] parameterTypes, Object receiver, Object[] arguments) {
+    private static Constant callMethod(Kind returnKind, Class<?> holder, String name, Class<?>[] parameterTypes, Object receiver, Object[] arguments) {
         Method method;
         try {
             method = holder.getDeclaredMethod(name, parameterTypes);
@@ -371,9 +373,8 @@ public class SnippetIntrinsificationPhase extends Phase {
                         graph.removeFixed(valueAnchorNode);
                     } else if (checkCastUsage instanceof MethodCallTargetNode) {
                         MethodCallTargetNode checkCastCallTarget = (MethodCallTargetNode) checkCastUsage;
-                        assert pool.isUnboxingMethod(checkCastCallTarget.targetMethod()) :
-                            "checkcast at " + sourceLocation(checkCastNode) + " not used by an unboxing method but by a call at " +
-                            sourceLocation(checkCastCallTarget.usages().first()) + " to " + checkCastCallTarget.targetMethod();
+                        assert pool.isUnboxingMethod(checkCastCallTarget.targetMethod()) : "checkcast at " + sourceLocation(checkCastNode) + " not used by an unboxing method but by a call at " +
+                                        sourceLocation(checkCastCallTarget.usages().first()) + " to " + checkCastCallTarget.targetMethod();
                         Invoke invokeNode = checkCastCallTarget.invoke();
                         invokeNode.node().replaceAtUsages(newInstance);
                         if (invokeNode instanceof InvokeWithExceptionNode) {

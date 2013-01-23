@@ -34,13 +34,13 @@ public class LoopSafepointInsertionPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        nextLoop:
-        for (LoopEndNode loopEnd : graph.getNodes(LoopEndNode.class)) {
+        nextLoop: for (LoopEndNode loopEnd : graph.getNodes(LoopEndNode.class)) {
             if (!loopEnd.canSafepoint()) {
                 continue;
             }
             if (GraalOptions.OptSafepointElimination) {
-                // We 'eliminate' safepoints by simply never placing them into loops that have at least one call
+                // We 'eliminate' safepoints by simply never placing them into loops that have at
+                // least one call
                 NodeIterable<FixedNode> it = NodeIterators.dominators(loopEnd).until(loopEnd.loopBegin());
                 for (FixedNode n : it) {
                     if (n instanceof Invoke) {

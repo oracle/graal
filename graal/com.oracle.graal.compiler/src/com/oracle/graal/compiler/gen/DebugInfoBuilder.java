@@ -35,12 +35,12 @@ import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.virtual.nodes.*;
 
 public class DebugInfoBuilder {
+
     private final NodeMap<Value> nodeOperands;
 
     public DebugInfoBuilder(NodeMap<Value> nodeOperands) {
         this.nodeOperands = nodeOperands;
     }
-
 
     private HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
     private IdentityHashMap<VirtualObjectNode, EscapeObjectState> objectStates = new IdentityHashMap<>();
@@ -70,7 +70,8 @@ public class DebugInfoBuilder {
         VirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
             // fill in the VirtualObject values:
-            // during this process new VirtualObjects might be discovered, so repeat until no more changes occur.
+            // during this process new VirtualObjects might be discovered, so repeat until no more
+            // changes occur.
             boolean changed;
             do {
                 changed = false;
@@ -118,7 +119,8 @@ public class DebugInfoBuilder {
             values[numLocals + i] = toValue(state.stackAt(i));
         }
         for (int i = 0; i < numLocks; i++) {
-            // frames are traversed from the outside in, so the locks for the current frame are at the end of the lockDataSlots list
+            // frames are traversed from the outside in, so the locks for the current frame are at
+            // the end of the lockDataSlots list
             StackSlot lockData = lockDataSlots.get(lockDataSlots.size() - numLocks + i);
             values[numLocals + numStack + i] = new MonitorValue(toValue(state.lockAt(i)), lockData, state.lockAt(i) instanceof VirtualObjectNode);
         }

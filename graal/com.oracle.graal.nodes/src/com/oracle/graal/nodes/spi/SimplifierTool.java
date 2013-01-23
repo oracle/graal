@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.*;
  * @see Simplifiable
  */
 public interface SimplifierTool extends CanonicalizerTool {
+
     void deleteBranch(FixedNode branch);
 
     /**

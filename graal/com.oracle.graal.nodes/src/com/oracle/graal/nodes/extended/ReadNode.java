@@ -43,7 +43,8 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
     }
 
     private ReadNode(ValueNode object, ValueNode location) {
-        // Used by node intrinsics. Since the initial value for location is a parameter, i.e., a LocalNode, the
+        // Used by node intrinsics. Since the initial value for location is a parameter, i.e., a
+        // LocalNode, the
         // constructor cannot use the declared type LocationNode
         this(object, location, StampFactory.forNodeIntrinsic());
     }
@@ -60,7 +61,7 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
 
     /**
      * Utility function for reading a value of this kind using a base address and a displacement.
-     *
+     * 
      * @param base the base address from which the value is read
      * @param displacement the displacement within the object in bytes
      * @return the read value encapsulated in a {@link Constant} object
@@ -92,7 +93,12 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
 
     public static ValueNode canonicalizeRead(Access read, CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
-        if (runtime != null && read.object() != null && read.object().isConstant()/* && read.object().kind() == Kind.Object*/) {
+        if (runtime != null && read.object() != null && read.object().isConstant()/*
+                                                                                   * &&
+                                                                                   * read.object()
+                                                                                   * .kind() ==
+                                                                                   * Kind.Object
+                                                                                   */) {
             if (read.location().locationIdentity() == LocationNode.FINAL_LOCATION && read.location().getClass() == LocationNode.class) {
                 long displacement = read.location().displacement();
                 Kind kind = read.location().getValueKind();
@@ -116,7 +122,7 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
 
     /**
      * Reads a value from memory.
-     *
+     * 
      * @param base the base pointer for the memory access
      * @param displacement the displacement of the access
      * @param locationIdentity the identity of the access
@@ -124,5 +130,8 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
      * @return the value read from memory
      */
     @NodeIntrinsic(setStampFromReturnType = true)
-    public static native <T> T read(Object base, @ConstantNodeParameter int displacement, @ConstantNodeParameter Object locationIdentity, @ConstantNodeParameter Kind kind);
+    public static native <T> T read(Object base, @ConstantNodeParameter
+    int displacement, @ConstantNodeParameter
+    Object locationIdentity, @ConstantNodeParameter
+    Kind kind);
 }

@@ -32,7 +32,7 @@ import org.junit.*;
 public class Array_newInstance02 extends JTTTest {
 
     public static boolean test(int i) {
-        Class< ? > javaClass;
+        Class<?> javaClass;
         if (i == 2) {
             javaClass = void.class;
         } else if (i == 3) {

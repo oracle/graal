@@ -29,21 +29,25 @@ import com.oracle.graal.graph.Graph.InputChangedListener;
 import com.oracle.graal.graph.NodeClass.*;
 import com.oracle.graal.graph.iterators.*;
 
-
 /**
- * This class is the base class for all nodes, it represent a node which can be inserted in a {@link Graph}.<p>
- * Once a node has been added to a graph, it has a graph-unique {@link #id()}. Edges in the subclasses are represented
- * with annotated fields. There are two kind of edges : {@link Input} and {@link Successor}. If a field, of a type
- * compatible with {@link Node}, annotated with either {@link Input} and {@link Successor} is not null, then there is an
- * edge from this node to the node this field points to.<p>
+ * This class is the base class for all nodes, it represent a node which can be inserted in a
+ * {@link Graph}.
+ * <p>
+ * Once a node has been added to a graph, it has a graph-unique {@link #id()}. Edges in the
+ * subclasses are represented with annotated fields. There are two kind of edges : {@link Input} and
+ * {@link Successor}. If a field, of a type compatible with {@link Node}, annotated with either
+ * {@link Input} and {@link Successor} is not null, then there is an edge from this node to the node
+ * this field points to.
+ * <p>
  * Nodes which are be value numberable should implement the {@link ValueNumberable} interface.
- *
+ * 
  * <h1>Assertions and Verification</h1>
- *
+ * 
  * The Node class supplies the {@link #assertTrue(boolean, String, Object...)} and
- * {@link #assertFalse(boolean, String, Object...)} methods, which will check the supplied boolean and throw a
- * VerificationError if it has the wrong value. Both methods will always either throw an exception or return true.
- * They can thus be used within an assert statement, so that the check is only performed if assertions are enabled.
+ * {@link #assertFalse(boolean, String, Object...)} methods, which will check the supplied boolean
+ * and throw a VerificationError if it has the wrong value. Both methods will always either throw an
+ * exception or return true. They can thus be used within an assert statement, so that the check is
+ * only performed if assertions are enabled.
  */
 public abstract class Node implements Cloneable, Formattable {
 
@@ -52,64 +56,69 @@ public abstract class Node implements Cloneable, Formattable {
     static final int ALIVE_ID_START = 0;
 
     /**
-     * Denotes a node input. This should be applied to exactly the fields of a node that are of type {@link Node}.
-     * Nodes that update their inputs outside of their constructor should call {@link Node#updateUsages(Node, Node)}
-     * just prior to doing the update of the input.
+     * Denotes a node input. This should be applied to exactly the fields of a node that are of type
+     * {@link Node}. Nodes that update their inputs outside of their constructor should call
+     * {@link Node#updateUsages(Node, Node)} just prior to doing the update of the input.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public static @interface Input {
+
         boolean notDataflow() default false;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public static @interface Successor {}
+    public static @interface Successor {
+    }
 
     /**
-     * Denotes that a parameter of an {@linkplain NodeIntrinsic intrinsic} method
-     * must be a compile time constant at all call sites to the intrinic method.
+     * Denotes that a parameter of an {@linkplain NodeIntrinsic intrinsic} method must be a compile
+     * time constant at all call sites to the intrinic method.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
-    public static @interface ConstantNodeParameter {}
+    public static @interface ConstantNodeParameter {
+    }
 
     /**
-     * Annotates a method that can be replaced by a compiler intrinsic.
-     * A (resolved) call to the annotated method can be replaced
-     * with an instance of the node class denoted by {@link #value()}.
-     * For this reason, the signature of the annotated method must match
-     * the signature of a constructor in the node class.
+     * Annotates a method that can be replaced by a compiler intrinsic. A (resolved) call to the
+     * annotated method can be replaced with an instance of the node class denoted by
+     * {@link #value()}. For this reason, the signature of the annotated method must match the
+     * signature of a constructor in the node class.
      * <p>
-     * All methods annotated with this annotation must be declared native
-     * to ensure they throw a {@link UnsatisfiedLinkError} if called by
-     * non-Graal compiled code.
+     * All methods annotated with this annotation must be declared native to ensure they throw a
+     * {@link UnsatisfiedLinkError} if called by non-Graal compiled code.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
     public static @interface NodeIntrinsic {
+
         /**
-         * Gets the {@link Node} subclass instantiated when intrinsifying a call to the annotated method.
-         * If not specified, then the class in which the annotated method is declared is used
-         * (and is assumed to be a {@link Node} subclass).
+         * Gets the {@link Node} subclass instantiated when intrinsifying a call to the annotated
+         * method. If not specified, then the class in which the annotated method is declared is
+         * used (and is assumed to be a {@link Node} subclass).
          */
         Class value() default NodeIntrinsic.class;
 
         /**
-         * Determines if the stamp of the instantiated intrinsic node has its stamp set
-         * from the return type of the annotated method.
+         * Determines if the stamp of the instantiated intrinsic node has its stamp set from the
+         * return type of the annotated method.
          */
         boolean setStampFromReturnType() default false;
     }
 
-    public interface ValueNumberable {}
+    public interface ValueNumberable {
+    }
 
-    public interface IterableNodeType {}
+    public interface IterableNodeType {
+    }
 
     private Graph graph;
     int id;
 
-    // this next pointer is used in Graph to implement fast iteration over NodeClass types, it therefore points to the next Node of the same type.
+    // this next pointer is used in Graph to implement fast iteration over NodeClass types, it
+    // therefore points to the next Node of the same type.
     Node typeCacheNext;
 
     private NodeUsagesList usages;
@@ -132,7 +141,9 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null input edges of this node.
+     * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null
+     * input edges of this node.
+     * 
      * @return an {@link NodeClassIterable iterable} for all non-null input edges.
      */
     public NodeClassIterable inputs() {
@@ -140,7 +151,9 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null successor edges of this node.
+     * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null
+     * successor edges of this node.
+     * 
      * @return an {@link NodeClassIterable iterable} for all non-null successor edges.
      */
     public NodeClassIterable successors() {
@@ -172,8 +185,8 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Updates the usages sets of the given nodes after an input slot is changed from oldInput to newInput:
-     * removes this node from oldInput's usages and adds this node to newInput's usages.
+     * Updates the usages sets of the given nodes after an input slot is changed from oldInput to
+     * newInput: removes this node from oldInput's usages and adds this node to newInput's usages.
      */
     protected void updateUsages(Node oldInput, Node newInput) {
         assert assertTrue(usages != null, "usages == null while adding %s to %s", newInput, this);
@@ -193,8 +206,9 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Updates the predecessor of the given nodes after a successor slot is changed from oldSuccessor to newSuccessor:
-     * removes this node from oldSuccessor's predecessors and adds this node to newSuccessor's predecessors.
+     * Updates the predecessor of the given nodes after a successor slot is changed from
+     * oldSuccessor to newSuccessor: removes this node from oldSuccessor's predecessors and adds
+     * this node to newSuccessor's predecessors.
      */
     protected void updatePredecessor(Node oldSuccessor, Node newSuccessor) {
         assert assertTrue(usages != null, "usages == null while adding %s to %s", newSuccessor, this);
@@ -231,7 +245,7 @@ public abstract class Node implements Cloneable, Formattable {
     private boolean checkReplaceWith(Node other) {
         assert assertFalse(other == this, "cannot replace a node with itself");
         assert assertFalse(isDeleted(), "cannot replace deleted node");
-//        assert assertTrue(other != null, "cannot replace with null node");
+        // assert assertTrue(other != null, "cannot replace with null node");
         assert assertTrue(other == null || !other.isDeleted(), "cannot replace with deleted node %s", other);
         assert assertTrue(other == null || other.graph() == graph, "cannot replace with node in different graph: %s", other == null ? null : other.graph());
         return true;
@@ -318,8 +332,8 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Removes this node from its graph.
-     * This node must have no {@linkplain Node#usages() usages} and no {@linkplain #predecessor() predecessor}.
+     * Removes this node from its graph. This node must have no {@linkplain Node#usages() usages}
+     * and no {@linkplain #predecessor() predecessor}.
      */
     public void safeDelete() {
         assert checkDeletion();
@@ -406,16 +420,18 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Returns an iterator that will provide all control-flow successors of this node. Normally this will be the contents of all fields marked as NodeSuccessor,
-     * but some node classes (like EndNode) may return different nodes.
-     * Note that the iterator may generate null values if the fields contain them.
+     * Returns an iterator that will provide all control-flow successors of this node. Normally this
+     * will be the contents of all fields marked as NodeSuccessor, but some node classes (like
+     * EndNode) may return different nodes. Note that the iterator may generate null values if the
+     * fields contain them.
      */
     public Iterable<? extends Node> cfgSuccessors() {
         return successors();
     }
 
     /**
-     * hashCode and equals should always rely on object identity alone, thus hashCode and equals are final.
+     * hashCode and equals should always rely on object identity alone, thus hashCode and equals are
+     * final.
      */
     @Override
     public final int hashCode() {
@@ -423,7 +439,8 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * hashCode and equals should always rely on object identity alone, thus hashCode and equals are final.
+     * hashCode and equals should always rely on object identity alone, thus hashCode and equals are
+     * final.
      */
     @Override
     public final boolean equals(Object obj) {
@@ -431,17 +448,18 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Provides a {@link Map} of properties of this node for use in debugging (e.g., to view in the ideal graph
-     * visualizer).
+     * Provides a {@link Map} of properties of this node for use in debugging (e.g., to view in the
+     * ideal graph visualizer).
      */
     public Map<Object, Object> getDebugProperties() {
         return getDebugProperties(new HashMap<>());
     }
 
-
     /**
-     * Fills a {@link Map} with properties of this node for use in debugging (e.g., to view in the ideal graph
-     * visualizer). Subclasses overriding this method should also fill the map using their superclass.
+     * Fills a {@link Map} with properties of this node for use in debugging (e.g., to view in the
+     * ideal graph visualizer). Subclasses overriding this method should also fill the map using
+     * their superclass.
+     * 
      * @param map
      */
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
@@ -463,7 +481,8 @@ public abstract class Node implements Cloneable, Formattable {
          */
         Id,
         /**
-         * Only the name of the node, which may contain some more information for certain node types (constants, ...).
+         * Only the name of the node, which may contain some more information for certain node types
+         * (constants, ...).
          */
         Name,
         /**
@@ -511,7 +530,6 @@ public abstract class Node implements Cloneable, Formattable {
                 throw new RuntimeException("unknown verbosity: " + verbosity);
         }
     }
-
 
     @Deprecated
     public int getId() {

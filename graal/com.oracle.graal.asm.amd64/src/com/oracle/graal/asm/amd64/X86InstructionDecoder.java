@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.asm.amd64;
 
-
 public final class X86InstructionDecoder {
 
     private boolean targetIs64Bit;
@@ -98,7 +97,7 @@ public final class X86InstructionDecoder {
             againAfterPrefix = false;
             switch (0xFF & code[ip++]) {
 
-                // These convenience macros generate groups of "case" labels for the switch.
+            // These convenience macros generate groups of "case" labels for the switch.
 
                 case Prefix.CSSegment:
                 case Prefix.SSSegment:

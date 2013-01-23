@@ -29,8 +29,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 
-
 public class LoopFullUnrollPhase extends Phase {
+
     private static final DebugMetric FULLY_UNROLLED_LOOPS = Debug.metric("FullUnrolls");
     private final GraalCodeCacheProvider runtime;
     private final Assumptions assumptions;
@@ -58,7 +58,7 @@ public class LoopFullUnrollPhase extends Phase {
                         break;
                     }
                 }
-            } while(peeled);
+            } while (peeled);
         }
     }
 

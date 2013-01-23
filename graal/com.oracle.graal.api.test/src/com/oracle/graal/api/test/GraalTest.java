@@ -28,7 +28,6 @@ import org.junit.*;
 
 import com.oracle.graal.api.runtime.*;
 
-
 public class GraalTest {
 
     @Test

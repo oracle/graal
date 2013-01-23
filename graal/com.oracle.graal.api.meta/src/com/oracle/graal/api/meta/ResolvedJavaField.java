@@ -26,52 +26,57 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 /**
- * Represents a reference to a resolved Java field. Fields, like methods and types, are resolved through
- * {@link ConstantPool constant pools}.
+ * Represents a reference to a resolved Java field. Fields, like methods and types, are resolved
+ * through {@link ConstantPool constant pools}.
  */
 public interface ResolvedJavaField extends JavaField {
 
     /**
-     * Returns the Java language modifiers for this field, as an integer. The {@link Modifier} class should be used to
-     * decode the modifiers. Only the {@linkplain Modifier#fieldModifiers() field flags} specified in the JVM
-     * specification will be included in the returned mask.
+     * Returns the Java language modifiers for this field, as an integer. The {@link Modifier} class
+     * should be used to decode the modifiers. Only the {@linkplain Modifier#fieldModifiers() field
+     * flags} specified in the JVM specification will be included in the returned mask.
      */
     int getModifiers();
 
     /**
-     * Determines if this field was injected by the VM. Such a field, for example, is not derived from a class file.
+     * Determines if this field was injected by the VM. Such a field, for example, is not derived
+     * from a class file.
      */
     boolean isInternal();
 
     /**
      * Gets the constant value of this field for a given object, if available.
-     *
-     * @param receiver object from which this field's value is to be read. This value is ignored if this field is
-     *            static.
-     * @return the constant value of this field or {@code null} if the constant value is not available
+     * 
+     * @param receiver object from which this field's value is to be read. This value is ignored if
+     *            this field is static.
+     * @return the constant value of this field or {@code null} if the constant value is not
+     *         available
      */
     Constant readConstantValue(Constant receiver);
 
     /**
      * Gets the current value of this field for a given object, if available.
-     *
-     * @param receiver object from which this field's value is to be read. This value is ignored if this field is
-     *            static.
-     * @return the value of this field or {@code null} if the value is not available (e.g., because the field holder is
-     *         not yet initialized).
+     * 
+     * @param receiver object from which this field's value is to be read. This value is ignored if
+     *            this field is static.
+     * @return the value of this field or {@code null} if the value is not available (e.g., because
+     *         the field holder is not yet initialized).
      */
     Constant readValue(Constant receiver);
 
     /**
-     * Returns the {@link ResolvedJavaType} object representing the class or interface that declares this field.
+     * Returns the {@link ResolvedJavaType} object representing the class or interface that declares
+     * this field.
      */
     ResolvedJavaType getDeclaringClass();
 
     /**
-     * Returns the annotation for the specified type of this field, if such an annotation is present.
-     *
+     * Returns the annotation for the specified type of this field, if such an annotation is
+     * present.
+     * 
      * @param annotationClass the Class object corresponding to the annotation type
-     * @return this element's annotation for the specified annotation type if present on this field, else {@code null}
+     * @return this element's annotation for the specified annotation type if present on this field,
+     *         else {@code null}
      */
     <T extends Annotation> T getAnnotation(Class<T> annotationClass);
 }

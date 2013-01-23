@@ -26,7 +26,7 @@ import java.util.*;
 
 /**
  * An expandable and indexable list of {@code int}s.
- *
+ * 
  * This class avoids the boxing/unboxing incurred by {@code ArrayList<Integer>}.
  */
 public final class IntList {
@@ -36,7 +36,7 @@ public final class IntList {
 
     /**
      * Creates an int list with a specified initial capacity.
-     *
+     * 
      * @param initialCapacity
      */
     public IntList(int initialCapacity) {
@@ -45,9 +45,10 @@ public final class IntList {
 
     /**
      * Creates an int list with a specified initial array.
-     *
+     * 
      * @param array the initial array used for the list (no copy is made)
-     * @param initialSize the initial {@linkplain #size() size} of the list (must be less than or equal to {@code array.length}
+     * @param initialSize the initial {@linkplain #size() size} of the list (must be less than or
+     *            equal to {@code array.length}
      */
     public IntList(int[] array, int initialSize) {
         assert initialSize <= array.length;
@@ -57,7 +58,7 @@ public final class IntList {
 
     /**
      * Makes a new int list by copying a range from a given int list.
-     *
+     * 
      * @param other the list from which a range of values is to be copied into the new list
      * @param startIndex the index in {@code other} at which to start copying
      * @param length the number of values to copy from {@code other}
@@ -69,11 +70,12 @@ public final class IntList {
 
     /**
      * Makes a new int list by copying a range from a given int list.
-     *
+     * 
      * @param other the list from which a range of values is to be copied into the new list
      * @param startIndex the index in {@code other} at which to start copying
      * @param length the number of values to copy from {@code other}
-     * @param initialCapacity the initial capacity of the new int list (must be greater or equal to {@code length})
+     * @param initialCapacity the initial capacity of the new int list (must be greater or equal to
+     *            {@code length})
      * @return a new int list whose {@linkplain #size() size} is {@code length}
      */
     public static IntList copy(IntList other, int startIndex, int length, int initialCapacity) {
@@ -89,7 +91,7 @@ public final class IntList {
 
     /**
      * Appends a value to the end of this list, increasing its {@linkplain #size() size} by 1.
-     *
+     * 
      * @param value the value to append
      */
     public void add(int value) {
@@ -102,7 +104,7 @@ public final class IntList {
 
     /**
      * Gets the value in this list at a given index.
-     *
+     * 
      * @param index the index of the element to return
      * @throws IndexOutOfBoundsException if {@code index < 0 || index >= size()}
      */
@@ -122,7 +124,7 @@ public final class IntList {
 
     /**
      * Sets a value at a given index in this list.
-     *
+     * 
      * @param index the index of the element to update
      * @param value the new value of the element
      * @throws IndexOutOfBoundsException if {@code index < 0 || index >= size()}
@@ -136,11 +138,11 @@ public final class IntList {
 
     /**
      * Adjusts the {@linkplain #size() size} of this int list.
-     *
-     * If {@code newSize < size()}, the size is changed to {@code newSize}.
-     * If {@code newSize > size()}, sufficient 0 elements are {@linkplain #add(int) added}
-     * until {@code size() == newSize}.
-     *
+     * 
+     * If {@code newSize < size()}, the size is changed to {@code newSize}. If
+     * {@code newSize > size()}, sufficient 0 elements are {@linkplain #add(int) added} until
+     * {@code size() == newSize}.
+     * 
      * @param newSize the new size of this int list
      */
     public void setSize(int newSize) {

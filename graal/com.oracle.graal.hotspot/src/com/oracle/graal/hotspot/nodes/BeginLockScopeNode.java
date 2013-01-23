@@ -32,11 +32,10 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
- * Intrinsic for opening a scope binding a stack-based lock with an object.
- * A lock scope must be closed with an {@link EndLockScopeNode}.
- * The frame state after this node denotes that the object is locked
- * (ensuring the GC sees and updates the object) so it must come
- * after any null pointer check on the object.
+ * Intrinsic for opening a scope binding a stack-based lock with an object. A lock scope must be
+ * closed with an {@link EndLockScopeNode}. The frame state after this node denotes that the object
+ * is locked (ensuring the GC sees and updates the object) so it must come after any null pointer
+ * check on the object.
  */
 public final class BeginLockScopeNode extends AbstractStateSplit implements LIRGenLowerable, MonitorEnter {
 
@@ -64,5 +63,6 @@ public final class BeginLockScopeNode extends AbstractStateSplit implements LIRG
     }
 
     @NodeIntrinsic
-    public static native Word beginLockScope(@ConstantNodeParameter boolean eliminated);
+    public static native Word beginLockScope(@ConstantNodeParameter
+    boolean eliminated);
 }

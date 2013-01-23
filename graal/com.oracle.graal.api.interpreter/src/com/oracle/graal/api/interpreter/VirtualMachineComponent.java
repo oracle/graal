@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.api.interpreter;
 
-
 public interface VirtualMachineComponent {
+
     void setOption(String name, String value);
 }

@@ -36,9 +36,9 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 
 /**
- * In the following tests, the usages of local variable "a" are replaced with the integer constant 0. Then
- * canonicalization is applied and it is verified that the resulting graph is equal to the graph of the method that just
- * has a "return 1" statement in it.
+ * In the following tests, the usages of local variable "a" are replaced with the integer constant
+ * 0. Then canonicalization is applied and it is verified that the resulting graph is equal to the
+ * graph of the method that just has a "return 1" statement in it.
  */
 public class CompiledMethodTest extends GraalCompilerTest {
 
@@ -47,6 +47,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     }
 
     Object f1;
+
     public Object testMethodVirtual(Object arg1, Object arg2, Object arg3) {
         return f1 + " " + arg1 + " " + arg2 + " " + arg3;
     }
@@ -167,10 +168,12 @@ public class CompiledMethodTest extends GraalCompilerTest {
     }
 
     public interface CompiledObject {
+
         Object execute(ObjectCompiler context, String args);
     }
 
     public interface ObjectCompiler {
+
         CompiledObject compile(CompilableObject node);
     }
 
@@ -185,6 +188,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         @Override
         public CompiledObject compile(final CompilableObject node) {
             return new CompiledObject() {
+
                 @Override
                 public Object execute(ObjectCompiler compiler, String args) {
                     return compiledMethod.execute(node, compiler, args);

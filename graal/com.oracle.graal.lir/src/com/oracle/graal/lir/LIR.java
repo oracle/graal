@@ -32,16 +32,16 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 
 /**
- * This class implements the overall container for the LIR graph
- * and directs its construction, optimization, and finalization.
+ * This class implements the overall container for the LIR graph and directs its construction,
+ * optimization, and finalization.
  */
 public class LIR {
 
     public final ControlFlowGraph cfg;
 
     /**
-     * The nodes for the blocks.
-     * TODO: This should go away, we want all nodes connected with a next-pointer.
+     * The nodes for the blocks. TODO: This should go away, we want all nodes connected with a
+     * next-pointer.
      */
     private final BlockMap<List<ScheduledNode>> blockToNodesMap;
 
@@ -56,8 +56,8 @@ public class LIR {
     private final List<Block> codeEmittingOrder;
 
     /**
-     * Various out-of-line stubs to be emitted near the end of the method
-     * after all other LIR code has been emitted.
+     * Various out-of-line stubs to be emitted near the end of the method after all other LIR code
+     * has been emitted.
      */
     public final List<Code> stubs;
 
@@ -68,7 +68,9 @@ public class LIR {
     public final BlockMap<List<LIRInstruction>> lirInstructions;
 
     public interface SpillMoveFactory {
+
         LIRInstruction createMove(Value result, Value input);
+
         LIRInstruction createExchange(Value input1, Value input2);
     }
 
@@ -78,7 +80,9 @@ public class LIR {
      * An opaque chunk of machine code.
      */
     public interface Code {
+
         void emitCode(TargetMethodAssembler tasm);
+
         /**
          * A description of this code stub useful for commenting the code in a disassembly.
          */
@@ -130,6 +134,7 @@ public class LIR {
 
     /**
      * Gets the linear scan ordering of blocks as a list.
+     * 
      * @return the blocks in linear scan order
      */
     public List<Block> linearScanOrder() {
@@ -203,8 +208,8 @@ public class LIR {
     }
 
     /**
-     * Determines if any of the parameters to the method are passed via the stack
-     * where the parameters are located in the caller's frame.
+     * Determines if any of the parameters to the method are passed via the stack where the
+     * parameters are located in the caller's frame.
      */
     public boolean hasArgInCallerFrame() {
         return hasArgInCallerFrame;

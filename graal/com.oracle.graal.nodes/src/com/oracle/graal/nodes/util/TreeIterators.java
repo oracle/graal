@@ -26,7 +26,8 @@ import java.util.*;
 
 public class TreeIterators {
 
-    public abstract static class PrefixTreeIterator<T> implements Iterator<T>{
+    public abstract static class PrefixTreeIterator<T> implements Iterator<T> {
+
         private Deque<T> stack = new LinkedList<>();
 
         public PrefixTreeIterator(T root) {

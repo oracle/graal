@@ -28,7 +28,6 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 
-
 public class LoopFragmentWhole extends LoopFragment {
 
     public LoopFragmentWhole(LoopEx loop) {
@@ -68,6 +67,7 @@ public class LoopFragmentWhole extends LoopFragment {
         final FixedNode entry = loop().entryPoint();
         final Graph graph = this.graph();
         return new DuplicationReplacement() {
+
             @Override
             public Node replacement(Node o) {
                 if (o == entry) {

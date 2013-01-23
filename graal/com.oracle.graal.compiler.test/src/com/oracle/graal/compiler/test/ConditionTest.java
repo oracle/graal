@@ -31,7 +31,6 @@ import org.junit.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.calc.*;
 
-
 public class ConditionTest {
 
     @Test

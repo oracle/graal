@@ -26,8 +26,8 @@ import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.Queue;
 
-
 public class NodeFlood implements Iterable<Node> {
+
     private final NodeBitMap visited;
     private final Queue<Node> worklist;
 
@@ -58,6 +58,7 @@ public class NodeFlood implements Iterable<Node> {
     }
 
     private static class QueueConsumingIterator implements Iterator<Node> {
+
         private final Queue<Node> queue;
 
         public QueueConsumingIterator(Queue<Node> queue) {
@@ -86,6 +87,7 @@ public class NodeFlood implements Iterable<Node> {
     }
 
     private static class UnmarkedNodeIterator implements Iterator<Node> {
+
         private final NodeBitMap visited;
         private Iterator<Node> nodes;
         private Node nextNode;
@@ -128,6 +130,7 @@ public class NodeFlood implements Iterable<Node> {
 
     public Iterable<Node> unmarkedNodes() {
         return new Iterable<Node>() {
+
             @Override
             public Iterator<Node> iterator() {
                 return new UnmarkedNodeIterator(visited, visited.graph().getNodes().iterator());

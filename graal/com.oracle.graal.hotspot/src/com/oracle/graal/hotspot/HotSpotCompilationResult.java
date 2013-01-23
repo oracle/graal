@@ -57,6 +57,7 @@ public final class HotSpotCompilationResult extends CompilerObject {
     }
 
     static class SiteComparator implements Comparator<Site> {
+
         public int compare(Site s1, Site s2) {
             if (s1.pcOffset == s2.pcOffset && (s1 instanceof Mark ^ s2 instanceof Mark)) {
                 return s1 instanceof Mark ? -1 : 1;
@@ -66,7 +67,7 @@ public final class HotSpotCompilationResult extends CompilerObject {
     }
 
     private static Site[] getSortedSites(CompilationResult target) {
-        List<?>[] lists = new List<?>[] {target.getSafepoints(), target.getDataReferences(), target.getMarks()};
+        List<?>[] lists = new List<?>[]{target.getSafepoints(), target.getDataReferences(), target.getMarks()};
         int count = 0;
         for (List<?> list : lists) {
             count += list.size();

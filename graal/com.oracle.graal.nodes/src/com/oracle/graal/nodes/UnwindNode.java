@@ -30,7 +30,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Unwind takes an exception object, destroys the current stack frame and passes the exception object to the system's exception dispatch code.
+ * Unwind takes an exception object, destroys the current stack frame and passes the exception
+ * object to the system's exception dispatch code.
  */
 public final class UnwindNode extends FixedNode implements LIRLowerable, Node.IterableNodeType {
 

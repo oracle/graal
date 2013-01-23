@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.graph.iterators.*;
 
 public final class NodeBitMap extends AbstractNodeIterable<Node> {
+
     private final boolean autoGrow;
     private final BitSet bitMap;
     private final Graph graph;

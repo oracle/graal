@@ -26,7 +26,8 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * This node will be inserted at point specified by {@link StructuredGraph#getEntryBCI()}, usually by the graph builder.
+ * This node will be inserted at point specified by {@link StructuredGraph#getEntryBCI()}, usually
+ * by the graph builder.
  */
 public class EntryMarkerNode extends BeginNode implements Node.IterableNodeType, Simplifiable, LIRLowerable {
 

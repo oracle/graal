@@ -161,8 +161,8 @@ final class MoveResolver {
     }
 
     /**
-     * Checks if the {@linkplain Interval#location() location} of {@code to} is not blocked
-     * or is only blocked by {@code from}.
+     * Checks if the {@linkplain Interval#location() location} of {@code to} is not blocked or is
+     * only blocked by {@code from}.
      */
     private boolean safeToProcessMove(Interval from, Interval to) {
         Value fromReg = from != null ? from.location() : null;
@@ -271,7 +271,8 @@ final class MoveResolver {
                 spillInterval.setKind(fromInterval.kind());
 
                 // add a dummy range because real position is difficult to calculate
-                // Note: this range is a special case when the integrity of the allocation is checked
+                // Note: this range is a special case when the integrity of the allocation is
+                // checked
                 spillInterval.addRange(1, 2);
 
                 // do not allocate a new spill slot for temporary interval, but

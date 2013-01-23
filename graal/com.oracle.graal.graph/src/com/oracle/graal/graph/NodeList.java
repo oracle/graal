@@ -21,6 +21,7 @@
  * questions.
  */
 package com.oracle.graal.graph;
+
 import java.util.*;
 
 import com.oracle.graal.graph.iterators.*;
@@ -215,6 +216,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @Override
     public Iterator<T> iterator() {
         return new Iterator<T>() {
+
             private final int expectedModCount = NodeList.this.modCount;
             private int index = 0;
 
@@ -306,19 +308,18 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         return -1;
     }
 
-
     @Override
     public boolean contains(Object o) {
         return indexOf(o) != -1;
     }
 
     @Override
-    public boolean containsAll(Collection< ? > c) {
+    public boolean containsAll(Collection<?> c) {
         throw new UnsupportedOperationException("not implemented");
     }
 
     @Override
-    public boolean addAll(Collection< ? extends T> c) {
+    public boolean addAll(Collection<? extends T> c) {
         for (T e : c) {
             add(e);
         }
@@ -350,31 +351,38 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     public NodeIterable<T> until(final T u) {
         return new FilteredNodeIterable<>(this).until(u);
     }
+
     @Override
     public NodeIterable<T> until(final Class<? extends T> clazz) {
         return new FilteredNodeIterable<>(this).until(clazz);
     }
+
     @Override
     @SuppressWarnings("unchecked")
     public <F extends T> NodeIterable<F> filter(Class<F> clazz) {
         return (NodeIterable<F>) new FilteredNodeIterable<>(this).and(NodePredicates.isA(clazz));
     }
+
     @Override
     public NodeIterable<T> filterInterface(Class<?> iface) {
         return new FilteredNodeIterable<>(this).and(NodePredicates.isAInterface(iface));
     }
+
     @Override
     public FilteredNodeIterable<T> filter(NodePredicate predicate) {
         return new FilteredNodeIterable<>(this).and(predicate);
     }
+
     @Override
     public FilteredNodeIterable<T> nonNull() {
         return new FilteredNodeIterable<>(this).and(NodePredicates.isNotNull());
     }
+
     @Override
     public NodeIterable<T> distinct() {
         return new FilteredNodeIterable<>(this).distinct();
     }
+
     @Override
     public T first() {
         if (size() > 0) {

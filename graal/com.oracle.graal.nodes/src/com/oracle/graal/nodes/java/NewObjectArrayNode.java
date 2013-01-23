@@ -34,6 +34,7 @@ public final class NewObjectArrayNode extends NewArrayNode implements Node.Itera
 
     /**
      * Constructs a new NewObjectArrayNode.
+     * 
      * @param elementClass the class of elements in this array
      * @param length the node producing the length of the array
      * @param fillContents determines whether the array elements should be initialized to null.

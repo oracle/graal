@@ -32,40 +32,41 @@ import com.oracle.graal.api.code.CompilationResult.CodeComment;
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
 import com.oracle.graal.api.code.CompilationResult.LookupTable;
 
-
 /**
- * A HexCodeFile is a textual format for representing a chunk of machine code along
- * with extra information that can be used to enhance a disassembly of the code.
- *
+ * A HexCodeFile is a textual format for representing a chunk of machine code along with extra
+ * information that can be used to enhance a disassembly of the code.
+ * 
  * A pseudo grammar for a HexCodeFile is given below.
+ * 
  * <pre>
  *     HexCodeFile ::= Platform Delim HexCode Delim (OptionalSection Delim)*
- *
+ * 
  *     OptionalSection ::= Comment | OperandComment | JumpTable | LookupTable
- *
+ * 
  *     Platform ::= "Platform" ISA WordWidth
- *
+ * 
  *     HexCode ::= "HexCode" StartAddress HexDigits
- *
+ * 
  *     Comment ::= "Comment" Position String
- *
+ * 
  *     OperandComment ::= "OperandComment" Position String
- *
+ * 
  *     JumpTable ::= "JumpTable" Position EntrySize Low High
- *
+ * 
  *     LookupTable ::= "LookupTable" Position NPairs KeySize OffsetSize
- *
+ * 
  *     Position, EntrySize, Low, High, NPairs KeySize OffsetSize ::= int
- *
+ * 
  *     Delim := "<||@"
  * </pre>
- *
- * There must be exactly one HexCode and Platform part in a HexCodeFile. The length of HexDigits must be even
- * as each pair of digits represents a single byte.
+ * 
+ * There must be exactly one HexCode and Platform part in a HexCodeFile. The length of HexDigits
+ * must be even as each pair of digits represents a single byte.
  * <p>
  * Below is an example of a valid Code input:
+ * 
  * <pre>
- *
+ * 
  *  Platform AMD64 64  <||@
  *  HexCode 0 e8000000009090904883ec084889842410d0ffff48893c24e800000000488b3c24488bf0e8000000004883c408c3  <||@
  *  Comment 24 frame-ref-map: +0 {0}
@@ -81,7 +82,7 @@ import com.oracle.graal.api.code.CompilationResult.LookupTable;
  *     locals:  |stack:0:a
  *    <||@
  *  OperandComment 36 {java.lang.String.toLowerCase(Locale)}  <||@
- *
+ * 
  * </pre>
  */
 public class HexCodeFile {
@@ -112,7 +113,8 @@ public class HexCodeFile {
     public final Map<Integer, List<String>> comments = new TreeMap<>();
 
     /**
-     * Map from a machine code position to a comment for the operands of the instruction at the position.
+     * Map from a machine code position to a comment for the operands of the instruction at the
+     * position.
      */
     public final Map<Integer, String> operandComments = new TreeMap<>();
 
@@ -136,14 +138,16 @@ public class HexCodeFile {
     }
 
     /**
-     * Parses a string in the format produced by {@link #toString()} to produce a {@link HexCodeFile} object.
+     * Parses a string in the format produced by {@link #toString()} to produce a
+     * {@link HexCodeFile} object.
      */
     public static HexCodeFile parse(String input, int sourceOffset, String source, String sourceName) {
         return new Parser(input, sourceOffset, source, sourceName).hcf;
     }
 
     /**
-     * Formats this HexCodeFile as a string that can be parsed with {@link #parse(String, int, String, String)}.
+     * Formats this HexCodeFile as a string that can be parsed with
+     * {@link #parse(String, int, String, String)}.
      */
     @Override
     public String toString() {
@@ -158,7 +162,7 @@ public class HexCodeFile {
 
     public void writeTo(OutputStream out) {
         PrintStream ps = out instanceof PrintStream ? (PrintStream) out : new PrintStream(out);
-        ps.printf("Platform %s %d %s%n",  isa, wordWidth, SECTION_DELIM);
+        ps.printf("Platform %s %d %s%n", isa, wordWidth, SECTION_DELIM);
         ps.printf("HexCode %x %s %s%n", startAddress, HexCodeFile.hexCodeString(code), SECTION_DELIM);
 
         for (JumpTable table : jumpTables) {
@@ -181,7 +185,6 @@ public class HexCodeFile {
         }
         ps.flush();
     }
-
 
     /**
      * Formats a byte array as a string of hex digits.
@@ -212,7 +215,7 @@ public class HexCodeFile {
 
     /**
      * Sets an operand comment for a given position.
-     *
+     * 
      * @return the previous operand comment for {@code pos}
      */
     public String addOperandComment(int pos, String comment) {
@@ -253,8 +256,8 @@ public class HexCodeFile {
     }
 
     /**
-     * Helper class to parse a string in the format produced by {@link HexCodeFile#toString()}
-     * and produce a {@link HexCodeFile} object.
+     * Helper class to parse a string in the format produced by {@link HexCodeFile#toString()} and
+     * produce a {@link HexCodeFile} object.
      */
     static class Parser {
 
@@ -308,8 +311,10 @@ public class HexCodeFile {
         }
 
         static class InputPos {
+
             final int line;
             final int col;
+
             public InputPos(int line, int col) {
                 this.line = line;
                 this.col = col;

@@ -23,8 +23,8 @@
 package com.oracle.graal.api.meta;
 
 /**
- * Represents a reference to a Java field, either resolved or unresolved fields. Fields, like methods and types, are
- * resolved through {@link ConstantPool constant pools}.
+ * Represents a reference to a Java field, either resolved or unresolved fields. Fields, like
+ * methods and types, are resolved through {@link ConstantPool constant pools}.
  */
 public interface JavaField {
 
@@ -39,12 +39,14 @@ public interface JavaField {
     JavaType getType();
 
     /**
-     * Returns the kind of this field. This is the same as calling {@link #getType}.{@link JavaType#getKind getKind}.
+     * Returns the kind of this field. This is the same as calling {@link #getType}.
+     * {@link JavaType#getKind getKind}.
      */
     Kind getKind();
 
     /**
-     * Returns the {@link JavaType} object representing the class or interface that declares this field.
+     * Returns the {@link JavaType} object representing the class or interface that declares this
+     * field.
      */
     JavaType getDeclaringClass();
 }

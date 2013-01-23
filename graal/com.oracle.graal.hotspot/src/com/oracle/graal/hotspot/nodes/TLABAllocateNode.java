@@ -28,8 +28,8 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
- * Allocates some uninitialized area. This is used for TLAB allocation
- * only. If allocation fails, zero/null is produced by this node.
+ * Allocates some uninitialized area. This is used for TLAB allocation only. If allocation fails,
+ * zero/null is produced by this node.
  */
 public final class TLABAllocateNode extends FixedWithNextNode implements Lowerable {
 

@@ -24,16 +24,16 @@ package com.oracle.graal.hotspot.logging;
 
 import java.util.*;
 
-
 public final class ProxyUtil {
+
     public static Class<?>[] getAllInterfaces(Class<?> clazz) {
-        HashSet<Class< ? >> interfaces = new HashSet<>();
+        HashSet<Class<?>> interfaces = new HashSet<>();
         getAllInterfaces(clazz, interfaces);
         return interfaces.toArray(new Class<?>[interfaces.size()]);
     }
 
     private static void getAllInterfaces(Class<?> clazz, HashSet<Class<?>> interfaces) {
-        for (Class< ? > iface : clazz.getInterfaces()) {
+        for (Class<?> iface : clazz.getInterfaces()) {
             if (!interfaces.contains(iface)) {
                 interfaces.add(iface);
                 getAllInterfaces(iface, interfaces);

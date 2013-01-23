@@ -186,7 +186,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
-    public Class< ? > mirror() {
+    public Class<?> mirror() {
         return javaMirror;
     }
 }

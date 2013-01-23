@@ -27,10 +27,10 @@ import java.io.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Represents a code position, that is, a chain of inlined methods with bytecode
- * locations, that is communicated from the compiler to the runtime system. A code position
- * can be used by the runtime system to reconstruct a source-level stack trace
- * for exceptions and to create {@linkplain BytecodeFrame frames} for deoptimization.
+ * Represents a code position, that is, a chain of inlined methods with bytecode locations, that is
+ * communicated from the compiler to the runtime system. A code position can be used by the runtime
+ * system to reconstruct a source-level stack trace for exceptions and to create
+ * {@linkplain BytecodeFrame frames} for deoptimization.
  */
 public abstract class BytecodePosition implements Serializable {
 
@@ -42,7 +42,7 @@ public abstract class BytecodePosition implements Serializable {
 
     /**
      * Constructs a new object representing a given parent/caller, a given method, and a given BCI.
-     *
+     * 
      * @param caller the parent position
      * @param method the method
      * @param bci a BCI within the method
@@ -56,6 +56,7 @@ public abstract class BytecodePosition implements Serializable {
 
     /**
      * Converts this code position to a string representation.
+     * 
      * @return a string representation of this code position
      */
     @Override
@@ -89,9 +90,9 @@ public abstract class BytecodePosition implements Serializable {
     }
 
     /**
-     * @return The location within the method, as a bytecode index. The constant
-     * {@code -1} may be used to indicate the location is unknown, for example
-     * within code synthesized by the compiler.
+     * @return The location within the method, as a bytecode index. The constant {@code -1} may be
+     *         used to indicate the location is unknown, for example within code synthesized by the
+     *         compiler.
      */
     public int getBCI() {
         return bci;

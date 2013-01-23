@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLowerable, Simplifiable, Node.IterableNodeType {
+
     @Input(notDataflow = true) private FrameState stateAfter;
 
     public FrameState stateAfter() {
@@ -56,7 +57,7 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
         if (with instanceof BeginNode) {
             return (BeginNode) with;
         }
-        BeginNode begin =  with.graph().add(new BeginNode());
+        BeginNode begin = with.graph().add(new BeginNode());
         begin.setNext(with);
         return begin;
     }
@@ -139,6 +140,7 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
 
     public NodeIterable<FixedNode> getBlockNodes() {
         return new AbstractNodeIterable<FixedNode>() {
+
             @Override
             public Iterator<FixedNode> iterator() {
                 return new BlockNodeIterator(BeginNode.this);
@@ -147,6 +149,7 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
     }
 
     private class BlockNodeIterator implements Iterator<FixedNode> {
+
         private FixedNode current;
 
         public BlockNodeIterator(FixedNode next) {

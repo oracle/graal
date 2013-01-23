@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.bytecode;
 
-
 /**
- * A utility class that makes iterating over bytecodes and reading operands
- * simpler and less error prone. For example, it handles the {@link Bytecodes#WIDE} instruction
- * and wide variants of instructions internally.
+ * A utility class that makes iterating over bytecodes and reading operands simpler and less error
+ * prone. For example, it handles the {@link Bytecodes#WIDE} instruction and wide variants of
+ * instructions internally.
  */
 public final class BytecodeStream {
 
@@ -37,6 +36,7 @@ public final class BytecodeStream {
 
     /**
      * Creates a new {@code BytecodeStream} for the specified bytecode.
+     * 
      * @param code the array of bytes that contains the bytecode
      */
     public BytecodeStream(byte[] code) {
@@ -54,6 +54,7 @@ public final class BytecodeStream {
 
     /**
      * Gets the next bytecode index (no side-effects).
+     * 
      * @return the next bytecode index
      */
     public int nextBCI() {
@@ -62,6 +63,7 @@ public final class BytecodeStream {
 
     /**
      * Gets the current bytecode index.
+     * 
      * @return the current bytecode index
      */
     public int currentBCI() {
@@ -70,6 +72,7 @@ public final class BytecodeStream {
 
     /**
      * Gets the bytecode index of the end of the code.
+     * 
      * @return the index of the end of the code
      */
     public int endBCI() {
@@ -77,9 +80,9 @@ public final class BytecodeStream {
     }
 
     /**
-     * Gets the current opcode. This method will never return the
-     * {@link Bytecodes#WIDE WIDE} opcode, but will instead
-     * return the opcode that is modified by the {@code WIDE} opcode.
+     * Gets the current opcode. This method will never return the {@link Bytecodes#WIDE WIDE}
+     * opcode, but will instead return the opcode that is modified by the {@code WIDE} opcode.
+     * 
      * @return the current opcode; {@link Bytecodes#END} if at or beyond the end of the code
      */
     public int currentBC() {
@@ -91,8 +94,9 @@ public final class BytecodeStream {
     }
 
     /**
-     * Reads the index of a local variable for one of the load or store instructions.
-     * The WIDE modifier is handled internally.
+     * Reads the index of a local variable for one of the load or store instructions. The WIDE
+     * modifier is handled internally.
+     * 
      * @return the index of the local variable
      */
     public int readLocalIndex() {
@@ -105,6 +109,7 @@ public final class BytecodeStream {
 
     /**
      * Read the delta for an {@link Bytecodes#IINC} bytecode.
+     * 
      * @return the delta for the {@code IINC}
      */
     public int readIncrement() {
@@ -117,6 +122,7 @@ public final class BytecodeStream {
 
     /**
      * Read the destination of a {@link Bytecodes#GOTO} or {@code IF} instructions.
+     * 
      * @return the destination bytecode index
      */
     public int readBranchDest() {
@@ -130,6 +136,7 @@ public final class BytecodeStream {
 
     /**
      * Read a signed 4-byte integer from the bytecode stream at the specified bytecode index.
+     * 
      * @param bci the bytecode index
      * @return the integer value
      */
@@ -140,6 +147,7 @@ public final class BytecodeStream {
 
     /**
      * Reads an unsigned, 1-byte value from the bytecode stream at the specified bytecode index.
+     * 
      * @param bci the bytecode index
      * @return the byte
      */
@@ -149,6 +157,7 @@ public final class BytecodeStream {
 
     /**
      * Reads a constant pool index for the current instruction.
+     * 
      * @return the constant pool index
      */
     public char readCPI() {
@@ -160,6 +169,7 @@ public final class BytecodeStream {
 
     /**
      * Reads a signed, 1-byte value for the current instruction (e.g. BIPUSH).
+     * 
      * @return the byte
      */
     public byte readByte() {
@@ -168,6 +178,7 @@ public final class BytecodeStream {
 
     /**
      * Reads a signed, 2-byte short for the current instruction (e.g. SIPUSH).
+     * 
      * @return the short value
      */
     public short readShort() {
@@ -175,9 +186,10 @@ public final class BytecodeStream {
     }
 
     /**
-     * Sets the bytecode index to the specified value.
-     * If {@code bci} is beyond the end of the array, {@link #currentBC} will return
-     * {@link Bytecodes#END} and other methods may throw {@link ArrayIndexOutOfBoundsException}.
+     * Sets the bytecode index to the specified value. If {@code bci} is beyond the end of the
+     * array, {@link #currentBC} will return {@link Bytecodes#END} and other methods may throw
+     * {@link ArrayIndexOutOfBoundsException}.
+     * 
      * @param bci the new bytecode index
      */
     public void setBCI(int bci) {

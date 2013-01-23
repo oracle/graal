@@ -23,6 +23,8 @@
 package com.oracle.graal.debug;
 
 public interface DebugMetric {
+
     void increment();
+
     void add(int value);
 }

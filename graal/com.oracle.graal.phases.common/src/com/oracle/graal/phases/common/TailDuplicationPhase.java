@@ -37,8 +37,8 @@ import com.oracle.graal.phases.*;
 
 /**
  * This class is a phase that looks for opportunities for tail duplication. The static method
- * {@link #tailDuplicate(MergeNode, TailDuplicationDecision, List)} can also be used to drive tail duplication from
- * other places, e.g., inlining.
+ * {@link #tailDuplicate(MergeNode, TailDuplicationDecision, List)} can also be used to drive tail
+ * duplication from other places, e.g., inlining.
  */
 public class TailDuplicationPhase extends Phase {
 
@@ -52,24 +52,28 @@ public class TailDuplicationPhase extends Phase {
     private static final DebugMetric metricDuplicationOtherPerformed = Debug.metric("DuplicationOtherPerformed");
 
     /**
-     * This interface is used by tail duplication to let clients decide if tail duplication should be performed.
+     * This interface is used by tail duplication to let clients decide if tail duplication should
+     * be performed.
      */
     public interface TailDuplicationDecision {
 
         /**
-         * Queries if tail duplication should be performed at the given merge. If this method returns true then the tail
-         * duplication will be performed, because all other checks have happened before.
-         *
+         * Queries if tail duplication should be performed at the given merge. If this method
+         * returns true then the tail duplication will be performed, because all other checks have
+         * happened before.
+         * 
          * @param merge The merge at which tail duplication can be performed.
-         * @param fixedNodeCount The size of the set of fixed nodes that forms the base for the duplicated set of nodes.
+         * @param fixedNodeCount The size of the set of fixed nodes that forms the base for the
+         *            duplicated set of nodes.
          * @return true if the tail duplication should be performed, false otherwise.
          */
         boolean doTransform(MergeNode merge, int fixedNodeCount);
     }
 
     /**
-     * A tail duplication decision closure that employs the default algorithm: Check if there are any phis on the merge
-     * whose stamps improve and that have usages within the duplicated set of fixed nodes.
+     * A tail duplication decision closure that employs the default algorithm: Check if there are
+     * any phis on the merge whose stamps improve and that have usages within the duplicated set of
+     * fixed nodes.
      */
     public static final TailDuplicationDecision DEFAULT_DECISION = new TailDuplicationDecision() {
 
@@ -122,7 +126,8 @@ public class TailDuplicationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        // A snapshot is taken here, so that new MergeNode instances aren't considered for tail duplication.
+        // A snapshot is taken here, so that new MergeNode instances aren't considered for tail
+        // duplication.
         for (MergeNode merge : graph.getNodes(MergeNode.class).snapshot()) {
             if (!(merge instanceof LoopBeginNode) && merge.probability() >= GraalOptions.TailDuplicationProbability) {
                 tailDuplicate(merge, DEFAULT_DECISION, null);
@@ -131,18 +136,20 @@ public class TailDuplicationPhase extends Phase {
     }
 
     /**
-     * This method attempts to duplicate the tail of the given merge. The merge must not be a {@link LoopBeginNode}. If
-     * the merge is eligible for duplication (at least one fixed node in its tail, no {@link MonitorEnterNode}/
-     * {@link MonitorExitNode}, non-null {@link MergeNode#stateAfter()}) then the decision callback is used to determine
-     * whether the tail duplication should actually be performed. If replacements is non-null, then this list of
+     * This method attempts to duplicate the tail of the given merge. The merge must not be a
+     * {@link LoopBeginNode}. If the merge is eligible for duplication (at least one fixed node in
+     * its tail, no {@link MonitorEnterNode}/ {@link MonitorExitNode}, non-null
+     * {@link MergeNode#stateAfter()}) then the decision callback is used to determine whether the
+     * tail duplication should actually be performed. If replacements is non-null, then this list of
      * {@link PiNode}s is used to replace one value per merge end.
-     *
+     * 
      * @param merge The merge whose tail should be duplicated.
-     * @param decision A callback that can make the final decision if tail duplication should occur or not.
-     * @param replacements A list of {@link PiNode}s, or null. If this list is non-null then its size needs to match the
-     *            merge's end count. Each entry can either be null or a {@link PiNode}, and is used to replace
-     *            {@link PiNode#object()} with the {@link PiNode} in the duplicated branch that corresponds to the
-     *            entry.
+     * @param decision A callback that can make the final decision if tail duplication should occur
+     *            or not.
+     * @param replacements A list of {@link PiNode}s, or null. If this list is non-null then its
+     *            size needs to match the merge's end count. Each entry can either be null or a
+     *            {@link PiNode}, and is used to replace {@link PiNode#object()} with the
+     *            {@link PiNode} in the duplicated branch that corresponds to the entry.
      */
     public static void tailDuplicate(MergeNode merge, TailDuplicationDecision decision, List<PiNode> replacements) {
         assert !(merge instanceof LoopBeginNode);
@@ -159,7 +166,8 @@ public class TailDuplicationPhase extends Phase {
         }
         if (containsMonitor) {
             // cannot currently be handled
-            // TODO (ls) re-evaluate this limitation after changes to the lock representation and the LIR generator
+            // TODO (ls) re-evaluate this limitation after changes to the lock representation and
+            // the LIR generator
             metricDuplicationMonitors.increment();
         } else if (fixedCount > 1) {
             if (fixed instanceof EndNode && !(((EndNode) fixed).merge() instanceof LoopBeginNode)) {
@@ -191,10 +199,10 @@ public class TailDuplicationPhase extends Phase {
 
         /**
          * Initializes the tail duplication operation without actually performing any work.
-         *
+         * 
          * @param merge The merge whose tail should be duplicated.
-         * @param replacements A list of replacement {@link PiNode}s, or null. If this is non-null, then the size of the
-         *            list needs to match the number of end nodes at the merge.
+         * @param replacements A list of replacement {@link PiNode}s, or null. If this is non-null,
+         *            then the size of the list needs to match the number of end nodes at the merge.
          */
         public DuplicationOperation(MergeNode merge, List<PiNode> replacements) {
             this.merge = merge;
@@ -205,8 +213,8 @@ public class TailDuplicationPhase extends Phase {
         /**
          * Performs the actual tail duplication:
          * <ul>
-         * <li>Creates a new {@link ValueAnchorNode} at the beginning of the duplicated area, an transfers all
-         * dependencies from the merge to this anchor.</li>
+         * <li>Creates a new {@link ValueAnchorNode} at the beginning of the duplicated area, an
+         * transfers all dependencies from the merge to this anchor.</li>
          * <li>Determines the set of fixed nodes to be duplicated.</li>
          * <li>Creates the new merge at the bottom of the duplicated area.</li>
          * <li>Determines the complete set of duplicated nodes.</li>
@@ -218,7 +226,8 @@ public class TailDuplicationPhase extends Phase {
 
             ValueAnchorNode anchor = addValueAnchor();
 
-            // determine the fixed nodes that should be duplicated (currently: all nodes up until the first control
+            // determine the fixed nodes that should be duplicated (currently: all nodes up until
+            // the first control
             // split, end node, deopt or return.
             ArrayList<FixedNode> fixedNodes = new ArrayList<>();
             FixedNode fixed = merge.next();
@@ -257,7 +266,8 @@ public class TailDuplicationPhase extends Phase {
                 }
                 mergeAfter.addForwardEnd((EndNode) duplicates.get(endAfter));
 
-                // re-wire the duplicated ValueAnchorNode to the predecessor of the corresponding EndNode
+                // re-wire the duplicated ValueAnchorNode to the predecessor of the corresponding
+                // EndNode
                 FixedNode anchorDuplicate = (FixedNode) duplicates.get(anchor);
                 ((FixedWithNextNode) forwardEnd.predecessor()).setNext(anchorDuplicate);
                 // move dependencies on the ValueAnchorNode to the previous BeginNode
@@ -282,7 +292,8 @@ public class TailDuplicationPhase extends Phase {
                 forwardEnd.safeDelete();
             }
             for (PhiNode phi : phiSnapshot) {
-                // these phis should go away, but they still need to be anchored to a merge to be valid...
+                // these phis should go away, but they still need to be anchored to a merge to be
+                // valid...
                 if (phi.isAlive()) {
                     phi.setMerge(mergeAfter);
                 }
@@ -291,9 +302,9 @@ public class TailDuplicationPhase extends Phase {
         }
 
         /**
-         * Inserts a new ValueAnchorNode after the merge and transfers all dependency-usages (not phis) to this
-         * ValueAnchorNode.
-         *
+         * Inserts a new ValueAnchorNode after the merge and transfers all dependency-usages (not
+         * phis) to this ValueAnchorNode.
+         * 
          * @return The new {@link ValueAnchorNode} that was created.
          */
         private ValueAnchorNode addValueAnchor() {
@@ -310,12 +321,14 @@ public class TailDuplicationPhase extends Phase {
         }
 
         /**
-         * Given a set of fixed nodes, this method determines the set of fixed and floating nodes that needs to be
-         * duplicated, i.e., all nodes that due to data flow and other dependencies needs to be duplicated.
-         *
+         * Given a set of fixed nodes, this method determines the set of fixed and floating nodes
+         * that needs to be duplicated, i.e., all nodes that due to data flow and other dependencies
+         * needs to be duplicated.
+         * 
          * @param fixedNodes The set of fixed nodes that should be duplicated.
-         * @param stateAfter The frame state of the merge that follows the set of fixed nodes. All {@link ValueNode}s
-         *            reachable from this state are considered to be reachable from within the duplicated set of nodes.
+         * @param stateAfter The frame state of the merge that follows the set of fixed nodes. All
+         *            {@link ValueNode}s reachable from this state are considered to be reachable
+         *            from within the duplicated set of nodes.
          * @return The set of nodes that need to be duplicated.
          */
         private HashSet<Node> buildDuplicatedNodeSet(final ArrayList<FixedNode> fixedNodes, FrameState stateAfter) {
@@ -325,7 +338,8 @@ public class TailDuplicationPhase extends Phase {
             final Deque<Node> worklist = new ArrayDeque<>();
 
             // Build the set of nodes that have (transitive) usages within the duplicatedNodes.
-            // This is achieved by iterating all nodes that are reachable via inputs from the the fixed nodes.
+            // This is achieved by iterating all nodes that are reachable via inputs from the the
+            // fixed nodes.
             aboveBound.markAll(fixedNodes);
             worklist.addAll(fixedNodes);
 
@@ -342,7 +356,8 @@ public class TailDuplicationPhase extends Phase {
                     if (node instanceof PhiNode && !fixedNodes.contains(((PhiNode) node).merge())) {
                         // stop iterating: phis belonging to outside merges are known to be outside.
                     } else if (node instanceof FixedNode) {
-                        // stop iterating: fixed nodes within the given set are traversal roots anyway, and all other
+                        // stop iterating: fixed nodes within the given set are traversal roots
+                        // anyway, and all other
                         // fixed nodes are known to be outside.
                     } else if (!aboveBound.isMarked(node)) {
                         worklist.add(node);
@@ -362,7 +377,8 @@ public class TailDuplicationPhase extends Phase {
             }
 
             // Build the set of nodes that have (transitive) inputs within the duplicatedNodes.
-            // This is achieved by iterating all nodes that are reachable via usages from the fixed nodes.
+            // This is achieved by iterating all nodes that are reachable via usages from the fixed
+            // nodes.
             belowBound.markAll(fixedNodes);
             worklist.addAll(fixedNodes);
 
@@ -378,7 +394,8 @@ public class TailDuplicationPhase extends Phase {
                     if (usage instanceof PhiNode && !fixedNodes.contains(((PhiNode) usage).merge())) {
                         // stop iterating: phis belonging to outside merges are known to be outside.
                     } else if (usage instanceof FixedNode) {
-                        // stop iterating: fixed nodes within the given set are traversal roots anyway, and all other
+                        // stop iterating: fixed nodes within the given set are traversal roots
+                        // anyway, and all other
                         // fixed nodes are known to be outside.
                     } else if (!belowBound.isMarked(usage)) {
                         worklist.add(usage);
@@ -397,11 +414,11 @@ public class TailDuplicationPhase extends Phase {
         }
 
         /**
-         * Creates a new merge and end node construct at the end of the duplicated area. While it is useless in itself
-         * (merge with only one end) it simplifies the later duplication step.
-         *
-         * @param successor The successor of the duplicated set of nodes, i.e., the first node that should not be
-         *            duplicated.
+         * Creates a new merge and end node construct at the end of the duplicated area. While it is
+         * useless in itself (merge with only one end) it simplifies the later duplication step.
+         * 
+         * @param successor The successor of the duplicated set of nodes, i.e., the first node that
+         *            should not be duplicated.
          * @param stateAfterMerge The frame state that should be used for the merge.
          * @return The newly created end node.
          */
@@ -420,21 +437,26 @@ public class TailDuplicationPhase extends Phase {
         /**
          * Expands the set of nodes to be duplicated by looking at a number of conditions:
          * <ul>
-         * <li>{@link ValueNode}s that have usages on the outside need to be replaced with phis for the outside usages.</li>
-         * <li>Non-{@link ValueNode} nodes that have outside usages (frame states, virtual object states, ...) need to
-         * be cloned immediately for the outside usages.</li>
-         * <li>Nodes that have a {@link StampFactory#extension()} or {@link StampFactory#condition()} stamp need to be
-         * cloned immediately for the outside usages.</li>
-         * <li>Dependencies into the duplicated nodes will be replaced with dependencies on the merge.</li>
-         * <li>Outside non-{@link ValueNode}s with usages within the duplicated set of nodes need to also be duplicated.
-         * </li>
-         * <li>Outside {@link ValueNode}s with {@link StampFactory#extension()} or {@link StampFactory#condition()}
-         * stamps that have usages within the duplicated set of nodes need to also be duplicated.</li>
+         * <li>{@link ValueNode}s that have usages on the outside need to be replaced with phis for
+         * the outside usages.</li>
+         * <li>Non-{@link ValueNode} nodes that have outside usages (frame states, virtual object
+         * states, ...) need to be cloned immediately for the outside usages.</li>
+         * <li>Nodes that have a {@link StampFactory#extension()} or
+         * {@link StampFactory#condition()} stamp need to be cloned immediately for the outside
+         * usages.</li>
+         * <li>Dependencies into the duplicated nodes will be replaced with dependencies on the
+         * merge.</li>
+         * <li>Outside non-{@link ValueNode}s with usages within the duplicated set of nodes need to
+         * also be duplicated.</li>
+         * <li>Outside {@link ValueNode}s with {@link StampFactory#extension()} or
+         * {@link StampFactory#condition()} stamps that have usages within the duplicated set of
+         * nodes need to also be duplicated.</li>
          * </ul>
-         *
+         * 
          * @param duplicatedNodes The set of duplicated nodes that will be modified (expanded).
-         * @param newBottomMerge The merge that follows the duplicated set of nodes. It will be used for newly created
-         *            phis and to as a target for dependencies that pointed into the duplicated set of nodes.
+         * @param newBottomMerge The merge that follows the duplicated set of nodes. It will be used
+         *            for newly created phis and to as a target for dependencies that pointed into
+         *            the duplicated set of nodes.
          */
         private void expandDuplicated(HashSet<Node> duplicatedNodes, MergeNode newBottomMerge) {
             Deque<Node> worklist = new ArrayDeque<>(duplicatedNodes);
@@ -468,7 +490,8 @@ public class TailDuplicationPhase extends Phase {
                         // clone the offending node to the outside
                         Node newOutsideClone = duplicated.copyWithInputs();
                         replaceUsagesOutside(duplicated, newOutsideClone, duplicatedNodes);
-                        // this might cause other nodes to have outside usages, we need to look at those as well
+                        // this might cause other nodes to have outside usages, we need to look at
+                        // those as well
                         for (Node input : newOutsideClone.inputs()) {
                             if (duplicatedNodes.contains(input)) {
                                 worklist.add(input);
@@ -498,10 +521,12 @@ public class TailDuplicationPhase extends Phase {
         }
 
         /**
-         * Moves all depdendencies that point outside the duplicated area to the supplied value anchor node.
-         *
+         * Moves all depdendencies that point outside the duplicated area to the supplied value
+         * anchor node.
+         * 
          * @param duplicatedNodes The set of duplicated nodes.
-         * @param anchor The node that will be the new target for all dependencies that point outside the duplicated set of nodes.
+         * @param anchor The node that will be the new target for all dependencies that point
+         *            outside the duplicated set of nodes.
          */
         private static void retargetDependencies(HashSet<Node> duplicatedNodes, ValueAnchorNode anchor) {
             for (Node node : duplicatedNodes) {
@@ -520,7 +545,7 @@ public class TailDuplicationPhase extends Phase {
 
         /**
          * Checks if the given node has usages that are not within the given set of nodes.
-         *
+         * 
          * @param node The node whose usages are checked.
          * @param nodeSet The set of nodes that are considered to be "within".
          * @return true if the given node has usages on the outside, false otherwise.
@@ -535,8 +560,9 @@ public class TailDuplicationPhase extends Phase {
         }
 
         /**
-         * Replaces the given node with the given replacement at all usages that are not within the given set of nodes.
-         *
+         * Replaces the given node with the given replacement at all usages that are not within the
+         * given set of nodes.
+         * 
          * @param node The node to be replaced at outside usages.
          * @param replacement The node that replaced the given node at outside usages.
          * @param nodeSet The set of nodes that are considered to be "within".

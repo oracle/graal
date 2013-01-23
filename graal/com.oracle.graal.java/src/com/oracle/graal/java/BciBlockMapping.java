@@ -34,38 +34,46 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 
 /**
- * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow graph (CFG).
- * It makes one linear passes over the bytecodes to build the CFG where it detects block headers and connects them.
+ * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow graph
+ * (CFG). It makes one linear passes over the bytecodes to build the CFG where it detects block
+ * headers and connects them.
  * <p>
- * It also creates exception dispatch blocks for exception handling. These blocks are between a bytecode that might
- * throw an exception, and the actual exception handler entries, and are later used to create the type checks with the
- * exception handler catch types. If a bytecode is covered by an exception handler, this bytecode ends the basic block.
- * This guarantees that a) control flow cannot be transferred to an exception dispatch block in the middle of a block, and
- * b) that every block has at most one exception dispatch block (which is always the last entry in the successor list).
+ * It also creates exception dispatch blocks for exception handling. These blocks are between a
+ * bytecode that might throw an exception, and the actual exception handler entries, and are later
+ * used to create the type checks with the exception handler catch types. If a bytecode is covered
+ * by an exception handler, this bytecode ends the basic block. This guarantees that a) control flow
+ * cannot be transferred to an exception dispatch block in the middle of a block, and b) that every
+ * block has at most one exception dispatch block (which is always the last entry in the successor
+ * list).
  * <p>
- * If a bytecode is covered by multiple exception handlers, a chain of exception dispatch blocks is created so that
- * multiple exception handler types can be checked. The chains are re-used if multiple bytecodes are covered by the same
- * exception handlers.
+ * If a bytecode is covered by multiple exception handlers, a chain of exception dispatch blocks is
+ * created so that multiple exception handler types can be checked. The chains are re-used if
+ * multiple bytecodes are covered by the same exception handlers.
  * <p>
- * Note that exception unwinds, i.e., bytecodes that can throw an exception but the exception is not handled in this method,
- * do not end a basic block. Not modeling the exception unwind block reduces the complexity of the CFG, and there is no
- * algorithm yet where the exception unwind block would matter.
+ * Note that exception unwinds, i.e., bytecodes that can throw an exception but the exception is not
+ * handled in this method, do not end a basic block. Not modeling the exception unwind block reduces
+ * the complexity of the CFG, and there is no algorithm yet where the exception unwind block would
+ * matter.
  * <p>
- * The class also handles subroutines (jsr and ret bytecodes): subroutines are inlined by duplicating the subroutine blocks.
- * This is limited to simple, structured subroutines with a maximum subroutine nesting of 4. Otherwise, a bailout is thrown.
+ * The class also handles subroutines (jsr and ret bytecodes): subroutines are inlined by
+ * duplicating the subroutine blocks. This is limited to simple, structured subroutines with a
+ * maximum subroutine nesting of 4. Otherwise, a bailout is thrown.
  * <p>
- * Loops in the methods are detected. If a method contains an irreducible loop (a loop with more than one entry), a bailout is
- * thrown. This simplifies the compiler later on since only structured loops need to be supported.
+ * Loops in the methods are detected. If a method contains an irreducible loop (a loop with more
+ * than one entry), a bailout is thrown. This simplifies the compiler later on since only structured
+ * loops need to be supported.
  * <p>
- * A data flow analysis computes the live local variables from the point of view of the interpreter. The result is used later
- * to prune frame states, i.e., remove local variable entries that are guaranteed to be never used again (even in the case of
- * deoptimization).
+ * A data flow analysis computes the live local variables from the point of view of the interpreter.
+ * The result is used later to prune frame states, i.e., remove local variable entries that are
+ * guaranteed to be never used again (even in the case of deoptimization).
  * <p>
- * The algorithms and analysis in this class are conservative and do not use any assumptions or profiling information.
+ * The algorithms and analysis in this class are conservative and do not use any assumptions or
+ * profiling information.
  */
 public final class BciBlockMapping {
 
     public static class Block implements Cloneable {
+
         public int startBci;
         public int endBci;
         public boolean isExceptionEntry;
@@ -103,7 +111,7 @@ public final class BciBlockMapping {
         }
 
         public int numNormalSuccessors() {
-            if  (exceptionDispatchBlock() != null) {
+            if (exceptionDispatchBlock() != null) {
                 return successors.size() - 1;
             }
             return successors.size();
@@ -138,6 +146,7 @@ public final class BciBlockMapping {
     }
 
     public static class ExceptionDispatchBlock extends Block {
+
         private HashMap<ExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = new HashMap<>();
 
         public ExceptionHandler handler;
@@ -159,6 +168,7 @@ public final class BciBlockMapping {
 
     /**
      * Creates a new BlockMap instance from bytecode of the given method .
+     * 
      * @param method the compiler interface method containing the code
      */
     public BciBlockMapping(ResolvedJavaMethod method) {
@@ -201,6 +211,7 @@ public final class BciBlockMapping {
         }
         if (GraalOptions.OptLivenessAnalysis) {
             Debug.scope("LivenessAnalysis", new Runnable() {
+
                 @Override
                 public void run() {
                     computeLiveness();
@@ -478,7 +489,6 @@ public final class BciBlockMapping {
         }
     }
 
-
     private HashMap<ExceptionHandler, ExceptionDispatchBlock> initialExceptionDispatch = new HashMap<>();
 
     private ExceptionDispatchBlock handleExceptions(int bci) {
@@ -488,7 +498,8 @@ public final class BciBlockMapping {
             ExceptionHandler h = exceptionHandlers[i];
             if (h.getStartBCI() <= bci && bci < h.getEndBCI()) {
                 if (h.isCatchAll()) {
-                    // Discard all information about succeeding exception handlers, since they can never be reached.
+                    // Discard all information about succeeding exception handlers, since they can
+                    // never be reached.
                     lastHandler = null;
                 }
 
@@ -524,9 +535,11 @@ public final class BciBlockMapping {
             long loop = fixLoopBits(blockMap[0]);
 
             if (loop != 0) {
-                // There is a path from a loop end to the method entry that does not pass the loop header.
+                // There is a path from a loop end to the method entry that does not pass the loop
+                // header.
                 // Therefore, the loop is non reducible (has more than one entry).
-                // We don't want to compile such methods because the IR only supports structured loops.
+                // We don't want to compile such methods because the IR only supports structured
+                // loops.
                 throw new BailoutException("Non-reducible loop: %016x", loop);
             }
         } while (loopChanges);
@@ -536,7 +549,8 @@ public final class BciBlockMapping {
         long loop = computeBlockOrder(blockMap[0]);
 
         if (loop != 0) {
-            // There is a path from a loop end to the method entry that does not pass the loop header.
+            // There is a path from a loop end to the method entry that does not pass the loop
+            // header.
             // Therefore, the loop is non reducible (has more than one entry).
             // We don't want to compile such methods because the IR only supports structured loops.
             throw new BailoutException("Non-reducible loop");
@@ -610,21 +624,25 @@ public final class BciBlockMapping {
     private int nextLoop;
 
     /**
-     * Mark the block as a loop header, using the next available loop number.
-     * Also checks for corner cases that we don't want to compile.
+     * Mark the block as a loop header, using the next available loop number. Also checks for corner
+     * cases that we don't want to compile.
      */
     private void makeLoopHeader(Block block) {
         if (!block.isLoopHeader) {
             block.isLoopHeader = true;
 
             if (block.isExceptionEntry) {
-                // Loops that are implicitly formed by an exception handler lead to all sorts of corner cases.
-                // Don't compile such methods for now, until we see a concrete case that allows checking for correctness.
+                // Loops that are implicitly formed by an exception handler lead to all sorts of
+                // corner cases.
+                // Don't compile such methods for now, until we see a concrete case that allows
+                // checking for correctness.
                 throw new BailoutException("Loop formed by an exception handler");
             }
             if (nextLoop >= Long.SIZE) {
-                // This restriction can be removed by using a fall-back to a BitSet in case we have more than 64 loops
-                // Don't compile such methods for now, until we see a concrete case that allows checking for correctness.
+                // This restriction can be removed by using a fall-back to a BitSet in case we have
+                // more than 64 loops
+                // Don't compile such methods for now, until we see a concrete case that allows
+                // checking for correctness.
                 throw new BailoutException("Too many loops in method");
             }
 
@@ -639,9 +657,9 @@ public final class BciBlockMapping {
     }
 
     /**
-     * Depth-first traversal of the control flow graph. The flag {@linkplain Block#visited} is used to
-     * visit every block only once. The flag {@linkplain Block#active} is used to detect cycles (backward
-     * edges).
+     * Depth-first traversal of the control flow graph. The flag {@linkplain Block#visited} is used
+     * to visit every block only once. The flag {@linkplain Block#active} is used to detect cycles
+     * (backward edges).
      */
     private long computeBlockOrder(Block block) {
         if (block.visited) {
@@ -723,7 +741,8 @@ public final class BciBlockMapping {
             changed = false;
             for (int i = blocks.size() - 1; i >= 0; i--) {
                 Block block = blocks.get(i);
-                Debug.log("  start B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, block.localsLiveIn, block.localsLiveOut, block.localsLiveGen, block.localsLiveKill);
+                Debug.log("  start B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, block.localsLiveIn, block.localsLiveOut, block.localsLiveGen,
+                                block.localsLiveKill);
 
                 boolean blockChanged = (iteration == 0);
                 if (block.successors.size() > 0) {
@@ -740,7 +759,8 @@ public final class BciBlockMapping {
                     block.localsLiveIn.or(block.localsLiveOut);
                     block.localsLiveIn.xor(block.localsLiveKill);
                     block.localsLiveIn.or(block.localsLiveGen);
-                    Debug.log("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, block.localsLiveIn, block.localsLiveOut, block.localsLiveGen, block.localsLiveKill);
+                    Debug.log("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, block.localsLiveIn, block.localsLiveOut, block.localsLiveGen,
+                                    block.localsLiveKill);
                 }
                 changed |= blockChanged;
             }

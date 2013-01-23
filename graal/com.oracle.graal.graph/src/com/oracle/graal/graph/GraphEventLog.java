@@ -24,7 +24,6 @@ package com.oracle.graal.graph;
 
 import java.util.*;
 
-
 public class GraphEventLog {
 
     private List<GraphEvent> events = new ArrayList<>();

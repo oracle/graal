@@ -21,6 +21,7 @@
  * questions.
  */
 package com.oracle.graal.lir;
+
 import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.lang.annotation.*;
@@ -54,7 +55,6 @@ public class LIRInstructionClass extends FieldIntrospection {
             return clazz;
         }
     }
-
 
     private static final Class<?> INSTRUCTION_CLASS = LIRInstruction.class;
     private static final Class<?> VALUE_CLASS = Value.class;
@@ -143,14 +143,15 @@ public class LIRInstructionClass extends FieldIntrospection {
         opcodeOffset = scanner.opcodeOffset;
     }
 
-
     private static class OperandModeAnnotation {
+
         public final ArrayList<Long> scalarOffsets = new ArrayList<>();
         public final ArrayList<Long> arrayOffsets = new ArrayList<>();
         public final Map<Long, EnumSet<OperandFlag>> flags = new HashMap<>();
     }
 
     protected static class FieldScanner extends BaseFieldScanner {
+
         public final Map<Class<? extends Annotation>, OperandModeAnnotation> valueAnnotations;
         public final ArrayList<Long> stateOffsets = new ArrayList<>();
 
@@ -161,15 +162,15 @@ public class LIRInstructionClass extends FieldIntrospection {
             super(calc);
 
             valueAnnotations = new HashMap<>();
-            valueAnnotations.put(LIRInstruction.Use.class, new OperandModeAnnotation()); //LIRInstruction.Use.class));
-            valueAnnotations.put(LIRInstruction.Alive.class, new OperandModeAnnotation()); //LIRInstruction.Alive.class));
-            valueAnnotations.put(LIRInstruction.Temp.class, new OperandModeAnnotation()); //LIRInstruction.Temp.class));
-            valueAnnotations.put(LIRInstruction.Def.class, new OperandModeAnnotation()); //LIRInstruction.Def.class));
+            valueAnnotations.put(LIRInstruction.Use.class, new OperandModeAnnotation()); // LIRInstruction.Use.class));
+            valueAnnotations.put(LIRInstruction.Alive.class, new OperandModeAnnotation()); // LIRInstruction.Alive.class));
+            valueAnnotations.put(LIRInstruction.Temp.class, new OperandModeAnnotation()); // LIRInstruction.Temp.class));
+            valueAnnotations.put(LIRInstruction.Def.class, new OperandModeAnnotation()); // LIRInstruction.Def.class));
         }
 
         private OperandModeAnnotation getOperandModeAnnotation(Field field) {
             OperandModeAnnotation result = null;
-            for (Entry<Class<? extends Annotation>, OperandModeAnnotation> entry  : valueAnnotations.entrySet()) {
+            for (Entry<Class<? extends Annotation>, OperandModeAnnotation> entry : valueAnnotations.entrySet()) {
                 Annotation annotation = field.getAnnotation(entry.getKey());
                 if (annotation != null) {
                     assert result == null : "Field has two operand mode annotations: " + field;
@@ -181,8 +182,10 @@ public class LIRInstructionClass extends FieldIntrospection {
 
         private static EnumSet<OperandFlag> getFlags(Field field) {
             EnumSet<OperandFlag> result = EnumSet.noneOf(OperandFlag.class);
-            // Unfortunately, annotations cannot have class hierarchies or implement interfaces, so we have to duplicate the code for every operand mode.
-            // Unfortunately, annotations cannot have an EnumSet property, so we have to convert from arrays to EnumSet manually.
+            // Unfortunately, annotations cannot have class hierarchies or implement interfaces, so
+            // we have to duplicate the code for every operand mode.
+            // Unfortunately, annotations cannot have an EnumSet property, so we have to convert
+            // from arrays to EnumSet manually.
             if (field.isAnnotationPresent(LIRInstruction.Use.class)) {
                 result.addAll(Arrays.asList(field.getAnnotation(LIRInstruction.Use.class).value()));
             } else if (field.isAnnotationPresent(LIRInstruction.Alive.class)) {
@@ -217,7 +220,8 @@ public class LIRInstructionClass extends FieldIntrospection {
         @Override
         protected void scanField(Field field, Class<?> type, long offset) {
             if (VALUE_CLASS.isAssignableFrom(type)) {
-                assert Modifier.isProtected(field.getModifiers()) && !Modifier.isFinal(field.getModifiers()) : "Value field must not be declared final or [package] private because it is modified by register allocator: " + field;
+                assert Modifier.isProtected(field.getModifiers()) && !Modifier.isFinal(field.getModifiers()) : "Value field must not be declared final or [package] private because it is modified by register allocator: " +
+                                field;
                 OperandModeAnnotation annotation = getOperandModeAnnotation(field);
                 assert annotation != null : "Field must have operand mode annotation: " + field;
                 annotation.scalarOffsets.add(offset);
@@ -274,7 +278,6 @@ public class LIRInstructionClass extends FieldIntrospection {
         str.append("]");
         return str.toString();
     }
-
 
     public final String getOpcode(LIRInstruction obj) {
         if (opcodeConstant != null) {
@@ -412,14 +415,13 @@ public class LIRInstructionClass extends FieldIntrospection {
         return (LIRFrameState) unsafe.getObject(obj, offset);
     }
 
-
     public String toString(LIRInstruction obj) {
         StringBuilder result = new StringBuilder();
 
-        appendValues(result, obj, "", " = ", "(", ")", new String[] {""}, defOffsets);
+        appendValues(result, obj, "", " = ", "(", ")", new String[]{""}, defOffsets);
         result.append(getOpcode(obj).toUpperCase());
-        appendValues(result, obj, " ", "", "(", ")", new String[] {"", "~"}, useOffsets, aliveOffsets);
-        appendValues(result, obj, " ", "", "{", "}", new String[] {""}, tempOffsets);
+        appendValues(result, obj, " ", "", "(", ")", new String[]{"", "~"}, useOffsets, aliveOffsets);
+        appendValues(result, obj, " ", "", "{", "}", new String[]{""}, tempOffsets);
 
         for (int i = 0; i < dataOffsets.length; i++) {
             if (dataOffsets[i] == opcodeOffset) {
@@ -444,7 +446,7 @@ public class LIRInstructionClass extends FieldIntrospection {
         return result.toString();
     }
 
-    private void appendValues(StringBuilder result, LIRInstruction obj, String start, String end, String startMultiple, String endMultiple, String[] prefix, long[]...moffsets) {
+    private void appendValues(StringBuilder result, LIRInstruction obj, String start, String end, String startMultiple, String endMultiple, String[] prefix, long[]... moffsets) {
         int total = 0;
         for (long[] offsets : moffsets) {
             total += offsets.length;

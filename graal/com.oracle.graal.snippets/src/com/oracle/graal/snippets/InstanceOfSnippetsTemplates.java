@@ -39,19 +39,18 @@ import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 import com.oracle.graal.snippets.SnippetTemplate.UsageReplacer;
 
-
 /**
- * Helper class for lowering {@link InstanceOfNode}s with snippets. The majority of the
- * complexity in such a lowering derives from the fact that {@link InstanceOfNode}
- * is a floating node. A snippet used to lower an {@link InstanceOfNode} will almost always
- * incorporate control flow and replacing a floating node with control flow is not trivial.
+ * Helper class for lowering {@link InstanceOfNode}s with snippets. The majority of the complexity
+ * in such a lowering derives from the fact that {@link InstanceOfNode} is a floating node. A
+ * snippet used to lower an {@link InstanceOfNode} will almost always incorporate control flow and
+ * replacing a floating node with control flow is not trivial.
  * <p>
- * The mechanism implemented in this class ensures that the graph for an instanceof snippet
- * is instantiated once per {@link InstanceOfNode} being lowered. The result produced the graph
- * is then re-used by all usages of the node. Additionally, if there is a single usage that
- * is an {@link IfNode}, the control flow in the snippet is connected directly to the true
- * and false successors of the {@link IfNode}. This avoids materializating the instanceof
- * test as a boolean which is then retested by the {@link IfNode}.
+ * The mechanism implemented in this class ensures that the graph for an instanceof snippet is
+ * instantiated once per {@link InstanceOfNode} being lowered. The result produced the graph is then
+ * re-used by all usages of the node. Additionally, if there is a single usage that is an
+ * {@link IfNode}, the control flow in the snippet is connected directly to the true and false
+ * successors of the {@link IfNode}. This avoids materializating the instanceof test as a boolean
+ * which is then retested by the {@link IfNode}.
  */
 public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> extends AbstractTemplates<T> {
 
@@ -63,8 +62,10 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
      * The key and arguments used to retrieve and instantiate an instanceof snippet template.
      */
     public static class KeyAndArguments {
+
         public final Key key;
         public final Arguments arguments;
+
         public KeyAndArguments(Key key, Arguments arguments) {
             this.key = key;
             this.arguments = arguments;
@@ -105,8 +106,8 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
     }
 
     /**
-     * Gets the specific replacer object used to replace the usage of an instanceof node
-     * with the result of an instantiated instanceof snippet.
+     * Gets the specific replacer object used to replace the usage of an instanceof node with the
+     * result of an instantiated instanceof snippet.
      */
     protected InstanceOfUsageReplacer createReplacer(FloatingNode instanceOf, LoweringTool tool, int nUsages, Instantiation instantiation, Node usage, final StructuredGraph graph) {
         InstanceOfUsageReplacer replacer;
@@ -121,10 +122,11 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
     }
 
     /**
-     * The result of an instantiating an instanceof snippet.
-     * This enables a snippet instantiation to be re-used which reduces compile time and produces better code.
+     * The result of an instantiating an instanceof snippet. This enables a snippet instantiation to
+     * be re-used which reduces compile time and produces better code.
      */
     public static final class Instantiation {
+
         private PhiNode result;
         private CompareNode condition;
         private ValueNode trueValue;
@@ -146,7 +148,7 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
 
         /**
          * Gets the result of this instantiation as a condition.
-         *
+         * 
          * @param testValue the returned condition is true if the result is equal to this value
          */
         CompareNode asCondition(ValueNode testValue) {
@@ -160,7 +162,7 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
 
         /**
          * Gets the result of the instantiation as a materialized value.
-         *
+         * 
          * @param t the true value for the materialization
          * @param f the false value for the materialization
          */
@@ -179,6 +181,7 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
      * Replaces a usage of an {@link InstanceOfNode} or {@link InstanceOfDynamicNode}.
      */
     public abstract static class InstanceOfUsageReplacer implements UsageReplacer {
+
         public final Instantiation instantiation;
         public final FloatingNode instanceOf;
         public final ValueNode trueValue;
@@ -199,7 +202,8 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
     }
 
     /**
-     * Replaces an {@link IfNode} usage of an {@link InstanceOfNode} or {@link InstanceOfDynamicNode}.
+     * Replaces an {@link IfNode} usage of an {@link InstanceOfNode} or
+     * {@link InstanceOfDynamicNode}.
      */
     public static class IfUsageReplacer extends InstanceOfUsageReplacer {
 
@@ -233,8 +237,8 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
         }
 
         /**
-         * Directly wires the incoming edges of the merge at the end of the snippet to
-         * the outgoing edges of the IfNode that uses the materialized result.
+         * Directly wires the incoming edges of the merge at the end of the snippet to the outgoing
+         * edges of the IfNode that uses the materialized result.
          */
         private void removeIntermediateMaterialization(ValueNode newNode) {
             IfNode ifNode = usage;
@@ -276,7 +280,8 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
 
         private static void connectEnds(MergeNode merge, List<EndNode> ends, BeginNode successor) {
             if (ends.size() == 0) {
-                // InstanceOf has been lowered to always true or always false - this successor is therefore unreachable.
+                // InstanceOf has been lowered to always true or always false - this successor is
+                // therefore unreachable.
                 GraphUtil.killCFG(successor);
             } else if (ends.size() == 1) {
                 EndNode end = ends.get(0);
@@ -296,7 +301,8 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
     }
 
     /**
-     * Replaces a {@link ConditionalNode} usage of an {@link InstanceOfNode} or {@link InstanceOfDynamicNode}.
+     * Replaces a {@link ConditionalNode} usage of an {@link InstanceOfNode} or
+     * {@link InstanceOfDynamicNode}.
      */
     public static class ConditionalUsageReplacer extends InstanceOfUsageReplacer {
 

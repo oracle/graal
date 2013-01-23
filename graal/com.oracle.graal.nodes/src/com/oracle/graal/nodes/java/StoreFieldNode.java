@@ -58,6 +58,7 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
 
     /**
      * Creates a new StoreFieldNode.
+     * 
      * @param object the receiver object
      * @param field the compiler interface field
      * @param value the node representing the value to store to the field

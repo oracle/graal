@@ -33,9 +33,11 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
 /**
- * This class represents garbage collection and deoptimization information attached to a LIR instruction.
+ * This class represents garbage collection and deoptimization information attached to a LIR
+ * instruction.
  */
 public class LIRFrameState {
+
     public final BytecodeFrame topFrame;
     private final VirtualObject[] virtualObjects;
     private final List<StackSlot> pointerSlots;
@@ -60,7 +62,7 @@ public class LIRFrameState {
 
     /**
      * Iterates the frame state and calls the {@link ValueProcedure} for every variable.
-     *
+     * 
      * @param proc The procedure called for variables.
      */
     public void forEachState(ValueProcedure proc) {
@@ -75,7 +77,8 @@ public class LIRFrameState {
     }
 
     /**
-     * We filter out constant and illegal values ourself before calling the procedure, so {@link OperandFlag#CONST} and {@link OperandFlag#ILLEGAL} need not be set.
+     * We filter out constant and illegal values ourself before calling the procedure, so
+     * {@link OperandFlag#CONST} and {@link OperandFlag#ILLEGAL} need not be set.
      */
     private static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.REG, OperandFlag.STACK);
 
@@ -109,7 +112,6 @@ public class LIRFrameState {
         }
     }
 
-
     public void finish(BitSet registerRefMap, BitSet frameRefMap, FrameMap frameMap) {
         debugInfo = new DebugInfo(topFrame, registerRefMap, frameRefMap);
 
@@ -120,7 +122,6 @@ public class LIRFrameState {
             }
         }
     }
-
 
     @Override
     public String toString() {

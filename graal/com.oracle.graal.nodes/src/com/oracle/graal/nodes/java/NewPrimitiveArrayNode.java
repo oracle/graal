@@ -34,6 +34,7 @@ public final class NewPrimitiveArrayNode extends NewArrayNode implements Node.It
 
     /**
      * Constructs a new NewPrimitiveArrayNode.
+     * 
      * @param elementType the type of elements in this array
      * @param length the node producing the length of the array
      * @param fillContents determines whether the array elements should be initialized to zero.

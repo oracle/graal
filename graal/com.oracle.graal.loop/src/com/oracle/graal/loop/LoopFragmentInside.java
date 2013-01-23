@@ -33,16 +33,18 @@ import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
-
 public class LoopFragmentInside extends LoopFragment {
-    /** mergedInitializers.
-     * When an inside fragment's (loop)ends are merged to create a unique exit point,
-     * some phis must be created : they phis together all the back-values of the loop-phis
-     * These can then be used to update the loop-phis' forward edge value ('initializer') in the peeling case.
-     * In the unrolling case they will be used as the value that replace the loop-phis of the duplicated inside fragment
+
+    /**
+     * mergedInitializers. When an inside fragment's (loop)ends are merged to create a unique exit
+     * point, some phis must be created : they phis together all the back-values of the loop-phis
+     * These can then be used to update the loop-phis' forward edge value ('initializer') in the
+     * peeling case. In the unrolling case they will be used as the value that replace the loop-phis
+     * of the duplicated inside fragment
      */
     private Map<PhiNode, ValueNode> mergedInitializers;
     private final DuplicationReplacement dataFixBefore = new DuplicationReplacement() {
+
         @Override
         public Node replacement(Node oriInput) {
             if (!(oriInput instanceof ValueNode)) {
@@ -124,6 +126,7 @@ public class LoopFragmentInside extends LoopFragment {
         final LoopBeginNode loopBegin = loop().loopBegin();
         final StructuredGraph graph = graph();
         return new DuplicationReplacement() {
+
             @Override
             public Node replacement(Node original) {
                 if (original == loopBegin) {
@@ -157,8 +160,10 @@ public class LoopFragmentInside extends LoopFragment {
             } else {
                 first = peel.mergedInitializers.get(phi);
             }
-            // create a new phi (we don't patch the old one since some usages of the old one may still be valid)
-            PhiNode newPhi = graph.add(phi.type() == PhiType.Value ? phi.stamp() == StampFactory.virtual() ? new PhiNode(phi.stamp(), loopBegin) : new PhiNode(phi.kind(), loopBegin) : new PhiNode(phi.type(), loopBegin));
+            // create a new phi (we don't patch the old one since some usages of the old one may
+            // still be valid)
+            PhiNode newPhi = graph.add(phi.type() == PhiType.Value ? phi.stamp() == StampFactory.virtual() ? new PhiNode(phi.stamp(), loopBegin) : new PhiNode(phi.kind(), loopBegin) : new PhiNode(
+                            phi.type(), loopBegin));
             newPhi.addInput(first);
             for (LoopEndNode end : loopBegin.orderedLoopEnds()) {
                 newPhi.addInput(phi.valueAt(end));
@@ -166,12 +171,15 @@ public class LoopFragmentInside extends LoopFragment {
             peel.putDuplicatedNode(phi, newPhi);
             newPhis.add(newPhi);
             for (Node usage : phi.usages().snapshot()) {
-                if (peel.getDuplicatedNode(usage) != null) { // patch only usages that should use the new phi ie usages that were peeled
+                if (peel.getDuplicatedNode(usage) != null) { // patch only usages that should use
+                                                             // the new phi ie usages that were
+                                                             // peeled
                     usage.replaceFirstInput(phi, newPhi);
                 }
             }
         }
-        // check new phis to see if they have as input some old phis, replace those inputs with the new corresponding phis
+        // check new phis to see if they have as input some old phis, replace those inputs with the
+        // new corresponding phis
         for (PhiNode phi : newPhis) {
             for (int i = 0; i < phi.valueCount(); i++) {
                 ValueNode v = phi.valueAt(i);
@@ -187,7 +195,7 @@ public class LoopFragmentInside extends LoopFragment {
 
     /**
      * Gets the corresponding value in this fragment.
-     *
+     * 
      * @param b original value
      * @return corresponding value in the peel
      */
@@ -211,7 +219,8 @@ public class LoopFragmentInside extends LoopFragment {
     private BeginNode mergeEnds() {
         assert isDuplicate();
         List<EndNode> endsToMerge = new LinkedList<>();
-        Map<EndNode, LoopEndNode> reverseEnds = new HashMap<>(); // map peel's exit to the corresponding loop exits
+        Map<EndNode, LoopEndNode> reverseEnds = new HashMap<>(); // map peel's exit to the
+                                                                 // corresponding loop exits
         LoopBeginNode loopBegin = original().loop().loopBegin();
         for (LoopEndNode le : loopBegin.loopEnds()) {
             EndNode duplicate = getDuplicatedNode(le);
@@ -244,7 +253,8 @@ public class LoopFragmentInside extends LoopFragment {
             }
 
             for (final PhiNode phi : loopBegin.phis().snapshot()) {
-                final PhiNode firstPhi = graph.add(phi.type() == PhiType.Value ? phi.stamp() == StampFactory.virtual() ? new PhiNode(phi.stamp(), newExitMerge) : new PhiNode(phi.kind(), newExitMerge) : new PhiNode(phi.type(), newExitMerge));
+                final PhiNode firstPhi = graph.add(phi.type() == PhiType.Value ? phi.stamp() == StampFactory.virtual() ? new PhiNode(phi.stamp(), newExitMerge) : new PhiNode(phi.kind(), newExitMerge)
+                                : new PhiNode(phi.type(), newExitMerge));
                 for (EndNode end : newExitMerge.forwardEnds()) {
                     LoopEndNode loopEnd = reverseEnds.get(end);
                     ValueNode prim = prim(phi.valueAt(loopEnd));
@@ -255,6 +265,7 @@ public class LoopFragmentInside extends LoopFragment {
                 if (duplicateState != null) {
                     // fix the merge's state after
                     duplicateState.applyToNonVirtual(new NodeClosure<ValueNode>() {
+
                         @Override
                         public void apply(Node from, ValueNode node) {
                             if (node == phi) {

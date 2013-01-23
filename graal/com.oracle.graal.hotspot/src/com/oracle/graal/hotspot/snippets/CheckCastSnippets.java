@@ -51,9 +51,10 @@ import com.oracle.graal.word.*;
 
 /**
  * Snippets used for implementing the type test of a checkcast instruction.
- *
- * The type tests implemented are described in the paper <a href="http://dl.acm.org/citation.cfm?id=583821">
- * Fast subtype checking in the HotSpot JVM</a> by Cliff Click and John Rose.
+ * 
+ * The type tests implemented are described in the paper <a
+ * href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a> by
+ * Cliff Click and John Rose.
  */
 public class CheckCastSnippets implements SnippetsInterface {
 

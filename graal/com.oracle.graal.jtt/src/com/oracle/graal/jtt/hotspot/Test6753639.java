@@ -29,7 +29,7 @@ import org.junit.*;
  * @test
  * @bug 6753639
  * @summary Strange optimisation in for loop with cyclic integer condition
- *
+ * 
  * @run main/othervm -Xbatch Test6753639
  */
 // @formatter:off

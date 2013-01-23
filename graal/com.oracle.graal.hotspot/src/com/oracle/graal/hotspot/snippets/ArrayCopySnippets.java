@@ -21,6 +21,7 @@
  * questions.
  */
 package com.oracle.graal.hotspot.snippets;
+
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
@@ -44,9 +45,8 @@ import com.oracle.graal.snippets.Snippet.ConstantParameter;
 import com.oracle.graal.snippets.Snippet.Fold;
 import com.oracle.graal.snippets.nodes.*;
 
-
 @SuppressWarnings("unused")
-public class ArrayCopySnippets implements SnippetsInterface{
+public class ArrayCopySnippets implements SnippetsInterface {
 
     private static final EnumMap<Kind, Method> arraycopyMethods = new EnumMap<>(Kind.class);
     public static final Method increaseGenericCallCounterMethod;
@@ -79,7 +79,8 @@ public class ArrayCopySnippets implements SnippetsInterface{
     private static final Kind VECTOR_KIND = Kind.Long;
     private static final long VECTOR_SIZE = arrayIndexScale(Kind.Long);
 
-    public static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter("baseKind") Kind baseKind) {
+    public static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter("baseKind")
+    Kind baseKind) {
         checkInputs(src, srcPos, dest, destPos, length);
         int header = arrayBaseOffset(baseKind);
         int elementSize = arrayIndexScale(baseKind);
@@ -260,6 +261,5 @@ public class ArrayCopySnippets implements SnippetsInterface{
     private static final SnippetCounter doubleCounter = new SnippetCounter(counters, "double[]", "arraycopy for double[] arrays");
     private static final SnippetCounter genericPrimitiveCallCounter = new SnippetCounter(counters, "genericPrimitive", "call to the generic, native arraycopy method");
     private static final SnippetCounter genericObjectCallCounter = new SnippetCounter(counters, "genericObject", "call to the generic, native arraycopy method");
-
 
 }

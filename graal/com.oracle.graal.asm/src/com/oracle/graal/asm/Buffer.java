@@ -25,9 +25,11 @@ package com.oracle.graal.asm;
 import java.util.*;
 
 /**
- * Code buffer management for the assembler. Support for little endian and big endian architectures is implemented using subclasses.
+ * Code buffer management for the assembler. Support for little endian and big endian architectures
+ * is implemented using subclasses.
  */
 public abstract class Buffer {
+
     protected byte[] data;
     protected int position;
 
@@ -49,14 +51,11 @@ public abstract class Buffer {
     }
 
     /**
-     * Closes this buffer. No extra data can be written to this buffer after
-     * this call.
-     *
-     * @param trimmedCopy
-     *            if {@code true}, then a copy of the underlying byte array up
-     *            to (but not including) {@code position()} is returned
-     * @return the data in this buffer or a trimmed copy if {@code trimmedCopy}
-     *         is {@code true}
+     * Closes this buffer. No extra data can be written to this buffer after this call.
+     * 
+     * @param trimmedCopy if {@code true}, then a copy of the underlying byte array up to (but not
+     *            including) {@code position()} is returned
+     * @return the data in this buffer or a trimmed copy if {@code trimmedCopy} is {@code true}
      */
     public byte[] close(boolean trimmedCopy) {
         byte[] result = trimmedCopy ? Arrays.copyOf(data, position()) : data;
@@ -70,13 +69,10 @@ public abstract class Buffer {
 
     /**
      * Copies the data from this buffer into a given array.
-     *
-     * @param dst
-     *            the destination array
-     * @param off
-     *            starting position in {@code dst}
-     * @param len
-     *            number of bytes to copy
+     * 
+     * @param dst the destination array
+     * @param off starting position in {@code dst}
+     * @param len number of bytes to copy
      */
     public void copyInto(byte[] dst, int off, int len) {
         System.arraycopy(data, 0, dst, off, len);
@@ -133,6 +129,7 @@ public abstract class Buffer {
     public abstract int getInt(int pos);
 
     public static final class BigEndian extends Buffer {
+
         @Override
         public int emitShort(int b, int pos) {
             assert NumUtil.isUShort(b);
@@ -171,22 +168,17 @@ public abstract class Buffer {
 
         @Override
         public int getShort(int pos) {
-            return
-                (data[pos + 0] & 0xff) << 8 |
-                (data[pos + 1] & 0xff) << 0;
+            return (data[pos + 0] & 0xff) << 8 | (data[pos + 1] & 0xff) << 0;
         }
 
         @Override
         public int getInt(int pos) {
-            return
-                (data[pos + 0] & 0xff) << 24 |
-                (data[pos + 1] & 0xff) << 16 |
-                (data[pos + 2] & 0xff) << 8 |
-                (data[pos + 3] & 0xff) << 0;
+            return (data[pos + 0] & 0xff) << 24 | (data[pos + 1] & 0xff) << 16 | (data[pos + 2] & 0xff) << 8 | (data[pos + 3] & 0xff) << 0;
         }
     }
 
     public static final class LittleEndian extends Buffer {
+
         @Override
         public int emitShort(int b, int pos) {
             assert NumUtil.isUShort(b);
@@ -225,18 +217,12 @@ public abstract class Buffer {
 
         @Override
         public int getShort(int pos) {
-            return
-                (data[pos + 1] & 0xff) << 8 |
-                (data[pos + 0] & 0xff) << 0;
+            return (data[pos + 1] & 0xff) << 8 | (data[pos + 0] & 0xff) << 0;
         }
 
         @Override
         public int getInt(int pos) {
-            return
-                (data[pos + 3] & 0xff) << 24 |
-                (data[pos + 2] & 0xff) << 16 |
-                (data[pos + 1] & 0xff) << 8 |
-                (data[pos + 0] & 0xff) << 0;
+            return (data[pos + 3] & 0xff) << 24 | (data[pos + 2] & 0xff) << 16 | (data[pos + 1] & 0xff) << 8 | (data[pos + 0] & 0xff) << 0;
         }
     }
 }

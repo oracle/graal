@@ -31,10 +31,9 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 
-
 /**
- * A graph that contains at least one distinguished node : the {@link #start() start} node.
- * This node is the start of the control flow of the graph.
+ * A graph that contains at least one distinguished node : the {@link #start() start} node. This
+ * node is the start of the control flow of the graph.
  */
 public class StructuredGraph extends Graph {
 
@@ -140,6 +139,7 @@ public class StructuredGraph extends Graph {
     public Iterable<Invoke> getInvokes() {
         final Iterator<MethodCallTargetNode> callTargets = getNodes(MethodCallTargetNode.class).iterator();
         return new Iterable<Invoke>() {
+
             private Invoke next;
 
             @Override
@@ -196,9 +196,9 @@ public class StructuredGraph extends Graph {
     }
 
     /**
-     * Unlinks a node from all its control flow neighbours and then removes it from its graph.
-     * The node must have no {@linkplain Node#usages() usages}.
-     *
+     * Unlinks a node from all its control flow neighbours and then removes it from its graph. The
+     * node must have no {@linkplain Node#usages() usages}.
+     * 
      * @param node the node to be unlinked and removed
      */
     public void removeFixed(FixedWithNextNode node) {

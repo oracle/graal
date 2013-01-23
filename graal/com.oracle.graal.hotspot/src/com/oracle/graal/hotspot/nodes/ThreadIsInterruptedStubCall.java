@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.type.*;
  * Node implementing a call to HotSpot's ThreadIsInterrupted stub.
  */
 public class ThreadIsInterruptedStubCall extends FixedWithNextNode implements LIRGenLowerable {
+
     @Input private final ValueNode thread;
     @Input private final ValueNode clearIsInterrupted;
     public static final Descriptor THREAD_IS_INTERRUPTED = new Descriptor("thread_is_interrupted", false, int.class, Object.class, boolean.class);

@@ -27,7 +27,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 
-
 public class LockEliminationPhase extends Phase {
 
     @Override

@@ -41,9 +41,10 @@ public final class NewInstanceNode extends FixedWithNextNode implements Virtuali
 
     /**
      * Constructs a NewInstanceNode.
-     *
+     * 
      * @param type the class being allocated
-     * @param fillContents determines whether the new object's fields should be initialized to zero/null.
+     * @param fillContents determines whether the new object's fields should be initialized to
+     *            zero/null.
      * @param locked determines whether the new object should be locked immediately.
      */
     public NewInstanceNode(ResolvedJavaType type, boolean fillContents, boolean locked) {
@@ -55,7 +56,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements Virtuali
 
     /**
      * Gets the instance class being allocated by this node.
-     *
+     * 
      * @return the instance class allocated
      */
     public ResolvedJavaType instanceClass() {

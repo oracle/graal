@@ -41,9 +41,8 @@ import com.oracle.graal.snippets.*;
 
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.
- *
- * The platform specific subclass is created by a call from
- * the C++ HotSpot code.
+ * 
+ * The platform specific subclass is created by a call from the C++ HotSpot code.
  */
 public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
@@ -107,8 +106,8 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         return unsafe.getInt(address);
     }
 
-    protected /*final*/ CompilerToVM compilerToVm;
-    protected /*final*/ VMToCompiler vmToCompiler;
+    protected/* final */CompilerToVM compilerToVm;
+    protected/* final */VMToCompiler vmToCompiler;
 
     protected final HotSpotRuntime runtime;
     protected final GraalCompiler compiler;
@@ -165,7 +164,9 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     }
 
     protected abstract TargetDescription createTarget();
+
     protected abstract HotSpotBackend createBackend();
+
     protected abstract HotSpotRuntime createRuntime();
 
     public HotSpotVMConfig getConfig() {
@@ -196,7 +197,7 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         if (name.length() == 1 && vmToCompiler instanceof VMToCompilerImpl) {
             VMToCompilerImpl impl = (VMToCompilerImpl) vmToCompiler;
             Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
-            switch(kind) {
+            switch (kind) {
                 case Boolean:
                     return impl.typeBoolean;
                 case Byte:

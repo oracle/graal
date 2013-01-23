@@ -36,7 +36,7 @@ public interface CompilerToVM {
 
     /**
      * Copies the original bytecode of a given method into a given byte array.
-     *
+     * 
      * @param metaspaceMethod the metaspace Method object
      * @param code the array into which to copy the original bytecode
      * @return the value of {@code code}
@@ -49,7 +49,7 @@ public interface CompilerToVM {
 
     /**
      * Determines if a given metaspace Method object has balanced monitors.
-     *
+     * 
      * @param metaspaceMethod the metaspace Method object to query
      * @return true if the method has balanced monitors
      */
@@ -63,9 +63,9 @@ public interface CompilerToVM {
      * <li>the method may have a bytecode breakpoint set</li>
      * <li>the method may have other bytecode features that require special handling by the VM</li>
      * </ul>
-     *
+     * 
      * A non-compilable method should not be inlined.
-     *
+     * 
      * @param metaspaceMethod the metaspace Method object to query
      * @return true if the method is compilable
      */
@@ -73,24 +73,26 @@ public interface CompilerToVM {
 
     /**
      * Used to implement {@link ResolvedJavaType#findUniqueConcreteMethod(ResolvedJavaMethod)}.
-     *
+     * 
      * @param metaspaceMethod the metaspace Method on which to based the search
      * @param resultHolder the holder of the result is put in element 0 of this array
-     * @return the metaspace Method result or 0 is there is no unique concrete method for {@code metaspaceMethod}
+     * @return the metaspace Method result or 0 is there is no unique concrete method for
+     *         {@code metaspaceMethod}
      */
     long getUniqueConcreteMethod(long metaspaceMethod, HotSpotResolvedObjectType[] resultHolder);
 
     /**
      * Used to determine if an interface has exactly one implementor.
-     *
+     * 
      * @param interfaceType interface for which the implementor should be returned
-     * @return the unique implementor of the interface or null if the interface has 0 or more than 1 implementor
+     * @return the unique implementor of the interface or null if the interface has 0 or more than 1
+     *         implementor
      */
     ResolvedJavaType getUniqueImplementor(HotSpotResolvedObjectType interfaceType);
 
     /**
      * Gets the invocation count for a method.
-     *
+     * 
      * @param metaspaceMethod the metaspace Method object to query
      * @return the invocation count for the method
      */
@@ -98,7 +100,7 @@ public interface CompilerToVM {
 
     /**
      * Initializes a {@link HotSpotResolvedJavaMethod} object from a metaspace Method object.
-     *
+     * 
      * @param metaspaceMethod the metaspace Method object
      * @param method address of a metaspace Method object
      */
@@ -106,7 +108,7 @@ public interface CompilerToVM {
 
     /**
      * Initializes a {@link HotSpotMethodData} object from a metaspace MethodData object.
-     *
+     * 
      * @param metaspaceMethodData the metaspace MethodData object
      * @param methodData the object to initialize from the metaspace object
      */
@@ -114,13 +116,13 @@ public interface CompilerToVM {
 
     /**
      * Converts a name to a Java type.
-     *
+     * 
      * @param name a well formed Java type in {@linkplain JavaType#getName() internal} format
      * @param accessingClass the context of resolution (may be null)
-     * @param eagerResolve force resolution to a {@link ResolvedJavaType}. If true, this method will either return a
-     *            {@link ResolvedJavaType} or throw an exception
-     * @return a Java type for {@code name} which is guaranteed to be of type {@link ResolvedJavaType} if
-     *         {@code eagerResolve == true}
+     * @param eagerResolve force resolution to a {@link ResolvedJavaType}. If true, this method will
+     *            either return a {@link ResolvedJavaType} or throw an exception
+     * @return a Java type for {@code name} which is guaranteed to be of type
+     *         {@link ResolvedJavaType} if {@code eagerResolve == true}
      * @throws LinkageError if {@code eagerResolve == true} and the resolution failed
      */
     JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve);
@@ -137,18 +139,17 @@ public interface CompilerToVM {
 
     // Must be kept in sync with enum in graalEnv.hpp
     public enum CodeInstallResult {
-        OK,
-        DEPENDENCIES_FAILED,
-        CACHE_FULL
+        OK, DEPENDENCIES_FAILED, CACHE_FULL
     }
 
     /**
      * Installs the result of a compilation into the code cache.
-     *
+     * 
      * @param compResult the result of a compilation
-     * @param code if not null, then the code is installed as the non-default compiled code for the associated method
-     *            and the details of the installation are written to this object
-     * @param info additional information about the installation are written to this object if it is not null
+     * @param code if not null, then the code is installed as the non-default compiled code for the
+     *            associated method and the details of the installation are written to this object
+     * @param info additional information about the installation are written to this object if it is
+     *            not null
      * @return the outcome of the installation as a {@link CodeInstallResult}.
      */
     CodeInstallResult installCode(HotSpotCompilationResult compResult, HotSpotInstalledCode code, HotSpotCodeInfo info);
@@ -167,7 +168,7 @@ public interface CompilerToVM {
 
     /**
      * Gets the compiled code size for a method.
-     *
+     * 
      * @param metaspaceMethod the metaspace Method object to query
      * @return the compiled code size the method
      */
@@ -175,12 +176,13 @@ public interface CompilerToVM {
 
     /**
      * Gets the metaspace Method object corresponding to a given reflection {@link Method} object.
-     *
+     * 
      * @param reflectionMethod
      * @param resultHolder the holder of the result is put in element 0 of this array
      * @return the metaspace Method result for {@code reflectionMethod}
      */
     long getMetaspaceMethod(Method reflectionMethod, HotSpotResolvedObjectType[] resultHolder);
+
     long getMetaspaceConstructor(Constructor reflectionConstructor, HotSpotResolvedObjectType[] resultHolder);
 
     HotSpotResolvedJavaField getJavaField(Field reflectionField);
@@ -201,9 +203,7 @@ public interface CompilerToVM {
 
     String decodePC(long pc);
 
-
     long[] getLineNumberTable(HotSpotResolvedJavaMethod method);
-
 
     String getFileName(HotSpotResolvedJavaType method);
 }
