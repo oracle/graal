@@ -259,9 +259,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             StructuredGraph graph = (StructuredGraph) newInstanceNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newInstanceNode.instanceClass();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
-            int size = type.instanceSize();
-            assert (size % wordSize()) == 0;
-            assert size >= 0;
+            int size = instanceSize(type);
 
             ValueNode memory;
             if (!useTLAB) {
@@ -333,9 +331,7 @@ public class NewObjectSnippets implements SnippetsInterface {
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) initializeNode.type();
             assert !type.isArray();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
-            int size = type.instanceSize();
-            assert (size % wordSize()) == 0;
-            assert size >= 0;
+            int size = instanceSize(type);
             Key key = new Key(initializeObject).add("size", size).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
             ValueNode memory = initializeNode.memory();
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord());
@@ -376,6 +372,13 @@ public class NewObjectSnippets implements SnippetsInterface {
             Arguments arguments = arguments("dimensions", dims).add("hub", hub);
             SnippetTemplate template = cache.get(key, assumptions);
             template.instantiate(runtime, newmultiarrayNode, DEFAULT_REPLACER, arguments);
+        }
+
+        private static int instanceSize(HotSpotResolvedObjectType type) {
+            int size = type.instanceSize();
+            assert (size % wordSize()) == 0;
+            assert size >= 0;
+            return size;
         }
     }
 
