@@ -139,9 +139,9 @@ public class NewInstanceTest extends GraalCompilerTest {
     }
 
     static class SomeObject {
+
         String name = "o1";
         HashMap<String, Object> map = new HashMap<>();
-
 
         public SomeObject() {
             map.put(name, this.getClass());
@@ -163,6 +163,7 @@ public class NewInstanceTest extends GraalCompilerTest {
     }
 
     static class BigObject {
+
         Object f01;
         Object f02;
         Object f03;
@@ -210,12 +211,12 @@ public class NewInstanceTest extends GraalCompilerTest {
     }
 
     /**
-     * Tests that an earlier bug does not occur. The issue was that the loading of the TLAB
-     * 'top' and 'end' values was being GVN'ed from each branch of the 'if' statement.
-     * This meant that the allocated B object in the true branch overwrote the allocated
-     * array. The cause is that RegisterNode was a floating node and the reads from it
-     * were UnsafeLoads which are also floating. The fix was to make RegisterNode a fixed
-     * node (which it should have been in the first place).
+     * Tests that an earlier bug does not occur. The issue was that the loading of the TLAB 'top'
+     * and 'end' values was being GVN'ed from each branch of the 'if' statement. This meant that the
+     * allocated B object in the true branch overwrote the allocated array. The cause is that
+     * RegisterNode was a floating node and the reads from it were UnsafeLoads which are also
+     * floating. The fix was to make RegisterNode a fixed node (which it should have been in the
+     * first place).
      */
     public static Object newRegression(boolean condition) {
         Object result;
@@ -237,6 +238,7 @@ public class NewInstanceTest extends GraalCompilerTest {
     }
 
     static class B {
+
         long f1 = 0xdeadbeefdeadbe01L;
         long f2 = 0xdeadbeefdeadbe02L;
         long f3 = 0xdeadbeefdeadbe03L;

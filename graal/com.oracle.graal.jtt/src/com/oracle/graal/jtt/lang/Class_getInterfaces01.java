@@ -47,11 +47,11 @@ public final class Class_getInterfaces01 extends JTTTest {
         }
     }
 
-    private static String toString(Class< ? > klass) {
-        final Class< ? >[] classes = klass.getInterfaces();
+    private static String toString(Class<?> klass) {
+        final Class<?>[] classes = klass.getInterfaces();
         final StringBuilder sb = new StringBuilder();
         boolean first = true;
-        for (Class< ? > c : classes) {
+        for (Class<?> c : classes) {
             if (!first) {
                 sb.append(' ');
             } else {

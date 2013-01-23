@@ -31,8 +31,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 
 /**
- * Utility for deriving hint types for a type check instruction (e.g. checkcast or instanceof)
- * based on the target type of the check and any profiling information available for the instruction.
+ * Utility for deriving hint types for a type check instruction (e.g. checkcast or instanceof) based
+ * on the target type of the check and any profiling information available for the instruction.
  */
 public class TypeCheckHints {
 
@@ -40,7 +40,8 @@ public class TypeCheckHints {
 
     /**
      * If true, then {@link #types} contains the only possible type that could pass the type check
-     * because the target of the type check is a final class or has been speculated to be a final class.
+     * because the target of the type check is a final class or has been speculated to be a final
+     * class.
      */
     public final boolean exact;
 
@@ -51,22 +52,24 @@ public class TypeCheckHints {
 
     /**
      * Derives hint information for use when generating the code for a type check instruction.
-     *
+     * 
      * @param type the target type of the type check
      * @param profile the profiling information available for the instruction (if any)
-     * @param assumptions the object in which speculations are recorded. This is null if speculations are not supported.
-     * @param minHintHitProbability if the probability that the type check will hit one the profiled types (up to
-     *            {@code maxHints}) is below this value, then {@link #types} will be null
+     * @param assumptions the object in which speculations are recorded. This is null if
+     *            speculations are not supported.
+     * @param minHintHitProbability if the probability that the type check will hit one the profiled
+     *            types (up to {@code maxHints}) is below this value, then {@link #types} will be
+     *            null
      * @param maxHints the maximum length of {@link #types}
      */
     public TypeCheckHints(ResolvedJavaType type, JavaTypeProfile profile, Assumptions assumptions, double minHintHitProbability, int maxHints) {
         if (type != null && canHaveSubtype(type)) {
-            types = new ResolvedJavaType[] {type};
+            types = new ResolvedJavaType[]{type};
             exact = true;
         } else {
             ResolvedJavaType uniqueSubtype = type == null ? null : type.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
-                types = new ResolvedJavaType[] {uniqueSubtype};
+                types = new ResolvedJavaType[]{uniqueSubtype};
                 if (assumptions.useOptimisticAssumptions()) {
                     assumptions.recordConcreteSubtype(type, uniqueSubtype);
                     exact = true;
@@ -107,9 +110,9 @@ public class TypeCheckHints {
     }
 
     /**
-     * Determines if a given type can have subtypes other than itself. This analysis is purely static; no
-     * assumptions are made.
-     *
+     * Determines if a given type can have subtypes other than itself. This analysis is purely
+     * static; no assumptions are made.
+     * 
      * @return true if {@code type} has no subtype(s)
      */
     public static boolean canHaveSubtype(ResolvedJavaType type) {

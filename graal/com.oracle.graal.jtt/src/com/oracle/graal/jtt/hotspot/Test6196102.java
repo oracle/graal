@@ -29,7 +29,7 @@ import org.junit.*;
  * @test
  * @bug 6196102
  * @summary Integer seems to be greater than Integer.MAX_VALUE
- *
+ * 
  * @run main Test6196102
  */
 // @formatter:off

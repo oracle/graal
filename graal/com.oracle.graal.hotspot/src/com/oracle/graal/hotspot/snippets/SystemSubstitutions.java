@@ -81,5 +81,6 @@ public class SystemSubstitutions {
     }
 
     @NodeIntrinsic(value = RuntimeCallNode.class, setStampFromReturnType = true)
-    public static native long callLong(@ConstantNodeParameter Descriptor descriptor);
+    public static native long callLong(@ConstantNodeParameter
+    Descriptor descriptor);
 }

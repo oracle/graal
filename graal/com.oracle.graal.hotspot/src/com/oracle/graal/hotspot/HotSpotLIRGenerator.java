@@ -28,14 +28,14 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * This interface defines the contract a HotSpot backend LIR generator needs to fulfill
- * in addition to abstract methods from {@link LIRGenerator} and {@link LIRGeneratorTool}.
+ * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition
+ * to abstract methods from {@link LIRGenerator} and {@link LIRGeneratorTool}.
  */
 public interface HotSpotLIRGenerator {
 
     /**
      * Emits an operation to make a tail call.
-     *
+     * 
      * @param args the arguments of the call
      * @param address the target address of the call
      */

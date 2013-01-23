@@ -34,7 +34,7 @@ public final class MonitorExitNode extends AccessMonitorNode implements Lowerabl
 
     /**
      * Creates a new MonitorExitNode.
-     *
+     * 
      * @param object the instruction produces the object value
      */
     public MonitorExitNode(ValueNode object) {

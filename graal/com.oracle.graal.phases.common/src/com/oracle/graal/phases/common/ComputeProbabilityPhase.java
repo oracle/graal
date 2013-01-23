@@ -36,17 +36,21 @@ import com.oracle.graal.phases.graph.*;
  * <p>
  * The computation of absolute probabilities works in three steps:
  * <ol>
- * <li>{@link PropagateProbability} traverses the graph in post order (merges after their ends, ...) and keeps track of the "probability state".
- *   Whenever it encounters a {@link ControlSplitNode} it uses the split's probability information to divide the probability upon the successors.
- *   Whenever it encounters an {@link Invoke} it assumes that the exception edge is unlikely and propagates the whole probability to the normal successor.
- *   Whenever it encounters a {@link MergeNode} it sums up the probability of all predecessors.
- *   It also maintains a set of active loops (whose {@link LoopBeginNode} has been visited) and builds def/use information for step 2.</li>
+ * <li>{@link PropagateProbability} traverses the graph in post order (merges after their ends, ...)
+ * and keeps track of the "probability state". Whenever it encounters a {@link ControlSplitNode} it
+ * uses the split's probability information to divide the probability upon the successors. Whenever
+ * it encounters an {@link Invoke} it assumes that the exception edge is unlikely and propagates the
+ * whole probability to the normal successor. Whenever it encounters a {@link MergeNode} it sums up
+ * the probability of all predecessors. It also maintains a set of active loops (whose
+ * {@link LoopBeginNode} has been visited) and builds def/use information for step 2.</li>
  * <li></li>
- * <li>{@link PropagateLoopFrequency} propagates the loop frequencies and multiplies each {@link FixedNode}'s probability with its loop frequency.</li>
+ * <li>{@link PropagateLoopFrequency} propagates the loop frequencies and multiplies each
+ * {@link FixedNode}'s probability with its loop frequency.</li>
  * </ol>
  * TODO: add exception probability information to Invokes
  */
 public class ComputeProbabilityPhase extends Phase {
+
     private static final double EPSILON = 1d / Integer.MAX_VALUE;
 
     @Override
@@ -126,6 +130,7 @@ public class ComputeProbabilityPhase extends Phase {
     }
 
     public static class LoopInfo {
+
         public final LoopBeginNode loopBegin;
 
         public final NodeMap<Set<LoopInfo>> requires;
@@ -168,6 +173,7 @@ public class ComputeProbabilityPhase extends Phase {
     public Map<MergeNode, Set<LoopInfo>> mergeLoops = new IdentityHashMap<>();
 
     private class Probability implements MergeableState<Probability> {
+
         public double probability;
         public HashSet<LoopInfo> loops;
         public LoopInfo loopInfo;
@@ -279,6 +285,7 @@ public class ComputeProbabilityPhase extends Phase {
     }
 
     private class LoopCount implements MergeableState<LoopCount> {
+
         public double count;
 
         public LoopCount(double count) {
@@ -374,6 +381,7 @@ public class ComputeProbabilityPhase extends Phase {
     }
 
     private static class ComputeInliningRelevanceIterator extends ScopedPostOrderNodeIterator {
+
         private final HashMap<FixedNode, Double> lowestPathProbabilities;
         private double currentProbability;
 
@@ -431,7 +439,7 @@ public class ComputeProbabilityPhase extends Phase {
             double maxProbability = 0.0;
 
             // TODO: process recursively if we have multiple successors with same probability
-            for (Node sux: controlSplit.successors()) {
+            for (Node sux : controlSplit.successors()) {
                 double probability = controlSplit.probability((BeginNode) sux);
                 if (probability > maxProbability) {
                     maxProbability = probability;

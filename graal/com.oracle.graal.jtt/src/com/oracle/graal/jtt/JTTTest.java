@@ -37,9 +37,9 @@ import com.oracle.graal.nodes.*;
 /**
  * Base class for the JTT tests.
  * <p>
- * These tests are executed twice: once with arguments passed to the execution and
- * once with the arguments bound to the test's parameters during compilation.
- * The latter is a good test of canonicalization.
+ * These tests are executed twice: once with arguments passed to the execution and once with the
+ * arguments bound to the test's parameters during compilation. The latter is a good test of
+ * canonicalization.
  */
 public class JTTTest extends GraalCompilerTest {
 
@@ -89,7 +89,7 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     protected void runTest(String name, Object... args) {
-        //System.out.println(getClass().getSimpleName() + "." + name);
+        // System.out.println(getClass().getSimpleName() + "." + name);
         super.test(name, args);
         this.argsToBind = args;
         super.test(name, args);

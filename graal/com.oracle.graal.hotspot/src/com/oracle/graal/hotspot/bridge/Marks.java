@@ -23,9 +23,9 @@
 package com.oracle.graal.hotspot.bridge;
 
 /**
- * Constants used to mark special positions in code being installed into
- * the code cache by Graal C++ code. These constants need to be kept in
- * sync with those of the same name defined in graalCodeInstaller.hpp.
+ * Constants used to mark special positions in code being installed into the code cache by Graal C++
+ * code. These constants need to be kept in sync with those of the same name defined in
+ * graalCodeInstaller.hpp.
  */
 public interface Marks {
 

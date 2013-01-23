@@ -26,7 +26,7 @@ public interface Unsigned extends WordBase {
 
     /**
      * Returns a Unsigned whose value is {@code (this + val)}.
-     *
+     * 
      * @param val value to be added to this Unsigned.
      * @return {@code this + val}
      */
@@ -34,7 +34,7 @@ public interface Unsigned extends WordBase {
 
     /**
      * Returns a Unsigned whose value is {@code (this - val)}.
-     *
+     * 
      * @param val value to be subtracted from this Unsigned.
      * @return {@code this - val}
      */
@@ -42,7 +42,7 @@ public interface Unsigned extends WordBase {
 
     /**
      * Returns a Unsigned whose value is {@code (this * val)}.
-     *
+     * 
      * @param val value to be multiplied by this Unsigned.
      * @return {@code this * val}
      */
@@ -50,7 +50,7 @@ public interface Unsigned extends WordBase {
 
     /**
      * Returns a Unsigned whose value is {@code (this / val)}.
-     *
+     * 
      * @param val value by which this Unsigned is to be divided.
      * @return {@code this / val}
      */
@@ -58,7 +58,7 @@ public interface Unsigned extends WordBase {
 
     /**
      * Returns a Unsigned whose value is {@code (this % val)}.
-     *
+     * 
      * @param val value by which this Unsigned is to be divided, and the remainder computed.
      * @return {@code this % val}
      */
@@ -66,7 +66,7 @@ public interface Unsigned extends WordBase {
 
     /**
      * Returns a Unsigned whose value is {@code (this << n)}.
-     *
+     * 
      * @param n shift distance, in bits.
      * @return {@code this << n}
      */
@@ -74,7 +74,7 @@ public interface Unsigned extends WordBase {
 
     /**
      * Returns a Unsigned whose value is {@code (this >>> n)}. No sign extension is performed.
-     *
+     * 
      * @param n shift distance, in bits.
      * @return {@code this >> n}
      */
@@ -82,7 +82,7 @@ public interface Unsigned extends WordBase {
 
     /**
      * Returns a Unsigned whose value is {@code (this & val)}.
-     *
+     * 
      * @param val value to be AND'ed with this Unsigned.
      * @return {@code this & val}
      */
@@ -90,7 +90,7 @@ public interface Unsigned extends WordBase {
 
     /**
      * Returns a Unsigned whose value is {@code (this | val)}.
-     *
+     * 
      * @param val value to be OR'ed with this Unsigned.
      * @return {@code this | val}
      */
@@ -98,7 +98,7 @@ public interface Unsigned extends WordBase {
 
     /**
      * Returns a Unsigned whose value is {@code (this ^ val)}.
-     *
+     * 
      * @param val value to be XOR'ed with this Unsigned.
      * @return {@code this ^ val}
      */
@@ -106,14 +106,14 @@ public interface Unsigned extends WordBase {
 
     /**
      * Returns a Unsigned whose value is {@code (~this)}.
-     *
+     * 
      * @return {@code ~this}
      */
     Unsigned not();
 
     /**
      * Compares this Unsigned with the specified value.
-     *
+     * 
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this < val}
      */
@@ -121,7 +121,7 @@ public interface Unsigned extends WordBase {
 
     /**
      * Compares this Unsigned with the specified value.
-     *
+     * 
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this <= val}
      */
@@ -129,7 +129,7 @@ public interface Unsigned extends WordBase {
 
     /**
      * Compares this Unsigned with the specified value.
-     *
+     * 
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this > val}
      */
@@ -137,147 +137,161 @@ public interface Unsigned extends WordBase {
 
     /**
      * Compares this Unsigned with the specified value.
-     *
+     * 
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this >= val}
      */
     boolean aboveOrEqual(Unsigned val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this + val)}. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Returns a Unsigned whose value is {@code (this + val)}.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param val value to be added to this Unsigned.
      * @return {@code this + val}
      */
     Unsigned add(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this - val)}. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Returns a Unsigned whose value is {@code (this - val)}.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param val value to be subtracted from this Unsigned.
      * @return {@code this - val}
      */
     Unsigned subtract(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this * val)}. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Returns a Unsigned whose value is {@code (this * val)}.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param val value to be multiplied by this Unsigned.
      * @return {@code this * val}
      */
     Unsigned multiply(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this / val)}. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Returns a Unsigned whose value is {@code (this / val)}.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param val value by which this Unsigned is to be divided.
      * @return {@code this / val}
      */
     Unsigned unsignedDivide(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this % val)}. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Returns a Unsigned whose value is {@code (this % val)}.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param val value by which this Unsigned is to be divided, and the remainder computed.
      * @return {@code this % val}
      */
     Unsigned unsignedRemainder(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this << n)}. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Returns a Unsigned whose value is {@code (this << n)}.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param n shift distance, in bits.
      * @return {@code this << n}
      */
     Unsigned shiftLeft(int n);
 
     /**
-     * Returns a Unsigned whose value is {@code (this >>> n)}. No sign extension is performed. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Returns a Unsigned whose value is {@code (this >>> n)}. No sign extension is performed.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param n shift distance, in bits.
      * @return {@code this >> n}
      */
     Unsigned unsignedShiftRight(int n);
 
     /**
-     * Returns a Unsigned whose value is {@code (this & val)}. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Returns a Unsigned whose value is {@code (this & val)}.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param val value to be AND'ed with this Unsigned.
      * @return {@code this & val}
      */
     Unsigned and(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this | val)}. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Returns a Unsigned whose value is {@code (this | val)}.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param val value to be OR'ed with this Unsigned.
      * @return {@code this | val}
      */
     Unsigned or(int val);
 
     /**
-     * Returns a Unsigned whose value is {@code (this ^ val)}. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Returns a Unsigned whose value is {@code (this ^ val)}.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param val value to be XOR'ed with this Unsigned.
      * @return {@code this ^ val}
      */
     Unsigned xor(int val);
 
     /**
-     * Compares this Unsigned with the specified value. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Compares this Unsigned with the specified value.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this < val}
      */
     boolean belowThan(int val);
 
     /**
-     * Compares this Unsigned with the specified value. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Compares this Unsigned with the specified value.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this <= val}
      */
     boolean belowOrEqual(int val);
 
     /**
-     * Compares this Unsigned with the specified value. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Compares this Unsigned with the specified value.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this > val}
      */
     boolean aboveThan(int val);
 
     /**
-     * Compares this Unsigned with the specified value. <p>
-     * Note that the right operand is a signed value, while the operation is performed unsigned. Therefore, the result
-     * is only well-defined for positive right operands.
-     *
+     * Compares this Unsigned with the specified value.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this >= val}
      */

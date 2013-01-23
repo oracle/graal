@@ -25,10 +25,9 @@ package com.oracle.graal.jtt.jdk;
 import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-
 public class IntegerBits extends JTTTest {
-    @SuppressWarnings("unused")
-    private static int init = Integer.reverseBytes(42);
+
+    @SuppressWarnings("unused") private static int init = Integer.reverseBytes(42);
     private static int original = 0x01020304;
     private static int v = 0b1000;
     private static int zero = 0;

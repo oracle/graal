@@ -28,12 +28,14 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Extension of a {@linkplain LocationNode location} to include a scaled index or an additional offset.
+ * Extension of a {@linkplain LocationNode location} to include a scaled index or an additional
+ * offset.
  */
 public final class IndexedLocationNode extends LocationNode implements Canonicalizable {
 
     /**
-     * An offset or index depending on whether {@link #indexScalingEnabled} is true or false respectively.
+     * An offset or index depending on whether {@link #indexScalingEnabled} is true or false
+     * respectively.
      */
     @Input private ValueNode index;
     private final boolean indexScalingEnabled;
@@ -50,7 +52,8 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     }
 
     /**
-     * @return whether scaling of the index by the value kind's size is enabled (the default) or disabled.
+     * @return whether scaling of the index by the value kind's size is enabled (the default) or
+     *         disabled.
      */
     public boolean indexScalingEnabled() {
         return indexScalingEnabled;

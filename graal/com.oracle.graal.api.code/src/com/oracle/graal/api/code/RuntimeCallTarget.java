@@ -25,8 +25,8 @@ package com.oracle.graal.api.code;
 import java.util.*;
 
 /**
- * The name, signature and calling convention of a call from compiled code to the runtime.
- * The target of such a call may be a leaf stub or a call into the runtime code proper.
+ * The name, signature and calling convention of a call from compiled code to the runtime. The
+ * target of such a call may be a leaf stub or a call into the runtime code proper.
  */
 public interface RuntimeCallTarget {
 
@@ -34,6 +34,7 @@ public interface RuntimeCallTarget {
      * The name and signature of a runtime call.
      */
     public static class Descriptor {
+
         private final String name;
         private final boolean hasSideEffect;
         private final Class resultType;
@@ -54,9 +55,8 @@ public interface RuntimeCallTarget {
         }
 
         /**
-         * Determines if this call changes state visible to other threads.
-         * Such calls denote boundaries across which deoptimization
-         * points cannot be moved.
+         * Determines if this call changes state visible to other threads. Such calls denote
+         * boundaries across which deoptimization points cannot be moved.
          */
         public boolean hasSideEffect() {
             return hasSideEffect;
@@ -105,8 +105,9 @@ public interface RuntimeCallTarget {
     CallingConvention getCallingConvention();
 
     /**
-     * Returns the maximum absolute offset of PC relative call to this stub from any position in the code cache or -1
-     * when not applicable. Intended for determining the required size of address/offset fields.
+     * Returns the maximum absolute offset of PC relative call to this stub from any position in the
+     * code cache or -1 when not applicable. Intended for determining the required size of
+     * address/offset fields.
      */
     long getMaxCallTargetOffset();
 

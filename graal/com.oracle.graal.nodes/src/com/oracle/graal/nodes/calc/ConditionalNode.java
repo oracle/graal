@@ -27,8 +27,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * The {@code ConditionalNode} class represents a comparison that yields one of two values. Note that these nodes are not
- * built directly from the bytecode but are introduced by canonicalization.
+ * The {@code ConditionalNode} class represents a comparison that yields one of two values. Note
+ * that these nodes are not built directly from the bytecode but are introduced by canonicalization.
  */
 public class ConditionalNode extends BinaryNode implements Canonicalizable, LIRLowerable, Negatable {
 

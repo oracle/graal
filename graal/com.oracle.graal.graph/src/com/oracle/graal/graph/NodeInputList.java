@@ -24,7 +24,6 @@ package com.oracle.graal.graph;
 
 import java.util.*;
 
-
 public final class NodeInputList<T extends Node> extends NodeList<T> {
 
     private final Node self;

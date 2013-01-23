@@ -30,7 +30,6 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-
 public final class BoxNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, Canonicalizable {
 
     @Input private ValueNode source;
@@ -49,14 +48,14 @@ public final class BoxNode extends AbstractStateSplit implements StateSplit, Nod
         return source;
     }
 
-
     public Kind getSourceKind() {
         return sourceKind;
     }
 
     public void expand(BoxingMethodPool pool) {
         ResolvedJavaMethod boxingMethod = pool.getBoxingMethod(sourceKind);
-        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(InvokeKind.Static, boxingMethod, new ValueNode[]{source}, boxingMethod.getSignature().getReturnType(boxingMethod.getDeclaringClass())));
+        MethodCallTargetNode callTarget = graph().add(
+                        new MethodCallTargetNode(InvokeKind.Static, boxingMethod, new ValueNode[]{source}, boxingMethod.getSignature().getReturnType(boxingMethod.getDeclaringClass())));
         InvokeNode invokeNode = graph().add(new InvokeNode(callTarget, bci, -1));
         invokeNode.setProbability(this.probability());
         invokeNode.setStateAfter(stateAfter());

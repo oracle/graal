@@ -129,7 +129,7 @@ public class LoweringPhase extends Phase {
 
     @Override
     protected void run(final StructuredGraph graph) {
-        int  i = 0;
+        int i = 0;
         NodeBitMap processed = graph.createNodeBitMap();
         while (true) {
             int mark = graph.getMark();
@@ -196,9 +196,12 @@ public class LoweringPhase extends Phase {
 
             if (node.isAlive() && !processed.isMarked(node) && node instanceof Lowerable) {
                 if (loweringTool.lastFixedNode == null) {
-                    // We cannot lower the node now because we don't have a fixed node to anchor the replacements.
-                    // This can happen when previous lowerings in this lowering iteration deleted the BeginNode of this block.
-                    // In the next iteration, we will have the new BeginNode available, and we can lower this node.
+                    // We cannot lower the node now because we don't have a fixed node to anchor the
+                    // replacements.
+                    // This can happen when previous lowerings in this lowering iteration deleted
+                    // the BeginNode of this block.
+                    // In the next iteration, we will have the new BeginNode available, and we can
+                    // lower this node.
                     deferred = true;
                 } else {
                     processed.mark(node);

@@ -28,8 +28,8 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Represents the output from compiling a method, including the compiled machine code, associated data and references,
- * relocation information, deoptimization information, etc.
+ * Represents the output from compiling a method, including the compiled machine code, associated
+ * data and references, relocation information, deoptimization information, etc.
  */
 public class CompilationResult implements Serializable {
 
@@ -39,6 +39,7 @@ public class CompilationResult implements Serializable {
      * Represents a code position with associated additional information.
      */
     public abstract static class Site implements Serializable {
+
         private static final long serialVersionUID = -8214214947651979102L;
         /**
          * The position (or offset) of this site with respect to the start of the target method.
@@ -54,6 +55,7 @@ public class CompilationResult implements Serializable {
      * Represents a safepoint with associated debug info.
      */
     public static class Safepoint extends Site implements Comparable<Safepoint> {
+
         private static final long serialVersionUID = 2479806696381720162L;
         public final DebugInfo debugInfo;
 
@@ -86,6 +88,7 @@ public class CompilationResult implements Serializable {
      * Represents a call in the code.
      */
     public static final class Call extends Safepoint {
+
         private static final long serialVersionUID = 1440741241631046954L;
 
         /**
@@ -99,9 +102,9 @@ public class CompilationResult implements Serializable {
         public final int size;
 
         /**
-         * Specifies if this call is direct or indirect. A direct call has an immediate operand encoding
-         * the absolute or relative (to the call itself) address of the target. An indirect call has a
-         * register or memory operand specifying the target address of the call.
+         * Specifies if this call is direct or indirect. A direct call has an immediate operand
+         * encoding the absolute or relative (to the call itself) address of the target. An indirect
+         * call has a register or memory operand specifying the target address of the call.
          */
         public final boolean direct;
 
@@ -132,6 +135,7 @@ public class CompilationResult implements Serializable {
      * Represents a reference to data from the code. The associated data can be any constant.
      */
     public static final class DataPatch extends Site {
+
         private static final long serialVersionUID = 5771730331604867476L;
         public final Constant constant;
         public final int alignment;
@@ -155,10 +159,12 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Provides extra information about instructions or data at specific positions in {@link CompilationResult#getTargetCode()}.
-     * This is optional information that can be used to enhance a disassembly of the code.
+     * Provides extra information about instructions or data at specific positions in
+     * {@link CompilationResult#getTargetCode()}. This is optional information that can be used to
+     * enhance a disassembly of the code.
      */
     public abstract static class CodeAnnotation implements Serializable {
+
         private static final long serialVersionUID = -7903959680749520748L;
         public final int position;
 
@@ -171,11 +177,13 @@ public class CompilationResult implements Serializable {
      * A string comment about one or more instructions at a specific position in the code.
      */
     public static final class CodeComment extends CodeAnnotation {
+
         /**
          *
          */
         private static final long serialVersionUID = 6802287188701961401L;
         public final String value;
+
         public CodeComment(int position, String comment) {
             super(position);
             this.value = comment;
@@ -191,8 +199,10 @@ public class CompilationResult implements Serializable {
      * Labels some inline data in the code.
      */
     public static final class InlineData extends CodeAnnotation {
+
         private static final long serialVersionUID = 305997507263827108L;
         public final int size;
+
         public InlineData(int position, int size) {
             super(position);
             this.size = size;
@@ -205,13 +215,16 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Describes a table of signed offsets embedded in the code. The offsets are relative to the starting
-     * address of the table. This type of table maybe generated when translating a multi-way branch
-     * based on a key value from a dense value set (e.g. the {@code tableswitch} JVM instruction).
-     *
-     * The table is indexed by the contiguous range of integers from {@link #low} to {@link #high} inclusive.
+     * Describes a table of signed offsets embedded in the code. The offsets are relative to the
+     * starting address of the table. This type of table maybe generated when translating a
+     * multi-way branch based on a key value from a dense value set (e.g. the {@code tableswitch}
+     * JVM instruction).
+     * 
+     * The table is indexed by the contiguous range of integers from {@link #low} to {@link #high}
+     * inclusive.
      */
     public static final class JumpTable extends CodeAnnotation {
+
         private static final long serialVersionUID = 2222194398353801831L;
 
         /**
@@ -243,11 +256,12 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Describes a table of key and offset pairs. The offset in each table entry is relative to the address of
-     * the table. This type of table maybe generated when translating a multi-way branch
+     * Describes a table of key and offset pairs. The offset in each table entry is relative to the
+     * address of the table. This type of table maybe generated when translating a multi-way branch
      * based on a key value from a sparse value set (e.g. the {@code lookupswitch} JVM instruction).
      */
     public static final class LookupTable extends CodeAnnotation {
+
         private static final long serialVersionUID = 8367952567559116160L;
 
         /**
@@ -279,10 +293,11 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Represents exception handler information for a specific code position. It includes the catch code position as
-     * well as the caught exception type.
+     * Represents exception handler information for a specific code position. It includes the catch
+     * code position as well as the caught exception type.
      */
     public static final class ExceptionHandler extends Site {
+
         private static final long serialVersionUID = 4897339464722665281L;
         public final int handlerPos;
 
@@ -298,10 +313,11 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Represents a mark in the machine code that can be used by the runtime for its own purposes. A mark
-     * can reference other marks.
+     * Represents a mark in the machine code that can be used by the runtime for its own purposes. A
+     * mark can reference other marks.
      */
     public static final class Mark extends Site {
+
         private static final long serialVersionUID = 3612943150662354844L;
         public final Object id;
         public final Mark[] references;
@@ -358,9 +374,9 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Sets the frame size in bytes. Does not include the return address pushed onto the
-     * stack, if any.
-     *
+     * Sets the frame size in bytes. Does not include the return address pushed onto the stack, if
+     * any.
+     * 
      * @param size the size of the frame in bytes
      */
     public void setFrameSize(int size) {
@@ -369,7 +385,7 @@ public class CompilationResult implements Serializable {
 
     /**
      * Sets the machine that has been generated by the compiler.
-     *
+     * 
      * @param code the machine code generated
      * @param size the size of the machine code
      */
@@ -380,7 +396,7 @@ public class CompilationResult implements Serializable {
 
     /**
      * Sets the info on callee-saved registers used by this method.
-     *
+     * 
      * @param csl the register-saving info.
      */
     public void setCalleeSaveLayout(CalleeSaveLayout csl) {
@@ -388,11 +404,13 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Records a reference to the data section in the code section (e.g. to load an integer or floating point constant).
-     *
+     * Records a reference to the data section in the code section (e.g. to load an integer or
+     * floating point constant).
+     * 
      * @param codePos the position in the code where the data reference occurs
      * @param data the data that is referenced
-     * @param alignment the alignment requirement of the data or 0 if there is no alignment requirement
+     * @param alignment the alignment requirement of the data or 0 if there is no alignment
+     *            requirement
      * @param inlined specifies if the data is encoded inline or is loaded from a separate data area
      */
     public void recordDataReference(int codePos, Constant data, int alignment, boolean inlined) {
@@ -402,7 +420,7 @@ public class CompilationResult implements Serializable {
 
     /**
      * Records a call in the code array.
-     *
+     * 
      * @param codePos the position of the call in the code array
      * @param size the size of the call instruction
      * @param target the {@link CodeCacheProvider#lookupCallTarget(Object) target} being called
@@ -416,9 +434,9 @@ public class CompilationResult implements Serializable {
 
     /**
      * Records an exception handler for this method.
-     *
-     * @param codePos  the position in the code that is covered by the handler
-     * @param handlerPos    the position of the handler
+     * 
+     * @param codePos the position in the code that is covered by the handler
+     * @param handlerPos the position of the handler
      */
     public void recordExceptionHandler(int codePos, int handlerPos) {
         getExceptionHandlers().add(new ExceptionHandler(codePos, handlerPos));
@@ -426,7 +444,7 @@ public class CompilationResult implements Serializable {
 
     /**
      * Records a safepoint in the code array.
-     *
+     * 
      * @param codePos the position of the safepoint in the code array
      * @param debugInfo the debug info for the safepoint
      */
@@ -445,7 +463,7 @@ public class CompilationResult implements Serializable {
 
     /**
      * Records an instruction mark within this method.
-     *
+     * 
      * @param codePos the position in the code that is covered by the handler
      * @param id the identifier for this mark
      * @param references an array of other marks that this mark references
@@ -457,9 +475,10 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Allows a method to specify the offset of the epilogue that restores the callee saved registers. Must be called
-     * iff the method is a callee saved method and stores callee registers on the stack.
-     *
+     * Allows a method to specify the offset of the epilogue that restores the callee saved
+     * registers. Must be called iff the method is a callee saved method and stores callee registers
+     * on the stack.
+     * 
      * @param registerRestoreEpilogueOffset the offset in the machine code where the epilogue begins
      */
     public void setRegisterRestoreEpilogueOffset(int registerRestoreEpilogueOffset) {
@@ -469,7 +488,7 @@ public class CompilationResult implements Serializable {
 
     /**
      * The frame size of the method in bytes.
-     *
+     * 
      * @return the frame size
      */
     public int getFrameSize() {
@@ -478,8 +497,8 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * @return the code offset of the start of the epilogue that restores all callee saved registers, or -1 if this is
-     *         not a callee saved method
+     * @return the code offset of the start of the epilogue that restores all callee saved
+     *         registers, or -1 if this is not a callee saved method
      */
     public int getRegisterRestoreEpilogueOffset() {
         return registerRestoreEpilogueOffset;
@@ -487,6 +506,7 @@ public class CompilationResult implements Serializable {
 
     /**
      * Offset in bytes for the custom stack area (relative to sp).
+     * 
      * @return the offset in bytes
      */
     public int getCustomStackAreaOffset() {

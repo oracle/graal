@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graph;
 
-
 public interface TestNodeInterface {
+
     String getName();
 }

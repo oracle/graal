@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.meta.*;
 
-
 public class FloatStamp extends Stamp {
 
     private final double lowerBound;

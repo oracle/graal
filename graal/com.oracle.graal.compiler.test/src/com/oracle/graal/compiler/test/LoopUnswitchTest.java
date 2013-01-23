@@ -47,7 +47,6 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         return sum;
     }
 
-
     public static int test1Snippet(int a) {
         int sum = 0;
         for (int i = 0; i < 1000; i++) {
@@ -62,28 +61,28 @@ public class LoopUnswitchTest extends GraalCompilerTest {
 
     public static int referenceSnippet2(int a) {
         int sum = 0;
-        switch(a) {
-        case 0:
-            for (int i = 0; i < 1000; i++) {
-                sum += System.currentTimeMillis();
-            }
-            break;
-        case 1:
-            for (int i = 0; i < 1000; i++) {
-                sum += 1;
-                sum += 5;
-            }
-            break;
-        case 55:
-            for (int i = 0; i < 1000; i++) {
-                sum += 5;
-            }
-            break;
-        default:
-            for (int i = 0; i < 1000; i++) {
-                //nothing
-            }
-            break;
+        switch (a) {
+            case 0:
+                for (int i = 0; i < 1000; i++) {
+                    sum += System.currentTimeMillis();
+                }
+                break;
+            case 1:
+                for (int i = 0; i < 1000; i++) {
+                    sum += 1;
+                    sum += 5;
+                }
+                break;
+            case 55:
+                for (int i = 0; i < 1000; i++) {
+                    sum += 5;
+                }
+                break;
+            default:
+                for (int i = 0; i < 1000; i++) {
+                    // nothing
+                }
+                break;
         }
         return sum;
     }
@@ -91,7 +90,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     public static int test2Snippet(int a) {
         int sum = 0;
         for (int i = 0; i < 1000; i++) {
-            switch(a) {
+            switch (a) {
                 case 0:
                     sum += System.currentTimeMillis();
                     break;
@@ -102,7 +101,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
                     sum += 5;
                     break;
                 default:
-                    //nothing
+                    // nothing
                     break;
             }
         }
@@ -137,6 +136,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
         new CanonicalizerPhase(null, runtime(), assumptions).apply(referenceGraph);
         Debug.scope("Test", new DebugDumpScope("Test:" + snippet), new Runnable() {
+
             @Override
             public void run() {
                 assertEquals(referenceGraph, graph);

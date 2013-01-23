@@ -27,6 +27,7 @@ import java.util.*;
 public abstract class DebugValue {
 
     public static final Comparator<DebugValue> ORDER_BY_NAME = new Comparator<DebugValue>() {
+
         @Override
         public int compare(DebugValue o1, DebugValue o2) {
             // this keeps the "Runs" metric at the top of the list

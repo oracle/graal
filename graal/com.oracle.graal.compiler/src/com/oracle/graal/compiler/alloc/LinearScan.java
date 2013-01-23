@@ -48,9 +48,10 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 
 /**
- * An implementation of the linear scan register allocator algorithm described
- * in <a href="http://doi.acm.org/10.1145/1064979.1064998">"Optimized Interval Splitting in a Linear Scan Register Allocator"</a>
- * by Christian Wimmer and Hanspeter Moessenboeck.
+ * An implementation of the linear scan register allocator algorithm described in <a
+ * href="http://doi.acm.org/10.1145/1064979.1064998"
+ * >"Optimized Interval Splitting in a Linear Scan Register Allocator"</a> by Christian Wimmer and
+ * Hanspeter Moessenboeck.
  */
 public final class LinearScan {
 
@@ -65,32 +66,33 @@ public final class LinearScan {
     private static final int INITIAL_SPLIT_INTERVALS_CAPACITY = 32;
 
     public static class BlockData {
+
         /**
-         * Bit map specifying which operands are live upon entry to this block.
-         * These are values used in this block or any of its successors where such value are not defined
-         * in this block.
-         * The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
+         * Bit map specifying which operands are live upon entry to this block. These are values
+         * used in this block or any of its successors where such value are not defined in this
+         * block. The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value)
+         * operand number}.
          */
         public BitSet liveIn;
 
         /**
-         * Bit map specifying which operands are live upon exit from this block.
-         * These are values used in a successor block that are either defined in this block or were live
-         * upon entry to this block.
-         * The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
+         * Bit map specifying which operands are live upon exit from this block. These are values
+         * used in a successor block that are either defined in this block or were live upon entry
+         * to this block. The bit index of an operand is its
+         * {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
         public BitSet liveOut;
 
         /**
-         * Bit map specifying which operands are used (before being defined) in this block.
-         * That is, these are the values that are live upon entry to the block.
-         * The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
+         * Bit map specifying which operands are used (before being defined) in this block. That is,
+         * these are the values that are live upon entry to the block. The bit index of an operand
+         * is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
         public BitSet liveGen;
 
         /**
-         * Bit map specifying which operands are defined/overwritten in this block.
-         * The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
+         * Bit map specifying which operands are defined/overwritten in this block. The bit index of
+         * an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
         public BitSet liveKill;
     }
@@ -113,7 +115,8 @@ public final class LinearScan {
     int intervalsSize;
 
     /**
-     * The index of the first entry in {@link #intervals} for a {@linkplain #createDerivedInterval(Interval) derived interval}.
+     * The index of the first entry in {@link #intervals} for a
+     * {@linkplain #createDerivedInterval(Interval) derived interval}.
      */
     int firstDerivedIntervalIndex = -1;
 
@@ -123,16 +126,16 @@ public final class LinearScan {
     Interval[] sortedIntervals;
 
     /**
-     * Map from an instruction {@linkplain LIRInstruction#id id} to the instruction.
-     * Entries should be retrieved with {@link #instructionForId(int)} as the id is
-     * not simply an index into this array.
+     * Map from an instruction {@linkplain LIRInstruction#id id} to the instruction. Entries should
+     * be retrieved with {@link #instructionForId(int)} as the id is not simply an index into this
+     * array.
      */
     LIRInstruction[] opIdToInstructionMap;
 
     /**
-     * Map from an instruction {@linkplain LIRInstruction#id id} to the {@linkplain
-     * Block block} containing the instruction. Entries should be retrieved with
-     * {@link #blockForId(int)} as the id is not simply an index into this array.
+     * Map from an instruction {@linkplain LIRInstruction#id id} to the {@linkplain Block block}
+     * containing the instruction. Entries should be retrieved with {@link #blockForId(int)} as the
+     * id is not simply an index into this array.
      */
     Block[] opIdToBlockMap;
 
@@ -152,7 +155,6 @@ public final class LinearScan {
      * The {@linkplain #operandNumber(Value) number} of the first variable operand allocated.
      */
     private final int firstVariableNumber;
-
 
     public LinearScan(TargetDescription target, ResolvedJavaMethod method, LIR ir, LIRGenerator gen, FrameMap frameMap) {
         this.target = target;
@@ -186,11 +188,10 @@ public final class LinearScan {
         return isVariable(value) || isRegister(value);
     }
 
-
     /**
-     * Converts an operand (variable or register) to an index in a flat address space covering all the
-     * {@linkplain Variable variables} and {@linkplain RegisterValue registers} being processed by this
-     * allocator.
+     * Converts an operand (variable or register) to an index in a flat address space covering all
+     * the {@linkplain Variable variables} and {@linkplain RegisterValue registers} being processed
+     * by this allocator.
      */
     private int operandNumber(Value operand) {
         if (isRegister(operand)) {
@@ -230,8 +231,8 @@ public final class LinearScan {
         return firstVariableNumber - 1;
     }
 
-
     static final IntervalPredicate IS_PRECOLORED_INTERVAL = new IntervalPredicate() {
+
         @Override
         public boolean apply(Interval i) {
             return isRegister(i.operand);
@@ -239,6 +240,7 @@ public final class LinearScan {
     };
 
     static final IntervalPredicate IS_VARIABLE_INTERVAL = new IntervalPredicate() {
+
         @Override
         public boolean apply(Interval i) {
             return isVariable(i.operand);
@@ -246,14 +248,16 @@ public final class LinearScan {
     };
 
     static final IntervalPredicate IS_OOP_INTERVAL = new IntervalPredicate() {
+
         @Override
         public boolean apply(Interval i) {
-            return !isRegister(i.operand) && i.kind()  == Kind.Object;
+            return !isRegister(i.operand) && i.kind() == Kind.Object;
         }
     };
 
     /**
-     * Gets an object describing the attributes of a given register according to this register configuration.
+     * Gets an object describing the attributes of a given register according to this register
+     * configuration.
      */
     RegisterAttributes attributes(Register reg) {
         return registerAttributes[reg.number];
@@ -273,7 +277,7 @@ public final class LinearScan {
 
     /**
      * Creates a new interval.
-     *
+     * 
      * @param operand the operand for the interval
      * @return the created interval
      */
@@ -290,7 +294,7 @@ public final class LinearScan {
 
     /**
      * Creates an interval as a result of splitting or spilling another interval.
-     *
+     * 
      * @param source an interval being split of spilled
      * @return a new interval derived from {@code source}
      */
@@ -321,9 +325,9 @@ public final class LinearScan {
     }
 
     /**
-     * Gets the size of the {@link BlockData#liveIn} and {@link BlockData#liveOut} sets for a basic block. These sets do
-     * not include any operands allocated as a result of creating {@linkplain #createDerivedInterval(Interval) derived
-     * intervals}.
+     * Gets the size of the {@link BlockData#liveIn} and {@link BlockData#liveOut} sets for a basic
+     * block. These sets do not include any operands allocated as a result of creating
+     * {@linkplain #createDerivedInterval(Interval) derived intervals}.
      */
     int liveSetSize() {
         return firstDerivedIntervalIndex == -1 ? operandSize() : firstDerivedIntervalIndex;
@@ -352,8 +356,8 @@ public final class LinearScan {
     }
 
     /**
-     * Converts an {@linkplain LIRInstruction#id instruction id} to an instruction index.
-     * All LIR instructions in a method have an index one greater than their linear-scan order predecesor
+     * Converts an {@linkplain LIRInstruction#id instruction id} to an instruction index. All LIR
+     * instructions in a method have an index one greater than their linear-scan order predecesor
      * with the first instruction having an index of 0.
      */
     static int opIdToIndex(int opId) {
@@ -362,7 +366,7 @@ public final class LinearScan {
 
     /**
      * Retrieves the {@link LIRInstruction} based on its {@linkplain LIRInstruction#id id}.
-     *
+     * 
      * @param opId an instruction {@linkplain LIRInstruction#id id}
      * @return the instruction whose {@linkplain LIRInstruction#id} {@code == id}
      */
@@ -375,7 +379,7 @@ public final class LinearScan {
 
     /**
      * Gets the block containing a given instruction.
-     *
+     * 
      * @param opId an instruction {@linkplain LIRInstruction#id id}
      * @return the block containing the instruction denoted by {@code opId}
      */
@@ -394,9 +398,10 @@ public final class LinearScan {
 
     /**
      * Determines if an {@link LIRInstruction} destroys all caller saved registers.
-     *
+     * 
      * @param opId an instruction {@linkplain LIRInstruction#id id}
-     * @return {@code true} if the instruction denoted by {@code id} destroys all caller saved registers.
+     * @return {@code true} if the instruction denoted by {@code id} destroys all caller saved
+     *         registers.
      */
     boolean hasCall(int opId) {
         assert isEven(opId) : "opId not even";
@@ -476,10 +481,12 @@ public final class LinearScan {
     }
 
     abstract static class IntervalPredicate {
+
         abstract boolean apply(Interval i);
     }
 
     private static final IntervalPredicate mustStoreAtDefinition = new IntervalPredicate() {
+
         @Override
         public boolean apply(Interval i) {
             return i.isSplitParent() && i.spillState() == SpillState.StoreAtDefinition;
@@ -512,14 +519,16 @@ public final class LinearScan {
 
                 if (opId == -1) {
                     MoveOp move = (MoveOp) op;
-                    // remove move from register to stack if the stack slot is guaranteed to be correct.
+                    // remove move from register to stack if the stack slot is guaranteed to be
+                    // correct.
                     // only moves that have been inserted by LinearScan can be removed.
                     assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables";
 
                     Interval curInterval = intervalFor(move.getResult());
 
                     if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory()) {
-                        // move target is a stack slot that is always correct, so eliminate instruction
+                        // move target is a stack slot that is always correct, so eliminate
+                        // instruction
                         if (GraalOptions.TraceLinearScanLevel >= 4) {
                             TTY.println("eliminating move from interval %d to %d", operandNumber(move.getInput()), operandNumber(move.getResult()));
                         }
@@ -533,7 +542,8 @@ public final class LinearScan {
 
                     while (interval != Interval.EndMarker && interval.spillDefinitionPos() == opId) {
                         if (!insertionBuffer.initialized()) {
-                            // prepare insertion buffer (appended when all instructions of the block are processed)
+                            // prepare insertion buffer (appended when all instructions of the block
+                            // are processed)
                             insertionBuffer.init(instructions);
                         }
 
@@ -547,8 +557,7 @@ public final class LinearScan {
 
                         if (GraalOptions.TraceLinearScanLevel >= 4) {
                             StackSlot slot = interval.spillSlot();
-                            TTY.println("inserting move after definition of interval %d to stack slot %s at opId %d",
-                                            interval.operandNumber, slot, opId);
+                            TTY.println("inserting move after definition of interval %d to stack slot %s at opId %d", interval.operandNumber, slot, opId);
                         }
 
                         interval = interval.next;
@@ -588,10 +597,12 @@ public final class LinearScan {
     }
 
     /**
-     * Numbers all instructions in all blocks. The numbering follows the {@linkplain ComputeBlockOrder linear scan order}.
+     * Numbers all instructions in all blocks. The numbering follows the
+     * {@linkplain ComputeBlockOrder linear scan order}.
      */
     void numberInstructions() {
         ValueProcedure setVariableProc = new ValueProcedure() {
+
             @Override
             public Value doValue(Value value) {
                 if (isVariable(value)) {
@@ -650,7 +661,8 @@ public final class LinearScan {
     }
 
     /**
-     * Computes local live sets (i.e. {@link BlockData#liveGen} and {@link BlockData#liveKill}) separately for each block.
+     * Computes local live sets (i.e. {@link BlockData#liveGen} and {@link BlockData#liveKill})
+     * separately for each block.
      */
     void computeLocalLiveSets() {
         int liveSize = liveSetSize();
@@ -671,6 +683,7 @@ public final class LinearScan {
                 final LIRInstruction op = instructions.get(j);
 
                 ValueProcedure useProc = new ValueProcedure() {
+
                     @Override
                     protected Value doValue(Value operand) {
                         if (isVariable(operand)) {
@@ -693,6 +706,7 @@ public final class LinearScan {
                     }
                 };
                 ValueProcedure stateProc = new ValueProcedure() {
+
                     @Override
                     public Value doValue(Value operand) {
                         int operandNum = operandNumber(operand);
@@ -706,6 +720,7 @@ public final class LinearScan {
                     }
                 };
                 ValueProcedure defProc = new ValueProcedure() {
+
                     @Override
                     public Value doValue(Value operand) {
                         if (isVariable(operand)) {
@@ -728,7 +743,8 @@ public final class LinearScan {
 
                 op.forEachInput(useProc);
                 op.forEachAlive(useProc);
-                // Add uses of live locals from interpreter's point of view for proper debug information generation
+                // Add uses of live locals from interpreter's point of view for proper debug
+                // information generation
                 op.forEachState(stateProc);
                 op.forEachTemp(defProc);
                 op.forEachOutput(defProc);
@@ -771,8 +787,8 @@ public final class LinearScan {
     }
 
     /**
-     * Performs a backward dataflow analysis to compute global live sets (i.e. {@link BlockData#liveIn} and
-     * {@link BlockData#liveOut}) for each block.
+     * Performs a backward dataflow analysis to compute global live sets (i.e.
+     * {@link BlockData#liveIn} and {@link BlockData#liveOut}) for each block.
      */
     void computeGlobalLiveSets() {
         int numBlocks = blockCount();
@@ -817,8 +833,10 @@ public final class LinearScan {
                 }
 
                 if (iterationCount == 0 || changeOccurredInBlock) {
-                    // liveIn(block) is the union of liveGen(block) with (liveOut(block) & !liveKill(block))
-                    // note: liveIn has to be computed only in first iteration or if liveOut has changed!
+                    // liveIn(block) is the union of liveGen(block) with (liveOut(block) &
+                    // !liveKill(block))
+                    // note: liveIn has to be computed only in first iteration or if liveOut has
+                    // changed!
                     BitSet liveIn = blockData.get(block).liveIn;
                     liveIn.clear();
                     liveIn.or(blockData.get(block).liveOut);
@@ -863,7 +881,6 @@ public final class LinearScan {
         TTY.print("affected registers:");
         TTY.println(blockData.get(ir.cfg.getStartBlock()).liveIn.toString());
 
-
         // print some additional information to simplify debugging
         for (int operandNum = 0; operandNum < blockData.get(ir.cfg.getStartBlock()).liveIn.size(); operandNum++) {
             if (blockData.get(ir.cfg.getStartBlock()).liveIn.get(operandNum)) {
@@ -879,6 +896,7 @@ public final class LinearScan {
                         for (LIRInstruction ins : ir.lir(block)) {
                             TTY.println(ins.id() + ": " + ins.toString());
                             ins.forEachState(new ValueProcedure() {
+
                                 @Override
                                 public Value doValue(Value liveStateOperand) {
                                     TTY.println("   operand=" + liveStateOperand);
@@ -1060,7 +1078,8 @@ public final class LinearScan {
     }
 
     /**
-     * Determines the priority which with an instruction's input operand will be allocated a register.
+     * Determines the priority which with an instruction's input operand will be allocated a
+     * register.
      */
     static RegisterPriority registerPriorityOfInputOperand(EnumSet<OperandFlag> flags) {
         if (flags.contains(OperandFlag.STACK)) {
@@ -1071,10 +1090,8 @@ public final class LinearScan {
     }
 
     /**
-     * Optimizes moves related to incoming stack based arguments.
-     * The interval for the destination of such moves is assigned
-     * the stack slot (which is in the caller's frame) as its
-     * spill slot.
+     * Optimizes moves related to incoming stack based arguments. The interval for the destination
+     * of such moves is assigned the stack slot (which is in the caller's frame) as its spill slot.
      */
     void handleMethodArguments(LIRInstruction op) {
         if (op instanceof MoveOp) {
@@ -1102,6 +1119,7 @@ public final class LinearScan {
         if (flags.contains(OperandFlag.HINT) && isVariableOrRegister(targetValue)) {
 
             op.forEachRegisterHint(targetValue, mode, new ValueProcedure() {
+
                 @Override
                 protected Value doValue(Value registerHint) {
                     if (isVariableOrRegister(registerHint)) {
@@ -1179,6 +1197,7 @@ public final class LinearScan {
                 }
 
                 op.forEachOutput(new ValueProcedure() {
+
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
@@ -1189,6 +1208,7 @@ public final class LinearScan {
                     }
                 });
                 op.forEachTemp(new ValueProcedure() {
+
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
@@ -1199,6 +1219,7 @@ public final class LinearScan {
                     }
                 });
                 op.forEachAlive(new ValueProcedure() {
+
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
@@ -1210,6 +1231,7 @@ public final class LinearScan {
                     }
                 });
                 op.forEachInput(new ValueProcedure() {
+
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
@@ -1226,6 +1248,7 @@ public final class LinearScan {
                 // Treat these operands as temp values (if the live range is extended
                 // to a call site, the value would be in a register at the call otherwise)
                 op.forEachState(new ValueProcedure() {
+
                     @Override
                     public Value doValue(Value operand) {
                         addUse(operand, blockFrom, opId + 1, RegisterPriority.None, operand.getKind().getStackKind());
@@ -1537,7 +1560,8 @@ public final class LinearScan {
                         }
                         blockCompleted.set(block.getLinearScanNumber());
 
-                        // directly resolve between pred and sux (without looking at the empty block between)
+                        // directly resolve between pred and sux (without looking at the empty block
+                        // between)
                         resolveCollectMappings(pred, sux, moveResolver);
                         if (moveResolver.hasMappings()) {
                             moveResolver.setInsertPosition(instructions, 1);
@@ -1555,7 +1579,8 @@ public final class LinearScan {
 
                 for (Block toBlock : fromBlock.getSuccessors()) {
 
-                    // check for duplicate edges between the same blocks (can happen with switch blocks)
+                    // check for duplicate edges between the same blocks (can happen with switch
+                    // blocks)
                     if (!alreadyResolved.get(toBlock.getLinearScanNumber())) {
                         if (GraalOptions.TraceLinearScanLevel >= 3) {
                             TTY.println(" processing edge between B%d and B%d", fromBlock.getId(), toBlock.getId());
@@ -1584,7 +1609,7 @@ public final class LinearScan {
 
     /**
      * Assigns the allocated location for an LIR instruction operand back into the instruction.
-     *
+     * 
      * @param operand an LIR instruction operand
      * @param opId the id of the LIR instruction using {@code operand}
      * @param mode the usage mode for {@code operand} by the instruction
@@ -1599,7 +1624,8 @@ public final class LinearScan {
                 Block block = blockForId(opId);
                 if (block.getSuccessorCount() <= 1 && opId == getLastLirInstructionId(block)) {
                     // check if spill moves could have been appended at the end of this block, but
-                    // before the branch instruction. So the split child information for this branch would
+                    // before the branch instruction. So the split child information for this branch
+                    // would
                     // be incorrect.
                     LIRInstruction instr = ir.lir(block).get(ir.lir(block).size() - 1);
                     if (instr instanceof StandardOp.JumpOp) {
@@ -1664,7 +1690,8 @@ public final class LinearScan {
                 frameMap.setReference(interval.location(), registerRefMap, frameRefMap);
 
                 // Spill optimization: when the stack value is guaranteed to be always correct,
-                // then it must be added to the oop map even if the interval is currently in a register
+                // then it must be added to the oop map even if the interval is currently in a
+                // register
                 if (interval.alwaysInMemory() && op.id() > interval.spillDefinitionPos() && !interval.location().equals(interval.spillSlot())) {
                     assert interval.spillDefinitionPos() > 0 : "position not set correctly";
                     assert interval.spillSlot() != null : "no spill slot assigned";
@@ -1679,13 +1706,13 @@ public final class LinearScan {
         return attributes(asRegister(operand)).isCallerSave();
     }
 
-
     private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRFrameState info) {
         BitSet registerRefMap = op.hasCall() ? null : frameMap.initRegisterRefMap();
         BitSet frameRefMap = frameMap.initFrameRefMap();
         computeOopMap(iw, op, registerRefMap, frameRefMap);
 
         info.forEachState(new ValueProcedure() {
+
             @Override
             public Value doValue(Value operand) {
                 int tempOpId = op.id();
@@ -1694,7 +1721,8 @@ public final class LinearScan {
                 if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
                     // generating debug information for the last instruction of a block.
                     // if this instruction is a branch, spill moves are inserted before this branch
-                    // and so the wrong operand would be returned (spill moves at block boundaries are not
+                    // and so the wrong operand would be returned (spill moves at block boundaries
+                    // are not
                     // considered in the live ranges of intervals)
                     // Solution: use the first opId of the branch target block instead.
                     final LIRInstruction instr = ir.lir(block).get(ir.lir(block).size() - 1);
@@ -1707,7 +1735,8 @@ public final class LinearScan {
                 }
 
                 // Get current location of operand
-                // The operand must be live because debug information is considered when building the intervals
+                // The operand must be live because debug information is considered when building
+                // the intervals
                 // if the interval is not live, colorLirOperand will cause an assert on failure
                 Value result = colorLirOperand((Variable) operand, tempOpId, mode);
                 assert !hasCall(tempOpId) || isStackSlot(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
@@ -1730,6 +1759,7 @@ public final class LinearScan {
             }
 
             ValueProcedure assignProc = new ValueProcedure() {
+
                 @Override
                 public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                     if (isVariable(operand)) {
@@ -1746,6 +1776,7 @@ public final class LinearScan {
 
             // compute reference map and debug information
             op.forEachState(new StateProcedure() {
+
                 @Override
                 protected void doState(LIRFrameState state) {
                     computeDebugInfo(iw, op, state);
@@ -1798,6 +1829,7 @@ public final class LinearScan {
         });
 
         Debug.scope("ResolveDataFlow", new Runnable() {
+
             public void run() {
                 resolveDataFlow();
             }
@@ -1862,7 +1894,8 @@ public final class LinearScan {
         Debug.dump(Arrays.copyOf(intervals, intervalsSize), label);
     }
 
-    void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
+    void printLir(String label, @SuppressWarnings("unused")
+    boolean hirValid) {
         Debug.dump(ir, label);
     }
 
@@ -1876,7 +1909,7 @@ public final class LinearScan {
         if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println(" verifying that no oops are in fixed intervals *");
         }
-        //verifyNoOopsInFixedIntervals();
+        // verifyNoOopsInFixedIntervals();
 
         if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println(" verifying that unpinned constants are not alive across block boundaries");
@@ -1917,7 +1950,7 @@ public final class LinearScan {
                 throw new GraalInternalError("");
             }
 
-            if (isVariable(i1.operand) && i1.kind()  == Kind.Illegal) {
+            if (isVariable(i1.operand) && i1.kind() == Kind.Illegal) {
                 TTY.println("Interval %d has no type assigned", i1.operandNumber);
                 TTY.println(i1.logString(this));
                 throw new GraalInternalError("");
@@ -1978,6 +2011,7 @@ public final class LinearScan {
     }
 
     class CheckProcedure extends ValueProcedure {
+
         boolean ok;
         Interval curInterval;
 

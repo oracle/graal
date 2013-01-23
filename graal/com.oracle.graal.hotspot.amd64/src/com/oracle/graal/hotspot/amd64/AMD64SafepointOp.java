@@ -39,6 +39,7 @@ import com.oracle.graal.lir.asm.*;
  */
 @Opcode("SAFEPOINT")
 public class AMD64SafepointOp extends AMD64LIRInstruction {
+
     @State protected LIRFrameState state;
 
     private final HotSpotVMConfig config;

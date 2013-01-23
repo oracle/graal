@@ -106,10 +106,10 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
 
     @Test
     public void test_compare() {
-        long[] words = new long[] {Long.MIN_VALUE, Long.MIN_VALUE + 1, -1L, 0L, 1L, Long.MAX_VALUE - 1, Long.MAX_VALUE};
+        long[] words = new long[]{Long.MIN_VALUE, Long.MIN_VALUE + 1, -1L, 0L, 1L, Long.MAX_VALUE - 1, Long.MAX_VALUE};
         for (long word1 : words) {
             for (long word2 : words) {
-                for (String method : new String[] {"aboveOrEqual", "above", "belowOrEqual", "below"}) {
+                for (String method : new String[]{"aboveOrEqual", "above", "belowOrEqual", "below"}) {
                     test(method, word1, word2);
                     test(method, word2, word1);
                 }

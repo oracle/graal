@@ -33,8 +33,7 @@ import sun.misc.*;
  */
 public class UnsafeAccess01 extends JTTTest {
 
-    @SuppressWarnings("unused")
-    private int field = 42;
+    @SuppressWarnings("unused") private int field = 42;
 
     public static int test() throws SecurityException, NoSuchFieldException {
         final Unsafe unsafe = getUnsafe();

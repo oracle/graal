@@ -29,7 +29,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * This node is used to perform the finalizer registration at the end of the java.lang.Object constructor.
+ * This node is used to perform the finalizer registration at the end of the java.lang.Object
+ * constructor.
  */
 public final class RegisterFinalizerNode extends AbstractStateSplit implements StateSplit, Canonicalizable, LIRLowerable {
 
@@ -60,7 +61,8 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements S
         if (stamp.isExactType()) {
             needsCheck = stamp.type().hasFinalizer();
         } else if (stamp.type() != null && !stamp.type().hasFinalizableSubclass()) {
-            // if either the declared type of receiver or the holder can be assumed to have no finalizers
+            // if either the declared type of receiver or the holder can be assumed to have no
+            // finalizers
             if (tool.assumptions().useOptimisticAssumptions() && tool.assumptions().recordNoFinalizableSubclassAssumption(stamp.type())) {
                 needsCheck = false;
             }

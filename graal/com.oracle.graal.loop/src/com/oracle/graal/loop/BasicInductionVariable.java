@@ -27,8 +27,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
 
-
 public class BasicInductionVariable extends InductionVariable {
+
     private PhiNode phi;
     private ValueNode init;
     private ValueNode rawStride;
@@ -51,7 +51,7 @@ public class BasicInductionVariable extends InductionVariable {
             if (integerStamp.isStrictlyPositive()) {
                 dir = Direction.Up;
             } else if (integerStamp.isStrictlyNegative()) {
-                dir =  Direction.Down;
+                dir = Direction.Down;
             }
             if (dir != null) {
                 if (op instanceof IntegerAddNode) {

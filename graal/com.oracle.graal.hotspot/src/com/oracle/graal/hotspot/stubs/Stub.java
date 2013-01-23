@@ -45,8 +45,8 @@ import com.oracle.graal.snippets.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 
 /**
- * Base class for implementing some low level code providing the out-of-line slow path for a snippet.
- * A concrete stub is defined a subclass of this class.
+ * Base class for implementing some low level code providing the out-of-line slow path for a
+ * snippet. A concrete stub is defined a subclass of this class.
  * <p>
  * Implementation detail: The stub classes re-use some of the functionality for {@link Snippet}s
  * purely for convenience (e.g., can re-use the {@link SnippetInstaller}).
@@ -69,8 +69,9 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
     protected InstalledCode stubCode;
 
     /**
-     * Creates a new stub container. The new stub still needs to be {@linkplain #install(GraalCompiler) installed}.
-     *
+     * Creates a new stub container. The new stub still needs to be
+     * {@linkplain #install(GraalCompiler) installed}.
+     * 
      * @param descriptor linkage details for a call to the stub
      */
     @SuppressWarnings("unchecked")
@@ -102,7 +103,8 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
     }
 
     /**
-     * Compiles the code for this stub, installs it and initializes the address used for calls to it.
+     * Compiles the code for this stub, installs it and initializes the address used for calls to
+     * it.
      */
     public void install(GraalCompiler compiler) {
         StructuredGraph graph = (StructuredGraph) stubMethod.getCompilerStorage().get(Graph.class);
@@ -118,13 +120,14 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
         final CompilationResult compResult = compiler.compileMethod(stubMethod, graph, null, phasePlan, OptimisticOptimizations.ALL);
 
         final CodeInfo[] info = new CodeInfo[1];
-        stubCode = Debug.scope("CodeInstall", new Object[] {compiler, stubMethod}, new Callable<InstalledCode>() {
+        stubCode = Debug.scope("CodeInstall", new Object[]{compiler, stubMethod}, new Callable<InstalledCode>() {
+
             @Override
             public InstalledCode call() {
                 InstalledCode installedCode = runtime().addMethod(stubMethod, compResult, info);
                 assert installedCode != null : "error installing stub " + stubMethod;
                 if (Debug.isDumpEnabled()) {
-                    Debug.dump(new Object[] {compResult, info[0]}, "After code installation");
+                    Debug.dump(new Object[]{compResult, info[0]}, "After code installation");
                 }
                 return installedCode;
             }
@@ -135,7 +138,8 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
     }
 
     /**
-     * Finds the static method annotated with {@link Snippet} in a given class of which there must be exactly one.
+     * Finds the static method annotated with {@link Snippet} in a given class of which there must
+     * be exactly one.
      */
     private static HotSpotResolvedJavaMethod findStubMethod(HotSpotRuntime runtime, Class<?> stubClass) {
         HotSpotResolvedJavaMethod m = null;

@@ -21,21 +21,23 @@
  * questions.
  */
 package com.oracle.graal.graph;
+
 import static org.junit.Assert.*;
 
 import java.util.*;
 
 import org.junit.*;
 
-
-
 public class TypedNodeIteratorTest {
 
     private static class TestNode extends Node implements Node.IterableNodeType, TestNodeInterface {
+
         private final String name;
+
         public TestNode(String name) {
             this.name = name;
         }
+
         public String getName() {
             return name;
         }

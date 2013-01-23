@@ -37,10 +37,12 @@ public class Graal {
             runtime = initializeRuntime();
         } catch (UnsatisfiedLinkError e) {
             runtime = new GraalRuntime() {
+
                 @Override
                 public String getName() {
                     return "";
                 }
+
                 @Override
                 public <T> T getCapability(Class<T> clazz) {
                     return null;

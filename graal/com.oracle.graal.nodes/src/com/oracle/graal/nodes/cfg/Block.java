@@ -126,6 +126,7 @@ public final class Block {
     }
 
     private class NodeIterator implements Iterator<FixedNode> {
+
         private FixedNode cur;
 
         public NodeIterator() {
@@ -157,6 +158,7 @@ public final class Block {
 
     public Iterable<FixedNode> getNodes() {
         return new Iterable<FixedNode>() {
+
             @Override
             public Iterator<FixedNode> iterator() {
                 return new NodeIterator();

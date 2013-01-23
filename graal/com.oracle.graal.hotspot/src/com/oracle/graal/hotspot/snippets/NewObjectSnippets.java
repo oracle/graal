@@ -293,7 +293,8 @@ public class NewObjectSnippets implements SnippetsInterface {
             int log2ElementSize = CodeUtil.log2(target.sizeInBytes(elementKind));
             if (!useTLAB) {
                 ConstantNode zero = ConstantNode.defaultForKind(target.wordKind, graph);
-                // value for 'size' doesn't matter as it isn't used since a stub call will be made anyway
+                // value for 'size' doesn't matter as it isn't used since a stub call will be made
+                // anyway
                 // for both allocation and initialization - it just needs to be non-null
                 ConstantNode size = ConstantNode.forInt(-1, graph);
                 InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(zero, lengthNode, size, arrayType, newArrayNode.fillContents(), newArrayNode.locked()));
@@ -307,11 +308,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                 InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(tlabAllocateNode, lengthNode, sizeNode, arrayType, newArrayNode.fillContents(), newArrayNode.locked()));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
             } else {
-                Key key = new Key(allocateArrayAndInitialize).
-                                add("alignment", alignment).
-                                add("headerSize", headerSize).
-                                add("log2ElementSize", log2ElementSize).
-                                add("type", arrayType);
+                Key key = new Key(allocateArrayAndInitialize).add("alignment", alignment).add("headerSize", headerSize).add("log2ElementSize", log2ElementSize).add("type", arrayType);
                 Arguments arguments = new Arguments().add("length", lengthNode);
                 SnippetTemplate template = cache.get(key, assumptions);
                 Debug.log("Lowering allocateArrayAndInitialize in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, arguments);
@@ -358,7 +355,8 @@ public class NewObjectSnippets implements SnippetsInterface {
             final int headerSize = HotSpotRuntime.getArrayBaseOffset(elementKind);
             Key key = new Key(initializeArray).add("headerSize", headerSize).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
             ValueNode memory = initializeNode.memory();
-            Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord()).add("allocationSize", initializeNode.allocationSize()).add("length", initializeNode.length());
+            Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord()).add("allocationSize", initializeNode.allocationSize()).add("length",
+                            initializeNode.length());
             SnippetTemplate template = cache.get(key, assumptions);
             Debug.log("Lowering initializeArray in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, arguments);
             template.instantiate(runtime, initializeNode, DEFAULT_REPLACER, arguments);

@@ -31,6 +31,7 @@ import com.oracle.graal.phases.*;
 public class InsertStateAfterPlaceholderPhase extends Phase {
 
     private static class PlaceholderNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, LIRLowerable, Canonicalizable {
+
         public PlaceholderNode() {
             super(StampFactory.forVoid());
         }

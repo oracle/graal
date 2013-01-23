@@ -29,7 +29,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-
 public final class UnboxNode extends FixedWithNextNode implements Node.IterableNodeType, Canonicalizable {
 
     @Input private ValueNode source;

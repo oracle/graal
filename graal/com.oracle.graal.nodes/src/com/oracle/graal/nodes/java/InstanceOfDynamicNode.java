@@ -30,9 +30,9 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code InstanceOfDynamicNode} represents a type check where the type being checked
- * is not known at compile time.
- * This is used, for instance, to intrinsify {@link Class#isInstance(Object)}.
+ * The {@code InstanceOfDynamicNode} represents a type check where the type being checked is not
+ * known at compile time. This is used, for instance, to intrinsify {@link Class#isInstance(Object)}
+ * .
  */
 public final class InstanceOfDynamicNode extends BooleanNode implements Canonicalizable, Lowerable {
 
@@ -41,8 +41,9 @@ public final class InstanceOfDynamicNode extends BooleanNode implements Canonica
 
     /**
      * Constructs a new InstanceOfNode.
-     *
-     * @param mirror the {@link Class} value representing the target target type of the instanceof check
+     * 
+     * @param mirror the {@link Class} value representing the target target type of the instanceof
+     *            check
      * @param object the object being tested by the instanceof
      */
     public InstanceOfDynamicNode(ValueNode mirror, ValueNode object) {

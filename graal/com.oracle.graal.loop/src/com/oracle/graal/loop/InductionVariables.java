@@ -28,8 +28,8 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
-
 public class InductionVariables {
+
     private final LoopEx loop;
     private Map<Node, InductionVariable> ivs;
 

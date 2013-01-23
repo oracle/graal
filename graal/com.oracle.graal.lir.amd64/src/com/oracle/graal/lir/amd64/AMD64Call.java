@@ -39,6 +39,7 @@ public class AMD64Call {
 
     @Opcode("CALL_DIRECT")
     public static class DirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
         @Temp protected Value[] temps;
@@ -71,6 +72,7 @@ public class AMD64Call {
 
     @Opcode("CALL_INDIRECT")
     public static class IndirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
         @Use({REG}) protected Value targetAddress;

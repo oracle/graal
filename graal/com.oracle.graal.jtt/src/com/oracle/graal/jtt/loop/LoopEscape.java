@@ -30,19 +30,21 @@ import org.junit.*;
  * Test around an object that escapes directly from inside a loop (no virtual phi on the loop)
  */
 public class LoopEscape extends JTTTest {
+
     public static L ll = new L(0, 1, 2);
 
     private static class L {
+
         public int a;
         public int b;
         public int c;
+
         public L(int a, int b, int c) {
             this.a = a;
             this.b = b;
             this.c = c;
         }
     }
-
 
     public static int test0(int count) {
         L l = new L(5, 5, 5);

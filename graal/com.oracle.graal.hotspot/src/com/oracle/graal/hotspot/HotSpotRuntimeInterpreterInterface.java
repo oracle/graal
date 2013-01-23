@@ -40,7 +40,7 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
         this.metaProvider = metaProvider;
     }
 
-    public Class< ? > getMirror(ResolvedJavaType type) {
+    public Class<?> getMirror(ResolvedJavaType type) {
         return ((HotSpotResolvedJavaType) type).mirror();
     }
 
@@ -158,7 +158,6 @@ public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInt
             unsafe.putInt(resolveBase(base, field), offset, value);
         }
     }
-
 
     public void setFieldFloat(float value, Object base, ResolvedJavaField field) {
         long offset = resolveOffset(field);

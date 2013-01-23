@@ -26,8 +26,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
-
 public abstract class UnsafeAccessNode extends FixedWithNextNode {
+
     @Input private ValueNode object;
     @Input private ValueNode offset;
     private final int displacement;

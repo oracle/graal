@@ -26,7 +26,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 
-
 public final class HotSpotProfilingInfo extends CompilerObject implements ProfilingInfo {
 
     private static final long serialVersionUID = -8307682725047864875L;

@@ -28,8 +28,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code AccessIndexedNode} class is the base class of instructions that read or write
- * elements of an array.
+ * The {@code AccessIndexedNode} class is the base class of instructions that read or write elements
+ * of an array.
  */
 public abstract class AccessIndexedNode extends AccessArrayNode implements Lowerable {
 
@@ -43,6 +43,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements Lower
 
     /**
      * Create an new AccessIndexedNode.
+     * 
      * @param stamp the result kind of the access
      * @param array the instruction producing the array
      * @param index the instruction producing the index
@@ -57,6 +58,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements Lower
 
     /**
      * Gets the element type of the array.
+     * 
      * @return the element type
      */
     public Kind elementKind() {

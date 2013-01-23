@@ -30,11 +30,12 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * A value proxy that is inserted in the frame state of a loop exit for any value that is
- * created inside the loop (i.e. was not live on entry to the loop) and is (potentially)
- * used after the loop.
+ * A value proxy that is inserted in the frame state of a loop exit for any value that is created
+ * inside the loop (i.e. was not live on entry to the loop) and is (potentially) used after the
+ * loop.
  */
 public class ValueProxyNode extends FloatingNode implements Node.IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable {
+
     @Input(notDataflow = true) private BeginNode proxyPoint;
     @Input private ValueNode value;
     private final PhiType type;

@@ -27,35 +27,43 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 
 public class FilteredNodeIterable<T extends Node> extends AbstractNodeIterable<T> {
+
     protected final NodeIterable<T> nodeIterable;
     protected NodePredicate predicate = NodePredicates.alwaysTrue();
     protected NodePredicate until = NodePredicates.isNull();
+
     public FilteredNodeIterable(NodeIterable<T> nodeIterable) {
         this.nodeIterable = nodeIterable;
     }
+
     public FilteredNodeIterable<T> and(NodePredicate nodePredicate) {
         this.predicate = this.predicate.and(nodePredicate);
         return this;
     }
+
     public FilteredNodeIterable<T> or(NodePredicate nodePredicate) {
         this.predicate = this.predicate.or(nodePredicate);
         return this;
     }
+
     @Override
     public NodeIterable<T> until(final T u) {
         until = until.or(NodePredicates.equals(u));
         return this;
     }
+
     @Override
     public NodeIterable<T> until(final Class<? extends T> clazz) {
         until = until.or(NodePredicates.isA(clazz));
         return this;
     }
+
     @Override
     public FilteredNodeIterable<T> nonNull() {
         this.predicate = this.predicate.and(NodePredicates.isNotNull());
         return this;
     }
+
     @Override
     public DistinctFilteredNodeIterable<T> distinct() {
         DistinctFilteredNodeIterable<T> distinct = new DistinctFilteredNodeIterable<>(nodeIterable);
@@ -63,6 +71,7 @@ public class FilteredNodeIterable<T extends Node> extends AbstractNodeIterable<T
         distinct.until = until;
         return distinct;
     }
+
     @Override
     public Iterator<T> iterator() {
         return new PredicatedProxyNodeIterator<>(until, nodeIterable.iterator(), predicate);
@@ -80,7 +89,7 @@ public class FilteredNodeIterable<T extends Node> extends AbstractNodeIterable<T
     }
 
     @Override
-    public FilteredNodeIterable<T> filterInterface(Class< ? > iface) {
+    public FilteredNodeIterable<T> filterInterface(Class<?> iface) {
         return this.and(NodePredicates.isAInterface(iface));
     }
 }

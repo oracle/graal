@@ -68,8 +68,7 @@ public class GraalCompiler {
         this.backend = backend;
     }
 
-    public CompilationResult compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, final GraphCache cache, final PhasePlan plan,
-                    final OptimisticOptimizations optimisticOpts) {
+    public CompilationResult compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.getModifiers() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
 
         return Debug.scope("GraalCompiler", new Object[]{graph, method, this}, new Callable<CompilationResult>() {

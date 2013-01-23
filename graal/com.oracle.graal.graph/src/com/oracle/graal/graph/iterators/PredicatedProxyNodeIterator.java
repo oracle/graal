@@ -27,14 +27,17 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 
 public class PredicatedProxyNodeIterator<T extends Node> extends NodeIterator<T> {
+
     private final Iterator<T> iterator;
     private final NodePredicate predicate;
     private final NodePredicate until;
+
     public PredicatedProxyNodeIterator(NodePredicate until, Iterator<T> iterator, NodePredicate predicate) {
         this.until = until;
         this.iterator = iterator;
         this.predicate = predicate;
     }
+
     @Override
     protected void forward() {
         while ((current == null || !current.isAlive() || !predicate.apply(current)) && iterator.hasNext()) {

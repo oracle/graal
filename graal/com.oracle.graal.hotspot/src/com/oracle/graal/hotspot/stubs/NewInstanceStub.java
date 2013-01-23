@@ -40,11 +40,10 @@ import com.oracle.graal.snippets.SnippetTemplate.Key;
 import com.oracle.graal.word.*;
 
 /**
- * Stub implementing the fast path for TLAB refill during instance class allocation.
- * This stub is called from the {@linkplain NewObjectSnippets inline} allocation
- * code when TLAB allocation fails. If this stub fails to refill the TLAB
- * or allocate the object, it calls out to the HotSpot C++ runtime for
- * to complete the allocation.
+ * Stub implementing the fast path for TLAB refill during instance class allocation. This stub is
+ * called from the {@linkplain NewObjectSnippets inline} allocation code when TLAB allocation fails.
+ * If this stub fails to refill the TLAB or allocate the object, it calls out to the HotSpot C++
+ * runtime for to complete the allocation.
  */
 public class NewInstanceStub extends Stub {
 
@@ -60,16 +59,17 @@ public class NewInstanceStub extends Stub {
     }
 
     /**
-     * Re-attempts allocation after an initial TLAB allocation failed or was skipped (e.g., due to -XX:-UseTLAB).
-     *
+     * Re-attempts allocation after an initial TLAB allocation failed or was skipped (e.g., due to
+     * -XX:-UseTLAB).
+     * 
      * @param hub the hub of the object to be allocated
      * @param intArrayHub the hub for {@code int[].class}
      */
     @Snippet
-    private static Object newInstance(
-                    @Parameter("hub") Word hub,
-                    @ConstantParameter("intArrayHub") Word intArrayHub,
-                    @ConstantParameter("log") boolean log) {
+    private static Object newInstance(@Parameter("hub")
+    Word hub, @ConstantParameter("intArrayHub")
+    Word intArrayHub, @ConstantParameter("log")
+    boolean log) {
         int sizeInBytes = hub.readInt(klassInstanceSizeOffset());
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
             if (hub.readInt(klassStateOffset()) == klassStateFullyInitialized()) {
@@ -90,11 +90,12 @@ public class NewInstanceStub extends Stub {
 
     /**
      * Attempts to refill the current thread's TLAB and retries the allocation.
-     *
+     * 
      * @param intArrayHub the hub for {@code int[].class}
      * @param sizeInBytes the size of the allocation
      * @param log specifies if logging is enabled
-     * @return the newly allocated, uninitialized chunk of memory, or {@link Word#zero()} if the operation was unsuccessful
+     * @return the newly allocated, uninitialized chunk of memory, or {@link Word#zero()} if the
+     *         operation was unsuccessful
      */
     static Word refillAllocate(Word intArrayHub, int sizeInBytes, boolean log) {
 
@@ -133,7 +134,8 @@ public class NewInstanceStub extends Stub {
             // fill [top, end + alignment_reserve) with array object
             if (top != Word.zero()) {
                 int headerSize = arrayBaseOffset(Kind.Int);
-                // just like the HotSpot assembler stubs, assumes that tlabFreeSpaceInInts fits in an int
+                // just like the HotSpot assembler stubs, assumes that tlabFreeSpaceInInts fits in
+                // an int
                 int tlabFreeSpaceInInts = (int) tlabFreeSpaceInBytes.rawValue() >>> 2;
                 int length = ((alignmentReserveInBytes - headerSize) >>> 2) + tlabFreeSpaceInInts;
                 NewObjectSnippets.formatArray(intArrayHub, -1, length, headerSize, top, intArrayMarkWord, false);
@@ -175,7 +177,7 @@ public class NewInstanceStub extends Stub {
 
     /**
      * Attempts to allocate a chunk of memory from Eden space.
-     *
+     * 
      * @param sizeInBytes the size of the chunk to allocate
      * @param log specifies if logging is enabled
      * @return the allocated chunk or {@link Word#zero()} if allocation fails
@@ -212,26 +214,31 @@ public class NewInstanceStub extends Stub {
             Log.printf(format, value);
         }
     }
+
     static void log(boolean enabled, String format, WordBase value) {
         if (enabled) {
             Log.printf(format, value.rawValue());
         }
     }
+
     static void log(boolean enabled, String format, long v1, long v2) {
         if (enabled) {
             Log.printf(format, v1, v2);
         }
     }
+
     static void log(boolean enabled, String format, Word v1, long v2) {
         if (enabled) {
             Log.printf(format, v1.rawValue(), v2);
         }
     }
+
     static void log(boolean enabled, String format, Word v1, Word v2) {
         if (enabled) {
             Log.printf(format, v1.rawValue(), v2.rawValue());
         }
     }
+
     static void log(boolean enabled, String format, long v1, long v2, long v3) {
         if (enabled) {
             Log.printf(format, v1, v2, v3);

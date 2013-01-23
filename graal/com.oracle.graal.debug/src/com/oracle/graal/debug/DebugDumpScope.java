@@ -27,9 +27,9 @@ public class DebugDumpScope {
     public final String name;
 
     /**
-     * Specifies if this scope decorates an inner scope.
-     * A hierarchical or tree representation of nested scopes may choose to represent
-     * a decorator scope at the same level as the scope it decorates.
+     * Specifies if this scope decorates an inner scope. A hierarchical or tree representation of
+     * nested scopes may choose to represent a decorator scope at the same level as the scope it
+     * decorates.
      */
     public final boolean decorator;
 

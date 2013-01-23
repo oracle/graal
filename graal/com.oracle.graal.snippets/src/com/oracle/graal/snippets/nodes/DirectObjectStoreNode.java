@@ -29,10 +29,11 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
- * A special purpose store node that differs from {@link UnsafeStoreNode} in that
- * it is not a {@link StateSplit} and does not include a write barrier.
+ * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a
+ * {@link StateSplit} and does not include a write barrier.
  */
 public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
+
     @Input private ValueNode object;
     @Input private ValueNode value;
     @Input private ValueNode offset;
@@ -47,16 +48,20 @@ public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerabl
     }
 
     @NodeIntrinsic
-    public static native void storeObject(Object obj, @ConstantNodeParameter int displacement, long offset, Object value);
+    public static native void storeObject(Object obj, @ConstantNodeParameter
+    int displacement, long offset, Object value);
 
     @NodeIntrinsic
-    public static native void storeLong(Object obj, @ConstantNodeParameter int displacement, long offset, long value);
+    public static native void storeLong(Object obj, @ConstantNodeParameter
+    int displacement, long offset, long value);
 
     @NodeIntrinsic
-    public static native void storeWord(Object obj, @ConstantNodeParameter int displacement, long offset, Word value);
+    public static native void storeWord(Object obj, @ConstantNodeParameter
+    int displacement, long offset, Word value);
 
     @NodeIntrinsic
-    public static native void storeInt(Object obj, @ConstantNodeParameter int displacement, long offset, int value);
+    public static native void storeInt(Object obj, @ConstantNodeParameter
+    int displacement, long offset, int value);
 
     @Override
     public void lower(LoweringTool tool) {

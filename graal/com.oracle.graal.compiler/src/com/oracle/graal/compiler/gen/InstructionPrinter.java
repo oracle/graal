@@ -28,8 +28,8 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * A utility for {@linkplain #printInstruction(ValueNode) printing}
- * a node as an expression or statement.
+ * A utility for {@linkplain #printInstruction(ValueNode) printing} a node as an expression or
+ * statement.
  */
 public class InstructionPrinter {
 
@@ -71,6 +71,7 @@ public class InstructionPrinter {
         /**
          * Prints this column's label to a given stream after padding the stream with '_' characters
          * until its {@linkplain LogStream#position() position} is equal to this column's position.
+         * 
          * @param out the print stream
          */
         public void printLabel(LogStream out) {
@@ -79,8 +80,9 @@ public class InstructionPrinter {
         }
 
         /**
-         * Prints space characters to a given stream until its {@linkplain LogStream#position() position}
-         * is equal to this column's position.
+         * Prints space characters to a given stream until its {@linkplain LogStream#position()
+         * position} is equal to this column's position.
+         * 
          * @param out the print stream
          */
         public void advance(LogStream out) {
@@ -99,7 +101,8 @@ public class InstructionPrinter {
     }
 
     /**
-     * Prints a header for the tabulated data printed by {@link #printInstructionListing(ValueNode)}.
+     * Prints a header for the tabulated data printed by {@link #printInstructionListing(ValueNode)}
+     * .
      */
     public void printInstructionListingHeader() {
         BCI.printLabel(out);
@@ -111,20 +114,15 @@ public class InstructionPrinter {
     }
 
     /**
-     * Prints an instruction listing on one line. The instruction listing is composed of the
-     * columns specified by {@link InstructionLineColumn}.
-     *
+     * Prints an instruction listing on one line. The instruction listing is composed of the columns
+     * specified by {@link InstructionLineColumn}.
+     * 
      * @param instruction the instruction to print
      */
     public void printInstructionListing(ValueNode instruction) {
         int indentation = out.indentationLevel();
-        out.fillTo(BCI.position + indentation, ' ').
-             print(0).
-             fillTo(USE.position + indentation, ' ').
-             print("0").
-             fillTo(VALUE.position + indentation, ' ').
-             print(ValueNodeUtil.valueString(instruction)).
-             fillTo(INSTRUCTION.position + indentation, ' ');
+        out.fillTo(BCI.position + indentation, ' ').print(0).fillTo(USE.position + indentation, ' ').print("0").fillTo(VALUE.position + indentation, ' ').print(ValueNodeUtil.valueString(instruction)).fillTo(
+                        INSTRUCTION.position + indentation, ' ');
         printInstruction(instruction);
         if (instruction instanceof StateSplit) {
             out.print("  [state: " + ((StateSplit) instruction).stateAfter() + "]");

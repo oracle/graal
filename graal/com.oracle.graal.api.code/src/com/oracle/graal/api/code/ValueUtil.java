@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
  * Utility class for working with the {@link Value} class and its subclasses.
  */
 public final class ValueUtil {
+
     public static boolean isIllegal(Value value) {
         assert value != null;
         return value == Value.ILLEGAL;

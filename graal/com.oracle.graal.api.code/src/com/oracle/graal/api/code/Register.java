@@ -40,16 +40,16 @@ public final class Register implements Comparable<Register>, Serializable {
     public static final Register None = new Register(-1, -1, 0, "noreg");
 
     /**
-     * Frame pointer of the current method. All spill slots and outgoing stack-based arguments
-     * are addressed relative to this register.
+     * Frame pointer of the current method. All spill slots and outgoing stack-based arguments are
+     * addressed relative to this register.
      */
     public static final Register Frame = new Register(-2, -2, 0, "framereg", RegisterFlag.CPU);
 
     public static final Register CallerFrame = new Register(-3, -3, 0, "callerframereg", RegisterFlag.CPU);
 
     /**
-     * The identifier for this register that is unique across all the registers in a {@link Architecture}.
-     * A valid register has {@code number > 0}.
+     * The identifier for this register that is unique across all the registers in a
+     * {@link Architecture}. A valid register has {@code number > 0}.
      */
     public final int number;
 
@@ -59,8 +59,8 @@ public final class Register implements Comparable<Register>, Serializable {
     public final String name;
 
     /**
-     * The actual encoding in a target machine instruction for this register, which may or
-     * may not be the same as {@link #number}.
+     * The actual encoding in a target machine instruction for this register, which may or may not
+     * be the same as {@link #number}.
      */
     public final int encoding;
 
@@ -75,14 +75,14 @@ public final class Register implements Comparable<Register>, Serializable {
     private final int flags;
 
     /**
-     * An array of {@link RegisterValue} objects, for this register, with one entry
-     * per {@link Kind}, indexed by {@link Kind#ordinal}.
+     * An array of {@link RegisterValue} objects, for this register, with one entry per {@link Kind}
+     * , indexed by {@link Kind#ordinal}.
      */
     private final RegisterValue[] values;
 
     /**
      * Attributes that characterize a register in a useful way.
-     *
+     * 
      */
     public enum RegisterFlag {
         /**
@@ -105,7 +105,7 @@ public final class Register implements Comparable<Register>, Serializable {
 
     /**
      * Creates a {@link Register} instance.
-     *
+     * 
      * @param number unique identifier for the register
      * @param encoding the target machine encoding for the register
      * @param spillSlotSize the size of the stack slot used to spill the value of the register
@@ -139,6 +139,7 @@ public final class Register implements Comparable<Register>, Serializable {
 
     /**
      * Gets this register as a {@linkplain RegisterValue value} with a specified kind.
+     * 
      * @param kind the specified kind
      * @return the {@link RegisterValue}
      */
@@ -148,6 +149,7 @@ public final class Register implements Comparable<Register>, Serializable {
 
     /**
      * Gets this register as a {@linkplain RegisterValue value} with no particular kind.
+     * 
      * @return a {@link RegisterValue} with {@link Kind#Illegal} kind.
      */
     public RegisterValue asValue() {
@@ -156,6 +158,7 @@ public final class Register implements Comparable<Register>, Serializable {
 
     /**
      * Determines if this is a valid register.
+     * 
      * @return {@code true} iff this register is valid
      */
     public boolean isValid() {
@@ -178,6 +181,7 @@ public final class Register implements Comparable<Register>, Serializable {
 
     /**
      * Determines if this register has the {@link RegisterFlag#Byte} attribute set.
+     * 
      * @return {@code true} iff this register has the {@link RegisterFlag#Byte} attribute set.
      */
     public boolean isByte() {
@@ -186,10 +190,10 @@ public final class Register implements Comparable<Register>, Serializable {
 
     /**
      * Categorizes a set of registers by {@link RegisterFlag}.
-     *
+     * 
      * @param registers a list of registers to be categorized
-     * @return a map from each {@link RegisterFlag} constant to the list of registers for which the flag is
-     *         {@linkplain #isSet(RegisterFlag) set}
+     * @return a map from each {@link RegisterFlag} constant to the list of registers for which the
+     *         flag is {@linkplain #isSet(RegisterFlag) set}
      */
     public static EnumMap<RegisterFlag, Register[]> categorize(Register[] registers) {
         EnumMap<RegisterFlag, Register[]> result = new EnumMap<>(RegisterFlag.class);
@@ -207,7 +211,7 @@ public final class Register implements Comparable<Register>, Serializable {
 
     /**
      * Gets the maximum register {@linkplain #number number} in a given set of registers.
-     *
+     * 
      * @param registers the set of registers to process
      * @return the maximum register number for any register in {@code registers}
      */
@@ -223,7 +227,7 @@ public final class Register implements Comparable<Register>, Serializable {
 
     /**
      * Gets the maximum register {@linkplain #encoding encoding} in a given set of registers.
-     *
+     * 
      * @param registers the set of registers to process
      * @return the maximum register encoding for any register in {@code registers}
      */

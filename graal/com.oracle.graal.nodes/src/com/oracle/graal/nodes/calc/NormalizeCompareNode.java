@@ -27,17 +27,20 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Returns -1, 0, or 1 if either x < y, x == y, or x > y. If the comparison is undecided (one of the inputs is NaN), the
- * result is 1 if isUnorderedLess is false and -1 if isUnorderedLess is true.
+ * Returns -1, 0, or 1 if either x < y, x == y, or x > y. If the comparison is undecided (one of the
+ * inputs is NaN), the result is 1 if isUnorderedLess is false and -1 if isUnorderedLess is true.
  */
 public final class NormalizeCompareNode extends BinaryNode implements Lowerable {
+
     public final boolean isUnorderedLess;
 
     /**
      * Creates a new compare operation.
+     * 
      * @param x the first input
      * @param y the second input
-     * @param isUnorderedLess true when an unordered floating point comparison is interpreted as less, false when greater.
+     * @param isUnorderedLess true when an unordered floating point comparison is interpreted as
+     *            less, false when greater.
      */
     public NormalizeCompareNode(ValueNode x, ValueNode y, boolean isUnorderedLess) {
         super(Kind.Int, x, y);
@@ -59,7 +62,7 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
         }
 
         MaterializeNode equalValue = MaterializeNode.create(equalComp, ConstantNode.forInt(0, graph), ConstantNode.forInt(1, graph));
-        MaterializeNode value =  MaterializeNode.create(lessComp, ConstantNode.forInt(-1, graph), equalValue);
+        MaterializeNode value = MaterializeNode.create(lessComp, ConstantNode.forInt(-1, graph), equalValue);
 
         graph.replaceFloating(this, value);
     }

@@ -59,10 +59,10 @@ public class MathSubstitutionsX86 {
     }
 
     // NOTE on snippets below:
-    //   Math.sin(), .cos() and .tan() guarantee a value within 1 ULP of the
-    //   exact result, but x87 trigonometric FPU instructions are only that
-    //   accurate within [-pi/4, pi/4]. Examine the passed value and provide
-    //   a slow path for inputs outside of that interval.
+    // Math.sin(), .cos() and .tan() guarantee a value within 1 ULP of the
+    // exact result, but x87 trigonometric FPU instructions are only that
+    // accurate within [-pi/4, pi/4]. Examine the passed value and provide
+    // a slow path for inputs outside of that interval.
 
     @MethodSubstitution
     public static double sin(double x) {
@@ -96,5 +96,6 @@ public class MathSubstitutionsX86 {
     public static final Descriptor ARITHMETIC_TAN = new Descriptor("arithmeticTan", false, double.class, double.class);
 
     @NodeIntrinsic(value = RuntimeCallNode.class, setStampFromReturnType = true)
-    public static native double callDouble(@ConstantNodeParameter Descriptor descriptor, double value);
+    public static native double callDouble(@ConstantNodeParameter
+    Descriptor descriptor, double value);
 }

@@ -30,10 +30,11 @@ import com.oracle.graal.hotspot.logging.*;
 
 /**
  * A collection of java.lang.reflect proxies that communicate over a socket connection.
- *
- * Calling a method sends the method name and the parameters through the socket. Afterwards this class waits for a
- * result. While waiting for a result three types of objects can arrive through the socket: a method invocation, a
- * method result or an exception. Method invocation can thus be recursive.
+ * 
+ * Calling a method sends the method name and the parameters through the socket. Afterwards this
+ * class waits for a result. While waiting for a result three types of objects can arrive through
+ * the socket: a method invocation, a method result or an exception. Method invocation can thus be
+ * recursive.
  */
 public class InvocationSocket {
 
@@ -64,6 +65,7 @@ public class InvocationSocket {
 
         if (COUNT_CALLS) {
             Runtime.getRuntime().addShutdownHook(new Thread() {
+
                 @Override
                 public void run() {
                     SortedMap<Integer, String> sorted = new TreeMap<>();
@@ -80,7 +82,7 @@ public class InvocationSocket {
 
     /**
      * Represents one invocation of a method that is transferred via the socket connection.
-     *
+     * 
      */
     private static class Invocation implements Serializable {
 
@@ -99,7 +101,7 @@ public class InvocationSocket {
 
     /**
      * Represents the result of an invocation that is transferred via the socket connection.
-     *
+     * 
      */
     private static class Result implements Serializable {
 
@@ -124,9 +126,10 @@ public class InvocationSocket {
     }
 
     /**
-     * Each instance of this class handles remote invocations for one instance of a Remote class. It will forward all
-     * interface methods to the other end of the socket and cache the results of calls to certain methods.
-     *
+     * Each instance of this class handles remote invocations for one instance of a Remote class. It
+     * will forward all interface methods to the other end of the socket and cache the results of
+     * calls to certain methods.
+     * 
      */
     public class Handler implements InvocationHandler {
 
@@ -181,8 +184,9 @@ public class InvocationSocket {
     }
 
     /**
-     * Waits for the result of a remote method invocation. Invocations that should be executed in this VM might arrive
-     * while waiting for the result, and these invocations will be executed before again waiting fort he result.
+     * Waits for the result of a remote method invocation. Invocations that should be executed in
+     * this VM might arrive while waiting for the result, and these invocations will be executed
+     * before again waiting fort he result.
      */
     @SuppressWarnings("unused")
     public Object waitForResult(boolean eofExpected) throws IOException, ClassNotFoundException {

@@ -29,8 +29,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Represents an atomic compare-and-swap operation
- * The result is a boolean that contains whether the value matched the expected value.
+ * Represents an atomic compare-and-swap operation The result is a boolean that contains whether the
+ * value matched the expected value.
  */
 public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit, LIRLowerable, Lowerable, MemoryCheckpoint {
 
@@ -82,11 +82,14 @@ public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
     @NodeIntrinsic
-    public static native boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, Object expected, Object newValue);
+    public static native boolean compareAndSwap(Object object, @ConstantNodeParameter
+    int displacement, long offset, Object expected, Object newValue);
 
     @NodeIntrinsic
-    public static native boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, long expected, long newValue);
+    public static native boolean compareAndSwap(Object object, @ConstantNodeParameter
+    int displacement, long offset, long expected, long newValue);
 
     @NodeIntrinsic
-    public static native boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, int expected, int newValue);
+    public static native boolean compareAndSwap(Object object, @ConstantNodeParameter
+    int displacement, long offset, int expected, int newValue);
 }

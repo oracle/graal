@@ -47,12 +47,12 @@ import com.oracle.graal.snippets.nodes.*;
 import com.oracle.graal.word.*;
 
 /**
- * Snippets used for implementing the type test of an instanceof instruction.
- * Since instanceof is a floating node, it is lowered separately for each of
- * its usages.
- *
- * The type tests implemented are described in the paper <a href="http://dl.acm.org/citation.cfm?id=583821">
- * Fast subtype checking in the HotSpot JVM</a> by Cliff Click and John Rose.
+ * Snippets used for implementing the type test of an instanceof instruction. Since instanceof is a
+ * floating node, it is lowered separately for each of its usages.
+ * 
+ * The type tests implemented are described in the paper <a
+ * href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a> by
+ * Cliff Click and John Rose.
  */
 public class InstanceOfSnippets implements SnippetsInterface {
 

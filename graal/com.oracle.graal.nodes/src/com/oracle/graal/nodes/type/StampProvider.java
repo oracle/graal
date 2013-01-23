@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.type;
 
-
 public interface StampProvider {
+
     Stamp stamp();
 }

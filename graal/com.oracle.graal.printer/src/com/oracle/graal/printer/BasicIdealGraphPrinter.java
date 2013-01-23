@@ -27,7 +27,8 @@ import java.util.*;
 import java.util.Map.Entry;
 
 /**
- * Elementary, generic generator of Ideal Graph Visualizer input for use in printers for specific data structures.
+ * Elementary, generic generator of Ideal Graph Visualizer input for use in printers for specific
+ * data structures.
  */
 class BasicIdealGraphPrinter {
 
@@ -35,6 +36,7 @@ class BasicIdealGraphPrinter {
      * Edge between two nodes.
      */
     protected static class Edge {
+
         final String from;
         final int fromIndex;
         final String to;
@@ -68,11 +70,8 @@ class BasicIdealGraphPrinter {
             }
             if (obj instanceof Edge) {
                 Edge other = (Edge) obj;
-                return from.equals(other.from)
-                        && fromIndex == other.fromIndex
-                        && to.equals(other.to)
-                        && toIndex == other.toIndex
-                        && (label == other.label || (label != null && label.equals(other.label)));
+                return from.equals(other.from) && fromIndex == other.fromIndex && to.equals(other.to) && toIndex == other.toIndex &&
+                                (label == other.label || (label != null && label.equals(other.label)));
             }
             return false;
         }
@@ -278,7 +277,6 @@ class BasicIdealGraphPrinter {
         return !stream.checkError();
     }
 
-
     private static String escape(String s) {
         StringBuilder str = null;
         for (int i = 0; i < s.length(); i++) {
@@ -293,7 +291,7 @@ class BasicIdealGraphPrinter {
                         str = new StringBuilder();
                         str.append(s, 0, i);
                     }
-                    switch(c) {
+                    switch (c) {
                         case '&':
                             str.append("&amp;");
                             break;
@@ -313,13 +311,34 @@ class BasicIdealGraphPrinter {
                             assert false;
                     }
                     break;
-                case '\u0000': case '\u0001': case '\u0002': case '\u0003':
-                case '\u0004': case '\u0005': case '\u0006': case '\u0007':
-                case '\u0008': case '\u000b': case '\u000c': case '\u000e':
-                case '\u000f': case '\u0010': case '\u0011': case '\u0012':
-                case '\u0013': case '\u0014': case '\u0015': case '\u0016':
-                case '\u0017': case '\u0018': case '\u0019': case '\u001a':
-                case '\u001b': case '\u001c': case '\u001d': case '\u001e':
+                case '\u0000':
+                case '\u0001':
+                case '\u0002':
+                case '\u0003':
+                case '\u0004':
+                case '\u0005':
+                case '\u0006':
+                case '\u0007':
+                case '\u0008':
+                case '\u000b':
+                case '\u000c':
+                case '\u000e':
+                case '\u000f':
+                case '\u0010':
+                case '\u0011':
+                case '\u0012':
+                case '\u0013':
+                case '\u0014':
+                case '\u0015':
+                case '\u0016':
+                case '\u0017':
+                case '\u0018':
+                case '\u0019':
+                case '\u001a':
+                case '\u001b':
+                case '\u001c':
+                case '\u001d':
+                case '\u001e':
                 case '\u001f':
                     if (str == null) {
                         str = new StringBuilder();

@@ -28,27 +28,31 @@ import com.oracle.graal.lir.asm.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 /**
- * A collection of machine-independent LIR operations, as well as interfaces to be implemented for specific kinds or LIR
- * operations.
+ * A collection of machine-independent LIR operations, as well as interfaces to be implemented for
+ * specific kinds or LIR operations.
  */
 public class StandardOp {
 
     private static Value[] EMPTY = new Value[0];
 
     /**
-     * Marker interface for LIR ops that can fall through to the next operation, like a switch statement.
-     * setFallThroughTarget(null) can be used to make the operation fall through to the next one.
+     * Marker interface for LIR ops that can fall through to the next operation, like a switch
+     * statement. setFallThroughTarget(null) can be used to make the operation fall through to the
+     * next one.
      */
     public interface FallThroughOp {
+
         LabelRef fallThroughTarget();
+
         void setFallThroughTarget(LabelRef target);
     }
 
     /**
-     * LIR operation that defines the position of a label.
-     * The first operation of every block must implement this interface.
+     * LIR operation that defines the position of a label. The first operation of every block must
+     * implement this interface.
      */
     public static class LabelOp extends LIRInstruction {
+
         private final Label label;
         private final boolean align;
 
@@ -71,13 +75,14 @@ public class StandardOp {
     }
 
     /**
-     * LIR operation that is an unconditional jump to {@link #destination()}.
-     * When the LIR is constructed, the last operation of every block must implement this interface. After
-     * register allocation, unnecessary jumps can be deleted.
-     *
+     * LIR operation that is an unconditional jump to {@link #destination()}. When the LIR is
+     * constructed, the last operation of every block must implement this interface. After register
+     * allocation, unnecessary jumps can be deleted.
+     * 
      * TODO (cwimmer) Currently, a block can also end with an XIR operation.
      */
     public static class JumpOp extends LIRInstruction {
+
         private final LabelRef destination;
         @State protected LIRFrameState state;
 
@@ -97,6 +102,7 @@ public class StandardOp {
     }
 
     public static class PhiJumpOp extends JumpOp {
+
         @Alive({REG, STACK, CONST}) protected Value[] phiInputs;
 
         public PhiJumpOp(LabelRef destination, Value[] phiInputs) {
@@ -118,31 +124,37 @@ public class StandardOp {
      * Conditional jumps may be negated or optimized away after register allocation.
      */
     public interface BranchOp {
+
         LabelRef destination();
+
         void negate(LabelRef newDestination);
     }
 
     /**
-     * Marker interface for a LIR operation that moves a value from {@link #getInput()} to {@link #getResult()}.
+     * Marker interface for a LIR operation that moves a value from {@link #getInput()} to
+     * {@link #getResult()}.
      */
     public interface MoveOp {
+
         Value getInput();
+
         Value getResult();
     }
 
     /**
-     * Marker interface for a LIR operation that calls a method, i.e., destroys all caller-saved registers.
+     * Marker interface for a LIR operation that calls a method, i.e., destroys all caller-saved
+     * registers.
      */
     public interface CallOp {
     }
 
-
     /**
-     * Meta-operation that defines the incoming method parameters. In the LIR, every register and variable must be
-     * defined before it is used. This operation is the definition point of method parameters, but is otherwise a no-op.
-     * In particular, it is not the actual method prologue.
+     * Meta-operation that defines the incoming method parameters. In the LIR, every register and
+     * variable must be defined before it is used. This operation is the definition point of method
+     * parameters, but is otherwise a no-op. In particular, it is not the actual method prologue.
      */
     public static final class ParametersOp extends LIRInstruction {
+
         @Def({REG, STACK}) protected Value[] params;
 
         public ParametersOp(Value[] params) {

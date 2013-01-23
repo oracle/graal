@@ -34,9 +34,10 @@ import com.oracle.graal.nodes.java.*;
 public class GraphUtil {
 
     private static final NodePredicate FLOATING = new NodePredicate() {
+
         @Override
-        public final boolean  apply(Node n) {
-            //isA(FloatingNode.class).or(VirtualState.class).or(CallTargetNode.class)
+        public final boolean apply(Node n) {
+            // isA(FloatingNode.class).or(VirtualState.class).or(CallTargetNode.class)
             return n instanceof FloatingNode || n instanceof VirtualState || n instanceof CallTargetNode;
         }
     };
@@ -49,9 +50,11 @@ public class GraphUtil {
             killEnd(end);
         } else {
             // Normal control flow node.
-            /* We do not take a successor snapshot because this iterator supports concurrent modifications
-             * as long as they do not change the size of the successor list. Not taking a snapshot allows
-             * us to see modifications to other branches that may happen while processing one branch.
+            /*
+             * We do not take a successor snapshot because this iterator supports concurrent
+             * modifications as long as they do not change the size of the successor list. Not
+             * taking a snapshot allows us to see modifications to other branches that may happen
+             * while processing one branch.
              */
             for (Node successor : node.successors()) {
                 killCFG((FixedNode) successor);
@@ -65,7 +68,7 @@ public class GraphUtil {
         if (merge != null) {
             merge.removeEnd(end);
             StructuredGraph graph = (StructuredGraph) end.graph();
-            if (merge instanceof LoopBeginNode && merge.forwardEndCount() == 0) { //dead loop
+            if (merge instanceof LoopBeginNode && merge.forwardEndCount() == 0) { // dead loop
                 for (PhiNode phi : merge.phis().snapshot()) {
                     propagateKill(phi);
                 }
@@ -77,11 +80,15 @@ public class GraphUtil {
                 }
                 begin.removeExits();
                 FixedNode loopBody = begin.next();
-                if (loopBody != null) { // for small infinite loops, the body may be killed while killing the loop ends
+                if (loopBody != null) { // for small infinite loops, the body may be killed while
+                                        // killing the loop ends
                     killCFG(loopBody);
                 }
                 begin.safeDelete();
-            } else if (merge instanceof LoopBeginNode && ((LoopBeginNode) merge).loopEnds().isEmpty()) { // not a loop anymore
+            } else if (merge instanceof LoopBeginNode && ((LoopBeginNode) merge).loopEnds().isEmpty()) { // not
+                                                                                                         // a
+                                                                                                         // loop
+                                                                                                         // anymore
                 graph.reduceDegenerateLoopBegin((LoopBeginNode) merge);
             } else if (merge.phiPredecessorCount() == 1) { // not a merge anymore
                 graph.reduceTrivialMerge(merge);
@@ -172,7 +179,8 @@ public class GraphUtil {
     }
 
     public static void normalizeLoopBegin(LoopBeginNode begin) {
-        // Delete unnecessary loop phi functions, i.e., phi functions where all inputs are either the same or the phi itself.
+        // Delete unnecessary loop phi functions, i.e., phi functions where all inputs are either
+        // the same or the phi itself.
         for (PhiNode phi : begin.phis().snapshot()) {
             GraphUtil.checkRedundantPhi(phi);
         }
@@ -185,7 +193,7 @@ public class GraphUtil {
 
     /**
      * Gets an approximate source code location for a node if possible.
-     *
+     * 
      * @return the StackTraceElements if an approximate source location is found, null otherwise
      */
     public static StackTraceElement[] approxSourceStackTraceElement(Node node) {
@@ -213,10 +221,9 @@ public class GraphUtil {
         return elements.toArray(new StackTraceElement[elements.size()]);
     }
 
-
     /**
      * Gets an approximate source code location for a node, encoded as an exception, if possible.
-     *
+     * 
      * @return the exception with the location
      */
     public static RuntimeException approxSourceException(Node node, Throwable cause) {
@@ -235,9 +242,9 @@ public class GraphUtil {
 
     /**
      * Gets an approximate source code location for a node if possible.
-     *
-     * @return a file name and source line number in stack trace format (e.g. "String.java:32") if an approximate source
-     *         location is found, null otherwise
+     * 
+     * @return a file name and source line number in stack trace format (e.g. "String.java:32") if
+     *         an approximate source location is found, null otherwise
      */
     public static String approxSourceLocation(Node node) {
         StackTraceElement[] stackTraceElements = approxSourceStackTraceElement(node);
@@ -260,11 +267,11 @@ public class GraphUtil {
 
     /**
      * Returns a string representation of the given collection of objects.
-     *
+     * 
      * @param objects The {@link Iterable} that will be used to iterate over the objects.
      * @return A string of the format "[a, b, ...]".
      */
-    public static String toString(Iterable< ? > objects) {
+    public static String toString(Iterable<?> objects) {
         StringBuilder str = new StringBuilder();
         str.append("[");
         for (Object o : objects) {
@@ -278,8 +285,9 @@ public class GraphUtil {
     }
 
     /**
-     * Tries to find an original value of the given node by traversing through proxies and unambiguous phis.
-     *
+     * Tries to find an original value of the given node by traversing through proxies and
+     * unambiguous phis.
+     * 
      * @param proxy The node whose original value should be determined.
      */
     public static ValueNode originalValue(ValueNode proxy) {
@@ -294,7 +302,8 @@ public class GraphUtil {
             }
         } while (v != null);
 
-        // if the simple check fails (this can happen for complicated phi/proxy/phi constructs), we do an exhaustive search
+        // if the simple check fails (this can happen for complicated phi/proxy/phi constructs), we
+        // do an exhaustive search
         if (v == null) {
             NodeWorkList worklist = proxy.graph().createNodeWorkList();
             worklist.add(proxy);

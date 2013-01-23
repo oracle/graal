@@ -40,7 +40,7 @@ public class Loop16 extends JTTTest {
     }
 
     public int run(int count) {
-    l1: for (int i = 0; i <= count; i++) {
+        l1: for (int i = 0; i <= count; i++) {
             if (i > 5) {
                 for (int j = 0; j < i; j++) {
                     a += i;
@@ -51,7 +51,7 @@ public class Loop16 extends JTTTest {
             } else if (i > 7) {
                 b += i;
             } else {
-                    c += i;
+                c += i;
             }
         }
         return a + b + c;

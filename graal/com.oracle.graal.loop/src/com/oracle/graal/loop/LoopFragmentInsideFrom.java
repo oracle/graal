@@ -26,8 +26,8 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 
-
 public class LoopFragmentInsideFrom extends LoopFragmentInside {
+
     private final FixedNode point;
 
     public LoopFragmentInsideFrom(LoopEx loop, FixedNode point) {

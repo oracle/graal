@@ -66,7 +66,7 @@ public class TestMetaAccessProvider {
     public static final Map<Class<?>, Class<?>> arrayClasses = new HashMap<>();
 
     public static synchronized Class<?> getArrayClass(Class componentType) {
-        Class< ? > arrayClass = arrayClasses.get(componentType);
+        Class<?> arrayClass = arrayClasses.get(componentType);
         if (arrayClass == null) {
             arrayClass = Array.newInstance(componentType, 0).getClass();
             arrayClasses.put(componentType, arrayClass);
@@ -108,35 +108,9 @@ public class TestMetaAccessProvider {
     }
 
     static {
-        Class[] initialClasses = {
-                        void.class,
-                        boolean.class,
-                        byte.class,
-                        short.class,
-                        char.class,
-                        int.class,
-                        float.class,
-                        long.class,
-                        double.class,
-                        Object.class,
-                        Class.class,
-                        ClassLoader.class,
-                        String.class,
-                        Serializable.class,
-                        Cloneable.class,
-                        Test.class,
-                        TestMetaAccessProvider.class,
-                        List.class,
-                        Collection.class,
-                        Map.class,
-                        Queue.class,
-                        HashMap.class,
-                        LinkedHashMap.class,
-                        IdentityHashMap.class,
-                        AbstractCollection.class,
-                        AbstractList.class,
-                        ArrayList.class
-        };
+        Class[] initialClasses = {void.class, boolean.class, byte.class, short.class, char.class, int.class, float.class, long.class, double.class, Object.class, Class.class, ClassLoader.class,
+                        String.class, Serializable.class, Cloneable.class, Test.class, TestMetaAccessProvider.class, List.class, Collection.class, Map.class, Queue.class, HashMap.class,
+                        LinkedHashMap.class, IdentityHashMap.class, AbstractCollection.class, AbstractList.class, ArrayList.class};
         for (Class c : initialClasses) {
             addClass(c);
         }

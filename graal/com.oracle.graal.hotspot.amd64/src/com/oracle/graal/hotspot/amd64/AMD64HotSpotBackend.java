@@ -231,15 +231,12 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
     @Override
     public TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir) {
         // Omit the frame if the method:
-        //  - has no spill slots or other slots allocated during register allocation
-        //  - has no callee-saved registers
-        //  - has no incoming arguments passed on the stack
-        //  - has no instructions with debug info
-        boolean omitFrame = GraalOptions.CanOmitFrame &&
-            frameMap.frameSize() == frameMap.initialFrameSize &&
-            frameMap.registerConfig.getCalleeSaveLayout().registers.length == 0 &&
-            !lir.hasArgInCallerFrame() &&
-            !lir.hasDebugInfo();
+        // - has no spill slots or other slots allocated during register allocation
+        // - has no callee-saved registers
+        // - has no incoming arguments passed on the stack
+        // - has no instructions with debug info
+        boolean omitFrame = GraalOptions.CanOmitFrame && frameMap.frameSize() == frameMap.initialFrameSize && frameMap.registerConfig.getCalleeSaveLayout().registers.length == 0 &&
+                        !lir.hasArgInCallerFrame() && !lir.hasDebugInfo();
 
         AbstractAssembler masm = new AMD64MacroAssembler(target, frameMap.registerConfig);
         HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext();
@@ -262,8 +259,9 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
         if (!isStatic) {
             tasm.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
-            CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, new JavaType[] {runtime().lookupJavaType(Object.class)}, target, false);
-            Register inlineCacheKlass = rax; // see definition of IC_Klass in c1_LIRAssembler_x86.cpp
+            CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, new JavaType[]{runtime().lookupJavaType(Object.class)}, target, false);
+            Register inlineCacheKlass = rax; // see definition of IC_Klass in
+                                             // c1_LIRAssembler_x86.cpp
             Register receiver = asRegister(cc.getArgument(0));
             Address src = new Address(target.wordKind, receiver.asValue(), config.hubOffset);
 

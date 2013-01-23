@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.alloc;
 
-
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -45,8 +44,10 @@ public final class Interval {
      * A pair of intervals.
      */
     static final class Pair {
+
         public final Interval first;
         public final Interval second;
+
         public Pair(Interval first, Interval second) {
             this.first = first;
             this.second = second;
@@ -75,7 +76,7 @@ public final class Interval {
 
         /**
          * Gets the list for a specified binding.
-         *
+         * 
          * @param binding specifies the list to be returned
          * @return the list of intervals whose binding is {@code binding}
          */
@@ -89,7 +90,7 @@ public final class Interval {
 
         /**
          * Sets the list for a specified binding.
-         *
+         * 
          * @param binding specifies the list to be replaced
          * @param list a list of intervals whose binding is {@code binding}
          */
@@ -104,8 +105,9 @@ public final class Interval {
         }
 
         /**
-         * Adds an interval to a list sorted by {@linkplain Interval#currentFrom() current from} positions.
-         *
+         * Adds an interval to a list sorted by {@linkplain Interval#currentFrom() current from}
+         * positions.
+         * 
          * @param binding specifies the list to be updated
          * @param interval the interval to add
          */
@@ -132,7 +134,7 @@ public final class Interval {
         /**
          * Adds an interval to a list sorted by {@linkplain Interval#from() start} positions and
          * {@linkplain Interval#firstUsage(RegisterPriority) first usage} positions.
-         *
+         * 
          * @param binding specifies the list to be updated
          * @param interval the interval to add
          */
@@ -155,7 +157,7 @@ public final class Interval {
 
         /**
          * Removes an interval from a list.
-         *
+         * 
          * @param binding specifies the list to be updated
          * @param i the interval to remove
          */
@@ -177,10 +179,9 @@ public final class Interval {
     }
 
     /**
-     * Constants denoting the register usage priority for an interval.
-     * The constants are declared in increasing order of priority are
-     * are used to optimize spilling when multiple overlapping intervals
-     * compete for limited registers.
+     * Constants denoting the register usage priority for an interval. The constants are declared in
+     * increasing order of priority are are used to optimize spilling when multiple overlapping
+     * intervals compete for limited registers.
      */
     enum RegisterPriority {
         /**
@@ -221,8 +222,8 @@ public final class Interval {
     }
 
     /**
-     * Constants denoting whether an interval is bound to a specific register. This models
-     * platform dependencies on register usage for certain instructions.
+     * Constants denoting whether an interval is bound to a specific register. This models platform
+     * dependencies on register usage for certain instructions.
      */
     enum RegisterBinding {
         /**
@@ -249,7 +250,8 @@ public final class Interval {
         Unhandled,
 
         /**
-         * An interval that {@linkplain Interval#covers covers} {@code position} and has an assigned register.
+         * An interval that {@linkplain Interval#covers covers} {@code position} and has an assigned
+         * register.
          */
         Active,
 
@@ -276,8 +278,8 @@ public final class Interval {
 
         /**
          * One definition has already been found. Two consecutive definitions are treated as one
-         * (e.g. a consecutive move and add because of two-operand LIR form).
-         * The position of this definition is given by {@link Interval#spillDefinitionPos()}.
+         * (e.g. a consecutive move and add because of two-operand LIR form). The position of this
+         * definition is given by {@link Interval#spillDefinitionPos()}.
          */
         NoSpillStore,
 
@@ -287,8 +289,8 @@ public final class Interval {
         OneSpillStore,
 
         /**
-         * The interval should be stored immediately after its definition to prevent
-         * multiple redundant stores.
+         * The interval should be stored immediately after its definition to prevent multiple
+         * redundant stores.
          */
         StoreAtDefinition,
 
@@ -298,24 +300,25 @@ public final class Interval {
         StartInMemory,
 
         /**
-         * The interval has more than one definition (e.g. resulting from phi moves), so stores
-         * to memory are not optimized.
+         * The interval has more than one definition (e.g. resulting from phi moves), so stores to
+         * memory are not optimized.
          */
         NoOptimization
     }
 
     /**
-     * List of use positions. Each entry in the list records the use position and register
-     * priority associated with the use position. The entries in the list are in descending
-     * order of use position.
-     *
+     * List of use positions. Each entry in the list records the use position and register priority
+     * associated with the use position. The entries in the list are in descending order of use
+     * position.
+     * 
      */
     public static final class UsePosList {
+
         private IntList list;
 
         /**
          * Creates a use list.
-         *
+         * 
          * @param initialCapacity the initial capacity of the list in terms of entries
          */
         public UsePosList(int initialCapacity) {
@@ -327,12 +330,13 @@ public final class Interval {
         }
 
         /**
-         * Splits this list around a given position. All entries in this list with a use position greater or equal than
-         * {@code splitPos} are removed from this list and added to the returned list.
-         *
+         * Splits this list around a given position. All entries in this list with a use position
+         * greater or equal than {@code splitPos} are removed from this list and added to the
+         * returned list.
+         * 
          * @param splitPos the position for the split
-         * @return a use position list containing all entries removed from this list that have a use position greater or equal
-         *         than {@code splitPos}
+         * @return a use position list containing all entries removed from this list that have a use
+         *         position greater or equal than {@code splitPos}
          */
         public UsePosList splitAt(int splitPos) {
             int i = size() - 1;
@@ -351,7 +355,7 @@ public final class Interval {
 
         /**
          * Gets the use position at a specified index in this list.
-         *
+         * 
          * @param index the index of the entry for which the use position is returned
          * @return the use position of entry {@code index} in this list
          */
@@ -361,7 +365,7 @@ public final class Interval {
 
         /**
          * Gets the register priority for the use position at a specified index in this list.
-         *
+         * 
          * @param index the index of the entry for which the register priority is returned
          * @return the register priority of entry {@code index} in this list
          */
@@ -402,7 +406,8 @@ public final class Interval {
     }
 
     /**
-     * The {@linkplain RegisterValue register} or {@linkplain Variable variable} for this interval prior to register allocation.
+     * The {@linkplain RegisterValue register} or {@linkplain Variable variable} for this interval
+     * prior to register allocation.
      */
     public final Value operand;
 
@@ -412,7 +417,8 @@ public final class Interval {
     public final int operandNumber;
 
     /**
-     * The {@linkplain RegisterValue register}, {@linkplain StackSlot spill slot} or {@linkplain Address address} assigned to this interval.
+     * The {@linkplain RegisterValue register}, {@linkplain StackSlot spill slot} or
+     * {@linkplain Address address} assigned to this interval.
      */
     private Value location;
 
@@ -427,7 +433,8 @@ public final class Interval {
     private Kind kind;
 
     /**
-     * The head of the list of ranges describing this interval. This list is sorted by {@linkplain LIRInstruction#id instruction ids}.
+     * The head of the list of ranges describing this interval. This list is sorted by
+     * {@linkplain LIRInstruction#id instruction ids}.
      */
     private Range first;
 
@@ -454,12 +461,14 @@ public final class Interval {
     private int cachedTo; // cached value: to of last range (-1: not cached)
 
     /**
-     * The interval from which this one is derived. If this is a {@linkplain #isSplitParent() split parent}, it points to itself.
+     * The interval from which this one is derived. If this is a {@linkplain #isSplitParent() split
+     * parent}, it points to itself.
      */
     private Interval splitParent;
 
     /**
-     * List of all intervals that are split off from this interval. This is only used if this is a {@linkplain #isSplitParent() split parent}.
+     * List of all intervals that are split off from this interval. This is only used if this is a
+     * {@linkplain #isSplitParent() split parent}.
      */
     private List<Interval> splitChildren = Collections.emptyList();
 
@@ -469,7 +478,8 @@ public final class Interval {
     private Interval currentSplitChild;
 
     /**
-     * Specifies if move is inserted between currentSplitChild and this interval when interval gets active the first time.
+     * Specifies if move is inserted between currentSplitChild and this interval when interval gets
+     * active the first time.
      */
     private boolean insertMoveWhenActivated;
 
@@ -505,7 +515,8 @@ public final class Interval {
     }
 
     /**
-     * Gets the {@linkplain RegisterValue register}, {@linkplain StackSlot spill slot} or {@linkplain Address address} assigned to this interval.
+     * Gets the {@linkplain RegisterValue register}, {@linkplain StackSlot spill slot} or
+     * {@linkplain Address address} assigned to this interval.
      */
     public Value location() {
         return location;
@@ -702,7 +713,7 @@ public final class Interval {
                 Interval i1 = splitChildren.get(i);
 
                 assert i1.splitParent() == this : "not a split child of this interval";
-                assert i1.kind()  == kind() : "must be equal for all split children";
+                assert i1.kind() == kind() : "must be equal for all split children";
                 assert i1.spillSlot() == spillSlot() : "must be equal for all split children";
 
                 for (int j = i + 1; j < splitChildren.size(); j++) {
@@ -768,7 +779,8 @@ public final class Interval {
                 Interval cur = splitChildren.get(i);
                 if (cur.from() <= opId && opId < cur.to() + toOffset) {
                     if (i > 0) {
-                        // exchange current split child to start of list (faster access for next call)
+                        // exchange current split child to start of list (faster access for next
+                        // call)
                         Util.atPutGrow(splitChildren, i, splitChildren.get(0), null);
                         Util.atPutGrow(splitChildren, 0, cur, null);
                     }
@@ -971,15 +983,15 @@ public final class Interval {
     }
 
     /**
-     * Splits this interval at a specified position and returns the remainder as a new <i>child</i> interval
-     * of this interval's {@linkplain #splitParent() parent} interval.
+     * Splits this interval at a specified position and returns the remainder as a new <i>child</i>
+     * interval of this interval's {@linkplain #splitParent() parent} interval.
      * <p>
-     * When an interval is split, a bi-directional link is established between the original <i>parent</i>
-     * interval and the <i>children</i> intervals that are split off this interval.
-     * When a split child is split again, the new created interval is a direct child
-     * of the original parent. That is, there is no tree of split children stored, just a flat list.
-     * All split children are spilled to the same {@linkplain #spillSlot spill slot}.
-     *
+     * When an interval is split, a bi-directional link is established between the original
+     * <i>parent</i> interval and the <i>children</i> intervals that are split off this interval.
+     * When a split child is split again, the new created interval is a direct child of the original
+     * parent. That is, there is no tree of split children stored, just a flat list. All split
+     * children are spilled to the same {@linkplain #spillSlot spill slot}.
+     * 
      * @param splitPos the position at which to split this interval
      * @param allocator the register allocator context
      * @return the child interval split off from this interval
@@ -1027,10 +1039,11 @@ public final class Interval {
     }
 
     /**
-     * Splits this interval at a specified position and returns
-     * the head as a new interval (this interval is the tail).
-     *
-     * Currently, only the first range can be split, and the new interval must not have split positions
+     * Splits this interval at a specified position and returns the head as a new interval (this
+     * interval is the tail).
+     * 
+     * Currently, only the first range can be split, and the new interval must not have split
+     * positions
      */
     Interval splitFromStart(int splitPos, LinearScan allocator) {
         assert isVariable(operand) : "cannot split fixed intervals";
@@ -1128,7 +1141,7 @@ public final class Interval {
 
     /**
      * Gets a single line string for logging the details of this interval to a log stream.
-     *
+     * 
      * @param allocator the register allocator context
      */
     public String logString(LinearScan allocator) {

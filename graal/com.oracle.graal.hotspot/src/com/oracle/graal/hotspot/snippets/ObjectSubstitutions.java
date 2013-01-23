@@ -38,7 +38,7 @@ import com.oracle.graal.word.*;
 public class ObjectSubstitutions {
 
     @MethodSubstitution(isStatic = false)
-    public static Class< ? > getClass(final Object thisObj) {
+    public static Class<?> getClass(final Object thisObj) {
         Word hub = loadHub(thisObj);
         return unsafeCast(hub.readFinalObject(Word.signed(classMirrorOffset())), Class.class, true, true);
     }

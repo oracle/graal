@@ -27,23 +27,24 @@ import static com.oracle.graal.api.meta.Kind.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Represents a compiler spill slot or an outgoing stack-based argument in a method's frame
- * or an incoming stack-based argument in a method's {@linkplain #isInCallerFrame() caller's frame}.
+ * Represents a compiler spill slot or an outgoing stack-based argument in a method's frame or an
+ * incoming stack-based argument in a method's {@linkplain #isInCallerFrame() caller's frame}.
  */
 public final class StackSlot extends Value {
+
     private static final long serialVersionUID = -7725071921307318433L;
 
     private final int offset;
     private final boolean addFrameSize;
 
     /**
-     * Gets a {@link StackSlot} instance representing a stack slot at a given index
-     * holding a value of a given kind.
-     *
+     * Gets a {@link StackSlot} instance representing a stack slot at a given index holding a value
+     * of a given kind.
+     * 
      * @param kind The kind of the value stored in the stack slot.
      * @param offset The offset of the stack slot (in bytes)
-     * @param addFrameSize Specifies if the offset is relative to the stack pointer,
-     *        or the beginning of the frame (stack pointer + total frame size).
+     * @param addFrameSize Specifies if the offset is relative to the stack pointer, or the
+     *            beginning of the frame (stack pointer + total frame size).
      */
     public static StackSlot get(Kind kind, int offset, boolean addFrameSize) {
         assert kind.getStackKind() == kind;
@@ -71,7 +72,8 @@ public final class StackSlot extends Value {
     }
 
     /**
-     * Private constructor to enforce use of {@link #get(Kind, int, boolean)} so that a cache can be used.
+     * Private constructor to enforce use of {@link #get(Kind, int, boolean)} so that a cache can be
+     * used.
      */
     private StackSlot(Kind kind, int offset, boolean addFrameSize) {
         super(kind);
@@ -81,6 +83,7 @@ public final class StackSlot extends Value {
 
     /**
      * Gets the offset of this stack slot, relative to the stack pointer.
+     * 
      * @return The offset of this slot (in bytes).
      */
     public int getOffset(int totalFrameSize) {
@@ -152,7 +155,6 @@ public final class StackSlot extends Value {
         return this;
     }
 
-
     private static final int CACHE_GRANULARITY = 8;
     private static final int SPILL_CACHE_PER_KIND_SIZE = 100;
     private static final int PARAM_CACHE_PER_KIND_SIZE = 10;
@@ -163,7 +165,7 @@ public final class StackSlot extends Value {
 
     private static StackSlot[][] makeCache(int cachePerKindSize, int sign, boolean addFrameSize) {
         StackSlot[][] cache = new StackSlot[Kind.values().length][];
-        for (Kind kind : new Kind[] {Illegal, Int, Long, Float, Double, Object, Jsr}) {
+        for (Kind kind : new Kind[]{Illegal, Int, Long, Float, Double, Object, Jsr}) {
             StackSlot[] slots = new StackSlot[cachePerKindSize];
             for (int i = 0; i < cachePerKindSize; i++) {
                 slots[i] = new StackSlot(kind, sign * i * CACHE_GRANULARITY, addFrameSize);

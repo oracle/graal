@@ -44,6 +44,7 @@ public class Logger {
     static {
         if (ENABLED) {
             loggerTL = new ThreadLocal<Logger>() {
+
                 @Override
                 protected Logger initialValue() {
                     return new Logger();
@@ -52,7 +53,6 @@ public class Logger {
         } else {
             loggerTL = null;
         }
-
 
         PrintStream ps = null;
         String filename = System.getProperty("graal.info_file");

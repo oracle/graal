@@ -26,32 +26,37 @@ import static org.junit.Assert.*;
 
 import org.junit.*;
 
-
 public class TypedNodeIteratorTest2 {
 
     private static class NodeA extends Node implements TestNodeInterface {
+
         private final String name;
+
         public NodeA(String name) {
             this.name = name;
         }
+
         public String getName() {
             return name;
         }
     }
 
     private static class NodeB extends NodeA implements Node.IterableNodeType {
+
         public NodeB(String name) {
             super(name);
         }
     }
 
     private static class NodeC extends NodeB {
+
         public NodeC(String name) {
             super(name);
         }
     }
 
     private static class NodeD extends NodeC {
+
         public NodeD(String name) {
             super(name);
         }

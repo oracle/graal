@@ -26,22 +26,22 @@ import java.io.*;
 
 /**
  * A utility for printing compiler debug and informational output to an output stream.
- *
+ * 
  * A {@link LogStream} instance maintains an internal buffer that is flushed to the underlying
- * output stream every time one of the {@code println} methods is invoked, or a newline character
- * ({@code '\n'}) is written.
- *
- * All of the {@code print} and {@code println} methods return the {code LogStream} instance
- * on which they were invoked. This allows chaining of these calls to mitigate use of String
+ * output stream every time one of the {@code println} methods is invoked, or a newline character (
+ * {@code '\n'}) is written.
+ * 
+ * All of the {@code print} and {@code println} methods return the {code LogStream} instance on
+ * which they were invoked. This allows chaining of these calls to mitigate use of String
  * concatenation by the caller.
- *
- * A {@code LogStream} maintains a current {@linkplain #indentationLevel() indentation} level.
- * Each line of output written to this stream has {@code n} spaces prefixed to it where
- * {@code n} is the value that would be returned by {@link #indentationLevel()} when the first
- * character of a new line is written.
- *
- * A {@code LogStream} maintains a current {@linkplain #position() position} for the current
- * line being written. This position can be advanced to a specified position by
+ * 
+ * A {@code LogStream} maintains a current {@linkplain #indentationLevel() indentation} level. Each
+ * line of output written to this stream has {@code n} spaces prefixed to it where {@code n} is the
+ * value that would be returned by {@link #indentationLevel()} when the first character of a new
+ * line is written.
+ * 
+ * A {@code LogStream} maintains a current {@linkplain #position() position} for the current line
+ * being written. This position can be advanced to a specified position by
  * {@linkplain #fillTo(int, char) filling} this stream with a given character.
  */
 public class LogStream {
@@ -52,8 +52,10 @@ public class LogStream {
     public static final LogStream SINK = new LogStream();
 
     private static final PrintStream SINK_PS = new PrintStream(new OutputStream() {
+
         @Override
-        public void write(int b) throws IOException { }
+        public void write(int b) throws IOException {
+        }
     });
 
     private LogStream() {
@@ -85,7 +87,7 @@ public class LogStream {
 
     /**
      * Creates a new log stream.
-     *
+     * 
      * @param os the underlying output stream to which prints are sent
      */
     public LogStream(OutputStream os) {
@@ -94,8 +96,9 @@ public class LogStream {
     }
 
     /**
-     * Creates a new log stream that shares the same {@linkplain #ps output stream} as a given {@link LogStream}.
-     *
+     * Creates a new log stream that shares the same {@linkplain #ps output stream} as a given
+     * {@link LogStream}.
+     * 
      * @param log a LogStream whose output stream is shared with this one
      */
     public LogStream(LogStream log) {
@@ -104,8 +107,8 @@ public class LogStream {
     }
 
     /**
-     * Prepends {@link #indentation} to the current output line until its write position is equal to the
-     * current {@linkplain #indentationLevel()} level.
+     * Prepends {@link #indentation} to the current output line until its write position is equal to
+     * the current {@linkplain #indentationLevel()} level.
      */
     private void indent() {
         if (ps != null) {
@@ -144,7 +147,7 @@ public class LogStream {
 
     /**
      * Gets the current column position of this log stream.
-     *
+     * 
      * @return the current column position of this log stream
      */
     public int position() {
@@ -154,7 +157,7 @@ public class LogStream {
 
     /**
      * Gets the current indentation level for this log stream.
-     *
+     * 
      * @return the current indentation level for this log stream.
      */
     public int indentationLevel() {
@@ -163,7 +166,7 @@ public class LogStream {
 
     /**
      * Adjusts the current indentation level of this log stream.
-     *
+     * 
      * @param delta
      */
     public void adjustIndentation(int delta) {
@@ -197,9 +200,9 @@ public class LogStream {
     }
 
     /**
-     * Advances this stream's {@linkplain #position() position} to a given position by
-     * repeatedly appending a given character as necessary.
-     *
+     * Advances this stream's {@linkplain #position() position} to a given position by repeatedly
+     * appending a given character as necessary.
+     * 
      * @param position the position to which this stream's position will be advanced
      * @param filler the character used to pad the stream
      */
@@ -215,7 +218,7 @@ public class LogStream {
 
     /**
      * Writes a boolean value to this stream as {@code "true"} or {@code "false"}.
-     *
+     * 
      * @param b the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -228,8 +231,9 @@ public class LogStream {
     }
 
     /**
-     * Writes a boolean value to this stream followed by a {@linkplain #LINE_SEPARATOR line separator}.
-     *
+     * Writes a boolean value to this stream followed by a {@linkplain #LINE_SEPARATOR line
+     * separator}.
+     * 
      * @param b the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -244,7 +248,7 @@ public class LogStream {
 
     /**
      * Writes a character value to this stream.
-     *
+     * 
      * @param c the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -262,8 +266,9 @@ public class LogStream {
     }
 
     /**
-     * Writes a character value to this stream followed by a {@linkplain #LINE_SEPARATOR line separator}.
-     *
+     * Writes a character value to this stream followed by a {@linkplain #LINE_SEPARATOR line
+     * separator}.
+     * 
      * @param c the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -278,7 +283,7 @@ public class LogStream {
 
     /**
      * Prints an int value.
-     *
+     * 
      * @param i the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -292,7 +297,7 @@ public class LogStream {
 
     /**
      * Writes an int value to this stream followed by a {@linkplain #LINE_SEPARATOR line separator}.
-     *
+     * 
      * @param i the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -307,7 +312,7 @@ public class LogStream {
 
     /**
      * Writes a float value to this stream.
-     *
+     * 
      * @param f the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -320,8 +325,9 @@ public class LogStream {
     }
 
     /**
-     * Writes a float value to this stream followed by a {@linkplain #LINE_SEPARATOR line separator}.
-     *
+     * Writes a float value to this stream followed by a {@linkplain #LINE_SEPARATOR line separator}
+     * .
+     * 
      * @param f the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -336,7 +342,7 @@ public class LogStream {
 
     /**
      * Writes a long value to this stream.
-     *
+     * 
      * @param l the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -350,7 +356,7 @@ public class LogStream {
 
     /**
      * Writes a long value to this stream followed by a {@linkplain #LINE_SEPARATOR line separator}.
-     *
+     * 
      * @param l the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -365,7 +371,7 @@ public class LogStream {
 
     /**
      * Writes a double value to this stream.
-     *
+     * 
      * @param d the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -378,8 +384,9 @@ public class LogStream {
     }
 
     /**
-     * Writes a double value to this stream followed by a {@linkplain #LINE_SEPARATOR line separator}.
-     *
+     * Writes a double value to this stream followed by a {@linkplain #LINE_SEPARATOR line
+     * separator}.
+     * 
      * @param d the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -393,10 +400,10 @@ public class LogStream {
     }
 
     /**
-     * Writes a {@code String} value to this stream. This method ensures that the {@linkplain #position() position}
-     * of this stream is updated correctly with respect to any {@linkplain #LINE_SEPARATOR line separators}
-     * present in {@code s}.
-     *
+     * Writes a {@code String} value to this stream. This method ensures that the
+     * {@linkplain #position() position} of this stream is updated correctly with respect to any
+     * {@linkplain #LINE_SEPARATOR line separators} present in {@code s}.
+     * 
      * @param s the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -427,8 +434,9 @@ public class LogStream {
     }
 
     /**
-     * Writes a {@code String} value to this stream followed by a {@linkplain #LINE_SEPARATOR line separator}.
-     *
+     * Writes a {@code String} value to this stream followed by a {@linkplain #LINE_SEPARATOR line
+     * separator}.
+     * 
      * @param s the value to be printed
      * @return this {@link LogStream} instance
      */
@@ -442,7 +450,7 @@ public class LogStream {
 
     /**
      * Writes a formatted string to this stream.
-     *
+     * 
      * @param format a format string as described in {@link String#format(String, Object...)}
      * @param args the arguments to be formatted
      * @return this {@link LogStream} instance
@@ -456,7 +464,7 @@ public class LogStream {
 
     /**
      * Writes a {@linkplain #LINE_SEPARATOR line separator} to this stream.
-     *
+     * 
      * @return this {@code LogStream} instance
      */
     public LogStream println() {

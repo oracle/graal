@@ -62,6 +62,7 @@ public final class NodeUsagesList extends AbstractNodeIterable<Node> {
     @Override
     public Iterator<Node> iterator() {
         return new Iterator<Node>() {
+
             private final int expectedModCount = NodeUsagesList.this.modCount;
             private int index = 0;
 

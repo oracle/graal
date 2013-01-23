@@ -34,23 +34,28 @@ import com.oracle.graal.snippets.nodes.*;
  */
 @ClassSubstitution(sun.misc.Unsafe.class)
 public class UnsafeSubstitutions {
+
     @MethodSubstitution(isStatic = false)
-    public static boolean compareAndSwapObject(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, Object expected, Object x) {
+    public static boolean compareAndSwapObject(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset, Object expected, Object x) {
         return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static boolean compareAndSwapInt(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, int expected, int x) {
+    public static boolean compareAndSwapInt(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset, int expected, int x) {
         return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static boolean compareAndSwapLong(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, long expected, long x) {
+    public static boolean compareAndSwapLong(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset, long expected, long x) {
         return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static Object getObject(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static Object getObject(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset) {
         return UnsafeLoadNode.load(o, 0, offset, Kind.Object);
     }
 
@@ -63,7 +68,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putObject(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, Object x) {
+    public static void putObject(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset, Object x) {
         UnsafeStoreNode.store(o, 0, offset, x, Kind.Object);
     }
 
@@ -82,7 +88,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static int getInt(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static int getInt(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset) {
         Integer value = UnsafeLoadNode.load(o, 0, offset, Kind.Int);
         return value;
     }
@@ -96,7 +103,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putInt(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, int x) {
+    public static void putInt(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset, int x) {
         UnsafeStoreNode.store(o, 0, offset, x, Kind.Int);
     }
 
@@ -115,7 +123,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static boolean getBoolean(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static boolean getBoolean(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset) {
         @JavacBug(id = 6995200)
         Boolean result = UnsafeLoadNode.load(o, 0, offset, Kind.Boolean);
         return result;
@@ -130,7 +139,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putBoolean(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, boolean x) {
+    public static void putBoolean(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset, boolean x) {
         UnsafeStoreNode.store(o, 0, offset, x, Kind.Boolean);
     }
 
@@ -142,7 +152,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static byte getByte(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static byte getByte(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset) {
         @JavacBug(id = 6995200)
         Byte result = UnsafeLoadNode.load(o, 0, offset, Kind.Byte);
         return result;
@@ -157,7 +168,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putByte(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, byte x) {
+    public static void putByte(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset, byte x) {
         UnsafeStoreNode.store(o, 0, offset, x, Kind.Byte);
     }
 
@@ -169,7 +181,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static short getShort(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static short getShort(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset) {
         @JavacBug(id = 6995200)
         Short result = UnsafeLoadNode.load(o, 0, offset, Kind.Short);
         return result;
@@ -184,7 +197,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putShort(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, short x) {
+    public static void putShort(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset, short x) {
         UnsafeStoreNode.store(o, 0, offset, x, Kind.Short);
     }
 
@@ -196,7 +210,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static char getChar(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static char getChar(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset) {
         @JavacBug(id = 6995200)
         Character result = UnsafeLoadNode.load(o, 0, offset, Kind.Char);
         return result;
@@ -211,7 +226,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putChar(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, char x) {
+    public static void putChar(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset, char x) {
         UnsafeStoreNode.store(o, 0, offset, x, Kind.Char);
     }
 
@@ -223,7 +239,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static long getLong(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static long getLong(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset) {
         @JavacBug(id = 6995200)
         Long result = UnsafeLoadNode.load(o, 0, offset, Kind.Long);
         return result;
@@ -238,7 +255,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putLong(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, long x) {
+    public static void putLong(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset, long x) {
         UnsafeStoreNode.store(o, 0, offset, x, Kind.Long);
     }
 
@@ -257,7 +275,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static float getFloat(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static float getFloat(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset) {
         @JavacBug(id = 6995200)
         Float result = UnsafeLoadNode.load(o, 0, offset, Kind.Float);
         return result;
@@ -272,7 +291,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putFloat(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, float x) {
+    public static void putFloat(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset, float x) {
         UnsafeStoreNode.store(o, 0, offset, x, Kind.Float);
     }
 
@@ -284,7 +304,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static double getDouble(@SuppressWarnings("unused") final Object thisObj, Object o, long offset) {
+    public static double getDouble(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset) {
         @JavacBug(id = 6995200)
         Double result = UnsafeLoadNode.load(o, 0, offset, Kind.Double);
         return result;
@@ -299,7 +320,8 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putDouble(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, double x) {
+    public static void putDouble(@SuppressWarnings("unused")
+    final Object thisObj, Object o, long offset, double x) {
         UnsafeStoreNode.store(o, 0, offset, x, Kind.Double);
     }
 
@@ -311,72 +333,86 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putByte(@SuppressWarnings("unused") final Object thisObj, long address, byte value) {
+    public static void putByte(@SuppressWarnings("unused")
+    final Object thisObj, long address, byte value) {
         DirectStoreNode.store(address, value);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putShort(@SuppressWarnings("unused") final Object thisObj, long address, short value) {
+    public static void putShort(@SuppressWarnings("unused")
+    final Object thisObj, long address, short value) {
         DirectStoreNode.store(address, value);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putChar(@SuppressWarnings("unused") final Object thisObj, long address, char value) {
+    public static void putChar(@SuppressWarnings("unused")
+    final Object thisObj, long address, char value) {
         DirectStoreNode.store(address, value);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putInt(@SuppressWarnings("unused") final Object thisObj, long address, int value) {
+    public static void putInt(@SuppressWarnings("unused")
+    final Object thisObj, long address, int value) {
         DirectStoreNode.store(address, value);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putLong(@SuppressWarnings("unused") final Object thisObj, long address, long value) {
+    public static void putLong(@SuppressWarnings("unused")
+    final Object thisObj, long address, long value) {
         DirectStoreNode.store(address, value);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putFloat(@SuppressWarnings("unused") final Object thisObj, long address, float value) {
+    public static void putFloat(@SuppressWarnings("unused")
+    final Object thisObj, long address, float value) {
         DirectStoreNode.store(address, value);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static void putDouble(@SuppressWarnings("unused") final Object thisObj, long address, double value) {
+    public static void putDouble(@SuppressWarnings("unused")
+    final Object thisObj, long address, double value) {
         DirectStoreNode.store(address, value);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static byte getByte(@SuppressWarnings("unused") final Object thisObj, long address) {
+    public static byte getByte(@SuppressWarnings("unused")
+    final Object thisObj, long address) {
         return DirectReadNode.read(address, Kind.Byte);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static short getShort(@SuppressWarnings("unused") final Object thisObj, long address) {
+    public static short getShort(@SuppressWarnings("unused")
+    final Object thisObj, long address) {
         return DirectReadNode.read(address, Kind.Short);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static char getChar(@SuppressWarnings("unused") final Object thisObj, long address) {
+    public static char getChar(@SuppressWarnings("unused")
+    final Object thisObj, long address) {
         return DirectReadNode.read(address, Kind.Char);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static int getInt(@SuppressWarnings("unused") final Object thisObj, long address) {
+    public static int getInt(@SuppressWarnings("unused")
+    final Object thisObj, long address) {
         return DirectReadNode.read(address, Kind.Int);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static long getLong(@SuppressWarnings("unused") final Object thisObj, long address) {
+    public static long getLong(@SuppressWarnings("unused")
+    final Object thisObj, long address) {
         return DirectReadNode.read(address, Kind.Long);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static float getFloat(@SuppressWarnings("unused") final Object thisObj, long address) {
+    public static float getFloat(@SuppressWarnings("unused")
+    final Object thisObj, long address) {
         return DirectReadNode.read(address, Kind.Float);
     }
 
     @MethodSubstitution(isStatic = false)
-    public static double getDouble(@SuppressWarnings("unused") final Object thisObj, long address) {
+    public static double getDouble(@SuppressWarnings("unused")
+    final Object thisObj, long address) {
         return DirectReadNode.read(address, Kind.Double);
     }
 }

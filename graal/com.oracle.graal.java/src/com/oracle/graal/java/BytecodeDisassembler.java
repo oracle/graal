@@ -47,7 +47,7 @@ public class BytecodeDisassembler {
 
     /**
      * Disassembles the bytecode of a given method in a {@code javap}-like format.
-     *
+     * 
      * @return {@code null} if {@code method} has no bytecode (e.g., it is native or abstract)
      */
     public String disassemble(ResolvedJavaMethod method) {

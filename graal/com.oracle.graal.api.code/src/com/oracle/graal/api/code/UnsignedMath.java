@@ -27,11 +27,11 @@ import java.math.*;
 //JaCoCo Exclude
 
 /**
- * Utilities for unsigned comparisons.
- * All methods have correct, but slow, standard Java implementations so that
- * they can be used with compilers not supporting the intrinsics.
+ * Utilities for unsigned comparisons. All methods have correct, but slow, standard Java
+ * implementations so that they can be used with compilers not supporting the intrinsics.
  */
 public class UnsignedMath {
+
     private static final long MASK = 0xffffffffL;
 
     /**
@@ -122,4 +122,3 @@ public class UnsignedMath {
         return unsigned >= 0 ? BigInteger.valueOf(unsigned) : BigInteger.valueOf(unsigned & 0x7fffffffffffffffL).setBit(63);
     }
 }
-

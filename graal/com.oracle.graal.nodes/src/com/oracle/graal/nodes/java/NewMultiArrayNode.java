@@ -29,8 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code NewMultiArrayNode} represents an allocation of a multi-dimensional object
- * array.
+ * The {@code NewMultiArrayNode} represents an allocation of a multi-dimensional object array.
  */
 public final class NewMultiArrayNode extends FixedWithNextNode implements Lowerable {
 
@@ -51,6 +50,7 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements Lowera
 
     /**
      * Constructs a new NewMultiArrayNode.
+     * 
      * @param type the element type of the array
      * @param dimensions the node which produce the dimensions for this array
      */

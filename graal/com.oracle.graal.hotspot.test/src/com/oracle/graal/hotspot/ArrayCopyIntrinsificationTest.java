@@ -35,7 +35,6 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
-
 /**
  * Tests intrinsification of {@link System#arraycopy(Object, int, Object, int, int)}.
  */
@@ -48,7 +47,7 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
         boolean graphWasProcessed = nodeCount != graph.getNodeCount();
         if (graphWasProcessed) {
             if (mustIntrinsify) {
-                for (Node node: graph.getNodes()) {
+                for (Node node : graph.getNodes()) {
                     if (node instanceof Invoke) {
                         Invoke invoke = (Invoke) node;
                         Assert.assertTrue(invoke.callTarget() instanceof DirectCallTargetNode);
@@ -57,12 +56,12 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
                         JavaMethod callee = (JavaMethod) directCall.target();
                         Assert.assertTrue(callee.getName().equals("<init>"));
                         Assert.assertTrue(runtime.lookupJavaType(ArrayIndexOutOfBoundsException.class).equals(callee.getDeclaringClass()) ||
-                                          runtime.lookupJavaType(NullPointerException.class).equals(callee.getDeclaringClass()));
+                                        runtime.lookupJavaType(NullPointerException.class).equals(callee.getDeclaringClass()));
                     }
                 }
             } else {
                 boolean found = false;
-                for (Node node: graph.getNodes()) {
+                for (Node node : graph.getNodes()) {
                     if (node instanceof Invoke) {
                         Invoke invoke = (Invoke) node;
                         DirectCallTargetNode directCall = (DirectCallTargetNode) invoke.callTarget();
@@ -174,7 +173,7 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
         // Complete array copy
         test(name, src, 0, newArray(src, srcLength), 0, srcLength);
 
-        for (int length : new int[] {0, 1, srcLength - 1, srcLength}) {
+        for (int length : new int[]{0, 1, srcLength - 1, srcLength}) {
             // Partial array copying
             test(name, src, 0, newArray(src, length), 0, length);
             test(name, src, srcLength - length, newArray(src, length), 0, length);

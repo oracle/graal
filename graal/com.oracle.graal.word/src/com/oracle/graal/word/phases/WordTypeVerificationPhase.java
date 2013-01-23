@@ -36,8 +36,8 @@ import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Operation;
 
 /**
- * Verifies invariants that must hold for snippet code above and beyond normal
- * bytecode verification.
+ * Verifies invariants that must hold for snippet code above and beyond normal bytecode
+ * verification.
  */
 public class WordTypeVerificationPhase extends Phase {
 
@@ -130,9 +130,7 @@ public class WordTypeVerificationPhase extends Phase {
     }
 
     private static void error(Node node, Node usage, String message) {
-        throw new GraalInternalError(String.format("Snippet verification error: %s" +
-                        "%n   node: %s (%s)" +
-                        "%n  usage: %s (%s)", message, node, sourceLocation(node), usage, sourceLocation(usage)));
+        throw new GraalInternalError(String.format("Snippet verification error: %s" + "%n   node: %s (%s)" + "%n  usage: %s (%s)", message, node, sourceLocation(node), usage, sourceLocation(usage)));
     }
 
     private static String sourceLocation(Node n) {

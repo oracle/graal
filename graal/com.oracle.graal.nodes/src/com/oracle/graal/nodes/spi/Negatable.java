@@ -25,16 +25,18 @@ package com.oracle.graal.nodes.spi;
 import com.oracle.graal.nodes.*;
 
 /**
- * This interface marks a node as being able to negate its effect, this is intended for nodes that depend on a
- * BooleanNode condition. The canonical representation of has, for example, no way to represent a != b. If such an
- * expression appears during canonicalization the negated expression will be created (a == b) and the usages will be
- * negated, using this interface's {@link #negate()} method.
+ * This interface marks a node as being able to negate its effect, this is intended for nodes that
+ * depend on a BooleanNode condition. The canonical representation of has, for example, no way to
+ * represent a != b. If such an expression appears during canonicalization the negated expression
+ * will be created (a == b) and the usages will be negated, using this interface's {@link #negate()}
+ * method.
  */
 public interface Negatable {
 
     /**
-     * Tells this node that a condition it depends has been negated, and that it thus needs to invert its own effect.
-     * For example, an {@link IfNode} would switch its true and false successors.
+     * Tells this node that a condition it depends has been negated, and that it thus needs to
+     * invert its own effect. For example, an {@link IfNode} would switch its true and false
+     * successors.
      */
     Negatable negate();
 }

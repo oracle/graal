@@ -38,9 +38,9 @@ import com.oracle.graal.virtual.nodes.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
 /**
- * In these test cases the probability of all invokes is set to a high value, such that an InliningPhase should inline
- * them all. After that, the PartialEscapeAnalysisPhase is expected to remove all allocations and return the correct
- * values.
+ * In these test cases the probability of all invokes is set to a high value, such that an
+ * InliningPhase should inline them all. After that, the PartialEscapeAnalysisPhase is expected to
+ * remove all allocations and return the correct values.
  */
 public class PartialEscapeAnalysisTest extends GraalCompilerTest {
 

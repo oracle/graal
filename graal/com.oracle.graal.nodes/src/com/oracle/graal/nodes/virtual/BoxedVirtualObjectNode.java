@@ -27,7 +27,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-
 public class BoxedVirtualObjectNode extends VirtualObjectNode implements LIRLowerable, Node.ValueNumberable {
 
     @Input ValueNode unboxedValue;
@@ -63,7 +62,8 @@ public class BoxedVirtualObjectNode extends VirtualObjectNode implements LIRLowe
 
     @Override
     public int entryIndexForOffset(long constantOffset) {
-        // (lstadler) unsafe access to a newly created boxing object should only ever touch the value field
+        // (lstadler) unsafe access to a newly created boxing object should only ever touch the
+        // value field
         return 0;
     }
 

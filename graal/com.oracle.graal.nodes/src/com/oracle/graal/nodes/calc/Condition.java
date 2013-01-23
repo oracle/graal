@@ -88,97 +88,149 @@ public enum Condition {
 
     public boolean check(int left, int right) {
         switch (this) {
-            case EQ: return left == right;
-            case NE: return left != right;
-            case LT: return left < right;
-            case LE: return left <= right;
-            case GT: return left > right;
-            case GE: return left >= right;
-            case AE: return UnsignedMath.aboveOrEqual(left, right);
-            case BE: return UnsignedMath.belowOrEqual(left, right);
-            case AT: return UnsignedMath.aboveThan(left, right);
-            case BT: return UnsignedMath.belowThan(left, right);
+            case EQ:
+                return left == right;
+            case NE:
+                return left != right;
+            case LT:
+                return left < right;
+            case LE:
+                return left <= right;
+            case GT:
+                return left > right;
+            case GE:
+                return left >= right;
+            case AE:
+                return UnsignedMath.aboveOrEqual(left, right);
+            case BE:
+                return UnsignedMath.belowOrEqual(left, right);
+            case AT:
+                return UnsignedMath.aboveThan(left, right);
+            case BT:
+                return UnsignedMath.belowThan(left, right);
         }
         throw new IllegalArgumentException(this.toString());
     }
 
     /**
-     * Given a condition and its negation, this method returns true for one of the two and false for the other one.
-     * This can be used to keep comparisons in a canonical form.
+     * Given a condition and its negation, this method returns true for one of the two and false for
+     * the other one. This can be used to keep comparisons in a canonical form.
+     * 
      * @return true if this condition is considered to be the canonical form, false otherwise.
      */
     public boolean isCanonical() {
         switch (this) {
-            case EQ: return true;
-            case NE: return false;
-            case LT: return true;
-            case LE: return false;
-            case GT: return false;
-            case GE: return false;
-            case BT: return true;
-            case BE: return false;
-            case AT: return false;
-            case AE: return false;
+            case EQ:
+                return true;
+            case NE:
+                return false;
+            case LT:
+                return true;
+            case LE:
+                return false;
+            case GT:
+                return false;
+            case GE:
+                return false;
+            case BT:
+                return true;
+            case BE:
+                return false;
+            case AT:
+                return false;
+            case AE:
+                return false;
         }
         throw new IllegalArgumentException(this.toString());
     }
 
     /**
-     * Returns true if the condition needs to be mirrored to get to a canonical condition.
-     * The result of the mirroring operation might still need to be negated to achieve a canonical form.
+     * Returns true if the condition needs to be mirrored to get to a canonical condition. The
+     * result of the mirroring operation might still need to be negated to achieve a canonical form.
      */
     public boolean canonicalMirror() {
         switch (this) {
-            case EQ: return false;
-            case NE: return false;
-            case LT: return false;
-            case LE: return true;
-            case GT: return true;
-            case GE: return false;
-            case BT: return false;
-            case BE: return true;
-            case AT: return true;
-            case AE: return false;
+            case EQ:
+                return false;
+            case NE:
+                return false;
+            case LT:
+                return false;
+            case LE:
+                return true;
+            case GT:
+                return true;
+            case GE:
+                return false;
+            case BT:
+                return false;
+            case BE:
+                return true;
+            case AT:
+                return true;
+            case AE:
+                return false;
         }
         throw new IllegalArgumentException(this.toString());
     }
 
     /**
-     * Returns true if the condition needs to be negated to get to a canonical condition.
-     * The result of the negation might still need to be mirrored to achieve a canonical form.
+     * Returns true if the condition needs to be negated to get to a canonical condition. The result
+     * of the negation might still need to be mirrored to achieve a canonical form.
      */
     public boolean canonicalNegate() {
         switch (this) {
-            case EQ: return false;
-            case NE: return true;
-            case LT: return false;
-            case LE: return true;
-            case GT: return false;
-            case GE: return true;
-            case BT: return false;
-            case BE: return true;
-            case AT: return false;
-            case AE: return true;
+            case EQ:
+                return false;
+            case NE:
+                return true;
+            case LT:
+                return false;
+            case LE:
+                return true;
+            case GT:
+                return false;
+            case GE:
+                return true;
+            case BT:
+                return false;
+            case BE:
+                return true;
+            case AT:
+                return false;
+            case AE:
+                return true;
         }
         throw new IllegalArgumentException(this.toString());
     }
 
     /**
      * Negate this conditional.
+     * 
      * @return the condition that represents the negation
      */
     public final Condition negate() {
         switch (this) {
-            case EQ: return NE;
-            case NE: return EQ;
-            case LT: return GE;
-            case LE: return GT;
-            case GT: return LE;
-            case GE: return LT;
-            case BT: return AE;
-            case BE: return AT;
-            case AT: return BE;
-            case AE: return BT;
+            case EQ:
+                return NE;
+            case NE:
+                return EQ;
+            case LT:
+                return GE;
+            case LE:
+                return GT;
+            case GT:
+                return LE;
+            case GE:
+                return LT;
+            case BT:
+                return AE;
+            case BE:
+                return AT;
+            case AT:
+                return BE;
+            case AE:
+                return BT;
         }
         throw new IllegalArgumentException(this.toString());
     }
@@ -188,42 +240,64 @@ public enum Condition {
             return true;
         }
         switch (this) {
-            case EQ: return other == LE || other == GE || other == BE || other == AE;
-            case NE: return false;
-            case LT: return other == LE || other == NE;
-            case LE: return false;
-            case GT: return other == GE || other == NE;
-            case GE: return false;
-            case BT: return other == BE || other == NE;
-            case BE: return false;
-            case AT: return other == AE || other == NE;
-            case AE: return false;
+            case EQ:
+                return other == LE || other == GE || other == BE || other == AE;
+            case NE:
+                return false;
+            case LT:
+                return other == LE || other == NE;
+            case LE:
+                return false;
+            case GT:
+                return other == GE || other == NE;
+            case GE:
+                return false;
+            case BT:
+                return other == BE || other == NE;
+            case BE:
+                return false;
+            case AT:
+                return other == AE || other == NE;
+            case AE:
+                return false;
         }
         throw new IllegalArgumentException(this.toString());
     }
 
     /**
      * Mirror this conditional (i.e. commute "a op b" to "b op' a")
+     * 
      * @return the condition representing the equivalent commuted operation
      */
     public final Condition mirror() {
         switch (this) {
-            case EQ: return EQ;
-            case NE: return NE;
-            case LT: return GT;
-            case LE: return GE;
-            case GT: return LT;
-            case GE: return LE;
-            case BT: return AT;
-            case BE: return AE;
-            case AT: return BT;
-            case AE: return BE;
+            case EQ:
+                return EQ;
+            case NE:
+                return NE;
+            case LT:
+                return GT;
+            case LE:
+                return GE;
+            case GT:
+                return LT;
+            case GE:
+                return LE;
+            case BT:
+                return AT;
+            case BE:
+                return AE;
+            case AT:
+                return BT;
+            case AE:
+                return BE;
         }
         throw new IllegalArgumentException();
     }
 
     /**
-     * Returns true if this condition represents an unsigned comparison. EQ and NE are not considered to be unsigned.
+     * Returns true if this condition represents an unsigned comparison. EQ and NE are not
+     * considered to be unsigned.
      */
     public final boolean isUnsigned() {
         return this == Condition.BT || this == Condition.BE || this == Condition.AT || this == Condition.AE;
@@ -231,6 +305,7 @@ public enum Condition {
 
     /**
      * Checks if this conditional operation is commutative.
+     * 
      * @return {@code true} if this operation is commutative
      */
     public final boolean isCommutative() {
@@ -239,12 +314,12 @@ public enum Condition {
 
     /**
      * Attempts to fold a comparison between two constants and return the result.
-     *
+     * 
      * @param lt the constant on the left side of the comparison
      * @param rt the constant on the right side of the comparison
      * @param runtime needed to compare runtime-specific types
-     * @return {@link Boolean#TRUE} if the comparison is known to be true,
-     * {@link Boolean#FALSE} if the comparison is known to be false
+     * @return {@link Boolean#TRUE} if the comparison is known to be true, {@link Boolean#FALSE} if
+     *         the comparison is known to be false
      */
     public boolean foldCondition(Constant lt, Constant rt, CodeCacheProvider runtime) {
         assert lt.getKind() != Kind.Double && lt.getKind() != Kind.Float && rt.getKind() != Kind.Double && rt.getKind() != Kind.Float;
@@ -253,12 +328,13 @@ public enum Condition {
 
     /**
      * Attempts to fold a comparison between two constants and return the result.
-     *
+     * 
      * @param lt the constant on the left side of the comparison
      * @param rt the constant on the right side of the comparison
      * @param runtime needed to compare runtime-specific types
      * @param unorderedIsTrue true if an undecided float comparison should result in "true"
-     * @return true if the comparison is known to be true, false if the comparison is known to be false
+     * @return true if the comparison is known to be true, false if the comparison is known to be
+     *         false
      */
     public boolean foldCondition(Constant lt, Constant rt, MetaAccessProvider runtime, boolean unorderedIsTrue) {
         switch (lt.getKind()) {
@@ -271,41 +347,66 @@ public enum Condition {
                 int x = lt.asInt();
                 int y = rt.asInt();
                 switch (this) {
-                    case EQ: return x == y;
-                    case NE: return x != y;
-                    case LT: return x < y;
-                    case LE: return x <= y;
-                    case GT: return x > y;
-                    case GE: return x >= y;
-                    case AE: return UnsignedMath.aboveOrEqual(x, y);
-                    case BE: return UnsignedMath.belowOrEqual(x, y);
-                    case AT: return UnsignedMath.aboveThan(x, y);
-                    case BT: return UnsignedMath.belowThan(x, y);
-                    default: throw new GraalInternalError("expected condition: %s", this);
+                    case EQ:
+                        return x == y;
+                    case NE:
+                        return x != y;
+                    case LT:
+                        return x < y;
+                    case LE:
+                        return x <= y;
+                    case GT:
+                        return x > y;
+                    case GE:
+                        return x >= y;
+                    case AE:
+                        return UnsignedMath.aboveOrEqual(x, y);
+                    case BE:
+                        return UnsignedMath.belowOrEqual(x, y);
+                    case AT:
+                        return UnsignedMath.aboveThan(x, y);
+                    case BT:
+                        return UnsignedMath.belowThan(x, y);
+                    default:
+                        throw new GraalInternalError("expected condition: %s", this);
                 }
             }
             case Long: {
                 long x = lt.asLong();
                 long y = rt.asLong();
                 switch (this) {
-                    case EQ: return x == y;
-                    case NE: return x != y;
-                    case LT: return x < y;
-                    case LE: return x <= y;
-                    case GT: return x > y;
-                    case GE: return x >= y;
-                    case AE: return UnsignedMath.aboveOrEqual(x, y);
-                    case BE: return UnsignedMath.belowOrEqual(x, y);
-                    case AT: return UnsignedMath.aboveThan(x, y);
-                    case BT: return UnsignedMath.belowThan(x, y);
-                    default: throw new GraalInternalError("expected condition: %s", this);
+                    case EQ:
+                        return x == y;
+                    case NE:
+                        return x != y;
+                    case LT:
+                        return x < y;
+                    case LE:
+                        return x <= y;
+                    case GT:
+                        return x > y;
+                    case GE:
+                        return x >= y;
+                    case AE:
+                        return UnsignedMath.aboveOrEqual(x, y);
+                    case BE:
+                        return UnsignedMath.belowOrEqual(x, y);
+                    case AT:
+                        return UnsignedMath.aboveThan(x, y);
+                    case BT:
+                        return UnsignedMath.belowThan(x, y);
+                    default:
+                        throw new GraalInternalError("expected condition: %s", this);
                 }
             }
             case Object: {
                 switch (this) {
-                    case EQ: return runtime.constantEquals(lt, rt);
-                    case NE: return !runtime.constantEquals(lt, rt);
-                    default: throw new GraalInternalError("expected condition: %s", this);
+                    case EQ:
+                        return runtime.constantEquals(lt, rt);
+                    case NE:
+                        return !runtime.constantEquals(lt, rt);
+                    default:
+                        throw new GraalInternalError("expected condition: %s", this);
                 }
             }
             case Float: {
@@ -315,13 +416,20 @@ public enum Condition {
                     return unorderedIsTrue;
                 }
                 switch (this) {
-                    case EQ: return x == y;
-                    case NE: return x != y;
-                    case LT: return x < y;
-                    case LE: return x <= y;
-                    case GT: return x > y;
-                    case GE: return x >= y;
-                    default: throw new GraalInternalError("expected condition: %s", this);
+                    case EQ:
+                        return x == y;
+                    case NE:
+                        return x != y;
+                    case LT:
+                        return x < y;
+                    case LE:
+                        return x <= y;
+                    case GT:
+                        return x > y;
+                    case GE:
+                        return x >= y;
+                    default:
+                        throw new GraalInternalError("expected condition: %s", this);
                 }
             }
             case Double: {
@@ -331,16 +439,24 @@ public enum Condition {
                     return unorderedIsTrue;
                 }
                 switch (this) {
-                    case EQ: return x == y;
-                    case NE: return x != y;
-                    case LT: return x < y;
-                    case LE: return x <= y;
-                    case GT: return x > y;
-                    case GE: return x >= y;
-                    default: throw new GraalInternalError("expected condition: %s", this);
+                    case EQ:
+                        return x == y;
+                    case NE:
+                        return x != y;
+                    case LT:
+                        return x < y;
+                    case LE:
+                        return x <= y;
+                    case GT:
+                        return x > y;
+                    case GE:
+                        return x >= y;
+                    default:
+                        throw new GraalInternalError("expected condition: %s", this);
                 }
             }
-            default: throw new GraalInternalError("expected value kind %s while folding condition: %s", lt.getKind(), this);
+            default:
+                throw new GraalInternalError("expected value kind %s while folding condition: %s", lt.getKind(), this);
         }
     }
 

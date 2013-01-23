@@ -26,10 +26,9 @@ import java.util.*;
 
 import com.oracle.graal.api.code.Register.*;
 
-
 /**
- * Represents a CPU architecture, including information such as its endianness, CPU
- * registers, word width, etc.
+ * Represents a CPU architecture, including information such as its endianness, CPU registers, word
+ * width, etc.
  */
 public abstract class Architecture {
 
@@ -37,18 +36,19 @@ public abstract class Architecture {
      * The endianness of the architecture.
      */
     public static enum ByteOrder {
-        LittleEndian,
-        BigEndian
+        LittleEndian, BigEndian
     }
 
     /**
-     * The number of bits required in a bit map covering all the registers that may store references.
-     * The bit position of a register in the map is the register's {@linkplain Register#number number}.
+     * The number of bits required in a bit map covering all the registers that may store
+     * references. The bit position of a register in the map is the register's
+     * {@linkplain Register#number number}.
      */
     private final int registerReferenceMapBitCount;
 
     /**
-     * Represents the natural size of words (typically registers and pointers) of this architecture, in bytes.
+     * Represents the natural size of words (typically registers and pointers) of this architecture,
+     * in bytes.
      */
     private final int wordSize;
 
@@ -69,8 +69,8 @@ public abstract class Architecture {
     private final ByteOrder byteOrder;
 
     /**
-     * Mask of the barrier constants denoting the barriers that
-     * are not required to be explicitly inserted under this architecture.
+     * Mask of the barrier constants denoting the barriers that are not required to be explicitly
+     * inserted under this architecture.
      */
     private final int implicitMemoryBarriers;
 
@@ -80,8 +80,8 @@ public abstract class Architecture {
     private final int machineCodeCallDisplacementOffset;
 
     /**
-     * The size of the return address pushed to the stack by a call instruction.
-     * A value of 0 denotes that call linkage uses registers instead (e.g. SPARC).
+     * The size of the return address pushed to the stack by a call instruction. A value of 0
+     * denotes that call linkage uses registers instead (e.g. SPARC).
      */
     private final int returnAddressSize;
 
@@ -89,7 +89,7 @@ public abstract class Architecture {
 
     /**
      * Gets the register for a given {@linkplain Register#encoding encoding} and type.
-     *
+     * 
      * @param encoding a register value as used in a machine instruction
      * @param type the type of the register
      */
@@ -101,13 +101,7 @@ public abstract class Architecture {
         return reg;
     }
 
-    protected Architecture(String name,
-                    int wordSize,
-                    ByteOrder byteOrder,
-                    Register[] registers,
-                    int implicitMemoryBarriers,
-                    int nativeCallDisplacementOffset,
-                    int registerReferenceMapBitCount,
+    protected Architecture(String name, int wordSize, ByteOrder byteOrder, Register[] registers, int implicitMemoryBarriers, int nativeCallDisplacementOffset, int registerReferenceMapBitCount,
                     int returnAddressSize) {
         this.name = name;
         this.registers = registers;
@@ -133,6 +127,7 @@ public abstract class Architecture {
 
     /**
      * Converts this architecture to a string.
+     * 
      * @return the string representation of this architecture
      */
     @Override
@@ -145,7 +140,8 @@ public abstract class Architecture {
     }
 
     /**
-     * Gets the natural size of words (typically registers and pointers) of this architecture, in bytes.
+     * Gets the natural size of words (typically registers and pointers) of this architecture, in
+     * bytes.
      */
     public int getWordSize() {
         return wordSize;
@@ -159,8 +155,8 @@ public abstract class Architecture {
     }
 
     /**
-     * Gets an array of all available registers on this architecture. The index of each register in this
-     * array is equal to its {@linkplain Register#number number}.
+     * Gets an array of all available registers on this architecture. The index of each register in
+     * this array is equal to its {@linkplain Register#number number}.
      */
     public Register[] getRegisters() {
         return registers.clone();
@@ -171,16 +167,16 @@ public abstract class Architecture {
     }
 
     /**
-     * Gets a mask of the barrier constants denoting the barriers that
-     * are not required to be explicitly inserted under this architecture.
+     * Gets a mask of the barrier constants denoting the barriers that are not required to be
+     * explicitly inserted under this architecture.
      */
     public int getImplicitMemoryBarriers() {
         return implicitMemoryBarriers;
     }
 
     /**
-     * Gets the size of the return address pushed to the stack by a call instruction.
-     * A value of 0 denotes that call linkage uses registers instead.
+     * Gets the size of the return address pushed to the stack by a call instruction. A value of 0
+     * denotes that call linkage uses registers instead.
      */
     public int getReturnAddressSize() {
         return returnAddressSize;
@@ -194,8 +190,9 @@ public abstract class Architecture {
     }
 
     /**
-     * Determines the barriers in a given barrier mask that are explicitly required on this architecture.
-     *
+     * Determines the barriers in a given barrier mask that are explicitly required on this
+     * architecture.
+     * 
      * @param barriers a mask of the barrier constants
      * @return the value of {@code barriers} minus the barriers unnecessary on this architecture
      */

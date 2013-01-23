@@ -22,11 +22,9 @@
  */
 package com.oracle.graal.phases;
 
-
-
 /**
  * This class encapsulates options that control the behavior of the Graal compiler.
- *
+ * 
  * (thomaswue) WARNING: Fields of this class are treated as final by Graal.
  */
 // @formatter:off

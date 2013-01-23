@@ -25,10 +25,9 @@ package com.oracle.graal.api.interpreter;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Please note: The parameters of the interface are currently in reversed order
- * since it was derived from the java ByteCodeInterpreter implementation. There
- * it was simpler to use the parameters in reversed order since they are popped from
- * the stack in reversed order.
+ * Please note: The parameters of the interface are currently in reversed order since it was derived
+ * from the java ByteCodeInterpreter implementation. There it was simpler to use the parameters in
+ * reversed order since they are popped from the stack in reversed order.
  */
 public interface RuntimeInterpreterInterface {
 

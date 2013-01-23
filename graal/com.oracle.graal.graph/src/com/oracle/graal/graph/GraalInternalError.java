@@ -50,12 +50,14 @@ public class GraalInternalError extends Error {
         throw new GraalInternalError("should not reach here: %s", msg);
     }
 
-
     /**
-     * This constructor creates a {@link GraalInternalError} with a message assembled via {@link String#format(String, Object...)}.
-     * It always uses the ENGLISH locale in order to always generate the same output.
+     * This constructor creates a {@link GraalInternalError} with a message assembled via
+     * {@link String#format(String, Object...)}. It always uses the ENGLISH locale in order to
+     * always generate the same output.
+     * 
      * @param msg the message that will be associated with the error, in String.format syntax
-     * @param args parameters to String.format - parameters that implement {@link Iterable} will be expanded into a [x, x, ...] representation.
+     * @param args parameters to String.format - parameters that implement {@link Iterable} will be
+     *            expanded into a [x, x, ...] representation.
      */
     public GraalInternalError(String msg, Object... args) {
         super(format(msg, args));
@@ -63,6 +65,7 @@ public class GraalInternalError extends Error {
 
     /**
      * This constructor creates a {@link GraalInternalError} for a given causing Throwable instance.
+     * 
      * @param cause the original exception that contains additional information on this error
      */
     public GraalInternalError(Throwable cause) {
@@ -105,8 +108,11 @@ public class GraalInternalError extends Error {
     }
 
     /**
-     * Adds a graph to the context of this VerificationError. The first graph added via this method will be returned by {@link #graph()}.
-     * @param newGraph the graph which is in a incorrect state, if the verification error was not caused by a specific node
+     * Adds a graph to the context of this VerificationError. The first graph added via this method
+     * will be returned by {@link #graph()}.
+     * 
+     * @param newGraph the graph which is in a incorrect state, if the verification error was not
+     *            caused by a specific node
      */
     public GraalInternalError addContext(Graph newGraph) {
         if (newGraph != this.graph) {
@@ -119,8 +125,11 @@ public class GraalInternalError extends Error {
     }
 
     /**
-     * Adds a node to the context of this VerificationError. The first node added via this method will be returned by {@link #node()}.
-     * @param newNode the node which is in a incorrect state, if the verification error was caused by a node
+     * Adds a node to the context of this VerificationError. The first node added via this method
+     * will be returned by {@link #node()}.
+     * 
+     * @param newNode the node which is in a incorrect state, if the verification error was caused
+     *            by a node
      */
     public GraalInternalError addContext(Node newNode) {
         if (newNode != this.node) {

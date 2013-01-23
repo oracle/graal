@@ -40,7 +40,7 @@ public final class IsNullNode extends BooleanNode implements Canonicalizable, LI
 
     /**
      * Constructs a new IsNullNode instruction.
-     *
+     * 
      * @param object the instruction producing the object to check against null
      */
     public IsNullNode(ValueNode object) {

@@ -135,7 +135,7 @@ public class ConvertJTT {
                 }
                 output.add(line);
             } else {
-// line = line.replace(oldClassName, newClassName);
+                // line = line.replace(oldClassName, newClassName);
                 line = line.replace(" jtt.", " com.oracle.graal.jtt.");
                 output.add(line);
             }

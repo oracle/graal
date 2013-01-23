@@ -36,7 +36,8 @@ import com.oracle.graal.phases.*;
  */
 public class HotSpotResolvedJavaField extends CompilerObject implements ResolvedJavaField {
 
-    // Must not conflict with any fields flags used by the VM - the assertion in the constructor checks this assumption
+    // Must not conflict with any fields flags used by the VM - the assertion in the constructor
+    // checks this assumption
     private static final int FIELD_INTERNAL_FLAG = 0x80000000;
 
     private static final long serialVersionUID = 7692985878836955683L;
@@ -109,7 +110,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         }
     }
 
-    private static boolean assumeStaticFieldsFinal(Class< ? > clazz) {
+    private static boolean assumeStaticFieldsFinal(Class<?> clazz) {
         return clazz == GraalOptions.class;
     }
 

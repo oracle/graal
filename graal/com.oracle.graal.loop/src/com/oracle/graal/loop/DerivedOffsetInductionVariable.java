@@ -26,8 +26,8 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
-
 public class DerivedOffsetInductionVariable extends InductionVariable {
+
     private InductionVariable base;
     private ValueNode offset;
     private IntegerArithmeticNode value;
@@ -117,7 +117,7 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
 
     private ValueNode op(ValueNode b, ValueNode o) {
         if (value instanceof IntegerAddNode) {
-        return IntegerArithmeticNode.add(b, o);
+            return IntegerArithmeticNode.add(b, o);
         }
         if (value instanceof IntegerSubNode) {
             if (base.valueNode() == value.x()) {

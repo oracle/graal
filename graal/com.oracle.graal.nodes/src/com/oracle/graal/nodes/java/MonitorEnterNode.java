@@ -33,7 +33,7 @@ public final class MonitorEnterNode extends AccessMonitorNode implements Lowerab
 
     /**
      * Creates a new MonitorEnterNode.
-     *
+     * 
      * @param object the instruction producing the object
      */
     public MonitorEnterNode(ValueNode object) {

@@ -34,8 +34,8 @@ import com.oracle.graal.nodes.VirtualState.VirtualClosure;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.type.*;
 
-
 public abstract class LoopFragment {
+
     private final LoopEx loop;
     private final LoopFragment original;
     protected NodeBitMap nodes;
@@ -114,6 +114,7 @@ public abstract class LoopFragment {
                 dr = cfgFix;
             } else if (cfgFix != null && dataFix != null) {
                 dr = new DuplicationReplacement() {
+
                     @Override
                     public Node replacement(Node o) {
                         Node r1 = dataFix.replacement(o);
@@ -130,6 +131,7 @@ public abstract class LoopFragment {
                 };
             } else {
                 dr = new DuplicationReplacement() {
+
                     @Override
                     public Node replacement(Node o) {
                         return o;
@@ -140,12 +142,12 @@ public abstract class LoopFragment {
             finishDuplication();
             nodesReady = true;
         } else {
-            //TODO (gd) apply fix ?
+            // TODO (gd) apply fix ?
         }
     }
 
     protected static NodeBitMap computeNodes(Graph graph, Collection<BeginNode> blocks) {
-        return computeNodes(graph, blocks, Collections.<BeginNode>emptyList());
+        return computeNodes(graph, blocks, Collections.<BeginNode> emptyList());
     }
 
     protected static NodeBitMap computeNodes(Graph graph, Collection<BeginNode> blocks, Collection<BeginNode> earlyExits) {
@@ -169,6 +171,7 @@ public abstract class LoopFragment {
             if (stateAfter != null) {
                 nodes.mark(stateAfter);
                 stateAfter.applyToVirtual(new VirtualClosure() {
+
                     @Override
                     public void apply(VirtualState node) {
                         nodes.mark(node);
@@ -230,7 +233,8 @@ public abstract class LoopFragment {
     }
 
     /**
-     * Merges the early exits (i.e. loop exits) that were duplicated as part of this fragment, with the original fragment's exits.
+     * Merges the early exits (i.e. loop exits) that were duplicated as part of this fragment, with
+     * the original fragment's exits.
      */
     protected void mergeEarlyExits() {
         assert isDuplicate();
@@ -271,7 +275,8 @@ public abstract class LoopFragment {
                 final ValueNode replaceWith;
                 ValueProxyNode newVpn = getDuplicatedNode(vpn);
                 if (newVpn != null) {
-                    PhiNode phi = graph.add(vpn.type() == PhiType.Value ? vpn.stamp() == StampFactory.virtual() ? new PhiNode(vpn.stamp(), merge) : new PhiNode(vpn.kind(), merge) : new PhiNode(vpn.type(), merge));
+                    PhiNode phi = graph.add(vpn.type() == PhiType.Value ? vpn.stamp() == StampFactory.virtual() ? new PhiNode(vpn.stamp(), merge) : new PhiNode(vpn.kind(), merge) : new PhiNode(
+                                    vpn.type(), merge));
                     phi.addInput(vpn);
                     phi.addInput(newVpn);
                     replaceWith = phi;
@@ -280,6 +285,7 @@ public abstract class LoopFragment {
                 }
                 if (state != null) {
                     state.applyToNonVirtual(new NodeClosure<ValueNode>() {
+
                         @Override
                         public void apply(Node from, ValueNode node) {
                             if (node == vpn) {

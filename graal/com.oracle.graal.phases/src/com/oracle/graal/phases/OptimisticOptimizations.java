@@ -52,7 +52,8 @@ public final class OptimisticOptimizations {
         if (checkDeoptimizations(method.getProfilingInfo(), deoptReason)) {
             enabledOpts.add(optimization);
         } else {
-            // TODO (chaeubl): change to Debug.log when we are sure that optimistic optimizations are not disabled
+            // TODO (chaeubl): change to Debug.log when we are sure that optimistic optimizations
+            // are not disabled
             // unnecessarily
             TTY.println("WARN: deactivated optimistic optimization %s for %s", optimization.name(), MetaUtil.format("%H.%n(%p)", method));
             disabledOptimisticOptsMetric.increment();

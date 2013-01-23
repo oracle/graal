@@ -32,7 +32,7 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
 
     /**
      * Constructs a new object equality comparison node.
-     *
+     * 
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */

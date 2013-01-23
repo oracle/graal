@@ -31,17 +31,17 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
- * The {@code IntegerSwitchNode} represents a switch on integer keys, with a sorted array of key values.
- * The actual implementation of the switch will be decided by the backend.
+ * The {@code IntegerSwitchNode} represents a switch on integer keys, with a sorted array of key
+ * values. The actual implementation of the switch will be decided by the backend.
  */
 public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
     private final int[] keys;
 
     /**
-     * Constructs a integer switch instruction. The keyProbabilities and keySuccessors array contain key.length + 1
-     * entries, the last entry describes the default (fall through) case.
-     *
+     * Constructs a integer switch instruction. The keyProbabilities and keySuccessors array contain
+     * key.length + 1 entries, the last entry describes the default (fall through) case.
+     * 
      * @param value the instruction producing the value being switched on
      * @param successors the list of successors
      * @param keys the sorted list of keys
@@ -56,9 +56,9 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     }
 
     /**
-     * Constructs a integer switch instruction. The keyProbabilities and keySuccessors array contain key.length + 1
-     * entries, the last entry describes the default (fall through) case.
-     *
+     * Constructs a integer switch instruction. The keyProbabilities and keySuccessors array contain
+     * key.length + 1 entries, the last entry describes the default (fall through) case.
+     * 
      * @param value the instruction producing the value being switched on
      * @param successorCount the number of successors
      * @param keys the sorted list of keys
@@ -71,6 +71,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
 
     /**
      * Gets the key at the specified index.
+     * 
      * @param i the index
      * @return the key at that index
      */
@@ -125,7 +126,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
                 } else if (validKeys != keys.length) {
                     ArrayList<BeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
                     int[] newKeys = new int[validKeys];
-                    int[] newKeySuccessors = new int [validKeys + 1];
+                    int[] newKeySuccessors = new int[validKeys + 1];
                     double[] newKeyProbabilities = new double[validKeys + 1];
                     double totalProbability = 0;
                     int current = 0;

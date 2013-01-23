@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.type.*;
  * Loads an object's {@linkplain Representation#ObjectHub hub}, null-checking the object first.
  */
 public final class LoadHubNode extends FixedWithNextNode implements Lowerable, Canonicalizable, Virtualizable {
+
     @Input private ValueNode object;
 
     public ValueNode object() {
