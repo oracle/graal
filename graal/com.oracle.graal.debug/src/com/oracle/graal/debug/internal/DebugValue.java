@@ -22,23 +22,8 @@
  */
 package com.oracle.graal.debug.internal;
 
-import java.util.*;
 
-public abstract class DebugValue {
-
-    public static final Comparator<DebugValue> ORDER_BY_NAME = new Comparator<DebugValue>() {
-        @Override
-        public int compare(DebugValue o1, DebugValue o2) {
-            // this keeps the "Runs" metric at the top of the list
-            if (o1.getName().equals("Runs")) {
-                return o2.getName().equals("Runs") ? 0 : -1;
-            }
-            if (o2.getName().equals("Runs")) {
-                return o1.getName().equals("Runs") ? 0 : 1;
-            }
-            return o1.getName().compareTo(o2.getName());
-        }
-    };
+public abstract class DebugValue implements Comparable<DebugValue> {
 
     private String name;
     private int index;
@@ -74,6 +59,10 @@ public abstract class DebugValue {
 
     public String getName() {
         return name;
+    }
+
+    public int compareTo(DebugValue o) {
+        return name.compareTo(o.name);
     }
 
     public abstract String toString(long value);

@@ -285,7 +285,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             List<DebugValue> debugValues = KeyRegistry.getDebugValues();
             if (debugValues.size() > 0) {
                 ArrayList<DebugValue> sortedValues = new ArrayList<>(debugValues);
-                Collections.sort(sortedValues, DebugValue.ORDER_BY_NAME);
+                Collections.sort(sortedValues);
 
                 if (GraalOptions.SummarizeDebugValues) {
                     printSummary(topLevelMaps, sortedValues);
