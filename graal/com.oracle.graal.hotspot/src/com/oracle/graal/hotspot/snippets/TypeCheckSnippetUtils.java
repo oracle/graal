@@ -85,7 +85,7 @@ public class TypeCheckSnippetUtils {
         int length = secondarySupers.readInt(metaspaceArrayLengthOffset());
         for (int i = 0; i < length; i++) {
             if (t == loadWordElement(secondarySupers, i)) {
-                probability(0.01);
+                probability(NOT_LIKELY_PROBABILITY);
                 s.writeWord(secondarySuperCacheOffset(), t);
                 secondariesHit.inc();
                 return true;

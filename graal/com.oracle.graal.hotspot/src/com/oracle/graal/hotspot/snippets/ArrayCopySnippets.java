@@ -90,7 +90,7 @@ public class ArrayCopySnippets implements SnippetsInterface {
         long srcOffset = (long) srcPos * elementSize;
         long destOffset = (long) destPos * elementSize;
         if (src == dest && srcPos < destPos) { // bad aliased case
-            probability(0.1);
+            probability(NOT_FREQUENT_PROBABILITY);
             for (long i = byteLength - elementSize; i >= byteLength - nonVectorBytes; i -= elementSize) {
                 UnsafeStoreNode.store(dest, header, i + destOffset, UnsafeLoadNode.load(src, header, i + srcOffset, baseKind), baseKind);
             }
@@ -112,37 +112,37 @@ public class ArrayCopySnippets implements SnippetsInterface {
 
     public static void checkInputs(Object src, int srcPos, Object dest, int destPos, int length) {
         if (src == null) {
-            probability(0.01);
+            probability(DEOPT_PATH_PROBABILITY);
             checkNPECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         if (dest == null) {
-            probability(0.01);
+            probability(DEOPT_PATH_PROBABILITY);
             checkNPECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         if (srcPos < 0) {
-            probability(0.01);
+            probability(DEOPT_PATH_PROBABILITY);
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         if (destPos < 0) {
-            probability(0.01);
+            probability(DEOPT_PATH_PROBABILITY);
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         if (length < 0) {
-            probability(0.01);
+            probability(DEOPT_PATH_PROBABILITY);
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         if (srcPos + length > ArrayLengthNode.arrayLength(src)) {
-            probability(0.01);
+            probability(DEOPT_PATH_PROBABILITY);
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         if (destPos + length > ArrayLengthNode.arrayLength(dest)) {
-            probability(0.01);
+            probability(DEOPT_PATH_PROBABILITY);
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
