@@ -28,17 +28,19 @@ import java.util.ArrayList;
  * This class represents a label within assembly code.
  */
 public final class Label {
+
     private int position = -1;
 
     /**
-     * References to instructions that jump to this unresolved label.
-     * These instructions need to be patched when the label is bound
-     * using the {@link #patchInstructions(AbstractAssembler)} method.
+     * References to instructions that jump to this unresolved label. These instructions need to be
+     * patched when the label is bound using the {@link #patchInstructions(AbstractAssembler)}
+     * method.
      */
     private ArrayList<Integer> patchPositions = new ArrayList<>(4);
 
     /**
      * Returns the position of this label in the code buffer.
+     * 
      * @return the position
      */
     public int position() {
@@ -51,6 +53,7 @@ public final class Label {
 
     /**
      * Binds the label to the specified position.
+     * 
      * @param pos the position
      */
     protected void bind(int pos) {

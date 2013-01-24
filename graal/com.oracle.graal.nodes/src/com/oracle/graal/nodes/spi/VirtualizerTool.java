@@ -29,22 +29,23 @@ import com.oracle.graal.nodes.spi.Virtualizable.State;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
- * This tool can be used to query the current state (normal/virtualized/re-materialized) of values and to describe the
- * actions that would be taken for this state.
- *
+ * This tool can be used to query the current state (normal/virtualized/re-materialized) of values
+ * and to describe the actions that would be taken for this state.
+ * 
  * See also {@link Virtualizable}.
  */
 public interface VirtualizerTool {
 
     /**
-     * @return the {@link MetaAccessProvider} associated with the current compilation, which might be required for
-     *         creating constants, etc.
+     * @return the {@link MetaAccessProvider} associated with the current compilation, which might
+     *         be required for creating constants, etc.
      */
     MetaAccessProvider getMetaAccessProvider();
 
     /**
-     * This method should be used to query the maximum size of virtualized objects before attempting virtualization.
-     *
+     * This method should be used to query the maximum size of virtualized objects before attempting
+     * virtualization.
+     * 
      * @return the maximum number of entries for virtualized objects.
      */
     int getMaximumEntryCount();
@@ -58,7 +59,7 @@ public interface VirtualizerTool {
 
     /**
      * Introduces a new virtual object to the current state.
-     *
+     * 
      * @param virtualObject the new virtual object.
      * @param entryState the initial state of the virtual object's fields.
      * @param lockCount the initial locking depth.
@@ -66,17 +67,18 @@ public interface VirtualizerTool {
     void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int lockCount);
 
     /**
-     * Queries the current state of the given value: if it is virtualized (thread-local and the compiler knows all
-     * entries) or not.
-     *
+     * Queries the current state of the given value: if it is virtualized (thread-local and the
+     * compiler knows all entries) or not.
+     * 
      * @param value the value whose state should be queried.
-     * @return the {@link State} representing the value if it has been virtualized at some point, null otherwise.
+     * @return the {@link State} representing the value if it has been virtualized at some point,
+     *         null otherwise.
      */
     State getObjectState(ValueNode value);
 
     /**
      * Sets the entry (field or array element) with the given index in the virtualized object.
-     *
+     * 
      * @param state the state.
      * @param index the index to be set.
      * @param value the new value for the given index.
@@ -85,19 +87,20 @@ public interface VirtualizerTool {
 
     /**
      * Queries the current state of the given value: if it was materialized or not.
-     *
+     * 
      * @param value the value whose state should be queried.
-     * @return the materialized value (usually a MaterializeObjectNode or a {@link PhiNode}) if it was materialized,
-     *         null otherwise.
+     * @return the materialized value (usually a MaterializeObjectNode or a {@link PhiNode}) if it
+     *         was materialized, null otherwise.
      */
     ValueNode getMaterializedValue(ValueNode value);
 
     // scalar replacement
 
     /**
-     * Replacements via {@link #replaceWithValue(ValueNode)} are not immediately committed. This method can be used to
-     * determine if a value was replaced by another one (e.g., a load field by the loaded value).
-     *
+     * Replacements via {@link #replaceWithValue(ValueNode)} are not immediately committed. This
+     * method can be used to determine if a value was replaced by another one (e.g., a load field by
+     * the loaded value).
+     * 
      * @param original the original input value.
      * @return the replacement value, or the original value if there is no replacement.
      */
@@ -107,14 +110,14 @@ public interface VirtualizerTool {
 
     /**
      * Deletes the current node and replaces it with the given virtualized object.
-     *
+     * 
      * @param virtual the virtualized object that should replace the current node.
      */
     void replaceWithVirtual(VirtualObjectNode virtual);
 
     /**
      * Deletes the current node and replaces it with the given value.
-     *
+     * 
      * @param replacement the value that should replace the current node.
      */
     void replaceWithValue(ValueNode replacement);
@@ -126,16 +129,16 @@ public interface VirtualizerTool {
 
     /**
      * Replaces an input of the current node.
-     *
+     * 
      * @param oldInput the old input value.
      * @param replacement the new input value.
      */
     void replaceFirstInput(Node oldInput, Node replacement);
 
     /**
-     * Performs a custom action on the current node. This action will only be performed when, and if, the changes are
-     * committed. Custom actions must not modify inputs of nodes.
-     *
+     * Performs a custom action on the current node. This action will only be performed when, and
+     * if, the changes are committed. Custom actions must not modify inputs of nodes.
+     * 
      * @param action the custom action.
      */
     void customAction(Runnable action);
@@ -143,7 +146,7 @@ public interface VirtualizerTool {
     /**
      * This method performs either {@link #replaceWithValue(ValueNode)} or
      * {@link #replaceWithVirtual(VirtualObjectNode)}, depending on the given value.
-     *
+     * 
      * @param value the replacement value
      */
     void replaceWith(ValueNode value);

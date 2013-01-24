@@ -28,9 +28,11 @@ import com.oracle.graal.api.meta.*;
 
 /**
  * An instance of this class represents an object whose allocation was removed by escape analysis.
- * The information stored in the {@link VirtualObject} is used during deoptimization to recreate the object.
+ * The information stored in the {@link VirtualObject} is used during deoptimization to recreate the
+ * object.
  */
 public final class VirtualObject extends Value {
+
     private static final long serialVersionUID = -2907197776426346021L;
 
     private final ResolvedJavaType type;
@@ -38,17 +40,18 @@ public final class VirtualObject extends Value {
     private final int id;
 
     /**
-     * Creates a new {@link VirtualObject} for the given type, with the given fields.
-     * If {@code type} is an instance class then {@code values} provides the values for the fields
-     * returned by {@link ResolvedJavaType#getInstanceFields(boolean) getInstanceFields(true)}.
-     * If {@code type} is an array then the length of the values array determines
-     * the reallocated array length.
-     *
-     * @param type the type of the object whose allocation was removed during compilation. This can be either an
-     *            instance of an array type.
-     * @param values an array containing all the values to be stored into the object when it is recreated
-     * @param id a unique id that identifies the object within the debug information for one position in the compiled
-     *            code.
+     * Creates a new {@link VirtualObject} for the given type, with the given fields. If
+     * {@code type} is an instance class then {@code values} provides the values for the fields
+     * returned by {@link ResolvedJavaType#getInstanceFields(boolean) getInstanceFields(true)}. If
+     * {@code type} is an array then the length of the values array determines the reallocated array
+     * length.
+     * 
+     * @param type the type of the object whose allocation was removed during compilation. This can
+     *            be either an instance of an array type.
+     * @param values an array containing all the values to be stored into the object when it is
+     *            recreated
+     * @param id a unique id that identifies the object within the debug information for one
+     *            position in the compiled code.
      * @return a new {@link VirtualObject} instance.
      */
     public static VirtualObject get(ResolvedJavaType type, Value[] values, int id) {
@@ -90,7 +93,8 @@ public final class VirtualObject extends Value {
     }
 
     /**
-     * Returns the type of the object whose allocation was removed during compilation. This can be either an instance of an array type.
+     * Returns the type of the object whose allocation was removed during compilation. This can be
+     * either an instance of an array type.
      */
     public ResolvedJavaType getType() {
         return type;
@@ -104,7 +108,8 @@ public final class VirtualObject extends Value {
     }
 
     /**
-     * Returns the unique id that identifies the object within the debug information for one position in the compiled code.
+     * Returns the unique id that identifies the object within the debug information for one
+     * position in the compiled code.
      */
     public int getId() {
         return id;
@@ -133,8 +138,9 @@ public final class VirtualObject extends Value {
 
     /**
      * Overwrites the current set of values with a new one.
-     *
-     * @param values an array containing all the values to be stored into the object when it is recreated.
+     * 
+     * @param values an array containing all the values to be stored into the object when it is
+     *            recreated.
      */
     public void setValues(Value[] values) {
         assert checkValues(type, values);

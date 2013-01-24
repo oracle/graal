@@ -26,8 +26,8 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 
-
 public class DistinctPredicatedProxyNodeIterator<T extends Node> extends PredicatedProxyNodeIterator<T> {
+
     private NodeBitMap visited;
 
     public DistinctPredicatedProxyNodeIterator(NodePredicate until, Iterator<T> iterator, NodePredicate predicate) {

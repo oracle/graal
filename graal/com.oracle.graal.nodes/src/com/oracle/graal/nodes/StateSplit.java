@@ -38,9 +38,9 @@ public interface StateSplit {
     void setStateAfter(FrameState x);
 
     /**
-     * Determines if this node has a side-effect. Execution of such a node changes
-     * state visible to other threads. These nodes denote boundaries across which deoptimization
-     * points cannot be moved.
+     * Determines if this node has a side-effect. Execution of such a node changes state visible to
+     * other threads. These nodes denote boundaries across which deoptimization points cannot be
+     * moved.
      */
     boolean hasSideEffect();
 }

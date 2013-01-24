@@ -28,11 +28,11 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.ClassSubstitution.*;
 
 /**
- * Substitutions for improving the performance of some critical methods in {@link NodeClass} methods.
- * These substitutions improve the performance by forcing the relevant methods to be inlined
- * (intrinsification being a special form of inlining) and removing a checked cast.
- * The latter cannot be done directly in Java code as {@link UnsafeCastNode}
- * is not available to the project containing {@link NodeClass}.
+ * Substitutions for improving the performance of some critical methods in {@link NodeClass}
+ * methods. These substitutions improve the performance by forcing the relevant methods to be
+ * inlined (intrinsification being a special form of inlining) and removing a checked cast. The
+ * latter cannot be done directly in Java code as {@link UnsafeCastNode} is not available to the
+ * project containing {@link NodeClass}.
  */
 @ClassSubstitution(NodeClass.class)
 public class NodeClassSubstitutions {

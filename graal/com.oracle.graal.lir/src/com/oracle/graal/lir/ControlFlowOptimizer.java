@@ -47,13 +47,12 @@ public final class ControlFlowOptimizer {
     /**
      * Checks whether a block can be deleted. Only blocks with exactly one successor and an
      * unconditional branch to this successor are eligable.
+     * 
      * @param block the block checked for deletion
      * @return whether the block can be deleted
      */
     private static boolean canDeleteBlock(LIR ir, Block block) {
-        if (block.getSuccessorCount() != 1 ||
-            block.getPredecessorCount() == 0 ||
-            block.getFirstSuccessor() == block) {
+        if (block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getFirstSuccessor() == block) {
             return false;
         }
 

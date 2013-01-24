@@ -31,10 +31,13 @@ public class NodeIterators {
 
     public static NodeIterable<FixedNode> dominators(final FixedNode n) {
         return new AbstractNodeIterable<FixedNode>() {
+
             @Override
             public Iterator<FixedNode> iterator() {
-                return new NodeIterator<FixedNode>(){
+                return new NodeIterator<FixedNode>() {
+
                     FixedNode p = n;
+
                     @Override
                     protected void forward() {
                         if (current == null) {

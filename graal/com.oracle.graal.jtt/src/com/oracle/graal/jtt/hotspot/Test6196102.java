@@ -32,7 +32,7 @@ import org.junit.*;
  * 
  * @run main Test6196102
  */
-
+// @formatter:off
 public class Test6196102 extends JTTTest {
 
     public static String test() {

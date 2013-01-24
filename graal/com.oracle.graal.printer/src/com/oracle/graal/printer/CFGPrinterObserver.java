@@ -39,8 +39,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 
 /**
- * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the <a
- * href="http://java.net/projects/c1visualizer/">C1 Visualizer</a>.
+ * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
+ * <a href="http://java.net/projects/c1visualizer/">C1 Visualizer</a>.
  */
 public class CFGPrinterObserver implements DebugDumpHandler {
 
@@ -59,9 +59,9 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     }
 
     /**
-     * Looks for the outer most method and its {@link DebugDumpScope#decorator}s
-     * in the current debug scope and opens a new compilation scope if this pair
-     * does not match the current method and decorator pair.
+     * Looks for the outer most method and its {@link DebugDumpScope#decorator}s in the current
+     * debug scope and opens a new compilation scope if this pair does not match the current method
+     * and decorator pair.
      */
     private boolean checkMethodScope() {
         ResolvedJavaMethod method = null;
@@ -153,15 +153,19 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             final CompilationResult tm = (CompilationResult) object;
             final byte[] code = Arrays.copyOf(tm.getTargetCode(), tm.getTargetCodeSize());
             CodeInfo info = new CodeInfo() {
+
                 public ResolvedJavaMethod getMethod() {
                     return curMethod;
                 }
+
                 public long getStart() {
                     return 0L;
                 }
+
                 public byte[] getCode() {
                     return code;
                 }
+
                 @Override
                 public String toString() {
                     int size = code == null ? 0 : code.length;

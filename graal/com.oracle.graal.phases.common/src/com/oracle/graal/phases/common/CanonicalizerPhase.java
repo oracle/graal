@@ -38,6 +38,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 
 public class CanonicalizerPhase extends Phase {
+
     private static final int MAX_ITERATION_PER_NODE = 10;
     private static final DebugMetric METRIC_CANONICALIZED_NODES = Debug.metric("CanonicalizedNodes");
     private static final DebugMetric METRIC_CANONICALIZATION_CONSIDERED_NODES = Debug.metric("CanonicalizationConsideredNodes");
@@ -58,6 +59,7 @@ public class CanonicalizerPhase extends Phase {
     private List<Node> snapshotTemp;
 
     public interface CustomCanonicalizer {
+
         ValueNode canonicalize(Node node);
     }
 
@@ -69,7 +71,8 @@ public class CanonicalizerPhase extends Phase {
      * @param target
      * @param runtime
      * @param assumptions
-     * @param workingSet the initial working set of nodes on which the canonicalizer works, should be an auto-grow node bitmap
+     * @param workingSet the initial working set of nodes on which the canonicalizer works, should
+     *            be an auto-grow node bitmap
      * @param customCanonicalizer
      */
     public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
@@ -77,8 +80,8 @@ public class CanonicalizerPhase extends Phase {
     }
 
     /**
-     * @param newNodesMark only the {@linkplain Graph#getNewNodes(int) new nodes} specified by
-     *            this mark are processed otherwise all nodes in the graph are processed
+     * @param newNodesMark only the {@linkplain Graph#getNewNodes(int) new nodes} specified by this
+     *            mark are processed otherwise all nodes in the graph are processed
      */
     public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
         this(target, runtime, assumptions, null, newNodesMark, customCanonicalizer);
@@ -111,6 +114,7 @@ public class CanonicalizerPhase extends Phase {
 
     private void processWorkSet(StructuredGraph graph) {
         graph.trackInputChange(new InputChangedListener() {
+
             @Override
             public void inputChanged(Node node) {
                 workList.addAgain(node);
@@ -191,9 +195,11 @@ public class CanonicalizerPhase extends Phase {
         if (node instanceof Canonicalizable) {
             assert !(node instanceof Simplifiable);
             METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
-            return Debug.scope("CanonicalizeNode", node, new Callable<Boolean>(){
+            return Debug.scope("CanonicalizeNode", node, new Callable<Boolean>() {
+
                 public Boolean call() {
                     ValueNode canonical = ((Canonicalizable) node).canonical(tool);
+// @formatter:off
 //     cases:                                           original node:
 //                                         |Floating|Fixed-unconnected|Fixed-connected|
 //                                         --------------------------------------------
@@ -206,7 +212,7 @@ public class CanonicalizerPhase extends Phase {
 //                          Fixed-connected|   2    |        X        |       6       |
 //                                         --------------------------------------------
 //       X: must not happen (checked with assertions)
-
+// @formatter:on
 
                     return performReplacement(node, graph, canonical);
                 }
@@ -215,6 +221,7 @@ public class CanonicalizerPhase extends Phase {
             Debug.log("Canonicalizer: simplifying %s", node);
             METRIC_SIMPLIFICATION_CONSIDERED_NODES.increment();
             Debug.scope("SimplifyNode", node, new Runnable() {
+
                 public void run() {
                     ((Simplifiable) node).simplify(tool);
                 }
@@ -244,7 +251,8 @@ public class CanonicalizerPhase extends Phase {
                 assert node instanceof FixedWithNextNode && node.predecessor() != null : node + " -> " + canonical + " : node should be fixed & connected (" + node.predecessor() + ")";
                 FixedWithNextNode fixedWithNext = (FixedWithNextNode) node;
 
-                // When removing a fixed node, new canonicalization opportunities for its successor may arise
+                // When removing a fixed node, new canonicalization opportunities for its successor
+                // may arise
                 assert fixedWithNext.next() != null;
                 tool.addToWorkList(fixedWithNext.next());
 
@@ -273,9 +281,10 @@ public class CanonicalizerPhase extends Phase {
     }
 
     /**
-     * Calls {@link ValueNode#inferStamp()} on the node and, if it returns true (which means that the stamp has
-     * changed), re-queues the node's usages . If the stamp has changed then this method also checks if the stamp
-     * now describes a constant integer value, in which case the node is replaced with a constant.
+     * Calls {@link ValueNode#inferStamp()} on the node and, if it returns true (which means that
+     * the stamp has changed), re-queues the node's usages . If the stamp has changed then this
+     * method also checks if the stamp now describes a constant integer value, in which case the
+     * node is replaced with a constant.
      */
     private void tryInferStamp(Node node, StructuredGraph graph) {
         if (node.isAlive() && node instanceof ValueNode) {
@@ -317,7 +326,8 @@ public class CanonicalizerPhase extends Phase {
         }
 
         /**
-         * @return the current target or {@code null} if no target is available in the current context.
+         * @return the current target or {@code null} if no target is available in the current
+         *         context.
          */
         @Override
         public TargetDescription target() {
@@ -325,7 +335,8 @@ public class CanonicalizerPhase extends Phase {
         }
 
         /**
-         * @return an object that can be used for recording assumptions or {@code null} if assumptions are not allowed in the current context.
+         * @return an object that can be used for recording assumptions or {@code null} if
+         *         assumptions are not allowed in the current context.
          */
         @Override
         public Assumptions assumptions() {

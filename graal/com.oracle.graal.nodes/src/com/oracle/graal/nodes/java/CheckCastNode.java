@@ -39,7 +39,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
     /**
      * Creates a new CheckCast instruction.
-     *
+     * 
      * @param type the type being cast to
      * @param object the instruction producing the object
      */
@@ -71,7 +71,8 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         if (type != null) {
             ResolvedJavaType objectType = object().objectStamp().type();
             if (objectType != null && type.isAssignableFrom(objectType)) {
-                // we don't have to check for null types here because they will also pass the checkcast.
+                // we don't have to check for null types here because they will also pass the
+                // checkcast.
                 return object();
             }
         }

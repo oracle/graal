@@ -45,7 +45,8 @@ public final class MaterializedObjectState extends EscapeObjectState implements 
 
     @Override
     public void generate(LIRGeneratorTool generator) {
-        // Nothing to do, virtual object states are processed as part of the handling of StateSplit nodes.
+        // Nothing to do, virtual object states are processed as part of the handling of StateSplit
+        // nodes.
     }
 
     @Override
@@ -54,7 +55,7 @@ public final class MaterializedObjectState extends EscapeObjectState implements 
     }
 
     @Override
-    public void applyToNonVirtual(NodeClosure< ? super ValueNode> closure) {
+    public void applyToNonVirtual(NodeClosure<? super ValueNode> closure) {
         closure.apply(this, materializedValue);
     }
 }

@@ -22,7 +22,11 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
+import static com.oracle.graal.api.code.DeoptimizationAction.*;
+import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
+import static com.oracle.graal.hotspot.snippets.TypeCheckSnippetUtils.*;
+import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
@@ -30,7 +34,6 @@ import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
@@ -51,14 +54,17 @@ import com.oracle.graal.word.*;
 
 /**
  * Snippets used for implementing the type test of a checkcast instruction.
- *
- * The type tests implemented are described in the paper <a href="http://dl.acm.org/citation.cfm?id=583821">
- * Fast subtype checking in the HotSpot JVM</a> by Cliff Click and John Rose.
+ * 
+ * The type tests implemented are described in the paper <a
+ * href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a> by
+ * Cliff Click and John Rose.
  */
 public class CheckCastSnippets implements SnippetsInterface {
 
     @NodeIntrinsic(BreakpointNode.class)
     static native void bkpt(Object object, Word hub, Word objectHub);
+
+    // @formatter:off
 
     /**
      * Type test used when the type being tested against is a final type.
@@ -71,17 +77,17 @@ public class CheckCastSnippets implements SnippetsInterface {
         if (checkNull && object == null) {
             probability(0.1);
             isNull.inc();
-            return object;
+        } else {
+            Word objectHub = loadHub(object);
+            if (objectHub != exactHub) {
+                probability(0.01);
+                exactMiss.inc();
+                //bkpt(object, exactHub, objectHub);
+                DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
+            }
+            exactHit.inc();
         }
-        Word objectHub = loadHub(object);
-        if (objectHub != exactHub) {
-            probability(0.01);
-            exactMiss.inc();
-            //bkpt(object, exactHub, objectHub);
-            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
-        }
-        exactHit.inc();
-        return object;
+        return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic());
     }
 
     /**
@@ -98,16 +104,18 @@ public class CheckCastSnippets implements SnippetsInterface {
                     @ConstantParameter("checkNull") boolean checkNull,
                     @ConstantParameter("superCheckOffset") int superCheckOffset) {
         if (checkNull && object == null) {
+            probability(0.1);
             isNull.inc();
-            return object;
+        } else {
+            Word objectHub = loadHub(object);
+            if (objectHub.readWord(superCheckOffset) != hub) {
+                probability(0.1);
+                displayMiss.inc();
+                DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
+            }
+            displayHit.inc();
         }
-        Word objectHub = loadHub(object);
-        if (objectHub.readWord(superCheckOffset) != hub) {
-            displayMiss.inc();
-            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
-        }
-        displayHit.inc();
-        return object;
+        return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic());
     }
 
     /**
@@ -120,23 +128,24 @@ public class CheckCastSnippets implements SnippetsInterface {
                     @VarargsParameter("hints") Word[] hints,
                     @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
+            probability(0.1);
             isNull.inc();
-            return object;
-        }
-        Word objectHub = loadHub(object);
-        // if we get an exact match: succeed immediately
-        ExplodeLoopNode.explodeLoop();
-        for (int i = 0; i < hints.length; i++) {
-            Word hintHub = hints[i];
-            if (hintHub == objectHub) {
-                hintsHit.inc();
-                return object;
+        } else {
+            Word objectHub = loadHub(object);
+            // if we get an exact match: succeed immediately
+            ExplodeLoopNode.explodeLoop();
+            for (int i = 0; i < hints.length; i++) {
+                Word hintHub = hints[i];
+                if (hintHub == objectHub) {
+                    hintsHit.inc();
+                    return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic());
+                }
+            }
+            if (!checkSecondarySubType(hub, objectHub)) {
+                DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
             }
         }
-        if (!checkSecondarySubType(hub, objectHub)) {
-            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
-        }
-        return object;
+        return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic());
     }
 
     /**
@@ -149,88 +158,18 @@ public class CheckCastSnippets implements SnippetsInterface {
                     @Parameter("object") Object object,
                     @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
+            probability(0.1);
             isNull.inc();
-            return object;
-        }
-        Word objectHub = loadHub(object);
-        if (!checkUnknownSubType(hub, objectHub)) {
-            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ClassCastException);
-        }
-        return object;
-    }
-
-    static Word loadWordElement(Word metaspaceArray, int index) {
-        return metaspaceArray.readWord(metaspaceArrayBaseOffset() + index * wordSize());
-    }
-
-    static boolean checkSecondarySubType(Word t, Word s) {
-        // if (S.cache == T) return true
-        if (s.readWord(secondarySuperCacheOffset()) == t) {
-            cacheHit.inc();
-            return true;
-        }
-
-        // if (T == S) return true
-        if (s == t) {
-            T_equals_S.inc();
-            return true;
-        }
-
-        // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
-        Word secondarySupers = s.readWord(secondarySupersOffset());
-        int length = secondarySupers.readInt(metaspaceArrayLengthOffset());
-        for (int i = 0; i < length; i++) {
-            if (t == loadWordElement(secondarySupers, i)) {
-                s.writeWord(secondarySuperCacheOffset(), t);
-                secondariesHit.inc();
-                return true;
+        } else {
+            Word objectHub = loadHub(object);
+            if (!checkUnknownSubType(hub, objectHub)) {
+                DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
             }
         }
-        secondariesMiss.inc();
-        return false;
+        return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic());
     }
 
-    static boolean checkUnknownSubType(Word t, Word s) {
-        // int off = T.offset
-        int superCheckOffset = t.readInt(superCheckOffsetOffset());
-        boolean primary = superCheckOffset != secondarySuperCacheOffset();
-
-        // if (T = S[off]) return true
-        if (s.readWord(superCheckOffset) == t) {
-            if (primary) {
-                cacheHit.inc();
-            } else {
-                displayHit.inc();
-            }
-            return true;
-        }
-
-        // if (off != &cache) return false
-        if (primary) {
-            displayMiss.inc();
-            return false;
-        }
-
-        // if (T == S) return true
-        if (s == t) {
-            T_equals_S.inc();
-            return true;
-        }
-
-        // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
-        Word secondarySupers = s.readWord(secondarySupersOffset());
-        int length = secondarySupers.readInt(metaspaceArrayLengthOffset());
-        for (int i = 0; i < length; i++) {
-            if (t == loadWordElement(secondarySupers, i)) {
-                s.writeWord(secondarySuperCacheOffset(), t);
-                secondariesHit.inc();
-                return true;
-            }
-        }
-
-        secondariesMiss.inc();
-        return false;
-    }
+    // @formatter:on
 
     public static class Templates extends AbstractTemplates<CheckCastSnippets> {
 
@@ -296,25 +235,5 @@ public class CheckCastSnippets implements SnippetsInterface {
             Debug.log("Lowering dynamic checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, arguments);
             template.instantiate(runtime, checkcast, DEFAULT_REPLACER, arguments);
         }
-
-        static ConstantNode[] createHints(TypeCheckHints hints, MetaAccessProvider runtime, Graph graph) {
-            ConstantNode[] hintHubs = new ConstantNode[hints.types.length];
-            for (int i = 0; i < hintHubs.length; i++) {
-                hintHubs[i] = ConstantNode.forConstant(((HotSpotResolvedObjectType) hints.types[i]).klass(), runtime, graph);
-            }
-            return hintHubs;
-        }
     }
-
-    private static final SnippetCounter.Group counters = GraalOptions.SnippetCounters ? new SnippetCounter.Group("Checkcast") : null;
-    private static final SnippetCounter hintsHit = new SnippetCounter(counters, "hintsHit", "hit a hint type");
-    private static final SnippetCounter exactHit = new SnippetCounter(counters, "exactHit", "exact type test succeeded");
-    private static final SnippetCounter exactMiss = new SnippetCounter(counters, "exactMiss", "exact type test failed");
-    private static final SnippetCounter isNull = new SnippetCounter(counters, "isNull", "object tested was null");
-    private static final SnippetCounter cacheHit = new SnippetCounter(counters, "cacheHit", "secondary type cache hit");
-    private static final SnippetCounter secondariesHit = new SnippetCounter(counters, "secondariesHit", "secondaries scan succeeded");
-    private static final SnippetCounter secondariesMiss = new SnippetCounter(counters, "secondariesMiss", "secondaries scan failed");
-    private static final SnippetCounter displayHit = new SnippetCounter(counters, "displayHit", "primary type test succeeded");
-    private static final SnippetCounter displayMiss = new SnippetCounter(counters, "displayMiss", "primary type test failed");
-    private static final SnippetCounter T_equals_S = new SnippetCounter(counters, "T_equals_S", "object type was equal to secondary type");
 }

@@ -30,8 +30,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Load of a value from a location specified as an offset relative to an object.
- * No null check is performed before the load.
+ * Load of a value from a location specified as an offset relative to an object. No null check is
+ * performed before the load.
  */
 public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable, Canonicalizable {
 
@@ -77,7 +77,9 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
                     Graph graph = this.graph();
                     return graph.add(new UnsafeLoadNode(this.stamp(), object(), intDisplacement, graph.unique(ConstantNode.forInt(0, graph)), accessKind()));
                 }
-            } else if (object().stamp() instanceof ObjectStamp) { // TODO (gd) remove that once UnsafeAccess only have an object base
+            } else if (object().stamp() instanceof ObjectStamp) { // TODO (gd) remove that once
+                                                                  // UnsafeAccess only have an
+                                                                  // object base
                 ObjectStamp receiverStamp = object().objectStamp();
                 if (receiverStamp.nonNull()) {
                     ResolvedJavaType receiverType = receiverStamp.type();
@@ -92,5 +94,7 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
     }
 
     @NodeIntrinsic
-    public static native <T> T load(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind kind);
+    public static native <T> T load(Object object, @ConstantNodeParameter
+    int displacement, long offset, @ConstantNodeParameter
+    Kind kind);
 }

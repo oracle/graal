@@ -28,6 +28,7 @@ import org.junit.*;
 /*
  */
 public class BC_ldiv2 extends JTTTest {
+
     public static long MIN = Long.MIN_VALUE;
     public static long MAX = Long.MAX_VALUE;
 

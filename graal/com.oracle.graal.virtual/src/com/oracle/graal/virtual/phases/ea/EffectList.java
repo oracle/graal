@@ -29,9 +29,9 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * An {@link EffectList} can be used to maintain a list of {@link Effect}s and backtrack to a previous state by
- * truncating the list. It can also maintain a level for each effect, which helps in creating a string representation
- * for the list.
+ * An {@link EffectList} can be used to maintain a list of {@link Effect}s and backtrack to a
+ * previous state by truncating the list. It can also maintain a level for each effect, which helps
+ * in creating a string representation for the list.
  */
 public class EffectList implements Iterable<EffectList.Effect> {
 
@@ -87,7 +87,7 @@ public class EffectList implements Iterable<EffectList.Effect> {
         effects[size++] = effect;
     }
 
-    public void addAll(Collection< ? extends Effect> list) {
+    public void addAll(Collection<? extends Effect> list) {
         int length = effects.length;
         if (size + list.size() > length) {
             while (size + list.size() > length) {

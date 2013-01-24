@@ -37,7 +37,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     /**
      * Creates a new LoadFieldNode instance.
-     *
+     * 
      * @param object the receiver object
      * @param field the compiler interface field
      */

@@ -30,8 +30,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Store of a value at a location specified as an offset relative to an object.
- * No null check is performed before the store.
+ * Store of a value at a location specified as an offset relative to an object. No null check is
+ * performed before the store.
  */
 public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, Canonicalizable {
 
@@ -97,7 +97,9 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
                     Graph graph = this.graph();
                     return graph.add(new UnsafeStoreNode(this.stamp(), object(), intDisplacement, graph.unique(ConstantNode.forInt(0, graph)), value(), accessKind()));
                 }
-            } else if (object().stamp() instanceof ObjectStamp) { // TODO (gd) remove that once UnsafeAccess only have an object base
+            } else if (object().stamp() instanceof ObjectStamp) { // TODO (gd) remove that once
+                                                                  // UnsafeAccess only have an
+                                                                  // object base
                 ObjectStamp receiverStamp = object().objectStamp();
                 if (receiverStamp.nonNull()) {
                     ResolvedJavaType receiverType = receiverStamp.type();
@@ -113,30 +115,48 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, Object value, @ConstantNodeParameter Kind kind);
+    public static native void store(Object object, @ConstantNodeParameter
+    int displacement, long offset, Object value, @ConstantNodeParameter
+    Kind kind);
 
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, boolean value, @ConstantNodeParameter Kind kind);
+    public static native void store(Object object, @ConstantNodeParameter
+    int displacement, long offset, boolean value, @ConstantNodeParameter
+    Kind kind);
 
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, byte value, @ConstantNodeParameter Kind kind);
+    public static native void store(Object object, @ConstantNodeParameter
+    int displacement, long offset, byte value, @ConstantNodeParameter
+    Kind kind);
 
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, char value, @ConstantNodeParameter Kind kind);
+    public static native void store(Object object, @ConstantNodeParameter
+    int displacement, long offset, char value, @ConstantNodeParameter
+    Kind kind);
 
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, double value, @ConstantNodeParameter Kind kind);
+    public static native void store(Object object, @ConstantNodeParameter
+    int displacement, long offset, double value, @ConstantNodeParameter
+    Kind kind);
 
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, float value, @ConstantNodeParameter Kind kind);
+    public static native void store(Object object, @ConstantNodeParameter
+    int displacement, long offset, float value, @ConstantNodeParameter
+    Kind kind);
 
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, int value, @ConstantNodeParameter Kind kind);
+    public static native void store(Object object, @ConstantNodeParameter
+    int displacement, long offset, int value, @ConstantNodeParameter
+    Kind kind);
 
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, long value, @ConstantNodeParameter Kind kind);
+    public static native void store(Object object, @ConstantNodeParameter
+    int displacement, long offset, long value, @ConstantNodeParameter
+    Kind kind);
 
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, short value, @ConstantNodeParameter Kind kind);
+    public static native void store(Object object, @ConstantNodeParameter
+    int displacement, long offset, short value, @ConstantNodeParameter
+    Kind kind);
 
 }

@@ -69,7 +69,7 @@ public class HotSpotOptions {
         Field f;
         try {
             f = GraalOptions.class.getDeclaredField(fieldName);
-            Class< ? > fType = f.getType();
+            Class<?> fType = f.getType();
 
             if (value == null) {
                 if (fType == Boolean.TYPE) {
@@ -101,7 +101,7 @@ public class HotSpotOptions {
             if (value != null) {
                 f.setAccessible(true);
                 f.set(null, value);
-                //Logger.info("Set option " + fieldName + " to " + value);
+                // Logger.info("Set option " + fieldName + " to " + value);
             } else {
                 Logger.info("Wrong value \"" + valueString + "\" for option " + fieldName);
                 return false;
@@ -127,6 +127,7 @@ public class HotSpotOptions {
         Logger.info("[Graal flags]");
         Field[] flags = GraalOptions.class.getDeclaredFields();
         Arrays.sort(flags, new Comparator<Field>() {
+
             public int compare(Field o1, Field o2) {
                 return o1.getName().compareTo(o2.getName());
             }

@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.api.meta;
 
-
 public interface LineNumberTable {
+
     int[] getLineNumberEntries();
+
     int[] getBciEntries();
+
     int getLineNumber(int bci);
 }

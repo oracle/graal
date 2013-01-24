@@ -29,6 +29,7 @@ import com.oracle.graal.hotspot.*;
  * Common interface for all HotSpot {@link JavaType} implementations.
  */
 public abstract class HotSpotJavaType extends CompilerObject implements JavaType {
+
     private static final long serialVersionUID = -4252886265301910771L;
 
     private final String name;

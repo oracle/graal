@@ -25,14 +25,15 @@ package com.oracle.graal.lir;
 import java.util.*;
 
 /**
- * A buffer to enqueue updates to a list. This avoids frequent re-sizing of the list and copying of list elements
- * when insertions are done at multiple positions of the list. Additionally, it ensures that the list is not modified
- * while it is, e.g., iterated, and instead only modified once after the iteration is done.
- * <br>
- * The buffer uses internal data structures to store the enqueued updates. To avoid allocations, a buffer can be re-used.
- * Call the methods in the following order:
- * {@link #init}, {@link #append}, {@link #append}, ..., {@link #finish()}, {@link #init}, ...
- * <br>
+ * A buffer to enqueue updates to a list. This avoids frequent re-sizing of the list and copying of
+ * list elements when insertions are done at multiple positions of the list. Additionally, it
+ * ensures that the list is not modified while it is, e.g., iterated, and instead only modified once
+ * after the iteration is done.
+ * <p>
+ * The buffer uses internal data structures to store the enqueued updates. To avoid allocations, a
+ * buffer can be re-used. Call the methods in the following order: {@link #init}, {@link #append},
+ * {@link #append}, ..., {@link #finish()}, {@link #init}, ...
+ * <p>
  * Note: This class does not depend on LIRInstruction, so we could make it a generic utility class.
  */
 public final class LIRInsertionBuffer {
@@ -43,9 +44,9 @@ public final class LIRInsertionBuffer {
     private List<LIRInstruction> lir;
 
     /**
-     * List of insertion points. index and count are stored alternately:
-     * indexAndCount[i * 2]: the index into lir list where "count" ops should be inserted
-     * indexAndCount[i * 2 + 1]: the number of ops to be inserted at index
+     * List of insertion points. index and count are stored alternately: indexAndCount[i * 2]: the
+     * index into lir list where "count" ops should be inserted indexAndCount[i * 2 + 1]: the number
+     * of ops to be inserted at index
      */
     private final List<Integer> indexAndCount;
 
@@ -53,7 +54,6 @@ public final class LIRInsertionBuffer {
      * The LIROps to be inserted.
      */
     private final List<LIRInstruction> ops;
-
 
     public LIRInsertionBuffer() {
         indexAndCount = new ArrayList<>(8);
@@ -78,10 +78,11 @@ public final class LIRInsertionBuffer {
     }
 
     /**
-     * Enqueue a new instruction that will be appended to the instruction list when {@link #finish()} is called.
-     * The new instruction is added <b>before</b> the existing instruction with the given index. This method can only be called
-     * with increasing values of index, e.g., once an instruction was appended with index 4, subsequent instructions can
-     * only be appended with index 4 or higher.
+     * Enqueue a new instruction that will be appended to the instruction list when
+     * {@link #finish()} is called. The new instruction is added <b>before</b> the existing
+     * instruction with the given index. This method can only be called with increasing values of
+     * index, e.g., once an instruction was appended with index 4, subsequent instructions can only
+     * be appended with index 4 or higher.
      */
     public void append(int index, LIRInstruction op) {
         int i = numberOfInsertionPoints() - 1;
@@ -98,7 +99,8 @@ public final class LIRInsertionBuffer {
     }
 
     /**
-     * Append all enqueued instructions to the instruction list. After that, {@link #init(List)} can be called again to re-use this buffer.
+     * Append all enqueued instructions to the instruction list. After that, {@link #init(List)} can
+     * be called again to re-use this buffer.
      */
     public void finish() {
         if (ops.size() > 0) {

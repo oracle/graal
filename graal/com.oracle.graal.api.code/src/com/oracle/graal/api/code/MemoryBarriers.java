@@ -24,20 +24,22 @@ package com.oracle.graal.api.code;
 
 /**
  * Constants and intrinsic definition for memory barriers.
- *
- * The documentation for each constant is taken from Doug Lea's
- * <a href="http://gee.cs.oswego.edu/dl/jmm/cookbook.html">The JSR-133 Cookbook for Compiler Writers</a>.
+ * 
+ * The documentation for each constant is taken from Doug Lea's <a
+ * href="http://gee.cs.oswego.edu/dl/jmm/cookbook.html">The JSR-133 Cookbook for Compiler
+ * Writers</a>.
  * <p>
- * The {@code JMM_*} constants capture the memory barriers necessary to implement the Java Memory Model
- * with respect to volatile field accesses. Their values are explained by this
- * comment from templateTable_i486.cpp in the HotSpot source code:
+ * The {@code JMM_*} constants capture the memory barriers necessary to implement the Java Memory
+ * Model with respect to volatile field accesses. Their values are explained by this comment from
+ * templateTable_i486.cpp in the HotSpot source code:
+ * 
  * <pre>
  * Volatile variables demand their effects be made known to all CPU's in
  * order.  Store buffers on most chips allow reads & writes to reorder; the
  * JMM's ReadAfterWrite.java test fails in -Xint mode without some kind of
  * memory barrier (i.e., it's not sufficient that the interpreter does not
  * reorder volatile references, the hardware also must not reorder them).
- *
+ * 
  * According to the new Java Memory Model (JMM):
  * (1) All volatiles are serialized wrt to each other.
  * ALSO reads & writes act as acquire & release, so:
@@ -48,7 +50,7 @@ package com.oracle.graal.api.code;
  * that happen BEFORE the write float down to after the write.  It's OK for
  * non-volatile memory refs that happen after the volatile write to float up
  * before it.
- *
+ * 
  * We only put in barriers around volatile refs (they are expensive), not
  * _between_ memory refs (which would require us to track the flavor of the
  * previous memory refs).  Requirements (2) and (3) require some barriers
@@ -61,40 +63,45 @@ package com.oracle.graal.api.code;
 public class MemoryBarriers {
 
     /**
-     * The sequence {@code Load1; LoadLoad; Load2} ensures that {@code Load1}'s data are loaded before data accessed
-     * by {@code Load2} and all subsequent load instructions are loaded. In general, explicit {@code LoadLoad}
-     * barriers are needed on processors that perform speculative loads and/or out-of-order processing in which
-     * waiting load instructions can bypass waiting stores. On processors that guarantee to always preserve load
-     * ordering, these barriers amount to no-ops.
+     * The sequence {@code Load1; LoadLoad; Load2} ensures that {@code Load1}'s data are loaded
+     * before data accessed by {@code Load2} and all subsequent load instructions are loaded. In
+     * general, explicit {@code LoadLoad} barriers are needed on processors that perform speculative
+     * loads and/or out-of-order processing in which waiting load instructions can bypass waiting
+     * stores. On processors that guarantee to always preserve load ordering, these barriers amount
+     * to no-ops.
      */
-    public static final int LOAD_LOAD   = 0x0001;
+    public static final int LOAD_LOAD = 0x0001;
 
     /**
-     * The sequence {@code Load1; LoadStore; Store2} ensures that {@code Load1}'s data are loaded before all data
-     * associated with {@code Store2} and subsequent store instructions are flushed. {@code LoadStore} barriers are
-     * needed only on those out-of-order processors in which waiting store instructions can bypass loads.
+     * The sequence {@code Load1; LoadStore; Store2} ensures that {@code Load1}'s data are loaded
+     * before all data associated with {@code Store2} and subsequent store instructions are flushed.
+     * {@code LoadStore} barriers are needed only on those out-of-order processors in which waiting
+     * store instructions can bypass loads.
      */
-    public static final int LOAD_STORE  = 0x0002;
+    public static final int LOAD_STORE = 0x0002;
 
     /**
-     * The sequence {@code Store1; StoreLoad; Load2} ensures that {@code Store1}'s data are made visible to other
-     * processors (i.e., flushed to main memory) before data accessed by {@code Load2} and all subsequent load
-     * instructions are loaded. {@code StoreLoad} barriers protect against a subsequent load incorrectly using
-     * {@code Store1}'s data value rather than that from a more recent store to the same location performed by a
-     * different processor. Because of this, on the processors discussed below, a {@code StoreLoad} is strictly
-     * necessary only for separating stores from subsequent loads of the same location(s) as were stored before the
-     * barrier. {@code StoreLoad} barriers are needed on nearly all recent multiprocessors, and are usually the most
-     * expensive kind. Part of the reason they are expensive is that they must disable mechanisms that ordinarily
-     * bypass cache to satisfy loads from write-buffers. This might be implemented by letting the buffer fully
-     * flush, among other possible stalls.
+     * The sequence {@code Store1; StoreLoad; Load2} ensures that {@code Store1}'s data are made
+     * visible to other processors (i.e., flushed to main memory) before data accessed by
+     * {@code Load2} and all subsequent load instructions are loaded. {@code StoreLoad} barriers
+     * protect against a subsequent load incorrectly using {@code Store1}'s data value rather than
+     * that from a more recent store to the same location performed by a different processor.
+     * Because of this, on the processors discussed below, a {@code StoreLoad} is strictly necessary
+     * only for separating stores from subsequent loads of the same location(s) as were stored
+     * before the barrier. {@code StoreLoad} barriers are needed on nearly all recent
+     * multiprocessors, and are usually the most expensive kind. Part of the reason they are
+     * expensive is that they must disable mechanisms that ordinarily bypass cache to satisfy loads
+     * from write-buffers. This might be implemented by letting the buffer fully flush, among other
+     * possible stalls.
      */
-    public static final int STORE_LOAD  = 0x0004;
+    public static final int STORE_LOAD = 0x0004;
 
     /**
-     * The sequence {@code Store1; StoreStore; Store2} ensures that {@code Store1}'s data are visible to other
-     * processors (i.e., flushed to memory) before the data associated with {@code Store2} and all subsequent store
-     * instructions. In general, {@code StoreStore} barriers are needed on processors that do not otherwise
-     * guarantee strict ordering of flushes from write buffers and/or caches to other processors or main memory.
+     * The sequence {@code Store1; StoreStore; Store2} ensures that {@code Store1}'s data are
+     * visible to other processors (i.e., flushed to memory) before the data associated with
+     * {@code Store2} and all subsequent store instructions. In general, {@code StoreStore} barriers
+     * are needed on processors that do not otherwise guarantee strict ordering of flushes from
+     * write buffers and/or caches to other processors or main memory.
      */
     public static final int STORE_STORE = 0x0008;
 

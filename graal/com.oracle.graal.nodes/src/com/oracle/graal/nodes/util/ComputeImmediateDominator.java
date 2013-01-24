@@ -27,8 +27,8 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
-
 public final class ComputeImmediateDominator {
+
     private final MergeNode dominated;
     private final Queue<FixedNode> toExplore;
     private final Queue<FixedNode> speculativeExplore;
@@ -73,7 +73,7 @@ public final class ComputeImmediateDominator {
         if (info.isExplored()) {
             return;
         }
-        //TTY.println("exploreUp(" + from + ") with " + info);
+        // TTY.println("exploreUp(" + from + ") with " + info);
         info.setExplored();
         while (p != null) {
             if (p instanceof MergeNode) {
@@ -89,7 +89,7 @@ public final class ComputeImmediateDominator {
     }
 
     private void processControlSplit(ControlSplitNode cs, DominatorInfo info) {
-        //TTY.println("processControlSplit(" + cs + ", " + info + ")");
+        // TTY.println("processControlSplit(" + cs + ", " + info + ")");
         DominatorInfo csInfo = infoMap.get(cs);
         if (csInfo == null) {
             csInfo = new DominatorInfo(cs, false);
@@ -101,15 +101,16 @@ public final class ComputeImmediateDominator {
             return;
         }
         if (csInfo.isExplored()) {
-            //TTY.println("  Already explored, propagate update");
+            // TTY.println("  Already explored, propagate update");
             propagateUpdate(csInfo);
         } else {
-            if (csInfo.parentCount() == cs.successors().count()) { // all paths leading to this CS have been explored
-                //TTY.println("  All parents explored, Enqueue");
+            if (csInfo.parentCount() == cs.successors().count()) { // all paths leading to this CS
+                                                                   // have been explored
+                // TTY.println("  All parents explored, Enqueue");
                 toExplore.add(next);
                 speculativeExplore.remove(next);
             } else {
-                //TTY.println("  Not all parents explored : Enqueue speculative");
+                // TTY.println("  Not all parents explored : Enqueue speculative");
                 speculativeExplore.add(next);
             }
         }
@@ -117,12 +118,12 @@ public final class ComputeImmediateDominator {
     }
 
     private boolean propagateUpdate(DominatorInfo di) {
-        //TTY.println("   propagateUpdate(" + di + ")");
+        // TTY.println("   propagateUpdate(" + di + ")");
         for (DominatorInfo child : di.children()) {
-            //TTY.println("      add to child " + child);
+            // TTY.println("      add to child " + child);
             if (child.add(di, false)) {
                 if (child.equals(fullInfo)) {
-                    //TTY.println("   Found DOM!");
+                    // TTY.println("   Found DOM!");
                     dominator = child.node();
                     return true;
                 }
@@ -135,25 +136,26 @@ public final class ComputeImmediateDominator {
     }
 
     private boolean checkControlSplitInfo(DominatorInfo di) {
-        //TTY.println("   checkControlSplitInfo(" + di + ")");
+        // TTY.println("   checkControlSplitInfo(" + di + ")");
         if (di.equals(fullInfo)) {
             dominator = di.node();
-            //TTY.println("   Found DOM!");
+            // TTY.println("   Found DOM!");
             return true;
         }
         return false;
     }
 
     private void processMerge(MergeNode merge, DominatorInfo info) {
-        //TTY.println("processMerge(" + merge + ", " + info + ")");
+        // TTY.println("processMerge(" + merge + ", " + info + ")");
         for (EndNode end : merge.cfgPredecessors()) {
             toExplore.add(end);
             infoMap.set(end, info.createChild(end));
-            //TTY.println("  Enqueue end : " + end + " with " + infoMap.get(end));
+            // TTY.println("  Enqueue end : " + end + " with " + infoMap.get(end));
         }
     }
 
     private class DominatorInfo {
+
         private final FixedNode node;
         private final BitSet bits;
         private final BitSet ownBits;
@@ -230,7 +232,6 @@ public final class ComputeImmediateDominator {
         public int parentCount() {
             return parents.size();
         }
-
 
         public FixedNode node() {
             return node;

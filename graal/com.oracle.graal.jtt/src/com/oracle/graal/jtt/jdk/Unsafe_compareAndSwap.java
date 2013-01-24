@@ -29,12 +29,15 @@ import com.oracle.graal.jtt.*;
 import sun.misc.*;
 
 public class Unsafe_compareAndSwap extends JTTTest {
+
     static final Unsafe unsafe = UnsafeAccess01.getUnsafe();
     static final long valueOffset;
     static {
         try {
             valueOffset = unsafe.objectFieldOffset(Unsafe_compareAndSwap.class.getDeclaredField("value"));
-        } catch (Exception ex) { throw new Error(ex); }
+        } catch (Exception ex) {
+            throw new Error(ex);
+        }
     }
 
     public static String test(Unsafe_compareAndSwap u, Object o, String expected, String newValue) {

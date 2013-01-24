@@ -27,9 +27,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Accesses a value at an memory address specified by an {@linkplain #object object}
- * and a {@linkplain #location() location}. The access does not include a null check
- * on the object.
+ * Accesses a value at an memory address specified by an {@linkplain #object object} and a
+ * {@linkplain #location() location}. The access does not include a null check on the object.
  */
 public abstract class AccessNode extends FixedWithNextNode implements Access {
 

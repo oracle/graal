@@ -33,6 +33,7 @@ import com.oracle.graal.nodes.type.*;
  * The {@code SwitchNode} class is the base of both lookup and table switches.
  */
 public abstract class SwitchNode extends ControlSplitNode {
+
     @Successor protected final NodeSuccessorList<BeginNode> successors;
     protected double[] successorProbabilities;
     @Input private ValueNode value;
@@ -41,6 +42,7 @@ public abstract class SwitchNode extends ControlSplitNode {
 
     /**
      * Constructs a new Switch.
+     * 
      * @param value the instruction that provides the value to be switched over
      * @param successors the list of successors of this switch
      */
@@ -121,6 +123,7 @@ public abstract class SwitchNode extends ControlSplitNode {
 
     /**
      * Gets the successor corresponding to the default (fall through) case.
+     * 
      * @return the default successor
      */
     public BeginNode defaultSuccessor() {
@@ -132,6 +135,7 @@ public abstract class SwitchNode extends ControlSplitNode {
 
     /**
      * Helper function that sums up the probabilities of all keys that lead to a specific successor.
+     * 
      * @return an array of size successorCount with the accumulated probability for each successor.
      */
     public static double[] successorProbabilites(int successorCount, int[] keySuccessors, double[] keyProbabilities) {

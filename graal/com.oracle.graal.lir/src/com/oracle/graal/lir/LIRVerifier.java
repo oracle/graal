@@ -35,6 +35,7 @@ import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.nodes.cfg.*;
 
 public final class LIRVerifier {
+
     private final LIR lir;
     private final FrameMap frameMap;
 
@@ -46,6 +47,7 @@ public final class LIRVerifier {
     private BitSet liveOutFor(Block block) {
         return blockLiveOut[block.getId()];
     }
+
     private void setLiveOutFor(Block block, BitSet liveOut) {
         blockLiveOut[block.getId()] = liveOut;
     }
@@ -60,7 +62,9 @@ public final class LIRVerifier {
 
     public static boolean verify(final LIRInstruction op) {
         ValueProcedure allowedProc = new ValueProcedure() {
-            @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+
+            @Override
+            public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 return allowed(op, value, mode, flags);
             }
         };
@@ -81,7 +85,6 @@ public final class LIRVerifier {
         return true;
     }
 
-
     private LIRVerifier(boolean beforeRegisterAllocation, LIR lir, FrameMap frameMap) {
         this.beforeRegisterAllocation = beforeRegisterAllocation;
         this.lir = lir;
@@ -98,8 +101,20 @@ public final class LIRVerifier {
     private BitSet curRegistersDefined;
 
     private void verify() {
-        ValueProcedure useProc = new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
-        ValueProcedure defProc = new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
+        ValueProcedure useProc = new ValueProcedure() {
+
+            @Override
+            public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                return use(value, mode, flags);
+            }
+        };
+        ValueProcedure defProc = new ValueProcedure() {
+
+            @Override
+            public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                return def(value, mode, flags);
+            }
+        };
 
         int maxRegisterNum = maxRegisterNum();
         curRegistersDefined = new BitSet();
@@ -216,11 +231,8 @@ public final class LIRVerifier {
     }
 
     private static Value allowed(Object op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        if ((isVariable(value)  && flags.contains(OperandFlag.REG)) ||
-            (isRegister(value)  && flags.contains(OperandFlag.REG)) ||
-            (isStackSlot(value) && flags.contains(OperandFlag.STACK)) ||
-            (isConstant(value)  && flags.contains(OperandFlag.CONST) && mode != OperandMode.DEF) ||
-            (isIllegal(value)   && flags.contains(OperandFlag.ILLEGAL))) {
+        if ((isVariable(value) && flags.contains(OperandFlag.REG)) || (isRegister(value) && flags.contains(OperandFlag.REG)) || (isStackSlot(value) && flags.contains(OperandFlag.STACK)) ||
+                        (isConstant(value) && flags.contains(OperandFlag.CONST) && mode != OperandMode.DEF) || (isIllegal(value) && flags.contains(OperandFlag.ILLEGAL))) {
             return value;
         }
         TTY.println("instruction %s", op);

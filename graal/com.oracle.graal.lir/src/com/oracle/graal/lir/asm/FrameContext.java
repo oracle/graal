@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.lir.asm;
 
-
 /**
  * Code for managing a method's native frame.
  */
 public interface FrameContext {
+
     /**
      * Emits code common to all entry points of a method. This may include:
      * <ul>

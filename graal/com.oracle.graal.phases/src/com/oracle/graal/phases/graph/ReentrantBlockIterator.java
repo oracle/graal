@@ -89,7 +89,8 @@ public final class ReentrantBlockIterator {
                     Block successor = current.getSuccessors().get(0);
                     if (successor.isLoopHeader()) {
                         if (current.isLoopEnd()) {
-                            // nothing to do... loop ends only lead to loop begins we've already visited
+                            // nothing to do... loop ends only lead to loop begins we've already
+                            // visited
                             blockEndStates.put(current.getEndNode(), state);
                         } else {
                             // recurse into the loop

@@ -33,7 +33,7 @@ public class Array_newInstance05 extends JTTTest {
 
     public static boolean test(int i, int j) {
         final int[] dims = {i, j};
-        Class< ? > javaClass;
+        Class<?> javaClass;
         if (i == 2) {
             javaClass = void.class;
         } else if (i == 3) {

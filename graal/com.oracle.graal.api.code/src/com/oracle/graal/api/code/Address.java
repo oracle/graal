@@ -27,15 +27,17 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Represents an address in target machine memory, specified via some combination of a base register, an index register,
- * a displacement and a scale. Note that the base and index registers may be a variable that will get a register assigned
- * later by the register allocator.
+ * Represents an address in target machine memory, specified via some combination of a base
+ * register, an index register, a displacement and a scale. Note that the base and index registers
+ * may be a variable that will get a register assigned later by the register allocator.
  */
 public final class Address extends Value {
+
     private static final long serialVersionUID = -1003772042519945089L;
 
     /**
-     * A sentinel value used as a place holder in an instruction stream for an address that will be patched.
+     * A sentinel value used as a place holder in an instruction stream for an address that will be
+     * patched.
      */
     public static final Address Placeholder = new Address(Kind.Illegal, Value.ILLEGAL);
 
@@ -46,7 +48,7 @@ public final class Address extends Value {
 
     /**
      * Creates an {@link Address} with given base register, no scaling and no displacement.
-     *
+     * 
      * @param kind the kind of the value being addressed
      * @param base the base register
      */
@@ -56,7 +58,7 @@ public final class Address extends Value {
 
     /**
      * Creates an {@link Address} with given base register, no scaling and a given displacement.
-     *
+     * 
      * @param kind the kind of the value being addressed
      * @param base the base register
      * @param displacement the displacement
@@ -68,7 +70,7 @@ public final class Address extends Value {
     /**
      * Creates an {@link Address} with given base and index registers, scaling and displacement.
      * This is the most general constructor.
-     *
+     * 
      * @param kind the kind of the value being addressed
      * @param base the base register
      * @param index the index register
@@ -90,10 +92,7 @@ public final class Address extends Value {
      * A scaling factor used in complex addressing modes such as those supported by x86 platforms.
      */
     public enum Scale {
-        Times1(1, 0),
-        Times2(2, 1),
-        Times4(4, 2),
-        Times8(8, 3);
+        Times1(1, 0), Times2(2, 1), Times4(4, 2), Times8(8, 3);
 
         private Scale(int value, int log2) {
             this.value = value;
@@ -112,11 +111,16 @@ public final class Address extends Value {
 
         public static Scale fromInt(int scale) {
             switch (scale) {
-                case 1:  return Times1;
-                case 2:  return Times2;
-                case 4:  return Times4;
-                case 8:  return Times8;
-                default: throw new IllegalArgumentException(String.valueOf(scale));
+                case 1:
+                    return Times1;
+                case 2:
+                    return Times2;
+                case 4:
+                    return Times4;
+                case 8:
+                    return Times8;
+                default:
+                    throw new IllegalArgumentException(String.valueOf(scale));
             }
         }
     }
@@ -151,7 +155,8 @@ public final class Address extends Value {
     public boolean equals(Object obj) {
         if (obj instanceof Address) {
             Address addr = (Address) obj;
-            return getKind() == addr.getKind() && getDisplacement() == addr.getDisplacement() && getBase().equals(addr.getBase()) && getScale() == addr.getScale() && getIndex().equals(addr.getIndex());
+            return getKind() == addr.getKind() && getDisplacement() == addr.getDisplacement() && getBase().equals(addr.getBase()) && getScale() == addr.getScale() &&
+                            getIndex().equals(addr.getIndex());
         }
         return false;
     }
@@ -162,8 +167,8 @@ public final class Address extends Value {
     }
 
     /**
-     * @return Base register that defines the start of the address computation.
-     * If not present, is denoted by {@link Value#ILLEGAL}.
+     * @return Base register that defines the start of the address computation. If not present, is
+     *         denoted by {@link Value#ILLEGAL}.
      */
     public Value getBase() {
         return base;
@@ -174,8 +179,8 @@ public final class Address extends Value {
     }
 
     /**
-     * @return Index register, the value of which (possibly scaled by {@link #scale}) is added to {@link #base}.
-     * If not present, is denoted by {@link Value#ILLEGAL}.
+     * @return Index register, the value of which (possibly scaled by {@link #scale}) is added to
+     *         {@link #base}. If not present, is denoted by {@link Value#ILLEGAL}.
      */
     public Value getIndex() {
         return index;

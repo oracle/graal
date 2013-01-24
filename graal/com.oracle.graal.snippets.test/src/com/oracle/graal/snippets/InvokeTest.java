@@ -41,11 +41,14 @@ public class InvokeTest extends GraalCompilerTest {
     }
 
     public interface I {
+
         String virtualMethod(String s);
     }
 
     public static class A implements I {
+
         final String name = "A";
+
         public String virtualMethod(String s) {
             return name + s;
         }

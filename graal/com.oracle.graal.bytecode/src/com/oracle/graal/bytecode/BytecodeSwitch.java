@@ -27,6 +27,7 @@ package com.oracle.graal.bytecode;
  * and {@link Bytecodes#TABLESWITCH} instructions.
  */
 public abstract class BytecodeSwitch {
+
     /**
      * The {@link BytecodeStream} containing the bytecode array.
      */
@@ -36,12 +37,14 @@ public abstract class BytecodeSwitch {
      */
     protected final int bci;
     /**
-     * Index of the start of the additional data for the switch instruction, aligned to a multiple of four from the method start.
+     * Index of the start of the additional data for the switch instruction, aligned to a multiple
+     * of four from the method start.
      */
     protected final int alignedBci;
 
     /**
      * Constructor for a {@link BytecodeStream}.
+     * 
      * @param stream the {@code BytecodeStream} containing the switch instruction
      * @param bci the index in the stream of the switch instruction
      */
@@ -53,6 +56,7 @@ public abstract class BytecodeSwitch {
 
     /**
      * Gets the current bytecode index.
+     * 
      * @return the current bytecode index
      */
     public int bci() {
@@ -61,6 +65,7 @@ public abstract class BytecodeSwitch {
 
     /**
      * Gets the index of the instruction denoted by the {@code i}'th switch target.
+     * 
      * @param i index of the switch target
      * @return the index of the instruction denoted by the {@code i}'th switch target
      */
@@ -70,6 +75,7 @@ public abstract class BytecodeSwitch {
 
     /**
      * Gets the index of the instruction for the default switch target.
+     * 
      * @return the index of the instruction for the default switch target
      */
     public int defaultTarget() {
@@ -78,6 +84,7 @@ public abstract class BytecodeSwitch {
 
     /**
      * Gets the offset from the start of the switch instruction to the default switch target.
+     * 
      * @return the offset to the default switch target
      */
     public int defaultOffset() {
@@ -86,6 +93,7 @@ public abstract class BytecodeSwitch {
 
     /**
      * Gets the key at {@code i}'th switch target index.
+     * 
      * @param i the switch target index
      * @return the key at {@code i}'th switch target index
      */
@@ -93,6 +101,7 @@ public abstract class BytecodeSwitch {
 
     /**
      * Gets the offset from the start of the switch instruction for the {@code i}'th switch target.
+     * 
      * @param i the switch target index
      * @return the offset to the {@code i}'th switch target
      */
@@ -100,12 +109,14 @@ public abstract class BytecodeSwitch {
 
     /**
      * Gets the number of switch targets.
+     * 
      * @return the number of switch targets
      */
     public abstract int numberOfCases();
 
     /**
      * Gets the total size in bytes of the switch instruction.
+     * 
      * @return the total size in bytes of the switch instruction
      */
     public abstract int size();

@@ -26,8 +26,8 @@ import java.io.*;
 import java.util.*;
 
 /**
- * Represents the debugging information for a particular place in the code,
- * which includes the code position, a reference map, and deoptimization information.
+ * Represents the debugging information for a particular place in the code, which includes the code
+ * position, a reference map, and deoptimization information.
  */
 public class DebugInfo implements Serializable {
 
@@ -39,8 +39,9 @@ public class DebugInfo implements Serializable {
 
     /**
      * Creates a new {@link DebugInfo} from the given values.
-     *
-     * @param codePos the {@linkplain BytecodePosition code position} or {@linkplain BytecodeFrame frame} info
+     * 
+     * @param codePos the {@linkplain BytecodePosition code position} or {@linkplain BytecodeFrame
+     *            frame} info
      * @param registerRefMap the register map
      * @param frameRefMap the reference map for {@code frame}, which may be {@code null}
      */
@@ -71,10 +72,9 @@ public class DebugInfo implements Serializable {
         return getFrameRefMap() != null && getFrameRefMap().size() > 0;
     }
 
-
     /**
      * Gets the deoptimization information for each inlined frame (if available).
-     *
+     * 
      * @return {@code null} if no frame de-opt info is {@linkplain #hasFrame() available}
      */
     public BytecodeFrame frame() {
@@ -90,25 +90,26 @@ public class DebugInfo implements Serializable {
     }
 
     /**
-     * @return The code position (including all inlined methods) of this debug info.
-     * If this is a {@link BytecodeFrame} instance, then it is also the deoptimization information for each inlined frame.
+     * @return The code position (including all inlined methods) of this debug info. If this is a
+     *         {@link BytecodeFrame} instance, then it is also the deoptimization information for
+     *         each inlined frame.
      */
     public BytecodePosition getBytecodePosition() {
         return bytecodePosition;
     }
 
     /**
-     * @return The reference map for the registers at this point. The reference map is <i>packed</i> in that
-     * for bit {@code k} in byte {@code n}, it refers to the register whose
-     * {@linkplain Register#number number} is {@code (k + n * 8)}.
+     * @return The reference map for the registers at this point. The reference map is <i>packed</i>
+     *         in that for bit {@code k} in byte {@code n}, it refers to the register whose
+     *         {@linkplain Register#number number} is {@code (k + n * 8)}.
      */
     public BitSet getRegisterRefMap() {
         return registerRefMap;
     }
 
     /**
-     * @return The reference map for the stack frame at this point. A set bit at {@code k} in the map
-     * represents stack slot number {@code k}.
+     * @return The reference map for the stack frame at this point. A set bit at {@code k} in the
+     *         map represents stack slot number {@code k}.
      */
     public BitSet getFrameRefMap() {
         return frameRefMap;

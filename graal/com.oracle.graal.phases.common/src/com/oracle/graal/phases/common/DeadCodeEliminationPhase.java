@@ -27,7 +27,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 
-
 public class DeadCodeEliminationPhase extends Phase {
 
     // Metrics

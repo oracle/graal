@@ -34,22 +34,24 @@ import com.oracle.graal.phases.*;
 
 /**
  * This class implements the graph caching system for the HotSpot platform.
- *
- * This implementation does not use a map to store the actual cached graphs. The problem is that such maps keep the
- * graph, and therefore the {@link ResolvedJavaMethod} referenced from the graph, alive. For some applications and benchmarks this
- * is a problem, e.g., the DaCapoScala "scalatest" benchmark will quickly run out of perm gen because of this.
- *
- * This cannot be solved with a {@code WeakHashMap<ResolvedJavaMethod, Graph>}, since the values within the map will keep the keys
- * alive. In order for this to work we would require a weak map in which the "strongness" of the value references
- * depends upon the reachability of the keys.
- *
- * Therefore the graph cache is implemented in such a way that it stores its cache entries within the {@link ResolvedJavaMethod}.
- * It uses the {@link ResolvedJavaMethod#getCompilerStorage()} map with the HotSpotGraphCache instance as key.
- * The cached graph will be kept alive as long as the {@link ResolvedJavaMethod} is alive, but does not prevent the method, and
- * therefore the class, from being unloaded.
- *
- * The {@link #cachedGraphIds} map is used to find the graphs that should be removed because of deoptimization, and to
- * enforce the graph cache size restriction.
+ * 
+ * This implementation does not use a map to store the actual cached graphs. The problem is that
+ * such maps keep the graph, and therefore the {@link ResolvedJavaMethod} referenced from the graph,
+ * alive. For some applications and benchmarks this is a problem, e.g., the DaCapoScala "scalatest"
+ * benchmark will quickly run out of perm gen because of this.
+ * 
+ * This cannot be solved with a {@code WeakHashMap<ResolvedJavaMethod, Graph>}, since the values
+ * within the map will keep the keys alive. In order for this to work we would require a weak map in
+ * which the "strongness" of the value references depends upon the reachability of the keys.
+ * 
+ * Therefore the graph cache is implemented in such a way that it stores its cache entries within
+ * the {@link ResolvedJavaMethod}. It uses the {@link ResolvedJavaMethod#getCompilerStorage()} map
+ * with the HotSpotGraphCache instance as key. The cached graph will be kept alive as long as the
+ * {@link ResolvedJavaMethod} is alive, but does not prevent the method, and therefore the class,
+ * from being unloaded.
+ * 
+ * The {@link #cachedGraphIds} map is used to find the graphs that should be removed because of
+ * deoptimization, and to enforce the graph cache size restriction.
  */
 public class HotSpotGraphCache implements GraphCache {
 
@@ -62,8 +64,9 @@ public class HotSpotGraphCache implements GraphCache {
     private volatile long putCounter;
 
     /**
-     * An ordered hash map for looking up the methods corresponding to a specific graph id. It enforces the maximum
-     * graph cache size by removing the oldest (in insertion-order) element if the cache gets too big.
+     * An ordered hash map for looking up the methods corresponding to a specific graph id. It
+     * enforces the maximum graph cache size by removing the oldest (in insertion-order) element if
+     * the cache gets too big.
      */
     private final class LRUCache extends LinkedHashMap<Long, WeakReference<ResolvedJavaMethod>> {
 

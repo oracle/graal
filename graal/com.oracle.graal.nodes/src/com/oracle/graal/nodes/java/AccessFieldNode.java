@@ -45,6 +45,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     /**
      * Constructs a new access field object.
+     * 
      * @param object the instruction producing the receiver object
      * @param field the compiler interface representation of the field
      */
@@ -58,6 +59,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     /**
      * Gets the compiler interface field for this field access.
+     * 
      * @return the compiler interface field for this field access
      */
     public ResolvedJavaField field() {
@@ -70,6 +72,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     /**
      * Checks whether this field access is an access to a static field.
+     * 
      * @return {@code true} if this field access is to a static field
      */
     public boolean isStatic() {
@@ -78,6 +81,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     /**
      * Checks whether this field is declared volatile.
+     * 
      * @return {@code true} if the field is resolved and declared volatile
      */
     public boolean isVolatile() {

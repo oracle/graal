@@ -207,7 +207,8 @@ public class FrameStateBuilder {
         if (node.isDeleted()) {
             return;
         }
-        // Collect all phi functions that use this phi so that we can delete them recursively (after we delete ourselves to avoid circles).
+        // Collect all phi functions that use this phi so that we can delete them recursively (after
+        // we delete ourselves to avoid circles).
         List<FloatingNode> propagateUsages = node.usages().filter(FloatingNode.class).filter(isA(PhiNode.class).or(ValueProxyNode.class)).snapshot();
 
         // Remove the phi function from all FrameStates where it is used and then delete it.
@@ -316,10 +317,9 @@ public class FrameStateBuilder {
         rethrowException = b;
     }
 
-
     /**
      * Returns the size of the local variables.
-     *
+     * 
      * @return the size of the local variables
      */
     public int localsSize() {
@@ -335,7 +335,7 @@ public class FrameStateBuilder {
 
     /**
      * Gets the value in the local variables at the specified index, without any sanity checking.
-     *
+     * 
      * @param i the index into the locals
      * @return the instruction that produced the value for the specified local
      */
@@ -345,7 +345,7 @@ public class FrameStateBuilder {
 
     /**
      * Get the value on the stack at the specified stack index.
-     *
+     * 
      * @param i the index into the stack, with {@code 0} being the bottom of the stack
      * @return the instruction at the specified position in the stack
      */
@@ -355,7 +355,7 @@ public class FrameStateBuilder {
 
     /**
      * Adds a locked monitor to this frame state.
-     *
+     * 
      * @param object the object whose monitor will be locked.
      */
     public void pushLock(ValueNode object) {
@@ -365,7 +365,7 @@ public class FrameStateBuilder {
 
     /**
      * Removes a locked monitor from this frame state.
-     *
+     * 
      * @return the object whose monitor was removed from the locks list.
      */
     public ValueNode popLock() {
@@ -386,7 +386,7 @@ public class FrameStateBuilder {
     /**
      * Loads the local variable at the specified index, checking that the returned value is non-null
      * and that two-stack values are properly handled.
-     *
+     * 
      * @param i the index of the local variable to load
      * @return the instruction that produced the specified local
      */
@@ -399,9 +399,10 @@ public class FrameStateBuilder {
     }
 
     /**
-     * Stores a given local variable at the specified index. If the value occupies {@linkplain FrameStateBuilder#isTwoSlot(Kind) two slots},
-     * then the next local variable index is also overwritten.
-     *
+     * Stores a given local variable at the specified index. If the value occupies
+     * {@linkplain FrameStateBuilder#isTwoSlot(Kind) two slots}, then the next local variable index
+     * is also overwritten.
+     * 
      * @param i the index at which to store
      * @param x the instruction which produces the value for the local
      */
@@ -428,6 +429,7 @@ public class FrameStateBuilder {
 
     /**
      * Pushes an instruction onto the stack with the expected type.
+     * 
      * @param kind the type expected for this instruction
      * @param x the instruction to push onto the stack
      */
@@ -441,6 +443,7 @@ public class FrameStateBuilder {
 
     /**
      * Pushes a value onto the stack without checking the type.
+     * 
      * @param x the instruction to push onto the stack
      */
     public void xpush(ValueNode x) {
@@ -450,6 +453,7 @@ public class FrameStateBuilder {
 
     /**
      * Pushes a value onto the stack and checks that it is an int.
+     * 
      * @param x the instruction to push onto the stack
      */
     public void ipush(ValueNode x) {
@@ -458,6 +462,7 @@ public class FrameStateBuilder {
 
     /**
      * Pushes a value onto the stack and checks that it is a float.
+     * 
      * @param x the instruction to push onto the stack
      */
     public void fpush(ValueNode x) {
@@ -466,6 +471,7 @@ public class FrameStateBuilder {
 
     /**
      * Pushes a value onto the stack and checks that it is an object.
+     * 
      * @param x the instruction to push onto the stack
      */
     public void apush(ValueNode x) {
@@ -474,6 +480,7 @@ public class FrameStateBuilder {
 
     /**
      * Pushes a value onto the stack and checks that it is a JSR return address.
+     * 
      * @param x the instruction to push onto the stack
      */
     public void jpush(ValueNode x) {
@@ -482,7 +489,7 @@ public class FrameStateBuilder {
 
     /**
      * Pushes a value onto the stack and checks that it is a long.
-     *
+     * 
      * @param x the instruction to push onto the stack
      */
     public void lpush(ValueNode x) {
@@ -492,6 +499,7 @@ public class FrameStateBuilder {
 
     /**
      * Pushes a value onto the stack and checks that it is a double.
+     * 
      * @param x the instruction to push onto the stack
      */
     public void dpush(ValueNode x) {
@@ -507,6 +515,7 @@ public class FrameStateBuilder {
 
     /**
      * Pops an instruction off the stack with the expected type.
+     * 
      * @param kind the expected type
      * @return the instruction on the top of the stack
      */
@@ -520,6 +529,7 @@ public class FrameStateBuilder {
 
     /**
      * Pops a value off of the stack without checking the type.
+     * 
      * @return x the instruction popped off the stack
      */
     public ValueNode xpop() {
@@ -530,6 +540,7 @@ public class FrameStateBuilder {
 
     /**
      * Pops a value off of the stack and checks that it is an int.
+     * 
      * @return x the instruction popped off the stack
      */
     public ValueNode ipop() {
@@ -538,6 +549,7 @@ public class FrameStateBuilder {
 
     /**
      * Pops a value off of the stack and checks that it is a float.
+     * 
      * @return x the instruction popped off the stack
      */
     public ValueNode fpop() {
@@ -546,6 +558,7 @@ public class FrameStateBuilder {
 
     /**
      * Pops a value off of the stack and checks that it is an object.
+     * 
      * @return x the instruction popped off the stack
      */
     public ValueNode apop() {
@@ -554,6 +567,7 @@ public class FrameStateBuilder {
 
     /**
      * Pops a value off of the stack and checks that it is a JSR return address.
+     * 
      * @return x the instruction popped off the stack
      */
     public ValueNode jpop() {
@@ -562,6 +576,7 @@ public class FrameStateBuilder {
 
     /**
      * Pops a value off of the stack and checks that it is a long.
+     * 
      * @return x the instruction popped off the stack
      */
     public ValueNode lpop() {
@@ -571,6 +586,7 @@ public class FrameStateBuilder {
 
     /**
      * Pops a value off of the stack and checks that it is a double.
+     * 
      * @return x the instruction popped off the stack
      */
     public ValueNode dpop() {
@@ -579,7 +595,9 @@ public class FrameStateBuilder {
     }
 
     /**
-     * Pop the specified number of slots off of this stack and return them as an array of instructions.
+     * Pop the specified number of slots off of this stack and return them as an array of
+     * instructions.
+     * 
      * @return an array containing the arguments off of the stack
      */
     public ValueNode[] popArguments(int slotSize, int argSize) {
@@ -599,8 +617,10 @@ public class FrameStateBuilder {
 
     /**
      * Peeks an element from the operand stack.
-     * @param argumentNumber The number of the argument, relative from the top of the stack (0 = top).
-     *        Long and double arguments only count as one argument, i.e., null-slots are ignored.
+     * 
+     * @param argumentNumber The number of the argument, relative from the top of the stack (0 =
+     *            top). Long and double arguments only count as one argument, i.e., null-slots are
+     *            ignored.
      * @return The peeked argument.
      */
     public ValueNode peek(int argumentNumber) {

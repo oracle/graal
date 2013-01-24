@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.debug;
 
 import com.oracle.graal.api.meta.*;
 
-
 public class LineNumberTableImpl implements LineNumberTable {
+
     private final int[] lineNumbers;
     private final int[] bci;
 
@@ -45,7 +45,8 @@ public class LineNumberTableImpl implements LineNumberTable {
     }
 
     @Override
-    public int getLineNumber(@SuppressWarnings("hiding") int bci) {
+    public int getLineNumber(@SuppressWarnings("hiding")
+    int bci) {
         for (int i = 0; i < this.bci.length - 1; i++) {
             if (this.bci[i] <= bci && bci < this.bci[i + 1]) {
                 return lineNumbers[i];

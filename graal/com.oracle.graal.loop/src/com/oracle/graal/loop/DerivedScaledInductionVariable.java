@@ -26,8 +26,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
 
-
 public class DerivedScaledInductionVariable extends InductionVariable {
+
     private InductionVariable base;
     private ValueNode scale;
     private ValueNode value;

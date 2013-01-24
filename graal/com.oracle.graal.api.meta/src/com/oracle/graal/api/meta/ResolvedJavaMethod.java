@@ -28,43 +28,44 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 /**
- * Represents a resolved Java method. Methods, like fields and types, are resolved through {@link ConstantPool constant
- * pools}.
+ * Represents a resolved Java method. Methods, like fields and types, are resolved through
+ * {@link ConstantPool constant pools}.
  */
 public interface ResolvedJavaMethod extends JavaMethod {
 
     /**
-     * Returns the bytecodes of this method, if the method has code. The returned byte array does not contain
-     * breakpoints or non-Java bytecodes.
-     *
+     * Returns the bytecodes of this method, if the method has code. The returned byte array does
+     * not contain breakpoints or non-Java bytecodes.
+     * 
      * @return the bytecodes of the method, or {@code null} if none is available
      */
     byte[] getCode();
 
     /**
-     * Returns the size of the bytecodes of this method, if the method has code. This is equivalent to
-     * {@link #getCode()}. {@code length} if the method has code.
-     *
+     * Returns the size of the bytecodes of this method, if the method has code. This is equivalent
+     * to {@link #getCode()}. {@code length} if the method has code.
+     * 
      * @return the size of the bytecodes in bytes, or 0 if no bytecodes is available
      */
     int getCodeSize();
 
     /**
      * Returns the size of the compiled machine code of this method.
-     *
+     * 
      * @return the size of the compiled machine code in bytes, or 0 if no compiled code exists.
      */
     int getCompiledCodeSize();
 
     /**
      * Returns an estimate how complex it is to compile this method.
-     *
+     * 
      * @return A value >= 0, where higher means more complex.
      */
     int getCompilationComplexity();
 
     /**
-     * Returns the {@link ResolvedJavaType} object representing the class or interface that declares this method.
+     * Returns the {@link ResolvedJavaType} object representing the class or interface that declares
+     * this method.
      */
     ResolvedJavaType getDeclaringClass();
 
@@ -79,30 +80,31 @@ public interface ResolvedJavaMethod extends JavaMethod {
     int getMaxStackSize();
 
     /**
-     * Returns the Java language modifiers for this method, as an integer. The {@link Modifier} class should be used to
-     * decode the modifiers. Only the {@linkplain Modifier#methodModifiers() method flags} specified in the JVM
-     * specification will be included in the returned mask.
+     * Returns the Java language modifiers for this method, as an integer. The {@link Modifier}
+     * class should be used to decode the modifiers. Only the
+     * {@linkplain Modifier#methodModifiers() method flags} specified in the JVM specification will
+     * be included in the returned mask.
      */
     int getModifiers();
 
     /**
      * Checks whether this method is a class initializer.
-     *
+     * 
      * @return {@code true} if the method is a class initializer
      */
     boolean isClassInitializer();
 
     /**
      * Checks whether this method is a constructor.
-     *
+     * 
      * @return {@code true} if the method is a constructor
      */
     boolean isConstructor();
 
     /**
-     * Checks whether this method can be statically bound (usually, that means it is final or private or static, but not
-     * abstract).
-     *
+     * Checks whether this method can be statically bound (usually, that means it is final or
+     * private or static, but not abstract).
+     * 
      * @return {@code true} if this method can be statically bound
      */
     boolean canBeStaticallyBound();
@@ -123,7 +125,8 @@ public interface ResolvedJavaMethod extends JavaMethod {
     ProfilingInfo getProfilingInfo();
 
     /**
-     * Returns a map that the compiler can use to store objects that should survive the current compilation.
+     * Returns a map that the compiler can use to store objects that should survive the current
+     * compilation.
      */
     Map<Object, Object> getCompilerStorage();
 
@@ -133,25 +136,27 @@ public interface ResolvedJavaMethod extends JavaMethod {
     ConstantPool getConstantPool();
 
     /**
-     * Returns the annotation for the specified type of this method, if such an annotation is present.
-     *
+     * Returns the annotation for the specified type of this method, if such an annotation is
+     * present.
+     * 
      * @param annotationClass the Class object corresponding to the annotation type
-     * @return this element's annotation for the specified annotation type if present on this method, else {@code null}
+     * @return this element's annotation for the specified annotation type if present on this
+     *         method, else {@code null}
      */
     <T extends Annotation> T getAnnotation(Class<T> annotationClass);
 
     /**
-     * Returns an array of arrays that represent the annotations on the formal parameters, in declaration order, of this
-     * method.
-     *
+     * Returns an array of arrays that represent the annotations on the formal parameters, in
+     * declaration order, of this method.
+     * 
      * @see Method#getParameterAnnotations()
      */
     Annotation[][] getParameterAnnotations();
 
     /**
-     * Returns an array of {@link Type} objects that represent the formal parameter types, in declaration order, of this
-     * method.
-     *
+     * Returns an array of {@link Type} objects that represent the formal parameter types, in
+     * declaration order, of this method.
+     * 
      * @see Method#getGenericParameterTypes()
      */
     Type[] getGenericParameterTypes();
@@ -160,7 +165,6 @@ public interface ResolvedJavaMethod extends JavaMethod {
      * Returns {@code true} if this method can be inlined.
      */
     boolean canBeInlined();
-
 
     /**
      * Returns the LineNumberTable of this method.

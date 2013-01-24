@@ -28,9 +28,9 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
- * Instances of this node class will look for a preceding if node and put the given probability into the if node's taken
- * probability. Then the branch probability node will be removed. This node is intended primarily for snippets, so that
- * they can define their fast and slow paths.
+ * Instances of this node class will look for a preceding if node and put the given probability into
+ * the if node's taken probability. Then the branch probability node will be removed. This node is
+ * intended primarily for snippets, so that they can define their fast and slow paths.
  */
 public class BranchProbabilityNode extends FixedWithNextNode implements Simplifiable {
 
@@ -64,6 +64,7 @@ public class BranchProbabilityNode extends FixedWithNextNode implements Simplifi
     }
 
     @NodeIntrinsic
-    public static native void probability(@ConstantNodeParameter double probability);
+    public static native void probability(@ConstantNodeParameter
+    double probability);
 
 }

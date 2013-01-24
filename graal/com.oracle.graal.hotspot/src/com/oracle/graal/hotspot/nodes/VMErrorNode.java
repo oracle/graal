@@ -34,8 +34,8 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
 
 /**
- * Causes the VM to exit with a description of the current Java location
- * and an optional {@linkplain Log#printf(String, long) formatted} error message specified.
+ * Causes the VM to exit with a description of the current Java location and an optional
+ * {@linkplain Log#printf(String, long) formatted} error message specified.
  */
 public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowerable {
 

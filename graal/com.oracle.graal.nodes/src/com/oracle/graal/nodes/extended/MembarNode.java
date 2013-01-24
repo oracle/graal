@@ -48,5 +48,6 @@ public class MembarNode extends FixedWithNextNode implements LIRLowerable, Memor
     }
 
     @NodeIntrinsic
-    public static native void memoryBarrier(@ConstantNodeParameter int barriers);
+    public static native void memoryBarrier(@ConstantNodeParameter
+    int barriers);
 }

@@ -26,6 +26,7 @@ package com.oracle.graal.bytecode;
  * A utility for processing {@link Bytecodes#LOOKUPSWITCH} bytecodes.
  */
 public class BytecodeLookupSwitch extends BytecodeSwitch {
+
     private static final int OFFSET_TO_NUMBER_PAIRS = 4;
     private static final int OFFSET_TO_FIRST_PAIR_MATCH = 8;
     private static final int OFFSET_TO_FIRST_PAIR_OFFSET = 12;
@@ -33,6 +34,7 @@ public class BytecodeLookupSwitch extends BytecodeSwitch {
 
     /**
      * Constructor for a {@link BytecodeStream}.
+     * 
      * @param stream the {@code BytecodeStream} containing the switch instruction
      * @param bci the index in the stream of the switch instruction
      */

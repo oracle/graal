@@ -30,8 +30,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
 
 /**
- * In the following tests, the usages of local variable "a" are replaced with the integer constant 0.
- * Then canonicalization is applied and it is verified that the resulting graph is equal to the
+ * In the following tests, the usages of local variable "a" are replaced with the integer constant
+ * 0. Then canonicalization is applied and it is verified that the resulting graph is equal to the
  * graph of the method that just has a "return 1" statement in it.
  */
 public class DegeneratedLoopsTest extends GraalCompilerTest {
@@ -49,6 +49,7 @@ public class DegeneratedLoopsTest extends GraalCompilerTest {
     }
 
     private static class UnresolvedException extends RuntimeException {
+
         private static final long serialVersionUID = 5215434338750728440L;
 
         static {
@@ -76,6 +77,7 @@ public class DegeneratedLoopsTest extends GraalCompilerTest {
 
     private void test(final String snippet) {
         Debug.scope("DegeneratedLoopsTest", new DebugDumpScope(snippet), new Runnable() {
+
             public void run() {
                 StructuredGraph graph = parse(snippet);
                 Debug.dump(graph, "Graph");

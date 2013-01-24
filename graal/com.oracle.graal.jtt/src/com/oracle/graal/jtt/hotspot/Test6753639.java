@@ -32,7 +32,7 @@ import org.junit.*;
  * 
  * @run main/othervm -Xbatch Test6753639
  */
-
+// @formatter:off
 public class Test6753639 extends JTTTest {
 
     public static int test() {

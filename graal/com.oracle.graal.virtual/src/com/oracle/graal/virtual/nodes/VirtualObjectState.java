@@ -54,7 +54,8 @@ public final class VirtualObjectState extends EscapeObjectState implements Node.
 
     @Override
     public void generate(LIRGeneratorTool generator) {
-        // Nothing to do, virtual object states are processed as part of the handling of StateSplit nodes.
+        // Nothing to do, virtual object states are processed as part of the handling of StateSplit
+        // nodes.
     }
 
     @Override
@@ -63,7 +64,7 @@ public final class VirtualObjectState extends EscapeObjectState implements Node.
     }
 
     @Override
-    public void applyToNonVirtual(NodeClosure< ? super ValueNode> closure) {
+    public void applyToNonVirtual(NodeClosure<? super ValueNode> closure) {
         for (ValueNode value : fieldValues) {
             closure.apply(this, value);
         }

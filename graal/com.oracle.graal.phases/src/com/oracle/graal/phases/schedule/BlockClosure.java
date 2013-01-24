@@ -28,5 +28,6 @@ import com.oracle.graal.nodes.cfg.*;
  * The {@code BlockClosure} interface represents a closure for iterating over blocks.
  */
 public interface BlockClosure {
+
     void apply(Block block);
 }

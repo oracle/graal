@@ -23,12 +23,14 @@
 package com.oracle.graal.api.meta;
 
 /**
- * Represents a resolved or unresolved type. Types include primitives, objects, {@code void}, and arrays thereof.
+ * Represents a resolved or unresolved type. Types include primitives, objects, {@code void}, and
+ * arrays thereof.
  */
 public interface JavaType {
 
     /**
-     * Returns the name of this type in internal form. The following are examples of strings returned by this method:
+     * Returns the name of this type in internal form. The following are examples of strings
+     * returned by this method:
      * 
      * <pre>
      *     "Ljava/lang/Object;"
@@ -39,8 +41,8 @@ public interface JavaType {
     String getName();
 
     /**
-     * For array types, gets the type of the components, or {@code null} if this is not an array type. This method is
-     * analogous to {@link Class#getComponentType()}.
+     * For array types, gets the type of the components, or {@code null} if this is not an array
+     * type. This method is analogous to {@link Class#getComponentType()}.
      */
     JavaType getComponentType();
 
@@ -55,8 +57,8 @@ public interface JavaType {
     Kind getKind();
 
     /**
-     * Resolved this type and returns a {@link ResolvedJavaType}. If this type is already a {@link ResolvedJavaType}, it
-     * returns this type.
+     * Resolved this type and returns a {@link ResolvedJavaType}. If this type is already a
+     * {@link ResolvedJavaType}, it returns this type.
      * 
      * @param accessingClass the class that requests resolving this type
      * @return the resolved Java type

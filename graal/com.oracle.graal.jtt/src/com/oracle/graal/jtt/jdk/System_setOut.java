@@ -46,7 +46,6 @@ public class System_setOut extends JTTTest {
         return sum;
     }
 
-// @NEVER_INLINE
     private static void doPrint(int n) {
         for (int i = 0; i < n; i++) {
             System.out.print('x');

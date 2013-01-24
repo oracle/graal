@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.jtt.*;
 import org.junit.*;
 
+// @formatter:off
 public class Test6186134 extends JTTTest {
 
     public static class TestClass {

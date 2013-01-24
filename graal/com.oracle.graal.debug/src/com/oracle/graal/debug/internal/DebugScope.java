@@ -215,7 +215,7 @@ public final class DebugScope {
                         return new RuntimeException("Exception while intercepting exception", t);
                     }
                 }
-            }, false, new Object[] {e});
+            }, false, new Object[]{e});
         }
         return null;
     }

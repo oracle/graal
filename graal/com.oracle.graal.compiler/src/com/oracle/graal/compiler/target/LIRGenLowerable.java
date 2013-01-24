@@ -27,8 +27,8 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * An alternative to {@link LIRLowerable} for lowering that is tightly coupled
- * to {@link LIRGenerator} and {@link LIRInstruction}.
+ * An alternative to {@link LIRLowerable} for lowering that is tightly coupled to
+ * {@link LIRGenerator} and {@link LIRInstruction}.
  */
 public interface LIRGenLowerable {
 

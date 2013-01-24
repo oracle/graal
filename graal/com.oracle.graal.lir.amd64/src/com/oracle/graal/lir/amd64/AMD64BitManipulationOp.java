@@ -28,10 +28,9 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
 public class AMD64BitManipulationOp extends AMD64LIRInstruction {
-    public enum IntrinsicOpcode  {
-        IPOPCNT, LPOPCNT,
-        IBSR, LBSR,
-        BSF;
+
+    public enum IntrinsicOpcode {
+        IPOPCNT, LPOPCNT, IBSR, LBSR, BSF;
     }
 
     @Opcode private final IntrinsicOpcode opcode;
@@ -49,7 +48,7 @@ public class AMD64BitManipulationOp extends AMD64LIRInstruction {
         Register dst = ValueUtil.asIntReg(result);
         if (ValueUtil.isAddress(input)) {
             Address src = ValueUtil.asAddress(input);
-            switch(opcode) {
+            switch (opcode) {
                 case IPOPCNT:
                     masm.popcntl(dst, src);
                     break;
@@ -68,7 +67,7 @@ public class AMD64BitManipulationOp extends AMD64LIRInstruction {
             }
         } else {
             Register src = ValueUtil.asRegister(input);
-            switch(opcode) {
+            switch (opcode) {
                 case IPOPCNT:
                     masm.popcntl(dst, src);
                     break;

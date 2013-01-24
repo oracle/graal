@@ -57,9 +57,9 @@ import com.oracle.graal.printer.*;
  * <p>
  * See {@link InvokeHintsTest} as an example of a white box test.
  * <p>
- * Black box tests use the {@link #test(String, Object...)} or {@link #testN(int, String, Object...)}
- * to execute some method in the interpreter and compare its result against that produced
- * by a Graal compiled version of the method.
+ * Black box tests use the {@link #test(String, Object...)} or
+ * {@link #testN(int, String, Object...)} to execute some method in the interpreter and compare its
+ * result against that produced by a Graal compiled version of the method.
  * <p>
  * These tests will be run by the {@code mx unittest} command.
  */
@@ -139,7 +139,7 @@ public abstract class GraalCompilerTest {
 
     /**
      * Parses a Java method to produce a graph.
-     *
+     * 
      * @param methodName the name of the method in {@code this.getClass()} to be parsed
      */
     protected StructuredGraph parse(String methodName) {
@@ -202,6 +202,7 @@ public abstract class GraalCompilerTest {
         for (int i = 0; i < n; i++) {
             final int idx = i;
             Thread t = new Thread(i + ":" + name) {
+
                 @Override
                 public void run() {
                     try {
@@ -234,8 +235,10 @@ public abstract class GraalCompilerTest {
     }
 
     static class Result {
+
         final Object returnValue;
         final Throwable exception;
+
         public Result(Object returnValue, Throwable exception) {
             this.returnValue = returnValue;
             this.exception = exception;
@@ -257,7 +260,8 @@ public abstract class GraalCompilerTest {
     protected Result executeExpected(Method method, Object receiver, Object... args) {
         before();
         try {
-            // This gives us both the expected return value as well as ensuring that the method to be compiled is fully resolved
+            // This gives us both the expected return value as well as ensuring that the method to
+            // be compiled is fully resolved
             return new Result(referenceInvoke(method, receiver, args), null);
         } catch (InvocationTargetException e) {
             return new Result(null, e.getTargetException());
@@ -284,7 +288,7 @@ public abstract class GraalCompilerTest {
 
     /**
      * Prepends a non-null receiver argument to a given list or args.
-     *
+     * 
      * @param receiver the receiver argument to prepend if it is non-null
      */
     protected Object[] argsWithReceiver(Object receiver, Object... args) {
@@ -315,7 +319,8 @@ public abstract class GraalCompilerTest {
             Assert.assertTrue("expected " + expect.exception, actual.exception != null);
             Assert.assertEquals(expect.exception.getClass(), actual.exception.getClass());
         } else {
-            //System.out.println(name + "(" + Arrays.toString(args) + "): expected=" + expect.returnValue + ", actual=" + actual.returnValue);
+            // System.out.println(name + "(" + Arrays.toString(args) + "): expected=" +
+            // expect.returnValue + ", actual=" + actual.returnValue);
             assertEquals(expect.returnValue, actual.returnValue);
         }
     }
@@ -331,7 +336,7 @@ public abstract class GraalCompilerTest {
 
     /**
      * Can be overridden to modify the compilation phases applied for a test.
-     *
+     * 
      * @param method the method being compiled
      * @param graph the graph being compiled
      * @param phasePlan the phase plan to be edited
@@ -341,8 +346,9 @@ public abstract class GraalCompilerTest {
 
     /**
      * Gets installed code for a given method and graph, compiling it first if necessary.
-     *
-     * @param forceCompile specifies whether to ignore any previous code cached for the (method, key) pair
+     * 
+     * @param forceCompile specifies whether to ignore any previous code cached for the (method,
+     *            key) pair
      */
     protected InstalledCode getCode(final ResolvedJavaMethod method, final StructuredGraph graph, boolean forceCompile) {
         if (!forceCompile) {
@@ -351,7 +357,7 @@ public abstract class GraalCompilerTest {
                 if (cached.isValid()) {
                     return cached;
                 } else {
-                    //System.out.println(cached.getMethod() + " was invalidated");
+                    // System.out.println(cached.getMethod() + " was invalidated");
                 }
 
             }
@@ -360,6 +366,7 @@ public abstract class GraalCompilerTest {
         final int id = compilationId++;
 
         InstalledCode installedCode = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true), new Callable<InstalledCode>() {
+
             public InstalledCode call() throws Exception {
                 final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
                 if (printCompilation) {
@@ -386,13 +393,14 @@ public abstract class GraalCompilerTest {
 
     protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult) {
         assert graalCompiler != null;
-        return Debug.scope("CodeInstall", new Object[] {graalCompiler, method}, new Callable<InstalledCode>() {
+        return Debug.scope("CodeInstall", new Object[]{graalCompiler, method}, new Callable<InstalledCode>() {
+
             @Override
             public InstalledCode call() throws Exception {
                 final CodeInfo[] info = Debug.isDumpEnabled() ? new CodeInfo[1] : null;
                 InstalledCode installedMethod = runtime.addMethod(method, compResult, info);
                 if (info != null) {
-                    Debug.dump(new Object[] {compResult, info[0]}, "After code installation");
+                    Debug.dump(new Object[]{compResult, info[0]}, "After code installation");
                 }
                 return installedMethod;
             }
@@ -401,7 +409,7 @@ public abstract class GraalCompilerTest {
 
     /**
      * Parses a Java method to produce a graph.
-     *
+     * 
      * @param methodName the name of the method in {@code this.getClass()} to be parsed
      */
     protected StructuredGraph parseProfiled(String methodName) {

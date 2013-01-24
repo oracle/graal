@@ -59,7 +59,7 @@ public class NewArrayTest extends GraalCompilerTest {
 
     @Test
     public void test1() {
-        for (String type : new String[] {"Byte", "Char", "Short", "Int", "Float", "Long", "Double", "String"}) {
+        for (String type : new String[]{"Byte", "Char", "Short", "Int", "Float", "Long", "Double", "String"}) {
             test("new" + type + "Array7");
             test("new" + type + "ArrayMinus7");
             test("new" + type + "Array", 7);

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot;
 
-
 /**
  * Used to communicate configuration details, runtime offsets, etc. to Graal upon compileMethod.
  */

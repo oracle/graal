@@ -28,6 +28,7 @@ import org.junit.*;
 /*
  */
 public class BC_ldiv3 extends JTTTest {
+
     public static long PLUS7 = 7;
     public static long PLUS3 = 3;
     public static long MIN7 = -7;

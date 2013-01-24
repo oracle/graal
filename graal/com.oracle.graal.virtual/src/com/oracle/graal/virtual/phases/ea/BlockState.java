@@ -84,7 +84,8 @@ class BlockState extends MergeableBlockState<BlockState> {
         materializeEffects.addAll(deferredStores);
     }
 
-    private void materializeChangedBefore(FixedNode fixed, VirtualObjectNode virtual, EscapeState state, HashSet<VirtualObjectNode> deferred, GraphEffectList deferredStores, GraphEffectList materializeEffects) {
+    private void materializeChangedBefore(FixedNode fixed, VirtualObjectNode virtual, EscapeState state, HashSet<VirtualObjectNode> deferred, GraphEffectList deferredStores,
+                    GraphEffectList materializeEffects) {
         trace("materializing %s at %s", virtual, fixed);
         ObjectState obj = getObjectState(virtual);
         if (obj.getLockCount() > 0 && obj.virtual.type().isArray()) {

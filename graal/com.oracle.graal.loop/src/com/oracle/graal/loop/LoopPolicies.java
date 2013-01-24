@@ -28,8 +28,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
 
-
 public abstract class LoopPolicies {
+
     private LoopPolicies() {
         // does not need to be instantiated
     }
@@ -65,7 +65,10 @@ public abstract class LoopPolicies {
         double maxProbability = 0;
         for (Node successor : controlSplit.successors()) {
             BeginNode branch = (BeginNode) successor;
-            inBranchTotal += loop.nodesInLoopFrom(branch, postDom).cardinality(); //this may count twice because of fall-through in switches
+            inBranchTotal += loop.nodesInLoopFrom(branch, postDom).cardinality(); // this may count
+                                                                                  // twice because
+                                                                                  // of fall-through
+                                                                                  // in switches
             double probability = controlSplit.probability(branch);
             if (probability > maxProbability) {
                 maxProbability = probability;
@@ -77,6 +80,5 @@ public abstract class LoopPolicies {
         Debug.log("shouldUnswitch(%s, %s) : delta=%d, max=%d, %.2f%% inside of branches", loop, controlSplit, netDiff, maxDiff, (double) (inBranchTotal) / loopTotal * 100);
         return netDiff <= maxDiff;
     }
-
 
 }

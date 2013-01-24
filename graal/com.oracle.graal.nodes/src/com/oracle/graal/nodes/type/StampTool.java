@@ -45,7 +45,7 @@ public class StampTool {
     }
 
     public static Stamp meet(Collection<? extends StampProvider> values) {
-        Iterator< ? extends StampProvider> iterator = values.iterator();
+        Iterator<? extends StampProvider> iterator = values.iterator();
         if (iterator.hasNext()) {
             Stamp stamp = iterator.next().stamp();
             while (iterator.hasNext()) {

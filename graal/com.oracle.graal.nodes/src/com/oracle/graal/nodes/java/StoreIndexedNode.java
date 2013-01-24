@@ -55,6 +55,7 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
 
     /**
      * Creates a new StoreIndexedNode.
+     * 
      * @param array the node producing the array
      * @param index the node producing the index
      * @param elementKind the element type

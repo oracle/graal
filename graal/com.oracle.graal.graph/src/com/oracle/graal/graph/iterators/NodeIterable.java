@@ -30,11 +30,11 @@ public interface NodeIterable<T extends Node> extends Iterable<T> {
 
     NodeIterable<T> until(T u);
 
-    NodeIterable<T> until(Class< ? extends T> clazz);
+    NodeIterable<T> until(Class<? extends T> clazz);
 
     <F extends T> NodeIterable<F> filter(Class<F> clazz);
 
-    NodeIterable<T> filterInterface(Class< ? > iface);
+    NodeIterable<T> filterInterface(Class<?> iface);
 
     FilteredNodeIterable<T> filter(NodePredicate predicate);
 

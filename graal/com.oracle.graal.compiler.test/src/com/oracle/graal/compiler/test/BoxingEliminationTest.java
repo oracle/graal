@@ -35,9 +35,9 @@ import com.oracle.graal.phases.PhasePlan.*;
 import com.oracle.graal.phases.common.*;
 
 /**
- * In the following tests, the usages of local variable "a" are replaced with the integer constant 0. Then boxing
- * elimination is applied and it is verified that the resulting graph is equal to the graph of the method that just has
- * a "return 1" statement in it.
+ * In the following tests, the usages of local variable "a" are replaced with the integer constant
+ * 0. Then boxing elimination is applied and it is verified that the resulting graph is equal to the
+ * graph of the method that just has a "return 1" statement in it.
  */
 public class BoxingEliminationTest extends GraalCompilerTest {
 
@@ -111,6 +111,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
 
     private void test(final String snippet, final String referenceSnippet) {
         Debug.scope("BoxingEliminationTest", new DebugDumpScope(snippet), new Runnable() {
+
             @Override
             public void run() {
                 StructuredGraph graph = parse(snippet);

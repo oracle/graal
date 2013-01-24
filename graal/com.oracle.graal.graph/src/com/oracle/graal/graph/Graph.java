@@ -88,7 +88,7 @@ public class Graph {
 
     /**
      * Creates an empty Graph with a given name.
-     *
+     * 
      * @param name the name of the graph, used for debugging purposes
      */
     public Graph(String name) {
@@ -107,7 +107,7 @@ public class Graph {
 
     /**
      * Creates a copy of this graph.
-     *
+     * 
      * @param newName the name of the copy, used for debugging purposes (can be null)
      */
     public Graph copy(String newName) {
@@ -123,7 +123,9 @@ public class Graph {
     }
 
     /**
-     * Gets the number of live nodes in this graph. That is the number of nodes which have been added to the graph minus the number of deleted nodes.
+     * Gets the number of live nodes in this graph. That is the number of nodes which have been
+     * added to the graph minus the number of deleted nodes.
+     * 
      * @return the number of live nodes in this graph
      */
     public int getNodeCount() {
@@ -132,6 +134,7 @@ public class Graph {
 
     /**
      * Gets the number of node which have been deleted from this graph.
+     * 
      * @return the number of node which have been deleted from this graph
      */
     public int getDeletedNodeCount() {
@@ -140,6 +143,7 @@ public class Graph {
 
     /**
      * Adds a new node to the graph.
+     * 
      * @param node the node to be added
      * @return the node which was added to the graph
      */
@@ -149,6 +153,7 @@ public class Graph {
     }
 
     public interface InputChangedListener {
+
         void inputChanged(Node node);
     }
 
@@ -161,9 +166,13 @@ public class Graph {
     }
 
     /**
-     * Adds a new node to the graph, if a <i>similar</i> node already exists in the graph, the provided node will not be added to the graph but the <i>similar</i> node will be returned instead.
+     * Adds a new node to the graph, if a <i>similar</i> node already exists in the graph, the
+     * provided node will not be added to the graph but the <i>similar</i> node will be returned
+     * instead.
+     * 
      * @param node
-     * @return the node which was added to the graph or a <i>similar</i> which was already in the graph.
+     * @return the node which was added to the graph or a <i>similar</i> which was already in the
+     *         graph.
      */
     @SuppressWarnings("unchecked")
     public <T extends Node & ValueNumberable> T unique(T node) {
@@ -231,6 +240,7 @@ public class Graph {
     }
 
     private class NodeIterator implements Iterator<Node> {
+
         private int index;
 
         public NodeIterator() {
@@ -280,11 +290,13 @@ public class Graph {
     }
 
     /**
-     * Returns an {@link Iterable} providing all nodes added since the last {@link Graph#getMark() mark}.
+     * Returns an {@link Iterable} providing all nodes added since the last {@link Graph#getMark()
+     * mark}.
      */
     public NodeIterable<Node> getNewNodes(int mark) {
         final int index = mark;
         return new AbstractNodeIterable<Node>() {
+
             @Override
             public Iterator<Node> iterator() {
                 return new NodeIterator(index);
@@ -294,10 +306,12 @@ public class Graph {
 
     /**
      * Returns an {@link Iterable} providing all the live nodes.
+     * 
      * @return an {@link Iterable} providing all the live nodes.
      */
     public NodeIterable<Node> getNodes() {
         return new AbstractNodeIterable<Node>() {
+
             @Override
             public Iterator<Node> iterator() {
                 return new NodeIterator();
@@ -310,10 +324,13 @@ public class Graph {
         };
     }
 
-    private static class PlaceHolderNode extends Node {}
+    private static class PlaceHolderNode extends Node {
+    }
+
     private static final PlaceHolderNode PLACE_HOLDER = new PlaceHolderNode();
 
     private class TypedNodeIterator<T extends IterableNodeType> implements Iterator<T> {
+
         private final int[] ids;
         private final Node[] current;
 
@@ -412,13 +429,16 @@ public class Graph {
     }
 
     /**
-     * Returns an {@link Iterable} providing all the live nodes whose type is compatible with {@code type}.
+     * Returns an {@link Iterable} providing all the live nodes whose type is compatible with
+     * {@code type}.
+     * 
      * @param type the type of node to return
      * @return an {@link Iterable} providing all the matching nodes.
      */
     public <T extends Node & IterableNodeType> NodeIterable<T> getNodes(final Class<T> type) {
         final NodeClass nodeClass = NodeClass.get(type);
         return new AbstractNodeIterable<T>() {
+
             @Override
             public Iterator<T> iterator() {
                 return new TypedNodeIterator<>(nodeClass);
@@ -428,6 +448,7 @@ public class Graph {
 
     /**
      * Returns whether the graph contains at least one node of the given type.
+     * 
      * @param type the type of node that is checked for occurrence
      * @return whether there is at least one such node
      */
@@ -543,6 +564,7 @@ public class Graph {
 
     /**
      * Returns the number of node ids generated so far.
+     * 
      * @return the number of node ids generated so far
      */
     int nodeIdCount() {
@@ -550,12 +572,12 @@ public class Graph {
     }
 
     /**
-     * Adds duplicates of the nodes in {@code nodes} to this graph.
-     * This will recreate any edges between the duplicate nodes. The {@code replacement} map can be used to
-     * replace a node from the source graph by a given node (which must already be in this graph).
-     * Edges between duplicate and replacement nodes will also be recreated so care should be taken
-     * regarding the matching of node types in the replacement map.
-     *
+     * Adds duplicates of the nodes in {@code nodes} to this graph. This will recreate any edges
+     * between the duplicate nodes. The {@code replacement} map can be used to replace a node from
+     * the source graph by a given node (which must already be in this graph). Edges between
+     * duplicate and replacement nodes will also be recreated so care should be taken regarding the
+     * matching of node types in the replacement map.
+     * 
      * @param newNodes the nodes to be duplicated
      * @param replacementsMap the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
@@ -571,14 +593,18 @@ public class Graph {
     }
 
     public interface DuplicationReplacement {
+
         Node replacement(Node original);
     }
 
     private static final class MapReplacement implements DuplicationReplacement {
+
         private final Map<Node, Node> map;
+
         public MapReplacement(Map<Node, Node> map) {
             this.map = map;
         }
+
         @Override
         public Node replacement(Node original) {
             Node replacement = map.get(original);
@@ -588,6 +614,7 @@ public class Graph {
     }
 
     private static final DuplicationReplacement NO_REPLACEMENT = new DuplicationReplacement() {
+
         @Override
         public Node replacement(Node original) {
             return original;

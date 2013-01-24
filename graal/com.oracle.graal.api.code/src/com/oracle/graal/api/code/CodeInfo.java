@@ -25,9 +25,9 @@ package com.oracle.graal.api.code;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Represents some code installed in the code cache of the runtime.
- * This encapsulated details are only for informational purposes.
- * At any time, the runtime may invalidate the underlying code (e.g. due to deopt etc).
+ * Represents some code installed in the code cache of the runtime. This encapsulated details are
+ * only for informational purposes. At any time, the runtime may invalidate the underlying code
+ * (e.g. due to deopt etc).
  */
 public interface CodeInfo {
 

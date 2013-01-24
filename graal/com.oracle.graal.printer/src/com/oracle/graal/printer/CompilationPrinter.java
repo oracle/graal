@@ -32,11 +32,12 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 
 /**
- * Utility for printing compilation related data structures at various compilation phases.
- * The output format is such that it can then be fed to the
- * <a href="https://c1visualizer.dev.java.net/">C1 Visualizer</a>.
+ * Utility for printing compilation related data structures at various compilation phases. The
+ * output format is such that it can then be fed to the <a
+ * href="https://c1visualizer.dev.java.net/">C1 Visualizer</a>.
  */
 public class CompilationPrinter implements Closeable {
+
     public static final String COLUMN_END = " <|@";
     public static final String HOVER_START = "<@";
     public static final String HOVER_SEP = "|@";
@@ -45,11 +46,12 @@ public class CompilationPrinter implements Closeable {
     private static OutputStream globalOut;
 
     /**
-     * Gets a global output stream on a file in the current working directory.
-     * This stream is first opened if necessary. The name of the file
-     * is {@code "compilations-" + System.currentTimeMillis() + ".cfg"}.
-     *
-     * @return the global output stream or {@code null} if there was an error opening the file for writing
+     * Gets a global output stream on a file in the current working directory. This stream is first
+     * opened if necessary. The name of the file is
+     * {@code "compilations-" + System.currentTimeMillis() + ".cfg"}.
+     * 
+     * @return the global output stream or {@code null} if there was an error opening the file for
+     *         writing
      */
     public static synchronized OutputStream globalOut() {
         if (globalOut == null) {
@@ -67,7 +69,7 @@ public class CompilationPrinter implements Closeable {
 
     /**
      * Creates a control flow graph printer.
-     *
+     * 
      * @param os where the output generated via this printer will be sent
      */
     public CompilationPrinter(OutputStream os) {
@@ -98,7 +100,7 @@ public class CompilationPrinter implements Closeable {
 
     /**
      * Prints a compilation timestamp for a given method.
-     *
+     * 
      * @param method the method for which a timestamp will be printed
      */
     public void printCompilation(JavaMethod method) {

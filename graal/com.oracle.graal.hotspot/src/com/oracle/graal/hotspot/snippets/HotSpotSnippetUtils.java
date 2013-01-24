@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
+import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -36,7 +38,7 @@ import com.oracle.graal.word.*;
 //JaCoCo Exclude
 
 /**
- * A collection of methods used in HotSpot snippets.
+ * A collection of methods used in HotSpot snippets and substitutions.
  */
 public class HotSpotSnippetUtils {
 
@@ -146,12 +148,13 @@ public class HotSpotSnippetUtils {
 
     /**
      * Mask for a biasable, locked or unlocked mark word.
+     * 
      * <pre>
      * +----------------------------------+-+-+
      * |                                 1|1|1|
      * +----------------------------------+-+-+
      * </pre>
-     *
+     * 
      */
     @Fold
     public static int biasedLockMaskInPlace() {
@@ -165,12 +168,13 @@ public class HotSpotSnippetUtils {
 
     /**
      * Pattern for a biasable, unlocked mark word.
+     * 
      * <pre>
      * +----------------------------------+-+-+
      * |                                 1|0|1|
      * +----------------------------------+-+-+
      * </pre>
-     *
+     * 
      */
     @Fold
     public static int biasedLockPattern() {
@@ -290,138 +294,120 @@ public class HotSpotSnippetUtils {
     }
 
     @NodeIntrinsic(value = RegisterNode.class, setStampFromReturnType = true)
-    public static native Word registerAsWord(@ConstantNodeParameter Register register);
+    public static native Word registerAsWord(@ConstantNodeParameter
+    Register register);
 
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
-    private static native Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind);
+    private static native Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter
+    int displacement, long offset, @ConstantNodeParameter
+    Kind wordKind);
 
     @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
-    static native Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word);
-
+    static native Word loadHubIntrinsic(Object object, @ConstantNodeParameter
+    Kind word);
 
     @Fold
-    public
-    static int log2WordSize() {
+    public static int log2WordSize() {
         return CodeUtil.log2(wordSize());
     }
 
     @Fold
-    public
-    static int klassStateOffset() {
+    public static int klassStateOffset() {
         return config().klassStateOffset;
     }
 
     @Fold
-    public
-    static int klassModifierFlagsOffset() {
+    public static int klassModifierFlagsOffset() {
         return config().klassModifierFlagsOffset;
     }
 
     @Fold
-    public
-    static int klassOffset() {
+    public static int klassOffset() {
         return config().klassOffset;
     }
 
     @Fold
-    public
-    static int classMirrorOffset() {
+    public static int classMirrorOffset() {
         return config().classMirrorOffset;
     }
 
     @Fold
-    public
-    static int klassInstanceSizeOffset() {
+    public static int klassInstanceSizeOffset() {
         return config().klassInstanceSizeOffset;
     }
 
     @Fold
-    public
-    static long heapTopAddress() {
+    public static long heapTopAddress() {
         return config().heapTopAddress;
     }
 
     @Fold
-    public
-    static long heapEndAddress() {
+    public static long heapEndAddress() {
         return config().heapEndAddress;
     }
 
     @Fold
-    public
-    static int threadTlabStartOffset() {
+    public static int threadTlabStartOffset() {
         return config().threadTlabStartOffset;
     }
 
     @Fold
-    public
-    static long tlabIntArrayMarkWord() {
+    public static long tlabIntArrayMarkWord() {
         return config().tlabIntArrayMarkWord;
     }
 
     @Fold
-    public
-    static boolean inlineContiguousAllocationSupported() {
+    public static boolean inlineContiguousAllocationSupported() {
         return config().inlineContiguousAllocationSupported;
     }
 
     @Fold
-    public
-    static int tlabAlignmentReserveInHeapWords() {
+    public static int tlabAlignmentReserveInHeapWords() {
         return config().tlabAlignmentReserve;
     }
 
     @Fold
-    public
-    static int threadTlabSizeOffset() {
+    public static int threadTlabSizeOffset() {
         return config().threadTlabSizeOffset;
     }
 
     @Fold
-    public
-    static int threadAllocatedBytesOffset() {
+    public static int threadAllocatedBytesOffset() {
         return config().threadAllocatedBytesOffset;
     }
 
     @Fold
-    public
-    static int klassStateFullyInitialized() {
+    public static int klassStateFullyInitialized() {
         return config().klassStateFullyInitialized;
     }
 
     @Fold
-    public
-    static int tlabRefillWasteLimitOffset() {
+    public static int tlabRefillWasteLimitOffset() {
         return config().tlabRefillWasteLimitOffset;
     }
 
     @Fold
-    public
-    static int tlabNumberOfRefillsOffset() {
+    public static int tlabNumberOfRefillsOffset() {
         return config().tlabNumberOfRefillsOffset;
     }
 
     @Fold
-    public
-    static int tlabFastRefillWasteOffset() {
+    public static int tlabFastRefillWasteOffset() {
         return config().tlabFastRefillWasteOffset;
     }
 
     @Fold
-    public
-    static int tlabSlowAllocationsOffset() {
+    public static int tlabSlowAllocationsOffset() {
         return config().tlabSlowAllocationsOffset;
     }
 
     @Fold
-    public
-    static int tlabRefillWasteIncrement() {
+    public static int tlabRefillWasteIncrement() {
         return config().tlabRefillWasteIncrement;
     }
 
     @Fold
-    public
-    static boolean tlabStats() {
+    public static boolean tlabStats() {
         return config().tlabStats;
     }
 
@@ -469,5 +455,22 @@ public class HotSpotSnippetUtils {
         assert arrayIndexScale(Kind.Long) == 8;
         assert arrayIndexScale(Kind.Float) == 4;
         assert arrayIndexScale(Kind.Double) == 8;
+    }
+
+    static int computeHashCode(Object x) {
+        Word mark = loadWordFromObject(x, markOffset());
+
+        // this code is independent from biased locking (although it does not look that way)
+        final Word biasedLock = mark.and(biasedLockMaskInPlace());
+        if (biasedLock == Word.unsigned(unlockedMask())) {
+            probability(0.99);
+            int hash = (int) mark.unsignedShiftRight(identityHashCodeShift()).rawValue();
+            if (hash != uninitializedIdentityHashCodeValue()) {
+                probability(0.99);
+                return hash;
+            }
+        }
+
+        return IdentityHashCodeStubCall.call(x);
     }
 }

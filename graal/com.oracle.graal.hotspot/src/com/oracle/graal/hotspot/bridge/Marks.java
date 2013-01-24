@@ -23,12 +23,13 @@
 package com.oracle.graal.hotspot.bridge;
 
 /**
- * Constants used to mark special positions in code being installed into
- * the code cache by Graal C++ code. These constants need to be kept in
- * sync with those of the same name defined in graalCodeInstaller.hpp.
+ * Constants used to mark special positions in code being installed into the code cache by Graal C++
+ * code. These constants need to be kept in sync with those of the same name defined in
+ * graalCodeInstaller.hpp.
  */
 public interface Marks {
 
+    // @formatter:off
     // These constants need to correspond to those of the same name in graalCodeInstaller.hpp
     Integer MARK_VERIFIED_ENTRY            = 0x0001;
     Integer MARK_UNVERIFIED_ENTRY          = 0x0002;

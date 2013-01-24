@@ -26,8 +26,10 @@ package com.oracle.graal.bytecode;
  * A collection of utility methods for dealing with bytes, particularly in byte arrays.
  */
 public class Bytes {
+
     /**
      * Gets a signed 1-byte value.
+     * 
      * @param data the array containing the data
      * @param bci the start index of the value to retrieve
      * @return the signed 1-byte value at index {@code bci} in array {@code data}
@@ -38,6 +40,7 @@ public class Bytes {
 
     /**
      * Gets a signed 2-byte big-endian value.
+     * 
      * @param data the array containing the data
      * @param bci the start index of the value to retrieve
      * @return the signed 2-byte, big-endian, value at index {@code bci} in array {@code data}
@@ -48,6 +51,7 @@ public class Bytes {
 
     /**
      * Gets an unsigned 1-byte value.
+     * 
      * @param data the array containing the data
      * @param bci the start index of the value to retrieve
      * @return the unsigned 1-byte value at index {@code bci} in array {@code data}
@@ -58,6 +62,7 @@ public class Bytes {
 
     /**
      * Gets an unsigned 2-byte big-endian value.
+     * 
      * @param data the array containing the data
      * @param bci the start index of the value to retrieve
      * @return the unsigned 2-byte, big-endian, value at index {@code bci} in array {@code data}
@@ -68,6 +73,7 @@ public class Bytes {
 
     /**
      * Gets a signed 4-byte big-endian value.
+     * 
      * @param data the array containing the data
      * @param bci the start index of the value to retrieve
      * @return the signed 4-byte, big-endian, value at index {@code bci} in array {@code data}
@@ -78,6 +84,7 @@ public class Bytes {
 
     /**
      * Gets either a signed 2-byte or a signed 4-byte big-endian value.
+     * 
      * @param data the array containing the data
      * @param bci the start index of the value to retrieve
      * @param fourByte if true, this method will return a 4-byte value

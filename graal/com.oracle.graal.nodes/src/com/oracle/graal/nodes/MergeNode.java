@@ -65,7 +65,7 @@ public class MergeNode extends BeginStateSplitNode implements Node.IterableNodeT
 
     /**
      * Determines if a given node is a phi whose {@linkplain PhiNode#merge() merge} is this node.
-     *
+     * 
      * @param value the instruction to test
      * @return {@code true} if {@code value} is a phi and its merge is {@code this}
      */
@@ -74,7 +74,9 @@ public class MergeNode extends BeginStateSplitNode implements Node.IterableNodeT
     }
 
     /**
-     * Removes the given end from the merge, along with the entries corresponding to this end in the phis connected to the merge.
+     * Removes the given end from the merge, along with the entries corresponding to this end in the
+     * phis connected to the merge.
+     * 
      * @param pred the end to remove
      */
     public void removeEnd(EndNode pred) {
@@ -119,6 +121,7 @@ public class MergeNode extends BeginStateSplitNode implements Node.IterableNodeT
 
     public NodeIterable<PhiNode> phis() {
         return this.usages().filter(PhiNode.class).filter(new NodePredicate() {
+
             @Override
             public boolean apply(Node n) {
                 return ((PhiNode) n).merge() == MergeNode.this;
@@ -129,6 +132,7 @@ public class MergeNode extends BeginStateSplitNode implements Node.IterableNodeT
     @Override
     public NodeIterable<Node> anchored() {
         return super.anchored().filter(isNotA(PhiNode.class).or(new NodePredicate() {
+
             @Override
             public boolean apply(Node n) {
                 return ((PhiNode) n).merge() != MergeNode.this;
@@ -145,7 +149,8 @@ public class MergeNode extends BeginStateSplitNode implements Node.IterableNodeT
             if (merge instanceof LoopBeginNode && !(origLoopEnd instanceof LoopEndNode)) {
                 return;
             }
-            // in order to move anchored values to the other merge we would need to check if the anchors are used by phis of the other merge
+            // in order to move anchored values to the other merge we would need to check if the
+            // anchors are used by phis of the other merge
             if (this.anchored().isNotEmpty()) {
                 return;
             }

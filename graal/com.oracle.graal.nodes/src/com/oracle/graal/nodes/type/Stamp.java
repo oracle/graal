@@ -41,8 +41,8 @@ public abstract class Stamp {
     }
 
     /**
-     * Returns the type of the stamp, guaranteed to be non-null. In some cases, this requires the lookup of class meta
-     * data, therefore the {@link MetaAccessProvider} is mandatory.
+     * Returns the type of the stamp, guaranteed to be non-null. In some cases, this requires the
+     * lookup of class meta data, therefore the {@link MetaAccessProvider} is mandatory.
      */
     public abstract ResolvedJavaType javaType(MetaAccessProvider metaAccess);
 
@@ -53,8 +53,9 @@ public abstract class Stamp {
     public abstract boolean alwaysDistinct(Stamp other);
 
     /**
-     * Returns the union of this stamp and the given stamp. Typically used to create stamps for {@link PhiNode}s.
-     *
+     * Returns the union of this stamp and the given stamp. Typically used to create stamps for
+     * {@link PhiNode}s.
+     * 
      * @param other The stamp that will enlarge this stamp.
      * @return The union of this stamp and the given stamp.
      */
@@ -62,7 +63,7 @@ public abstract class Stamp {
 
     /**
      * Returns the intersection of this stamp and the given stamp.
-     *
+     * 
      * @param other The stamp that will tighten this stamp.
      * @return The intersection of this stamp and the given stamp.
      */

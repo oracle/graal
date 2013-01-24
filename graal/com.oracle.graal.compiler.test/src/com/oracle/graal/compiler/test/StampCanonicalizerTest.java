@@ -30,8 +30,8 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.common.*;
 
 /**
- * This class tests some specific patterns the stamp system should be able to canonicalize away using
- * {@link IntegerStamp#mask()}.
+ * This class tests some specific patterns the stamp system should be able to canonicalize away
+ * using {@link IntegerStamp#mask()}.
  */
 public class StampCanonicalizerTest extends GraalCompilerTest {
 

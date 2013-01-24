@@ -36,7 +36,6 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
     private final DeoptimizationReason reason;
     private final long leafGraphId;
 
-
     public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
         this(action, reason, -1);
     }
@@ -74,5 +73,7 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
     }
 
     @NodeIntrinsic
-    public static native void deopt(@ConstantNodeParameter DeoptimizationAction action, @ConstantNodeParameter DeoptimizationReason reason);
+    public static native void deopt(@ConstantNodeParameter
+    DeoptimizationAction action, @ConstantNodeParameter
+    DeoptimizationReason reason);
 }

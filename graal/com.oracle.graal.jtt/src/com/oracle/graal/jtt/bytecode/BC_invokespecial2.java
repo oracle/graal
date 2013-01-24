@@ -38,8 +38,8 @@ public class BC_invokespecial2 extends JTTTest {
         return 3 + object.id(a);
     }
 
-        @SuppressWarnings("static-method")
-        private int id(int i) {
+    @SuppressWarnings("static-method")
+    private int id(int i) {
         return 4 + i;
     }
 

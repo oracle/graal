@@ -33,10 +33,11 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 
 public class LoopEx {
+
     private final Loop lirLoop;
     private LoopFragmentInside inside;
     private LoopFragmentWhole whole;
-    private CountedLoopInfo counted; //TODO (gd) detect
+    private CountedLoopInfo counted; // TODO (gd) detect
     private LoopsData data;
 
     LoopEx(Loop lirLoop, LoopsData data) {
@@ -115,6 +116,7 @@ public class LoopEx {
     }
 
     private class InvariantPredicate extends NodePredicate {
+
         @Override
         public boolean apply(Node n) {
             return isOutsideLoop(n);

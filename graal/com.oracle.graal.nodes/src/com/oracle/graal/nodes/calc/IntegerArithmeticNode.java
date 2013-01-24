@@ -26,7 +26,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
-
 public abstract class IntegerArithmeticNode extends ArithmeticNode {
 
     public IntegerArithmeticNode(Kind kind, ValueNode x, ValueNode y) {
@@ -37,7 +36,7 @@ public abstract class IntegerArithmeticNode extends ArithmeticNode {
     public static IntegerAddNode add(ValueNode v1, ValueNode v2) {
         assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
         Graph graph = v1.graph();
-        switch(v1.kind()) {
+        switch (v1.kind()) {
             case Int:
                 return graph.unique(new IntegerAddNode(Kind.Int, v1, v2));
             case Long:
@@ -50,7 +49,7 @@ public abstract class IntegerArithmeticNode extends ArithmeticNode {
     public static IntegerMulNode mul(ValueNode v1, ValueNode v2) {
         assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
         Graph graph = v1.graph();
-        switch(v1.kind()) {
+        switch (v1.kind()) {
             case Int:
                 return graph.unique(new IntegerMulNode(Kind.Int, v1, v2));
             case Long:
@@ -63,7 +62,7 @@ public abstract class IntegerArithmeticNode extends ArithmeticNode {
     public static IntegerSubNode sub(ValueNode v1, ValueNode v2) {
         assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
         Graph graph = v1.graph();
-        switch(v1.kind()) {
+        switch (v1.kind()) {
             case Int:
                 return graph.unique(new IntegerSubNode(Kind.Int, v1, v2));
             case Long:

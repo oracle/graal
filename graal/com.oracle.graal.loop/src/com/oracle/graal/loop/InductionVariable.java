@@ -25,16 +25,19 @@ package com.oracle.graal.loop;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
-
 public abstract class InductionVariable {
+
     public enum Direction {
-        Up,
-        Down;
+        Up, Down;
+
         public Direction opposite() {
-            switch(this) {
-                case Up: return Down;
-                case Down: return Up;
-                default: throw GraalInternalError.shouldNotReachHere();
+            switch (this) {
+                case Up:
+                    return Down;
+                case Down:
+                    return Up;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
             }
         }
     }
@@ -50,15 +53,20 @@ public abstract class InductionVariable {
     public abstract ValueNode valueNode();
 
     public abstract ValueNode initNode();
+
     public abstract ValueNode strideNode();
 
     public abstract boolean isConstantInit();
+
     public abstract boolean isConstantStride();
 
     public abstract long constantInit();
+
     public abstract long constantStride();
 
     public abstract ValueNode extremumNode();
+
     public abstract boolean isConstantExtremum();
+
     public abstract long constantExtremum();
 }

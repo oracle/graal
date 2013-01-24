@@ -95,7 +95,8 @@ public class LoopLastIndexOf extends JTTTest {
         runTest("test", v1, 1, v1.length - 1, v3, 0, v3.length, 10);
     }
 
-    @Test//(expected = ArrayIndexOutOfBoundsException.class)
+    @Test
+    // (expected = ArrayIndexOutOfBoundsException.class)
     public void run4() throws Throwable {
         runTest("test", v1, 1, v1.length, v3, 0, v3.length, 10);
     }

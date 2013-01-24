@@ -28,12 +28,12 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Intrinsification for getting the address of an object.
- * The code path(s) between a call to {@link #get(Object)} and all uses
- * of the returned value must be atomic. The only exception to this is
- * if the usage is not an attempt to dereference the value.
+ * Intrinsification for getting the address of an object. The code path(s) between a call to
+ * {@link #get(Object)} and all uses of the returned value must be atomic. The only exception to
+ * this is if the usage is not an attempt to dereference the value.
  */
 public class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
+
     @Input private ValueNode object;
 
     public GetObjectAddressNode(ValueNode obj) {

@@ -31,10 +31,12 @@ import com.oracle.graal.graph.*;
 public abstract class VirtualState extends Node {
 
     public interface NodeClosure<T extends Node> {
+
         void apply(Node usage, T node);
     }
 
     public interface VirtualClosure {
+
         void apply(VirtualState node);
     }
 

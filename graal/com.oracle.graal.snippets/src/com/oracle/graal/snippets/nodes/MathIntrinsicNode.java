@@ -61,14 +61,29 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
         Variable input = gen.load(gen.operand(x()));
         Variable result = gen.newVariable(kind());
         switch (operation()) {
-            case ABS:   gen.emitMathAbs(result, input); break;
-            case SQRT:  gen.emitMathSqrt(result, input); break;
-            case LOG:   gen.emitMathLog(result, input, false); break;
-            case LOG10: gen.emitMathLog(result, input, true); break;
-            case SIN:   gen.emitMathSin(result, input); break;
-            case COS:   gen.emitMathCos(result, input); break;
-            case TAN:   gen.emitMathTan(result, input); break;
-            default:    throw GraalInternalError.shouldNotReachHere();
+            case ABS:
+                gen.emitMathAbs(result, input);
+                break;
+            case SQRT:
+                gen.emitMathSqrt(result, input);
+                break;
+            case LOG:
+                gen.emitMathLog(result, input, false);
+                break;
+            case LOG10:
+                gen.emitMathLog(result, input, true);
+                break;
+            case SIN:
+                gen.emitMathSin(result, input);
+                break;
+            case COS:
+                gen.emitMathCos(result, input);
+                break;
+            case TAN:
+                gen.emitMathTan(result, input);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
         gen.setResult(this, result);
     }
@@ -78,18 +93,26 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
         if (x().isConstant()) {
             double value = x().asConstant().asDouble();
             switch (operation()) {
-                case ABS:   return ConstantNode.forDouble(Math.abs(value), graph());
-                case SQRT:  return ConstantNode.forDouble(Math.sqrt(value), graph());
-                case LOG:   return ConstantNode.forDouble(Math.log(value), graph());
-                case LOG10: return ConstantNode.forDouble(Math.log10(value), graph());
-                case SIN:   return ConstantNode.forDouble(Math.sin(value), graph());
-                case COS:   return ConstantNode.forDouble(Math.cos(value), graph());
-                case TAN:   return ConstantNode.forDouble(Math.tan(value), graph());
+                case ABS:
+                    return ConstantNode.forDouble(Math.abs(value), graph());
+                case SQRT:
+                    return ConstantNode.forDouble(Math.sqrt(value), graph());
+                case LOG:
+                    return ConstantNode.forDouble(Math.log(value), graph());
+                case LOG10:
+                    return ConstantNode.forDouble(Math.log10(value), graph());
+                case SIN:
+                    return ConstantNode.forDouble(Math.sin(value), graph());
+                case COS:
+                    return ConstantNode.forDouble(Math.cos(value), graph());
+                case TAN:
+                    return ConstantNode.forDouble(Math.tan(value), graph());
             }
         }
         return this;
     }
 
     @NodeIntrinsic
-    public static native double compute(double x, @ConstantNodeParameter Operation op);
+    public static native double compute(double x, @ConstantNodeParameter
+    Operation op);
 }

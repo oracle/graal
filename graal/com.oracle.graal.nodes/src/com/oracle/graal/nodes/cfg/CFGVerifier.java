@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.cfg;
 
 public class CFGVerifier {
+
     public static boolean verify(ControlFlowGraph cfg) {
         for (Block block : cfg.getBlocks()) {
             assert block.getId() >= 0;

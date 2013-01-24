@@ -33,6 +33,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 
 public class LoopsData {
+
     private Map<Loop, LoopEx> lirLoopToEx = new IdentityHashMap<>();
     private Map<LoopBeginNode, LoopEx> loopBeginToEx = new IdentityHashMap<>();
     private ControlFlowGraph cfg;
@@ -40,6 +41,7 @@ public class LoopsData {
     public LoopsData(final StructuredGraph graph) {
 
         cfg = Debug.scope("ControlFlowGraph", new Callable<ControlFlowGraph>() {
+
             @Override
             public ControlFlowGraph call() throws Exception {
                 return ControlFlowGraph.compute(graph, true, true, true, true);
@@ -67,6 +69,7 @@ public class LoopsData {
     public List<LoopEx> outterFirst() {
         ArrayList<LoopEx> loops = new ArrayList<>(loops());
         Collections.sort(loops, new Comparator<LoopEx>() {
+
             @Override
             public int compare(LoopEx o1, LoopEx o2) {
                 return o1.lirLoop().depth - o2.lirLoop().depth;
@@ -145,7 +148,8 @@ public class LoopsData {
                             continue;
                         }
                         break;
-                    default: throw GraalInternalError.shouldNotReachHere();
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
                 }
                 loop.setCounted(new CountedLoopInfo(loop, iv, limit, oneOff));
             }

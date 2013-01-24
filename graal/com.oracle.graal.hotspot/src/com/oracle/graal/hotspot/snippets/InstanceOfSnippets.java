@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
-import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.*;
-import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.Templates.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
+import static com.oracle.graal.hotspot.snippets.TypeCheckSnippetUtils.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
 
@@ -47,14 +46,16 @@ import com.oracle.graal.snippets.nodes.*;
 import com.oracle.graal.word.*;
 
 /**
- * Snippets used for implementing the type test of an instanceof instruction.
- * Since instanceof is a floating node, it is lowered separately for each of
- * its usages.
- *
- * The type tests implemented are described in the paper <a href="http://dl.acm.org/citation.cfm?id=583821">
- * Fast subtype checking in the HotSpot JVM</a> by Cliff Click and John Rose.
+ * Snippets used for implementing the type test of an instanceof instruction. Since instanceof is a
+ * floating node, it is lowered separately for each of its usages.
+ * 
+ * The type tests implemented are described in the paper <a
+ * href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a> by
+ * Cliff Click and John Rose.
  */
 public class InstanceOfSnippets implements SnippetsInterface {
+
+    // @formatter:off
 
     /**
      * A test against a final type.
@@ -140,34 +141,6 @@ public class InstanceOfSnippets implements SnippetsInterface {
         return trueValue;
     }
 
-    static boolean checkSecondarySubType(Word t, Word s) {
-        // if (S.cache == T) return true
-        if (s.readWord(secondarySuperCacheOffset()) == t) {
-            cacheHit.inc();
-            return true;
-        }
-
-        // if (T == S) return true
-        if (s == t) {
-            T_equals_S.inc();
-            return true;
-        }
-
-        // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
-        Word secondarySupers = s.readWord(secondarySupersOffset());
-        int length = secondarySupers.readInt(metaspaceArrayLengthOffset());
-        for (int i = 0; i < length; i++) {
-            if (t == loadWordElement(secondarySupers, i)) {
-                probability(0.01);
-                s.writeWord(secondarySuperCacheOffset(), t);
-                secondariesHit.inc();
-                return true;
-            }
-        }
-        secondariesMiss.inc();
-        return false;
-    }
-
     /**
      * Type test used when the type being tested against is not known at compile time.
      */
@@ -191,6 +164,8 @@ public class InstanceOfSnippets implements SnippetsInterface {
         }
         return trueValue;
     }
+
+    // @formatter:on
 
     public static class Templates extends InstanceOfSnippetsTemplates<InstanceOfSnippets> {
 
@@ -248,16 +223,4 @@ public class InstanceOfSnippets implements SnippetsInterface {
             }
         }
     }
-
-    private static final SnippetCounter.Group counters = GraalOptions.SnippetCounters ? new SnippetCounter.Group("InstanceOf") : null;
-    private static final SnippetCounter hintsHit = new SnippetCounter(counters, "hintsHit", "hit a hint type");
-    private static final SnippetCounter exactHit = new SnippetCounter(counters, "exactHit", "exact type test succeeded");
-    private static final SnippetCounter exactMiss = new SnippetCounter(counters, "exactMiss", "exact type test failed");
-    private static final SnippetCounter isNull = new SnippetCounter(counters, "isNull", "object tested was null");
-    private static final SnippetCounter cacheHit = new SnippetCounter(counters, "cacheHit", "secondary type cache hit");
-    private static final SnippetCounter secondariesHit = new SnippetCounter(counters, "secondariesHit", "secondaries scan succeeded");
-    private static final SnippetCounter secondariesMiss = new SnippetCounter(counters, "secondariesMiss", "secondaries scan failed");
-    private static final SnippetCounter displayHit = new SnippetCounter(counters, "displayHit", "primary type test succeeded");
-    private static final SnippetCounter displayMiss = new SnippetCounter(counters, "displayMiss", "primary type test failed");
-    private static final SnippetCounter T_equals_S = new SnippetCounter(counters, "T_equals_S", "object type was equal to secondary type");
 }

@@ -33,8 +33,8 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
- * The {@code TypeSwitchNode} performs a lookup based on the type of the input value.
- * The type comparison is an exact type comparison, not an instanceof.
+ * The {@code TypeSwitchNode} performs a lookup based on the type of the input value. The type
+ * comparison is an exact type comparison, not an instanceof.
  */
 public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
@@ -43,7 +43,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     /**
      * Constructs a type switch instruction. The keyProbabilities array contain key.length + 1
      * entries. The last entry in every array describes the default case.
-     *
+     * 
      * @param value the instruction producing the value being switched on
      * @param successors the list of successors
      * @param keys the list of types
@@ -108,7 +108,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                 } else if (validKeys != keys.length) {
                     ArrayList<BeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
                     ResolvedJavaType[] newKeys = new ResolvedJavaType[validKeys];
-                    int[] newKeySuccessors = new int [validKeys + 1];
+                    int[] newKeySuccessors = new int[validKeys + 1];
                     double[] newKeyProbabilities = new double[validKeys + 1];
                     double totalProbability = 0;
                     int current = 0;

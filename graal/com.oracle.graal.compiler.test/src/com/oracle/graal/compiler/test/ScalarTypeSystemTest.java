@@ -30,7 +30,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
 
 /**
- * In the following tests, the scalar type system of the compiler should be complete enough to see the relation between the different conditions.
+ * In the following tests, the scalar type system of the compiler should be complete enough to see
+ * the relation between the different conditions.
  */
 public class ScalarTypeSystemTest extends GraalCompilerTest {
 
@@ -164,7 +165,7 @@ public class ScalarTypeSystemTest extends GraalCompilerTest {
         // No debug scope to reduce console noise for @Test(expected = ...) tests
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
-//        TypeSystemTest.outputGraph(graph);
+        // TypeSystemTest.outputGraph(graph);
         Assumptions assumptions = new Assumptions(false);
         new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
         new ConditionalEliminationPhase().apply(graph);

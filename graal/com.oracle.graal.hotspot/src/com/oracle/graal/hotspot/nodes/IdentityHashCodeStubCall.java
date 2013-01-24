@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.type.*;
  * Node implementing a call to HotSpot's {@code graal_identityhashcode} stub.
  */
 public class IdentityHashCodeStubCall extends FixedWithNextNode implements LIRGenLowerable {
+
     @Input private final ValueNode object;
     public static final Descriptor IDENTITY_HASHCODE = new Descriptor("identity_hashcode", false, int.class, Object.class);
 

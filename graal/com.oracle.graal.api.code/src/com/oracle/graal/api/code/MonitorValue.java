@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
  * Represents lock information in the debug information.
  */
 public final class MonitorValue extends Value {
+
     private static final long serialVersionUID = 8241681800464483691L;
 
     private Value owner;

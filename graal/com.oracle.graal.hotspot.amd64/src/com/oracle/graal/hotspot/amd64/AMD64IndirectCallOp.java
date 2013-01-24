@@ -37,10 +37,10 @@ import com.oracle.graal.lir.amd64.AMD64Call.IndirectCallOp;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * A register indirect call that complies with the extra conventions for such calls in HotSpot.
- * In particular, the metaspace Method of the callee must be in RBX for the case where a vtable entry's
- * _from_compiled_entry is the address of an C2I adapter. Such adapters expect the target
- * method to be in RBX.
+ * A register indirect call that complies with the extra conventions for such calls in HotSpot. In
+ * particular, the metaspace Method of the callee must be in RBX for the case where a vtable entry's
+ * _from_compiled_entry is the address of an C2I adapter. Such adapters expect the target method to
+ * be in RBX.
  */
 @Opcode("CALL_INDIRECT")
 final class AMD64IndirectCallOp extends IndirectCallOp {

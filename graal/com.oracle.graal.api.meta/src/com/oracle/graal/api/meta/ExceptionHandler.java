@@ -72,7 +72,8 @@ public final class ExceptionHandler {
     }
 
     /**
-     * Returns the index into the constant pool representing the type of exception caught by this handler.
+     * Returns the index into the constant pool representing the type of exception caught by this
+     * handler.
      */
     public int catchTypeCPI() {
         return catchTypeCPI;

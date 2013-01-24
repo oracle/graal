@@ -26,10 +26,9 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.meta.*;
 
-
 /**
- * A calling convention describes the locations in which the arguments for a call are placed,
- * the location in which the return value is placed if the call is not void and any
+ * A calling convention describes the locations in which the arguments for a call are placed, the
+ * location in which the return value is placed if the call is not void and any
  * {@linkplain #getTemporaries() extra} locations used (and killed) by the call.
  */
 public class CallingConvention {
@@ -49,13 +48,14 @@ public class CallingConvention {
         JavaCallee(false),
 
         /**
-         * A request for the outgoing argument locations at a call site to the runtime (which may be Java or native code).
+         * A request for the outgoing argument locations at a call site to the runtime (which may be
+         * Java or native code).
          */
         RuntimeCall(true),
 
         /**
-         * A request for the outgoing argument locations at a call site to
-         * external native code that complies with the platform ABI.
+         * A request for the outgoing argument locations at a call site to external native code that
+         * complies with the platform ABI.
          */
         NativeCall(true);
 
@@ -90,9 +90,11 @@ public class CallingConvention {
 
     /**
      * Creates a description of the registers and stack locations used by a call.
-     *
-     * @param stackSize amount of stack space (in bytes) required for the stack-based arguments of the call
-     * @param returnLocation the location for the return value or {@link Value#ILLEGAL} if a void call
+     * 
+     * @param stackSize amount of stack space (in bytes) required for the stack-based arguments of
+     *            the call
+     * @param returnLocation the location for the return value or {@link Value#ILLEGAL} if a void
+     *            call
      * @param argumentLocations the ordered locations in which the arguments are placed
      */
     public CallingConvention(int stackSize, Value returnLocation, Value... argumentLocations) {
@@ -101,10 +103,13 @@ public class CallingConvention {
 
     /**
      * Creates a description of the registers and stack locations used by a call.
-     *
-     * @param temporaryLocations the locations used (and killed) by the call in addition to {@code arguments}
-     * @param stackSize amount of stack space (in bytes) required for the stack-based arguments of the call
-     * @param returnLocation the location for the return value or {@link Value#ILLEGAL} if a void call
+     * 
+     * @param temporaryLocations the locations used (and killed) by the call in addition to
+     *            {@code arguments}
+     * @param stackSize amount of stack space (in bytes) required for the stack-based arguments of
+     *            the call
+     * @param returnLocation the location for the return value or {@link Value#ILLEGAL} if a void
+     *            call
      * @param argumentLocations the ordered locations in which the arguments are placed
      */
     public CallingConvention(Value[] temporaryLocations, int stackSize, Value returnLocation, Value... argumentLocations) {
@@ -147,7 +152,8 @@ public class CallingConvention {
     }
 
     /**
-     * Gets the locations used (and killed) by the call apart from the {@linkplain #getArgument(int) arguments}.
+     * Gets the locations used (and killed) by the call apart from the
+     * {@linkplain #getArgument(int) arguments}.
      */
     public Value[] getTemporaries() {
         if (temporaryLocations.length == 0) {

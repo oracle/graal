@@ -61,64 +61,66 @@ public class AESCryptSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     static void encryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
-        Word kAddr = Word.fromObject(rcvr).readWord(Word.unsigned(kOffset)).add(arrayBaseOffset(Kind.Byte));
-        Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
-        Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + arrayBaseOffset(Kind.Byte) + outOffset);
-        EncryptBlockStubCall.call(inAddr, outAddr, kAddr);
+        crypt(rcvr, in, inOffset, out, outOffset, true);
     }
 
     @MethodSubstitution(isStatic = false)
     static void decryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
-        Word kAddr = Word.unsigned(GetObjectAddressNode.get(rcvr)).readWord(Word.unsigned(kOffset)).add(arrayBaseOffset(Kind.Byte));
-        Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
-        Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + arrayBaseOffset(Kind.Byte) + outOffset);
-        DecryptBlockStubCall.call(inAddr, outAddr, kAddr);
+        crypt(rcvr, in, inOffset, out, outOffset, false);
     }
 
-    public static class EncryptBlockStubCall extends FixedWithNextNode implements LIRGenLowerable {
+    private static void crypt(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset, boolean encrypt) {
+        Word kAddr = Word.fromObject(rcvr).readWord(Word.unsigned(kOffset)).add(arrayBaseOffset(Kind.Byte));
+        Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
+        Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + arrayBaseOffset(Kind.Byte) + outOffset);
+        if (encrypt) {
+            EncryptBlockStubCall.call(inAddr, outAddr, kAddr);
+        } else {
+            DecryptBlockStubCall.call(inAddr, outAddr, kAddr);
+        }
+    }
+
+    abstract static class CryptBlockStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
         @Input private final ValueNode in;
         @Input private final ValueNode out;
         @Input private final ValueNode key;
 
-        public static final Descriptor ENCRYPT_BLOCK = new Descriptor("encrypt_block", false, void.class, Word.class, Word.class, Word.class);
+        private final Descriptor descriptor;
 
-        public EncryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key) {
+        public CryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key, Descriptor descriptor) {
             super(StampFactory.forVoid());
             this.in = in;
             this.out = out;
             this.key = key;
+            this.descriptor = descriptor;
         }
 
         @Override
         public void generate(LIRGenerator gen) {
-            RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(ENCRYPT_BLOCK);
+            RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(descriptor);
             gen.emitCall(stub, stub.getCallingConvention(), false, gen.operand(in), gen.operand(out), gen.operand(key));
+        }
+    }
+
+    public static class EncryptBlockStubCall extends CryptBlockStubCall {
+
+        public static final Descriptor ENCRYPT_BLOCK = new Descriptor("encrypt_block", false, void.class, Word.class, Word.class, Word.class);
+
+        public EncryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key) {
+            super(in, out, key, ENCRYPT_BLOCK);
         }
 
         @NodeIntrinsic
         public static native void call(Word in, Word out, Word key);
     }
 
-    public static class DecryptBlockStubCall extends FixedWithNextNode implements LIRGenLowerable {
-
-        @Input private final ValueNode in;
-        @Input private final ValueNode out;
-        @Input private final ValueNode key;
+    public static class DecryptBlockStubCall extends CryptBlockStubCall {
 
         public static final Descriptor DECRYPT_BLOCK = new Descriptor("decrypt_block", false, void.class, Word.class, Word.class, Word.class);
 
         public DecryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key) {
-            super(StampFactory.forVoid());
-            this.in = in;
-            this.out = out;
-            this.key = key;
-        }
-
-        @Override
-        public void generate(LIRGenerator gen) {
-            RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(DECRYPT_BLOCK);
-            gen.emitCall(stub, stub.getCallingConvention(), false, gen.operand(in), gen.operand(out), gen.operand(key));
+            super(in, out, key, DECRYPT_BLOCK);
         }
 
         @NodeIntrinsic

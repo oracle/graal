@@ -39,7 +39,6 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
-import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -53,7 +52,6 @@ import com.oracle.graal.snippets.*;
 public class VMToCompilerImpl implements VMToCompiler {
 
     private final HotSpotGraalRuntime graalRuntime;
-    private IntrinsifyArrayCopyPhase intrinsifyArrayCopy;
 
     public final HotSpotResolvedPrimitiveType typeBoolean;
     public final HotSpotResolvedPrimitiveType typeChar;
@@ -92,7 +90,6 @@ public class VMToCompilerImpl implements VMToCompiler {
         unsafe.putObject(mirror, offset, type);
         assert unsafe.getObject(mirror, offset) == type;
     }
-
 
     public void startCompiler() throws Throwable {
 
@@ -135,13 +132,13 @@ public class VMToCompilerImpl implements VMToCompiler {
         GraalCompiler compiler = graalRuntime.getCompiler();
         final HotSpotRuntime runtime = (HotSpotRuntime) compiler.runtime;
         if (GraalOptions.Intrinsify) {
-            Debug.scope("InstallSnippets", new Object[] {new DebugDumpScope("InstallSnippets"), compiler}, new Runnable() {
+            Debug.scope("InstallSnippets", new Object[]{new DebugDumpScope("InstallSnippets"), compiler}, new Runnable() {
 
                 @Override
                 public void run() {
-                    // Snippets cannot have speculative optimizations since they have to be valid for the entire run of the VM.
+                    // Snippets cannot have speculative optimizations since they have to be valid
+                    // for the entire run of the VM.
                     Assumptions assumptions = new Assumptions(false);
-                    VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime, assumptions);
                     SnippetInstaller installer = new HotSpotSnippetInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
                     GraalIntrinsics.installIntrinsics(installer);
                     runtime.installSnippets(installer, assumptions);
@@ -184,9 +181,9 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     /**
-     * This method is the first method compiled during bootstrapping. Put any code in there that warms up compiler paths
-     * that are otherwise not exercised during bootstrapping and lead to later deoptimization when application code is
-     * compiled.
+     * This method is the first method compiled during bootstrapping. Put any code in there that
+     * warms up compiler paths that are otherwise not exercised during bootstrapping and lead to
+     * later deoptimization when application code is compiled.
      */
     @SuppressWarnings("unused")
     @Deprecated
@@ -278,7 +275,6 @@ public class VMToCompilerImpl implements VMToCompiler {
         } finally {
             CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
-
 
         if (Debug.isEnabled()) {
             List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
@@ -381,13 +377,16 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     /**
      * Compiles a method to machine code.
-     * @return true if the method is in the queue (either added to the queue or already in the queue)
+     * 
+     * @return true if the method is in the queue (either added to the queue or already in the
+     *         queue)
      */
     public boolean compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, boolean blocking, int priority) throws Throwable {
         CompilationTask current = method.currentTask();
         boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
         if (osrCompilation && bootstrapRunning) {
-            // no OSR compilations during bootstrap - the compiler is just too slow at this point, and we know that there are no endless loops
+            // no OSR compilations during bootstrap - the compiler is just too slow at this point,
+            // and we know that there are no endless loops
             return current != null;
         }
 
@@ -404,15 +403,18 @@ public class VMToCompilerImpl implements VMToCompiler {
             if (!blocking && current != null) {
                 if (current.isInProgress()) {
                     if (current.getEntryBCI() == entryBCI) {
-                        // a compilation with the correct bci is already in progress, so just return true
+                        // a compilation with the correct bci is already in progress, so just return
+                        // true
                         return true;
                     }
                 } else {
                     if (GraalOptions.PriorityCompileQueue) {
-                        // normally compilation tasks will only be re-queued when they get a priority boost, so cancel the old task and add a new one
+                        // normally compilation tasks will only be re-queued when they get a
+                        // priority boost, so cancel the old task and add a new one
                         current.cancel();
                     } else {
-                        // without a prioritizing compile queue it makes no sense to re-queue the compilation task
+                        // without a prioritizing compile queue it makes no sense to re-queue the
+                        // compilation task
                         return true;
                     }
                 }
@@ -510,19 +512,8 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public HotSpotResolvedObjectType createResolvedJavaType(long metaspaceKlass,
-                    String name,
-                    String simpleName,
-                    Class javaMirror,
-                    boolean hasFinalizableSubclass,
-                    int sizeOrSpecies) {
-        HotSpotResolvedObjectType type = new HotSpotResolvedObjectType(
-                                        metaspaceKlass,
-                                        name,
-                                        simpleName,
-                                        javaMirror,
-                                        hasFinalizableSubclass,
-                                        sizeOrSpecies);
+    public HotSpotResolvedObjectType createResolvedJavaType(long metaspaceKlass, String name, String simpleName, Class javaMirror, boolean hasFinalizableSubclass, int sizeOrSpecies) {
+        HotSpotResolvedObjectType type = new HotSpotResolvedObjectType(metaspaceKlass, name, simpleName, javaMirror, hasFinalizableSubclass, sizeOrSpecies);
 
         long offset = HotSpotGraalRuntime.getInstance().getConfig().graalMirrorInClassOffset;
         if (!unsafe.compareAndSwapObject(javaMirror, offset, null, type)) {
@@ -571,9 +562,6 @@ public class VMToCompilerImpl implements VMToCompiler {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(graalRuntime.getRuntime(), GraphBuilderConfiguration.getDefault(), optimisticOpts));
         if (onStackReplacement) {
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, new OnStackReplacementPhase());
-        }
-        if (GraalOptions.Intrinsify && GraalOptions.IntrinsifyArrayCopy) {
-            phasePlan.addPhase(PhasePosition.HIGH_LEVEL, intrinsifyArrayCopy);
         }
         return phasePlan;
     }

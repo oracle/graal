@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-
 public interface MemoryCheckpoint {
 
 }
