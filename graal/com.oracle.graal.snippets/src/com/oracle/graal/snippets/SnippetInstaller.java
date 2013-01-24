@@ -105,6 +105,8 @@ public class SnippetInstaller {
     public void installSubstitutions(Class<?> substitutions) {
         assert owner == Thread.currentThread() : "substitution installation must be single threaded";
         ClassSubstitution classSubstitution = substitutions.getAnnotation(ClassSubstitution.class);
+        assert classSubstitution != null;
+        assert !SnippetsInterface.class.isAssignableFrom(substitutions);
         for (Method substituteMethod : substitutions.getDeclaredMethods()) {
             MethodSubstitution methodSubstitution = substituteMethod.getAnnotation(MethodSubstitution.class);
             MacroSubstitution macroSubstitution = substituteMethod.getAnnotation(MacroSubstitution.class);
