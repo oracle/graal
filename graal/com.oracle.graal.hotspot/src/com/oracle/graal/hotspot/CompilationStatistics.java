@@ -49,6 +49,7 @@ public final class CompilationStatistics {
     private static ConcurrentLinkedDeque<CompilationStatistics> list = new ConcurrentLinkedDeque<>();
 
     private static final ThreadLocal<Deque<CompilationStatistics>> current = new ThreadLocal<Deque<CompilationStatistics>>() {
+
         @Override
         protected Deque<CompilationStatistics> initialValue() {
             return new ArrayDeque<>();
@@ -72,19 +73,14 @@ public final class CompilationStatistics {
         return thread.getThreadAllocatedBytes(currentThread().getId());
     }
 
-    @NotReported
-    private final long startTime;
-    @NotReported
-    private long threadAllocatedBytesStart;
-    @NotReported
-    private int startInvCount;
-    @NotReported
-    private int endInvCount;
+    @NotReported private final long startTime;
+    @NotReported private long threadAllocatedBytesStart;
+    @NotReported private int startInvCount;
+    @NotReported private int endInvCount;
 
     private int bytecodeCount;
     private int codeSize;
-    @TimeValue
-    private long duration;
+    @TimeValue private long duration;
     private long memoryUsed;
     private final boolean osr;
     private final String holder;

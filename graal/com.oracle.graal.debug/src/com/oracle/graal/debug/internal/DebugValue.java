@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.debug.internal;
 
-
 public abstract class DebugValue implements Comparable<DebugValue> {
 
     private String name;
