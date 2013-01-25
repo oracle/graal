@@ -48,16 +48,13 @@ public final class Log {
     private static final int LOG_OBJECT_ADDRESS = 0x04;
 
     @NodeIntrinsic(RuntimeCallNode.class)
-    private static native void log(@ConstantNodeParameter
-    Descriptor logObject, Object object, int flags);
+    private static native void log(@ConstantNodeParameter Descriptor logObject, Object object, int flags);
 
     @NodeIntrinsic(RuntimeCallNode.class)
-    private static native void log(@ConstantNodeParameter
-    Descriptor logPrimitive, int typeChar, long value, boolean newline);
+    private static native void log(@ConstantNodeParameter Descriptor logPrimitive, int typeChar, long value, boolean newline);
 
     @NodeIntrinsic(RuntimeCallNode.class)
-    private static native void printf(@ConstantNodeParameter
-    Descriptor logPrintf, String format, long v1, long v2, long v3);
+    private static native void printf(@ConstantNodeParameter Descriptor logPrintf, String format, long v1, long v2, long v3);
 
     public static void print(boolean value) {
         log(LOG_PRIMITIVE, Kind.Boolean.getTypeChar(), value ? 1L : 0L, false);

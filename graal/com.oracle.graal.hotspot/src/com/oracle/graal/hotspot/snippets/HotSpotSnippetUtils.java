@@ -294,17 +294,13 @@ public class HotSpotSnippetUtils {
     }
 
     @NodeIntrinsic(value = RegisterNode.class, setStampFromReturnType = true)
-    public static native Word registerAsWord(@ConstantNodeParameter
-    Register register);
+    public static native Word registerAsWord(@ConstantNodeParameter Register register);
 
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
-    private static native Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter
-    int displacement, long offset, @ConstantNodeParameter
-    Kind wordKind);
+    private static native Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind);
 
     @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
-    static native Word loadHubIntrinsic(Object object, @ConstantNodeParameter
-    Kind word);
+    static native Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word);
 
     @Fold
     public static int log2WordSize() {
@@ -463,10 +459,10 @@ public class HotSpotSnippetUtils {
         // this code is independent from biased locking (although it does not look that way)
         final Word biasedLock = mark.and(biasedLockMaskInPlace());
         if (biasedLock == Word.unsigned(unlockedMask())) {
-            probability(0.99);
+            probability(FAST_PATH_PROBABILITY);
             int hash = (int) mark.unsignedShiftRight(identityHashCodeShift()).rawValue();
             if (hash != uninitializedIdentityHashCodeValue()) {
-                probability(0.99);
+                probability(FAST_PATH_PROBABILITY);
                 return hash;
             }
         }

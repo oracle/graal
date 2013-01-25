@@ -34,6 +34,18 @@ import com.oracle.graal.nodes.util.*;
  */
 public class BranchProbabilityNode extends FixedWithNextNode implements Simplifiable {
 
+    public static final double LIKELY_PROBABILITY = 0.6;
+    public static final double NOT_LIKELY_PROBABILITY = 1 - LIKELY_PROBABILITY;
+
+    public static final double FREQUENT_PROBABILITY = 0.9;
+    public static final double NOT_FREQUENT_PROBABILITY = 1 - FREQUENT_PROBABILITY;
+
+    public static final double FAST_PATH_PROBABILITY = 0.99;
+    public static final double SLOW_PATH_PROBABILITY = 1 - FAST_PATH_PROBABILITY;
+
+    public static final double NOT_DEOPT_PATH_PROBABILITY = 0.999;
+    public static final double DEOPT_PATH_PROBABILITY = 1 - NOT_DEOPT_PATH_PROBABILITY;
+
     private final double probability;
 
     public BranchProbabilityNode(double probability) {
@@ -64,7 +76,6 @@ public class BranchProbabilityNode extends FixedWithNextNode implements Simplifi
     }
 
     @NodeIntrinsic
-    public static native void probability(@ConstantNodeParameter
-    double probability);
+    public static native void probability(@ConstantNodeParameter double probability);
 
 }

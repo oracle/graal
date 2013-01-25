@@ -76,10 +76,7 @@ public class MonitorSnippets implements SnippetsInterface {
     public static final boolean CHECK_BALANCED_MONITORS = Boolean.getBoolean("graal.monitors.checkBalanced");
 
     @Snippet
-    public static void monitorenter(@Parameter("object")
-    Object object, @ConstantParameter("checkNull")
-    boolean checkNull, @ConstantParameter("trace")
-    boolean trace) {
+    public static void monitorenter(@Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull, @ConstantParameter("trace") boolean trace) {
         verifyOop(object);
 
         if (checkNull && object == null) {
@@ -108,7 +105,7 @@ public class MonitorSnippets implements SnippetsInterface {
             if (biasableLockBits != Word.unsigned(biasedLockPattern())) {
                 // Biasing not enabled -> fall through to lightweight locking
             } else {
-                probability(0.75);
+                probability(FREQUENT_PROBABILITY);
                 // The bias pattern is present in the object's mark word. Need to check
                 // whether the bias owner and the epoch are both still current.
                 Word hub = loadHub(object);
@@ -120,7 +117,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 trace(trace, "              tmp: 0x%016lx\n", tmp);
                 if (tmp == Word.zero()) {
                     // Object is already biased to current thread -> done
-                    probability(0.75);
+                    probability(FREQUENT_PROBABILITY);
                     traceObject(trace, "+lock{bias:existing}", object);
                     return;
                 }
@@ -135,7 +132,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 // the prototype header is no longer biasable and we have to revoke
                 // the bias on this object.
                 if (tmp.and(biasedLockMaskInPlace()) == Word.zero()) {
-                    probability(0.75);
+                    probability(FREQUENT_PROBABILITY);
                     // Biasing is still enabled for object's type. See whether the
                     // epoch of the current bias is still valid, meaning that the epoch
                     // bits of the mark word are equal to the epoch bits of the
@@ -146,7 +143,7 @@ public class MonitorSnippets implements SnippetsInterface {
                     // otherwise the manipulations it performs on the mark word are
                     // illegal.
                     if (tmp.and(epochMaskInPlace()) == Word.zero()) {
-                        probability(0.75);
+                        probability(FREQUENT_PROBABILITY);
                         // The epoch of the current bias is still valid but we know nothing
                         // about the owner; it might be set or it might be clear. Try to
                         // acquire the bias of the object using an atomic operation. If this
@@ -165,7 +162,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         // If the biasing toward our thread failed, this means that another thread
                         // owns the bias and we need to revoke that bias. The revocation will occur
                         // in the interpreter runtime.
-                        probability(0.0001);
+                        probability(DEOPT_PATH_PROBABILITY);
                         traceObject(trace, "+lock{stub:revoke}", object);
                         MonitorEnterStubCall.call(object, lock);
                         return;
@@ -186,7 +183,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         // If the biasing toward our thread failed, then another thread
                         // succeeded in biasing it toward itself and we need to revoke that
                         // bias. The revocation will occur in the runtime in the slow case.
-                        probability(0.0001);
+                        probability(DEOPT_PATH_PROBABILITY);
                         traceObject(trace, "+lock{stub:epoch-expired}", object);
                         MonitorEnterStubCall.call(object, lock);
                         return;
@@ -244,7 +241,7 @@ public class MonitorSnippets implements SnippetsInterface {
             final Word stackPointer = stackPointer();
             if (currentMark.subtract(stackPointer).and(alignedMask.subtract(pageSize())) != Word.zero()) {
                 // Most likely not a recursive lock, go into a slow runtime call
-                probability(0.001);
+                probability(DEOPT_PATH_PROBABILITY);
                 traceObject(trace, "+lock{stub:failed-cas}", object);
                 MonitorEnterStubCall.call(object, lock);
                 return;
@@ -268,10 +265,7 @@ public class MonitorSnippets implements SnippetsInterface {
      * Calls straight out to the monitorenter stub.
      */
     @Snippet
-    public static void monitorenterStub(@Parameter("object")
-    Object object, @ConstantParameter("checkNull")
-    boolean checkNull, @ConstantParameter("trace")
-    boolean trace) {
+    public static void monitorenterStub(@Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull, @ConstantParameter("trace") boolean trace) {
         verifyOop(object);
         incCounter();
         if (checkNull && object == null) {
@@ -285,9 +279,7 @@ public class MonitorSnippets implements SnippetsInterface {
     }
 
     @Snippet
-    public static void monitorexit(@Parameter("object")
-    Object object, @ConstantParameter("trace")
-    boolean trace) {
+    public static void monitorexit(@Parameter("object") Object object, @ConstantParameter("trace") boolean trace) {
         trace(trace, "           object: 0x%016lx\n", Word.fromObject(object));
         if (useBiasedLocking()) {
             // Check for biased locking unlock case, which is a no-op
@@ -299,7 +291,7 @@ public class MonitorSnippets implements SnippetsInterface {
             final Word mark = loadWordFromObject(object, markOffset());
             trace(trace, "             mark: 0x%016lx\n", mark);
             if (mark.and(biasedLockMaskInPlace()) == Word.unsigned(biasedLockPattern())) {
-                probability(0.75);
+                probability(FREQUENT_PROBABILITY);
                 endLockScope();
                 decCounter();
                 traceObject(trace, "-lock{bias}", object);
@@ -324,7 +316,7 @@ public class MonitorSnippets implements SnippetsInterface {
             if (DirectCompareAndSwapNode.compareAndSwap(object, markOffset(), lock, displacedMark) != lock) {
                 // The object's mark word was not pointing to the displaced header,
                 // we do unlocking via runtime call.
-                probability(0.001);
+                probability(DEOPT_PATH_PROBABILITY);
                 traceObject(trace, "-lock{stub}", object);
                 MonitorExitStubCall.call(object);
             } else {
@@ -339,9 +331,7 @@ public class MonitorSnippets implements SnippetsInterface {
      * Calls straight out to the monitorexit stub.
      */
     @Snippet
-    public static void monitorexitStub(@Parameter("object")
-    Object object, @ConstantParameter("trace")
-    boolean trace) {
+    public static void monitorexitStub(@Parameter("object") Object object, @ConstantParameter("trace") boolean trace) {
         verifyOop(object);
         traceObject(trace, "-lock{stub}", object);
         MonitorExitStubCall.call(object);
@@ -434,8 +424,7 @@ public class MonitorSnippets implements SnippetsInterface {
             this.useFastLocking = useFastLocking;
         }
 
-        public void lower(MonitorEnterNode monitorenterNode, @SuppressWarnings("unused")
-        LoweringTool tool) {
+        public void lower(MonitorEnterNode monitorenterNode, @SuppressWarnings("unused") LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) monitorenterNode.graph();
 
             checkBalancedMonitors(graph);
@@ -466,8 +455,7 @@ public class MonitorSnippets implements SnippetsInterface {
             }
         }
 
-        public void lower(MonitorExitNode monitorexitNode, @SuppressWarnings("unused")
-        LoweringTool tool) {
+        public void lower(MonitorExitNode monitorexitNode, @SuppressWarnings("unused") LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) monitorexitNode.graph();
             FrameState stateAfter = monitorexitNode.stateAfter();
             boolean eliminated = monitorexitNode.eliminated();

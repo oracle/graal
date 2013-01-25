@@ -75,12 +75,12 @@ public class CheckCastSnippets implements SnippetsInterface {
                     @Parameter("exactHub") Word exactHub,
                     @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
-            probability(0.1);
+            probability(NOT_FREQUENT_PROBABILITY);
             isNull.inc();
         } else {
             Word objectHub = loadHub(object);
             if (objectHub != exactHub) {
-                probability(0.01);
+                probability(DEOPT_PATH_PROBABILITY);
                 exactMiss.inc();
                 //bkpt(object, exactHub, objectHub);
                 DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
@@ -104,12 +104,12 @@ public class CheckCastSnippets implements SnippetsInterface {
                     @ConstantParameter("checkNull") boolean checkNull,
                     @ConstantParameter("superCheckOffset") int superCheckOffset) {
         if (checkNull && object == null) {
-            probability(0.1);
+            probability(NOT_FREQUENT_PROBABILITY);
             isNull.inc();
         } else {
             Word objectHub = loadHub(object);
             if (objectHub.readWord(superCheckOffset) != hub) {
-                probability(0.1);
+                probability(DEOPT_PATH_PROBABILITY);
                 displayMiss.inc();
                 DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
             }
@@ -128,7 +128,7 @@ public class CheckCastSnippets implements SnippetsInterface {
                     @VarargsParameter("hints") Word[] hints,
                     @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
-            probability(0.1);
+            probability(NOT_FREQUENT_PROBABILITY);
             isNull.inc();
         } else {
             Word objectHub = loadHub(object);
@@ -158,7 +158,7 @@ public class CheckCastSnippets implements SnippetsInterface {
                     @Parameter("object") Object object,
                     @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
-            probability(0.1);
+            probability(NOT_FREQUENT_PROBABILITY);
             isNull.inc();
         } else {
             Word objectHub = loadHub(object);

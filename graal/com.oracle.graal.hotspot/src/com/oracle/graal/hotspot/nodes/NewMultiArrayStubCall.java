@@ -70,6 +70,5 @@ public class NewMultiArrayStubCall extends FixedWithNextNode implements LIRGenLo
     }
 
     @NodeIntrinsic
-    public static native Object call(Word hub, @ConstantNodeParameter
-    int rank, Word dims);
+    public static native Object call(Word hub, @ConstantNodeParameter int rank, Word dims);
 }
