@@ -23,12 +23,14 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.nodes.StructuredGraph.*;
+import static com.oracle.graal.phases.common.InliningUtil.*;
 
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
@@ -112,9 +114,14 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         }
     }
 
+    /**
+     * Time spent in compilation.
+     */
+    public static final DebugTimer CompilationTime = Debug.timer("CompilationTime");
+
     public void runCompilation() {
         CompilationStatistics stats = CompilationStatistics.create(method, entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI);
-        try {
+        try (TimerCloseable a = CompilationTime.start()) {
             final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
             if (printCompilation) {
                 TTY.println(String.format("%-6d Graal %-70s %-45s %-50s %s...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature(),
@@ -138,6 +145,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                             graph = graph.copy();
                             // System.out.println("compiling intrinsic " + method);
                         }
+                        InlinedBytecodes.add(method.getCodeSize());
                         return graalRuntime.getCompiler().compileMethod(method, graph, graalRuntime.getCache(), plan, optimisticOpts);
                     }
                 });

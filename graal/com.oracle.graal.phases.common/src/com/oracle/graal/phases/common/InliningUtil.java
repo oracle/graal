@@ -48,6 +48,13 @@ public class InliningUtil {
     private static final DebugMetric metricInliningTailDuplication = Debug.metric("InliningTailDuplication");
     private static final String inliningDecisionsScopeString = "InliningDecisions";
 
+    /**
+     * Meters the size (in bytecodes) of all methods processed during compilation (i.e., top level and all
+     * inlined methods), irrespective of how many bytecodes in each method are actually parsed
+     * (which may be none for methods whose IR is retrieved from a cache).
+     */
+    public static final DebugMetric InlinedBytecodes = Debug.metric("InlinedBytecodes");
+
     public interface InliningCallback {
 
         StructuredGraph buildGraph(final ResolvedJavaMethod method);
@@ -243,6 +250,7 @@ public class InliningUtil {
                 if (calleeGraph == null) {
                     calleeGraph = getGraph(concrete, callback);
                 }
+                InlinedBytecodes.add(concrete.getCodeSize());
                 assumptions.recordMethodContents(concrete);
                 InliningUtil.inline(invoke, calleeGraph, receiverNullCheck);
             }

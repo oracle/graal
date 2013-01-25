@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.code.Register.RegisterFlag.*;
@@ -29,12 +30,11 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.snippets.SystemSubstitutions.*;
-import static com.oracle.graal.java.GraphBuilderPhase.*;
+import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.nodes.UnwindNode.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.snippets.Log.*;
 import static com.oracle.graal.snippets.MathSubstitutionsX86.*;
-import static com.oracle.graal.api.code.CallingConvention.Type.*;
 
 import java.lang.reflect.*;
 import java.util.*;

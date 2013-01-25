@@ -54,8 +54,11 @@ import com.oracle.graal.phases.util.*;
  */
 public final class GraphBuilderPhase extends Phase {
 
-    public static final Descriptor CREATE_NULL_POINTER_EXCEPTION = new Descriptor("createNullPointerException", true, Object.class);
-    public static final Descriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new Descriptor("createOutOfBoundsException", true, Object.class, int.class);
+    public static final class RuntimeCalls {
+
+        public static final Descriptor CREATE_NULL_POINTER_EXCEPTION = new Descriptor("createNullPointerException", true, Object.class);
+        public static final Descriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new Descriptor("createOutOfBoundsException", true, Object.class, int.class);
+    }
 
     /**
      * The minimum value to which {@link GraalOptions#TraceBytecodeParserLevel} must be set to trace
@@ -92,6 +95,11 @@ public final class GraphBuilderPhase extends Phase {
     private final OptimisticOptimizations optimisticOpts;
 
     private long graphId;
+
+    /**
+     * Meters the number of actual bytecodes parsed.
+     */
+    public static final DebugMetric BytecodesParsed = Debug.metric("BytecodesParsed");
 
     /**
      * Node that marks the begin of block during bytecode parsing. When a block is identified the
@@ -833,7 +841,7 @@ public final class GraphBuilderPhase extends Phase {
             ValueNode exception = ConstantNode.forObject(cachedNullPointerException, runtime, currentGraph);
             trueSucc.setNext(handleException(exception, bci()));
         } else {
-            RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(CREATE_NULL_POINTER_EXCEPTION));
+            RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(RuntimeCalls.CREATE_NULL_POINTER_EXCEPTION));
             call.setStateAfter(frameState.create(bci()));
             trueSucc.setNext(call);
             call.setNext(handleException(call, bci()));
@@ -859,7 +867,7 @@ public final class GraphBuilderPhase extends Phase {
             ValueNode exception = ConstantNode.forObject(cachedArrayIndexOutOfBoundsException, runtime, currentGraph);
             falseSucc.setNext(handleException(exception, bci()));
         } else {
-            RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
+            RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(RuntimeCalls.CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
             call.setStateAfter(frameState.create(bci()));
             falseSucc.setNext(call);
             call.setNext(handleException(call, bci()));
@@ -1587,6 +1595,8 @@ public final class GraphBuilderPhase extends Phase {
 
         stream.setBCI(block.startBci);
         int bci = block.startBci;
+        BytecodesParsed.add(block.endBci - bci);
+
         while (bci < endBCI) {
             // read the opcode
             int opcode = stream.currentBC();
