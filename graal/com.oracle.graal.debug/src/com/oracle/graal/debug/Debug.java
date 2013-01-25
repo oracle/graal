@@ -243,7 +243,7 @@ public class Debug {
         public void increment() {
         }
 
-        public void add(int value) {
+        public void add(long value) {
         }
     };
 
