@@ -1894,8 +1894,7 @@ public final class LinearScan {
         Debug.dump(Arrays.copyOf(intervals, intervalsSize), label);
     }
 
-    void printLir(String label, @SuppressWarnings("unused")
-    boolean hirValid) {
+    void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
         Debug.dump(ir, label);
     }
 

@@ -66,11 +66,7 @@ public class NewArrayStub extends Stub {
      * @param log specifies if logging is enabled
      */
     @Snippet
-    private static Object newArray(@Parameter("hub")
-    Word hub, @Parameter("length")
-    int length, @ConstantParameter("intArrayHub")
-    Word intArrayHub, @ConstantParameter("log")
-    boolean log) {
+    private static Object newArray(@Parameter("hub") Word hub, @Parameter("length") int length, @ConstantParameter("intArrayHub") Word intArrayHub, @ConstantParameter("log") boolean log) {
         int layoutHelper = hub.readInt(layoutHelperOffset());
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();

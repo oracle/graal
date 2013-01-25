@@ -66,10 +66,7 @@ public class NewInstanceStub extends Stub {
      * @param intArrayHub the hub for {@code int[].class}
      */
     @Snippet
-    private static Object newInstance(@Parameter("hub")
-    Word hub, @ConstantParameter("intArrayHub")
-    Word intArrayHub, @ConstantParameter("log")
-    boolean log) {
+    private static Object newInstance(@Parameter("hub") Word hub, @ConstantParameter("intArrayHub") Word intArrayHub, @ConstantParameter("log") boolean log) {
         int sizeInBytes = hub.readInt(klassInstanceSizeOffset());
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
             if (hub.readInt(klassStateOffset()) == klassStateFullyInitialized()) {

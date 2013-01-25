@@ -85,8 +85,6 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
     }
 
     @NodeIntrinsic
-    public static native Object initialize(Object memory, int length, int allocationSize, @ConstantNodeParameter
-    ResolvedJavaType type, @ConstantNodeParameter
-    boolean fillContents, @ConstantNodeParameter
-    boolean locked);
+    public static native Object initialize(Object memory, int length, int allocationSize, @ConstantNodeParameter ResolvedJavaType type, @ConstantNodeParameter boolean fillContents,
+                    @ConstantNodeParameter boolean locked);
 }

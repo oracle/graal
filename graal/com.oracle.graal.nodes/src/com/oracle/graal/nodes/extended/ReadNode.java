@@ -130,8 +130,5 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
      * @return the value read from memory
      */
     @NodeIntrinsic(setStampFromReturnType = true)
-    public static native <T> T read(Object base, @ConstantNodeParameter
-    int displacement, @ConstantNodeParameter
-    Object locationIdentity, @ConstantNodeParameter
-    Kind kind);
+    public static native <T> T read(Object base, @ConstantNodeParameter int displacement, @ConstantNodeParameter Object locationIdentity, @ConstantNodeParameter Kind kind);
 }

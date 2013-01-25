@@ -50,6 +50,5 @@ public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
     }
 
     @NodeIntrinsic
-    public static native <T> T read(long address, @ConstantNodeParameter
-    Kind kind);
+    public static native <T> T read(long address, @ConstantNodeParameter Kind kind);
 }

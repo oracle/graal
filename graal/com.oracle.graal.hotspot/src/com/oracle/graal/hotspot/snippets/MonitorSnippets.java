@@ -76,10 +76,7 @@ public class MonitorSnippets implements SnippetsInterface {
     public static final boolean CHECK_BALANCED_MONITORS = Boolean.getBoolean("graal.monitors.checkBalanced");
 
     @Snippet
-    public static void monitorenter(@Parameter("object")
-    Object object, @ConstantParameter("checkNull")
-    boolean checkNull, @ConstantParameter("trace")
-    boolean trace) {
+    public static void monitorenter(@Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull, @ConstantParameter("trace") boolean trace) {
         verifyOop(object);
 
         if (checkNull && object == null) {
@@ -268,10 +265,7 @@ public class MonitorSnippets implements SnippetsInterface {
      * Calls straight out to the monitorenter stub.
      */
     @Snippet
-    public static void monitorenterStub(@Parameter("object")
-    Object object, @ConstantParameter("checkNull")
-    boolean checkNull, @ConstantParameter("trace")
-    boolean trace) {
+    public static void monitorenterStub(@Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull, @ConstantParameter("trace") boolean trace) {
         verifyOop(object);
         incCounter();
         if (checkNull && object == null) {
@@ -285,9 +279,7 @@ public class MonitorSnippets implements SnippetsInterface {
     }
 
     @Snippet
-    public static void monitorexit(@Parameter("object")
-    Object object, @ConstantParameter("trace")
-    boolean trace) {
+    public static void monitorexit(@Parameter("object") Object object, @ConstantParameter("trace") boolean trace) {
         trace(trace, "           object: 0x%016lx\n", Word.fromObject(object));
         if (useBiasedLocking()) {
             // Check for biased locking unlock case, which is a no-op
@@ -339,9 +331,7 @@ public class MonitorSnippets implements SnippetsInterface {
      * Calls straight out to the monitorexit stub.
      */
     @Snippet
-    public static void monitorexitStub(@Parameter("object")
-    Object object, @ConstantParameter("trace")
-    boolean trace) {
+    public static void monitorexitStub(@Parameter("object") Object object, @ConstantParameter("trace") boolean trace) {
         verifyOop(object);
         traceObject(trace, "-lock{stub}", object);
         MonitorExitStubCall.call(object);
@@ -434,8 +424,7 @@ public class MonitorSnippets implements SnippetsInterface {
             this.useFastLocking = useFastLocking;
         }
 
-        public void lower(MonitorEnterNode monitorenterNode, @SuppressWarnings("unused")
-        LoweringTool tool) {
+        public void lower(MonitorEnterNode monitorenterNode, @SuppressWarnings("unused") LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) monitorenterNode.graph();
 
             checkBalancedMonitors(graph);
@@ -466,8 +455,7 @@ public class MonitorSnippets implements SnippetsInterface {
             }
         }
 
-        public void lower(MonitorExitNode monitorexitNode, @SuppressWarnings("unused")
-        LoweringTool tool) {
+        public void lower(MonitorExitNode monitorexitNode, @SuppressWarnings("unused") LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) monitorexitNode.graph();
             FrameState stateAfter = monitorexitNode.stateAfter();
             boolean eliminated = monitorexitNode.eliminated();

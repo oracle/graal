@@ -80,8 +80,7 @@ public class ArrayCopySnippets implements SnippetsInterface {
     private static final Kind VECTOR_KIND = Kind.Long;
     private static final long VECTOR_SIZE = arrayIndexScale(Kind.Long);
 
-    public static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter("baseKind")
-    Kind baseKind) {
+    public static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter("baseKind") Kind baseKind) {
         checkInputs(src, srcPos, dest, destPos, length);
         int header = arrayBaseOffset(baseKind);
         int elementSize = arrayIndexScale(baseKind);

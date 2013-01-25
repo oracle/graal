@@ -294,17 +294,13 @@ public class HotSpotSnippetUtils {
     }
 
     @NodeIntrinsic(value = RegisterNode.class, setStampFromReturnType = true)
-    public static native Word registerAsWord(@ConstantNodeParameter
-    Register register);
+    public static native Word registerAsWord(@ConstantNodeParameter Register register);
 
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
-    private static native Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter
-    int displacement, long offset, @ConstantNodeParameter
-    Kind wordKind);
+    private static native Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind);
 
     @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
-    static native Word loadHubIntrinsic(Object object, @ConstantNodeParameter
-    Kind word);
+    static native Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word);
 
     @Fold
     public static int log2WordSize() {

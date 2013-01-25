@@ -150,6 +150,5 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
     }
 
     @NodeIntrinsic
-    public static native <S, T> S convert(@ConstantNodeParameter
-    Op op, T value);
+    public static native <S, T> S convert(@ConstantNodeParameter Op op, T value);
 }
