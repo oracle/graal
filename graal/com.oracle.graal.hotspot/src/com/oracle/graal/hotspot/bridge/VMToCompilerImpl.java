@@ -345,8 +345,10 @@ public class VMToCompilerImpl implements VMToCompiler {
         }
         phaseTransition("final");
 
-        parsedBytecodesPerSecond.printAll("ParsedBytecodesPerSecond");
-        inlinedBytecodesPerSecond.printAll("InlinedBytecodesPerSecond");
+        if (BenchmarkCompilation) {
+            parsedBytecodesPerSecond.printAll("ParsedBytecodesPerSecond");
+            inlinedBytecodesPerSecond.printAll("InlinedBytecodesPerSecond");
+        }
 
         SnippetCounter.printGroups(TTY.out().out());
     }
