@@ -56,8 +56,6 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     private final HotSpotGraalRuntime graalRuntime;
 
-    private static final boolean BenchmarkCompilation = Boolean.getBoolean("graal.benchmark.compilation");
-
     public final HotSpotResolvedPrimitiveType typeBoolean;
     public final HotSpotResolvedPrimitiveType typeChar;
     public final HotSpotResolvedPrimitiveType typeFloat;
@@ -75,6 +73,8 @@ public class VMToCompilerImpl implements VMToCompiler {
     private volatile boolean bootstrapRunning;
 
     private PrintStream log = System.out;
+
+    private boolean quietMeterAndTime;
 
     public VMToCompilerImpl(HotSpotGraalRuntime compiler) {
         this.graalRuntime = compiler;
@@ -98,7 +98,8 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     public void startCompiler() throws Throwable {
 
-        long offset = HotSpotGraalRuntime.getInstance().getConfig().graalMirrorInClassOffset;
+        HotSpotVMConfig config = graalRuntime.getConfig();
+        long offset = config.graalMirrorInClassOffset;
         initMirror(typeBoolean, offset);
         initMirror(typeChar, offset);
         initMirror(typeFloat, offset);
@@ -126,11 +127,11 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
-        if (BenchmarkCompilation) {
+        if (config.ciTime) {
+            quietMeterAndTime = (GraalOptions.Meter == null && GraalOptions.Time == null);
             GraalOptions.Debug = true;
             GraalOptions.Meter = "";
             GraalOptions.Time = "";
-            GraalOptions.SummarizeDebugValues = true;
         }
 
         if (GraalOptions.Debug) {
@@ -203,7 +204,7 @@ public class VMToCompilerImpl implements VMToCompiler {
      */
     protected void phaseTransition(String phase) {
         CompilationStatistics.clear(phase);
-        if (BenchmarkCompilation) {
+        if (graalRuntime.getConfig().ciTime) {
             parsedBytecodesPerSecond = MetricRateInPhase.snapshot(phase, parsedBytecodesPerSecond, BytecodesParsed, CompilationTime, TimeUnit.SECONDS);
             inlinedBytecodesPerSecond = MetricRateInPhase.snapshot(phase, inlinedBytecodesPerSecond, InlinedBytecodes, CompilationTime, TimeUnit.SECONDS);
         }
@@ -310,7 +311,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
 
-        if (Debug.isEnabled()) {
+        if (Debug.isEnabled() && !quietMeterAndTime) {
             List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
             List<DebugValue> debugValues = KeyRegistry.getDebugValues();
             if (debugValues.size() > 0) {
@@ -345,7 +346,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         }
         phaseTransition("final");
 
-        if (BenchmarkCompilation) {
+        if (graalRuntime.getConfig().ciTime) {
             parsedBytecodesPerSecond.printAll("ParsedBytecodesPerSecond");
             inlinedBytecodesPerSecond.printAll("InlinedBytecodesPerSecond");
         }
