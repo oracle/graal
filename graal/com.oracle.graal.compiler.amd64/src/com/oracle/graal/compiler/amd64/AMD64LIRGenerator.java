@@ -93,12 +93,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         public LIRInstruction createMove(Value result, Value input) {
             return new SpillMoveOp(result, input);
         }
-
-        @Override
-        public LIRInstruction createExchange(Value input1, Value input2) {
-            // TODO (cwimmer) implement XCHG operation for LIR
-            return null;
-        }
     }
 
     public AMD64LIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
