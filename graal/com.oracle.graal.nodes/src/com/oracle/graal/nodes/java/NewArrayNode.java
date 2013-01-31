@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * The {@code NewArrayNode} class is the base of all instructions that allocate arrays.
  */
-public abstract class NewArrayNode extends FixedWithNextNode implements Lowerable, VirtualizableAllocation, ArrayLengthProvider {
+public abstract class NewArrayNode extends FixedWithNextNode implements Canonicalizable, Lowerable, VirtualizableAllocation, ArrayLengthProvider {
 
     @Input private ValueNode length;
     private final ResolvedJavaType elementType;
@@ -97,6 +97,15 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
      */
     public int dimensionCount() {
         return 1;
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (usages().isEmpty() && length.integerStamp().isPositive()) {
+            return null;
+        } else {
+            return this;
+        }
     }
 
     @Override
