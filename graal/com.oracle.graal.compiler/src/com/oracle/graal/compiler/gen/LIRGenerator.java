@@ -237,14 +237,14 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     public LIRFrameState stateFor(FrameState state, long leafGraphId) {
-        return stateFor(state, null, null, leafGraphId);
+        return stateFor(state, null, leafGraphId);
     }
 
-    public LIRFrameState stateFor(FrameState state, List<StackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
+    public LIRFrameState stateFor(FrameState state, LabelRef exceptionEdge, long leafGraphId) {
         if (needOnlyOopMaps()) {
-            return new LIRFrameState(null, null, null, null);
+            return new LIRFrameState(null, null, null);
         }
-        return debugInfoBuilder.build(state, lockDataSlots.subList(0, currentLockCount), pointerSlots, exceptionEdge, leafGraphId);
+        return debugInfoBuilder.build(state, lockDataSlots.subList(0, currentLockCount), exceptionEdge, leafGraphId);
     }
 
     /**
@@ -468,7 +468,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     private boolean canBeNullCheck(LocationNode location) {
-        // TODO: Make this part of TargetDescription
         return !(location instanceof IndexedLocationNode) && location.displacement() < this.target().implicitNullCheckLimit;
     }
 
@@ -690,38 +689,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     public abstract Variable emitCMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
 
-    protected FrameState stateBeforeCallWithArguments(FrameState stateAfter, MethodCallTargetNode call, int bci) {
-        return stateAfter.duplicateModified(bci, stateAfter.rethrowException(), call.returnStamp().kind(), toJVMArgumentStack(call.targetMethod().getSignature(), call.isStatic(), call.arguments()));
-    }
-
-    private static ValueNode[] toJVMArgumentStack(Signature signature, boolean isStatic, NodeInputList<ValueNode> arguments) {
-        int slotCount = signature.getParameterSlots(!isStatic);
-        ValueNode[] stack = new ValueNode[slotCount];
-        int stackIndex = 0;
-        int argumentIndex = 0;
-        for (ValueNode arg : arguments) {
-            stack[stackIndex] = arg;
-
-            if (stackIndex == 0 && !isStatic) {
-                // Current argument is receiver.
-                stackIndex += stackSlots(Kind.Object);
-            } else {
-                stackIndex += stackSlots(signature.getParameterKind(argumentIndex));
-                argumentIndex++;
-            }
-        }
-        return stack;
-    }
-
-    public static int stackSlots(Kind kind) {
-        return isTwoSlot(kind) ? 2 : 1;
-    }
-
-    public static boolean isTwoSlot(Kind kind) {
-        assert kind != Kind.Void && kind != Kind.Illegal;
-        return kind == Kind.Long || kind == Kind.Double;
-    }
-
     @Override
     public void emitInvoke(Invoke x) {
         AbstractCallTargetNode callTarget = (AbstractCallTargetNode) x.callTarget();
@@ -732,7 +699,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         LIRFrameState callState = null;
         if (x.stateAfter() != null) {
-            callState = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
+            callState = stateFor(x.stateDuring(), x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
         }
 
         Value result = cc.getReturn();
@@ -832,18 +799,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             // cannot pop it here.
             FrameState stateBeforeReturn = stateAfter;
             if ((stateAfter.stackSize() > 0 && stateAfter.stackAt(stateAfter.stackSize() - 1) == x) || (stateAfter.stackSize() > 1 && stateAfter.stackAt(stateAfter.stackSize() - 2) == x)) {
-
                 stateBeforeReturn = stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), x.kind());
             }
-
-            // TODO is it correct here that the pointerSlots are not passed to the oop map
-            // generation?
             info = stateFor(stateBeforeReturn, -1);
         } else {
-            // Every runtime call needs an info
-            // TODO This is conservative. It's not needed for calls that are implemented purely in a
-            // stub
-            // that does not trash any registers and does not call into the runtime.
             info = state();
         }
 
