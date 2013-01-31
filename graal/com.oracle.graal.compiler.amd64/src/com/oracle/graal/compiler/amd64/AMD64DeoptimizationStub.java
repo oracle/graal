@@ -56,7 +56,6 @@ public class AMD64DeoptimizationStub extends AMD64Code {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        // TODO (cwimmer): we want to get rid of a generally reserved scratch register.
         Register scratch = tasm.frameMap.registerConfig.getScratchRegister();
 
         masm.bind(label);
@@ -64,12 +63,10 @@ public class AMD64DeoptimizationStub extends AMD64Code {
             masm.nop();
             keepAlive.add(deoptInfo.toString());
             AMD64Move.move(tasm, masm, scratch.asValue(), Constant.forObject(deoptInfo));
-            // TODO Make this an explicit calling convention instead of using a scratch register
             AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(SET_DEOPT_INFO), info);
         }
 
         masm.movl(scratch, tasm.runtime.encodeDeoptActionAndReason(action, reason));
-        // TODO Make this an explicit calling convention instead of using a scratch register
         AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(DEOPTIMIZE), info);
         AMD64Call.shouldNotReachHere(tasm, masm);
     }

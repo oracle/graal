@@ -111,7 +111,6 @@ public class AMD64Call {
                 // offset might not fit a 32-bit immediate, generate an
                 // indirect call with a 64-bit immediate
                 Register scratch = tasm.frameMap.registerConfig.getScratchRegister();
-                // TODO (cwimmer): we want to get rid of a generally reserved scratch register.
                 masm.movq(scratch, 0L);
                 masm.call(scratch);
             } else {
