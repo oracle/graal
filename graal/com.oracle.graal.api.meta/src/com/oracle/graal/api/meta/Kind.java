@@ -135,6 +135,21 @@ public enum Kind {
     }
 
     /**
+     * Returns the kind of a word given the size of a word in bytes.
+     * 
+     * @param wordSizeInBytes the size of a word in bytes
+     * @return the kind representing a word value
+     */
+    public static Kind fromWordSize(int wordSizeInBytes) {
+        if (wordSizeInBytes == 8) {
+            return Kind.Long;
+        } else {
+            assert wordSizeInBytes == 4 : "Unsupported word size!";
+            return Kind.Int;
+        }
+    }
+
+    /**
      * Returns the kind from the character describing a primitive or void.
      * 
      * @param ch the character

@@ -91,18 +91,14 @@ public class TargetDescription {
      */
     public final boolean debugInfoDoubleWordsInSecondSlot;
 
-    public TargetDescription(Architecture arch, boolean isMP, int stackAlignment, int pageSize, int cacheAlignment, boolean inlineObjects, boolean debugInfoDoubleWordsInSecondSlot) {
+    public TargetDescription(Architecture arch, boolean isMP, int stackAlignment, int stackBias, int pageSize, int cacheAlignment, boolean inlineObjects, boolean debugInfoDoubleWordsInSecondSlot) {
         this.arch = arch;
         this.pageSize = pageSize;
         this.isMP = isMP;
         this.wordSize = arch.getWordSize();
-        if (wordSize == 8) {
-            this.wordKind = Kind.Long;
-        } else {
-            this.wordKind = Kind.Int;
-        }
+        this.wordKind = Kind.fromWordSize(wordSize);
         this.stackAlignment = stackAlignment;
-        this.stackBias = 0; // TODO: configure with param once SPARC port exists
+        this.stackBias = stackBias;
         this.cacheAlignment = cacheAlignment;
         this.inlineObjects = inlineObjects;
         this.debugInfoDoubleWordsInSecondSlot = debugInfoDoubleWordsInSecondSlot;

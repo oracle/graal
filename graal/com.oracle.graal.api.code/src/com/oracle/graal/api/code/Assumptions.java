@@ -237,7 +237,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      *         otherwise
      */
     public boolean recordNoFinalizableSubclassAssumption(ResolvedJavaType receiverType) {
-        // TODO (thomaswue): Record that assumption correctly.
         assert useOptimisticAssumptions;
         return false;
     }
