@@ -67,15 +67,6 @@ public final class NodeMap<T> {
         return node.id() >= size;
     }
 
-    public void grow(Node upTo) {
-        if (isNew(upTo)) {
-            size = upTo.id() + 1;
-            if (values.length < size) {
-                values = Arrays.copyOf(values, size + 9); // TODO implement a better growth policy
-            }
-        }
-    }
-
     private void check(Node node) {
         assert node.graph() == graph : "this node is not part of the graph";
         assert !isNew(node) : "this node was added to the graph after creating the node map : " + node;
