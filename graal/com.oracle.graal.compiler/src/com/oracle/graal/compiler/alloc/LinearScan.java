@@ -1056,7 +1056,6 @@ public final class LinearScan {
         changeSpillDefinitionPos(interval, defPos);
         if (registerPriority == RegisterPriority.None && interval.spillState().ordinal() <= SpillState.StartInMemory.ordinal()) {
             // detection of method-parameters and roundfp-results
-            // TODO: move this directly to position where use-kind is computed
             interval.setSpillState(SpillState.StartInMemory);
         }
     }

@@ -49,7 +49,7 @@ final class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
     protected TargetDescription createTarget() {
         final int wordSize = 8;
         final int stackFrameAlignment = 16;
-        return new TargetDescription(new AMD64(), true, stackFrameAlignment, 0, config.vmPageSize, wordSize, true, true);
+        return new TargetDescription(new AMD64(), true, stackFrameAlignment, 0, 4096, config.vmPageSize, wordSize, true, true);
     }
 
     @Override
