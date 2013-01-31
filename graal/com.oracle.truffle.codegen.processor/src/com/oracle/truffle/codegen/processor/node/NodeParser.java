@@ -149,7 +149,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         nodeData.setExecutableTypes(executableTypes.toArray(new ExecutableTypeData[executableTypes.size()]));
 
         parsedNodes.put(Utils.getQualifiedName(type), nodeData); // node fields will resolve node
-                                                                 // types, to avoid endless loops
+// types, to avoid endless loops
 
         NodeFieldData[] fields = parseFields(nodeData, elements, typeHierarchy);
         if (fields == null) {
@@ -319,6 +319,19 @@ public class NodeParser extends TemplateParser<NodeData> {
                 filteredExecutableTypes.add(t1);
             }
         }
+
+        Collections.sort(filteredExecutableTypes, new Comparator<ExecutableTypeData>() {
+
+            @Override
+            public int compare(ExecutableTypeData o1, ExecutableTypeData o2) {
+                int index1 = o1.getTypeSystem().findType(o1.getType());
+                int index2 = o2.getTypeSystem().findType(o2.getType());
+                if (index1 == -1 || index2 == -1) {
+                    return 0;
+                }
+                return index1 - index2;
+            }
+        });
         return filteredExecutableTypes;
     }
 
@@ -425,7 +438,8 @@ public class NodeParser extends TemplateParser<NodeData> {
                 context.getLog().error(errorElement, "Node type '%s' is invalid.", Utils.getQualifiedName(nodeType));
                 return null;
             } else if (fieldNodeData.findGenericExecutableType(context) == null) {
-                context.getLog().error(errorElement, "No executable generic type found for node '%s'.", Utils.getQualifiedName(nodeType));
+                // TODO better error handling for (no or multiple?)
+                context.getLog().error(errorElement, "No or multiple executable generic types found for node '%s'.", Utils.getQualifiedName(nodeType));
                 return null;
             }
         }
@@ -683,6 +697,11 @@ public class NodeParser extends TemplateParser<NodeData> {
                 for (SpecializationThrowsData throwsData : sourceSpecialization.getExceptions()) {
                     SpecializationData targetSpecialization = specializationMap.get(throwsData.getTransitionToName());
                     AnnotationValue value = Utils.getAnnotationValue(throwsData.getAnnotationMirror(), "transitionTo");
+
+                    if (targetSpecialization != null) {
+                        log.error("Specialization throws current %s target %s compare %s.", sourceSpecialization.getMethodName(), targetSpecialization.getMethodName(),
+                                        compareSpecialization(typeSystem, sourceSpecialization, targetSpecialization));
+                    }
 
                     if (targetSpecialization == null) {
                         log.error(throwsData.getSpecialization().getMethod(), throwsData.getAnnotationMirror(), value, "Specialization with name '%s' not found.", throwsData.getTransitionToName());

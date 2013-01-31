@@ -114,6 +114,10 @@ public class TypeSystemData extends Template {
         return types[index];
     }
 
+    public int findType(TypeData typeData) {
+        return findType(typeData.getPrimitiveType());
+    }
+
     public int findType(TypeMirror type) {
         for (int i = 0; i < types.length; i++) {
             if (Utils.typeEquals(types[i].getPrimitiveType(), type)) {

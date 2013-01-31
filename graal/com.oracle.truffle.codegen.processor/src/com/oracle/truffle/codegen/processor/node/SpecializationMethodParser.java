@@ -144,7 +144,8 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
                 ParameterSpec spec = param.getSpecification();
                 expectedParameterSpecs.add(new ParameterSpec(spec.getName(), param.getActualType(), false));
             }
-            String expectedSignature = TemplateMethodParser.createExpectedSignature(specializationGuard.getGuardMethod(), returnTypeSpec, expectedParameterSpecs);
+            List<TypeDef> typeDefs = createTypeDefinitions(returnTypeSpec, expectedParameterSpecs);
+            String expectedSignature = TemplateMethodParser.createExpectedSignature(specializationGuard.getGuardMethod(), returnTypeSpec, expectedParameterSpecs, typeDefs);
             AnnotationValue value = Utils.getAnnotationValue(mirror, "methodName");
             getContext().getLog().error(specialization.getMethod(), mirror, value, "No guard with signature '%s' found in type system.", expectedSignature);
             return null;

@@ -31,22 +31,16 @@ public class CodeAnnotationValue implements AnnotationValue {
 
     private final Object value;
 
-    // @formatter:off
     public CodeAnnotationValue(Object value) {
         Objects.requireNonNull(value);
-        if ((value instanceof AnnotationMirror) || (value instanceof List< ? >)
-                        || (value instanceof Boolean) || (value instanceof Byte)
-                        || (value instanceof Character) || (value instanceof Double)
-                        || (value instanceof VariableElement) || (value instanceof Float)
-                        || (value instanceof Integer) || (value instanceof Long)
-                        || (value instanceof Short) || (value instanceof String)
-                        || (value instanceof TypeMirror)) {
+        if ((value instanceof AnnotationMirror) || (value instanceof List<?>) || (value instanceof Boolean) || (value instanceof Byte) || (value instanceof Character) || (value instanceof Double) ||
+                        (value instanceof VariableElement) || (value instanceof Float) || (value instanceof Integer) || (value instanceof Long) || (value instanceof Short) ||
+                        (value instanceof String) || (value instanceof TypeMirror)) {
             this.value = value;
         } else {
             throw new IllegalArgumentException("Invalid annotation value type " + value.getClass().getName());
         }
     }
-    // @formatter:on
 
     @Override
     public Object getValue() {

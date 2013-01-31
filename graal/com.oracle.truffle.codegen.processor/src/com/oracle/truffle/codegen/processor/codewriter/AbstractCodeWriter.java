@@ -434,16 +434,6 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         }
     }
 
-    // @Override
-    // public void visitParameter(CodeVariableElement e) {
-    // for (CodeAnnotationMirror annotation : e.getAnnotationMirrors()) {
-    // annotation.accept(this);
-    // }
-    // write(typeSimpleName(e.getType()));
-    // write(" ");
-    // write(e.getSimpleName());
-    // }
-
     @Override
     public Void visitExecutable(CodeExecutableElement e, Void p) {
         for (AnnotationMirror annotation : e.getAnnotationMirrors()) {
