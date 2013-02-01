@@ -49,9 +49,9 @@ public class InliningUtil {
     private static final String inliningDecisionsScopeString = "InliningDecisions";
 
     /**
-     * Meters the size (in bytecodes) of all methods processed during compilation (i.e., top level and all
-     * inlined methods), irrespective of how many bytecodes in each method are actually parsed
-     * (which may be none for methods whose IR is retrieved from a cache).
+     * Meters the size (in bytecodes) of all methods processed during compilation (i.e., top level
+     * and all inlined methods), irrespective of how many bytecodes in each method are actually
+     * parsed (which may be none for methods whose IR is retrieved from a cache).
      */
     public static final DebugMetric InlinedBytecodes = Debug.metric("InlinedBytecodes");
 
@@ -69,7 +69,6 @@ public class InliningUtil {
         InlineInfo next();
 
         void scanInvokes(Iterable<? extends Node> newNodes);
-
 
         boolean isWorthInlining(InlineInfo info);
     }
@@ -183,12 +182,11 @@ public class InliningUtil {
 
         Invoke invoke();
 
-
         int level();
 
         int numberOfMethods();
-        ResolvedJavaMethod methodAt(int index);
 
+        ResolvedJavaMethod methodAt(int index);
 
         /**
          * Performs the inlining described by this object and returns the node that represents the
@@ -196,7 +194,6 @@ public class InliningUtil {
          * non-exceptional exit).
          **/
         void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback, Assumptions assumptions);
-
 
         /**
          * Try to make the call static bindable to avoid interface and virtual method calls.
@@ -253,7 +250,7 @@ public class InliningUtil {
             }
         }
 
-        private static StructuredGraph getGraph(final ResolvedJavaMethod concrete, final InliningCallback callback) {
+        protected static StructuredGraph getGraph(final ResolvedJavaMethod concrete, final InliningCallback callback) {
             return Debug.scope("GetInliningGraph", concrete, new Callable<StructuredGraph>() {
 
                 @Override
@@ -344,7 +341,7 @@ public class InliningUtil {
 
             StructuredGraph calleeGraph = getGraph(concrete, callback);
             assumptions.recordMethodContents(concrete);
-            inline(invoke, calleeGraph, false);
+            InliningUtil.inline(invoke, calleeGraph, false);
         }
 
         @Override
@@ -389,7 +386,7 @@ public class InliningUtil {
         public final int[] typesToConcretes;
         public final double notRecordedTypeProbability;
 
-        public MultiTypeGuardInlineInfo(Invoke invoke, double weight, ArrayList<ResolvedJavaMethod> concretes, ArrayList<ProfiledType> ptypes, int[] typesToConcretes, double notRecordedTypeProbability) {
+        public MultiTypeGuardInlineInfo(Invoke invoke, ArrayList<ResolvedJavaMethod> concretes, ArrayList<ProfiledType> ptypes, int[] typesToConcretes, double notRecordedTypeProbability) {
             super(invoke);
             assert concretes.size() > 0 && concretes.size() <= ptypes.size() : "must have at least one method but no more than types methods";
             assert ptypes.size() == typesToConcretes.length : "array lengths must match";
@@ -698,7 +695,8 @@ public class InliningUtil {
             if (methodCallTarget.invokeKind() == InvokeKind.Interface) {
                 ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
                 ResolvedJavaType leastCommonType = getLeastCommonType();
-                // check if we have a common base type that implements the interface -> in that case we have a vtable entry for the interface method and can use a less expensive virtual call
+                // check if we have a common base type that implements the interface -> in that case
+// we have a vtable entry for the interface method and can use a less expensive virtual call
                 if (!leastCommonType.isInterface() && targetMethod.getDeclaringClass().isAssignableFrom(leastCommonType)) {
                     ResolvedJavaMethod baseClassTargetMethod = leastCommonType.resolveMethod(targetMethod);
                     if (baseClassTargetMethod != null) {
@@ -715,7 +713,7 @@ public class InliningUtil {
             invocationEntry.setProbability(invoke.probability());
 
             BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
-            BeginNode[] successors = new BeginNode[] {invocationEntry, unknownTypeSux};
+            BeginNode[] successors = new BeginNode[]{invocationEntry, unknownTypeSux};
             createDispatchOnTypeBeforeInvoke(graph, successors, true);
 
             invocationEntry.setNext(invoke.node());
@@ -860,8 +858,7 @@ public class InliningUtil {
         return new ExactInlineInfo(invoke, targetMethod);
     }
 
-    private static InlineInfo getTypeCheckedInlineInfo(Invoke invoke, ResolvedJavaMethod caller,
-                    OptimisticOptimizations optimisticOpts) {
+    private static InlineInfo getTypeCheckedInlineInfo(Invoke invoke, ResolvedJavaMethod caller, ResolvedJavaType holder, ResolvedJavaMethod targetMethod, OptimisticOptimizations optimisticOpts) {
         ProfilingInfo profilingInfo = caller.getProfilingInfo();
         JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(invoke.bci());
         if (typeProfile == null) {
@@ -1190,9 +1187,9 @@ public class InliningUtil {
     public static StructuredGraph getIntrinsicGraph(ResolvedJavaMethod target) {
         return (StructuredGraph) target.getCompilerStorage().get(Graph.class);
     }
-    }
 
     public static Class<? extends FixedWithNextNode> getMacroNodeClass(ResolvedJavaMethod target) {
         Object result = target.getCompilerStorage().get(Node.class);
         return result == null ? null : ((Class<?>) result).asSubclass(FixedWithNextNode.class);
+    }
 }
