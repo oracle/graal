@@ -365,12 +365,27 @@ public class CompilationResult implements Serializable {
 
     private Assumptions assumptions;
 
+    /**
+     * The leafGraphIds will contain the StructuredGraph.graphId()s of the graphs that were
+     * incorporated into this compilation. These ids are later on used by the runtime system to
+     * evict graphs from the graph cache when deoptimizations occur.
+     */
+    private long[] leafGraphIds;
+
     public void setAssumptions(Assumptions assumptions) {
         this.assumptions = assumptions;
     }
 
     public Assumptions getAssumptions() {
         return assumptions;
+    }
+
+    public void setLeafGraphIds(long[] leafGraphIds) {
+        this.leafGraphIds = leafGraphIds;
+    }
+
+    public long[] getLeafGraphIds() {
+        return leafGraphIds;
     }
 
     /**

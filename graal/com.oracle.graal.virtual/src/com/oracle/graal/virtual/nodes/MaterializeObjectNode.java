@@ -88,7 +88,7 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Vi
 
             if (!defaultEntries) {
                 for (int i = 0; i < virtual.entryCount(); i++) {
-                    graph.addBeforeFixed(this, graph.add(new StoreFieldNode(newInstance, virtual.field(i), values.get(i), -1)));
+                    graph.addBeforeFixed(this, graph.add(new StoreFieldNode(newInstance, virtual.field(i), values.get(i))));
                 }
             }
         } else {
@@ -107,7 +107,7 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Vi
 
             if (!defaultEntries) {
                 for (int i = 0; i < virtual.entryCount(); i++) {
-                    graph.addBeforeFixed(this, graph.add(new StoreIndexedNode(newArray, ConstantNode.forInt(i, graph), element.getKind(), values.get(i), -1)));
+                    graph.addBeforeFixed(this, graph.add(new StoreIndexedNode(newArray, ConstantNode.forInt(i, graph), element.getKind(), values.get(i))));
                 }
             }
         }

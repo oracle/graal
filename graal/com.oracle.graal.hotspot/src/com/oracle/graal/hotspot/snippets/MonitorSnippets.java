@@ -76,7 +76,10 @@ public class MonitorSnippets implements SnippetsInterface {
     public static final boolean CHECK_BALANCED_MONITORS = Boolean.getBoolean("graal.monitors.checkBalanced");
 
     @Snippet
-    public static void monitorenter(@Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull, @ConstantParameter("trace") boolean trace) {
+    public static void monitorenter(@Parameter("object")
+    Object object, @ConstantParameter("checkNull")
+    boolean checkNull, @ConstantParameter("trace")
+    boolean trace) {
         verifyOop(object);
 
         if (checkNull && object == null) {
@@ -265,7 +268,10 @@ public class MonitorSnippets implements SnippetsInterface {
      * Calls straight out to the monitorenter stub.
      */
     @Snippet
-    public static void monitorenterStub(@Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull, @ConstantParameter("trace") boolean trace) {
+    public static void monitorenterStub(@Parameter("object")
+    Object object, @ConstantParameter("checkNull")
+    boolean checkNull, @ConstantParameter("trace")
+    boolean trace) {
         verifyOop(object);
         incCounter();
         if (checkNull && object == null) {
@@ -279,7 +285,9 @@ public class MonitorSnippets implements SnippetsInterface {
     }
 
     @Snippet
-    public static void monitorexit(@Parameter("object") Object object, @ConstantParameter("trace") boolean trace) {
+    public static void monitorexit(@Parameter("object")
+    Object object, @ConstantParameter("trace")
+    boolean trace) {
         trace(trace, "           object: 0x%016lx\n", Word.fromObject(object));
         if (useBiasedLocking()) {
             // Check for biased locking unlock case, which is a no-op
@@ -331,7 +339,9 @@ public class MonitorSnippets implements SnippetsInterface {
      * Calls straight out to the monitorexit stub.
      */
     @Snippet
-    public static void monitorexitStub(@Parameter("object") Object object, @ConstantParameter("trace") boolean trace) {
+    public static void monitorexitStub(@Parameter("object")
+    Object object, @ConstantParameter("trace")
+    boolean trace) {
         verifyOop(object);
         traceObject(trace, "-lock{stub}", object);
         MonitorExitStubCall.call(object);
@@ -424,7 +434,8 @@ public class MonitorSnippets implements SnippetsInterface {
             this.useFastLocking = useFastLocking;
         }
 
-        public void lower(MonitorEnterNode monitorenterNode, @SuppressWarnings("unused") LoweringTool tool) {
+        public void lower(MonitorEnterNode monitorenterNode, @SuppressWarnings("unused")
+        LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) monitorenterNode.graph();
 
             checkBalancedMonitors(graph);
@@ -455,7 +466,8 @@ public class MonitorSnippets implements SnippetsInterface {
             }
         }
 
-        public void lower(MonitorExitNode monitorexitNode, @SuppressWarnings("unused") LoweringTool tool) {
+        public void lower(MonitorExitNode monitorexitNode, @SuppressWarnings("unused")
+        LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) monitorexitNode.graph();
             FrameState stateAfter = monitorexitNode.stateAfter();
             boolean eliminated = monitorexitNode.eliminated();
@@ -518,7 +530,7 @@ public class MonitorSnippets implements SnippetsInterface {
                     // Only insert the nodes if this is the first monitorenter being lowered.
                     JavaType returnType = initCounter.getSignature().getReturnType(initCounter.getDeclaringClass());
                     MethodCallTargetNode callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, initCounter, new ValueNode[0], returnType));
-                    InvokeNode invoke = graph.add(new InvokeNode(callTarget, 0, -1));
+                    InvokeNode invoke = graph.add(new InvokeNode(callTarget, 0));
                     invoke.setStateAfter(graph.start().stateAfter());
                     graph.addAfterFixed(graph.start(), invoke);
                     StructuredGraph inlineeGraph = (StructuredGraph) initCounter.getCompilerStorage().get(Graph.class);
@@ -530,7 +542,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         Object msg = ((HotSpotRuntime) runtime).registerGCRoot("unbalanced monitors in " + MetaUtil.format("%H.%n(%p)", graph.method()) + ", count = %d");
                         ConstantNode errMsg = ConstantNode.forObject(msg, runtime, graph);
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter, new ValueNode[]{errMsg}, returnType));
-                        invoke = graph.add(new InvokeNode(callTarget, 0, -1));
+                        invoke = graph.add(new InvokeNode(callTarget, 0));
                         List<ValueNode> stack = Collections.emptyList();
                         FrameState stateAfter = new FrameState(graph.method(), FrameState.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], false, false);
                         invoke.setStateAfter(graph.add(stateAfter));

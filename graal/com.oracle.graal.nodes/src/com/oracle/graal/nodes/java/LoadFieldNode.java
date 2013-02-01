@@ -41,8 +41,8 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
      * @param object the receiver object
      * @param field the compiler interface field
      */
-    public LoadFieldNode(ValueNode object, ResolvedJavaField field, long leafGraphId) {
-        super(createStamp(field), object, field, leafGraphId);
+    public LoadFieldNode(ValueNode object, ResolvedJavaField field) {
+        super(createStamp(field), object, field);
     }
 
     private static Stamp createStamp(ResolvedJavaField field) {

@@ -33,13 +33,11 @@ public abstract class SafeAccessNode extends FixedWithNextNode {
 
     @Input private ValueNode object;
     @Input private LocationNode location;
-    private final long leafGraphId;
 
-    public SafeAccessNode(ValueNode object, LocationNode location, Stamp stamp, long leafGraphId) {
+    public SafeAccessNode(ValueNode object, LocationNode location, Stamp stamp) {
         super(stamp);
         this.object = object;
         this.location = location;
-        this.leafGraphId = leafGraphId;
     }
 
     public ValueNode object() {
@@ -48,9 +46,5 @@ public abstract class SafeAccessNode extends FixedWithNextNode {
 
     public LocationNode location() {
         return location;
-    }
-
-    public long leafGraphId() {
-        return leafGraphId;
     }
 }
