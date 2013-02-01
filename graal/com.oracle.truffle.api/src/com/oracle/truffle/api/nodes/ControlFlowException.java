@@ -31,7 +31,7 @@ public class ControlFlowException extends Exception {
     private static final long serialVersionUID = 3676602078425211386L;
 
     /**
-     * Creates an exception thrown to enter a slow path.
+     * Creates an exception thrown to model control flow.
      */
     public ControlFlowException(String message, Throwable cause) {
         super(message, cause);
