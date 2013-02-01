@@ -23,10 +23,10 @@
 package com.oracle.graal.phases.util;
 
 /**
- * The {@code ArrayMap} class implements an efficient one-level map which is implemented
- * as an array. Note that because of the one-level array inside, this data structure performs best
- * when the range of integer keys is small and densely used. Note that the implementation can
- * handle arbitrary intervals, including negative numbers, up to intervals of size 2^31 - 1.
+ * The {@code ArrayMap} class implements an efficient one-level map which is implemented as an
+ * array. Note that because of the one-level array inside, this data structure performs best when
+ * the range of integer keys is small and densely used. Note that the implementation can handle
+ * arbitrary intervals, including negative numbers, up to intervals of size 2^31 - 1.
  */
 public class ArrayMap<T> {
 
@@ -43,8 +43,9 @@ public class ArrayMap<T> {
     }
 
     /**
-     * Constructs a new {@code ArrayMap} that initially covers the specified interval.
-     * Note that this map will automatically expand if necessary later.
+     * Constructs a new {@code ArrayMap} that initially covers the specified interval. Note that
+     * this map will automatically expand if necessary later.
+     * 
      * @param low the low index, inclusive
      * @param high the high index, exclusive
      */
@@ -55,6 +56,7 @@ public class ArrayMap<T> {
 
     /**
      * Puts a new value in the map at the specified index.
+     * 
      * @param i the index at which to store the value
      * @param value the value to store at the specified index
      */
@@ -79,9 +81,10 @@ public class ArrayMap<T> {
 
     /**
      * Gets the value at the specified index in the map.
+     * 
      * @param i the index
-     * @return the value at the specified index; {@code null} if there is no value at the specified index,
-     * or if the index is out of the currently stored range
+     * @return the value at the specified index; {@code null} if there is no value at the specified
+     *         index, or if the index is out of the currently stored range
      */
     public T get(int i) {
         int index = i - low;

@@ -28,15 +28,14 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
- * The {@code FrameState} class encapsulates the frame state (i.e. local variables and
- * operand stack) at a particular point in the abstract interpretation.
+ * The {@code FrameState} class encapsulates the frame state (i.e. local variables and operand
+ * stack) at a particular point in the abstract interpretation.
  */
 @NodeInfo(nameTemplate = "FrameState@{p#method/s}:{p#bci}")
-public final class FrameState extends VirtualState implements Node.IterableNodeType, LIRLowerable {
+public final class FrameState extends VirtualState implements Node.IterableNodeType {
 
     protected final int localsSize;
 
@@ -52,22 +51,20 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
     public static final int UNKNOWN_BCI = -4;
 
     /**
-     * When a node whose frame state has this BCI value is inlined, its frame state
-     * will be replaced with the frame state before the inlined invoke node.
+     * When a node whose frame state has this BCI value is inlined, its frame state will be replaced
+     * with the frame state before the inlined invoke node.
      */
     public static final int BEFORE_BCI = -1;
 
     /**
-     * When a node whose frame state has this BCI value is inlined, its frame state
-     * will be replaced with the frame state {@linkplain Invoke#stateAfter() after}
-     * the inlined invoke node.
+     * When a node whose frame state has this BCI value is inlined, its frame state will be replaced
+     * with the frame state {@linkplain Invoke#stateAfter() after} the inlined invoke node.
      */
     public static final int AFTER_BCI = -2;
 
     /**
-     * When a node whose frame state has this BCI value is inlined, its frame state
-     * will be replaced with the frame state at the exception edge of the inlined
-     * invoke node.
+     * When a node whose frame state has this BCI value is inlined, its frame state will be replaced
+     * with the frame state at the exception edge of the inlined invoke node.
      */
     public static final int AFTER_EXCEPTION_BCI = -3;
 
@@ -85,14 +82,17 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
     private final ResolvedJavaMethod method;
 
     /**
-     * Creates a {@code FrameState} for the given scope and maximum number of stack and local variables.
-     *
+     * Creates a {@code FrameState} for the given scope and maximum number of stack and local
+     * variables.
+     * 
      * @param method the method for this frame state
      * @param bci the bytecode index of the frame state
      * @param stackSize size of the stack
-     * @param rethrowException if true the VM should re-throw the exception on top of the stack when deopt'ing using this framestate
+     * @param rethrowException if true the VM should re-throw the exception on top of the stack when
+     *            deopt'ing using this framestate
      */
-    public FrameState(ResolvedJavaMethod method, int bci, List<ValueNode> values, int localsSize, int stackSize, boolean rethrowException, boolean duringCall, List<EscapeObjectState> virtualObjectMappings) {
+    public FrameState(ResolvedJavaMethod method, int bci, List<ValueNode> values, int localsSize, int stackSize, boolean rethrowException, boolean duringCall,
+                    List<EscapeObjectState> virtualObjectMappings) {
         assert stackSize >= 0;
         assert (bci >= 0 && method != null) || (bci < 0 && method == null && values.isEmpty());
         this.method = method;
@@ -108,10 +108,11 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
 
     /**
      * Simple constructor used to create marker FrameStates.
+     * 
      * @param bci marker bci, needs to be < 0
      */
     public FrameState(int bci) {
-        this(null, bci, Collections.<ValueNode>emptyList(), 0, 0, false, false, Collections.<EscapeObjectState>emptyList());
+        this(null, bci, Collections.<ValueNode> emptyList(), 0, 0, false, false, Collections.<EscapeObjectState> emptyList());
     }
 
     public FrameState(ResolvedJavaMethod method, int bci, ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks, boolean rethrowException, boolean duringCall) {
@@ -202,8 +203,8 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
     }
 
     /**
-     * Duplicates a FrameState, along with a deep copy of all connected VirtualState (outer FrameStates,
-     * VirtualObjectStates, ...).
+     * Duplicates a FrameState, along with a deep copy of all connected VirtualState (outer
+     * FrameStates, VirtualObjectStates, ...).
      */
     @Override
     public FrameState duplicateWithVirtualState() {
@@ -221,9 +222,9 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
     }
 
     /**
-     * Creates a copy of this frame state with one stack element of type popKind popped from the stack and the
-     * values in pushedValues pushed on the stack. The pushedValues are expected to be in slot encoding: a long
-     * or double is followed by a null slot.
+     * Creates a copy of this frame state with one stack element of type popKind popped from the
+     * stack and the values in pushedValues pushed on the stack. The pushedValues are expected to be
+     * in slot encoding: a long or double is followed by a null slot.
      */
     public FrameState duplicateModified(int newBci, boolean newRethrowException, Kind popKind, ValueNode... pushedValues) {
         ArrayList<ValueNode> copy = new ArrayList<>(values.subList(0, localsSize + stackSize));
@@ -267,7 +268,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
 
     /**
      * Gets the value in the local variables at the specified index.
-     *
+     * 
      * @param i the index into the locals
      * @return the instruction that produced the value for the specified local
      */
@@ -278,7 +279,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
 
     /**
      * Get the value on the stack at the specified stack index.
-     *
+     * 
      * @param i the index into the stack, with {@code 0} being the bottom of the stack
      * @return the instruction at the specified position in the stack
      */
@@ -289,7 +290,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
 
     /**
      * Get the monitor owner at the specified index.
-     *
+     * 
      * @param i the index into the list of locked monitors.
      * @return the lock owner at the given index.
      */
@@ -300,11 +301,6 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
 
     public NodeIterable<FrameState> innerFrameStates() {
         return usages().filter(FrameState.class);
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        // Nothing to do, frame states are processed as part of the handling of StateSplit nodes.
     }
 
     private static String toString(FrameState frameState) {
@@ -346,7 +342,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> properties = super.getDebugProperties(map);
         if (method != null) {
-            //properties.put("method", MetaUtil.format("%H.%n(%p):%r", method));
+            // properties.put("method", MetaUtil.format("%H.%n(%p):%r", method));
             StackTraceElement ste = method.asStackTraceElement(bci);
             if (ste.getFileName() != null && ste.getLineNumber() >= 0) {
                 properties.put("sourceFile", ste.getFileName());
@@ -367,7 +363,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
     }
 
     @Override
-    public void applyToNonVirtual(NodeClosure< ? super ValueNode> closure) {
+    public void applyToNonVirtual(NodeClosure<? super ValueNode> closure) {
         for (ValueNode value : values.nonNull()) {
             closure.apply(this, value);
         }

@@ -32,14 +32,15 @@ import com.oracle.graal.api.meta.*;
 public interface CodeCacheProvider extends MetaAccessProvider {
 
     /**
-     * Adds the given compilation result as an implementation of the given method without making it the default
-     * implementation.
-     *
+     * Adds the given compilation result as an implementation of the given method without making it
+     * the default implementation.
+     * 
      * @param method a method to which the executable code is begin added
      * @param compResult the compilation result to be added
-     * @param info the object into which details of the installed code will be written. Ignored if null, otherwise the
-     *            info is written to index 0 of this array.
-     * @return a reference to the compiled and ready-to-run code or null if the code installation failed
+     * @param info the object into which details of the installed code will be written. Ignored if
+     *            null, otherwise the info is written to index 0 of this array.
+     * @return a reference to the compiled and ready-to-run code or null if the code installation
+     *         failed
      */
     InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, CodeInfo[] info);
 
@@ -50,30 +51,31 @@ public interface CodeCacheProvider extends MetaAccessProvider {
 
     /**
      * Returns a disassembly of the given installed code.
-     *
+     * 
      * @param code the code that should be disassembled
-     * @return a disassembly. This will be of length 0 if the runtime does not support disassembling.
+     * @return a disassembly. This will be of length 0 if the runtime does not support
+     *         disassembling.
      */
     String disassemble(CodeInfo code, CompilationResult tm);
 
     /**
      * Gets the register configuration to use when compiling a given method.
-     *
+     * 
      * @param method the top level method of a compilation
      */
     RegisterConfig lookupRegisterConfig(ResolvedJavaMethod method);
 
     /**
      * Custom area on the stack of each compiled method that the VM can use for its own purposes.
-     *
+     * 
      * @return the size of the custom area in bytes
      */
     int getCustomStackAreaSize();
 
     /**
-     * Minimum size of the stack area reserved for outgoing parameters. This area is reserved in all cases, even when
-     * the compiled method has no regular call instructions.
-     *
+     * Minimum size of the stack area reserved for outgoing parameters. This area is reserved in all
+     * cases, even when the compiled method has no regular call instructions.
+     * 
      * @return the minimum size of the outgoing parameter area in bytes
      */
     int getMinimumOutgoingSize();
@@ -90,15 +92,15 @@ public interface CodeCacheProvider extends MetaAccessProvider {
 
     /**
      * Encodes a deoptimization action and a deoptimization reason in an integer value.
-     *
+     * 
      * @return the encoded value as an integer
      */
     int encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason);
 
     /**
-     * Determines if a {@link DataPatch} should be created for a given {@linkplain Constant#getPrimitiveAnnotation() annotated}
-     * primitive constant that part of a {@link CompilationResult}. A data patch is always
-     * created for an object constant.
+     * Determines if a {@link DataPatch} should be created for a given
+     * {@linkplain Constant#getPrimitiveAnnotation() annotated} primitive constant that part of a
+     * {@link CompilationResult}. A data patch is always created for an object constant.
      */
     boolean needsDataPatch(Constant constant);
 }

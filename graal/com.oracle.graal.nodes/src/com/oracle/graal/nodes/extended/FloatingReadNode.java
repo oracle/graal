@@ -30,8 +30,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * A floating read of a value from memory specified in terms of an object base and an object relative location.
- * This node does not null check the object.
+ * A floating read of a value from memory specified in terms of an object base and an object
+ * relative location. This node does not null check the object.
  */
 public final class FloatingReadNode extends FloatingAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
 

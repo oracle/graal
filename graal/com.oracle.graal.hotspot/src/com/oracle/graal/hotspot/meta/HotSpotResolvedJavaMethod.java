@@ -50,8 +50,8 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     final long metaspaceMethod;
 
     private final HotSpotResolvedObjectType holder;
-    private /*final*/ int codeSize;
-    private /*final*/ int exceptionHandlerCount;
+    private/* final */int codeSize;
+    private/* final */int exceptionHandlerCount;
     private Signature signature;
     private Boolean hasBalancedMonitors;
     private Map<Object, Object> compilerStorage;
@@ -130,7 +130,8 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public int getMaxLocals() {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-        return unsafe.getShort(metaspaceMethod + config.methodMaxLocalsOffset) & 0xFFFF;
+        long metaspaceConstMethod = unsafe.getLong(metaspaceMethod + config.methodConstMethodOffset);
+        return unsafe.getShort(metaspaceConstMethod + config.methodMaxLocalsOffset) & 0xFFFF;
     }
 
     @Override
@@ -209,7 +210,8 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         }
 
         if (methodData == null || (!methodData.hasNormalData() && !methodData.hasExtraData())) {
-            // Be optimistic and return false for exceptionSeen. A methodDataOop is allocated in case of a deoptimization.
+            // Be optimistic and return false for exceptionSeen. A methodDataOop is allocated in
+            // case of a deoptimization.
             info = DefaultProfilingInfo.get(ExceptionSeen.FALSE);
         } else {
             info = new HotSpotProfilingInfo(methodData, codeSize);
@@ -263,7 +265,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     public Class<?>[] signatureToTypes() {
         Signature sig = getSignature();
         int count = sig.getParameterCount(false);
-        Class< ? >[] result = new Class< ? >[count];
+        Class<?>[] result = new Class<?>[count];
         for (int i = 0; i < result.length; ++i) {
             result[i] = ((HotSpotResolvedJavaType) sig.getParameterType(i, holder).resolve(holder)).mirror();
         }
@@ -307,8 +309,9 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     /**
-     * Returns the offset of this method into the v-table.
-     * If the holder is not initialized, returns -1
+     * Returns the offset of this method into the v-table. If the holder is not initialized, returns
+     * -1
+     * 
      * @return the offset of this method into the v-table
      */
     public int vtableEntryOffset() {

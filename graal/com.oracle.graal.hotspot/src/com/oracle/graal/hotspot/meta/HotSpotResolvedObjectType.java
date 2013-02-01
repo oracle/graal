@@ -42,14 +42,16 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     private static final long serialVersionUID = 3481514353553840471L;
 
     /**
-     * Value for the {@code sizeOrSpecies} parameter in {@link HotSpotResolvedObjectType#HotSpotResolvedObjectType}
-     * denoting that the new type represents an interface class.
+     * Value for the {@code sizeOrSpecies} parameter in
+     * {@link HotSpotResolvedObjectType#HotSpotResolvedObjectType} denoting that the new type
+     * represents an interface class.
      */
     public static final int INTERFACE_SPECIES_VALUE = Integer.MIN_VALUE;
 
     /**
-     * Value for the {@code sizeOrSpecies} parameter in {@link HotSpotResolvedObjectType#HotSpotResolvedObjectType}
-     * denoting that the new type represents an array class.
+     * Value for the {@code sizeOrSpecies} parameter in
+     * {@link HotSpotResolvedObjectType#HotSpotResolvedObjectType} denoting that the new type
+     * represents an array class.
      */
     public static final int ARRAY_SPECIES_VALUE = Integer.MAX_VALUE;
 
@@ -63,8 +65,9 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     private final boolean hasFinalizableSubclass;
 
     /**
-     * The instance size (in bytes) for an instance type, {@link HotSpotResolvedObjectType#INTERFACE_SPECIES_VALUE} denoting
-     * an interface type or {@link HotSpotResolvedObjectType#ARRAY_SPECIES_VALUE} denoting an array type.
+     * The instance size (in bytes) for an instance type,
+     * {@link HotSpotResolvedObjectType#INTERFACE_SPECIES_VALUE} denoting an interface type or
+     * {@link HotSpotResolvedObjectType#ARRAY_SPECIES_VALUE} denoting an array type.
      */
     private final int sizeOrSpecies;
 
@@ -78,7 +81,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     /**
      * Gets the Graal mirror from a HotSpot metaspace Klass native object.
-     *
+     * 
      * @param metaspaceKlass a metaspace Klass object boxed in a {@link Constant}
      * @return the {@link ResolvedJavaType} corresponding to {@code klassConstant}
      */
@@ -89,7 +92,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     /**
      * Gets the Graal mirror from a HotSpot metaspace Klass native object.
-     *
+     * 
      * @param metaspaceKlass a metaspace Klass object
      * @return the {@link ResolvedJavaType} corresponding to {@code metaspaceKlass}
      */
@@ -102,7 +105,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     /**
      * Gets the Graal mirror from a {@link Class} object.
-     *
+     * 
      * @return the {@link HotSpotResolvedObjectType} corresponding to {@code javaClass}
      */
     public static ResolvedJavaType fromClass(Class javaClass) {
@@ -117,14 +120,11 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     /**
      * @param hasFinalizableSubclass
-     * @param sizeOrSpecies the size of an instance of the type, or {@link HotSpotResolvedObjectType#INTERFACE_SPECIES_VALUE} or {@link HotSpotResolvedObjectType#ARRAY_SPECIES_VALUE}
+     * @param sizeOrSpecies the size of an instance of the type, or
+     *            {@link HotSpotResolvedObjectType#INTERFACE_SPECIES_VALUE} or
+     *            {@link HotSpotResolvedObjectType#ARRAY_SPECIES_VALUE}
      */
-    public HotSpotResolvedObjectType(long metaspaceKlass,
-                    String name,
-                    String simpleName,
-                    Class javaMirror,
-                    boolean hasFinalizableSubclass,
-                    int sizeOrSpecies) {
+    public HotSpotResolvedObjectType(long metaspaceKlass, String name, String simpleName, Class javaMirror, boolean hasFinalizableSubclass, int sizeOrSpecies) {
         super(name);
         this.metaspaceKlass = metaspaceKlass;
         this.javaMirror = javaMirror;
@@ -134,7 +134,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         assert name.charAt(0) != '[' || sizeOrSpecies == ARRAY_SPECIES_VALUE : name + " " + Long.toHexString(sizeOrSpecies);
         assert javaMirror.isArray() == isArray();
         assert javaMirror.isInterface() == isInterface();
-        //System.out.println("0x" + Long.toHexString(metaspaceKlass) + ": " + name);
+        // System.out.println("0x" + Long.toHexString(metaspaceKlass) + ": " + name);
     }
 
     @Override
@@ -225,14 +225,14 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             HotSpotResolvedObjectType t1 = this;
             HotSpotResolvedObjectType t2 = (HotSpotResolvedObjectType) otherType;
             while (true) {
-              if (t1.isAssignableFrom(t2)) {
-                  return t1;
-              }
-              if (t2.isAssignableFrom(t1)) {
-                  return t2;
-              }
-              t1 = t1.getSupertype();
-              t2 = t2.getSupertype();
+                if (t1.isAssignableFrom(t2)) {
+                    return t1;
+                }
+                if (t2.isAssignableFrom(t1)) {
+                    return t2;
+                }
+                t1 = t1.getSupertype();
+                t2 = t2.getSupertype();
             }
         }
     }
@@ -346,9 +346,9 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     /**
-     * Gets the instance size of this type. If an instance of this type cannot
-     * be fast path allocated, then the returned value is negative (its absolute
-     * value gives the size). Must not be called if this is an array or interface type.
+     * Gets the instance size of this type. If an instance of this type cannot be fast path
+     * allocated, then the returned value is negative (its absolute value gives the size). Must not
+     * be called if this is an array or interface type.
      */
     public int instanceSize() {
         assert !isArray();
@@ -375,7 +375,8 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
         long id = offset + ((long) flags << 32);
 
-        // (thomaswue) Must cache the fields, because the local load elimination only works if the objects from two field lookups are identical.
+        // (thomaswue) Must cache the fields, because the local load elimination only works if the
+        // objects from two field lookups are identical.
         if (fieldCache == null) {
             fieldCache = new HashMap<>(8);
         } else {
@@ -399,6 +400,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     private static class OffsetComparator implements Comparator<HotSpotResolvedJavaField> {
+
         @Override
         public int compare(HotSpotResolvedJavaField o1, HotSpotResolvedJavaField o2) {
             return o1.offset() - o2.offset();
@@ -447,7 +449,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public String getSourceFileName() {
-       return HotSpotGraalRuntime.getInstance().getCompilerToVM().getFileName(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getFileName(this);
     }
 
     @Override

@@ -28,11 +28,10 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.virtual.*;
 
 /**
- * Load of a value from a location specified as an offset relative to an object.
- * No null check is performed before the load.
+ * Load of a value from a location specified as an offset relative to an object. No null check is
+ * performed before the load.
  */
 public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable, Canonicalizable {
 
@@ -55,19 +54,14 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        VirtualObjectNode virtual = tool.getVirtualState(object());
-        if (virtual != null) {
+        State state = tool.getObjectState(object());
+        if (state != null && state.getState() == EscapeState.Virtual) {
             ValueNode indexValue = tool.getReplacedValue(offset());
             if (indexValue.isConstant()) {
-                int fieldIndex = virtual.fieldIndexForOffset(indexValue.asConstant().asLong());
-                if (fieldIndex != -1) {
-                    ValueNode result = tool.getVirtualEntry(virtual, fieldIndex);
-                    VirtualObjectNode virtualResult = tool.getVirtualState(result);
-                    if (virtualResult != null) {
-                        tool.replaceWithVirtual(virtualResult);
-                    } else {
-                        tool.replaceWithValue(result);
-                    }
+                long offset = indexValue.asConstant().asLong() + displacement();
+                int entryIndex = state.getVirtualObject().entryIndexForOffset(offset);
+                if (entryIndex != -1 && state.getVirtualObject().entryKind(entryIndex) == accessKind()) {
+                    tool.replaceWith(state.getEntry(entryIndex));
                 }
             }
         }
@@ -83,7 +77,9 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
                     Graph graph = this.graph();
                     return graph.add(new UnsafeLoadNode(this.stamp(), object(), intDisplacement, graph.unique(ConstantNode.forInt(0, graph)), accessKind()));
                 }
-            } else if (object().stamp() instanceof ObjectStamp) { // TODO (gd) remove that once UnsafeAccess only have an object base
+            } else if (object().stamp() instanceof ObjectStamp) { // TODO (gd) remove that once
+                                                                  // UnsafeAccess only have an
+                                                                  // object base
                 ObjectStamp receiverStamp = object().objectStamp();
                 if (receiverStamp.nonNull()) {
                     ResolvedJavaType receiverType = receiverStamp.type();

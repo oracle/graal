@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.debug;
 
 import com.oracle.graal.api.meta.*;
 
-
 public class LineNumberTableImpl implements LineNumberTable {
+
     private final int[] lineNumbers;
     private final int[] bci;
 

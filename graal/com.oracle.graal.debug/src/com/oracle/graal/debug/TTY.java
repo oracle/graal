@@ -28,8 +28,9 @@ import java.util.*;
 import java.util.regex.*;
 
 /**
- * A collection of static methods for printing debug and informational output to a global {@link LogStream}.
- * The output can be (temporarily) suppressed per thread through use of a {@linkplain Filter filter}.
+ * A collection of static methods for printing debug and informational output to a global
+ * {@link LogStream}. The output can be (temporarily) suppressed per thread through use of a
+ * {@linkplain Filter filter}.
  */
 public class TTY {
 
@@ -37,20 +38,23 @@ public class TTY {
      * Support for thread-local suppression of {@link TTY}.
      */
     public static class Filter {
+
         private LogStream previous;
         private final Thread thread = Thread.currentThread();
 
         /**
-         * Creates an object that will suppress {@link TTY} for the current thread if the given filter does not
-         * match the given object. To revert the suppression state to how it was
+         * Creates an object that will suppress {@link TTY} for the current thread if the given
+         * filter does not match the given object. To revert the suppression state to how it was
          * before this call, the {@link #remove()} method must be called on the suppression object.
-         *
-         * @param filter the pattern for matching. If {@code null}, then the match is successful. If it starts with "~",
-         *            then a regular expression {@linkplain Pattern#matches(String, CharSequence) match} is performed
-         *            where the regular expression is specified by {@code filter} without the "~" prefix. Otherwise, a
-         *            simple {@linkplain String#contains(CharSequence) substring} match is performed where {@code
-         *            filter} is the substring used.
-         * @param object an object whose {@linkplain Object#toString() string} value is matched against {@code filter}
+         * 
+         * @param filter the pattern for matching. If {@code null}, then the match is successful. If
+         *            it starts with "~", then a regular expression
+         *            {@linkplain Pattern#matches(String, CharSequence) match} is performed where
+         *            the regular expression is specified by {@code filter} without the "~" prefix.
+         *            Otherwise, a simple {@linkplain String#contains(CharSequence) substring} match
+         *            is performed where {@code filter} is the substring used.
+         * @param object an object whose {@linkplain Object#toString() string} value is matched
+         *            against {@code filter}
          */
         public Filter(String filter, Object object) {
             boolean suppressed = false;
@@ -69,9 +73,9 @@ public class TTY {
         }
 
         /**
-         * Creates an object that will suppress {@link TTY} for the current thread.
-         * To revert the suppression state to how it was before this call, the
-         * {@link #remove()} method must be called on this filter object.
+         * Creates an object that will suppress {@link TTY} for the current thread. To revert the
+         * suppression state to how it was before this call, the {@link #remove()} method must be
+         * called on this filter object.
          */
         public Filter() {
             previous = out();
@@ -79,7 +83,8 @@ public class TTY {
         }
 
         /**
-         * Reverts the suppression state of {@link TTY} to how it was before this object was constructed.
+         * Reverts the suppression state of {@link TTY} to how it was before this object was
+         * constructed.
          */
         public void remove() {
             assert thread == Thread.currentThread();
@@ -104,6 +109,7 @@ public class TTY {
     }
 
     private static final ThreadLocal<LogStream> out = new ThreadLocal<LogStream>() {
+
         @Override
         protected LogStream initialValue() {
             return createLog();
@@ -116,8 +122,9 @@ public class TTY {
 
     /**
      * Gets the thread-local log stream to which the static methods of this class send their output.
-     * This will either be a global log stream or the global {@linkplain LogStream#SINK sink} depending
-     * on whether any suppression {@linkplain Filter filters} are in effect for the current thread.
+     * This will either be a global log stream or the global {@linkplain LogStream#SINK sink}
+     * depending on whether any suppression {@linkplain Filter filters} are in effect for the
+     * current thread.
      */
     public static LogStream out() {
         return out.get();

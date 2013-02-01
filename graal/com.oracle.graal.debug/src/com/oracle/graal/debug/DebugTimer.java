@@ -25,5 +25,6 @@ package com.oracle.graal.debug;
 import com.oracle.graal.debug.internal.*;
 
 public interface DebugTimer {
+
     TimerCloseable start();
 }

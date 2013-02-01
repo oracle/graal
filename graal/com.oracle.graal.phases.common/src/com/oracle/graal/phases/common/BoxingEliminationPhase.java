@@ -80,7 +80,7 @@ public class BoxingEliminationPhase extends Phase {
                     StructuredGraph graph = (StructuredGraph) phiNode.graph();
                     result = graph.add(new PhiNode(kind, phiNode.merge()));
                     phiReplacements.put(phiNode, result);
-                    virtualizeUsages(phiNode, result, type);
+                    virtualizeUsages(phiNode, result, type, kind);
                     int i = 0;
                     for (ValueNode n : phiNode.values()) {
                         ValueNode unboxedValue = unboxedValue(n, kind, phiReplacements);
@@ -116,7 +116,7 @@ public class BoxingEliminationPhase extends Phase {
     private void tryEliminate(BoxNode boxNode) {
 
         assert boxNode.objectStamp().isExactType();
-        virtualizeUsages(boxNode, boxNode.source(), boxNode.objectStamp().type());
+        virtualizeUsages(boxNode, boxNode.source(), boxNode.objectStamp().type(), boxNode.getSourceKind());
 
         if (boxNode.usages().filter(isNotA(VirtualState.class)).isNotEmpty()) {
             // Elimination failed, because boxing object escapes.
@@ -130,12 +130,12 @@ public class BoxingEliminationPhase extends Phase {
         ((StructuredGraph) boxNode.graph()).removeFixed(boxNode);
     }
 
-    private void virtualizeUsages(ValueNode boxNode, ValueNode replacement, ResolvedJavaType exactType) {
+    private void virtualizeUsages(ValueNode boxNode, ValueNode replacement, ResolvedJavaType exactType, Kind sourceKind) {
         ValueNode virtualValueNode = null;
         VirtualObjectNode virtualObjectNode = null;
         for (Node n : boxNode.usages().filter(NodePredicates.isA(VirtualState.class)).snapshot()) {
             if (virtualValueNode == null) {
-                virtualObjectNode = n.graph().unique(new BoxedVirtualObjectNode(virtualIds++, exactType, replacement));
+                virtualObjectNode = n.graph().unique(new BoxedVirtualObjectNode(virtualIds++, exactType, sourceKind, replacement));
             }
             n.replaceFirstInput(boxNode, virtualObjectNode);
         }

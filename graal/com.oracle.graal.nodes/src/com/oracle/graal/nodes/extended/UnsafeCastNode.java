@@ -33,8 +33,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
-    @Input
-    private ValueNode object;
+    @Input private ValueNode object;
 
     public ValueNode object() {
         return object;
@@ -55,7 +54,8 @@ public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIR
             return false;
         }
         if (object().objectStamp().alwaysNull() && objectStamp().nonNull()) {
-            // a null value flowing into a nonNull UnsafeCastNode should be guarded by a type/isNull guard, but the
+            // a null value flowing into a nonNull UnsafeCastNode should be guarded by a type/isNull
+            // guard, but the
             // compiler might see this situation before the branch is deleted
             return false;
         }
@@ -96,7 +96,8 @@ public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIR
             generator.emitMove(generator.operand(object), result);
             generator.setResult(this, result);
         } else {
-            // The LIR only cares about the kind of an operand, not the actual type of an object. So we do not have to
+            // The LIR only cares about the kind of an operand, not the actual type of an object. So
+            // we do not have to
             // introduce a new operand when the kind is the same.
             generator.setResult(this, generator.operand(object));
         }

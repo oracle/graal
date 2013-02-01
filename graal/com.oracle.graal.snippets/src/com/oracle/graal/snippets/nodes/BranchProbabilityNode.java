@@ -28,11 +28,23 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
- * Instances of this node class will look for a preceding if node and put the given probability into the if node's taken
- * probability. Then the branch probability node will be removed. This node is intended primarily for snippets, so that
- * they can define their fast and slow paths.
+ * Instances of this node class will look for a preceding if node and put the given probability into
+ * the if node's taken probability. Then the branch probability node will be removed. This node is
+ * intended primarily for snippets, so that they can define their fast and slow paths.
  */
 public class BranchProbabilityNode extends FixedWithNextNode implements Simplifiable {
+
+    public static final double LIKELY_PROBABILITY = 0.6;
+    public static final double NOT_LIKELY_PROBABILITY = 1 - LIKELY_PROBABILITY;
+
+    public static final double FREQUENT_PROBABILITY = 0.9;
+    public static final double NOT_FREQUENT_PROBABILITY = 1 - FREQUENT_PROBABILITY;
+
+    public static final double FAST_PATH_PROBABILITY = 0.99;
+    public static final double SLOW_PATH_PROBABILITY = 1 - FAST_PATH_PROBABILITY;
+
+    public static final double NOT_DEOPT_PATH_PROBABILITY = 0.999;
+    public static final double DEOPT_PATH_PROBABILITY = 1 - NOT_DEOPT_PATH_PROBABILITY;
 
     private final double probability;
 

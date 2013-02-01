@@ -25,7 +25,6 @@ package com.oracle.graal.nodes.spi;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
-
 public interface GraphCache {
 
     void put(StructuredGraph graph);

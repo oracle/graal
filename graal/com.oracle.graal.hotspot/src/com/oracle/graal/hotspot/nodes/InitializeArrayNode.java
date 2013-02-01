@@ -28,9 +28,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Initializes the header and body of an uninitialized array cell.
- * This node calls out to a stub to do both the allocation and formatting
- * if the memory address it is given is zero/null (e.g. due to
+ * Initializes the header and body of an uninitialized array cell. This node calls out to a stub to
+ * do both the allocation and formatting if the memory address it is given is zero/null (e.g. due to
  * {@linkplain TLABAllocateNode TLAB allocation} failing).
  */
 public final class InitializeArrayNode extends FixedWithNextNode implements Lowerable, ArrayLengthProvider {
@@ -86,5 +85,6 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
     }
 
     @NodeIntrinsic
-    public static native Object initialize(Object memory, int length, int allocationSize, @ConstantNodeParameter ResolvedJavaType type, @ConstantNodeParameter boolean fillContents, @ConstantNodeParameter boolean locked);
+    public static native Object initialize(Object memory, int length, int allocationSize, @ConstantNodeParameter ResolvedJavaType type, @ConstantNodeParameter boolean fillContents,
+                    @ConstantNodeParameter boolean locked);
 }

@@ -28,7 +28,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
@@ -41,7 +40,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
 
     /**
      * Constructs a new InstanceOfNode.
-     *
+     * 
      * @param type the target type of the instanceof check
      * @param object the object being tested by the instanceof
      */
@@ -73,12 +72,14 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
                     // the instanceOf matches, so return true
                     return ConstantNode.forBoolean(true, graph());
                 } else {
-                    // the instanceof matches if the object is non-null, so return true depending on the null-ness.
+                    // the instanceof matches if the object is non-null, so return true depending on
+                    // the null-ness.
                     negateUsages();
                     return graph().unique(new IsNullNode(object()));
                 }
             } else {
-                // since this type check failed for an exact type we know that it can never succeed at run time.
+                // since this type check failed for an exact type we know that it can never succeed
+                // at run time.
                 // we also don't care about null values, since they will also make the check fail.
                 return ConstantNode.forBoolean(false, graph());
             }
@@ -90,12 +91,14 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
                     // the instanceOf matches, so return true
                     return ConstantNode.forBoolean(true, graph());
                 } else {
-                    // the instanceof matches if the object is non-null, so return true depending on the null-ness.
+                    // the instanceof matches if the object is non-null, so return true depending on
+                    // the null-ness.
                     negateUsages();
                     return graph().unique(new IsNullNode(object()));
                 }
             } else {
-                // since the subtype comparison was only performed on a declared type we don't really know if it might be true at run time...
+                // since the subtype comparison was only performed on a declared type we don't
+                // really know if it might be true at run time...
             }
         }
         if (object().objectStamp().alwaysNull()) {
@@ -129,9 +132,9 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        VirtualObjectNode virtual = tool.getVirtualState(object());
-        if (virtual != null) {
-            tool.replaceWithValue(ConstantNode.forBoolean(type().isAssignableFrom(virtual.type()), graph()));
+        State state = tool.getObjectState(object);
+        if (state != null) {
+            tool.replaceWithValue(ConstantNode.forBoolean(type().isAssignableFrom(state.getVirtualObject().type()), graph()));
         }
     }
 }

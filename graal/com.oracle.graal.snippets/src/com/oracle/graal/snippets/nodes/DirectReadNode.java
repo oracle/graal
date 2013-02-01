@@ -30,10 +30,11 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * A special purpose store node that differs from {@link UnsafeStoreNode} in that
- * it is not a {@link StateSplit} and takes a computed address instead of an object.
+ * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a
+ * {@link StateSplit} and takes a computed address instead of an object.
  */
 public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
+
     @Input private ValueNode address;
     private final Kind readKind;
 

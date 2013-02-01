@@ -27,8 +27,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code Local} instruction is a placeholder for an incoming argument
- * to a function call.
+ * The {@code Local} instruction is a placeholder for an incoming argument to a function call.
  */
 @NodeInfo(nameTemplate = "Local({p#index})")
 public final class LocalNode extends FloatingNode implements Node.IterableNodeType {
@@ -42,6 +41,7 @@ public final class LocalNode extends FloatingNode implements Node.IterableNodeTy
 
     /**
      * Gets the index of this local in the array of parameters. This is NOT the JVM local index.
+     * 
      * @return the index
      */
     public int index() {

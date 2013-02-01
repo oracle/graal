@@ -74,7 +74,7 @@ public final class IntegerSubNode extends IntegerArithmeticNode implements Canon
             if (c == 0) {
                 return graph().unique(new NegateNode(y()));
             }
-           return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
+            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
         }
         return this;
     }

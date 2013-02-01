@@ -31,8 +31,8 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-
 public class ReverseBytesNode extends FloatingNode implements LIRGenLowerable, Canonicalizable {
+
     @Input private ValueNode value;
 
     public ReverseBytesNode(ValueNode value) {

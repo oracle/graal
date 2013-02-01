@@ -54,7 +54,7 @@ class CFGPrinter extends CompilationPrinter {
 
     /**
      * Creates a control flow graph printer.
-     *
+     * 
      * @param out where the output generated via this printer shown be written
      */
     public CFGPrinter(OutputStream out) {
@@ -63,9 +63,10 @@ class CFGPrinter extends CompilationPrinter {
 
     /**
      * Prints the control flow graph denoted by a given block map.
-     *
+     * 
      * @param label A label describing the compilation phase that produced the control flow graph.
-     * @param blockMap A data structure describing the blocks in a method and how they are connected.
+     * @param blockMap A data structure describing the blocks in a method and how they are
+     *            connected.
      */
     public void printCFG(String label, BciBlockMapping blockMap) {
         begin("cfg");
@@ -113,7 +114,6 @@ class CFGPrinter extends CompilationPrinter {
         out.print("loop_depth ").println(Long.bitCount(block.loops));
     }
 
-
     private NodeMap<Block> latestScheduling;
     private NodeBitMap printedNodes;
 
@@ -123,7 +123,7 @@ class CFGPrinter extends CompilationPrinter {
 
     /**
      * Prints the specified list of blocks.
-     *
+     * 
      * @param label A label describing the compilation phase that produced the control flow graph.
      * @param blocks The list of blocks to be printed.
      */
@@ -241,7 +241,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println("HIR");
         out.disableIndentation();
 
-        if (block.getPredecessors().size() == 0) {
+        if (block.getPredecessorCount() == 0) {
             // Currently method parameters are not in the schedule, so print them separately here.
             for (ValueNode param : block.getBeginNode().graph().getNodes(LocalNode.class)) {
                 printNode(param, false);
@@ -421,7 +421,7 @@ class CFGPrinter extends CompilationPrinter {
 
     /**
      * Prints the LIR for each instruction in a given block.
-     *
+     * 
      * @param block the block to print
      */
     private void printLIR(Block block) {
@@ -442,6 +442,7 @@ class CFGPrinter extends CompilationPrinter {
 
             final StringBuilder stateString = new StringBuilder();
             inst.forEachState(new LIRInstruction.StateProcedure() {
+
                 @Override
                 protected void doState(LIRFrameState state) {
                     if (state.hasDebugInfo()) {
@@ -486,15 +487,17 @@ class CFGPrinter extends CompilationPrinter {
 
     private String blockToString(Block block) {
         if (lir == null) {
-            // During all the front-end phases, the block schedule is built only for the debug output.
-            // Therefore, the block numbers would be different for every CFG printed -> use the id of the first instruction.
+            // During all the front-end phases, the block schedule is built only for the debug
+            // output.
+            // Therefore, the block numbers would be different for every CFG printed -> use the id
+            // of the first instruction.
             return "B" + block.getBeginNode().toString(Verbosity.Id);
         } else {
-            // LIR instructions contain references to blocks and these blocks are printed as the blockID -> use the blockID.
+            // LIR instructions contain references to blocks and these blocks are printed as the
+            // blockID -> use the blockID.
             return "B" + block.getId();
         }
     }
-
 
     public void printIntervals(String label, Interval[] intervals) {
         begin("intervals");
@@ -543,4 +546,3 @@ class CFGPrinter extends CompilationPrinter {
         out.println();
     }
 }
-

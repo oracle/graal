@@ -31,8 +31,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class UnsafeArrayCastNode extends UnsafeCastNode implements ArrayLengthProvider {
 
-    @Input
-    private ValueNode length;
+    @Input private ValueNode length;
 
     public ValueNode length() {
         return length;

@@ -57,8 +57,9 @@ public abstract class Backend {
 
     /**
      * Emits code to do stack overflow checking.
-     *
-     * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate the current frame
+     * 
+     * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate
+     *            the current frame
      */
     protected static void emitStackOverflowCheck(TargetMethodAssembler tasm, boolean afterFrameInit) {
         if (GraalOptions.StackShadowPages > 0) {
@@ -80,10 +81,10 @@ public abstract class Backend {
 
     /**
      * Emits the code for a given method. This includes any architecture/runtime specific
-     * prefix/suffix. A prefix typically contains the code for setting up the frame,
-     * spilling callee-save registers, stack overflow checking, handling multiple entry
-     * points etc. A suffix may contain out-of-line stubs and method end guard instructions.
-     *
+     * prefix/suffix. A prefix typically contains the code for setting up the frame, spilling
+     * callee-save registers, stack overflow checking, handling multiple entry points etc. A suffix
+     * may contain out-of-line stubs and method end guard instructions.
+     * 
      * @param method the method associated with {@code lir}
      * @param lir the LIR of {@code method}
      */

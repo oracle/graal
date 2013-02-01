@@ -28,11 +28,10 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.virtual.*;
 
 /**
- * Store of a value at a location specified as an offset relative to an object.
- * No null check is performed before the store.
+ * Store of a value at a location specified as an offset relative to an object. No null check is
+ * performed before the store.
  */
 public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, Canonicalizable {
 
@@ -74,13 +73,14 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        VirtualObjectNode virtual = tool.getVirtualState(object());
-        if (virtual != null) {
+        State state = tool.getObjectState(object());
+        if (state != null && state.getState() == EscapeState.Virtual) {
             ValueNode indexValue = tool.getReplacedValue(offset());
             if (indexValue.isConstant()) {
-                int fieldIndex = virtual.fieldIndexForOffset(indexValue.asConstant().asLong());
-                if (fieldIndex != -1) {
-                    tool.setVirtualEntry(virtual, fieldIndex, value());
+                long offset = indexValue.asConstant().asLong() + displacement();
+                int entryIndex = state.getVirtualObject().entryIndexForOffset(offset);
+                if (entryIndex != -1 && state.getVirtualObject().entryKind(entryIndex) == accessKind()) {
+                    tool.setVirtualEntry(state, entryIndex, value());
                     tool.delete();
                 }
             }
@@ -97,7 +97,9 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
                     Graph graph = this.graph();
                     return graph.add(new UnsafeStoreNode(this.stamp(), object(), intDisplacement, graph.unique(ConstantNode.forInt(0, graph)), value(), accessKind()));
                 }
-            } else if (object().stamp() instanceof ObjectStamp) { // TODO (gd) remove that once UnsafeAccess only have an object base
+            } else if (object().stamp() instanceof ObjectStamp) { // TODO (gd) remove that once
+                                                                  // UnsafeAccess only have an
+                                                                  // object base
                 ObjectStamp receiverStamp = object().objectStamp();
                 if (receiverStamp.nonNull()) {
                     ResolvedJavaType receiverType = receiverStamp.type();

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot;
 
-
 /**
  * Used to communicate configuration details, runtime offsets, etc. to Graal upon compileMethod.
  */
@@ -37,6 +36,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public boolean windowsOs;
     public int codeEntryAlignment;
     public boolean verifyOops;
+    public boolean ciTime;
     public boolean useFastLocking;
     public boolean useTLAB;
     public boolean useBiasedLocking;

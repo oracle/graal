@@ -99,8 +99,8 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         private static final long serialVersionUID = -7636746737947390059L;
 
         /**
-         * A virtual (or interface) method whose unique implementation for the receiver type
-         * in {@link #context} is {@link #impl}.
+         * A virtual (or interface) method whose unique implementation for the receiver type in
+         * {@link #context} is {@link #impl}.
          */
         public final ResolvedJavaMethod method;
 
@@ -182,7 +182,8 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     }
 
     /**
-     * Array with the assumptions. This field is directly accessed from C++ code in the Graal/HotSpot implementation.
+     * Array with the assumptions. This field is directly accessed from C++ code in the
+     * Graal/HotSpot implementation.
      */
     private Assumption[] list;
     private boolean useOptimisticAssumptions;
@@ -194,6 +195,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
     /**
      * Returns whether any assumptions have been registered.
+     * 
      * @return {@code true} if at least one assumption has been registered, {@code false} otherwise.
      */
     public boolean isEmpty() {
@@ -207,16 +209,20 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     @Override
     public Iterator<Assumption> iterator() {
         return new Iterator<Assumptions.Assumption>() {
+
             int index;
+
             public void remove() {
                 throw new UnsupportedOperationException();
             }
+
             public Assumption next() {
                 if (index >= count) {
                     throw new NoSuchElementException();
                 }
                 return list[index++];
             }
+
             public boolean hasNext() {
                 return index < count;
             }
@@ -225,18 +231,20 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
     /**
      * Records an assumption that the specified type has no finalizable subclasses.
-     *
+     * 
      * @param receiverType the type that is assumed to have no finalizable subclasses
-     * @return {@code true} if the assumption was recorded and can be assumed; {@code false} otherwise
+     * @return {@code true} if the assumption was recorded and can be assumed; {@code false}
+     *         otherwise
      */
     public boolean recordNoFinalizableSubclassAssumption(ResolvedJavaType receiverType) {
-        // TODO (thomaswue): Record that assumption correctly.
         assert useOptimisticAssumptions;
         return false;
     }
 
     /**
-     * Records that {@code subtype} is the only concrete subtype in the class hierarchy below {@code context}.
+     * Records that {@code subtype} is the only concrete subtype in the class hierarchy below
+     * {@code context}.
+     * 
      * @param context the root of the subtree of the class hierarchy that this assumptions is about
      * @param subtype the one concrete subtype
      */
@@ -248,7 +256,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     /**
      * Records that {@code impl} is the only possible concrete target for a virtual call to
      * {@code method} with a receiver of type {@code context}.
-     *
+     * 
      * @param method a method that is the target of a virtual call
      * @param context the receiver type of a call to {@code method}
      * @param impl the concrete method that is the only possible target for the virtual call
@@ -260,7 +268,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
     /**
      * Records that {@code method} was used during the compilation.
-     *
+     * 
      * @param method a method whose contents were used
      */
     public void recordMethodContents(ResolvedJavaMethod method) {

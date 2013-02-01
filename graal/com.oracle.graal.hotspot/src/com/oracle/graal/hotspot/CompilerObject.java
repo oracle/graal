@@ -26,10 +26,10 @@ import java.io.*;
 
 import com.oracle.graal.api.meta.Kind.*;
 
-
 /**
  * Parent class for all HotSpot types that need to be serialized.
  */
 public abstract class CompilerObject implements Serializable, FormatWithToString {
+
     private static final long serialVersionUID = -4551670987101214877L;
 }

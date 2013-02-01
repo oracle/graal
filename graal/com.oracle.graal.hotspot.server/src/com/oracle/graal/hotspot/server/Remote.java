@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.server;
 
-
 public interface Remote {
 
 }

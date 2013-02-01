@@ -28,7 +28,8 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 
 /**
- * Removes frame states from {@linkplain StateSplit#hasSideEffect() non-side-effecting} nodes in a snippet.
+ * Removes frame states from {@linkplain StateSplit#hasSideEffect() non-side-effecting} nodes in a
+ * snippet.
  */
 public class SnippetFrameStateCleanupPhase extends Phase {
 

@@ -68,8 +68,7 @@ public class GraalCompiler {
         this.backend = backend;
     }
 
-    public CompilationResult compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, final GraphCache cache, final PhasePlan plan,
-                    final OptimisticOptimizations optimisticOpts) {
+    public CompilationResult compileMethod(final ResolvedJavaMethod method, final StructuredGraph graph, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.getModifiers() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
 
         return Debug.scope("GraalCompiler", new Object[]{graph, method, this}, new Callable<CompilationResult>() {
@@ -149,6 +148,9 @@ public class GraalCompiler {
         if (GraalOptions.PartialEscapeAnalysis && !plan.isPhaseDisabled(PartialEscapeAnalysisPhase.class)) {
             new PartialEscapeAnalysisPhase(target, runtime, assumptions, true).apply(graph);
         }
+
+        new LockEliminationPhase().apply(graph);
+
         if (GraalOptions.OptLoopTransform) {
             new LoopTransformHighPhase().apply(graph);
             new LoopTransformLowPhase().apply(graph);
@@ -159,7 +161,7 @@ public class GraalCompiler {
             new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
         }
 
-        new LoweringPhase(runtime, assumptions).apply(graph);
+        new LoweringPhase(target, runtime, assumptions).apply(graph);
 
         if (GraalOptions.CullFrameStates) {
             new CullFrameStatesPhase().apply(graph);
@@ -207,7 +209,7 @@ public class GraalCompiler {
         final Block[] blocks = schedule.getCFG().getBlocks();
         final Block startBlock = schedule.getCFG().getStartBlock();
         assert startBlock != null;
-        assert startBlock.numberOfPreds() == 0;
+        assert startBlock.getPredecessorCount() == 0;
 
         new ComputeProbabilityPhase().apply(graph);
 
@@ -215,14 +217,8 @@ public class GraalCompiler {
 
             @Override
             public LIR call() {
-                ComputeBlockOrder clso = new ComputeBlockOrder(blocks.length, schedule.getCFG().getLoops().length, startBlock, GraalOptions.OptReorderLoops);
-                List<Block> linearScanOrder = clso.linearScanOrder();
-                List<Block> codeEmittingOrder = clso.codeEmittingOrder();
-
-                int z = 0;
-                for (Block b : linearScanOrder) {
-                    b.linearScanNumber = z++;
-                }
+                List<Block> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
+                List<Block> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
 
                 LIR lir = new LIR(schedule.getCFG(), schedule.getBlockToNodesMap(), linearScanOrder, codeEmittingOrder);
                 Debug.dump(lir, "After linear scan order");

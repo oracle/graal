@@ -27,14 +27,13 @@ import java.util.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 
-public class Block {
+public final class Block {
 
     protected int id;
 
     protected BeginNode beginNode;
     protected FixedNode endNode;
     protected Loop loop;
-    protected double probability;
 
     protected List<Block> predecessors;
     protected List<Block> successors;
@@ -43,9 +42,8 @@ public class Block {
     protected List<Block> dominated;
     protected Block postdominator;
 
-    // Fields that still need to be worked on, try to remove them later.
-    public boolean align;
-    public int linearScanNumber;
+    private boolean align;
+    private int linearScanNumber;
 
     protected Block() {
         id = ControlFlowGraph.BLOCK_ID_INITIAL;
@@ -83,8 +81,16 @@ public class Block {
         return getBeginNode().next() instanceof ExceptionObjectNode;
     }
 
+    public Block getFirstPredecessor() {
+        return predecessors.get(0);
+    }
+
     public List<Block> getPredecessors() {
         return predecessors;
+    }
+
+    public Block getFirstSuccessor() {
+        return successors.get(0);
     }
 
     public List<Block> getSuccessors() {
@@ -120,6 +126,7 @@ public class Block {
     }
 
     private class NodeIterator implements Iterator<FixedNode> {
+
         private FixedNode cur;
 
         public NodeIterator() {
@@ -151,6 +158,7 @@ public class Block {
 
     public Iterable<FixedNode> getNodes() {
         return new Iterable<FixedNode>() {
+
             @Override
             public Iterator<FixedNode> iterator() {
                 return new NodeIterator();
@@ -175,24 +183,13 @@ public class Block {
         return "B" + id;
     }
 
-
-// to be inlined later on
-    public int numberOfPreds() {
+    public int getPredecessorCount() {
         return getPredecessors().size();
     }
 
-    public int numberOfSux() {
+    public int getSuccessorCount() {
         return getSuccessors().size();
     }
-
-    public Block predAt(int i) {
-        return getPredecessors().get(i);
-    }
-
-    public Block suxAt(int i) {
-        return getSuccessors().get(i);
-    }
-// end to be inlined later on
 
     public boolean dominates(Block block) {
         return block.isDominatedBy(this);
@@ -206,5 +203,25 @@ public class Block {
             return false;
         }
         return dominator.isDominatedBy(block);
+    }
+
+    public double getProbability() {
+        return getBeginNode().probability();
+    }
+
+    public int getLinearScanNumber() {
+        return linearScanNumber;
+    }
+
+    public void setLinearScanNumber(int linearScanNumber) {
+        this.linearScanNumber = linearScanNumber;
+    }
+
+    public boolean isAligned() {
+        return align;
+    }
+
+    public void setAlign(boolean align) {
+        this.align = align;
     }
 }

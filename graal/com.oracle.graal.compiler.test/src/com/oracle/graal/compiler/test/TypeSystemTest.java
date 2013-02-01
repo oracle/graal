@@ -39,7 +39,8 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
 
 /**
- * In the following tests, the scalar type system of the compiler should be complete enough to see the relation between the different conditions.
+ * In the following tests, the scalar type system of the compiler should be complete enough to see
+ * the relation between the different conditions.
  */
 public class TypeSystemTest extends GraalCompilerTest {
 
@@ -205,13 +206,13 @@ public class TypeSystemTest extends GraalCompilerTest {
     @Override
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph) {
         if (expected.getNodeCount() != graph.getNodeCount()) {
-//            Debug.dump(expected, "Node count not matching - expected");
-//            Debug.dump(graph, "Node count not matching - actual");
-//            System.out.println("================ expected");
-//            outputGraph(expected);
-//            System.out.println("================ actual");
-//            outputGraph(graph);
-//            new IdealGraphPrinterDumpHandler().dump(graph, "asdf");
+            // Debug.dump(expected, "Node count not matching - expected");
+            // Debug.dump(graph, "Node count not matching - actual");
+            // System.out.println("================ expected");
+            // outputGraph(expected);
+            // System.out.println("================ actual");
+            // outputGraph(graph);
+            // new IdealGraphPrinterDumpHandler().dump(graph, "asdf");
             Assert.fail("Graphs do not have the same number of nodes: " + expected.getNodeCount() + " vs. " + graph.getNodeCount());
         }
     }

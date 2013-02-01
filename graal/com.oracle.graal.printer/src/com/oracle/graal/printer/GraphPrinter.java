@@ -29,13 +29,16 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.phases.schedule.*;
 
 interface GraphPrinter extends Closeable {
+
     /**
-     * Starts a new group of graphs with the given name, short name and method byte code index (BCI) as properties.
+     * Starts a new group of graphs with the given name, short name and method byte code index (BCI)
+     * as properties.
      */
     void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci) throws IOException;
 
     /**
-     * Prints an entire {@link Graph} with the specified title, optionally using short names for nodes.
+     * Prints an entire {@link Graph} with the specified title, optionally using short names for
+     * nodes.
      */
     void print(Graph graph, String title, SchedulePhase predefinedSchedule) throws IOException;
 

@@ -31,8 +31,8 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 
-
 public class IterativeConditionalEliminationPhase extends Phase {
+
     private final TargetDescription target;
     private final MetaAccessProvider runtime;
     private final Assumptions assumptions;
@@ -61,10 +61,13 @@ public class IterativeConditionalEliminationPhase extends Phase {
     }
 
     private static class Listener implements InputChangedListener {
+
         private final Set<Node> canonicalizationRoots;
+
         public Listener(Set<Node> canonicalizationRoots) {
             this.canonicalizationRoots = canonicalizationRoots;
         }
+
         @Override
         public void inputChanged(Node node) {
             canonicalizationRoots.add(node);

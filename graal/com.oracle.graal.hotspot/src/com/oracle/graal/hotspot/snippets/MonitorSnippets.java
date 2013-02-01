@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.nodes.EndLockScopeNode.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
+import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
 
 import java.util.*;
 
@@ -53,10 +54,11 @@ import com.oracle.graal.word.*;
 
 /**
  * Snippets used for implementing the monitorenter and monitorexit instructions.
- *
- * The locking algorithm used is described in the paper <a href="http://dl.acm.org/citation.cfm?id=1167515.1167496">
- * Eliminating synchronization-related atomic operations with biased locking and bulk rebiasing</a>
- * by Kenneth Russell and David Detlefs.
+ * 
+ * The locking algorithm used is described in the paper <a
+ * href="http://dl.acm.org/citation.cfm?id=1167515.1167496"> Eliminating synchronization-related
+ * atomic operations with biased locking and bulk rebiasing</a> by Kenneth Russell and David
+ * Detlefs.
  */
 public class MonitorSnippets implements SnippetsInterface {
 
@@ -66,7 +68,8 @@ public class MonitorSnippets implements SnippetsInterface {
     private static final String TRACE_TYPE_FILTER = System.getProperty("graal.monitors.trace.typeFilter");
 
     /**
-     * Monitor operations in methods whose fully qualified name contains this substring will be traced.
+     * Monitor operations in methods whose fully qualified name contains this substring will be
+     * traced.
      */
     private static final String TRACE_METHOD_FILTER = System.getProperty("graal.monitors.trace.methodFilter");
 
@@ -102,6 +105,7 @@ public class MonitorSnippets implements SnippetsInterface {
             if (biasableLockBits != Word.unsigned(biasedLockPattern())) {
                 // Biasing not enabled -> fall through to lightweight locking
             } else {
+                probability(FREQUENT_PROBABILITY);
                 // The bias pattern is present in the object's mark word. Need to check
                 // whether the bias owner and the epoch are both still current.
                 Word hub = loadHub(object);
@@ -113,6 +117,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 trace(trace, "              tmp: 0x%016lx\n", tmp);
                 if (tmp == Word.zero()) {
                     // Object is already biased to current thread -> done
+                    probability(FREQUENT_PROBABILITY);
                     traceObject(trace, "+lock{bias:existing}", object);
                     return;
                 }
@@ -127,6 +132,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 // the prototype header is no longer biasable and we have to revoke
                 // the bias on this object.
                 if (tmp.and(biasedLockMaskInPlace()) == Word.zero()) {
+                    probability(FREQUENT_PROBABILITY);
                     // Biasing is still enabled for object's type. See whether the
                     // epoch of the current bias is still valid, meaning that the epoch
                     // bits of the mark word are equal to the epoch bits of the
@@ -137,6 +143,7 @@ public class MonitorSnippets implements SnippetsInterface {
                     // otherwise the manipulations it performs on the mark word are
                     // illegal.
                     if (tmp.and(epochMaskInPlace()) == Word.zero()) {
+                        probability(FREQUENT_PROBABILITY);
                         // The epoch of the current bias is still valid but we know nothing
                         // about the owner; it might be set or it might be clear. Try to
                         // acquire the bias of the object using an atomic operation. If this
@@ -155,6 +162,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         // If the biasing toward our thread failed, this means that another thread
                         // owns the bias and we need to revoke that bias. The revocation will occur
                         // in the interpreter runtime.
+                        probability(DEOPT_PATH_PROBABILITY);
                         traceObject(trace, "+lock{stub:revoke}", object);
                         MonitorEnterStubCall.call(object, lock);
                         return;
@@ -175,6 +183,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         // If the biasing toward our thread failed, then another thread
                         // succeeded in biasing it toward itself and we need to revoke that
                         // bias. The revocation will occur in the runtime in the slow case.
+                        probability(DEOPT_PATH_PROBABILITY);
                         traceObject(trace, "+lock{stub:epoch-expired}", object);
                         MonitorEnterStubCall.call(object, lock);
                         return;
@@ -218,13 +227,13 @@ public class MonitorSnippets implements SnippetsInterface {
             // by the current thread. The latter is true if the mark word
             // is a stack pointer into the current thread's stack, i.e.:
             //
-            //   1) (currentMark & aligned_mask) == 0
-            //   2)  rsp <= currentMark
-            //   3)  currentMark <= rsp + page_size
+            // 1) (currentMark & aligned_mask) == 0
+            // 2) rsp <= currentMark
+            // 3) currentMark <= rsp + page_size
             //
             // These 3 tests can be done by evaluating the following expression:
             //
-            //   (currentMark - rsp) & (aligned_mask - page_size)
+            // (currentMark - rsp) & (aligned_mask - page_size)
             //
             // assuming both the stack pointer and page_size have their least
             // significant 2 bits cleared and page_size is a power of 2
@@ -232,6 +241,7 @@ public class MonitorSnippets implements SnippetsInterface {
             final Word stackPointer = stackPointer();
             if (currentMark.subtract(stackPointer).and(alignedMask.subtract(pageSize())) != Word.zero()) {
                 // Most likely not a recursive lock, go into a slow runtime call
+                probability(DEOPT_PATH_PROBABILITY);
                 traceObject(trace, "+lock{stub:failed-cas}", object);
                 MonitorEnterStubCall.call(object, lock);
                 return;
@@ -281,6 +291,7 @@ public class MonitorSnippets implements SnippetsInterface {
             final Word mark = loadWordFromObject(object, markOffset());
             trace(trace, "             mark: 0x%016lx\n", mark);
             if (mark.and(biasedLockMaskInPlace()) == Word.unsigned(biasedLockPattern())) {
+                probability(FREQUENT_PROBABILITY);
                 endLockScope();
                 decCounter();
                 traceObject(trace, "-lock{bias}", object);
@@ -303,8 +314,9 @@ public class MonitorSnippets implements SnippetsInterface {
             // the displaced mark in the object - if the object's mark word is not pointing to
             // the displaced mark word, do unlocking via runtime call.
             if (DirectCompareAndSwapNode.compareAndSwap(object, markOffset(), lock, displacedMark) != lock) {
-              // The object's mark word was not pointing to the displaced header,
-              // we do unlocking via runtime call.
+                // The object's mark word was not pointing to the displaced header,
+                // we do unlocking via runtime call.
+                probability(DEOPT_PATH_PROBABILITY);
                 traceObject(trace, "-lock{stub}", object);
                 MonitorExitStubCall.call(object);
             } else {
@@ -348,7 +360,8 @@ public class MonitorSnippets implements SnippetsInterface {
     }
 
     /**
-     * Leaving the breakpoint code in to provide an example of how to use the {@link BreakpointNode} intrinsic.
+     * Leaving the breakpoint code in to provide an example of how to use the {@link BreakpointNode}
+     * intrinsic.
      */
     private static final boolean ENABLE_BREAKPOINT = false;
 
@@ -425,9 +438,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 key.add("checkNull", checkNull);
             }
             if (!eliminated) {
-                key.add("trace", isTracingEnabledForType(monitorenterNode.object()) ||
-                                 isTracingEnabledForMethod(stateAfter.method()) ||
-                                 isTracingEnabledForMethod(graph.method()));
+                key.add("trace", isTracingEnabledForType(monitorenterNode.object()) || isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
             }
 
             Arguments arguments = new Arguments();
@@ -451,9 +462,7 @@ public class MonitorSnippets implements SnippetsInterface {
             ResolvedJavaMethod method = eliminated ? monitorexitEliminated : useFastLocking ? monitorexit : monitorexitStub;
             Key key = new Key(method);
             if (!eliminated) {
-                key.add("trace", isTracingEnabledForType(monitorexitNode.object()) ||
-                                 isTracingEnabledForMethod(stateAfter.method()) ||
-                                 isTracingEnabledForMethod(graph.method()));
+                key.add("trace", isTracingEnabledForType(monitorexitNode.object()) || isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
             }
             Arguments arguments = new Arguments();
             if (!eliminated) {
@@ -499,9 +508,8 @@ public class MonitorSnippets implements SnippetsInterface {
         }
 
         /**
-         * If balanced monitor checking is enabled then nodes are inserted at the start and
-         * all return points of the graph to initialize and check the monitor counter
-         * respectively.
+         * If balanced monitor checking is enabled then nodes are inserted at the start and all
+         * return points of the graph to initialize and check the monitor counter respectively.
          */
         private void checkBalancedMonitors(StructuredGraph graph) {
             if (CHECK_BALANCED_MONITORS) {
@@ -521,7 +529,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         returnType = checkCounter.getSignature().getReturnType(checkCounter.getDeclaringClass());
                         Object msg = ((HotSpotRuntime) runtime).registerGCRoot("unbalanced monitors in " + MetaUtil.format("%H.%n(%p)", graph.method()) + ", count = %d");
                         ConstantNode errMsg = ConstantNode.forObject(msg, runtime, graph);
-                        callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter, new ValueNode[] {errMsg}, returnType));
+                        callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter, new ValueNode[]{errMsg}, returnType));
                         invoke = graph.add(new InvokeNode(callTarget, 0, -1));
                         List<ValueNode> stack = Collections.emptyList();
                         FrameState stateAfter = new FrameState(graph.method(), FrameState.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], false, false);

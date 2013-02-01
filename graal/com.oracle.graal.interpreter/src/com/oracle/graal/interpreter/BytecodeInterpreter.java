@@ -31,8 +31,8 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.bytecode.*;
 
 /**
- * High-level bytecode interpreter that executes on top of Java. Java native methods
- * are executed using the {@link com.oracle.graal.api.interpreter.RuntimeInterpreterInterface}.
+ * High-level bytecode interpreter that executes on top of Java. Java native methods are executed
+ * using the {@link com.oracle.graal.api.interpreter.RuntimeInterpreterInterface}.
  */
 @SuppressWarnings("static-method")
 public final class BytecodeInterpreter implements Interpreter {
@@ -1194,7 +1194,7 @@ public final class BytecodeInterpreter implements Interpreter {
         return constantPool.lookupType(cpi, opcode).resolve(frame.getMethod().getDeclaringClass());
     }
 
-    private ResolvedJavaType resolveType(InterpreterFrame frame, Class< ? > javaClass) {
+    private ResolvedJavaType resolveType(InterpreterFrame frame, Class<?> javaClass) {
         return metaAccessProvider.lookupJavaType(javaClass).resolve(frame.getMethod().getDeclaringClass());
     }
 
@@ -1371,7 +1371,8 @@ public final class BytecodeInterpreter implements Interpreter {
             traceCall(caller, "Delegate " + originalMethod);
         }
 
-        // current thread is low level and we also execute the target method in the low-level interpreter
+        // current thread is low level and we also execute the target method in the low-level
+        // interpreter
         Object[] originalCalleeParameters = popArgumentsAsObject(caller, originalMethod, hasReceiver);
         Object[] parameters = new Object[]{caller, originalMethod, originalCalleeParameters};
         Object returnValue = redirectionInfo.getTargetMethod().invoke(redirectionInfo.getReceiver(), parameters);
@@ -1609,7 +1610,7 @@ public final class BytecodeInterpreter implements Interpreter {
         }
     }
 
-    private static Method findMethod(Class< ? > clazz, String name, Class< ? >... parameters) {
+    private static Method findMethod(Class<?> clazz, String name, Class<?>... parameters) {
         try {
             return clazz.getDeclaredMethod(name, parameters);
         } catch (Exception e) {

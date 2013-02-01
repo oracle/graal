@@ -28,11 +28,16 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * A PostOrderNodeIterator iterates the fixed nodes of the graph in post order starting from a specified fixed node.<br>
- * For this iterator the CFG is defined by the classical CFG nodes ({@link ControlSplitNode}, {@link MergeNode}...) and the {@link FixedWithNextNode#next() next} pointers
- * of {@link FixedWithNextNode}.<br>
- * While iterating it maintains a user-defined state by calling the methods available in {@link MergeableState}.
- *
+ * A PostOrderNodeIterator iterates the fixed nodes of the graph in post order starting from a
+ * specified fixed node.
+ * <p>
+ * For this iterator the CFG is defined by the classical CFG nodes ({@link ControlSplitNode},
+ * {@link MergeNode}...) and the {@link FixedWithNextNode#next() next} pointers of
+ * {@link FixedWithNextNode}.
+ * <p>
+ * While iterating it maintains a user-defined state by calling the methods available in
+ * {@link MergeableState}.
+ * 
  * @param <T> the type of {@link MergeableState} handled by this PostOrderNodeIterator
  */
 public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
@@ -100,7 +105,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
             } else {
                 assert false : current;
             }
-        } while(current != null);
+        } while (current != null);
     }
 
     private void queueSuccessors(FixedNode x, Set<Node> successors) {

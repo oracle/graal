@@ -26,7 +26,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * The {@code ArithmeticOp} class represents arithmetic operations such as addition, subtraction, etc.
+ * The {@code ArithmeticOp} class represents arithmetic operations such as addition, subtraction,
+ * etc.
  */
 public abstract class ArithmeticNode extends BinaryNode {
 
@@ -34,6 +35,7 @@ public abstract class ArithmeticNode extends BinaryNode {
 
     /**
      * Creates a new arithmetic operation.
+     * 
      * @param kind the result kind of the operation
      * @param x the first input instruction
      * @param y the second input instruction
@@ -46,6 +48,7 @@ public abstract class ArithmeticNode extends BinaryNode {
 
     /**
      * Checks whether this instruction has strict fp semantics.
+     * 
      * @return {@code true} if this instruction has strict fp semantics
      */
     public boolean isStrictFP() {

@@ -29,7 +29,6 @@ import org.junit.*;
  */
 public class BC_dneg2 extends JTTTest {
 
-// @NEVER_INLINE
     public static double test(double a) {
         return 1 / (-a);
     }

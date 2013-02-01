@@ -37,10 +37,11 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;
 
 /**
- * Generates a representation of {@link Graph Graphs} that can be visualized and inspected with the <a
- * href="http://kenai.com/projects/igv">Ideal Graph Visualizer</a>.
+ * Generates a representation of {@link Graph Graphs} that can be visualized and inspected with the
+ * <a href="http://kenai.com/projects/igv">Ideal Graph Visualizer</a>.
  */
 class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
+
     /**
      * Creates a new {@link IdealGraphPrinter} that writes to the specified output stream.
      */
@@ -50,7 +51,8 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
     }
 
     /**
-     * Starts a new group of graphs with the given name, short name and method byte code index (BCI) as properties.
+     * Starts a new group of graphs with the given name, short name and method byte code index (BCI)
+     * as properties.
      */
     @Override
     public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci) {
@@ -70,7 +72,8 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
     }
 
     /**
-     * Prints an entire {@link Graph} with the specified title, optionally using short names for nodes.
+     * Prints an entire {@link Graph} with the specified title, optionally using short names for
+     * nodes.
      */
     @Override
     public void print(Graph graph, String title, SchedulePhase predefinedSchedule) {
@@ -84,7 +87,7 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
             } catch (Throwable t) {
             }
         }
-        ControlFlowGraph cfg =  schedule == null ? null : schedule.getCFG();
+        ControlFlowGraph cfg = schedule == null ? null : schedule.getCFG();
 
         beginNodes();
         List<Edge> edges = printNodes(graph, cfg == null ? null : cfg.getNodeToBlock(), noBlockNodes);
@@ -131,9 +134,10 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
             Block block = nodeToBlock == null ? null : nodeToBlock.get(node);
             if (block != null) {
                 printProperty("block", Integer.toString(block.getId()));
-//                if (!(node instanceof PhiNode || node instanceof FrameState || node instanceof LocalNode) && !block.nodes().contains(node)) {
-//                    printProperty("notInOwnBlock", "true");
-//                }
+                // if (!(node instanceof PhiNode || node instanceof FrameState || node instanceof
+                // LocalNode) && !block.nodes().contains(node)) {
+                // printProperty("notInOwnBlock", "true");
+                // }
             } else {
                 printProperty("block", "noBlock");
                 noBlockNodes.add(node);

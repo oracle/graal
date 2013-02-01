@@ -31,8 +31,8 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 
 /**
- * This phase culls unused FrameStates from the graph.
- * It does a post order iteration over the graph, and
+ * This phase culls unused FrameStates from the graph. It does a post order iteration over the
+ * graph, and
  */
 public class CullFrameStatesPhase extends Phase {
 

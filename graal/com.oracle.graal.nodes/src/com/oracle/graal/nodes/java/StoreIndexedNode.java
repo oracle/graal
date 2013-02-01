@@ -26,7 +26,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code StoreIndexedNode} represents a write to an array element.
@@ -56,6 +55,7 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
 
     /**
      * Creates a new StoreIndexedNode.
+     * 
      * @param array the node producing the array
      * @param index the node producing the index
      * @param elementKind the element type
@@ -68,12 +68,12 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        VirtualObjectNode virtualArray = tool.getVirtualState(array());
-        if (virtualArray != null) {
+        State arrayState = tool.getObjectState(array());
+        if (arrayState != null && arrayState.getState() == EscapeState.Virtual) {
             ValueNode indexValue = tool.getReplacedValue(index());
             int index = indexValue.isConstant() ? indexValue.asConstant().asInt() : -1;
-            if (index >= 0 && index < virtualArray.entryCount()) {
-                tool.setVirtualEntry(virtualArray, index, value());
+            if (index >= 0 && index < arrayState.getVirtualObject().entryCount()) {
+                tool.setVirtualEntry(arrayState, index, value());
                 tool.delete();
             }
         }

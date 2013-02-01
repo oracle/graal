@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.*;
 
 /**
  * Describes the possible values of a {@link ValueNode} that produces an int or long result.
- *
+ * 
  * The description consists of (inclusive) lower and upper bounds and a bit-mask.
  */
 public class IntegerStamp extends Stamp {
@@ -38,7 +38,7 @@ public class IntegerStamp extends Stamp {
     private final long mask;
 
     public IntegerStamp(Kind kind) {
-        this(kind, kind.getMinValue(), kind.getMaxValue(), defaultMask(kind));
+        this(kind.getStackKind(), kind.getMinValue(), kind.getMaxValue(), defaultMask(kind));
     }
 
     public IntegerStamp(Kind kind, long lowerBound, long upperBound, long mask) {
@@ -72,8 +72,8 @@ public class IntegerStamp extends Stamp {
     }
 
     /**
-     * This bit-mask describes the bits that can be set in the value described by this stamp. It is primarily used to
-     * represent values that are multiples of a known power of two.
+     * This bit-mask describes the bits that can be set in the value described by this stamp. It is
+     * primarily used to represent values that are multiples of a known power of two.
      */
     public long mask() {
         return mask;
@@ -191,14 +191,21 @@ public class IntegerStamp extends Stamp {
 
     public static long defaultMask(Kind kind) {
         switch (kind) {
-            case Boolean: return 0x01L;
-            case Byte: return 0xffL;
-            case Char: return 0xffffL;
-            case Short: return 0xffffL;
+            case Boolean:
+                return 0x01L;
+            case Byte:
+                return 0xffL;
+            case Char:
+                return 0xffffL;
+            case Short:
+                return 0xffffL;
             case Jsr:
-            case Int: return 0xffffffffL;
-            case Long: return 0xffffffffffffffffL;
-            default: throw GraalInternalError.shouldNotReachHere();
+            case Int:
+                return 0xffffffffL;
+            case Long:
+                return 0xffffffffffffffffL;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -212,9 +219,11 @@ public class IntegerStamp extends Stamp {
     }
 
     /**
-     * Checks if the 2 stamps represent values of the same sign.
-     * Returns true if the two stamps are both positive of null or if they are both strictly negative
-     * @return true if the two stamps are both positive of null or if they are both strictly negative
+     * Checks if the 2 stamps represent values of the same sign. Returns true if the two stamps are
+     * both positive of null or if they are both strictly negative
+     * 
+     * @return true if the two stamps are both positive of null or if they are both strictly
+     *         negative
      */
     public static boolean sameSign(IntegerStamp s1, IntegerStamp s2) {
         return s1.isPositive() && s2.isPositive() || s1.isStrictlyNegative() && s2.isStrictlyNegative();

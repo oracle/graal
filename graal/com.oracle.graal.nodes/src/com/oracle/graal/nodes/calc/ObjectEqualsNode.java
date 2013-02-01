@@ -26,14 +26,13 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.virtual.*;
 
 @NodeInfo(shortName = "==")
 public final class ObjectEqualsNode extends CompareNode implements Virtualizable {
 
     /**
      * Constructs a new object equality comparison node.
-     *
+     * 
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
@@ -73,17 +72,17 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        VirtualObjectNode virtualX = tool.getVirtualState(x());
-        VirtualObjectNode virtualY = tool.getVirtualState(y());
-        boolean xVirtual = virtualX != null;
-        boolean yVirtual = virtualY != null;
+        State stateX = tool.getObjectState(x());
+        State stateY = tool.getObjectState(y());
+        boolean xVirtual = stateX != null && stateX.getState() == EscapeState.Virtual;
+        boolean yVirtual = stateY != null && stateY.getState() == EscapeState.Virtual;
 
         if (xVirtual ^ yVirtual) {
             // one of them is virtual: they can never be the same objects
             tool.replaceWithValue(ConstantNode.forBoolean(false, graph()));
         } else if (xVirtual && yVirtual) {
             // both are virtual: check if they refer to the same object
-            tool.replaceWithValue(ConstantNode.forBoolean(virtualX == virtualY, graph()));
+            tool.replaceWithValue(ConstantNode.forBoolean(stateX == stateY, graph()));
         }
     }
 }

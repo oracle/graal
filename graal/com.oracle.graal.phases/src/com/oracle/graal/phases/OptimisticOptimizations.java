@@ -27,18 +27,14 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 
-
-
 public final class OptimisticOptimizations {
+
     public static final OptimisticOptimizations ALL = new OptimisticOptimizations(EnumSet.allOf(Optimization.class));
     public static final OptimisticOptimizations NONE = new OptimisticOptimizations(EnumSet.noneOf(Optimization.class));
     private static final DebugMetric disabledOptimisticOptsMetric = Debug.metric("DisabledOptimisticOpts");
 
     private static enum Optimization {
-        RemoveNeverExecutedCode,
-        UseTypeCheckedInlining,
-        UseTypeCheckHints,
-        UseExceptionProbability
+        RemoveNeverExecutedCode, UseTypeCheckedInlining, UseTypeCheckHints, UseExceptionProbability
     }
 
     private final Set<Optimization> enabledOpts;
@@ -56,7 +52,9 @@ public final class OptimisticOptimizations {
         if (checkDeoptimizations(method.getProfilingInfo(), deoptReason)) {
             enabledOpts.add(optimization);
         } else {
-            // TODO (chaeubl): change to Debug.log when we are sure that optimistic optimizations are not disabled unnecessarily
+            // TODO (chaeubl): change to Debug.log when we are sure that optimistic optimizations
+            // are not disabled
+            // unnecessarily
             TTY.println("WARN: deactivated optimistic optimization %s for %s", optimization.name(), MetaUtil.format("%H.%n(%p)", method));
             disabledOptimisticOptsMetric.increment();
         }
@@ -95,7 +93,7 @@ public final class OptimisticOptimizations {
     }
 
     public boolean lessOptimisticThan(OptimisticOptimizations other) {
-        for (Optimization opt: Optimization.values()) {
+        for (Optimization opt : Optimization.values()) {
             if (!enabledOpts.contains(opt) && other.enabledOpts.contains(opt)) {
                 return true;
             }

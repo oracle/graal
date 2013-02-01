@@ -47,13 +47,12 @@ public final class ControlFlowOptimizer {
     /**
      * Checks whether a block can be deleted. Only blocks with exactly one successor and an
      * unconditional branch to this successor are eligable.
+     * 
      * @param block the block checked for deletion
      * @return whether the block can be deleted
      */
     private static boolean canDeleteBlock(LIR ir, Block block) {
-        if (block.numberOfSux() != 1 ||
-            block.numberOfPreds() == 0 ||
-            block.suxAt(0) == block) {
+        if (block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getFirstSuccessor() == block) {
             return false;
         }
 
@@ -62,7 +61,7 @@ public final class ControlFlowOptimizer {
         assert instructions.size() >= 2 : "block must have label and branch";
         assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
         assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "last instruction must always be a branch";
-        assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) ir.lir(block.suxAt(0)).get(0)).getLabel() : "branch target must be the successor";
+        assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) ir.lir(block.getFirstSuccessor()).get(0)).getLabel() : "branch target must be the successor";
 
         // Block must have exactly one successor.
         return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState();
@@ -75,11 +74,11 @@ public final class ControlFlowOptimizer {
             Block block = iterator.next();
             if (canDeleteBlock(ir, block)) {
                 // adjust successor and predecessor lists
-                Block other = block.suxAt(0);
+                Block other = block.getFirstSuccessor();
                 for (Block pred : block.getPredecessors()) {
                     Collections.replaceAll(pred.getSuccessors(), block, other);
                 }
-                for (int i = 0; i < other.getPredecessors().size(); i++) {
+                for (int i = 0; i < other.getPredecessorCount(); i++) {
                     if (other.getPredecessors().get(i) == block) {
                         other.getPredecessors().remove(i);
                         other.getPredecessors().addAll(i, block.getPredecessors());

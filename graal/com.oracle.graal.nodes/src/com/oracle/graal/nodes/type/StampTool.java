@@ -45,7 +45,7 @@ public class StampTool {
     }
 
     public static Stamp meet(Collection<? extends StampProvider> values) {
-        Iterator< ? extends StampProvider> iterator = values.iterator();
+        Iterator<? extends StampProvider> iterator = values.iterator();
         if (iterator.hasNext()) {
             Stamp stamp = iterator.next().stamp();
             while (iterator.hasNext()) {
@@ -125,6 +125,12 @@ public class StampTool {
     }
 
     public static Stamp or(IntegerStamp stamp1, IntegerStamp stamp2) {
+        Kind kind = stamp1.kind();
+        long mask = stamp1.mask() | stamp2.mask();
+        return stampForMask(kind, mask);
+    }
+
+    public static Stamp xor(IntegerStamp stamp1, IntegerStamp stamp2) {
         Kind kind = stamp1.kind();
         long mask = stamp1.mask() | stamp2.mask();
         return stampForMask(kind, mask);

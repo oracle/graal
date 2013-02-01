@@ -38,11 +38,10 @@ import com.oracle.graal.snippets.SnippetTemplate.Key;
 import com.oracle.graal.word.*;
 
 /**
- * Stub implementing the fast path for TLAB refill during instance class allocation.
- * This stub is called from the {@linkplain NewObjectSnippets inline} allocation
- * code when TLAB allocation fails. If this stub fails to refill the TLAB
- * or allocate the object, it calls out to the HotSpot C++ runtime for
- * to complete the allocation.
+ * Stub implementing the fast path for TLAB refill during instance class allocation. This stub is
+ * called from the {@linkplain NewObjectSnippets inline} allocation code when TLAB allocation fails.
+ * If this stub fails to refill the TLAB or allocate the object, it calls out to the HotSpot C++
+ * runtime for to complete the allocation.
  */
 public class NewArrayStub extends Stub {
 
@@ -58,19 +57,16 @@ public class NewArrayStub extends Stub {
     }
 
     /**
-     * Re-attempts allocation after an initial TLAB allocation failed or was skipped (e.g., due to -XX:-UseTLAB).
-     *
+     * Re-attempts allocation after an initial TLAB allocation failed or was skipped (e.g., due to
+     * -XX:-UseTLAB).
+     * 
      * @param hub the hub of the object to be allocated
      * @param length the length of the array
      * @param intArrayHub the hub for {@code int[].class}
      * @param log specifies if logging is enabled
      */
     @Snippet
-    private static Object newArray(
-                    @Parameter("hub") Word hub,
-                    @Parameter("length") int length,
-                    @ConstantParameter("intArrayHub") Word intArrayHub,
-                    @ConstantParameter("log") boolean log) {
+    private static Object newArray(@Parameter("hub") Word hub, @Parameter("length") int length, @ConstantParameter("intArrayHub") Word intArrayHub, @ConstantParameter("log") boolean log) {
         int layoutHelper = hub.readInt(layoutHelperOffset());
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();

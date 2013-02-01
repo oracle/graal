@@ -21,6 +21,7 @@
  * questions.
  */
 package com.oracle.graal.graph;
+
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -28,13 +29,16 @@ import java.util.concurrent.*;
 public abstract class FieldIntrospection extends UnsafeAccess {
 
     /**
-     * Interface used by {@link #rescanAllFieldOffsets(CalcOffset)} to determine the offset (in bytes) of a field.
+     * Interface used by {@link #rescanAllFieldOffsets(CalcOffset)} to determine the offset (in
+     * bytes) of a field.
      */
     public interface CalcOffset {
+
         long getOffset(Field field);
     }
 
     public static class DefaultCalcOffset implements CalcOffset {
+
         @Override
         public long getOffset(Field field) {
             return unsafe.objectFieldOffset(field);
@@ -61,6 +65,7 @@ public abstract class FieldIntrospection extends UnsafeAccess {
     protected abstract void rescanFieldOffsets(CalcOffset calc);
 
     public abstract static class BaseFieldScanner {
+
         private final CalcOffset calc;
 
         /** The offsets of fields that are not specially handled by subclasses. */

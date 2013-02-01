@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 
 @NodeInfo(nameTemplate = "Materialize {i#virtualObject}")
-public final class MaterializeObjectNode extends FixedWithNextNode implements EscapeAnalyzable, Lowerable, Node.IterableNodeType, Canonicalizable {
+public final class MaterializeObjectNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Node.IterableNodeType, Canonicalizable, ArrayLengthProvider {
 
     @Input private final NodeInputList<ValueNode> values;
     @Input private final VirtualObjectNode virtualObject;
@@ -49,23 +49,48 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
     }
 
     @Override
+    public ValueNode length() {
+        assert virtualObject.type().isArray();
+        return ConstantNode.forInt(values.size(), graph());
+    }
+
+    /**
+     * @return true if the object that will be created is without locks and has only entries that
+     *         are {@link Constant#defaultForKind(Kind)}, false otherwise.
+     */
+    public boolean isDefault() {
+        boolean defaultEntries = true;
+        if (lockCount > 0) {
+            defaultEntries = false;
+        } else {
+            for (ValueNode value : values) {
+                if (!value.isConstant() || !value.asConstant().isDefaultForKind()) {
+                    defaultEntries = false;
+                    break;
+                }
+            }
+        }
+        return defaultEntries;
+    }
+
+    @Override
     public void lower(LoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) graph();
+
+        boolean defaultEntries = isDefault();
+
         if (virtualObject instanceof VirtualInstanceNode) {
             VirtualInstanceNode virtual = (VirtualInstanceNode) virtualObject;
 
-            NewInstanceNode newInstance = graph.add(new NewInstanceNode(virtual.type(), false, lockCount > 0));
+            NewInstanceNode newInstance = graph.add(new NewInstanceNode(virtual.type(), defaultEntries, lockCount > 0));
             this.replaceAtUsages(newInstance);
-            graph.addAfterFixed(this, newInstance);
+            graph.addBeforeFixed(this, newInstance);
 
-            FixedWithNextNode position = newInstance;
-            for (int i = 0; i < virtual.entryCount(); i++) {
-                StoreFieldNode store = graph.add(new StoreFieldNode(newInstance, virtual.field(i), values.get(i), -1));
-                graph.addAfterFixed(position, store);
-                position = store;
+            if (!defaultEntries) {
+                for (int i = 0; i < virtual.entryCount(); i++) {
+                    graph.addBeforeFixed(this, graph.add(new StoreFieldNode(newInstance, virtual.field(i), values.get(i), -1)));
+                }
             }
-
-            graph.removeFixed(this);
         } else {
             assert virtualObject instanceof VirtualArrayNode;
             VirtualArrayNode virtual = (VirtualArrayNode) virtualObject;
@@ -73,22 +98,20 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
             ResolvedJavaType element = virtual.componentType();
             NewArrayNode newArray;
             if (element.getKind() == Kind.Object) {
-                newArray = graph.add(new NewObjectArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), false, lockCount > 0));
+                newArray = graph.add(new NewObjectArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), defaultEntries, lockCount > 0));
             } else {
-                newArray = graph.add(new NewPrimitiveArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), false, lockCount > 0));
+                newArray = graph.add(new NewPrimitiveArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), defaultEntries, lockCount > 0));
             }
             this.replaceAtUsages(newArray);
-            graph.addAfterFixed(this, newArray);
+            graph.addBeforeFixed(this, newArray);
 
-            FixedWithNextNode position = newArray;
-            for (int i = 0; i < virtual.entryCount(); i++) {
-                StoreIndexedNode store = graph.add(new StoreIndexedNode(newArray, ConstantNode.forInt(i, graph), element.getKind(), values.get(i), -1));
-                graph.addAfterFixed(position, store);
-                position = store;
+            if (!defaultEntries) {
+                for (int i = 0; i < virtual.entryCount(); i++) {
+                    graph.addBeforeFixed(this, graph.add(new StoreIndexedNode(newArray, ConstantNode.forInt(i, graph), element.getKind(), values.get(i), -1)));
+                }
             }
-
-            graph.removeFixed(this);
         }
+        graph.removeFixed(this);
     }
 
     @Override
@@ -101,7 +124,8 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Es
     }
 
     @Override
-    public ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess) {
-        return new ObjectDesc[] {new ObjectDesc(virtualObject, values.toArray(new ValueNode[values.size()]), lockCount)};
+    public void virtualize(VirtualizerTool tool) {
+        tool.createVirtualObject(virtualObject, values.toArray(new ValueNode[values.size()]), lockCount);
+        tool.replaceWithVirtual(virtualObject);
     }
 }

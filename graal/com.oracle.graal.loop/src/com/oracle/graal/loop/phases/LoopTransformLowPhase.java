@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 
 public class LoopTransformLowPhase extends Phase {
+
     private static final DebugMetric UNSWITCHED = Debug.metric("Unswitched");
 
     @Override
@@ -37,6 +38,7 @@ public class LoopTransformLowPhase extends Phase {
             if (GraalOptions.ReassociateInvariants) {
                 final LoopsData dataReassociate = new LoopsData(graph);
                 Debug.scope("ReassociateInvariants", new Runnable() {
+
                     @Override
                     public void run() {
                         for (LoopEx loop : dataReassociate.loops()) {
@@ -65,7 +67,7 @@ public class LoopTransformLowPhase extends Phase {
                             }
                         }
                     }
-                } while(unswitched);
+                } while (unswitched);
             }
         }
     }

@@ -46,7 +46,8 @@ public class OnStackReplacementPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         if (graph.getEntryBCI() == StructuredGraph.INVOCATION_ENTRY_BCI) {
-            // This happens during inlining in a OSR method, because the same phase plan will be used.
+            // This happens during inlining in a OSR method, because the same phase plan will be
+            // used.
             return;
         }
         Debug.dump(graph, "OnStackReplacement initial");
@@ -89,7 +90,6 @@ public class OnStackReplacementPhase extends Phase {
             GraphUtil.killWithUnusedFloatingInputs(osr);
             Debug.dump(graph, "OnStackReplacement loop peeling result");
         } while (true);
-
 
         LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(wordKind())));
         RuntimeCallNode migrationEnd = graph.add(new RuntimeCallNode(OSR_MIGRATION_END, buffer));

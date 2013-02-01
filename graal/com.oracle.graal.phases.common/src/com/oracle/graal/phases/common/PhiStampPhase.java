@@ -26,6 +26,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 
 public class PhiStampPhase extends Phase {
+
     @Override
     protected void run(StructuredGraph graph) {
         // Infer phis stopping at loop phis.

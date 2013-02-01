@@ -36,7 +36,6 @@ public class ControlFlowGraph {
     private Block[] reversePostOrder;
     private Loop[] loops;
 
-
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
         ControlFlowGraph cfg = new ControlFlowGraph(graph);
         cfg.identifyBlocks();
@@ -71,10 +70,13 @@ public class ControlFlowGraph {
 
     public Iterable<Block> postOrder() {
         return new Iterable<Block>() {
+
             @Override
             public Iterator<Block> iterator() {
                 return new Iterator<Block>() {
+
                     private int nextIndex = reversePostOrder.length - 1;
+
                     @Override
                     public boolean hasNext() {
                         return nextIndex >= 0;
@@ -131,13 +133,6 @@ public class ControlFlowGraph {
                         }
                     }
 
-                    if (cur instanceof FixedNode) {
-                        double probability = ((FixedNode) cur).probability();
-                        if (probability > block.probability) {
-                            block.probability = probability;
-                        }
-                    }
-
                     last = cur;
                     cur = cur.successors().first();
                 } while (cur != null && !(cur instanceof BeginNode));
@@ -163,7 +158,8 @@ public class ControlFlowGraph {
                 }
                 block.id = BLOCK_ID_VISITED;
             } else if (block.id == BLOCK_ID_VISITED) {
-                // Second time we see this block: All successors have been processed, so add block to postorder list.
+                // Second time we see this block: All successors have been processed, so add block
+                // to postorder list.
                 stack.remove(stack.size() - 1);
                 postOrder.add(block);
             } else {
@@ -233,9 +229,8 @@ public class ControlFlowGraph {
 
                 for (LoopExitNode exit : loopBegin.loopExits()) {
                     Block exitBlock = nodeToBlock.get(exit);
-                    List<Block> predecessors = exitBlock.getPredecessors();
-                    assert predecessors.size() == 1;
-                    computeLoopBlocks(predecessors.get(0), loop);
+                    assert exitBlock.getPredecessorCount() == 1;
+                    computeLoopBlocks(exitBlock.getFirstPredecessor(), loop);
                     loop.exits.add(exitBlock);
                 }
                 List<Block> unexpected = new LinkedList<>();
@@ -287,15 +282,12 @@ public class ControlFlowGraph {
     }
 
     private void computeDominators() {
-        assert reversePostOrder[0].getPredecessors().size() == 0 : "start block has no predecessor and therefore no dominator";
+        assert reversePostOrder[0].getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
         for (int i = 1; i < reversePostOrder.length; i++) {
             Block block = reversePostOrder[i];
-            List<Block> predecessors = block.getPredecessors();
-            assert predecessors.size() > 0;
-
-            Block dominator = predecessors.get(0);
-            for (int j = 1; j < predecessors.size(); j++) {
-                Block pred = predecessors.get(j);
+            assert block.getPredecessorCount() > 0;
+            Block dominator = null;
+            for (Block pred : block.getPredecessors()) {
                 if (!pred.isLoopEnd()) {
                     dominator = commonDominator(dominator, pred);
                 }
@@ -313,6 +305,12 @@ public class ControlFlowGraph {
     }
 
     public static Block commonDominator(Block a, Block b) {
+        if (a == null) {
+            return b;
+        }
+        if (b == null) {
+            return a;
+        }
         Block iterA = a;
         Block iterB = b;
         while (iterA != iterB) {

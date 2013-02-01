@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.cfg;
 
 public class BlockMap<T> {
+
     private final T[] data;
 
     @SuppressWarnings("unchecked")

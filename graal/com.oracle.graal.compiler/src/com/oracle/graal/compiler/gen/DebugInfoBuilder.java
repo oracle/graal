@@ -35,17 +35,17 @@ import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.virtual.nodes.*;
 
 public class DebugInfoBuilder {
+
     private final NodeMap<Value> nodeOperands;
 
     public DebugInfoBuilder(NodeMap<Value> nodeOperands) {
         this.nodeOperands = nodeOperands;
     }
 
-
     private HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
     private IdentityHashMap<VirtualObjectNode, EscapeObjectState> objectStates = new IdentityHashMap<>();
 
-    public LIRFrameState build(FrameState topState, List<StackSlot> lockData, List<StackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
+    public LIRFrameState build(FrameState topState, List<StackSlot> lockData, LabelRef exceptionEdge, long leafGraphId) {
         assert virtualObjects.size() == 0;
         assert objectStates.size() == 0;
 
@@ -70,7 +70,8 @@ public class DebugInfoBuilder {
         VirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
             // fill in the VirtualObject values:
-            // during this process new VirtualObjects might be discovered, so repeat until no more changes occur.
+            // during this process new VirtualObjects might be discovered, so repeat until no more
+            // changes occur.
             boolean changed;
             do {
                 changed = false;
@@ -102,7 +103,7 @@ public class DebugInfoBuilder {
         }
         objectStates.clear();
 
-        return new LIRFrameState(frame, virtualObjectsArray, pointerSlots, exceptionEdge);
+        return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge);
     }
 
     private BytecodeFrame computeFrameForState(FrameState state, List<StackSlot> lockDataSlots, long leafGraphId) {
@@ -118,7 +119,8 @@ public class DebugInfoBuilder {
             values[numLocals + i] = toValue(state.stackAt(i));
         }
         for (int i = 0; i < numLocks; i++) {
-            // frames are traversed from the outside in, so the locks for the current frame are at the end of the lockDataSlots list
+            // frames are traversed from the outside in, so the locks for the current frame are at
+            // the end of the lockDataSlots list
             StackSlot lockData = lockDataSlots.get(lockDataSlots.size() - numLocks + i);
             values[numLocals + numStack + i] = new MonitorValue(toValue(state.lockAt(i)), lockData, state.lockAt(i) instanceof VirtualObjectNode);
         }
@@ -146,6 +148,7 @@ public class DebugInfoBuilder {
                 throw new GraalInternalError("no mapping found for virtual object %s", obj);
             }
             if (state instanceof MaterializedObjectState) {
+                assert !(((MaterializedObjectState) state).materializedValue() instanceof VirtualObjectNode);
                 return toValue(((MaterializedObjectState) state).materializedValue());
             } else {
                 assert obj.entryCount() == 0 || state instanceof VirtualObjectState || obj instanceof BoxedVirtualObjectNode;

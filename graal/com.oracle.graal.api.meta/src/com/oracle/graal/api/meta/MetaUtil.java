@@ -32,7 +32,8 @@ import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.api.meta.ProfilingInfo.ExceptionSeen;
 
 /**
- * Miscellaneous collection of utility methods used by {@code com.oracle.graal.api.meta} and its clients.
+ * Miscellaneous collection of utility methods used by {@code com.oracle.graal.api.meta} and its
+ * clients.
  */
 public class MetaUtil {
 
@@ -58,9 +59,10 @@ public class MetaUtil {
 
     /**
      * Gets the {@link Class} mirror for a given resolved type.
-     *
+     * 
      * @param type the type for which the Java mirror is requested
-     * @param loader class loader from which the class must be loaded (null means use the class loader of the {@link MetaUtil} class)
+     * @param loader class loader from which the class must be loaded (null means use the class
+     *            loader of the {@link MetaUtil} class)
      * @return the mirror for {@code type}
      * @throws NoClassDefFoundError if the mirror is not available
      */
@@ -89,9 +91,10 @@ public class MetaUtil {
 
     /**
      * Gets the {@link Class} mirror for a given resolved type.
-     *
+     * 
      * @param type the type for which the Java mirror is requested
-     * @param loader class loader from which the class must be loaded (null means use the class loader of the {@link MetaUtil} class)
+     * @param loader class loader from which the class must be loaded (null means use the class
+     *            loader of the {@link MetaUtil} class)
      * @return the mirror for {@code type} or null if it is not available
      */
     public static Class getMirror(ResolvedJavaType type, ClassLoader loader) {
@@ -103,10 +106,9 @@ public class MetaUtil {
     }
 
     /**
-     * Gets the elemental type for a given type.
-     * The elemental type of an array type is the corresponding zero dimensional (e.g.,
-     * the elemental type of {@code int[][][]} is {@code int}). A non-array type is its
-     * own elemental type.
+     * Gets the elemental type for a given type. The elemental type of an array type is the
+     * corresponding zero dimensional (e.g., the elemental type of {@code int[][][]} is {@code int}
+     * ). A non-array type is its own elemental type.
      */
     public static ResolvedJavaType getElementalType(ResolvedJavaType type) {
         ResolvedJavaType t = type;
@@ -117,21 +119,21 @@ public class MetaUtil {
     }
 
     /**
-     * Extends the functionality of {@link Class#getSimpleName()} to include a non-empty string for anonymous and local
-     * classes.
-     *
+     * Extends the functionality of {@link Class#getSimpleName()} to include a non-empty string for
+     * anonymous and local classes.
+     * 
      * @param clazz the class for which the simple name is being requested
-     * @param withEnclosingClass specifies if the returned name should be qualified with the name(s) of the enclosing
-     *            class/classes of {@code clazz} (if any). This option is ignored if {@code clazz} denotes an anonymous
-     *            or local class.
+     * @param withEnclosingClass specifies if the returned name should be qualified with the name(s)
+     *            of the enclosing class/classes of {@code clazz} (if any). This option is ignored
+     *            if {@code clazz} denotes an anonymous or local class.
      * @return the simple name
      */
-    public static String getSimpleName(Class< ? > clazz, boolean withEnclosingClass) {
+    public static String getSimpleName(Class<?> clazz, boolean withEnclosingClass) {
         final String simpleName = clazz.getSimpleName();
         if (simpleName.length() != 0) {
             if (withEnclosingClass) {
                 String prefix = "";
-                Class< ? > enclosingClass = clazz;
+                Class<?> enclosingClass = clazz;
                 while ((enclosingClass = enclosingClass.getEnclosingClass()) != null) {
                     prefix = prefix + enclosingClass.getSimpleName() + ".";
                 }
@@ -153,9 +155,9 @@ public class MetaUtil {
     }
 
     /**
-     * Converts a given type to its Java programming language name. The following are examples of strings returned by
-     * this method:
-     *
+     * Converts a given type to its Java programming language name. The following are examples of
+     * strings returned by this method:
+     * 
      * <pre>
      *     qualified == true:
      *         java.lang.Object
@@ -166,9 +168,10 @@ public class MetaUtil {
      *         int
      *         boolean[][]
      * </pre>
-     *
+     * 
      * @param type the type to be converted to a Java name
-     * @param qualified specifies if the package prefix of the type should be included in the returned name
+     * @param qualified specifies if the package prefix of the type should be included in the
+     *            returned name
      * @return the Java name corresponding to {@code type}
      */
     public static String toJavaName(JavaType type, boolean qualified) {
@@ -180,15 +183,15 @@ public class MetaUtil {
     }
 
     /**
-     * Converts a given type to its Java programming language name. The following are examples of strings returned by
-     * this method:
-     *
+     * Converts a given type to its Java programming language name. The following are examples of
+     * strings returned by this method:
+     * 
      * <pre>
      *      java.lang.Object
      *      int
      *      boolean[][]
      * </pre>
-     *
+     * 
      * @param type the type to be converted to a Java name
      * @return the Java name corresponding to {@code type}
      */
@@ -220,11 +223,12 @@ public class MetaUtil {
     }
 
     /**
-     * Gets a string for a given method formatted according to a given format specification. A format specification is
-     * composed of characters that are to be copied verbatim to the result and specifiers that denote an attribute of
-     * the method that is to be copied to the result. A specifier is a single character preceded by a '%' character. The
-     * accepted specifiers and the method attributes they denote are described below:
-     *
+     * Gets a string for a given method formatted according to a given format specification. A
+     * format specification is composed of characters that are to be copied verbatim to the result
+     * and specifiers that denote an attribute of the method that is to be copied to the result. A
+     * specifier is a single character preceded by a '%' character. The accepted specifiers and the
+     * method attributes they denote are described below:
+     * 
      * <pre>
      *     Specifier | Description                                          | Example(s)
      *     ----------+------------------------------------------------------------------------------------------
@@ -238,7 +242,7 @@ public class MetaUtil {
      *     'f'       | Indicator if method is unresolved, static or virtual | "unresolved" "static" "virtual"
      *     '%'       | A '%' character                                      | "%"
      * </pre>
-     *
+     * 
      * @param format a format specification
      * @param method the method to be formatted
      * @return the result of formatting this method according to {@code format}
@@ -313,11 +317,12 @@ public class MetaUtil {
     }
 
     /**
-     * Gets a string for a given field formatted according to a given format specification. A format specification is
-     * composed of characters that are to be copied verbatim to the result and specifiers that denote an attribute of
-     * the field that is to be copied to the result. A specifier is a single character preceded by a '%' character. The
-     * accepted specifiers and the field attributes they denote are described below:
-     *
+     * Gets a string for a given field formatted according to a given format specification. A format
+     * specification is composed of characters that are to be copied verbatim to the result and
+     * specifiers that denote an attribute of the field that is to be copied to the result. A
+     * specifier is a single character preceded by a '%' character. The accepted specifiers and the
+     * field attributes they denote are described below:
+     * 
      * <pre>
      *     Specifier | Description                                          | Example(s)
      *     ----------+------------------------------------------------------------------------------------------
@@ -329,7 +334,7 @@ public class MetaUtil {
      *     'f'       | Indicator if field is unresolved, static or instance | "unresolved" "static" "instance"
      *     '%'       | A '%' character                                      | "%"
      * </pre>
-     *
+     * 
      * @param format a format specification
      * @param field the field to be formatted
      * @return the result of formatting this field according to {@code format}
@@ -387,10 +392,11 @@ public class MetaUtil {
 
     /**
      * Gets the annotations of a particular type for the formal parameters of a given method.
-     *
+     * 
      * @param annotationClass the Class object corresponding to the annotation type
      * @param method the method for which a parameter annotations are being requested
-     * @return the annotation of type {@code annotationClass} (if any) for each formal parameter present
+     * @return the annotation of type {@code annotationClass} (if any) for each formal parameter
+     *         present
      */
     public static <T extends Annotation> T[] getParameterAnnotations(Class<T> annotationClass, ResolvedJavaMethod method) {
         Annotation[][] parameterAnnotations = method.getParameterAnnotations();
@@ -408,12 +414,14 @@ public class MetaUtil {
 
     /**
      * Gets the annotation of a particular type for a formal parameter of a given method.
-     *
+     * 
      * @param annotationClass the Class object corresponding to the annotation type
      * @param parameterIndex the index of a formal parameter of {@code method}
      * @param method the method for which a parameter annotation is being requested
-     * @return the annotation of type {@code annotationClass} for the formal parameter present, else null
-     * @throws IndexOutOfBoundsException if {@code parameterIndex} does not denote a formal parameter
+     * @return the annotation of type {@code annotationClass} for the formal parameter present, else
+     *         null
+     * @throws IndexOutOfBoundsException if {@code parameterIndex} does not denote a formal
+     *             parameter
      */
     public static <T extends Annotation> T getParameterAnnotation(Class<T> annotationClass, int parameterIndex, ResolvedJavaMethod method) {
         if (parameterIndex >= 0) {
@@ -428,8 +436,9 @@ public class MetaUtil {
     }
 
     /**
-     * Convenient shortcut for calling {@link #appendLocation(StringBuilder, ResolvedJavaMethod, int)} without having to
-     * supply a a {@link StringBuilder} instance and convert the result to a string.
+     * Convenient shortcut for calling
+     * {@link #appendLocation(StringBuilder, ResolvedJavaMethod, int)} without having to supply a a
+     * {@link StringBuilder} instance and convert the result to a string.
      */
     public static String toLocation(ResolvedJavaMethod method, int bci) {
         return appendLocation(new StringBuilder(), method, bci).toString();
@@ -437,22 +446,22 @@ public class MetaUtil {
 
     /**
      * Appends a string representation of a location specified by a given method and bci to a given
-     * {@link StringBuilder}. If a stack trace element with a non-null file name and non-negative line number is
-     * {@linkplain ResolvedJavaMethod#asStackTraceElement(int) available} for the given method, then the string returned
-     * is the {@link StackTraceElement#toString()} value of the stack trace element, suffixed by the bci location. For
-     * example:
-     *
+     * {@link StringBuilder}. If a stack trace element with a non-null file name and non-negative
+     * line number is {@linkplain ResolvedJavaMethod#asStackTraceElement(int) available} for the
+     * given method, then the string returned is the {@link StackTraceElement#toString()} value of
+     * the stack trace element, suffixed by the bci location. For example:
+     * 
      * <pre>
      *     java.lang.String.valueOf(String.java:2930) [bci: 12]
      * </pre>
-     *
-     * Otherwise, the string returned is the value of applying {@link #format(String, JavaMethod)} with the format
-     * string {@code "%H.%n(%p)"}, suffixed by the bci location. For example:
-     *
+     * 
+     * Otherwise, the string returned is the value of applying {@link #format(String, JavaMethod)}
+     * with the format string {@code "%H.%n(%p)"}, suffixed by the bci location. For example:
+     * 
      * <pre>
      *     java.lang.String.valueOf(int) [bci: 12]
      * </pre>
-     *
+     * 
      * @param sb
      * @param method
      * @param bci
@@ -495,7 +504,7 @@ public class MetaUtil {
 
     /**
      * Formats some profiling information associated as a string.
-     *
+     * 
      * @param info the profiling info to format
      * @param method an optional method that augments the profile string returned
      * @param sep the separator to use for each separate profile record
@@ -511,14 +520,14 @@ public class MetaUtil {
             }
 
             if (info.getBranchTakenProbability(i) != -1) {
-                buf.append(String.format("branchProbability@%d: %.3f%s", i, info.getBranchTakenProbability(i), sep));
+                buf.append(String.format("branchProbability@%d: %.6f%s", i, info.getBranchTakenProbability(i), sep));
             }
 
             double[] switchProbabilities = info.getSwitchProbabilities(i);
             if (switchProbabilities != null) {
                 buf.append(String.format("switchProbabilities@%d:", i));
                 for (int j = 0; j < switchProbabilities.length; j++) {
-                    buf.append(String.format(" %.3f", switchProbabilities[j]));
+                    buf.append(String.format(" %.6f", switchProbabilities[j]));
                 }
                 buf.append(sep);
             }
@@ -534,9 +543,13 @@ public class MetaUtil {
                     buf.append(String.format("types@%d:", i));
                     for (int j = 0; j < ptypes.length; j++) {
                         ProfiledType ptype = ptypes[j];
-                        buf.append(String.format(" %.3f (%s)%s", ptype.getProbability(), ptype.getType(), sep));
+                        buf.append(String.format(" %.6f (%s)%s", ptype.getProbability(), ptype.getType(), sep));
                     }
-                    buf.append(String.format(" %.3f <not recorded>%s", typeProfile.getNotRecordedProbability(), sep));
+                    if (typeProfile.getNotRecordedProbability() != 0) {
+                        buf.append(String.format(" %.6f <other types>%s", typeProfile.getNotRecordedProbability(), sep));
+                    } else {
+                        buf.append(String.format(" <no other types>%s", sep));
+                    }
                 }
             }
         }
@@ -562,7 +575,7 @@ public class MetaUtil {
 
     /**
      * Converts a Java source-language class name into the internal form.
-     *
+     * 
      * @param className the class name
      * @return the internal name form of the class name
      */
@@ -605,8 +618,8 @@ public class MetaUtil {
     }
 
     /**
-     * Prepends the String {@code indentation} to every line in String {@code lines}, including a possibly non-empty
-     * line following the final newline.
+     * Prepends the String {@code indentation} to every line in String {@code lines}, including a
+     * possibly non-empty line following the final newline.
      */
     public static String indent(String lines, String indentation) {
         if (lines.length() == 0) {

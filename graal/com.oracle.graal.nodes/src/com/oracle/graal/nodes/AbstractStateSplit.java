@@ -48,4 +48,9 @@ public abstract class AbstractStateSplit extends FixedWithNextNode implements St
     public AbstractStateSplit(Stamp stamp) {
         super(stamp);
     }
+
+    public AbstractStateSplit(Stamp stamp, FrameState stateAfter) {
+        super(stamp);
+        this.stateAfter = stateAfter;
+    }
 }

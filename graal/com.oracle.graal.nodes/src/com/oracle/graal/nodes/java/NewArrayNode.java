@@ -31,13 +31,12 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * The {@code NewArrayNode} class is the base of all instructions that allocate arrays.
  */
-public abstract class NewArrayNode extends FixedWithNextNode implements Lowerable, EscapeAnalyzable, ArrayLengthProvider {
+public abstract class NewArrayNode extends FixedWithNextNode implements Canonicalizable, Lowerable, VirtualizableAllocation, ArrayLengthProvider {
 
     @Input private ValueNode length;
     private final ResolvedJavaType elementType;
     private final boolean fillContents;
 
-    public static final int MaximumEscapeAnalysisArrayLength = 32;
     private final boolean locked;
 
     @Override
@@ -47,8 +46,9 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
 
     /**
      * Constructs a new NewArrayNode.
-     *
-     * @param elementType the the type of the elements of the newly created array (not the type of the array itself).
+     * 
+     * @param elementType the the type of the elements of the newly created array (not the type of
+     *            the array itself).
      * @param length the node that produces the length for this allocation.
      * @param fillContents determines whether the array elements should be initialized to zero/null.
      * @param locked determines whether the array should be locked immediately.
@@ -85,7 +85,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
 
     /**
      * Gets the element type of the array.
-     *
+     * 
      * @return the element type of the array
      */
     public ResolvedJavaType elementType() {
@@ -100,24 +100,33 @@ public abstract class NewArrayNode extends FixedWithNextNode implements Lowerabl
     }
 
     @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (usages().isEmpty() && length.integerStamp().isPositive()) {
+            return null;
+        } else {
+            return this;
+        }
+    }
+
+    @Override
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 
     @Override
-    public ObjectDesc[] getAllocations(long nextVirtualId, MetaAccessProvider metaAccess) {
+    public void virtualize(VirtualizerTool tool) {
         if (length().asConstant() != null) {
             final int constantLength = length().asConstant().asInt();
-            if (constantLength >= 0 && constantLength < MaximumEscapeAnalysisArrayLength) {
+            if (constantLength >= 0 && constantLength < tool.getMaximumEntryCount()) {
                 ValueNode[] state = new ValueNode[constantLength];
                 ConstantNode defaultForKind = constantLength == 0 ? null : ConstantNode.defaultForKind(elementType().getKind(), graph());
                 for (int i = 0; i < constantLength; i++) {
                     state[i] = defaultForKind;
                 }
-                VirtualObjectNode virtualObject = new VirtualArrayNode(nextVirtualId, elementType, constantLength);
-                return new ObjectDesc[]{new ObjectDesc(virtualObject, state, 0)};
+                VirtualObjectNode virtualObject = new VirtualArrayNode(tool.getNextVirtualId(), elementType, constantLength);
+                tool.createVirtualObject(virtualObject, state, 0);
+                tool.replaceWithVirtual(virtualObject);
             }
         }
-        return null;
     }
 }

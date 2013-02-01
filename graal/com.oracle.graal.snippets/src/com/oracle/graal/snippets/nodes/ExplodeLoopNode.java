@@ -30,9 +30,9 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.Snippet.VarargsParameter;
 
 /**
- * Placeholder node to denote to snippet preparation that the following loop
- * must be completely unrolled.
- *
+ * Placeholder node to denote to snippet preparation that the following loop must be completely
+ * unrolled.
+ * 
  * @see VarargsParameter
  */
 public final class ExplodeLoopNode extends FixedWithNextNode {

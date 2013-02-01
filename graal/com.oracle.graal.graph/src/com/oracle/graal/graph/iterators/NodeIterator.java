@@ -26,14 +26,18 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 
-public abstract class NodeIterator<T extends Node> implements Iterator<T>{
+public abstract class NodeIterator<T extends Node> implements Iterator<T> {
+
     protected T current;
+
     protected abstract void forward();
+
     @Override
     public boolean hasNext() {
         forward();
         return current != null;
     }
+
     @Override
     public T next() {
         forward();
@@ -44,6 +48,7 @@ public abstract class NodeIterator<T extends Node> implements Iterator<T>{
         current = null;
         return ret;
     }
+
     @Override
     public void remove() {
         throw new UnsupportedOperationException();

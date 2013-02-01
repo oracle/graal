@@ -26,8 +26,8 @@ import java.util.AbstractMap.SimpleEntry;
 import java.util.*;
 import java.util.Map.Entry;
 
-
 public final class NodeMap<T> {
+
     private final Graph graph;
     private Object[] values;
     private int size;
@@ -67,15 +67,6 @@ public final class NodeMap<T> {
         return node.id() >= size;
     }
 
-    public void grow(Node upTo) {
-        if (isNew(upTo)) {
-            size = upTo.id() + 1;
-            if (values.length < size) {
-                values = Arrays.copyOf(values, size + 9); // TODO implement a better growth policy
-            }
-        }
-    }
-
     private void check(Node node) {
         assert node.graph() == graph : "this node is not part of the graph";
         assert !isNew(node) : "this node was added to the graph after creating the node map : " + node;
@@ -83,10 +74,13 @@ public final class NodeMap<T> {
 
     public Iterable<Entry<Node, T>> entries() {
         return new Iterable<Entry<Node, T>>() {
+
             @Override
             public Iterator<Entry<Node, T>> iterator() {
                 return new Iterator<Entry<Node, T>>() {
+
                     int i = 0;
+
                     @Override
                     public boolean hasNext() {
                         forward();
@@ -101,8 +95,10 @@ public final class NodeMap<T> {
                         T value = (T) NodeMap.this.values[pos];
                         i++;
                         forward();
-                        return new SimpleEntry<Node, T>(key, value){
+                        return new SimpleEntry<Node, T>(key, value) {
+
                             private static final long serialVersionUID = 7813842391085737738L;
+
                             @Override
                             public T setValue(T v) {
                                 T oldv = super.setValue(v);

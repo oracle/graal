@@ -45,11 +45,8 @@ public final class HotSpotMethodData extends CompilerObject {
     private static final HotSpotMethodDataAccessor NO_DATA_EXCEPTION_POSSIBLY_NOT_RECORDED_ACCESSOR = new NoMethodData(ExceptionSeen.NOT_SUPPORTED);
 
     // sorted by tag
-    private static final HotSpotMethodDataAccessor[] PROFILE_DATA_ACCESSORS = {
-        null, new BitData(), new CounterData(), new JumpData(),
-        new TypeCheckData(), new VirtualCallData(), new RetData(),
-        new BranchData(), new MultiBranchData(), new ArgInfoData()
-    };
+    private static final HotSpotMethodDataAccessor[] PROFILE_DATA_ACCESSORS = {null, new BitData(), new CounterData(), new JumpData(), new TypeCheckData(), new VirtualCallData(), new RetData(),
+                    new BranchData(), new MultiBranchData(), new ArgInfoData()};
 
     /**
      * Reference to the C++ MethodData object.
@@ -164,6 +161,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private abstract static class AbstractMethodData implements HotSpotMethodDataAccessor {
+
         /**
          * Corresponds to DS_RECOMPILE_BIT defined in deoptimization.cpp.
          */
@@ -230,6 +228,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private static class NoMethodData extends AbstractMethodData {
+
         private static final int NO_DATA_TAG = 0;
         private static final int NO_DATA_SIZE = cellIndexToOffset(0);
 
@@ -245,7 +244,6 @@ public final class HotSpotMethodData extends CompilerObject {
             return -1;
         }
 
-
         @Override
         public ExceptionSeen getExceptionSeen(HotSpotMethodData data, int position) {
             return exceptionSeen;
@@ -253,6 +251,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private static class BitData extends AbstractMethodData {
+
         private static final int BIT_DATA_TAG = 1;
         private static final int BIT_DATA_SIZE = cellIndexToOffset(0);
         private static final int BIT_DATA_NULL_SEEN_FLAG = 0x01;
@@ -272,6 +271,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private static class CounterData extends BitData {
+
         private static final int COUNTER_DATA_TAG = 2;
         private static final int COUNTER_DATA_SIZE = cellIndexToOffset(1);
         private static final int COUNTER_DATA_COUNT_OFFSET = cellIndexToOffset(0);
@@ -295,6 +295,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private static class JumpData extends AbstractMethodData {
+
         private static final int JUMP_DATA_TAG = 3;
         private static final int JUMP_DATA_SIZE = cellIndexToOffset(2);
         protected static final int TAKEN_COUNT_OFFSET = cellIndexToOffset(0);
@@ -325,6 +326,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private abstract static class AbstractTypeData extends CounterData {
+
         private static final int RECEIVER_TYPE_DATA_ROW_SIZE = cellsToBytes(2);
         private static final int RECEIVER_TYPE_DATA_SIZE = cellIndexToOffset(2) + RECEIVER_TYPE_DATA_ROW_SIZE * config.typeProfileWidth;
         protected static final int NONPROFILED_RECEIVER_COUNT_OFFSET = cellIndexToOffset(1);
@@ -393,6 +395,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private static class TypeCheckData extends AbstractTypeData {
+
         private static final int RECEIVER_TYPE_DATA_TAG = 4;
 
         public TypeCheckData() {
@@ -411,6 +414,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private static class VirtualCallData extends AbstractTypeData {
+
         private static final int VIRTUAL_CALL_DATA_TAG = 5;
 
         public VirtualCallData() {
@@ -437,6 +441,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private static class RetData extends CounterData {
+
         private static final int RET_DATA_TAG = 6;
         private static final int RET_DATA_ROW_SIZE = cellsToBytes(3);
         private static final int RET_DATA_SIZE = cellIndexToOffset(1) + RET_DATA_ROW_SIZE * config.bciProfileWidth;
@@ -447,6 +452,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private static class BranchData extends JumpData {
+
         private static final int BRANCH_DATA_TAG = 7;
         private static final int BRANCH_DATA_SIZE = cellIndexToOffset(3);
         private static final int NOT_TAKEN_COUNT_OFFSET = cellIndexToOffset(2);
@@ -476,6 +482,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private static class ArrayData extends AbstractMethodData {
+
         private static final int ARRAY_DATA_LENGTH_OFFSET = cellIndexToOffset(0);
         protected static final int ARRAY_DATA_START_OFFSET = cellIndexToOffset(1);
 
@@ -494,6 +501,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private static class MultiBranchData extends ArrayData {
+
         private static final int MULTI_BRANCH_DATA_TAG = 8;
         private static final int MULTI_BRANCH_DATA_SIZE = cellIndexToOffset(1);
         private static final int MULTI_BRANCH_DATA_ROW_SIZE_IN_CELLS = 2;
@@ -571,6 +579,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private static class ArgInfoData extends ArrayData {
+
         private static final int ARG_INFO_DATA_TAG = 9;
         private static final int ARG_INFO_DATA_SIZE = cellIndexToOffset(1);
 

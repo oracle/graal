@@ -36,7 +36,8 @@ public class HP_scope02 extends JTTTest {
         // by the guard bail-out.
         for (int i = 0; i < count; i++) {
             if (i > 20) {
-                break; // We need to write back either the original value of sum, or the previous iteration's value.
+                break; // We need to write back either the original value of sum, or the previous
+                       // iteration's value.
             }
             sum = i;
         }

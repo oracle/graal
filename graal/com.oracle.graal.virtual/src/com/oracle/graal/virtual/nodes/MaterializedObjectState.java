@@ -24,13 +24,12 @@ package com.oracle.graal.virtual.nodes;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
  * This class encapsulated the materialized state of an escape analyzed object.
  */
-public final class MaterializedObjectState extends EscapeObjectState implements Node.IterableNodeType, LIRLowerable, Node.ValueNumberable {
+public final class MaterializedObjectState extends EscapeObjectState implements Node.IterableNodeType, Node.ValueNumberable {
 
     @Input private ValueNode materializedValue;
 
@@ -44,17 +43,12 @@ public final class MaterializedObjectState extends EscapeObjectState implements 
     }
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
-        // Nothing to do, virtual object states are processed as part of the handling of StateSplit nodes.
-    }
-
-    @Override
     public MaterializedObjectState duplicateWithVirtualState() {
         return graph().add(new MaterializedObjectState(object(), materializedValue));
     }
 
     @Override
-    public void applyToNonVirtual(NodeClosure< ? super ValueNode> closure) {
+    public void applyToNonVirtual(NodeClosure<? super ValueNode> closure) {
         closure.apply(this, materializedValue);
     }
 }

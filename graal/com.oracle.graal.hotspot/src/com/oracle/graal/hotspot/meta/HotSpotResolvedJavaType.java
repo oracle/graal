@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.meta;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 
-
 public abstract class HotSpotResolvedJavaType extends HotSpotJavaType implements ResolvedJavaType {
+
     private static final long serialVersionUID = -6410840212023428347L;
 
     public HotSpotResolvedJavaType(String name) {
@@ -37,6 +37,6 @@ public abstract class HotSpotResolvedJavaType extends HotSpotJavaType implements
 
     @Override
     public String getSourceFileName() {
-       return HotSpotGraalRuntime.getInstance().getCompilerToVM().getFileName(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getFileName(this);
     }
 }

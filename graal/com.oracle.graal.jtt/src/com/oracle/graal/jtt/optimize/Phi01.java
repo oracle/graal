@@ -42,7 +42,6 @@ public class Phi01 extends JTTTest {
         return test2(new Phi(arg), arg);
     }
 
-// @NEVER_INLINE
     private static int test2(Phi p, int a) {
         int arg = a;
         if (arg > 2) {

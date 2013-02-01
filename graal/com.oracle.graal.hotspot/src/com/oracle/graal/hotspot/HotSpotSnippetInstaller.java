@@ -42,7 +42,7 @@ public class HotSpotSnippetInstaller extends SnippetInstaller {
     }
 
     @Override
-    protected void installSubstitution(Method originalMethod, Method substituteMethod) {
+    protected void installMethodSubstitution(Method originalMethod, Method substituteMethod) {
         if (substituteMethod.getDeclaringClass() == IntegerSubstitutions.class || substituteMethod.getDeclaringClass() == LongSubstitutions.class) {
             if (substituteMethod.getName().equals("bitCount")) {
                 if (!config.usePopCountInstruction) {
@@ -58,6 +58,6 @@ public class HotSpotSnippetInstaller extends SnippetInstaller {
             assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
         }
-        super.installSubstitution(originalMethod, substituteMethod);
+        super.installMethodSubstitution(originalMethod, substituteMethod);
     }
 }

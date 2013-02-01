@@ -27,26 +27,43 @@ import java.io.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Represents the Java bytecode frame state(s) at a given position
- * including {@link Value locations} where to find the local variables,
- * operand stack values and locked objects of the bytecode frame(s).
+ * Represents the Java bytecode frame state(s) at a given position including {@link Value locations}
+ * where to find the local variables, operand stack values and locked objects of the bytecode
+ * frame(s).
  */
 public class BytecodeFrame extends BytecodePosition implements Serializable {
+
     private static final long serialVersionUID = -345025397165977565L;
 
     /**
-     * An array of values representing how to reconstruct the state of the Java frame.
-     * This is array is partitioned as follows:
+     * An array of values representing how to reconstruct the state of the Java frame. This is array
+     * is partitioned as follows:
      * <p>
      * <table border="1" cellpadding="5" frame="void", rules="all">
-     * <tr><th>Start index (inclusive)</th><th>End index (exclusive)</th><th>Description</th></tr>
-     * <tr><td>0</td>                   <td>numLocals</td>           <td>Local variables</td></tr>
-     * <tr><td>numLocals</td>           <td>numLocals + numStack</td><td>Operand stack</td></tr>
-     * <tr><td>numLocals + numStack</td><td>values.length</td>       <td>Locked objects</td></tr>
+     * <tr>
+     * <th>Start index (inclusive)</th>
+     * <th>End index (exclusive)</th>
+     * <th>Description</th>
+     * </tr>
+     * <tr>
+     * <td>0</td>
+     * <td>numLocals</td>
+     * <td>Local variables</td>
+     * </tr>
+     * <tr>
+     * <td>numLocals</td>
+     * <td>numLocals + numStack</td>
+     * <td>Operand stack</td>
+     * </tr>
+     * <tr>
+     * <td>numLocals + numStack</td>
+     * <td>values.length</td>
+     * <td>Locked objects</td>
+     * </tr>
      * </table>
      * <p>
-     * Note that the number of locals and the number of stack slots may be smaller than the
-     * maximum number of locals and stack slots as specified in the compiled method.
+     * Note that the number of locals and the number of stack slots may be smaller than the maximum
+     * number of locals and stack slots as specified in the compiled method.
      */
     public final Value[] values;
 
@@ -66,8 +83,10 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
     public final int numLocks;
 
     /**
-     * In case this frame state belongs to a deoptimization, the leafGraphId will contain the StructuredGraph.graphId() of the graph that originally introduced this deoptimization point.
-     * This id is later on used by the runtime system to evict graphs from the graph cache when deoptimizations originating from them have been hit.
+     * In case this frame state belongs to a deoptimization, the leafGraphId will contain the
+     * StructuredGraph.graphId() of the graph that originally introduced this deoptimization point.
+     * This id is later on used by the runtime system to evict graphs from the graph cache when
+     * deoptimizations originating from them have been hit.
      */
     public final long leafGraphId;
 
@@ -77,17 +96,19 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
 
     /**
      * Creates a new frame object.
-     *
+     * 
      * @param caller the caller frame (which may be {@code null})
      * @param method the method
      * @param bci a BCI within the method
-     * @param rethrowException specifies if the VM should re-throw the pending exception when deopt'ing using this frame
+     * @param rethrowException specifies if the VM should re-throw the pending exception when
+     *            deopt'ing using this frame
      * @param values the frame state {@link #values}
      * @param numLocals the number of local variables
      * @param numStack the depth of the stack
      * @param numLocks the number of locked objects
      */
-    public BytecodeFrame(BytecodeFrame caller, ResolvedJavaMethod method, int bci, boolean rethrowException, boolean duringCall, Value[] values, int numLocals, int numStack, int numLocks, long leafGraphId) {
+    public BytecodeFrame(BytecodeFrame caller, ResolvedJavaMethod method, int bci, boolean rethrowException, boolean duringCall, Value[] values, int numLocals, int numStack, int numLocks,
+                    long leafGraphId) {
         super(caller, method, bci);
         assert values != null;
         this.rethrowException = rethrowException;
@@ -102,6 +123,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
 
     /**
      * Gets the value representing the specified local variable.
+     * 
      * @param i the local variable index
      * @return the value that can be used to reconstruct the local's current value
      */
@@ -111,6 +133,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
 
     /**
      * Gets the value representing the specified stack slot.
+     * 
      * @param i the stack index
      * @return the value that can be used to reconstruct the stack slot's current value
      */
@@ -120,6 +143,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
 
     /**
      * Gets the value representing the specified lock.
+     * 
      * @param i the lock index
      * @return the value that can be used to reconstruct the lock's current value
      */
@@ -129,7 +153,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
 
     /**
      * Gets the caller of this frame.
-     *
+     * 
      * @return {@code null} if this frame has no caller
      */
     public BytecodeFrame caller() {

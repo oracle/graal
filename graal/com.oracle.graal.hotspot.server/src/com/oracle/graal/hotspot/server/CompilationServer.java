@@ -33,7 +33,8 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 
 /**
- * Server side of the client/server compilation model. The server listens for connections on the hardcoded port 1199.
+ * Server side of the client/server compilation model. The server listens for connections on the
+ * hardcoded port 1199.
  */
 public class CompilationServer implements Runnable {
 
@@ -52,11 +53,12 @@ public class CompilationServer implements Runnable {
     private final ArrayList<ConnectionObserver> observers = new ArrayList<>();
 
     /**
-     * Creates a new Compilation server. The server is activated by calling {@link #run()} directly or via a new
-     * {@link Thread}.
-     *
-     * @param multiple true if the server should server should serve an infinite amount of consecutive connections,
-     *            false if it should terminate after the first connection ends.
+     * Creates a new Compilation server. The server is activated by calling {@link #run()} directly
+     * or via a new {@link Thread}.
+     * 
+     * @param multiple true if the server should server should serve an infinite amount of
+     *            consecutive connections, false if it should terminate after the first connection
+     *            ends.
      */
     public CompilationServer(boolean multiple) {
         this.multiple = multiple;

@@ -23,5 +23,6 @@
 package com.oracle.graal.debug.internal;
 
 public interface TimerCloseable extends AutoCloseable {
+
     void close();
 }

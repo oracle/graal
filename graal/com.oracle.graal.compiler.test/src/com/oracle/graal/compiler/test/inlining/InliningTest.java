@@ -39,6 +39,7 @@ import com.oracle.graal.phases.common.*;
 // TODO (chaeubl): add more test cases
 @SuppressWarnings("unused")
 public class InliningTest extends GraalCompilerTest {
+
     @Test
     public void testInvokeStaticInlining() {
         assertInlined(getGraph("invokeStaticSnippet"));
@@ -49,11 +50,11 @@ public class InliningTest extends GraalCompilerTest {
     public static Boolean invokeStaticSnippet(boolean value) {
         return Boolean.valueOf(value);
     }
+
     @SuppressWarnings("all")
     public static Boolean invokeStaticOnInstanceSnippet(Boolean obj, boolean value) {
         return obj.valueOf(value);
     }
-
 
     @Test
     public void testStaticBindableInlining() {
@@ -66,32 +67,25 @@ public class InliningTest extends GraalCompilerTest {
     public static Object invokeConstructorSnippet(int value) {
         return new SuperClass(value);
     }
+
     @SuppressWarnings("all")
     public static int invokeFinalMethodSnippet(SuperClass superClass, SubClassA subClassA, FinalSubClass finalSubClass) {
-        return superClass.publicFinalMethod() +
-               subClassA.publicFinalMethod() +
-               finalSubClass.publicFinalMethod() +
-               superClass.protectedFinalMethod() +
-               subClassA.protectedFinalMethod() +
-               finalSubClass.protectedFinalMethod();
-    }
-    @SuppressWarnings("all")
-    public static int invokeMethodOnFinalClassSnippet(FinalSubClass finalSubClass) {
-        return finalSubClass.publicFinalMethod() +
-               finalSubClass.publicNotOverriddenMethod() +
-               finalSubClass.publicOverriddenMethod() +
-               finalSubClass.protectedFinalMethod() +
-               finalSubClass.protectedNotOverriddenMethod() +
-               finalSubClass.protectedOverriddenMethod();
+        return superClass.publicFinalMethod() + subClassA.publicFinalMethod() + finalSubClass.publicFinalMethod() + superClass.protectedFinalMethod() + subClassA.protectedFinalMethod() +
+                        finalSubClass.protectedFinalMethod();
     }
 
+    @SuppressWarnings("all")
+    public static int invokeMethodOnFinalClassSnippet(FinalSubClass finalSubClass) {
+        return finalSubClass.publicFinalMethod() + finalSubClass.publicNotOverriddenMethod() + finalSubClass.publicOverriddenMethod() + finalSubClass.protectedFinalMethod() +
+                        finalSubClass.protectedNotOverriddenMethod() + finalSubClass.protectedOverriddenMethod();
+    }
 
     @Test
     public void testClassHierarchyAnalysis() {
         assertInlined(getGraph("invokeLeafClassMethodSnippet"));
         assertInlined(getGraph("invokeConcreteMethodSnippet"));
         assertInlined(getGraph("invokeSingleImplementorInterfaceSnippet"));
-//        assertInlined(getGraph("invokeConcreteInterfaceMethodSnippet"));
+        // assertInlined(getGraph("invokeConcreteInterfaceMethodSnippet"));
 
         assertNotInlined(getGraph("invokeOverriddenPublicMethodSnippet"));
         assertNotInlined(getGraph("invokeOverriddenProtectedMethodSnippet"));
@@ -100,32 +94,34 @@ public class InliningTest extends GraalCompilerTest {
 
     @SuppressWarnings("all")
     public static int invokeLeafClassMethodSnippet(SubClassA subClassA) {
-        return subClassA.publicFinalMethod() +
-               subClassA.publicNotOverriddenMethod() +
-               subClassA.publicOverriddenMethod();
+        return subClassA.publicFinalMethod() + subClassA.publicNotOverriddenMethod() + subClassA.publicOverriddenMethod();
     }
+
     @SuppressWarnings("all")
     public static int invokeConcreteMethodSnippet(SuperClass superClass) {
-        return superClass.publicNotOverriddenMethod() +
-               superClass.protectedNotOverriddenMethod();
+        return superClass.publicNotOverriddenMethod() + superClass.protectedNotOverriddenMethod();
     }
+
     @SuppressWarnings("all")
     public static int invokeSingleImplementorInterfaceSnippet(SingleImplementorInterface testInterface) {
-        return testInterface.publicNotOverriddenMethod() +
-               testInterface.publicOverriddenMethod();
+        return testInterface.publicNotOverriddenMethod() + testInterface.publicOverriddenMethod();
     }
+
     @SuppressWarnings("all")
     public static int invokeConcreteInterfaceMethodSnippet(MultipleImplementorsInterface testInterface) {
         return testInterface.publicNotOverriddenMethod();
     }
+
     @SuppressWarnings("all")
     public static int invokeOverriddenInterfaceMethodSnippet(MultipleImplementorsInterface testInterface) {
         return testInterface.publicOverriddenMethod();
     }
+
     @SuppressWarnings("all")
     public static int invokeOverriddenPublicMethodSnippet(SuperClass superClass) {
         return superClass.publicOverriddenMethod();
     }
+
     @SuppressWarnings("all")
     public static int invokeOverriddenProtectedMethodSnippet(SuperClass superClass) {
         return superClass.protectedOverriddenMethod();
@@ -133,6 +129,7 @@ public class InliningTest extends GraalCompilerTest {
 
     private StructuredGraph getGraph(final String snippet) {
         return Debug.scope("InliningTest", new DebugDumpScope(snippet), new Callable<StructuredGraph>() {
+
             @Override
             public StructuredGraph call() {
                 StructuredGraph graph = parse(snippet);
@@ -158,7 +155,7 @@ public class InliningTest extends GraalCompilerTest {
     }
 
     private static StructuredGraph assertNotInGraph(StructuredGraph graph, Class<?> clazz) {
-        for (Node node: graph.getNodes()) {
+        for (Node node : graph.getNodes()) {
             if (clazz.isInstance(node)) {
                 fail(node.toString());
             }
@@ -167,7 +164,7 @@ public class InliningTest extends GraalCompilerTest {
     }
 
     private static StructuredGraph assertInGraph(StructuredGraph graph, Class<?> clazz) {
-        for (Node node: graph.getNodes()) {
+        for (Node node : graph.getNodes()) {
             if (clazz.isInstance(node)) {
                 return graph;
             }
@@ -176,19 +173,23 @@ public class InliningTest extends GraalCompilerTest {
         return graph;
     }
 
-
     // some interfaces and classes for testing
     private interface MultipleImplementorsInterface {
+
         int publicNotOverriddenMethod();
+
         int publicOverriddenMethod();
     }
 
     private interface SingleImplementorInterface {
+
         int publicNotOverriddenMethod();
+
         int publicOverriddenMethod();
     }
 
     private static class SuperClass implements MultipleImplementorsInterface {
+
         protected int value;
 
         public SuperClass(int value) {
@@ -221,6 +222,7 @@ public class InliningTest extends GraalCompilerTest {
     }
 
     private static class SubClassA extends SuperClass implements SingleImplementorInterface {
+
         public SubClassA(int value) {
             super(value);
         }
@@ -237,6 +239,7 @@ public class InliningTest extends GraalCompilerTest {
     }
 
     private static class SubClassB extends SuperClass {
+
         public SubClassB(int value) {
             super(value);
         }
@@ -253,6 +256,7 @@ public class InliningTest extends GraalCompilerTest {
     }
 
     private static class SubClassC extends SuperClass {
+
         public SubClassC(int value) {
             super(value);
         }
@@ -269,6 +273,7 @@ public class InliningTest extends GraalCompilerTest {
     }
 
     private static final class FinalSubClass extends SuperClass {
+
         public FinalSubClass(int value) {
             super(value);
         }

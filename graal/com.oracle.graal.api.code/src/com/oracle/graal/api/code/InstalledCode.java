@@ -25,7 +25,8 @@ package com.oracle.graal.api.code;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Represents a compiled instance of a method. It may have been invalidated or removed in the meantime.
+ * Represents a compiled instance of a method. It may have been invalidated or removed in the
+ * meantime.
  */
 public interface InstalledCode {
 
@@ -43,12 +44,14 @@ public interface InstalledCode {
     ResolvedJavaMethod getMethod();
 
     /**
-     * @return true if the code represented by this object is still valid, false otherwise (may happen due to deopt, etc.)
+     * @return true if the code represented by this object is still valid, false otherwise (may
+     *         happen due to deopt, etc.)
      */
     boolean isValid();
 
     /**
      * Executes the installed code with three object arguments.
+     * 
      * @param arg1 the first argument
      * @param arg2 the second argument
      * @param arg3 the third argument
@@ -58,6 +61,7 @@ public interface InstalledCode {
 
     /**
      * Executes the installed code with a variable number of arguments.
+     * 
      * @param args the array of object arguments
      * @return the value returned by the executed code
      */

@@ -29,8 +29,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 
 /**
- * Tests the implementation of checkcast, allowing profiling information to
- * be manually specified.
+ * Tests the implementation of checkcast, allowing profiling information to be manually specified.
  */
 public class CheckCastTest extends TypeCheckTest {
 
@@ -45,26 +44,26 @@ public class CheckCastTest extends TypeCheckTest {
 
     @Test
     public void test1() {
-        test("asNumber",    profile(),                        111);
-        test("asNumber",    profile(Integer.class),           111);
-        test("asNumber",    profile(Long.class, Short.class), 111);
-        test("asNumberExt", profile(),                        111);
-        test("asNumberExt", profile(Integer.class),           111);
+        test("asNumber", profile(), 111);
+        test("asNumber", profile(Integer.class), 111);
+        test("asNumber", profile(Long.class, Short.class), 111);
+        test("asNumberExt", profile(), 111);
+        test("asNumberExt", profile(Integer.class), 111);
         test("asNumberExt", profile(Long.class, Short.class), 111);
     }
 
     @Test
     public void test2() {
-        test("asString",    profile(),             "111");
-        test("asString",    profile(String.class), "111");
-        test("asString",    profile(String.class), "111");
+        test("asString", profile(), "111");
+        test("asString", profile(String.class), "111");
+        test("asString", profile(String.class), "111");
 
         final String nullString = null;
-        test("asString",    profile(),             nullString);
-        test("asString",    profile(String.class), nullString);
-        test("asString",    profile(String.class), nullString);
+        test("asString", profile(), nullString);
+        test("asString", profile(String.class), nullString);
+        test("asString", profile(String.class), nullString);
 
-        test("asStringExt", profile(),             "111");
+        test("asStringExt", profile(), "111");
         test("asStringExt", profile(String.class), "111");
         test("asStringExt", profile(String.class), "111");
     }
@@ -92,9 +91,9 @@ public class CheckCastTest extends TypeCheckTest {
     @Test
     public void test7() {
         Throwable throwable = new Exception();
-        test("asThrowable",   profile(),                             throwable);
-        test("asThrowable",   profile(Throwable.class),              throwable);
-        test("asThrowable",   profile(Exception.class, Error.class), throwable);
+        test("asThrowable", profile(), throwable);
+        test("asThrowable", profile(Throwable.class), throwable);
+        test("asThrowable", profile(Exception.class, Error.class), throwable);
     }
 
     @Test
@@ -145,20 +144,47 @@ public class CheckCastTest extends TypeCheckTest {
         return arr;
     }
 
-    static class Depth1 implements Cloneable {}
-    static class Depth2 extends Depth1 {}
-    static class Depth3 extends Depth2 {}
-    static class Depth4 extends Depth3 {}
-    static class Depth5 extends Depth4 {}
-    static class Depth6 extends Depth5 {}
-    static class Depth7 extends Depth6 {}
-    static class Depth8 extends Depth7 {}
-    static class Depth9 extends Depth8 {}
-    static class Depth10 extends Depth9 {}
-    static class Depth11 extends Depth10 {}
-    static class Depth12 extends Depth11 {}
-    static class Depth13 extends Depth12 {}
-    static class Depth14 extends Depth12 {}
+    static class Depth1 implements Cloneable {
+    }
+
+    static class Depth2 extends Depth1 {
+    }
+
+    static class Depth3 extends Depth2 {
+    }
+
+    static class Depth4 extends Depth3 {
+    }
+
+    static class Depth5 extends Depth4 {
+    }
+
+    static class Depth6 extends Depth5 {
+    }
+
+    static class Depth7 extends Depth6 {
+    }
+
+    static class Depth8 extends Depth7 {
+    }
+
+    static class Depth9 extends Depth8 {
+    }
+
+    static class Depth10 extends Depth9 {
+    }
+
+    static class Depth11 extends Depth10 {
+    }
+
+    static class Depth12 extends Depth11 {
+    }
+
+    static class Depth13 extends Depth12 {
+    }
+
+    static class Depth14 extends Depth12 {
+    }
 
     public static Depth12 asDepth12(Object o) {
         return (Depth12) o;
@@ -175,9 +201,9 @@ public class CheckCastTest extends TypeCheckTest {
     @Test
     public void test9() {
         Object o = new Depth13();
-        test("asDepth12",   profile(), o);
-        test("asDepth12",   profile(Depth13.class), o);
-        test("asDepth12",   profile(Depth13.class, Depth14.class), o);
+        test("asDepth12", profile(), o);
+        test("asDepth12", profile(Depth13.class), o);
+        test("asDepth12", profile(Depth13.class, Depth14.class), o);
     }
 
     @Test

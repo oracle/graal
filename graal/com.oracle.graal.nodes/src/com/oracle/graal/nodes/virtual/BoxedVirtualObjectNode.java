@@ -27,15 +27,16 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-
 public class BoxedVirtualObjectNode extends VirtualObjectNode implements LIRLowerable, Node.ValueNumberable {
 
     @Input ValueNode unboxedValue;
     private final ResolvedJavaType type;
+    private final Kind kind;
 
-    public BoxedVirtualObjectNode(int virtualId, ResolvedJavaType type, ValueNode unboxedValue) {
+    public BoxedVirtualObjectNode(int virtualId, ResolvedJavaType type, Kind kind, ValueNode unboxedValue) {
         super(virtualId);
         this.type = type;
+        this.kind = kind;
         this.unboxedValue = unboxedValue;
     }
 
@@ -60,8 +61,14 @@ public class BoxedVirtualObjectNode extends VirtualObjectNode implements LIRLowe
     }
 
     @Override
-    public int fieldIndexForOffset(long constantOffset) {
-        // (lstadler) unsafe access to a newly created boxing object should only ever touch the value field
+    public int entryIndexForOffset(long constantOffset) {
+        // (lstadler) unsafe access to a newly created boxing object should only ever touch the
+        // value field
         return 0;
+    }
+
+    @Override
+    public Kind entryKind(int index) {
+        return kind;
     }
 }

@@ -33,7 +33,8 @@ import com.oracle.graal.nodes.extended.*;
 //JaCoCo Exclude
 
 /**
- * Provides {@link PrintStream}-like logging facility. This should only be used in {@linkplain Snippet snippets}.
+ * Provides {@link PrintStream}-like logging facility. This should only be used in
+ * {@linkplain Snippet snippets}.
  */
 public final class Log {
 
@@ -43,7 +44,7 @@ public final class Log {
 
     // Note: Must be kept in sync with constants in c1_Runtime1.hpp
     private static final int LOG_OBJECT_NEWLINE = 0x01;
-    private static final int LOG_OBJECT_STRING  = 0x02;
+    private static final int LOG_OBJECT_STRING = 0x02;
     private static final int LOG_OBJECT_ADDRESS = 0x04;
 
     @NodeIntrinsic(RuntimeCallNode.class)
@@ -81,17 +82,19 @@ public final class Log {
 
     /**
      * Prints a formatted string to the log stream.
-     *
-     * @param format a C style printf format value that can contain at most one conversion specifier (i.e., a sequence
-     *            of characters starting with '%').
+     * 
+     * @param format a C style printf format value that can contain at most one conversion specifier
+     *            (i.e., a sequence of characters starting with '%').
      * @param value the value associated with the conversion specifier
      */
     public static void printf(String format, long value) {
         printf(LOG_PRINTF, format, value, 0L, 0L);
     }
+
     public static void printf(String format, long v1, long v2) {
         printf(LOG_PRINTF, format, v1, v2, 0L);
     }
+
     public static void printf(String format, long v1, long v2, long v3) {
         printf(LOG_PRINTF, format, v1, v2, v3);
     }

@@ -89,11 +89,11 @@ public class NewMultiArrayTest extends GraalCompilerTest {
 
     @Test
     public void test1() {
-        for (Class clazz : new Class[] {byte.class, char.class, short.class, int.class, float.class, long.class, double.class, String.class}) {
+        for (Class clazz : new Class[]{byte.class, char.class, short.class, int.class, float.class, long.class, double.class, String.class}) {
             bottomClass = clazz;
             bottomType = runtime.lookupJavaType(clazz);
             arrayType = bottomType;
-            for (int rank : new int[] {1, 2, 10, 50, 100, 200, 254, 255}) {
+            for (int rank : new int[]{1, 2, 10, 50, 100, 200, 254, 255}) {
                 while (rank(arrayType) != rank) {
                     arrayType = arrayType.getArrayClass();
                 }
@@ -113,7 +113,8 @@ public class NewMultiArrayTest extends GraalCompilerTest {
     public static Object newMultiArray() {
         // This is merely a template - the NewMultiArrayNode is replaced in getCode() above.
         // This also means we need a separate test for correct handling of negative dimensions
-        // as deoptimization won't do what we want for a graph modified to be different from the source bytecode.
+        // as deoptimization won't do what we want for a graph modified to be different from the
+        // source bytecode.
         return new Object[10][9][8];
     }
 

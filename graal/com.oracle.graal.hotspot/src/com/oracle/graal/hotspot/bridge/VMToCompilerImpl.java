@@ -24,6 +24,9 @@
 package com.oracle.graal.hotspot.bridge;
 
 import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.hotspot.CompilationTask.*;
+import static com.oracle.graal.java.GraphBuilderPhase.*;
+import static com.oracle.graal.phases.common.InliningUtil.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -39,7 +42,6 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
-import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -53,7 +55,6 @@ import com.oracle.graal.snippets.*;
 public class VMToCompilerImpl implements VMToCompiler {
 
     private final HotSpotGraalRuntime graalRuntime;
-    private IntrinsifyArrayCopyPhase intrinsifyArrayCopy;
 
     public final HotSpotResolvedPrimitiveType typeBoolean;
     public final HotSpotResolvedPrimitiveType typeChar;
@@ -72,6 +73,8 @@ public class VMToCompilerImpl implements VMToCompiler {
     private volatile boolean bootstrapRunning;
 
     private PrintStream log = System.out;
+
+    private boolean quietMeterAndTime;
 
     public VMToCompilerImpl(HotSpotGraalRuntime compiler) {
         this.graalRuntime = compiler;
@@ -93,10 +96,10 @@ public class VMToCompilerImpl implements VMToCompiler {
         assert unsafe.getObject(mirror, offset) == type;
     }
 
-
     public void startCompiler() throws Throwable {
 
-        long offset = HotSpotGraalRuntime.getInstance().getConfig().graalMirrorInClassOffset;
+        HotSpotVMConfig config = graalRuntime.getConfig();
+        long offset = config.graalMirrorInClassOffset;
         initMirror(typeBoolean, offset);
         initMirror(typeChar, offset);
         initMirror(typeFloat, offset);
@@ -124,6 +127,13 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
+        if (config.ciTime) {
+            quietMeterAndTime = (GraalOptions.Meter == null && GraalOptions.Time == null);
+            GraalOptions.Debug = true;
+            GraalOptions.Meter = "";
+            GraalOptions.Time = "";
+        }
+
         if (GraalOptions.Debug) {
             Debug.enable();
             if (GraalOptions.DebugSnippets) {
@@ -135,19 +145,23 @@ public class VMToCompilerImpl implements VMToCompiler {
         GraalCompiler compiler = graalRuntime.getCompiler();
         final HotSpotRuntime runtime = (HotSpotRuntime) compiler.runtime;
         if (GraalOptions.Intrinsify) {
-            Debug.scope("InstallSnippets", new Object[] {new DebugDumpScope("InstallSnippets"), compiler}, new Runnable() {
+            Debug.scope("InstallSnippets", new Object[]{new DebugDumpScope("InstallSnippets"), compiler}, new Runnable() {
 
                 @Override
                 public void run() {
-                    // Snippets cannot have speculative optimizations since they have to be valid for the entire run of the VM.
+                    // Snippets cannot have speculative optimizations since they have to be valid
+                    // for the entire run of the VM.
                     Assumptions assumptions = new Assumptions(false);
-                    VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime, assumptions);
                     SnippetInstaller installer = new HotSpotSnippetInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
                     GraalIntrinsics.installIntrinsics(installer);
                     runtime.installSnippets(installer, assumptions);
                 }
             });
 
+        }
+
+        if (GraalOptions.DebugSnippets) {
+            phaseTransition("snippets");
         }
 
         // Create compilation queue.
@@ -184,9 +198,22 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     /**
-     * This method is the first method compiled during bootstrapping. Put any code in there that warms up compiler paths
-     * that are otherwise not exercised during bootstrapping and lead to later deoptimization when application code is
-     * compiled.
+     * Take action related to entering a new execution phase.
+     * 
+     * @param phase the execution phase being entered
+     */
+    protected void phaseTransition(String phase) {
+        CompilationStatistics.clear(phase);
+        if (graalRuntime.getConfig().ciTime) {
+            parsedBytecodesPerSecond = MetricRateInPhase.snapshot(phase, parsedBytecodesPerSecond, BytecodesParsed, CompilationTime, TimeUnit.SECONDS);
+            inlinedBytecodesPerSecond = MetricRateInPhase.snapshot(phase, inlinedBytecodesPerSecond, InlinedBytecodes, CompilationTime, TimeUnit.SECONDS);
+        }
+    }
+
+    /**
+     * This method is the first method compiled during bootstrapping. Put any code in there that
+     * warms up compiler paths that are otherwise not exercised during bootstrapping and lead to
+     * later deoptimization when application code is compiled.
      */
     @SuppressWarnings("unused")
     @Deprecated
@@ -242,7 +269,9 @@ public class VMToCompilerImpl implements VMToCompiler {
                 }
             }
         } while ((System.currentTimeMillis() - startTime) <= GraalOptions.TimedBootstrap);
-        CompilationStatistics.clear("bootstrap");
+
+        phaseTransition("bootstrap");
+
         bootstrapRunning = false;
 
         TTY.println(" in %d ms", System.currentTimeMillis() - startTime);
@@ -250,8 +279,11 @@ public class VMToCompilerImpl implements VMToCompiler {
             graalRuntime.getCache().clear();
         }
         System.gc();
-        CompilationStatistics.clear("bootstrap2");
+        phaseTransition("bootstrap2");
     }
+
+    private MetricRateInPhase parsedBytecodesPerSecond;
+    private MetricRateInPhase inlinedBytecodesPerSecond;
 
     private void enqueue(Method m) throws Throwable {
         JavaMethod javaMethod = graalRuntime.getRuntime().lookupJavaMethod(m);
@@ -279,13 +311,12 @@ public class VMToCompilerImpl implements VMToCompiler {
             CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
 
-
-        if (Debug.isEnabled()) {
+        if (Debug.isEnabled() && !quietMeterAndTime) {
             List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
             List<DebugValue> debugValues = KeyRegistry.getDebugValues();
             if (debugValues.size() > 0) {
                 ArrayList<DebugValue> sortedValues = new ArrayList<>(debugValues);
-                Collections.sort(sortedValues, DebugValue.ORDER_BY_NAME);
+                Collections.sort(sortedValues);
 
                 if (GraalOptions.SummarizeDebugValues) {
                     printSummary(topLevelMaps, sortedValues);
@@ -302,9 +333,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                         if (GraalOptions.SummarizePerPhase) {
                             flattenChildren(map, globalMap);
                         } else {
-                            for (DebugValueMap child : map.getChildren()) {
-                                globalMap.addChild(child);
-                            }
+                            globalMap.addChild(map);
                         }
                     }
                     if (!GraalOptions.SummarizePerPhase) {
@@ -315,7 +344,13 @@ public class VMToCompilerImpl implements VMToCompiler {
                 }
             }
         }
-        CompilationStatistics.clear("final");
+        phaseTransition("final");
+
+        if (graalRuntime.getConfig().ciTime) {
+            parsedBytecodesPerSecond.printAll("ParsedBytecodesPerSecond");
+            inlinedBytecodesPerSecond.printAll("InlinedBytecodesPerSecond");
+        }
+
         SnippetCounter.printGroups(TTY.out().out());
     }
 
@@ -336,6 +371,18 @@ public class VMToCompilerImpl implements VMToCompiler {
             result.setCurrentValue(index, total);
         }
         printMap(result, debugValues, 0);
+    }
+
+    static long collectTotal(DebugValue value) {
+        List<DebugValueMap> maps = DebugValueMap.getTopLevelMaps();
+        long total = 0;
+        for (int i = 0; i < maps.size(); i++) {
+            DebugValueMap map = maps.get(i);
+            int index = value.getIndex();
+            total += map.getCurrentValue(index);
+            total += collectTotal(map.getChildren(), index);
+        }
+        return total;
     }
 
     private static long collectTotal(List<DebugValueMap> maps, int index) {
@@ -381,13 +428,16 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     /**
      * Compiles a method to machine code.
-     * @return true if the method is in the queue (either added to the queue or already in the queue)
+     * 
+     * @return true if the method is in the queue (either added to the queue or already in the
+     *         queue)
      */
     public boolean compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, boolean blocking, int priority) throws Throwable {
         CompilationTask current = method.currentTask();
         boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
         if (osrCompilation && bootstrapRunning) {
-            // no OSR compilations during bootstrap - the compiler is just too slow at this point, and we know that there are no endless loops
+            // no OSR compilations during bootstrap - the compiler is just too slow at this point,
+            // and we know that there are no endless loops
             return current != null;
         }
 
@@ -404,15 +454,18 @@ public class VMToCompilerImpl implements VMToCompiler {
             if (!blocking && current != null) {
                 if (current.isInProgress()) {
                     if (current.getEntryBCI() == entryBCI) {
-                        // a compilation with the correct bci is already in progress, so just return true
+                        // a compilation with the correct bci is already in progress, so just return
+                        // true
                         return true;
                     }
                 } else {
                     if (GraalOptions.PriorityCompileQueue) {
-                        // normally compilation tasks will only be re-queued when they get a priority boost, so cancel the old task and add a new one
+                        // normally compilation tasks will only be re-queued when they get a
+                        // priority boost, so cancel the old task and add a new one
                         current.cancel();
                     } else {
-                        // without a prioritizing compile queue it makes no sense to re-queue the compilation task
+                        // without a prioritizing compile queue it makes no sense to re-queue the
+                        // compilation task
                         return true;
                     }
                 }
@@ -510,19 +563,8 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public HotSpotResolvedObjectType createResolvedJavaType(long metaspaceKlass,
-                    String name,
-                    String simpleName,
-                    Class javaMirror,
-                    boolean hasFinalizableSubclass,
-                    int sizeOrSpecies) {
-        HotSpotResolvedObjectType type = new HotSpotResolvedObjectType(
-                                        metaspaceKlass,
-                                        name,
-                                        simpleName,
-                                        javaMirror,
-                                        hasFinalizableSubclass,
-                                        sizeOrSpecies);
+    public HotSpotResolvedObjectType createResolvedJavaType(long metaspaceKlass, String name, String simpleName, Class javaMirror, boolean hasFinalizableSubclass, int sizeOrSpecies) {
+        HotSpotResolvedObjectType type = new HotSpotResolvedObjectType(metaspaceKlass, name, simpleName, javaMirror, hasFinalizableSubclass, sizeOrSpecies);
 
         long offset = HotSpotGraalRuntime.getInstance().getConfig().graalMirrorInClassOffset;
         if (!unsafe.compareAndSwapObject(javaMirror, offset, null, type)) {
@@ -571,9 +613,6 @@ public class VMToCompilerImpl implements VMToCompiler {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(graalRuntime.getRuntime(), GraphBuilderConfiguration.getDefault(), optimisticOpts));
         if (onStackReplacement) {
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, new OnStackReplacementPhase());
-        }
-        if (GraalOptions.Intrinsify && GraalOptions.IntrinsifyArrayCopy) {
-            phasePlan.addPhase(PhasePosition.HIGH_LEVEL, intrinsifyArrayCopy);
         }
         return phasePlan;
     }

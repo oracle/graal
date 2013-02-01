@@ -23,5 +23,6 @@
 package com.oracle.graal.asm;
 
 public class AsmOptions {
-    public static int     InitialCodeBufferSize         = 232;
+
+    public static int InitialCodeBufferSize = 232;
 }

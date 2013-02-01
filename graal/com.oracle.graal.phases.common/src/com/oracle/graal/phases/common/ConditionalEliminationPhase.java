@@ -162,7 +162,8 @@ public class ConditionalEliminationPhase extends Phase {
                 }
             }
 
-            // this piece of code handles phis (merges the types and knownNull/knownNotNull of the values)
+            // this piece of code handles phis (merges the types and knownNull/knownNotNull of the
+            // values)
             if (!(merge instanceof LoopBeginNode)) {
                 for (PhiNode phi : merge.phis()) {
                     if (phi.type() == PhiType.Value && phi.kind() == Kind.Object) {
@@ -250,6 +251,7 @@ public class ConditionalEliminationPhase extends Phase {
     }
 
     public class ConditionalElimination extends PostOrderNodeIterator<State> {
+
         private BeginNode lastBegin = null;
 
         public ConditionalElimination(FixedNode start, State initialState) {

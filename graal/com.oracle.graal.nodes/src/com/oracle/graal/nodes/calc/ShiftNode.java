@@ -32,6 +32,7 @@ public abstract class ShiftNode extends BinaryNode {
 
     /**
      * Creates a new shift operation.
+     * 
      * @param x the first input value
      * @param s the second input value
      */

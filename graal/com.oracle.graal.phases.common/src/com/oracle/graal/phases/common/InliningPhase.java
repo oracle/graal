@@ -39,10 +39,12 @@ import com.oracle.graal.phases.common.InliningUtil.InliningCallback;
 import com.oracle.graal.phases.common.InliningUtil.InliningPolicy;
 
 public class InliningPhase extends Phase implements InliningCallback {
+
     /*
-     * - Detect method which only call another method with some parameters set to constants: void foo(a) -> void foo(a, b) -> void foo(a, b, c) ...
-     *   These should not be taken into account when determining inlining depth.
-     * - honor the result of overrideInliningDecision(0, caller, invoke.bci, method, true);
+     * - Detect method which only call another method with some parameters set to constants: void
+     * foo(a) -> void foo(a, b) -> void foo(a, b, c) ... These should not be taken into account when
+     * determining inlining depth. - honor the result of overrideInliningDecision(0, caller,
+     * invoke.bci, method, true);
      */
 
     private final TargetDescription target;
@@ -61,7 +63,8 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
     private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
 
-    public InliningPhase(TargetDescription target, GraalCodeCacheProvider runtime, Collection<Invoke> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public InliningPhase(TargetDescription target, GraalCodeCacheProvider runtime, Collection<Invoke> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan,
+                    OptimisticOptimizations optimisticOpts) {
         this(target, runtime, assumptions, cache, plan, createInliningPolicy(runtime, assumptions, optimisticOpts, hints), optimisticOpts);
     }
 
@@ -151,6 +154,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     }
 
     private interface InliningDecision {
+
         boolean isWorthInlining(InlineInfo info);
     }
 
@@ -294,6 +298,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                         moreSpecificArgumentInfo++;
                     }
                 }
+
             }
 
             return moreSpecificArgumentInfo;
@@ -334,6 +339,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     }
 
     private static class CFInliningPolicy implements InliningPolicy {
+
         private final InliningDecision inliningDecision;
         private final Collection<Invoke> hints;
         private final Assumptions assumptions;
@@ -343,7 +349,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         private FixedNode invokePredecessor;
 
         public CFInliningPolicy(InliningDecision inliningPolicy, Collection<Invoke> hints,
-                        Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
+                        OptimisticOptimizations optimisticOpts) {
             this.inliningDecision = inliningPolicy;
             this.hints = hints;
             this.assumptions = assumptions;
@@ -397,6 +403,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                 Invoke invoke = invokes.get(i);
                 assert !sortedInvokes.contains(invoke);
                 sortedInvokes.addFirst(invoke);
+
             }
 
             return invokes.size();
@@ -414,6 +421,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     }
 
     private static class InliningIterator {
+
         private final FixedNode start;
         private final Deque<FixedNode> nodeQueue;
         private final NodeBitMap queuedNodes;
@@ -510,7 +518,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     }
 
     private static InliningPolicy createInliningPolicy(GraalCodeCacheProvider runtime, Assumptions assumptions, OptimisticOptimizations optimisticOpts, Collection<Invoke> hints) {
-        InliningDecision inliningDecision = new GreedySizeBasedInliningDecision(runtime, hints);
+       InliningDecision inliningDecision = new GreedySizeBasedInliningDecision(runtime, hints);
         return new CFInliningPolicy(inliningDecision, hints, assumptions, optimisticOpts);
     }
 }

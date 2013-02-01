@@ -25,10 +25,9 @@ package com.oracle.graal.jtt.jdk;
 import com.oracle.graal.jtt.*;
 import org.junit.*;
 
-
 public class LongBits extends JTTTest {
-    @SuppressWarnings("unused")
-    private static long init = Long.reverseBytes(42);
+
+    @SuppressWarnings("unused") private static long init = Long.reverseBytes(42);
     private static long original = 0x0102030405060708L;
     private static long v = 0b1000L;
     private static long v2 = 0x0100000000L;

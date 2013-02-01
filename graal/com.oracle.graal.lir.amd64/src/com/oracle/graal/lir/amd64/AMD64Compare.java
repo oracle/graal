@@ -30,6 +30,7 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
 
+// @formatter:off
 public enum AMD64Compare {
     ICMP, LCMP, ACMP, FCMP, DCMP;
 

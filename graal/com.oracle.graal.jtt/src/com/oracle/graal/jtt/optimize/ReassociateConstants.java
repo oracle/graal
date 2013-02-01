@@ -24,9 +24,10 @@ package com.oracle.graal.jtt.optimize;
 
 import org.junit.*;
 
-
 public class ReassociateConstants {
+
     public static int rnd = (int) (Math.random() * 100);
+
     @Test
     public void run0() throws Throwable {
         Assert.assertEquals(rnd + 3, 1 + (rnd + 2));

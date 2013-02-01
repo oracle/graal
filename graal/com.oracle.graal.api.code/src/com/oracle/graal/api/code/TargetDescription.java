@@ -24,12 +24,12 @@ package com.oracle.graal.api.code;
 
 import com.oracle.graal.api.meta.*;
 
-
 /**
- * Represents the target machine for a compiler, including the CPU architecture, the size of pointers and references,
- * alignment of stacks, caches, etc.
+ * Represents the target machine for a compiler, including the CPU architecture, the size of
+ * pointers and references, alignment of stacks, caches, etc.
  */
 public class TargetDescription {
+
     public final Architecture arch;
 
     /**
@@ -58,8 +58,10 @@ public class TargetDescription {
     public final Kind wordKind;
 
     /**
-     * The stack alignment requirement of the platform. For example,
-     * from Appendix D of <a href="http://www.intel.com/Assets/PDF/manual/248966.pdf">Intel 64 and IA-32 Architectures Optimization Reference Manual</a>:
+     * The stack alignment requirement of the platform. For example, from Appendix D of <a
+     * href="http://www.intel.com/Assets/PDF/manual/248966.pdf">Intel 64 and IA-32 Architectures
+     * Optimization Reference Manual</a>:
+     * 
      * <pre>
      *     "It is important to ensure that the stack frame is aligned to a
      *      16-byte boundary upon function entry to keep local __m128 data,
@@ -80,35 +82,31 @@ public class TargetDescription {
     public final int cacheAlignment;
 
     /**
-     * Specifies how {@code long} and {@code double} constants are to be stored
-     * in {@linkplain BytecodeFrame frames}. This is useful for VMs such as HotSpot
-     * where convention the interpreter uses is that the second local
-     * holds the first raw word of the native long or double representation.
-     * This is actually reasonable, since locals and stack arrays
-     * grow downwards in all implementations.
-     * If, on some machine, the interpreter's Java locals or stack
+     * Maximum constant displacement at which a memory access can no longer be an implicit null
+     * check.
+     */
+    public final int implicitNullCheckLimit;
+
+    /**
+     * Specifies how {@code long} and {@code double} constants are to be stored in
+     * {@linkplain BytecodeFrame frames}. This is useful for VMs such as HotSpot where convention
+     * the interpreter uses is that the second local holds the first raw word of the native long or
+     * double representation. This is actually reasonable, since locals and stack arrays grow
+     * downwards in all implementations. If, on some machine, the interpreter's Java locals or stack
      * were to grow upwards, the embedded doubles would be word-swapped.)
      */
     public final boolean debugInfoDoubleWordsInSecondSlot;
 
-    public TargetDescription(Architecture arch,
-             boolean isMP,
-             int stackAlignment,
-             int pageSize,
-             int cacheAlignment,
-             boolean inlineObjects,
-             boolean debugInfoDoubleWordsInSecondSlot) {
+    public TargetDescription(Architecture arch, boolean isMP, int stackAlignment, int stackBias, int implicitNullCheckLimit, int pageSize, int cacheAlignment, boolean inlineObjects,
+                    boolean debugInfoDoubleWordsInSecondSlot) {
         this.arch = arch;
         this.pageSize = pageSize;
         this.isMP = isMP;
         this.wordSize = arch.getWordSize();
-        if (wordSize == 8) {
-            this.wordKind = Kind.Long;
-        } else {
-            this.wordKind = Kind.Int;
-        }
+        this.wordKind = Kind.fromWordSize(wordSize);
         this.stackAlignment = stackAlignment;
-        this.stackBias = 0; // TODO: configure with param once SPARC port exists
+        this.stackBias = stackBias;
+        this.implicitNullCheckLimit = implicitNullCheckLimit;
         this.cacheAlignment = cacheAlignment;
         this.inlineObjects = inlineObjects;
         this.debugInfoDoubleWordsInSecondSlot = debugInfoDoubleWordsInSecondSlot;
@@ -116,31 +114,43 @@ public class TargetDescription {
 
     /**
      * Gets the size in bytes of the specified kind for this target.
-     *
+     * 
      * @param kind the kind for which to get the size
      * @return the size in bytes of {@code kind}
      */
     public int sizeInBytes(Kind kind) {
         // Checkstyle: stop
         switch (kind) {
-            case Boolean: return 1;
-            case Byte: return 1;
-            case Char: return 2;
-            case Short: return 2;
-            case Int: return 4;
-            case Long: return 8;
-            case Float: return 4;
-            case Double: return 8;
-            case Object: return wordSize;
-            case Jsr: return 4;
-            default: return 0;
+            case Boolean:
+                return 1;
+            case Byte:
+                return 1;
+            case Char:
+                return 2;
+            case Short:
+                return 2;
+            case Int:
+                return 4;
+            case Long:
+                return 8;
+            case Float:
+                return 4;
+            case Double:
+                return 8;
+            case Object:
+                return wordSize;
+            case Jsr:
+                return 4;
+            default:
+                return 0;
         }
         // Checkstyle: resume
     }
 
     /**
-     * Aligns the given frame size (without return instruction pointer) to the stack
-     * alignment size and return the aligned size (without return instruction pointer).
+     * Aligns the given frame size (without return instruction pointer) to the stack alignment size
+     * and return the aligned size (without return instruction pointer).
+     * 
      * @param frameSize the initial frame size to be aligned
      * @return the aligned frame size
      */

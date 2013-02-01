@@ -33,6 +33,7 @@ import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}")
 public class InvokeWithExceptionNode extends ControlSplitNode implements Node.IterableNodeType, Invoke, MemoryCheckpoint, LIRLowerable {
+
     @Successor private BeginNode next;
     @Successor private DispatchBeginNode exceptionEdge;
     @Input private final CallTargetNode callTarget;
@@ -217,6 +218,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     }
 
     private static final double EXCEPTION_PROBA = 1e-5;
+
     @Override
     public double probability(BeginNode successor) {
         return successor == next ? 1 - EXCEPTION_PROBA : EXCEPTION_PROBA;

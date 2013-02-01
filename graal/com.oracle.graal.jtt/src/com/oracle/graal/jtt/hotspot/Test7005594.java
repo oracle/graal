@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.jtt.hotspot;
 
+//@formatter:off
+
 /**
  * @test
  * @bug 7005594

@@ -22,11 +22,16 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import static com.oracle.graal.virtual.phases.ea.PartialEscapeAnalysisPhase.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
+import com.oracle.graal.nodes.spi.Virtualizable.State;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.phases.*;
 
 class VirtualizerToolImpl implements VirtualizerTool {
 
@@ -44,6 +49,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
     private boolean customAction;
     private BlockState state;
     private ValueNode current;
+    private int virtualIds = 0;
 
     @Override
     public MetaAccessProvider getMetaAccessProvider() {
@@ -66,48 +72,29 @@ class VirtualizerToolImpl implements VirtualizerTool {
     }
 
     @Override
-    public VirtualObjectNode getVirtualState(ValueNode value) {
-        ObjectState obj = state.getObjectState(value);
-        return obj != null && obj.isVirtual() ? obj.virtual : null;
+    public int getNextVirtualId() {
+        return virtualIds;
     }
 
     @Override
-    public ValueNode getVirtualEntry(VirtualObjectNode virtual, int index) {
-        ObjectState obj = state.getObjectState(virtual);
-        assert obj != null && obj.isVirtual() : "not virtual: " + obj;
-        ValueNode result = obj.getEntry(index);
-        ValueNode materialized = getMaterializedValue(result);
-        return materialized != null ? materialized : result;
+    public State getObjectState(ValueNode value) {
+        return state.getObjectState(value);
     }
 
     @Override
-    public void setVirtualEntry(VirtualObjectNode virtual, int index, ValueNode value) {
-        ObjectState obj = state.getObjectState(virtual);
+    public void setVirtualEntry(State objectState, int index, ValueNode value) {
+        ObjectState obj = (ObjectState) objectState;
         assert obj != null && obj.isVirtual() : "not virtual: " + obj;
-        if (getVirtualState(value) == null) {
-            ValueNode materialized = getMaterializedValue(value);
-            if (materialized != null) {
-                obj.setEntry(index, materialized);
-            } else {
-                obj.setEntry(index, getReplacedValue(value));
-            }
+        ObjectState valueState = state.getObjectState(value);
+        if (valueState == null) {
+            obj.setEntry(index, getReplacedValue(value));
         } else {
-            obj.setEntry(index, value);
+            if (valueState.getState() == EscapeState.Virtual) {
+                obj.setEntry(index, value);
+            } else {
+                obj.setEntry(index, valueState.getMaterializedValue());
+            }
         }
-    }
-
-    @Override
-    public int getVirtualLockCount(VirtualObjectNode virtual) {
-        ObjectState obj = state.getObjectState(virtual);
-        assert obj != null && obj.isVirtual() : "not virtual: " + obj;
-        return obj.getLockCount();
-    }
-
-    @Override
-    public void setVirtualLockCount(VirtualObjectNode virtual, int lockCount) {
-        ObjectState obj = state.getObjectState(virtual);
-        assert obj != null && obj.isVirtual() : "not virtual: " + obj;
-        obj.setLockCount(lockCount);
     }
 
     @Override
@@ -153,5 +140,41 @@ class VirtualizerToolImpl implements VirtualizerTool {
     public void customAction(Runnable action) {
         effects.customAction(action);
         customAction = true;
+    }
+
+    @Override
+    public void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int lockCount) {
+        trace("{{%s}} ", current);
+        if (virtualObject.isAlive()) {
+            state.addAndMarkAlias(virtualObject, virtualObject, usages);
+        } else {
+            effects.addFloatingNode(virtualObject);
+        }
+        for (int i = 0; i < entryState.length; i++) {
+            entryState[i] = state.getScalarAlias(entryState[i]);
+        }
+        state.addObject(virtualObject, new ObjectState(virtualObject, entryState, EscapeState.Virtual, lockCount));
+        state.addAndMarkAlias(virtualObject, virtualObject, usages);
+        PartialEscapeClosure.METRIC_ALLOCATION_REMOVED.increment();
+        virtualIds++;
+    }
+
+    @Override
+    public int getMaximumEntryCount() {
+        return GraalOptions.MaximumEscapeAnalysisArrayLength;
+    }
+
+    @Override
+    public void replaceWith(ValueNode node) {
+        State resultState = getObjectState(node);
+        if (resultState == null) {
+            replaceWithValue(node);
+        } else {
+            if (resultState.getState() == EscapeState.Virtual) {
+                replaceWithVirtual(resultState.getVirtualObject());
+            } else {
+                replaceWithValue(resultState.getMaterializedValue());
+            }
+        }
     }
 }

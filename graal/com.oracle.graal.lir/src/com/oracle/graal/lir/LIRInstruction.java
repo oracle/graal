@@ -41,14 +41,16 @@ public abstract class LIRInstruction {
     public static final Value[] NO_OPERANDS = {};
 
     /**
-     * Iterator for iterating over a list of values. Subclasses must overwrite one of the doValue methods.
-     * Clients of the class must only call the doValue method that takes additional parameters.
+     * Iterator for iterating over a list of values. Subclasses must overwrite one of the doValue
+     * methods. Clients of the class must only call the doValue method that takes additional
+     * parameters.
      */
     public abstract static class ValueProcedure {
+
         /**
-         * Iterator method to be overwritten. This version of the iterator does not take additional parameters
-         * to keep the signature short.
-         *
+         * Iterator method to be overwritten. This version of the iterator does not take additional
+         * parameters to keep the signature short.
+         * 
          * @param value The value that is iterated.
          * @return The new value to replace the value that was passed in.
          */
@@ -57,9 +59,9 @@ public abstract class LIRInstruction {
         }
 
         /**
-         * Iterator method to be overwritten. This version of the iterator gets additional parameters about the
-         * processed value.
-         *
+         * Iterator method to be overwritten. This version of the iterator gets additional
+         * parameters about the processed value.
+         * 
          * @param value The value that is iterated.
          * @param mode The operand mode for the value.
          * @param flags A set of flags for the value.
@@ -70,40 +72,41 @@ public abstract class LIRInstruction {
         }
     }
 
-
     public abstract static class StateProcedure {
+
         protected abstract void doState(LIRFrameState state);
     }
-
 
     /**
      * Constants denoting how a LIR instruction uses an operand.
      */
     public enum OperandMode {
         /**
-         * The value must have been defined before. It is alive before the instruction until the beginning of the
-         * instruction, but not necessarily throughout the instruction. A register assigned to it can also be assigend
-         * to a Temp or Output operand. The value can be used again after the instruction, so the instruction must not
-         * modify the register.
+         * The value must have been defined before. It is alive before the instruction until the
+         * beginning of the instruction, but not necessarily throughout the instruction. A register
+         * assigned to it can also be assigend to a Temp or Output operand. The value can be used
+         * again after the instruction, so the instruction must not modify the register.
          */
         USE,
 
         /**
-         * The value must have been defined before. It is alive before the instruction and throughout the instruction. A
-         * register assigned to it cannot be assigned to a Temp or Output operand. The value can be used again after the
-         * instruction, so the instruction must not modify the register.
+         * The value must have been defined before. It is alive before the instruction and
+         * throughout the instruction. A register assigned to it cannot be assigned to a Temp or
+         * Output operand. The value can be used again after the instruction, so the instruction
+         * must not modify the register.
          */
         ALIVE,
 
         /**
-         * The value must not have been defined before, and must not be used after the instruction. The instruction can
-         * do whatever it wants with the register assigned to it (or not use it at all).
+         * The value must not have been defined before, and must not be used after the instruction.
+         * The instruction can do whatever it wants with the register assigned to it (or not use it
+         * at all).
          */
         TEMP,
 
         /**
-         * The value must not have been defined before. The instruction has to assign a value to the register. The
-         * value can (and most likely will) be used after the instruction.
+         * The value must not have been defined before. The instruction has to assign a value to the
+         * register. The value can (and most likely will) be used after the instruction.
          */
         DEF,
     }
@@ -111,24 +114,28 @@ public abstract class LIRInstruction {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public static @interface Use {
+
         OperandFlag[] value() default REG;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public static @interface Alive {
+
         OperandFlag[] value() default REG;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public static @interface Temp {
+
         OperandFlag[] value() default REG;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public static @interface Def {
+
         OperandFlag[] value() default REG;
     }
 
@@ -140,9 +147,9 @@ public abstract class LIRInstruction {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE, ElementType.FIELD})
     public static @interface Opcode {
+
         String value() default "";
     }
-
 
     /**
      * Flags for an operand.
@@ -180,12 +187,11 @@ public abstract class LIRInstruction {
         HINT,
 
         /**
-         * The value can be uninitialized, e.g., a stack slot that has not written to before. This is only
-         * used to avoid false positives in verification code.
+         * The value can be uninitialized, e.g., a stack slot that has not written to before. This
+         * is only used to avoid false positives in verification code.
          */
         UNINITIALIZED,
     }
-
 
     /**
      * For validity checking of the operand flags defined by instruction subclasses.
@@ -196,7 +202,7 @@ public abstract class LIRInstruction {
         ALLOWED_FLAGS = new EnumMap<>(OperandMode.class);
         ALLOWED_FLAGS.put(USE, EnumSet.of(REG, STACK, ADDR, CONST, ILLEGAL, HINT, UNINITIALIZED));
         ALLOWED_FLAGS.put(ALIVE, EnumSet.of(REG, STACK, ADDR, CONST, ILLEGAL, HINT, UNINITIALIZED));
-        ALLOWED_FLAGS.put(TEMP,  EnumSet.of(REG, CONST, ILLEGAL, HINT));
+        ALLOWED_FLAGS.put(TEMP, EnumSet.of(REG, CONST, ILLEGAL, HINT));
         ALLOWED_FLAGS.put(DEF, EnumSet.of(REG, STACK, ILLEGAL, HINT));
     }
 
@@ -222,7 +228,6 @@ public abstract class LIRInstruction {
 
     public abstract void emitCode(TargetMethodAssembler tasm);
 
-
     public final int id() {
         return id;
     }
@@ -247,12 +252,12 @@ public abstract class LIRInstruction {
     }
 
     /**
-     * Returns true when this instruction is a call instruction that destroys all caller-saved registers.
+     * Returns true when this instruction is a call instruction that destroys all caller-saved
+     * registers.
      */
     public final boolean hasCall() {
         return this instanceof StandardOp.CallOp;
     }
-
 
     public final void forEachInput(ValueProcedure proc) {
         instructionClass.forEachUse(this, proc);
@@ -279,26 +284,26 @@ public abstract class LIRInstruction {
     }
 
     /**
-     * Iterates all register hints for the specified value, i.e., all preferred candidates for the register to be
-     * assigned to the value.
-     * <br>
-     * Subclasses can override this method. The default implementation processes all Input operands as the hints for
-     * an Output operand, and all Output operands as the hints for an Input operand.
-     *
+     * Iterates all register hints for the specified value, i.e., all preferred candidates for the
+     * register to be assigned to the value.
+     * <p>
+     * Subclasses can override this method. The default implementation processes all Input operands
+     * as the hints for an Output operand, and all Output operands as the hints for an Input
+     * operand.
+     * 
      * @param value The value the hints are needed for.
      * @param mode The operand mode of the value.
-     * @param proc The procedure invoked for all the hints. If the procedure returns a non-null value, the iteration is stopped
-     *             and the value is returned by this method, i.e., clients can stop the iteration once a suitable hint has been found.
+     * @param proc The procedure invoked for all the hints. If the procedure returns a non-null
+     *            value, the iteration is stopped and the value is returned by this method, i.e.,
+     *            clients can stop the iteration once a suitable hint has been found.
      * @return The non-null value returned by the procedure, or null.
      */
     public Value forEachRegisterHint(Value value, OperandMode mode, ValueProcedure proc) {
         return instructionClass.forEachRegisterHint(this, mode, proc);
     }
 
-
     protected void verify() {
     }
-
 
     public final String toStringWithIdPrefix() {
         if (id != -1) {

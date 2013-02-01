@@ -52,6 +52,7 @@ public abstract class Phase {
 
     public final void apply(final StructuredGraph graph, final boolean dumpGraph) {
         Debug.scope(name, this, new Runnable() {
+
             public void run() {
                 Phase.this.run(graph);
                 metricPhaseRuns.increment();

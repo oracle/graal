@@ -22,13 +22,12 @@
  */
 package com.oracle.graal.phases;
 
-
-
 /**
  * This class encapsulates options that control the behavior of the Graal compiler.
- *
+ * 
  * (thomaswue) WARNING: Fields of this class are treated as final by Graal.
  */
+// @formatter:off
 public final class GraalOptions {
 
     // Checkstyle: stop
@@ -68,6 +67,7 @@ public final class GraalOptions {
     public static boolean EscapeAnalysisHistogram            = ____;
     public static int     EscapeAnalysisIterations           = 2;
     public static String  EscapeAnalyzeOnly                  = null;
+    public static int     MaximumEscapeAnalysisArrayLength   = 32;
 
     public static double  TailDuplicationProbability         = 0.5;
     public static int     TailDuplicationTrivialSize         = 1;
@@ -98,8 +98,8 @@ public final class GraalOptions {
     public static boolean ReassociateInvariants              = true;
     public static boolean FullUnroll                         = true;
     public static boolean LoopUnswitch                       = true;
-    public static int     FullUnrollMaxNodes                 = 150;
-    public static int     ExactFullUnrollMaxNodes            = 600;
+    public static int     FullUnrollMaxNodes                 = 300;
+    public static int     ExactFullUnrollMaxNodes            = 1200;
     public static float   MinimumPeelProbability             = 0.35f;
     public static int     LoopMaxUnswitch                    = 3;
     public static int     LoopUnswitchMaxIncrease            = 50;
@@ -185,7 +185,6 @@ public final class GraalOptions {
     public static boolean OptReadElimination                 = true;
     public static boolean OptCanonicalizer                   = true;
     public static boolean OptScheduleOutOfLoops              = true;
-    public static boolean OptReorderLoops                    = true;
     public static boolean OptEliminateGuards                 = true;
     public static boolean OptImplicitNullChecks              = true;
     public static boolean OptLivenessAnalysis                = true;

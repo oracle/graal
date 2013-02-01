@@ -27,7 +27,8 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Miscellaneous collection of utility methods used by {@code com.oracle.graal.api.code} and its clients.
+ * Miscellaneous collection of utility methods used by {@code com.oracle.graal.api.code} and its
+ * clients.
  */
 public class CodeUtil {
 
@@ -46,7 +47,7 @@ public class CodeUtil {
 
     /**
      * Checks whether the specified integer is a power of two.
-     *
+     * 
      * @param val the value to check
      * @return {@code true} if the value is a power of two; {@code false} otherwise
      */
@@ -56,7 +57,7 @@ public class CodeUtil {
 
     /**
      * Checks whether the specified long is a power of two.
-     *
+     * 
      * @param val the value to check
      * @return {@code true} if the value is a power of two; {@code false} otherwise
      */
@@ -65,9 +66,9 @@ public class CodeUtil {
     }
 
     /**
-     * Computes the log (base 2) of the specified integer, rounding down. (E.g {@code log2(8) = 3}, {@code log2(21) = 4}
-     * )
-     *
+     * Computes the log (base 2) of the specified integer, rounding down. (E.g {@code log2(8) = 3},
+     * {@code log2(21) = 4} )
+     * 
      * @param val the value
      * @return the log base 2 of the value
      */
@@ -77,8 +78,9 @@ public class CodeUtil {
     }
 
     /**
-     * Computes the log (base 2) of the specified long, rounding down. (E.g {@code log2(8) = 3}, {@code log2(21) = 4})
-     *
+     * Computes the log (base 2) of the specified long, rounding down. (E.g {@code log2(8) = 3},
+     * {@code log2(21) = 4})
+     * 
      * @param val the value
      * @return the log base 2 of the value
      */
@@ -89,7 +91,7 @@ public class CodeUtil {
 
     /**
      * Formats the values in a frame as a tabulated string.
-     *
+     * 
      * @param frame
      * @return the values in {@code frame} as a tabulated string
      */
@@ -127,8 +129,9 @@ public class CodeUtil {
     }
 
     /**
-     * Formats a given table as a string. The value of each cell is produced by {@link String#valueOf(Object)}.
-     *
+     * Formats a given table as a string. The value of each cell is produced by
+     * {@link String#valueOf(Object)}.
+     * 
      * @param cells the cells of the table in row-major order
      * @param cols the number of columns per row
      * @param lpad the number of space padding inserted before each formatted cell value
@@ -176,7 +179,7 @@ public class CodeUtil {
 
     /**
      * Appends a formatted code position to a {@link StringBuilder}.
-     *
+     * 
      * @param sb the {@link StringBuilder} to append to
      * @param pos the code position to format and append to {@code sb}
      * @return the value of {@code sb}
@@ -192,7 +195,7 @@ public class CodeUtil {
 
     /**
      * Appends a formatted frame to a {@link StringBuilder}.
-     *
+     * 
      * @param sb the {@link StringBuilder} to append to
      * @param frame the frame to format and append to {@code sb}
      * @return the value of {@code sb}
@@ -243,8 +246,8 @@ public class CodeUtil {
         private final Register[] registers;
 
         /**
-         * The offset (in bytes) from the slot pointed to by {@link #fp} to the slot corresponding to bit 0 in the frame
-         * reference map.
+         * The offset (in bytes) from the slot pointed to by {@link #fp} to the slot corresponding
+         * to bit 0 in the frame reference map.
          */
         public final int refMapToFPOffset;
 
@@ -272,7 +275,7 @@ public class CodeUtil {
 
     /**
      * Appends a formatted debug info to a {@link StringBuilder}.
-     *
+     * 
      * @param sb the {@link StringBuilder} to append to
      * @param info the debug info to format and append to {@code sb}
      * @return the value of {@code sb}

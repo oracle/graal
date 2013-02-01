@@ -28,31 +28,58 @@ import java.util.regex.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * This class implements a method filter that can filter based on class name, method name and parameters.
- * The syntax for the source pattern that is passed to the constructor is as follows:
- *
+ * This class implements a method filter that can filter based on class name, method name and
+ * parameters. The syntax for the source pattern that is passed to the constructor is as follows:
+ * 
  * <pre>
  * SourcePattern = [ Class "." ] method [ "(" [ Parameter { ";" Parameter } ] ")" ] .
  * Parameter = Class | "int" | "long" | "float" | "double" | "short" | "char" | "boolean" .
  * Class = { package "." } class .
  * </pre>
- *
- *
- * Glob pattern matching (*, ?) is allowed in all parts of the source pattern. Examples for valid filters are:
- *
+ * 
+ * 
+ * Glob pattern matching (*, ?) is allowed in all parts of the source pattern. Examples for valid
+ * filters are:
+ * 
  * <ul>
- * <li><pre>visit(Argument;BlockScope)</pre>
- * Matches all methods named "visit", with the first parameter of type "Argument", and the second parameter of type "BlockScope".
- * The packages of the parameter types are irrelevant.</li>
- * <li><pre>arraycopy(Object;;;;)</pre>
- * Matches all methods named "arraycopy", with the first parameter of type "Object", and four more parameters of any type.
- * The packages of the parameter types are irrelevant.</li>
- * <li><pre>com.oracle.graal.compiler.graph.PostOrderNodeIterator.*</pre>
+ * <li>
+ * 
+ * <pre>
+ * visit(Argument;BlockScope)
+ * </pre>
+ * 
+ * Matches all methods named "visit", with the first parameter of type "Argument", and the second
+ * parameter of type "BlockScope". The packages of the parameter types are irrelevant.</li>
+ * <li>
+ * 
+ * <pre>
+ * arraycopy(Object;;;;)
+ * </pre>
+ * 
+ * Matches all methods named "arraycopy", with the first parameter of type "Object", and four more
+ * parameters of any type. The packages of the parameter types are irrelevant.</li>
+ * <li>
+ * 
+ * <pre>
+ * com.oracle.graal.compiler.graph.PostOrderNodeIterator.*
+ * </pre>
+ * 
  * Matches all methods in the class "com.oracle.graal.compiler.graph.PostOrderNodeIterator".</li>
- * <li><pre>*</pre>
+ * <li>
+ * 
+ * <pre>
+ * *
+ * </pre>
+ * 
  * Matches all methods in all classes</li>
- * <li><pre>com.oracle.graal.compiler.graph.*.visit</pre>
- * Matches all methods named "visit" in classes in the package "com.oracle.graal.compiler.graph".</pre>
+ * <li>
+ * 
+ * <pre>
+ * com.oracle.graal.compiler.graph.*.visit
+ * </pre>
+ * 
+ * Matches all methods named "visit" in classes in the package
+ * "com.oracle.graal.compiler.graph".</pre>
  * </ul>
  */
 public class MethodFilter {

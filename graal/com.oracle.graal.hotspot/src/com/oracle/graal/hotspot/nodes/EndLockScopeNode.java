@@ -28,9 +28,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
-
 /**
- * Intrinsic for closing a {@linkplain BeginLockScopeNode scope} binding a stack-based lock with an object.
+ * Intrinsic for closing a {@linkplain BeginLockScopeNode scope} binding a stack-based lock with an
+ * object.
  */
 public final class EndLockScopeNode extends AbstractStateSplit implements LIRGenLowerable, MonitorExit {
 

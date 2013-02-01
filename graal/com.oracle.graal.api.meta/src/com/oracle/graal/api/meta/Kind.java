@@ -25,9 +25,9 @@ package com.oracle.graal.api.meta;
 import java.lang.reflect.*;
 
 /**
- * Denotes the basic kinds of types in CRI, including the all the Java primitive types, for example, {@link Kind#Int}
- * for {@code int} and {@link Kind#Object} for all object types. A kind has a single character short name, a Java name,
- * and a set of flags further describing its behavior.
+ * Denotes the basic kinds of types in CRI, including the all the Java primitive types, for example,
+ * {@link Kind#Int} for {@code int} and {@link Kind#Object} for all object types. A kind has a
+ * single character short name, a Java name, and a set of flags further describing its behavior.
  */
 public enum Kind {
     /** The primitive boolean kind, represented as an int on the stack. */
@@ -98,9 +98,10 @@ public enum Kind {
 
     /**
      * Checks whether this type is a Java primitive type.
-     *
-     * @return {@code true} if this is {@link #Boolean}, {@link #Byte}, {@link #Char}, {@link #Short}, {@link #Int},
-     *         {@link #Long}, {@link #Float}, {@link #Double}, or {@link #Void}.
+     * 
+     * @return {@code true} if this is {@link #Boolean}, {@link #Byte}, {@link #Char},
+     *         {@link #Short}, {@link #Int}, {@link #Long}, {@link #Float}, {@link #Double}, or
+     *         {@link #Void}.
      */
     public boolean isPrimitive() {
         return primitiveJavaClass != null;
@@ -108,7 +109,7 @@ public enum Kind {
 
     /**
      * Returns the kind that represents this kind when on the Java operand stack.
-     *
+     * 
      * @return the kind used on the operand stack
      */
     public Kind getStackKind() {
@@ -120,7 +121,7 @@ public enum Kind {
 
     /**
      * Returns the kind corresponding to the Java type string.
-     *
+     * 
      * @param typeString the Java type string
      * @return the kind
      */
@@ -134,8 +135,23 @@ public enum Kind {
     }
 
     /**
+     * Returns the kind of a word given the size of a word in bytes.
+     * 
+     * @param wordSizeInBytes the size of a word in bytes
+     * @return the kind representing a word value
+     */
+    public static Kind fromWordSize(int wordSizeInBytes) {
+        if (wordSizeInBytes == 8) {
+            return Kind.Long;
+        } else {
+            assert wordSizeInBytes == 4 : "Unsupported word size!";
+            return Kind.Int;
+        }
+    }
+
+    /**
      * Returns the kind from the character describing a primitive or void.
-     *
+     * 
      * @param ch the character
      * @return the kind
      */
@@ -165,11 +181,11 @@ public enum Kind {
 
     /**
      * Returns the Kind representing the given Java class.
-     *
+     * 
      * @param klass the class
      * @return the kind
      */
-    public static Kind fromJavaClass(Class< ? > klass) {
+    public static Kind fromJavaClass(Class<?> klass) {
         if (klass == Boolean.primitiveJavaClass) {
             return Boolean;
         } else if (klass == Byte.primitiveJavaClass) {
@@ -195,19 +211,19 @@ public enum Kind {
 
     /**
      * Returns the Java class representing this kind.
-     *
+     * 
      * @return the Java class
      */
-    public Class< ? > toJavaClass() {
+    public Class<?> toJavaClass() {
         return primitiveJavaClass;
     }
 
     /**
      * Returns the Java class for instances of boxed values of this kind.
-     *
+     * 
      * @return the Java class
      */
-    public Class< ? > toBoxedJavaClass() {
+    public Class<?> toBoxedJavaClass() {
         return boxedJavaClass;
     }
 
@@ -220,15 +236,15 @@ public enum Kind {
     }
 
     /**
-     * Marker interface for types that should be {@linkplain Kind#format(Object) formatted} with their
-     * {@link Object#toString()} value.
+     * Marker interface for types that should be {@linkplain Kind#format(Object) formatted} with
+     * their {@link Object#toString()} value.
      */
     public interface FormatWithToString {
     }
 
     /**
      * Gets a formatted string for a given value of this kind.
-     *
+     * 
      * @param value a value of this kind
      * @return a formatted string for {@code value} based on this kind
      */
@@ -248,8 +264,8 @@ public enum Kind {
                     return "JavaType:" + MetaUtil.toJavaName((JavaType) value);
                 } else if (value instanceof Enum || value instanceof FormatWithToString || value instanceof Number) {
                     return MetaUtil.getSimpleName(value.getClass(), true) + ":" + String.valueOf(value);
-                } else if (value instanceof Class< ? >) {
-                    return "Class:" + ((Class< ? >) value).getName();
+                } else if (value instanceof Class<?>) {
+                    return "Class:" + ((Class<?>) value).getName();
                 } else if (value.getClass().isArray()) {
                     return formatArray(value);
                 } else {
@@ -264,7 +280,7 @@ public enum Kind {
     private static final int MAX_FORMAT_ARRAY_LENGTH = 5;
 
     private static String formatArray(Object array) {
-        Class< ? > componentType = array.getClass().getComponentType();
+        Class<?> componentType = array.getClass().getComponentType();
         assert componentType != null;
         int arrayLength = Array.getLength(array);
         StringBuilder buf = new StringBuilder(MetaUtil.getSimpleName(componentType, true)).append('[').append(arrayLength).append("]{");
@@ -289,7 +305,7 @@ public enum Kind {
 
     /**
      * The minimum value that can be represented as a value of this kind.
-     *
+     * 
      * @return the minimum value
      */
     public long getMinValue() {
@@ -314,7 +330,7 @@ public enum Kind {
 
     /**
      * The maximum value that can be represented as a value of this kind.
-     *
+     * 
      * @return the maximum value
      */
     public long getMaxValue() {
@@ -339,7 +355,7 @@ public enum Kind {
 
     /**
      * Number of bits that are necessary to represent a value of this kind.
-     *
+     * 
      * @return the number of bits
      */
     public int getBitCount() {

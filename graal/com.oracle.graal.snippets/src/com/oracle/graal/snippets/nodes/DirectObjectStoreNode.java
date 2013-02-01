@@ -29,10 +29,11 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
- * A special purpose store node that differs from {@link UnsafeStoreNode} in that
- * it is not a {@link StateSplit} and does not include a write barrier.
+ * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a
+ * {@link StateSplit} and does not include a write barrier.
  */
 public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
+
     @Input private ValueNode object;
     @Input private ValueNode value;
     @Input private ValueNode offset;

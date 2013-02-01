@@ -78,12 +78,9 @@ public class InterpreterFrame extends Frame {
     }
 
     private void copyArguments(InterpreterFrame dest, int length) {
-        System.arraycopy(locals, tosSingle(length - 1), dest.locals,
-                        BASE_LENGTH, length);
-        System.arraycopy(primitiveLocals, tosSingle(length - 1), dest.primitiveLocals,
-                        BASE_LENGTH, length);
+        System.arraycopy(locals, tosSingle(length - 1), dest.locals, BASE_LENGTH, length);
+        System.arraycopy(primitiveLocals, tosSingle(length - 1), dest.primitiveLocals, BASE_LENGTH, length);
     }
-
 
     public Object peekReceiver(ResolvedJavaMethod method) {
         return getObject(tosSingle(method.getSignature().getParameterSlots(false)));
@@ -298,11 +295,9 @@ public class InterpreterFrame extends Frame {
     }
 
     public void pushTo(InterpreterFrame childFrame, int argumentSlots) {
-        System.arraycopy(locals, tos - argumentSlots, childFrame.locals,
-                        InterpreterFrame.MIN_FRAME_SIZE, argumentSlots);
+        System.arraycopy(locals, tos - argumentSlots, childFrame.locals, InterpreterFrame.MIN_FRAME_SIZE, argumentSlots);
 
-        System.arraycopy(primitiveLocals, tos - argumentSlots, childFrame.primitiveLocals,
-                        InterpreterFrame.MIN_FRAME_SIZE, argumentSlots);
+        System.arraycopy(primitiveLocals, tos - argumentSlots, childFrame.primitiveLocals, InterpreterFrame.MIN_FRAME_SIZE, argumentSlots);
         popVoid(argumentSlots);
     }
 

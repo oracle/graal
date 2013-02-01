@@ -39,6 +39,7 @@ public class AMD64Call {
 
     @Opcode("CALL_DIRECT")
     public static class DirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
         @Temp protected Value[] temps;
@@ -71,6 +72,7 @@ public class AMD64Call {
 
     @Opcode("CALL_INDIRECT")
     public static class IndirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
         @Use({REG}) protected Value targetAddress;
@@ -109,7 +111,6 @@ public class AMD64Call {
                 // offset might not fit a 32-bit immediate, generate an
                 // indirect call with a 64-bit immediate
                 Register scratch = tasm.frameMap.registerConfig.getScratchRegister();
-                // TODO (cwimmer): we want to get rid of a generally reserved scratch register.
                 masm.movq(scratch, 0L);
                 masm.call(scratch);
             } else {

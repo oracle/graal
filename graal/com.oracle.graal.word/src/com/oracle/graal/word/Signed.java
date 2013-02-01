@@ -26,7 +26,7 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this + val)}.
-     *
+     * 
      * @param val value to be added to this Signed.
      * @return {@code this + val}
      */
@@ -34,7 +34,7 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this - val)}.
-     *
+     * 
      * @param val value to be subtracted from this Signed.
      * @return {@code this - val}
      */
@@ -42,7 +42,7 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this * val)}.
-     *
+     * 
      * @param val value to be multiplied by this Signed.
      * @return {@code this * val}
      */
@@ -50,7 +50,7 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this / val)}.
-     *
+     * 
      * @param val value by which this Signed is to be divided.
      * @return {@code this / val}
      */
@@ -58,7 +58,7 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this % val)}.
-     *
+     * 
      * @param val value by which this Signed is to be divided, and the remainder computed.
      * @return {@code this % val}
      */
@@ -66,7 +66,7 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this << n)}.
-     *
+     * 
      * @param n shift distance, in bits.
      * @return {@code this << n}
      */
@@ -74,50 +74,50 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this >> n)}. Sign extension is performed.
-     *
+     * 
      * @param n shift distance, in bits.
      * @return {@code this >> n}
      */
     Signed signedShiftRight(Unsigned n);
 
     /**
-     * Returns a Signed whose value is {@code (this & val)}. (This method returns a negative Signed if and only if this
-     * and val are both negative.)
-     *
+     * Returns a Signed whose value is {@code (this & val)}. (This method returns a negative Signed
+     * if and only if this and val are both negative.)
+     * 
      * @param val value to be AND'ed with this Signed.
      * @return {@code this & val}
      */
     Signed and(Signed val);
 
     /**
-     * Returns a Signed whose value is {@code (this | val)}. (This method returns a negative Signed if and only if
-     * either this or val is negative.)
-     *
+     * Returns a Signed whose value is {@code (this | val)}. (This method returns a negative Signed
+     * if and only if either this or val is negative.)
+     * 
      * @param val value to be OR'ed with this Signed.
      * @return {@code this | val}
      */
     Signed or(Signed val);
 
     /**
-     * Returns a Signed whose value is {@code (this ^ val)}. (This method returns a negative Signed if and only if
-     * exactly one of this and val are negative.)
-     *
+     * Returns a Signed whose value is {@code (this ^ val)}. (This method returns a negative Signed
+     * if and only if exactly one of this and val are negative.)
+     * 
      * @param val value to be XOR'ed with this Signed.
      * @return {@code this ^ val}
      */
     Signed xor(Signed val);
 
     /**
-     * Returns a Signed whose value is {@code (~this)}. (This method returns a negative value if and only if this Signed
-     * is non-negative.)
-     *
+     * Returns a Signed whose value is {@code (~this)}. (This method returns a negative value if and
+     * only if this Signed is non-negative.)
+     * 
      * @return {@code ~this}
      */
     Signed not();
 
     /**
      * Compares this Signed with the specified value.
-     *
+     * 
      * @param val value to which this Signed is to be compared.
      * @return {@code this < val}
      */
@@ -125,7 +125,7 @@ public interface Signed extends WordBase {
 
     /**
      * Compares this Signed with the specified value.
-     *
+     * 
      * @param val value to which this Signed is to be compared.
      * @return {@code this <= val}
      */
@@ -133,7 +133,7 @@ public interface Signed extends WordBase {
 
     /**
      * Compares this Signed with the specified value.
-     *
+     * 
      * @param val value to which this Signed is to be compared.
      * @return {@code this > val}
      */
@@ -141,17 +141,15 @@ public interface Signed extends WordBase {
 
     /**
      * Compares this Signed with the specified value.
-     *
+     * 
      * @param val value to which this Signed is to be compared.
      * @return {@code this >= val}
      */
     boolean greaterOrEqual(Signed val);
 
-
-
     /**
      * Returns a Signed whose value is {@code (this + val)}.
-     *
+     * 
      * @param val value to be added to this Signed.
      * @return {@code this + val}
      */
@@ -159,7 +157,7 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this - val)}.
-     *
+     * 
      * @param val value to be subtracted from this Signed.
      * @return {@code this - val}
      */
@@ -167,7 +165,7 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this * val)}.
-     *
+     * 
      * @param val value to be multiplied by this Signed.
      * @return {@code this * val}
      */
@@ -175,7 +173,7 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this / val)}.
-     *
+     * 
      * @param val value by which this Signed is to be divided.
      * @return {@code this / val}
      */
@@ -183,7 +181,7 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this % val)}.
-     *
+     * 
      * @param val value by which this Signed is to be divided, and the remainder computed.
      * @return {@code this % val}
      */
@@ -191,7 +189,7 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this << n)}.
-     *
+     * 
      * @param n shift distance, in bits.
      * @return {@code this << n}
      */
@@ -199,34 +197,34 @@ public interface Signed extends WordBase {
 
     /**
      * Returns a Signed whose value is {@code (this >> n)}. Sign extension is performed.
-     *
+     * 
      * @param n shift distance, in bits.
      * @return {@code this >> n}
      */
     Signed signedShiftRight(int n);
 
     /**
-     * Returns a Signed whose value is {@code (this & val)}. (This method returns a negative Signed if and only if this
-     * and val are both negative.)
-     *
+     * Returns a Signed whose value is {@code (this & val)}. (This method returns a negative Signed
+     * if and only if this and val are both negative.)
+     * 
      * @param val value to be AND'ed with this Signed.
      * @return {@code this & val}
      */
     Signed and(int val);
 
     /**
-     * Returns a Signed whose value is {@code (this | val)}. (This method returns a negative Signed if and only if
-     * either this or val is negative.)
-     *
+     * Returns a Signed whose value is {@code (this | val)}. (This method returns a negative Signed
+     * if and only if either this or val is negative.)
+     * 
      * @param val value to be OR'ed with this Signed.
      * @return {@code this | val}
      */
     Signed or(int val);
 
     /**
-     * Returns a Signed whose value is {@code (this ^ val)}. (This method returns a negative Signed if and only if
-     * exactly one of this and val are negative.)
-     *
+     * Returns a Signed whose value is {@code (this ^ val)}. (This method returns a negative Signed
+     * if and only if exactly one of this and val are negative.)
+     * 
      * @param val value to be XOR'ed with this Signed.
      * @return {@code this ^ val}
      */
@@ -234,7 +232,7 @@ public interface Signed extends WordBase {
 
     /**
      * Compares this Signed with the specified value.
-     *
+     * 
      * @param val value to which this Signed is to be compared.
      * @return {@code this < val}
      */
@@ -242,7 +240,7 @@ public interface Signed extends WordBase {
 
     /**
      * Compares this Signed with the specified value.
-     *
+     * 
      * @param val value to which this Signed is to be compared.
      * @return {@code this <= val}
      */
@@ -250,7 +248,7 @@ public interface Signed extends WordBase {
 
     /**
      * Compares this Signed with the specified value.
-     *
+     * 
      * @param val value to which this Signed is to be compared.
      * @return {@code this > val}
      */
@@ -258,7 +256,7 @@ public interface Signed extends WordBase {
 
     /**
      * Compares this Signed with the specified value.
-     *
+     * 
      * @param val value to which this Signed is to be compared.
      * @return {@code this >= val}
      */

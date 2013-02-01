@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 
 public class SchedulePhase extends Phase {
+
     private ControlFlowGraph cfg;
     private NodeMap<Block> earliestCache;
 
@@ -57,8 +58,9 @@ public class SchedulePhase extends Phase {
     }
 
     /**
-     * Sets {@link ScheduledNode#scheduledNext} on all scheduled nodes in all blocks using the scheduling built by @link {@link #run(StructuredGraph)}.
-     * This method should thus only be called when run has been successfully executed.
+     * Sets {@link ScheduledNode#scheduledNext} on all scheduled nodes in all blocks using the
+     * scheduling built by @link {@link #run(StructuredGraph)}. This method should thus only be
+     * called when run has been successfully executed.
      */
     public void scheduleGraph() {
         assert blockToNodesMap != null : "cannot set scheduledNext before run has been executed";
@@ -110,7 +112,8 @@ public class SchedulePhase extends Phase {
     }
 
     /**
-     * Assigns a block to the given node. This method expects that PhiNodes and FixedNodes are already assigned to a block.
+     * Assigns a block to the given node. This method expects that PhiNodes and FixedNodes are
+     * already assigned to a block.
      */
     private void assignBlockToNode(ScheduledNode node) {
         assert !node.isDeleted();
@@ -119,7 +122,8 @@ public class SchedulePhase extends Phase {
         if (prevBlock != null) {
             return;
         }
-        // PhiNodes and FixedNodes should already have been placed in blocks by ControlFlowGraph.identifyBlocks
+        // PhiNodes and FixedNodes should already have been placed in blocks by
+        // ControlFlowGraph.identifyBlocks
         assert !(node instanceof PhiNode) : node;
         assert !(node instanceof FixedNode) : node;
         // if in CFG, schedule at the latest position possible in the outermost loop possible
@@ -139,8 +143,8 @@ public class SchedulePhase extends Phase {
     }
 
     /**
-     * Calculates the last block that the given node could be scheduled in, i.e., the common dominator of all usages.
-     * To do so all usages are also assigned to blocks.
+     * Calculates the last block that the given node could be scheduled in, i.e., the common
+     * dominator of all usages. To do so all usages are also assigned to blocks.
      */
     private Block latestBlock(ScheduledNode node) {
         CommonDominatorBlockClosure cdbc = new CommonDominatorBlockClosure(null);
@@ -156,13 +160,17 @@ public class SchedulePhase extends Phase {
     }
 
     /**
-     * A closure that will calculate the common dominator of all blocks passed to its {@link #apply(Block)} method.
+     * A closure that will calculate the common dominator of all blocks passed to its
+     * {@link #apply(Block)} method.
      */
     private static class CommonDominatorBlockClosure implements BlockClosure {
+
         public Block block;
+
         public CommonDominatorBlockClosure(Block block) {
             this.block = block;
         }
+
         @Override
         public void apply(Block newBlock) {
             this.block = getCommonDominator(this.block, newBlock);
@@ -182,13 +190,14 @@ public class SchedulePhase extends Phase {
             return earliest;
         }
         /*
-         * All inputs must be in a dominating block, otherwise the graph cannot be scheduled. This implies that the
-         * inputs' blocks have a total ordering via their dominance relation. So in order to find the earliest block
-         * placement for this node we need to find the input block that is dominated by all other input blocks.
-         *
-         * While iterating over the inputs a set of dominator blocks of the current earliest placement is maintained.
-         * When the block of an input is not within this set, it becomes the current earliest placement and the list of
-         * dominator blocks is updated.
+         * All inputs must be in a dominating block, otherwise the graph cannot be scheduled. This
+         * implies that the inputs' blocks have a total ordering via their dominance relation. So in
+         * order to find the earliest block placement for this node we need to find the input block
+         * that is dominated by all other input blocks.
+         * 
+         * While iterating over the inputs a set of dominator blocks of the current earliest
+         * placement is maintained. When the block of an input is not within this set, it becomes
+         * the current earliest placement and the list of dominator blocks is updated.
          */
         BitSet dominators = new BitSet(cfg.getBlocks().length);
 
@@ -201,7 +210,7 @@ public class SchedulePhase extends Phase {
                 do {
                     dominators.set(inputEarliest.getId());
                     inputEarliest = inputEarliest.getDominator();
-                } while(inputEarliest != null && !dominators.get(inputEarliest.getId()));
+                } while (inputEarliest != null && !dominators.get(inputEarliest.getId()));
             }
         }
         if (earliest == null) {
@@ -210,7 +219,6 @@ public class SchedulePhase extends Phase {
         earliestCache.set(node, earliest);
         return earliest;
     }
-
 
     private static Block scheduleOutOfLoops(Node n, Block latestBlock, Block earliest) {
         assert latestBlock != null : "no latest : " + n;
@@ -227,9 +235,9 @@ public class SchedulePhase extends Phase {
     }
 
     /**
-     * Passes all blocks that a specific usage of a node is in to a given closure.
-     * This is more complex than just taking the usage's block because of of PhiNodes and FrameStates.
-     *
+     * Passes all blocks that a specific usage of a node is in to a given closure. This is more
+     * complex than just taking the usage's block because of of PhiNodes and FrameStates.
+     * 
      * @param node the node that needs to be scheduled
      * @param usage the usage whose blocks need to be considered
      * @param closure the closure that will be called for each block
@@ -238,15 +246,17 @@ public class SchedulePhase extends Phase {
         assert !(node instanceof PhiNode);
 
         if (usage instanceof PhiNode) {
-            // An input to a PhiNode is used at the end of the predecessor block that corresponds to the PhiNode input.
-            // One PhiNode can use an input multiple times, the closure will be called for each usage.
+            // An input to a PhiNode is used at the end of the predecessor block that corresponds to
+            // the PhiNode input.
+            // One PhiNode can use an input multiple times, the closure will be called for each
+            // usage.
             PhiNode phi = (PhiNode) usage;
             MergeNode merge = phi.merge();
             Block mergeBlock = cfg.getNodeToBlock().get(merge);
             assert mergeBlock != null : "no block for merge " + merge.toString(Verbosity.Id);
             for (int i = 0; i < phi.valueCount(); ++i) {
                 if (phi.valueAt(i) == node) {
-                    if (mergeBlock.getPredecessors().size() <= i) {
+                    if (mergeBlock.getPredecessorCount() <= i) {
                         TTY.println(merge.toString());
                         TTY.println(phi.toString());
                         TTY.println(merge.cfgPredecessors().toString());
@@ -258,15 +268,18 @@ public class SchedulePhase extends Phase {
                 }
             }
         } else if (usage instanceof VirtualState) {
-            // The following logic does not work if node is a PhiNode, but this method is never called for PhiNodes.
+            // The following logic does not work if node is a PhiNode, but this method is never
+            // called for PhiNodes.
             for (Node unscheduledUsage : usage.usages()) {
                 if (unscheduledUsage instanceof VirtualState) {
-                    // If a FrameState is an outer FrameState this method behaves as if the inner FrameState was the actual usage, by recursing.
+                    // If a FrameState is an outer FrameState this method behaves as if the inner
+                    // FrameState was the actual usage, by recursing.
                     blocksForUsage(node, unscheduledUsage, closure);
                 } else if (unscheduledUsage instanceof MergeNode) {
                     // Only FrameStates can be connected to MergeNodes.
                     assert usage instanceof FrameState;
-                    // If a FrameState belongs to a MergeNode then it's inputs will be placed at the common dominator of all EndNodes.
+                    // If a FrameState belongs to a MergeNode then it's inputs will be placed at the
+                    // common dominator of all EndNodes.
                     for (Node pred : unscheduledUsage.cfgPredecessors()) {
                         closure.apply(cfg.getNodeToBlock().get(pred));
                     }
@@ -311,8 +324,9 @@ public class SchedulePhase extends Phase {
     }
 
     /**
-     * Sorts the nodes within a block by adding the nodes to a list in a post-order iteration over all inputs.
-     * This means that a node is added to the list after all its inputs have been processed.
+     * Sorts the nodes within a block by adding the nodes to a list in a post-order iteration over
+     * all inputs. This means that a node is added to the list after all its inputs have been
+     * processed.
      */
     private void sortNodesWithinBlock(Block b, NodeBitMap visited) {
         List<ScheduledNode> instructions = blockToNodesMap.get(b);
@@ -325,7 +339,8 @@ public class SchedulePhase extends Phase {
             addToSorting(b, i, sortedInstructions, visited);
         }
 
-        // Make sure that last node gets really last (i.e. when a frame state successor hangs off it).
+        // Make sure that last node gets really last (i.e. when a frame state successor hangs off
+        // it).
         Node lastSorted = sortedInstructions.get(sortedInstructions.size() - 1);
         if (lastSorted != b.getEndNode()) {
             int idx = sortedInstructions.indexOf(b.getEndNode());
@@ -338,12 +353,11 @@ public class SchedulePhase extends Phase {
             }
             if (canNotMove) {
                 if (b.getEndNode() instanceof ControlSplitNode) {
-                    throw new GraalInternalError("Schedule is not possible : needs to move a node after the last node of the block which can not be move").
-                    addContext(lastSorted).
-                    addContext(b.getEndNode());
+                    throw new GraalInternalError("Schedule is not possible : needs to move a node after the last node of the block which can not be move").addContext(lastSorted).addContext(
+                                    b.getEndNode());
                 }
 
-                //b.setLastNode(lastSorted);
+                // b.setLastNode(lastSorted);
             } else {
                 sortedInstructions.remove(b.getEndNode());
                 sortedInstructions.add(b.getEndNode());

@@ -86,12 +86,12 @@ public final class CyclicMaterializeStoreNode extends FixedWithNextNode implemen
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        VirtualObjectNode virtual = tool.getVirtualState(object());
-        if (virtual != null) {
-            if (virtual instanceof VirtualArrayNode) {
-                tool.setVirtualEntry(virtual, targetIndex(), value());
+        State state = tool.getObjectState(object);
+        if (state != null && state.getState() == EscapeState.Virtual) {
+            if (state.getVirtualObject() instanceof VirtualArrayNode) {
+                tool.setVirtualEntry(state, targetIndex(), value());
             } else {
-                tool.setVirtualEntry(virtual, ((VirtualInstanceNode) virtual).fieldIndex(targetField()), value());
+                tool.setVirtualEntry(state, ((VirtualInstanceNode) state.getVirtualObject()).fieldIndex(targetField()), value());
             }
             tool.delete();
         }

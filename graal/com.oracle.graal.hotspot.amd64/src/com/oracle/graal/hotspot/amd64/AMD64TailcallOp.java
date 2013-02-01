@@ -32,10 +32,12 @@ import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * Performs a hard-coded tail call to the specified target, which normally should be an {@link InstalledCode} instance.
+ * Performs a hard-coded tail call to the specified target, which normally should be an
+ * {@link InstalledCode} instance.
  */
 @Opcode("TAILCALL")
 public class AMD64TailcallOp extends AMD64LIRInstruction {
+
     @Use protected Value target;
     @Alive protected Value[] parameters;
 

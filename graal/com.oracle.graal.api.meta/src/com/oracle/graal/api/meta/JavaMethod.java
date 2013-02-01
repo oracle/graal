@@ -23,8 +23,8 @@
 package com.oracle.graal.api.meta;
 
 /**
- * Represents a reference to a Java method, either resolved or unresolved. Methods, like fields and types, are resolved
- * through {@link ConstantPool constant pools}.
+ * Represents a reference to a Java method, either resolved or unresolved. Methods, like fields and
+ * types, are resolved through {@link ConstantPool constant pools}.
  */
 public interface JavaMethod {
 
@@ -34,7 +34,8 @@ public interface JavaMethod {
     String getName();
 
     /**
-     * Returns the {@link JavaType} object representing the class or interface that declares this method.
+     * Returns the {@link JavaType} object representing the class or interface that declares this
+     * method.
      */
     JavaType getDeclaringClass();
 

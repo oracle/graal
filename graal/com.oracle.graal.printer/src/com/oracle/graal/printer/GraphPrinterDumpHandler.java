@@ -35,8 +35,9 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.phases.*;
 
 /**
- * Observes compilation events and uses {@link IdealGraphPrinter} to generate a graph representation that can be
- * inspected with the <a href="http://kenai.com/projects/igv">Ideal Graph Visualizer</a>.
+ * Observes compilation events and uses {@link IdealGraphPrinter} to generate a graph representation
+ * that can be inspected with the <a href="http://kenai.com/projects/igv">Ideal Graph
+ * Visualizer</a>.
  */
 public class GraphPrinterDumpHandler implements DebugDumpHandler {
 

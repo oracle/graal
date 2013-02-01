@@ -49,7 +49,7 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
 
     /**
      * Constructs a new Compare instruction.
-     *
+     * 
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
@@ -62,14 +62,14 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
 
     /**
      * Gets the condition (comparison operation) for this instruction.
-     *
+     * 
      * @return the condition
      */
     public abstract Condition condition();
 
     /**
      * Checks whether unordered inputs mean true or false (only applies to float operations).
-     *
+     * 
      * @return {@code true} if unordered inputs produce true
      */
     public abstract boolean unorderedIsTrue();
@@ -77,7 +77,6 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
     @Override
     public void generate(LIRGeneratorTool gen) {
     }
-
 
     private ValueNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, MetaAccessProvider runtime, Condition cond) {
         Constant trueConstant = conditionalNode.trueValue().asConstant();

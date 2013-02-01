@@ -25,6 +25,7 @@ package com.oracle.graal.debug.internal;
 import java.util.*;
 
 public class KeyRegistry {
+
     private static int keyCount;
     private static Map<String, Integer> keyMap = new HashMap<>();
     private static List<DebugValue> debugValues = new ArrayList<>();

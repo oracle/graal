@@ -34,10 +34,11 @@ public final class FloatLessThanNode extends CompareNode {
 
     /**
      * Constructs a new floating point comparison node.
-     *
+     * 
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
-     * @param unorderedIsTrue whether a comparison that is undecided (involving NaNs, etc.) leads to a "true" result
+     * @param unorderedIsTrue whether a comparison that is undecided (involving NaNs, etc.) leads to
+     *            a "true" result
      */
     public FloatLessThanNode(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
         super(x, y);

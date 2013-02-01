@@ -56,7 +56,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     // 64 bit versions
 
-
     public void decrementq(Register reg, int value) {
         if (value == Integer.MIN_VALUE) {
             subq(reg, value);
@@ -304,8 +303,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     /**
-     * Non-atomic write of a 64-bit constant to memory. Do not use
-     * if the address might be a volatile field!
+     * Non-atomic write of a 64-bit constant to memory. Do not use if the address might be a
+     * volatile field!
      */
     public void movlong(Address dst, long src) {
         Address high = new Address(dst.getKind(), dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4);
@@ -370,8 +369,9 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     /**
-     * Emit code to save a given set of callee save registers in the
-     * {@linkplain CalleeSaveLayout CSA} within the frame.
+     * Emit code to save a given set of callee save registers in the {@linkplain CalleeSaveLayout
+     * CSA} within the frame.
+     * 
      * @param csl the description of the CSA
      * @param frameToCSA offset from the frame pointer to the CSA
      */

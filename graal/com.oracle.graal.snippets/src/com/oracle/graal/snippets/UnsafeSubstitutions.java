@@ -34,6 +34,7 @@ import com.oracle.graal.snippets.nodes.*;
  */
 @ClassSubstitution(sun.misc.Unsafe.class)
 public class UnsafeSubstitutions {
+
     @MethodSubstitution(isStatic = false)
     public static boolean compareAndSwapObject(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, Object expected, Object x) {
         return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x);

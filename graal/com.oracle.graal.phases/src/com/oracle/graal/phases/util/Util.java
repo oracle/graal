@@ -31,7 +31,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
 /**
- * The {@code Util} class contains a motley collection of utility methods used throughout the compiler.
+ * The {@code Util} class contains a motley collection of utility methods used throughout the
+ * compiler.
  */
 public class Util {
 
@@ -69,7 +70,7 @@ public class Util {
 
     /**
      * Utility method to combine a base hash with the identity hash of one or more objects.
-     *
+     * 
      * @param hash the base hash
      * @param x the object to add to the hash
      * @return the combined hash
@@ -81,7 +82,7 @@ public class Util {
 
     /**
      * Utility method to combine a base hash with the identity hash of one or more objects.
-     *
+     * 
      * @param hash the base hash
      * @param x the first object to add to the hash
      * @param y the second object to add to the hash
@@ -94,7 +95,7 @@ public class Util {
 
     /**
      * Utility method to combine a base hash with the identity hash of one or more objects.
-     *
+     * 
      * @param hash the base hash
      * @param x the first object to add to the hash
      * @param y the second object to add to the hash
@@ -108,7 +109,7 @@ public class Util {
 
     /**
      * Utility method to combine a base hash with the identity hash of one or more objects.
-     *
+     * 
      * @param hash the base hash
      * @param x the first object to add to the hash
      * @param y the second object to add to the hash
@@ -150,13 +151,15 @@ public class Util {
     }
 
     /**
-     * Sets the element at a given position of a list and ensures that this position exists. If the list is current
-     * shorter than the position, intermediate positions are filled with a given value.
-     *
+     * Sets the element at a given position of a list and ensures that this position exists. If the
+     * list is current shorter than the position, intermediate positions are filled with a given
+     * value.
+     * 
      * @param list the list to put the element into
      * @param pos the position at which to insert the element
      * @param x the element that should be inserted
-     * @param filler the filler element that is used for the intermediate positions in case the list is shorter than pos
+     * @param filler the filler element that is used for the intermediate positions in case the list
+     *            is shorter than pos
      */
     public static <T> void atPutGrow(List<T> list, int pos, T x, T filler) {
         if (list.size() < pos + 1) {
@@ -214,8 +217,9 @@ public class Util {
 
     /**
      * Prints entries in a byte array as space separated hex values to {@link TTY}.
-     *
-     * @param address an address at which the bytes are located. This is used to print an address prefix per line of output.
+     * 
+     * @param address an address at which the bytes are located. This is used to print an address
+     *            prefix per line of output.
      * @param array the array containing all the bytes to print
      * @param bytesPerLine the number of values to print per line of output
      */
@@ -225,8 +229,9 @@ public class Util {
 
     /**
      * Prints entries in a byte array as space separated hex values to {@link TTY}.
-     *
-     * @param address an address at which the bytes are located. This is used to print an address prefix per line of output.
+     * 
+     * @param address an address at which the bytes are located. This is used to print an address
+     *            prefix per line of output.
      * @param array the array containing the bytes to print
      * @param offset the offset in {@code array} of the values to print
      * @param length the number of values from {@code array} print
@@ -297,6 +302,7 @@ public class Util {
     public static boolean isInt(long l) {
         return (int) l == l;
     }
+
     /**
      * Determines if a given {@code int} value is the range of signed short values.
      */
@@ -322,14 +328,14 @@ public class Util {
     }
 
     /**
-     * Creates an array of integers of length "size", in which each number from 0 to (size - 1) occurs exactly once. The
-     * integers are sorted using the given comparator. This can be used to create a sorting for arrays that cannot be
-     * modified directly.
-     *
+     * Creates an array of integers of length "size", in which each number from 0 to (size - 1)
+     * occurs exactly once. The integers are sorted using the given comparator. This can be used to
+     * create a sorting for arrays that cannot be modified directly.
+     * 
      * @param size The size of the range to be sorted.
      * @param comparator A comparator that is used to compare indexes.
-     * @return An array of integers that contains each number from 0 to (size - 1) exactly once, sorted using the
-     *         comparator.
+     * @return An array of integers that contains each number from 0 to (size - 1) exactly once,
+     *         sorted using the comparator.
      */
     public static Integer[] createSortedPermutation(int size, Comparator<Integer> comparator) {
         Integer[] indexes = new Integer[size];

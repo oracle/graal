@@ -30,6 +30,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
 
 public class ReassociateAndCanonicalTest extends GraalCompilerTest {
+
     public static int rnd = (int) (Math.random() * 100);
 
     @Test

@@ -28,20 +28,19 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code AccessMonitorNode} is the base class of both monitor acquisition and release.
- * <br>
+ * <p>
  * The VM needs information about monitors in the debug information. This information is built from
  * the nesting level of {@link MonitorEnterNode} when the LIR is constructed. Therefore, monitor
- * nodes must not be removed from the graph unless it is guaranteed that the nesting level does not change.
- * For example, you must not remove a {@link MonitorEnterNode} for a thread-local object or for a recursive locking.
- * Instead, mark the node as {@link #eliminated}. This makes sure that the meta data still contains the complete
- * locking hierarchy.
- * <br>
- * The Java bytecode specification allows non-balanced locking. Graal does not handle such cases and throws a
- * {@link BailoutException} instead during graph building.
+ * nodes must not be removed from the graph unless it is guaranteed that the nesting level does not
+ * change. For example, you must not remove a {@link MonitorEnterNode} for a thread-local object or
+ * for a recursive locking. Instead, mark the node as {@link #eliminated}. This makes sure that the
+ * meta data still contains the complete locking hierarchy.
+ * <p>
+ * The Java bytecode specification allows non-balanced locking. Graal does not handle such cases and
+ * throws a {@link BailoutException} instead during graph building.
  */
 public abstract class AccessMonitorNode extends AbstractStateSplit implements StateSplit, MemoryCheckpoint, Virtualizable {
 
@@ -62,7 +61,7 @@ public abstract class AccessMonitorNode extends AbstractStateSplit implements St
 
     /**
      * Creates a new AccessMonitor instruction.
-     *
+     * 
      * @param object the instruction producing the object
      */
     public AccessMonitorNode(ValueNode object) {
@@ -72,13 +71,14 @@ public abstract class AccessMonitorNode extends AbstractStateSplit implements St
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        VirtualObjectNode virtual = tool.getVirtualState(object());
-        if (virtual != null) {
-            Debug.log("monitor operation %s on %s\n", this, virtual);
-            int newLockCount = tool.getVirtualLockCount(virtual) + (this instanceof MonitorEnterNode ? 1 : -1);
-            tool.setVirtualLockCount(virtual,  newLockCount);
-            tool.replaceFirstInput(object(), virtual);
+        State state = tool.getObjectState(object);
+        if (state != null && state.getState() == EscapeState.Virtual) {
+            Debug.log("monitor operation %s on %s\n", this, state);
+            int newLockCount = state.getLockCount() + (this instanceof MonitorEnterNode ? 1 : -1);
+            state.setLockCount(newLockCount);
+            tool.replaceFirstInput(object(), state.getVirtualObject());
             tool.customAction(new Runnable() {
+
                 @Override
                 public void run() {
                     eliminate();

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.alloc;
 
-
 /**
  * Represents a range of integers from a start (inclusive) to an end (exclusive.
  */
@@ -49,10 +48,9 @@ public final class Range {
         return intersectsAt(r) != -1;
     }
 
-
     /**
      * Creates a new range.
-     *
+     * 
      * @param from the start of the range, inclusive
      * @param to the end of the range, exclusive
      * @param next link to the next range in a linked list

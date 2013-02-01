@@ -29,23 +29,21 @@ import com.oracle.graal.nodes.cfg.*;
 
 /**
  * This class optimizes moves, particularly those that result from eliminating SSA form.
- *
- * When a block has more than one predecessor, and all predecessors end with
- * the {@linkplain #same(LIRInstruction, LIRInstruction) same} sequence of
- * {@linkplain MoveOp move} instructions, then these sequences
- * can be replaced with a single copy of the sequence at the beginning of the block.
- *
- * Similarly, when a block has more than one successor, then same sequences of
- * moves at the beginning of the successors can be placed once at the end of
- * the block. But because the moves must be inserted before all branch
- * instructions, this works only when there is exactly one conditional branch
- * at the end of the block (because the moves must be inserted before all
+ * 
+ * When a block has more than one predecessor, and all predecessors end with the
+ * {@linkplain #same(LIRInstruction, LIRInstruction) same} sequence of {@linkplain MoveOp move}
+ * instructions, then these sequences can be replaced with a single copy of the sequence at the
+ * beginning of the block.
+ * 
+ * Similarly, when a block has more than one successor, then same sequences of moves at the
+ * beginning of the successors can be placed once at the end of the block. But because the moves
+ * must be inserted before all branch instructions, this works only when there is exactly one
+ * conditional branch at the end of the block (because the moves must be inserted before all
  * branches, but after all compares).
- *
- * This optimization affects all kind of moves (reg->reg, reg->stack and
- * stack->reg). Because this optimization works best when a block contains only
- * a few moves, it has a huge impact on the number of blocks that are totally
- * empty.
+ * 
+ * This optimization affects all kind of moves (reg->reg, reg->stack and stack->reg). Because this
+ * optimization works best when a block contains only a few moves, it has a huge impact on the
+ * number of blocks that are totally empty.
  */
 public final class EdgeMoveOptimizer {
 
@@ -60,10 +58,10 @@ public final class EdgeMoveOptimizer {
         for (int i = blockList.size() - 1; i >= 1; i--) {
             Block block = blockList.get(i);
 
-            if (block.numberOfPreds() > 1) {
+            if (block.getPredecessorCount() > 1) {
                 optimizer.optimizeMovesAtBlockEnd(block);
             }
-            if (block.numberOfSux() == 2) {
+            if (block.getSuccessorCount() == 2) {
                 optimizer.optimizeMovesAtBlockBegin(block);
             }
         }
@@ -78,9 +76,10 @@ public final class EdgeMoveOptimizer {
     }
 
     /**
-     * Determines if two operations are both {@linkplain MoveOp moves}
-     * that have the same {@linkplain MoveOp#getInput() source} and {@linkplain MoveOp#getResult() destination} operands.
-     *
+     * Determines if two operations are both {@linkplain MoveOp moves} that have the same
+     * {@linkplain MoveOp#getInput() source} and {@linkplain MoveOp#getResult() destination}
+     * operands.
+     * 
      * @param op1 the first instruction to compare
      * @param op2 the second instruction to compare
      * @return {@code true} if {@code op1} and {@code op2} are the same by the above algorithm
@@ -101,8 +100,8 @@ public final class EdgeMoveOptimizer {
     }
 
     /**
-     * Moves the longest {@linkplain #same common} subsequence at the end all
-     * predecessors of {@code block} to the start of {@code block}.
+     * Moves the longest {@linkplain #same common} subsequence at the end all predecessors of
+     * {@code block} to the start of {@code block}.
      */
     private void optimizeMovesAtBlockEnd(Block block) {
         for (Block pred : block.getPredecessors()) {
@@ -115,7 +114,7 @@ public final class EdgeMoveOptimizer {
         // clear all internal data structures
         edgeInstructionSeqences.clear();
 
-        int numPreds = block.numberOfPreds();
+        int numPreds = block.getPredecessorCount();
         assert numPreds > 1 : "do not call otherwise";
 
         // setup a list with the LIR instructions of all predecessors
@@ -124,13 +123,13 @@ public final class EdgeMoveOptimizer {
             assert ir.lir(pred) != null;
             List<LIRInstruction> predInstructions = ir.lir(pred);
 
-            if (pred.numberOfSux() != 1) {
+            if (pred.getSuccessorCount() != 1) {
                 // this can happen with switch-statements where multiple edges are between
                 // the same blocks.
                 return;
             }
 
-            assert pred.suxAt(0) == block : "invalid control flow";
+            assert pred.getFirstSuccessor() == block : "invalid control flow";
             assert predInstructions.get(predInstructions.size() - 1) instanceof StandardOp.JumpOp : "block must end with unconditional jump";
 
             if (predInstructions.get(predInstructions.size() - 1).hasState()) {
@@ -170,14 +169,14 @@ public final class EdgeMoveOptimizer {
     }
 
     /**
-     * Moves the longest {@linkplain #same common} subsequence at the start of all
-     * successors of {@code block} to the end of {@code block} just prior to the
-     * branch instruction ending {@code block}.
+     * Moves the longest {@linkplain #same common} subsequence at the start of all successors of
+     * {@code block} to the end of {@code block} just prior to the branch instruction ending
+     * {@code block}.
      */
     private void optimizeMovesAtBlockBegin(Block block) {
 
         edgeInstructionSeqences.clear();
-        int numSux = block.numberOfSux();
+        int numSux = block.getSuccessorCount();
 
         List<LIRInstruction> instructions = ir.lir(block);
 
@@ -203,18 +202,17 @@ public final class EdgeMoveOptimizer {
         int insertIdx = instructions.size() - 2;
 
         // setup a list with the lir-instructions of all successors
-        for (int i = 0; i < numSux; i++) {
-            Block sux = block.suxAt(i);
+        for (Block sux : block.getSuccessors()) {
             List<LIRInstruction> suxInstructions = ir.lir(sux);
 
             assert suxInstructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
 
-            if (sux.numberOfPreds() != 1) {
+            if (sux.getPredecessorCount() != 1) {
                 // this can happen with switch-statements where multiple edges are between
                 // the same blocks.
                 return;
             }
-            assert sux.predAt(0) == block : "invalid control flow";
+            assert sux.getFirstPredecessor() == block : "invalid control flow";
 
             // ignore the label at the beginning of the block
             List<LIRInstruction> seq = suxInstructions.subList(1, suxInstructions.size());
