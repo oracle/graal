@@ -55,61 +55,7 @@ public class ComputeProbabilityPhase extends Phase {
         computeLoopFactors();
         Debug.dump(graph, "After computeLoopFactors");
         new PropagateLoopFrequency(graph.start()).apply();
-
-        if (GraalOptions.LoopFrequencyPropagationPolicy < 0) {
-            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
-            BitSet visitedBlocks = new BitSet(cfg.getBlocks().length);
-            for (Loop loop : cfg.getLoops()) {
-                if (loop.parent == null) {
-                    correctLoopFrequencies(loop, 1, visitedBlocks);
-                }
-            }
-        }
-
         new ComputeInliningRelevanceIterator(graph).apply();
-    }
-
-    private void correctLoopFrequencies(Loop loop, double parentFrequency, BitSet visitedBlocks) {
-        LoopBeginNode loopBegin = ((LoopBeginNode) loop.header.getBeginNode());
-        double frequency = parentFrequency * loopBegin.loopFrequency();
-        if (frequency < 1) {
-            frequency = 1;
-        }
-        for (Loop child : loop.children) {
-            correctLoopFrequencies(child, frequency, visitedBlocks);
-        }
-
-        double factor = getCorrectionFactor(loopBegin.probability(), frequency);
-        for (Block block : loop.blocks) {
-            int blockId = block.getId();
-            if (!visitedBlocks.get(blockId)) {
-                visitedBlocks.set(blockId);
-
-                FixedNode node = block.getBeginNode();
-                while (node != block.getEndNode()) {
-                    node.setProbability(node.probability() * factor);
-                    node = ((FixedWithNextNode) node).next();
-                }
-                node.setProbability(node.probability() * factor);
-            }
-        }
-    }
-
-    private static double getCorrectionFactor(double probability, double frequency) {
-        switch (GraalOptions.LoopFrequencyPropagationPolicy) {
-            case -1:
-                return 1 / frequency;
-            case -2:
-                return (1 / frequency) * (Math.log(Math.E + frequency) - 1);
-            case -3:
-                double originalProbability = probability / frequency;
-                assert isRelativeProbability(originalProbability);
-                return (1 / frequency) * Math.max(1, Math.pow(originalProbability, 1.5) * Math.log10(frequency));
-            case -4:
-                return 1 / probability;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
     }
 
     private void computeLoopFactors() {
@@ -321,98 +267,110 @@ public class ComputeProbabilityPhase extends Phase {
     }
 
     private class PropagateLoopFrequency extends PostOrderNodeIterator<LoopCount> {
-
-        private final FrequencyPropagationPolicy policy;
-
         public PropagateLoopFrequency(FixedNode start) {
             super(start, new LoopCount(1d));
-            this.policy = createFrequencyPropagationPolicy();
         }
 
         @Override
         protected void node(FixedNode node) {
-            node.setProbability(policy.compute(node.probability(), state.count));
+            node.setProbability(node.probability() * state.count);
         }
 
-    }
-
-    private static FrequencyPropagationPolicy createFrequencyPropagationPolicy() {
-        switch (GraalOptions.LoopFrequencyPropagationPolicy) {
-            case -4:
-            case -3:
-            case -2:
-            case -1:
-            case 0:
-                return new FullFrequencyPropagation();
-            case 1:
-                return new NoFrequencyPropagation();
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    private interface FrequencyPropagationPolicy {
-
-        double compute(double probability, double frequency);
-    }
-
-    private static class FullFrequencyPropagation implements FrequencyPropagationPolicy {
-
-        @Override
-        public double compute(double probability, double frequency) {
-            return probability * frequency;
-        }
-    }
-
-    private static class NoFrequencyPropagation implements FrequencyPropagationPolicy {
-
-        @Override
-        public double compute(double probability, double frequency) {
-            return probability;
-        }
     }
 
     private static class ComputeInliningRelevanceIterator extends ScopedPostOrderNodeIterator {
-        private final HashMap<FixedNode, Double> lowestPathProbabilities;
+        private final HashMap<FixedNode, Scope> scopes;
         private double currentProbability;
+        private double parentRelevance;
 
         public ComputeInliningRelevanceIterator(StructuredGraph graph) {
             super(graph);
-            this.lowestPathProbabilities = computeLowestPathProbabilities(graph);
+            this.scopes = computeLowestPathProbabilities(computeScopeInformation(graph));
         }
 
         @Override
         protected void initializeScope() {
-            currentProbability = lowestPathProbabilities.get(currentScope);
+            Scope scope = scopes.get(currentScopeStart);
+            parentRelevance = getParentScopeRelevance(scope);
+            currentProbability = scope.minPathProbability;
+        }
+
+        private static double getParentScopeRelevance(Scope scope) {
+            if (scope.start instanceof LoopBeginNode) {
+                assert scope.parent != null;
+                double parentProbability = 0;
+                for (EndNode end: ((LoopBeginNode) scope.start).forwardEnds()) {
+                    parentProbability += end.probability();
+                }
+                return parentProbability / scope.parent.minPathProbability;
+            } else {
+               assert scope.parent == null;
+               return 1.0;
+            }
         }
 
         @Override
         protected void invoke(Invoke invoke) {
             assert !Double.isNaN(invoke.probability());
-            invoke.setInliningRelevance(invoke.probability() / currentProbability);
+            invoke.setInliningRelevance((invoke.probability() / currentProbability) * Math.min(1.0, parentRelevance));
+            assert !Double.isNaN(invoke.inliningRelevance());
         }
 
-        private HashMap<FixedNode, Double> computeLowestPathProbabilities(StructuredGraph graph) {
-            HashMap<FixedNode, Double> result = new HashMap<>();
-            Deque<FixedNode> scopes = getScopes(graph);
+        private static Scope[] computeScopeInformation(StructuredGraph graph) {
+            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
 
-            while (!scopes.isEmpty()) {
-                FixedNode scopeBegin = scopes.pop();
-                double probability = computeLowestPathProbability(scopeBegin);
-                result.put(scopeBegin, probability);
+            Loop[] loops = cfg.getLoops();
+            HashMap<Loop, Scope> processedScopes = new HashMap<>();
+            Scope[] scopes = new Scope[loops.length + 1];
+            Scope methodScope = new Scope(graph.start(), null);
+            processedScopes.put(null, methodScope);
+
+            scopes[0] = methodScope;
+            for (int i = 0; i < loops.length; i++) {
+                scopes[i + 1] = createScope(loops[i], processedScopes);
+            }
+
+            return scopes;
+        }
+
+        private static Scope createScope(Loop loop, HashMap<Loop, Scope> processedLoops) {
+            Scope parent = processedLoops.get(loop.parent);
+            if (parent == null) {
+                parent = createScope(loop, processedLoops);
+            }
+            Scope result = new Scope(loop.loopBegin(), parent);
+            processedLoops.put(loop, result);
+            return result;
+        }
+
+        private static HashMap<FixedNode, Scope> computeLowestPathProbabilities(Scope[] scopes) {
+            HashMap<FixedNode, Scope> result = new HashMap<>();
+
+            for (Scope scope: scopes) {
+                double lowestPathProbability = computeLowestPathProbability(scope);
+                scope.minPathProbability = Math.max(EPSILON, lowestPathProbability);
+                result.put(scope.start, scope);
             }
 
             return result;
         }
 
-        private static double computeLowestPathProbability(FixedNode scopeStart) {
-            double minPathProbability = scopeStart.probability();
+        private static double computeLowestPathProbability(Scope scope) {
+            FixedNode scopeStart = scope.start;
             Node current = scopeStart;
+            double minPathProbability = scopeStart.probability();
+            boolean isLoopScope = scopeStart instanceof LoopBeginNode;
 
             while (current != null) {
-                if (current instanceof ControlSplitNode) {
-                    ControlSplitNode controlSplit = (ControlSplitNode) current;
-                    current = getMaxProbabilitySux(controlSplit);
+                if (isLoopScope && current instanceof LoopExitNode && ((LoopBeginNode) scopeStart).loopExits().contains((LoopExitNode) current)) {
+                    return minPathProbability;
+                } else if (current instanceof LoopBeginNode && current != scopeStart) {
+                    current = getMaxProbabilityLoopExit((LoopBeginNode) current);
+                    if (((FixedNode) current).probability() < minPathProbability) {
+                        minPathProbability = ((FixedNode) current).probability();
+                    }
+                } else if (current instanceof ControlSplitNode) {
+                    current = getMaxProbabilitySux((ControlSplitNode) current);
                     if (((FixedNode) current).probability() < minPathProbability) {
                         minPathProbability = ((FixedNode) current).probability();
                     }
@@ -429,7 +387,7 @@ public class ComputeProbabilityPhase extends Phase {
             Node maxSux = null;
             double maxProbability = 0.0;
 
-            // TODO: process recursively if we have multiple successors with same probability
+            // TODO (chaeubl): process recursively if we have multiple successors with same probability
             for (Node sux: controlSplit.successors()) {
                 double probability = controlSplit.probability((BeginNode) sux);
                 if (probability > maxProbability) {
@@ -439,6 +397,33 @@ public class ComputeProbabilityPhase extends Phase {
             }
 
             return maxSux;
+        }
+
+        private static Node getMaxProbabilityLoopExit(LoopBeginNode loopBegin) {
+            Node maxSux = null;
+            double maxProbability = 0.0;
+
+            // TODO (chaeubl): process recursively if we have multiple successors with same probability
+            for (LoopExitNode sux: loopBegin.loopExits()) {
+                double probability = sux.probability();
+                if (probability > maxProbability) {
+                    maxProbability = probability;
+                    maxSux = sux;
+                }
+            }
+
+            return maxSux;
+        }
+    }
+
+    private static class Scope {
+        public final FixedNode start;
+        public final Scope parent;
+        public double minPathProbability;
+
+        public Scope(FixedNode start, Scope parent) {
+            this.start = start;
+            this.parent = parent;
         }
     }
 }

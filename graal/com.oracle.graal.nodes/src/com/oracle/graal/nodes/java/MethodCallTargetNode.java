@@ -141,6 +141,10 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         }
     }
 
+    public JavaType returnType() {
+        return returnType;
+    }
+
     @Override
     public String targetName() {
         if (targetMethod() == null) {

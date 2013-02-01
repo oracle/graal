@@ -86,6 +86,10 @@ public final class OptimisticOptimizations {
         return GraalOptions.InlineMegamorphicCalls && enabledOpts.contains(Optimization.UseTypeCheckedInlining);
     }
 
+    public boolean devirtualizeInvokes() {
+        return GraalOptions.OptDevirtualizeInvokesOptimistically && enabledOpts.contains(Optimization.UseTypeCheckedInlining);
+    }
+
     public boolean useExceptionProbability() {
         return GraalOptions.UseExceptionProbability && enabledOpts.contains(Optimization.UseExceptionProbability);
     }
