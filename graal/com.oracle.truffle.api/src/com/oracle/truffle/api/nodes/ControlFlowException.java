@@ -26,14 +26,21 @@ package com.oracle.truffle.api.nodes;
  * An exception thrown to model control flow in a Truffle interpreter. The Truffle optimizer has
  * special knowledge of this exception class for performance optimizations.
  */
-public class ControlFlowException extends Exception {
+public class ControlFlowException extends RuntimeException {
 
     private static final long serialVersionUID = 3676602078425211386L;
 
     /**
      * Creates an exception thrown to model control flow.
      */
-    public ControlFlowException(String message, Throwable cause) {
-        super(message, cause);
+    public ControlFlowException() {
+    }
+
+    /**
+     * For performance reasons, this exception does not record any stack trace information.
+     */
+    @Override
+    public synchronized Throwable fillInStackTrace() {
+        return null;
     }
 }
