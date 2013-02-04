@@ -765,7 +765,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genNewPrimitiveArray(int typeCode) {
         Class<?> clazz = arrayTypeCodeToClass(typeCode);
         ResolvedJavaType elementType = runtime.lookupJavaType(clazz);
-        NewPrimitiveArrayNode nta = currentGraph.add(new NewPrimitiveArrayNode(elementType, frameState.ipop(), true, false));
+        NewArrayNode nta = currentGraph.add(new NewArrayNode(elementType, frameState.ipop(), true, false));
         frameState.apush(append(nta));
     }
 
@@ -773,7 +773,7 @@ public final class GraphBuilderPhase extends Phase {
         JavaType type = lookupType(cpi, ANEWARRAY);
         ValueNode length = frameState.ipop();
         if (type instanceof ResolvedJavaType) {
-            NewArrayNode n = currentGraph.add(new NewObjectArrayNode((ResolvedJavaType) type, length, true, false));
+            NewArrayNode n = currentGraph.add(new NewArrayNode((ResolvedJavaType) type, length, true, false));
             frameState.apush(append(n));
         } else {
             append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved)));

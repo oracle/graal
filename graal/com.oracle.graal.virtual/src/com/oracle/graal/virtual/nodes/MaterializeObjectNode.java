@@ -94,12 +94,7 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Vi
             VirtualArrayNode virtual = (VirtualArrayNode) virtualObject;
 
             ResolvedJavaType element = virtual.componentType();
-            NewArrayNode newArray;
-            if (element.getKind() == Kind.Object) {
-                newArray = graph.add(new NewObjectArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), defaultValuesOnly, lockCount > 0));
-            } else {
-                newArray = graph.add(new NewPrimitiveArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), defaultValuesOnly, lockCount > 0));
-            }
+            NewArrayNode newArray = graph.add(new NewArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), defaultValuesOnly, lockCount > 0));
             this.replaceAtUsages(newArray);
             graph.addBeforeFixed(this, newArray);
 
