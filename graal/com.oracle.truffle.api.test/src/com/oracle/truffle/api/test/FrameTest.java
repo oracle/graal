@@ -41,12 +41,12 @@ import com.oracle.truffle.api.nodes.*;
  * </p>
  * 
  * <p>
- * There are five primitive types for slots available: {@link java.lang.Boolean}, @{link
- * java.lang.Integer}, {@link java.lang.Long}, {@link java.lang.Float}, and {@link java.lang.Double}
- * . It is encouraged to use those types whenever possible. Dynamically typed languages can
- * speculate on the type of a value fitting into a primitive (see
+ * There are five primitive types for slots available: {@link java.lang.Boolean},
+ * {@link java.lang.Integer}, {@link java.lang.Long}, {@link java.lang.Float}, and
+ * {@link java.lang.Double} . It is encouraged to use those types whenever possible. Dynamically
+ * typed languages can speculate on the type of a value fitting into a primitive (see
  * {@link FrameSlotTypeSpecializationTest}). When a frame slot is of one of those particular
- * primitive types, its value may only be accessed with the repectively typed getter method (
+ * primitive types, its value may only be accessed with the respectively typed getter method (
  * {@link Frame#getBoolean}, {@link Frame#getInt}, {@link Frame#getLong}, {@link Frame#getFloat}, or
  * {@link Frame#getDouble}) or setter method ({@link Frame#setBoolean}, {@link Frame#setInt},
  * {@link Frame#setLong}, {@link Frame#setFloat}, or {@link Frame#setDouble}) in the {@link Frame}
