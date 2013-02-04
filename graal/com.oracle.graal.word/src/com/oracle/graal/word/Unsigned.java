@@ -115,6 +115,22 @@ public interface Unsigned extends WordBase {
      * Compares this Unsigned with the specified value.
      * 
      * @param val value to which this Unsigned is to be compared.
+     * @return {@code this == val}
+     */
+    boolean equal(Unsigned val);
+
+    /**
+     * Compares this Unsigned with the specified value.
+     * 
+     * @param val value to which this Unsigned is to be compared.
+     * @return {@code this != val}
+     */
+    boolean notEqual(Unsigned val);
+
+    /**
+     * Compares this Unsigned with the specified value.
+     * 
+     * @param val value to which this Unsigned is to be compared.
      * @return {@code this < val}
      */
     boolean belowThan(Unsigned val);
@@ -252,6 +268,28 @@ public interface Unsigned extends WordBase {
      * @return {@code this ^ val}
      */
     Unsigned xor(int val);
+
+    /**
+     * Compares this Unsigned with the specified value.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
+     * @param val value to which this Unsigned is to be compared.
+     * @return {@code this == val}
+     */
+    boolean equal(int val);
+
+    /**
+     * Compares this Unsigned with the specified value.
+     * <p>
+     * Note that the right operand is a signed value, while the operation is performed unsigned.
+     * Therefore, the result is only well-defined for positive right operands.
+     * 
+     * @param val value to which this Unsigned is to be compared.
+     * @return {@code this != val}
+     */
+    boolean notEqual(int val);
 
     /**
      * Compares this Unsigned with the specified value.

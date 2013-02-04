@@ -41,7 +41,7 @@ public class TypeCheckSnippetUtils {
 
     static boolean checkSecondarySubType(Word t, Word s) {
         // if (S.cache == T) return true
-        if (s.readWord(secondarySuperCacheOffset()) == t) {
+        if (s.readWord(secondarySuperCacheOffset()).equal(t)) {
             cacheHit.inc();
             return true;
         }
@@ -55,7 +55,7 @@ public class TypeCheckSnippetUtils {
         boolean primary = superCheckOffset != secondarySuperCacheOffset();
 
         // if (T = S[off]) return true
-        if (s.readWord(superCheckOffset) == t) {
+        if (s.readWord(superCheckOffset).equal(t)) {
             if (primary) {
                 cacheHit.inc();
             } else {
@@ -75,7 +75,7 @@ public class TypeCheckSnippetUtils {
 
     private static boolean checkSelfAndSupers(Word t, Word s) {
         // if (T == S) return true
-        if (s == t) {
+        if (s.equal(t)) {
             T_equals_S.inc();
             return true;
         }
@@ -84,7 +84,7 @@ public class TypeCheckSnippetUtils {
         Word secondarySupers = s.readWord(secondarySupersOffset());
         int length = secondarySupers.readInt(metaspaceArrayLengthOffset());
         for (int i = 0; i < length; i++) {
-            if (t == loadWordElement(secondarySupers, i)) {
+            if (t.equal(loadWordElement(secondarySupers, i))) {
                 probability(NOT_LIKELY_PROBABILITY);
                 s.writeWord(secondarySuperCacheOffset(), t);
                 secondariesHit.inc();

@@ -97,10 +97,8 @@ public class WordTypeVerificationPhase extends Phase {
                         }
                     }
                 } else if (usage instanceof ObjectEqualsNode) {
-                    ObjectEqualsNode compare = (ObjectEqualsNode) usage;
-                    if (compare.x() == node || compare.y() == node) {
-                        verify(isWord(compare.x()) == isWord(compare.y()), node, compare.usages().first(), "cannot mixed word and non-word type in use of '==' or '!='");
-                    }
+                    verify(!isWord(node) || ((ObjectEqualsNode) usage).x() != node, node, usage, "cannot use word type in comparison");
+                    verify(!isWord(node) || ((ObjectEqualsNode) usage).y() != node, node, usage, "cannot use word type in comparison");
                 } else if (usage instanceof ArrayLengthNode) {
                     verify(!isWord(node) || ((ArrayLengthNode) usage).array() != node, node, usage, "cannot get array length from word value");
                 } else if (usage instanceof PhiNode) {
@@ -148,7 +146,7 @@ public class WordTypeVerificationPhase extends Phase {
             return buf.toString();
         } else {
             String loc = GraphUtil.approxSourceLocation(n);
-            return loc == null ? "<unknown>" : loc;
+            return loc == null ? MetaUtil.format("method %h.%n", ((StructuredGraph) n.graph()).method()) : loc;
         }
     }
 }

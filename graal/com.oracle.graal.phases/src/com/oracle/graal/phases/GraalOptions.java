@@ -43,30 +43,24 @@ public final class GraalOptions {
            static boolean InlineMonomorphicCalls             = true;
            static boolean InlinePolymorphicCalls             = true;
            static boolean InlineMegamorphicCalls             = ____;
-    public static int     InliningPolicy                     = 1;
-    public static int     InliningDecision                   = 4;
-    public static int     WeightComputationPolicy            = 2;
-    public static int     MaximumTrivialSize                 = 10;
     public static int     MaximumInlineLevel                 = 30;
-    public static int     MaximumDesiredSize                 = 3000;
+    public static int     MaximumDesiredSize                 = 5000;
     public static int     MaximumRecursiveInlining           = 1;
-    public static int     SmallCompiledCodeSize              = 2200;
     public static boolean LimitInlinedProbability            = ____;
-    public static boolean UseRelevanceBasedInlining          = ____;
-    // WeightBasedInliningPolicy (0)
-    public static float   InliningSizePenaltyExp             = 20;
-    public static float   MaximumInlineWeight                = 1.25f;
-    public static float   InliningSizePenalty                = 1;
-    // StaticSizeBasedInliningPolicy (1), MinimumCodeSizeBasedInlining (2),
-    // DynamicSizeBasedInliningPolicy (3)
-    public static int     MaximumInlineSize                  = 35;
-    // GreedySizeBasedInlining (4)
-    public static int     MaximumGreedyInlineSize            = 100;
-    public static int     InliningBonusPerTransferredValue   = 10;
-    // Common options for inlining policies 1 to 4
-    public static float   NestedInliningSizeRatio            = 1f;
+    public static boolean LimitInlinedRelevance              = true;
     public static float   BoostInliningForEscapeAnalysis     = 2f;
-    public static float   RatioCapForInlining                = 1f;
+    public static float   RelevanceCapForInlining            = 1f;
+
+    public static int     TrivialBytecodeSize                = 10;
+    public static int     NormalBytecodeSize                 = 150;
+    public static int     MaximumBytecodeSize                = 500;
+    public static int     TrivialComplexity                  = 10;
+    public static int     NormalComplexity                   = 60;
+    public static int     MaximumComplexity                  = 400;
+    public static int     TrivialCompiledCodeSize            = 150;
+    public static int     NormalCompiledCodeSize             = 750;
+    public static int     MaximumCompiledCodeSize            = 4000;
+    public static int     SmallCompiledCodeSize              = 1000;
 
     // escape analysis settings
     public static boolean PartialEscapeAnalysis              = true;
@@ -80,7 +74,6 @@ public final class GraalOptions {
 
     // absolute probability analysis
     public static boolean ProbabilityAnalysis                = true;
-    public static int     LoopFrequencyPropagationPolicy     = -2;
 
     // profiling information
     public static int     DeoptsToDisableOptimisticOptimization = 40;
@@ -201,6 +194,7 @@ public final class GraalOptions {
     public static boolean OptTailDuplication                 = true;
     public static boolean OptEliminatePartiallyRedundantGuards = true;
     public static boolean OptFilterProfiledTypes             = true;
+    public static boolean OptDevirtualizeInvokesOptimistically = true;
 
     // Intrinsification settings
     public static boolean IntrinsifyArrayCopy                = true;

@@ -119,6 +119,22 @@ public interface Signed extends WordBase {
      * Compares this Signed with the specified value.
      * 
      * @param val value to which this Signed is to be compared.
+     * @return {@code this == val}
+     */
+    boolean equal(Signed val);
+
+    /**
+     * Compares this Signed with the specified value.
+     * 
+     * @param val value to which this Signed is to be compared.
+     * @return {@code this != val}
+     */
+    boolean notEqual(Signed val);
+
+    /**
+     * Compares this Signed with the specified value.
+     * 
+     * @param val value to which this Signed is to be compared.
      * @return {@code this < val}
      */
     boolean lessThan(Signed val);
@@ -229,6 +245,22 @@ public interface Signed extends WordBase {
      * @return {@code this ^ val}
      */
     Signed xor(int val);
+
+    /**
+     * Compares this Signed with the specified value.
+     * 
+     * @param val value to which this Signed is to be compared.
+     * @return {@code this == val}
+     */
+    boolean equal(int val);
+
+    /**
+     * Compares this Signed with the specified value.
+     * 
+     * @param val value to which this Signed is to be compared.
+     * @return {@code this != val}
+     */
+    boolean notEqual(int val);
 
     /**
      * Compares this Signed with the specified value.

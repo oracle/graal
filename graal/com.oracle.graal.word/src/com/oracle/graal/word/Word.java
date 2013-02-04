@@ -25,9 +25,9 @@ package com.oracle.graal.word;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import java.lang.annotation.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
@@ -412,6 +412,52 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     @Operation(opcode = Opcode.NOT)
     public Word not() {
         return box(~unbox());
+    }
+
+    @Override
+    @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
+    public boolean equal(Signed val) {
+        return equal((Word) val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
+    public boolean equal(Unsigned val) {
+        return equal((Word) val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
+    public boolean equal(int val) {
+        return equal(intParam(val));
+    }
+
+    @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
+    public boolean equal(Word val) {
+        return unbox() == val.unbox();
+    }
+
+    @Override
+    @Operation(opcode = Opcode.COMPARISON, condition = Condition.NE)
+    public boolean notEqual(Signed val) {
+        return notEqual((Word) val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.COMPARISON, condition = Condition.NE)
+    public boolean notEqual(Unsigned val) {
+        return notEqual((Word) val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.COMPARISON, condition = Condition.NE)
+    public boolean notEqual(int val) {
+        return notEqual(intParam(val));
+    }
+
+    @Operation(opcode = Opcode.COMPARISON, condition = Condition.NE)
+    public boolean notEqual(Word val) {
+        return unbox() != val.unbox();
     }
 
     @Override
@@ -815,6 +861,16 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     public void writeObject(int offset, Object val) {
         writeObject(signed(offset), val);
     }
+
+    @Override
+    public final boolean equals(Object obj) {
+        throw GraalInternalError.shouldNotReachHere("equals must not be called on words");
+    }
+
+    @Override
+    public final int hashCode() {
+        throw GraalInternalError.shouldNotReachHere("hashCode must not be called on words");
+    }
 }
 
 final class HostedWord extends Word {
@@ -823,7 +879,6 @@ final class HostedWord extends Word {
     private static final int SMALL_TO = 100;
 
     private static final HostedWord[] smallCache = new HostedWord[SMALL_TO - SMALL_FROM + 1];
-    private static final ConcurrentHashMap<Long, HostedWord> cache = new ConcurrentHashMap<>();
 
     static {
         for (int i = SMALL_FROM; i <= SMALL_TO; i++) {
@@ -841,14 +896,7 @@ final class HostedWord extends Word {
         if (val >= SMALL_FROM && val <= SMALL_TO) {
             return smallCache[(int) val - SMALL_FROM];
         }
-        Long key = val;
-        HostedWord result = cache.get(key);
-        if (result != null) {
-            return result;
-        }
-        HostedWord newValue = new HostedWord(val);
-        HostedWord oldValue = cache.putIfAbsent(key, newValue);
-        return oldValue == null ? newValue : oldValue;
+        return new HostedWord(val);
     }
 
     @Override

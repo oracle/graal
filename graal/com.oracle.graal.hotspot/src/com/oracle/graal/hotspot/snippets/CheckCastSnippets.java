@@ -79,7 +79,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             isNull.inc();
         } else {
             Word objectHub = loadHub(object);
-            if (objectHub != exactHub) {
+            if (objectHub.notEqual(exactHub)) {
                 probability(DEOPT_PATH_PROBABILITY);
                 exactMiss.inc();
                 //bkpt(object, exactHub, objectHub);
@@ -108,7 +108,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             isNull.inc();
         } else {
             Word objectHub = loadHub(object);
-            if (objectHub.readWord(superCheckOffset) != hub) {
+            if (objectHub.readWord(superCheckOffset).notEqual(hub)) {
                 probability(DEOPT_PATH_PROBABILITY);
                 displayMiss.inc();
                 DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
@@ -136,7 +136,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             ExplodeLoopNode.explodeLoop();
             for (int i = 0; i < hints.length; i++) {
                 Word hintHub = hints[i];
-                if (hintHub == objectHub) {
+                if (hintHub.equal(objectHub)) {
                     hintsHit.inc();
                     return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic());
                 }

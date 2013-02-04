@@ -131,10 +131,6 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         return this;
     }
 
-    public JavaType returnType() {
-        return returnType;
-    }
-
     @Override
     public Stamp returnStamp() {
         Kind returnKind = targetMethod.getSignature().getReturnKind();
@@ -143,6 +139,10 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         } else {
             return StampFactory.forKind(returnKind);
         }
+    }
+
+    public JavaType returnType() {
+        return returnType;
     }
 
     @Override

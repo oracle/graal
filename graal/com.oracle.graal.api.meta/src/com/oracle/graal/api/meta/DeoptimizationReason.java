@@ -39,5 +39,5 @@ public enum DeoptimizationReason {
     Unresolved,
     JavaSubroutineMismatch,
     ArithmeticException,
-    RuntimeConstraint,
+    RuntimeConstraint
 }
