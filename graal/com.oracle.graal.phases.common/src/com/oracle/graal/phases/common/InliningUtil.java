@@ -580,8 +580,7 @@ public class InliningUtil {
             keyProbabilities[keyProbabilities.length - 1] = notRecordedTypeProbability;
             keySuccessors[keySuccessors.length - 1] = successors.length - 1;
 
-            double[] successorProbabilities = SwitchNode.successorProbabilites(successors.length, keySuccessors, keyProbabilities);
-            TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, successorProbabilities, keys, keyProbabilities, keySuccessors));
+            TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, keys, keyProbabilities, keySuccessors));
 
             return typeSwitch;
         }

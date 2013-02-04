@@ -49,7 +49,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
      * @param keySuccessors the successor index for each key
      */
     public IntegerSwitchNode(ValueNode value, BeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
-        super(value, successors, successorProbabilites(successors.length, keySuccessors, keyProbabilities), keySuccessors, keyProbabilities);
+        super(value, successors, keySuccessors, keyProbabilities);
         assert keySuccessors.length == keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;

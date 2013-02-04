@@ -44,14 +44,14 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
      * Constructs a type switch instruction. The keyProbabilities array contain key.length + 1
      * entries. The last entry in every array describes the default case.
      * 
-     * @param value the instruction producing the value being switched on
+     * @param value the instruction producing the value being switched on, the object hub
      * @param successors the list of successors
      * @param keys the list of types
      * @param keyProbabilities the probabilities of the keys
      * @param keySuccessors the successor index for each key
      */
-    public TypeSwitchNode(ValueNode value, BeginNode[] successors, double[] successorProbabilities, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
-        super(value, successors, successorProbabilities, keySuccessors, keyProbabilities);
+    public TypeSwitchNode(ValueNode value, BeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
+        super(value, successors, keySuccessors, keyProbabilities);
         assert successors.length <= keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
@@ -63,8 +63,12 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     }
 
     @Override
-    public Constant keyAt(int i) {
-        return keys[i].getEncoding(Representation.ObjectHub);
+    public Constant keyAt(int index) {
+        return keys[index].getEncoding(Representation.ObjectHub);
+    }
+
+    public ResolvedJavaType typeAt(int index) {
+        return keys[index];
     }
 
     @Override
@@ -134,8 +138,6 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                         }
                     }
 
-                    double[] newSuccessorProbabilities = successorProbabilites(newSuccessors.size(), newKeySuccessors, newKeyProbabilities);
-
                     for (int i = 0; i < blockSuccessorCount(); i++) {
                         BeginNode successor = blockSuccessor(i);
                         if (!newSuccessors.contains(successor)) {
@@ -145,7 +147,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                     }
 
                     BeginNode[] successorsArray = newSuccessors.toArray(new BeginNode[newSuccessors.size()]);
-                    TypeSwitchNode newSwitch = graph().add(new TypeSwitchNode(value(), successorsArray, newSuccessorProbabilities, newKeys, newKeyProbabilities, newKeySuccessors));
+                    TypeSwitchNode newSwitch = graph().add(new TypeSwitchNode(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors));
                     ((FixedWithNextNode) predecessor()).setNext(newSwitch);
                     GraphUtil.killWithUnusedFloatingInputs(this);
                 }

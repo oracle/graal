@@ -1143,6 +1143,19 @@ public final class GraphBuilderPhase extends Phase {
         return true;
     }
 
+    /**
+     * Helper function that sums up the probabilities of all keys that lead to a specific successor.
+     * 
+     * @return an array of size successorCount with the accumulated probability for each successor.
+     */
+    private static double[] successorProbabilites(int successorCount, int[] keySuccessors, double[] keyProbabilities) {
+        double[] probability = new double[successorCount];
+        for (int i = 0; i < keySuccessors.length; i++) {
+            probability[keySuccessors[i]] += keyProbabilities[i];
+        }
+        return probability;
+    }
+
     private void genSwitch(BytecodeSwitch bs) {
         int bci = bci();
         ValueNode value = frameState.ipop();
@@ -1185,7 +1198,7 @@ public final class GraphBuilderPhase extends Phase {
             }
         }
 
-        double[] successorProbabilities = IntegerSwitchNode.successorProbabilites(actualSuccessors.size(), keySuccessors, keyProbabilities);
+        double[] successorProbabilities = successorProbabilites(actualSuccessors.size(), keySuccessors, keyProbabilities);
         IntegerSwitchNode switchNode = currentGraph.add(new IntegerSwitchNode(value, actualSuccessors.size(), keys, keyProbabilities, keySuccessors));
         for (int i = 0; i < actualSuccessors.size(); i++) {
             switchNode.setBlockSuccessor(i, createBlockTarget(successorProbabilities[i], actualSuccessors.get(i), frameState));

@@ -35,7 +35,6 @@ import com.oracle.graal.nodes.type.*;
 public abstract class SwitchNode extends ControlSplitNode {
 
     @Successor protected final NodeSuccessorList<BeginNode> successors;
-    protected double[] successorProbabilities;
     @Input private ValueNode value;
     private double[] keyProbabilities;
     private int[] keySuccessors;
@@ -46,9 +45,8 @@ public abstract class SwitchNode extends ControlSplitNode {
      * @param value the instruction that provides the value to be switched over
      * @param successors the list of successors of this switch
      */
-    public SwitchNode(ValueNode value, BeginNode[] successors, double[] successorProbabilities, int[] keySuccessors, double[] keyProbabilities) {
+    public SwitchNode(ValueNode value, BeginNode[] successors, int[] keySuccessors, double[] keyProbabilities) {
         super(StampFactory.forVoid());
-        this.successorProbabilities = successorProbabilities;
         assert keySuccessors.length == keyProbabilities.length;
         this.successors = new NodeSuccessorList<>(this, successors);
         this.value = value;
@@ -59,9 +57,9 @@ public abstract class SwitchNode extends ControlSplitNode {
     @Override
     public double probability(BeginNode successor) {
         double sum = 0;
-        for (int i = 0; i < successors.size(); i++) {
-            if (successors.get(i) == successor) {
-                sum += successorProbabilities[i];
+        for (int i = 0; i < keySuccessors.length; i++) {
+            if (successors.get(keySuccessors[i]) == successor) {
+                sum += keyProbabilities[i];
             }
         }
         return sum;
@@ -133,23 +131,9 @@ public abstract class SwitchNode extends ControlSplitNode {
         return defaultSuccessorIndex() == -1 ? null : successors.get(defaultSuccessorIndex());
     }
 
-    /**
-     * Helper function that sums up the probabilities of all keys that lead to a specific successor.
-     * 
-     * @return an array of size successorCount with the accumulated probability for each successor.
-     */
-    public static double[] successorProbabilites(int successorCount, int[] keySuccessors, double[] keyProbabilities) {
-        double[] probability = new double[successorCount];
-        for (int i = 0; i < keySuccessors.length; i++) {
-            probability[keySuccessors[i]] += keyProbabilities[i];
-        }
-        return probability;
-    }
-
     @Override
     public SwitchNode clone(Graph into) {
         SwitchNode newSwitch = (SwitchNode) super.clone(into);
-        newSwitch.successorProbabilities = Arrays.copyOf(successorProbabilities, successorProbabilities.length);
         newSwitch.keyProbabilities = Arrays.copyOf(keyProbabilities, keyProbabilities.length);
         newSwitch.keySuccessors = Arrays.copyOf(keySuccessors, keySuccessors.length);
         return newSwitch;
