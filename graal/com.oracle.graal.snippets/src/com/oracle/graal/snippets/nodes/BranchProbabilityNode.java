@@ -64,9 +64,9 @@ public class BranchProbabilityNode extends FixedWithNextNode implements Simplifi
         assert begin.predecessor() instanceof IfNode : "explicit branch probability cannot follow a merge, only if nodes";
         IfNode ifNode = (IfNode) begin.predecessor();
         if (ifNode.trueSuccessor() == begin) {
-            ifNode.setTakenProbability(probability);
+            ifNode.setTrueSuccessorProbability(probability);
         } else {
-            ifNode.setTakenProbability(1 - probability);
+            ifNode.setTrueSuccessorProbability(1 - probability);
         }
 
         FixedNode next = next();

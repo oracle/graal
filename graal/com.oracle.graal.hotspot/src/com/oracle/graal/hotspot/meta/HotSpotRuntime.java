@@ -531,7 +531,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         Kind wordKind = graalRuntime.getTarget().wordKind;
         if (n instanceof ArrayLengthNode) {
             ArrayLengthNode arrayLengthNode = (ArrayLengthNode) n;
-            SafeReadNode safeReadArrayLength = safeReadArrayLength(arrayLengthNode.array(), StructuredGraph.INVALID_GRAPH_ID);
+            SafeReadNode safeReadArrayLength = safeReadArrayLength(arrayLengthNode.array());
             graph.replaceFixedWithFixed(arrayLengthNode, safeReadArrayLength);
         } else if (n instanceof Invoke) {
             Invoke invoke = (Invoke) n;
@@ -540,7 +540,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                 NodeInputList<ValueNode> parameters = callTarget.arguments();
                 ValueNode receiver = parameters.size() <= 0 ? null : parameters.get(0);
                 if (!callTarget.isStatic() && receiver.kind() == Kind.Object && !receiver.objectStamp().nonNull()) {
-                    invoke.node().dependencies().add(tool.createNullCheckGuard(receiver, invoke.leafGraphId()));
+                    invoke.node().dependencies().add(tool.createNullCheckGuard(receiver));
                 }
                 JavaType[] signature = MetaUtil.signatureToTypes(callTarget.targetMethod().getSignature(), callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
 
@@ -582,7 +582,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
             ValueNode object = loadField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : loadField.object();
             assert loadField.kind() != Kind.Illegal;
             ReadNode memoryRead = graph.add(new ReadNode(object, LocationNode.create(field, field.getKind(), field.offset(), graph), loadField.stamp()));
-            memoryRead.dependencies().add(tool.createNullCheckGuard(object, loadField.leafGraphId()));
+            memoryRead.dependencies().add(tool.createNullCheckGuard(object));
             graph.replaceFixedWithFixed(loadField, memoryRead);
             if (loadField.isVolatile()) {
                 MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_READ));
@@ -595,7 +595,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
             ValueNode object = storeField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : storeField.object();
             WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), LocationNode.create(field, field.getKind(), field.offset(), graph)));
-            memoryWrite.dependencies().add(tool.createNullCheckGuard(object, storeField.leafGraphId()));
+            memoryWrite.dependencies().add(tool.createNullCheckGuard(object));
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
             FixedWithNextNode last = memoryWrite;
@@ -705,13 +705,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
             LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, wordKind, config.hubOffset, graph);
             ValueNode object = loadHub.object();
             assert !object.isConstant();
-            ValueNode guard = tool.createNullCheckGuard(object, StructuredGraph.INVALID_GRAPH_ID);
+            ValueNode guard = tool.createNullCheckGuard(object);
             ReadNode hub = graph.add(new ReadNode(object, location, StampFactory.forKind(wordKind())));
             hub.dependencies().add(guard);
             graph.replaceFixed(loadHub, hub);
         } else if (n instanceof FixedGuardNode) {
             FixedGuardNode node = (FixedGuardNode) n;
-            ValueAnchorNode newAnchor = graph.add(new ValueAnchorNode(tool.createGuard(node.condition(), node.getReason(), node.getAction(), node.isNegated(), node.getLeafGraphId())));
+            ValueAnchorNode newAnchor = graph.add(new ValueAnchorNode(tool.createGuard(node.condition(), node.getReason(), node.getAction(), node.isNegated())));
             graph.replaceFixedWithFixed(node, newAnchor);
         } else if (n instanceof CheckCastNode) {
             checkcastSnippets.lower((CheckCastNode) n, tool);
@@ -750,21 +750,21 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, getArrayBaseOffset(elementKind), index, graph, true);
     }
 
-    private SafeReadNode safeReadArrayLength(ValueNode array, long leafGraphId) {
-        return safeRead(array.graph(), Kind.Int, array, config.arrayLengthOffset, StampFactory.positiveInt(), leafGraphId);
+    private SafeReadNode safeReadArrayLength(ValueNode array) {
+        return safeRead(array.graph(), Kind.Int, array, config.arrayLengthOffset, StampFactory.positiveInt());
     }
 
     private static ValueNode createBoundsCheck(AccessIndexedNode n, LoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) n.graph();
         ArrayLengthNode arrayLength = graph.add(new ArrayLengthNode(n.array()));
-        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile, n.leafGraphId());
+        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
 
         graph.addBeforeFixed(n, arrayLength);
         return guard;
     }
 
-    private static SafeReadNode safeRead(Graph graph, Kind kind, ValueNode value, int offset, Stamp stamp, long leafGraphId) {
-        return graph.add(new SafeReadNode(value, LocationNode.create(LocationNode.FINAL_LOCATION, kind, offset, graph), stamp, leafGraphId));
+    private static SafeReadNode safeRead(Graph graph, Kind kind, ValueNode value, int offset, Stamp stamp) {
+        return graph.add(new SafeReadNode(value, LocationNode.create(LocationNode.FINAL_LOCATION, kind, offset, graph), stamp));
     }
 
     public ResolvedJavaType lookupJavaType(Class<?> clazz) {

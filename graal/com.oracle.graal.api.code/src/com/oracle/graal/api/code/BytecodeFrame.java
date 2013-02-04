@@ -82,14 +82,6 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      */
     public final int numLocks;
 
-    /**
-     * In case this frame state belongs to a deoptimization, the leafGraphId will contain the
-     * StructuredGraph.graphId() of the graph that originally introduced this deoptimization point.
-     * This id is later on used by the runtime system to evict graphs from the graph cache when
-     * deoptimizations originating from them have been hit.
-     */
-    public final long leafGraphId;
-
     public final boolean rethrowException;
 
     public final boolean duringCall;
@@ -107,8 +99,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * @param numStack the depth of the stack
      * @param numLocks the number of locked objects
      */
-    public BytecodeFrame(BytecodeFrame caller, ResolvedJavaMethod method, int bci, boolean rethrowException, boolean duringCall, Value[] values, int numLocals, int numStack, int numLocks,
-                    long leafGraphId) {
+    public BytecodeFrame(BytecodeFrame caller, ResolvedJavaMethod method, int bci, boolean rethrowException, boolean duringCall, Value[] values, int numLocals, int numStack, int numLocks) {
         super(caller, method, bci);
         assert values != null;
         this.rethrowException = rethrowException;
@@ -117,7 +108,6 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
         this.numLocals = numLocals;
         this.numStack = numStack;
         this.numLocks = numLocks;
-        this.leafGraphId = leafGraphId;
         assert !rethrowException || numStack == 1 : "must have exception on top of the stack";
     }
 

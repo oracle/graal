@@ -221,8 +221,8 @@ public class InliningUtil {
 
         protected static void inline(Invoke invoke, ResolvedJavaMethod concrete, InliningCallback callback, Assumptions assumptions, boolean receiverNullCheck) {
             Class<? extends FixedWithNextNode> macroNodeClass = getMacroNodeClass(concrete);
+            StructuredGraph graph = (StructuredGraph) invoke.graph();
             if (macroNodeClass != null) {
-                StructuredGraph graph = (StructuredGraph) invoke.graph();
                 FixedWithNextNode macroNode;
                 try {
                     macroNode = macroNodeClass.getConstructor(Invoke.class).newInstance(invoke);
@@ -247,6 +247,10 @@ public class InliningUtil {
                 InlinedBytecodes.add(concrete.getCodeSize());
                 assumptions.recordMethodContents(concrete);
                 InliningUtil.inline(invoke, calleeGraph, receiverNullCheck);
+
+                graph.getLeafGraphIds().add(calleeGraph.graphId());
+                // we might at some point cache already-inlined graphs, so add recursively:
+                graph.getLeafGraphIds().addAll(calleeGraph.getLeafGraphIds());
             }
         }
 
@@ -353,7 +357,7 @@ public class InliningUtil {
             ConstantNode typeHub = ConstantNode.forConstant(type.getEncoding(Representation.ObjectHub), runtime, graph);
             LoadHubNode receiverHub = graph.add(new LoadHubNode(receiver, typeHub.kind()));
             CompareNode typeCheck = CompareNode.createCompareNode(Condition.EQ, receiverHub, typeHub);
-            FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, invoke.leafGraphId()));
+            FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
             ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
             assert invoke.predecessor() != null;
 
@@ -473,7 +477,7 @@ public class InliningUtil {
             if (shouldFallbackToInvoke()) {
                 unknownTypeSux = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, notRecordedTypeProbability, false);
             } else {
-                unknownTypeSux = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated, invoke.leafGraphId()));
+                unknownTypeSux = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated));
             }
             successors[successors.length - 1] = BeginNode.begin(unknownTypeSux);
 
@@ -721,7 +725,7 @@ public class InliningUtil {
         }
 
         private BeginNode createUnknownTypeSuccessor(StructuredGraph graph) {
-            return BeginNode.begin(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated, invoke.leafGraphId())));
+            return BeginNode.begin(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated)));
         }
 
         @Override
@@ -1035,10 +1039,8 @@ public class InliningUtil {
                 }
             }
         }
-        replacements.put(entryPointNode, BeginNode.prevBegin(invoke.node())); // ensure proper
-                                                                              // anchoring of things
-                                                                              // that were anchored
-                                                                              // to the StartNode
+        // ensure proper anchoring of things that were anchored to the StartNode
+        replacements.put(entryPointNode, BeginNode.prevBegin(invoke.node()));
 
         assert invoke.node().successors().first() != null : invoke;
         assert invoke.node().predecessor() != null;
@@ -1070,7 +1072,7 @@ public class InliningUtil {
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
-                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler, invoke.leafGraphId());
+                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler);
                 unwindDuplicate.replaceAndDelete(graph.add(deoptimizeNode));
                 // move the deopt upwards if there is a monitor exit that tries to use the
                 // "after exception" frame state
@@ -1160,8 +1162,8 @@ public class InliningUtil {
         NodeInputList<ValueNode> parameters = callTarget.arguments();
         ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
         if (!callTarget.isStatic() && firstParam.kind() == Kind.Object && !firstParam.objectStamp().nonNull()) {
-            graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new IsNullNode(firstParam)), DeoptimizationReason.NullCheckException,
-                            DeoptimizationAction.InvalidateReprofile, true, invoke.leafGraphId())));
+            graph.addBeforeFixed(invoke.node(),
+                            graph.add(new FixedGuardNode(graph.unique(new IsNullNode(firstParam)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true)));
         }
     }
 

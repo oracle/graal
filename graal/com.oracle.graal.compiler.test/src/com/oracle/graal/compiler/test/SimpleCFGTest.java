@@ -43,7 +43,7 @@ public class SimpleCFGTest {
         BeginNode falseBegin = graph.add(new BeginNode());
         falseBegin.setNext(falseEnd);
 
-        IfNode ifNode = graph.add(new IfNode(null, trueBegin, falseBegin, 0.5, graph.graphId()));
+        IfNode ifNode = graph.add(new IfNode(null, trueBegin, falseBegin, 0.5));
         graph.start().setNext(ifNode);
 
         MergeNode merge = graph.add(new MergeNode());

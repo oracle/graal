@@ -59,36 +59,34 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Vi
      *         are {@link Constant#defaultForKind(Kind)}, false otherwise.
      */
     public boolean isDefault() {
-        boolean defaultEntries = true;
         if (lockCount > 0) {
-            defaultEntries = false;
+            return false;
         } else {
             for (ValueNode value : values) {
                 if (!value.isConstant() || !value.asConstant().isDefaultForKind()) {
-                    defaultEntries = false;
-                    break;
+                    return false;
                 }
             }
         }
-        return defaultEntries;
+        return true;
     }
 
     @Override
     public void lower(LoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) graph();
 
-        boolean defaultEntries = isDefault();
+        boolean defaultValuesOnly = isDefault();
 
         if (virtualObject instanceof VirtualInstanceNode) {
             VirtualInstanceNode virtual = (VirtualInstanceNode) virtualObject;
 
-            NewInstanceNode newInstance = graph.add(new NewInstanceNode(virtual.type(), defaultEntries, lockCount > 0));
+            NewInstanceNode newInstance = graph.add(new NewInstanceNode(virtual.type(), defaultValuesOnly, lockCount > 0));
             this.replaceAtUsages(newInstance);
             graph.addBeforeFixed(this, newInstance);
 
-            if (!defaultEntries) {
+            if (!defaultValuesOnly) {
                 for (int i = 0; i < virtual.entryCount(); i++) {
-                    graph.addBeforeFixed(this, graph.add(new StoreFieldNode(newInstance, virtual.field(i), values.get(i), -1)));
+                    graph.addBeforeFixed(this, graph.add(new StoreFieldNode(newInstance, virtual.field(i), values.get(i))));
                 }
             }
         } else {
@@ -98,16 +96,16 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Vi
             ResolvedJavaType element = virtual.componentType();
             NewArrayNode newArray;
             if (element.getKind() == Kind.Object) {
-                newArray = graph.add(new NewObjectArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), defaultEntries, lockCount > 0));
+                newArray = graph.add(new NewObjectArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), defaultValuesOnly, lockCount > 0));
             } else {
-                newArray = graph.add(new NewPrimitiveArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), defaultEntries, lockCount > 0));
+                newArray = graph.add(new NewPrimitiveArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), defaultValuesOnly, lockCount > 0));
             }
             this.replaceAtUsages(newArray);
             graph.addBeforeFixed(this, newArray);
 
-            if (!defaultEntries) {
+            if (!defaultValuesOnly) {
                 for (int i = 0; i < virtual.entryCount(); i++) {
-                    graph.addBeforeFixed(this, graph.add(new StoreIndexedNode(newArray, ConstantNode.forInt(i, graph), element.getKind(), values.get(i), -1)));
+                    graph.addBeforeFixed(this, graph.add(new StoreIndexedNode(newArray, ConstantNode.forInt(i, graph), element.getKind(), values.get(i))));
                 }
             }
         }
