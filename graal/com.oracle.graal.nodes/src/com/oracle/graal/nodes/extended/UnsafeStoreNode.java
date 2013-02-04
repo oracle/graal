@@ -105,7 +105,7 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
                     ResolvedJavaType receiverType = receiverStamp.type();
                     ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(displacement());
                     if (field != null) {
-                        return this.graph().add(new StoreFieldNode(object(), field, value(), StructuredGraph.INVALID_GRAPH_ID));
+                        return this.graph().add(new StoreFieldNode(object(), field, value()));
                     }
                 }
             }

@@ -56,7 +56,7 @@ public final class BoxNode extends AbstractStateSplit implements StateSplit, Nod
         ResolvedJavaMethod boxingMethod = pool.getBoxingMethod(sourceKind);
         MethodCallTargetNode callTarget = graph().add(
                         new MethodCallTargetNode(InvokeKind.Static, boxingMethod, new ValueNode[]{source}, boxingMethod.getSignature().getReturnType(boxingMethod.getDeclaringClass())));
-        InvokeNode invokeNode = graph().add(new InvokeNode(callTarget, bci, -1));
+        InvokeNode invokeNode = graph().add(new InvokeNode(callTarget, bci));
         invokeNode.setProbability(this.probability());
         invokeNode.setStateAfter(stateAfter());
         ((StructuredGraph) graph()).replaceFixedWithFixed(this, invokeNode);

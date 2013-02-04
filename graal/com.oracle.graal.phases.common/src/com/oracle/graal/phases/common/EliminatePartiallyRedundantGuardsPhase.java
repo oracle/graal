@@ -37,7 +37,6 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
 
     private static final DebugMetric metricPRGuardsEliminatedAtMerge = Debug.metric("PRGuardsEliminatedAtMerge");
     private static final DebugMetric metricPRGuardsEliminatedAtSplit = Debug.metric("PRGuardsEliminatedAtSplit");
-    private static final DebugMetric metricPRGuardsDifferentGraphId = Debug.metric("PRGuardsDifferentGraphId");
 
     private final boolean eliminateAtSplit;
     private final boolean eliminateAtMerge;
@@ -142,7 +141,7 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
         for (GuardNode guard : hits) {
             PhiNode phi = graph.add(new PhiNode(PhiType.Guard, merge));
             for (EndNode otherEnd : merge.forwardEnds()) {
-                phi.addInput(graph.unique(new GuardNode(guard.condition(), BeginNode.prevBegin(otherEnd), guard.reason(), guard.action(), guard.negated(), guard.getLeafGraphId())));
+                phi.addInput(graph.unique(new GuardNode(guard.condition(), BeginNode.prevBegin(otherEnd), guard.reason(), guard.action(), guard.negated())));
             }
             guard.replaceAndDelete(phi);
             metricPRGuardsEliminatedAtMerge.increment();
@@ -176,7 +175,6 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
             }
             DeoptimizationReason reason = null;
             DeoptimizationAction action = DeoptimizationAction.None;
-            long leafGraphId = -1;
             Set<BeginNode> begins = new HashSet<>(3);
             for (GuardNode guard : guards) {
                 BeginNode begin = (BeginNode) guard.dependencies().first();
@@ -189,21 +187,11 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
                 } else if (reason != guard.reason()) {
                     reason = DeoptimizationReason.None;
                 }
-                if (leafGraphId == -1) {
-                    leafGraphId = guard.getLeafGraphId();
-                } else if (leafGraphId != guard.getLeafGraphId()) {
-                    metricPRGuardsDifferentGraphId.increment();
-                    leafGraphId = -1;
-                    break;
-                }
-            }
-            if (leafGraphId < 0) {
-                continue;
             }
             if (begins.size() == controlSplit.successors().count()) {
                 hits = true;
                 Condition condition = entry.getKey();
-                GuardNode newGuard = controlSplit.graph().unique(new GuardNode(condition.conditionNode, BeginNode.prevBegin(controlSplit), reason, action, condition.negated, leafGraphId));
+                GuardNode newGuard = controlSplit.graph().unique(new GuardNode(condition.conditionNode, BeginNode.prevBegin(controlSplit), reason, action, condition.negated));
                 for (GuardNode guard : guards) {
                     guard.replaceAndDelete(newGuard);
                     metricPRGuardsEliminatedAtSplit.increment();

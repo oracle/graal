@@ -555,14 +555,14 @@ public class MetaUtil {
             }
 
             if (info.getBranchTakenProbability(i) != -1) {
-                buf.append(String.format("branchProbability@%d: %.3f%s", i, info.getBranchTakenProbability(i), sep));
+                buf.append(String.format("branchProbability@%d: %.6f%s", i, info.getBranchTakenProbability(i), sep));
             }
 
             double[] switchProbabilities = info.getSwitchProbabilities(i);
             if (switchProbabilities != null) {
                 buf.append(String.format("switchProbabilities@%d:", i));
                 for (int j = 0; j < switchProbabilities.length; j++) {
-                    buf.append(String.format(" %.3f", switchProbabilities[j]));
+                    buf.append(String.format(" %.6f", switchProbabilities[j]));
                 }
                 buf.append(sep);
             }
@@ -578,9 +578,13 @@ public class MetaUtil {
                     buf.append(String.format("types@%d:", i));
                     for (int j = 0; j < ptypes.length; j++) {
                         ProfiledType ptype = ptypes[j];
-                        buf.append(String.format(" %.3f (%s)%s", ptype.getProbability(), ptype.getType(), sep));
+                        buf.append(String.format(" %.6f (%s)%s", ptype.getProbability(), ptype.getType(), sep));
                     }
-                    buf.append(String.format(" %.3f <not recorded>%s", typeProfile.getNotRecordedProbability(), sep));
+                    if (typeProfile.getNotRecordedProbability() != 0) {
+                        buf.append(String.format(" %.6f <other types>%s", typeProfile.getNotRecordedProbability(), sep));
+                    } else {
+                        buf.append(String.format(" <no other types>%s", sep));
+                    }
                 }
             }
         }

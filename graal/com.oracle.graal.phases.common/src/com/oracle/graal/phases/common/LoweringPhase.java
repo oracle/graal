@@ -65,13 +65,13 @@ public class LoweringPhase extends Phase {
         }
 
         @Override
-        public ValueNode createNullCheckGuard(ValueNode object, long leafGraphId) {
-            return createGuard(object.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true, leafGraphId);
+        public ValueNode createNullCheckGuard(ValueNode object) {
+            return createGuard(object.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);
         }
 
         @Override
-        public ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, long leafGraphId) {
-            return createGuard(condition, deoptReason, action, false, leafGraphId);
+        public ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
+            return createGuard(condition, deoptReason, action, false);
         }
 
         @Override
@@ -80,7 +80,7 @@ public class LoweringPhase extends Phase {
         }
 
         @Override
-        public ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated, long leafGraphId) {
+        public ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
             if (GraalOptions.OptEliminateGuards) {
                 for (Node usage : condition.usages()) {
                     if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage)) {
@@ -88,7 +88,7 @@ public class LoweringPhase extends Phase {
                     }
                 }
             }
-            GuardNode newGuard = guardAnchor.graph().unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated, leafGraphId));
+            GuardNode newGuard = guardAnchor.graph().unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated));
             if (GraalOptions.OptEliminateGuards) {
                 activeGuards.grow();
                 activeGuards.mark(newGuard);
