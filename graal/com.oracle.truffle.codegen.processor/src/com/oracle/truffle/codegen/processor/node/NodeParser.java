@@ -44,8 +44,6 @@ public class NodeParser extends TemplateParser<NodeData> {
     public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Generic.class, GuardCheck.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class,
                     SpecializationGuard.class, SpecializationListener.class, SpecializationThrows.class);
 
-    private static final boolean DEBUG = false;
-
     private Map<String, NodeData> parsedNodes;
     private TypeElement originalType;
 
@@ -62,7 +60,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
             return parseInnerClassHierarchy((TypeElement) element);
         } finally {
-            if (DEBUG) {
+            if (Log.DEBUG) {
                 NodeData parsed = parsedNodes.get(Utils.getQualifiedName(originalType));
                 if (parsed != null) {
                     String dump = parsed.dump();
