@@ -84,4 +84,13 @@ public interface MetaAccessProvider {
      * @throws IllegalArgumentException if {@code array} is not an array
      */
     int lookupArrayLength(Constant array);
+
+    /**
+     * Reads a value of this kind using a base address and a displacement.
+     *
+     * @param base the base address from which the value is read
+     * @param displacement the displacement within the object in bytes
+     * @return the read value encapsulated in a {@link Constant} object, or {@code null} if the value cannot be read.
+     */
+    Constant readUnsafeConstant(Kind kind, Object base, long displacement);
 }

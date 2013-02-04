@@ -28,7 +28,6 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
 
 /**
@@ -101,12 +100,12 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         if (receiver == null) {
             assert Modifier.isStatic(flags);
             if (holder.isInitialized()) {
-                return ReadNode.readUnsafeConstant(getKind(), holder.mirror(), offset);
+                return HotSpotGraalRuntime.getInstance().getRuntime().readUnsafeConstant(getKind(), holder.mirror(), offset);
             }
             return null;
         } else {
             assert !Modifier.isStatic(flags);
-            return ReadNode.readUnsafeConstant(getKind(), receiver.asObject(), offset);
+            return HotSpotGraalRuntime.getInstance().getRuntime().readUnsafeConstant(getKind(), receiver.asObject(), offset);
         }
     }
 
