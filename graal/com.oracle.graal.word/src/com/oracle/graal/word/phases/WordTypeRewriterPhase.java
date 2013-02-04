@@ -284,7 +284,19 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     public boolean isWord(ValueNode node) {
+        /*
+         * If we already know that we have a word type, we do not need to infer the stamp. This
+         * avoids exceptions in inferStamp when the inputs have already been rewritten to word,
+         * i.e., when the expected input is no longer an object.
+         */
+        if (isWord0(node)) {
+            return true;
+        }
         node.inferStamp();
+        return isWord0(node);
+    }
+
+    private boolean isWord0(ValueNode node) {
         if (node.stamp() == StampFactory.forWord()) {
             return true;
         }
