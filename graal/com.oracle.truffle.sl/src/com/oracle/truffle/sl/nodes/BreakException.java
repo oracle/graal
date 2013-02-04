@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import com.oracle.truffle.api.nodes.*;
+
 public final class BreakException extends ControlFlowException {
 
     private static final long serialVersionUID = -91013036379258890L;

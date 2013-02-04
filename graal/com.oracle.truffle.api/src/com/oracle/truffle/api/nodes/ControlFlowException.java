@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.nodes;
+package com.oracle.truffle.api.nodes;
 
 /**
- * Common base class for exceptions that are used to implement control flow.
+ * An exception thrown to model control flow in a Truffle interpreter. The Truffle optimizer has
+ * special knowledge of this exception class for performance optimizations.
  */
-public abstract class ControlFlowException extends RuntimeException {
+public class ControlFlowException extends RuntimeException {
 
-    private static final long serialVersionUID = 4924673852577649008L;
+    private static final long serialVersionUID = 3676602078425211386L;
 
-    @SuppressWarnings("all")
+    /**
+     * Creates an exception thrown to model control flow.
+     */
+    public ControlFlowException() {
+    }
+
+    /**
+     * For performance reasons, this exception does not record any stack trace information.
+     */
     @Override
-    public final Throwable fillInStackTrace() {
+    public synchronized Throwable fillInStackTrace() {
         return null;
     }
 }

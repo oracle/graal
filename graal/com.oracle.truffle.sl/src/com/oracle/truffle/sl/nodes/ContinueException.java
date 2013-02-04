@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import com.oracle.truffle.api.nodes.*;
+
 public final class ContinueException extends ControlFlowException {
 
     private static final long serialVersionUID = 5329687983726237188L;
