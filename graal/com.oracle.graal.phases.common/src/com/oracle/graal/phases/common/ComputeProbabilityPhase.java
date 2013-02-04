@@ -275,6 +275,7 @@ public class ComputeProbabilityPhase extends Phase {
     }
 
     private class PropagateLoopFrequency extends PostOrderNodeIterator<LoopCount> {
+
         public PropagateLoopFrequency(FixedNode start) {
             super(start, new LoopCount(1d));
         }
@@ -287,6 +288,7 @@ public class ComputeProbabilityPhase extends Phase {
     }
 
     private static class ComputeInliningRelevanceIterator extends ScopedPostOrderNodeIterator {
+
         private final HashMap<FixedNode, Scope> scopes;
         private double currentProbability;
         private double parentRelevance;
@@ -307,13 +309,13 @@ public class ComputeProbabilityPhase extends Phase {
             if (scope.start instanceof LoopBeginNode) {
                 assert scope.parent != null;
                 double parentProbability = 0;
-                for (EndNode end: ((LoopBeginNode) scope.start).forwardEnds()) {
+                for (EndNode end : ((LoopBeginNode) scope.start).forwardEnds()) {
                     parentProbability += end.probability();
                 }
                 return parentProbability / scope.parent.minPathProbability;
             } else {
-               assert scope.parent == null;
-               return 1.0;
+                assert scope.parent == null;
+                return 1.0;
             }
         }
 
@@ -354,7 +356,7 @@ public class ComputeProbabilityPhase extends Phase {
         private static HashMap<FixedNode, Scope> computeLowestPathProbabilities(Scope[] scopes) {
             HashMap<FixedNode, Scope> result = new HashMap<>();
 
-            for (Scope scope: scopes) {
+            for (Scope scope : scopes) {
                 double lowestPathProbability = computeLowestPathProbability(scope);
                 scope.minPathProbability = Math.max(EPSILON, lowestPathProbability);
                 result.put(scope.start, scope);
@@ -365,66 +367,86 @@ public class ComputeProbabilityPhase extends Phase {
 
         private static double computeLowestPathProbability(Scope scope) {
             FixedNode scopeStart = scope.start;
-            Node current = scopeStart;
+            ArrayList<FixedNode> pathBeginNodes = new ArrayList<>();
+            pathBeginNodes.add(scopeStart);
             double minPathProbability = scopeStart.probability();
             boolean isLoopScope = scopeStart instanceof LoopBeginNode;
 
-            while (current != null) {
-                if (isLoopScope && current instanceof LoopExitNode && ((LoopBeginNode) scopeStart).loopExits().contains((LoopExitNode) current)) {
-                    return minPathProbability;
-                } else if (current instanceof LoopBeginNode && current != scopeStart) {
-                    current = getMaxProbabilityLoopExit((LoopBeginNode) current);
-                    if (((FixedNode) current).probability() < minPathProbability) {
-                        minPathProbability = ((FixedNode) current).probability();
+            do {
+                Node current = pathBeginNodes.remove(pathBeginNodes.size() - 1);
+                do {
+                    if (isLoopScope && current instanceof LoopExitNode && ((LoopBeginNode) scopeStart).loopExits().contains((LoopExitNode) current)) {
+                        return minPathProbability;
+                    } else if (current instanceof LoopBeginNode && current != scopeStart) {
+                        current = getMaxProbabilityLoopExit((LoopBeginNode) current, pathBeginNodes);
+                        minPathProbability = getMinPathProbability((FixedNode) current, minPathProbability);
+                    } else if (current instanceof ControlSplitNode) {
+                        current = getMaxProbabilitySux((ControlSplitNode) current, pathBeginNodes);
+                        minPathProbability = getMinPathProbability((FixedNode) current, minPathProbability);
+                    } else {
+                        assert current.successors().count() <= 1;
+                        current = current.successors().first();
                     }
-                } else if (current instanceof ControlSplitNode) {
-                    current = getMaxProbabilitySux((ControlSplitNode) current);
-                    if (((FixedNode) current).probability() < minPathProbability) {
-                        minPathProbability = ((FixedNode) current).probability();
-                    }
-                } else {
-                    assert current.successors().count() <= 1;
-                    current = current.successors().first();
-                }
-            }
+                } while (current != null);
+            } while (!pathBeginNodes.isEmpty());
 
             return minPathProbability;
         }
 
-        private static Node getMaxProbabilitySux(ControlSplitNode controlSplit) {
+        private static double getMinPathProbability(FixedNode current, double minPathProbability) {
+            if (current.probability() < minPathProbability) {
+                return current.probability();
+            }
+            return minPathProbability;
+        }
+
+        private static Node getMaxProbabilitySux(ControlSplitNode controlSplit, ArrayList<FixedNode> pathBeginNodes) {
             Node maxSux = null;
             double maxProbability = 0.0;
+            int pathBeginCount = pathBeginNodes.size();
 
-            // TODO (chaeubl): process recursively if we have multiple successors with same probability
             for (Node sux : controlSplit.successors()) {
                 double probability = controlSplit.probability((BeginNode) sux);
                 if (probability > maxProbability) {
                     maxProbability = probability;
                     maxSux = sux;
+                    truncate(pathBeginNodes, pathBeginCount);
+                } else if (probability == maxProbability) {
+                    pathBeginNodes.add((FixedNode) sux);
                 }
             }
 
             return maxSux;
         }
 
-        private static Node getMaxProbabilityLoopExit(LoopBeginNode loopBegin) {
+        private static Node getMaxProbabilityLoopExit(LoopBeginNode loopBegin, ArrayList<FixedNode> pathBeginNodes) {
             Node maxSux = null;
             double maxProbability = 0.0;
+            int pathBeginCount = pathBeginNodes.size();
 
-            // TODO (chaeubl): process recursively if we have multiple successors with same probability
-            for (LoopExitNode sux: loopBegin.loopExits()) {
+            for (LoopExitNode sux : loopBegin.loopExits()) {
                 double probability = sux.probability();
                 if (probability > maxProbability) {
                     maxProbability = probability;
                     maxSux = sux;
+                    truncate(pathBeginNodes, pathBeginCount);
+                } else if (probability == maxProbability) {
+                    pathBeginNodes.add(sux);
                 }
             }
 
             return maxSux;
         }
+
+        public static void truncate(ArrayList<FixedNode> pathBeginNodes, int pathBeginCount) {
+            for (int i = pathBeginNodes.size() - pathBeginCount; i > 0; i--) {
+                pathBeginNodes.remove(pathBeginNodes.size() - 1);
+            }
+        }
     }
 
     private static class Scope {
+
         public final FixedNode start;
         public final Scope parent;
         public double minPathProbability;

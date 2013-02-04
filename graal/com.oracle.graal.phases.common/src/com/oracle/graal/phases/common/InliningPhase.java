@@ -191,10 +191,12 @@ public class InliningPhase extends Phase implements InliningCallback {
 // return compilationComplexity(info) < maxSize;
 
             assert GraalOptions.ProbabilityAnalysis;
-            // TODO (chaeubl): invoked methods that are on important paths but not yet compiled ->
-// will be compiled anyways and it is likely that we are the only caller...
-            // might be useful to inline those methods but increases bootstrap time (maybe those
-// methods are also getting queued in the compilation queue concurrently)
+            /*
+             * TODO (chaeubl): invoked methods that are on important paths but not yet compiled ->
+             * will be compiled anyways and it is likely that we are the only caller... might be
+             * useful to inline those methods but increases bootstrap time (maybe those methods are
+             * also getting queued in the compilation queue concurrently)
+             */
 
             if (GraalOptions.AlwaysInlineIntrinsics && onlyIntrinsics(info)) {
                 return InliningUtil.logInlinedMethod(info, "intrinsic");
@@ -205,8 +207,10 @@ public class InliningPhase extends Phase implements InliningCallback {
             int compiledCodeSize = compiledCodeSize(info);
             double relevance = info.invoke().inliningRelevance();
 
-            // as long as the compiled code size is small enough (or the method was not yet
-// compiled), we can do a pretty general inlining that suits most situations
+            /*
+             * as long as the compiled code size is small enough (or the method was not yet
+             * compiled), we can do a pretty general inlining that suits most situations
+             */
             if (compiledCodeSize < GraalOptions.SmallCompiledCodeSize) {
                 if (isTrivialInlining(bytecodeSize, complexity, compiledCodeSize)) {
                     return InliningUtil.logInlinedMethod(info, "trivial (bytecodes=%d, complexity=%d, codeSize=%d)", bytecodeSize, complexity, compiledCodeSize);
@@ -217,8 +221,10 @@ public class InliningPhase extends Phase implements InliningCallback {
                 }
             }
 
-            // the normal inlining did not fit this invoke, so check if we have any reason why we
-// should still do the inlining
+            /*
+             * the normal inlining did not fit this invoke, so check if we have any reason why we
+             * should still do the inlining
+             */
             double probability = info.invoke().probability();
             int transferredValues = numberOfTransferredValues(info);
             int invokeUsages = countInvokeUsages(info);
@@ -281,8 +287,10 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
 
         private int countMoreSpecificArgumentInfo(InlineInfo info) {
-            // inlining invokes where the caller has very specific information about the passed
-// argument simplifies the callee
+            /*
+             * inlining invokes where the caller has very specific information about the passed
+             * argument simplifies the callee
+             */
             int moreSpecificArgumentInfo = 0;
             boolean isStatic = info.invoke().methodCallTarget().isStatic();
             int signatureOffset = isStatic ? 0 : 1;
