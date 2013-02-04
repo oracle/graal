@@ -419,14 +419,14 @@ public class ComputeProbabilityPhase extends Phase {
             Node current = scopeStart;
 
             while (current != null) {
-                if (current instanceof ControlSplitNode) {
+                if (current.successors().count() > 1) {
+                    assert current instanceof ControlSplitNode;
                     ControlSplitNode controlSplit = (ControlSplitNode) current;
                     current = getMaxProbabilitySux(controlSplit);
                     if (((FixedNode) current).probability() < minPathProbability) {
                         minPathProbability = ((FixedNode) current).probability();
                     }
                 } else {
-                    assert current.successors().count() <= 1;
                     current = current.successors().first();
                 }
             }
