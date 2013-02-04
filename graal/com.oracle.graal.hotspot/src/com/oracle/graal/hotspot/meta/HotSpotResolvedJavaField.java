@@ -27,9 +27,11 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.snippets.*;
 
 /**
  * Represents a field in a HotSpot type.
@@ -94,8 +96,10 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             assert !Modifier.isStatic(flags);
             if (Modifier.isFinal(getModifiers())) {
                 Constant value = readValue(receiver);
-                if (!value.isDefaultForKind()) {
+                if (assumeNonStaticFinalFieldsAsFinal(receiver.asObject().getClass()) || !value.isDefaultForKind()) {
                     return value;
+                } else {
+                    TTY.println("Non-static final field %s.%s=%s", holder, name, value.toString());
                 }
             }
         }
@@ -118,6 +122,10 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
     private static boolean assumeStaticFieldsFinal(Class<?> clazz) {
         return clazz == GraalOptions.class;
+    }
+
+    private static boolean assumeNonStaticFinalFieldsAsFinal(Class<?> clazz) {
+        return clazz == SnippetCounter.class;
     }
 
     @Override
