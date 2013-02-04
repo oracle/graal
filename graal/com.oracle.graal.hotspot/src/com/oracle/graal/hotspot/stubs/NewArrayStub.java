@@ -80,7 +80,7 @@ public class NewArrayStub extends Stub {
         // check that array length is small enough for fast path.
         if (length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
             Word memory = refillAllocate(intArrayHub, sizeInBytes, log);
-            if (memory != Word.zero()) {
+            if (memory.notEqual(0)) {
                 log(log, "newArray: allocated new array at %p\n", memory);
                 formatArray(hub, sizeInBytes, length, headerSize, memory, Word.unsigned(arrayPrototypeMarkWord()), true);
                 return verifyOop(memory.toObject());

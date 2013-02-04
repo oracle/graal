@@ -71,7 +71,7 @@ public class NewInstanceStub extends Stub {
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
             if (hub.readInt(klassStateOffset()) == klassStateFullyInitialized()) {
                 Word memory = refillAllocate(intArrayHub, sizeInBytes, log);
-                if (memory != Word.zero()) {
+                if (memory.notEqual(0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset());
                     memory.writeWord(markOffset(), prototypeMarkWord);
                     memory.writeWord(hubOffset(), hub);
@@ -129,7 +129,7 @@ public class NewInstanceStub extends Stub {
 
             // if TLAB is currently allocated (top or end != null) then
             // fill [top, end + alignment_reserve) with array object
-            if (top != Word.zero()) {
+            if (top.notEqual(0)) {
                 int headerSize = arrayBaseOffset(Kind.Int);
                 // just like the HotSpot assembler stubs, assumes that tlabFreeSpaceInInts fits in
                 // an int
@@ -147,7 +147,7 @@ public class NewInstanceStub extends Stub {
             Word tlabRefillSizeInBytes = tlabRefillSizeInWords.multiply(wordSize());
             // allocate new TLAB, address returned in top
             top = edenAllocate(tlabRefillSizeInBytes, log);
-            if (top != Word.zero()) {
+            if (top.notEqual(0)) {
                 thread.writeWord(threadTlabStartOffset(), top);
                 thread.writeWord(threadTlabTopOffset(), top);
 
@@ -195,7 +195,7 @@ public class NewInstanceStub extends Stub {
                 return Word.zero();
             }
 
-            if (compareAndSwap(heapTopAddress, 0, heapTop, newHeapTop) == heapTop) {
+            if (compareAndSwap(heapTopAddress, 0, heapTop, newHeapTop).equal(heapTop)) {
                 return heapTop;
             }
         }

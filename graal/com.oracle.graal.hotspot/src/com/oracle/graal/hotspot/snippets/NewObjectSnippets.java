@@ -84,7 +84,7 @@ public class NewObjectSnippets implements SnippetsInterface {
                     @ConstantParameter("locked") boolean locked) {
 
         Object result;
-        if (memory == Word.zero()) {
+        if (memory.equal(0)) {
             new_stub.inc();
             result = NewInstanceStubCall.call(hub);
         } else {
@@ -118,7 +118,7 @@ public class NewObjectSnippets implements SnippetsInterface {
 
     private static Object initializeArray(Word memory, Word hub, int length, int allocationSize, Word prototypeMarkWord, int headerSize, boolean fillContents) {
         Object result;
-        if (memory == Word.zero()) {
+        if (memory.equal(0)) {
             newarray_stub.inc();
             result = NewArrayStubCall.call(hub, length);
         } else {
