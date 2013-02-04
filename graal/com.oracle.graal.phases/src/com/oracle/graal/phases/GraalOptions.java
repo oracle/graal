@@ -51,7 +51,7 @@ public final class GraalOptions {
     public static float   BoostInliningForEscapeAnalysis     = 2f;
     public static float   RelevanceCapForInlining            = 1f;
 
-    public static int     TrivialBytecodeSize                = 0;   // TODO (chaeubl): change that to 10 when it survives bootstrapping
+    public static int     TrivialBytecodeSize                = 10;
     public static int     NormalBytecodeSize                 = 150;
     public static int     MaximumBytecodeSize                = 500;
     public static int     TrivialComplexity                  = 10;

@@ -25,7 +25,6 @@ package com.oracle.graal.nodes;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
@@ -349,9 +348,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @param phiValues the values of the phi at the merge, keyed by the merge ends
      */
     private void connectEnds(List<EndNode> ends, Map<EndNode, ValueNode> phiValues, BeginNode successor, MergeNode oldMerge, SimplifierTool tool) {
-        // TEMP:
-        Debug.dump(this.graph(), "Before connectEnds");
-
         if (ends.isEmpty()) {
             GraphUtil.killCFG(successor);
         } else {
@@ -386,9 +382,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
             tool.addToWorkList(successor);
         }
-
-        // TEMP:
-        Debug.dump(this.graph(), "After connectEnds");
     }
 
     /**

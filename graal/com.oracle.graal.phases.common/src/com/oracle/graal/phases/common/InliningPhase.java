@@ -170,26 +170,6 @@ public class InliningPhase extends Phase implements InliningCallback {
 
         @Override
         public boolean isWorthInlining(InlineInfo info) {
-// assert GraalOptions.ProbabilityAnalysis;
-// if (compiledCodeSize(info) > GraalOptions.SmallCompiledCodeSize) {
-// return false;
-// }
-//
-// double maxSize = GraalOptions.NormalComplexity;
-// Signature signature = info.invoke().methodCallTarget().targetMethod().getSignature();
-// int transferredValues =
-// signature.getParameterCount(!Modifier.isStatic(info.invoke().methodCallTarget().targetMethod().getModifiers()));
-// if (signature.getReturnKind() != Kind.Void) {
-// transferredValues++;
-// }
-// maxSize += transferredValues * 10;
-//
-// maxSize = Math.min(GraalOptions.RelevanceCapForInlining, info.invoke().inliningRelevance()) *
-// maxSize;
-// maxSize = Math.max(maxSize, GraalOptions.TrivialComplexity);
-//
-// return compilationComplexity(info) < maxSize;
-
             assert GraalOptions.ProbabilityAnalysis;
             /*
              * TODO (chaeubl): invoked methods that are on important paths but not yet compiled ->
@@ -233,19 +213,6 @@ public class InliningPhase extends Phase implements InliningCallback {
             boolean preferredInvoke = hints != null && hints.contains(info.invoke());
 
             // TODO (chaeubl): compute metric that is used to check if this method should be inlined
-// anyways. also use the relevance somehow...
-// double metric = (moreSpecificArguments * 5 + transferredValues + invokeUsages) * (preferredInvoke
-// ? 1 : GraalOptions.BoostInliningForEscapeAnalysis);
-// if (metric > 50) {
-// // TEMP:
-// TTY.println("Inlined special method (relevance=%f, bytecodes=%d, complexity=%d, codeSize=%d, probability=%f, transferredValues=%d, invokeUsages=%d, moreSpecificArguments=%d, level=%d, preferred=%b)",
-// relevance, bytecodeSize, complexity, compiledCodeSize, probability, transferredValues,
-// invokeUsages, moreSpecificArguments, level, preferredInvoke);
-// return InliningUtil.logInlinedMethod(info,
-// "(relevance=%f, bytecodes=%d, complexity=%d, codeSize=%d, probability=%f, transferredValues=%d, invokeUsages=%d, moreSpecificArguments=%d, level=%d, preferred=%b)",
-// relevance, bytecodeSize, complexity, compiledCodeSize, probability, transferredValues,
-// invokeUsages, moreSpecificArguments, level, preferredInvoke);
-// }
 
             return InliningUtil.logNotInlinedMethod(info,
                             "(relevance=%f, bytecodes=%d, complexity=%d, codeSize=%d, probability=%f, transferredValues=%d, invokeUsages=%d, moreSpecificArguments=%d, level=%d, preferred=%b)",

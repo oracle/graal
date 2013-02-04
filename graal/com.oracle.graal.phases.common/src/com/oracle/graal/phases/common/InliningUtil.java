@@ -724,7 +724,7 @@ public class InliningUtil {
             replaceInvokeCallTarget(graph, kind, target);
         }
 
-        private BeginNode createUnknownTypeSuccessor(StructuredGraph graph) {
+        private static BeginNode createUnknownTypeSuccessor(StructuredGraph graph) {
             return BeginNode.begin(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated)));
         }
 
