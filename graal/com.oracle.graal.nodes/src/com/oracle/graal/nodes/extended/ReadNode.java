@@ -41,11 +41,12 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
         super(object, object.graph().add(new LocationNode(locationIdentity, kind, displacement)), StampFactory.forKind(kind));
     }
 
-    private ReadNode(ValueNode object, ValueNode location) {
-        // Used by node intrinsics. Since the initial value for location is a parameter, i.e., a
-        // LocalNode, the
-        // constructor cannot use the declared type LocationNode
-        this(object, location, StampFactory.forNodeIntrinsic());
+    private ReadNode(ValueNode object, ValueNode location, ValueNode dependency) {
+        /*
+         * Used by node intrinsics. Since the initial value for location is a parameter, i.e., a
+         * LocalNode, the constructor cannot use the declared type LocationNode.
+         */
+        super(object, location, StampFactory.forNodeIntrinsic(), dependency);
     }
 
     @Override
