@@ -338,10 +338,7 @@ public class InliningUtil {
         @Override
         public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback, Assumptions assumptions) {
             createGuard(graph, runtime);
-
-            StructuredGraph calleeGraph = getGraph(concrete, callback);
-            assumptions.recordMethodContents(concrete);
-            InliningUtil.inline(invoke, calleeGraph, false);
+            inline(invoke, concrete, callback, assumptions, false);
         }
 
         @Override
@@ -822,8 +819,6 @@ public class InliningUtil {
             return getExactInlineInfo(invoke, optimisticOpts, holder.resolveMethod(targetMethod));
         }
 
-        // TODO (chaeubl): we could also use the type determined after assumptions for the
-        // type-checked inlining case as it might have an effect on type filtering
         if (assumptions.useOptimisticAssumptions()) {
             ResolvedJavaType uniqueSubtype = holder.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
@@ -834,8 +829,6 @@ public class InliningUtil {
             if (concrete != null) {
                 return getAssumptionInlineInfo(invoke, optimisticOpts, concrete, new Assumptions.ConcreteMethod(targetMethod, holder, concrete));
             }
-
-            // TODO (chaeubl): C1 has one more assumption in the case of interfaces
         }
 
         // type check based inlining
@@ -895,14 +888,6 @@ public class InliningUtil {
                 return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.size(),
                                 notRecordedTypeProbability * 100);
             }
-
-            // TODO (chaeubl) inlining of multiple methods should work differently
-            // 1. check which methods can be inlined
-            // 2. for those methods, use weight and probability to compute which of them should be
-            // inlined
-            // 3. do the inlining
-            // a) all seen methods can be inlined -> do so and guard with deopt
-            // b) some methods can be inlined -> inline them and fall back to invocation if violated
 
             // determine concrete methods and map type to specific method
             ArrayList<ResolvedJavaMethod> concreteMethods = new ArrayList<>();

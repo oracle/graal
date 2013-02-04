@@ -107,7 +107,6 @@ public class InliningPhase extends Phase implements InliningCallback {
                         }
                         metricInliningPerformed.increment();
                     } catch (BailoutException bailout) {
-                        // TODO determine if we should really bail out of the whole compilation.
                         throw bailout;
                     } catch (AssertionError e) {
                         throw new GraalInternalError(e).addContext(candidate.toString());

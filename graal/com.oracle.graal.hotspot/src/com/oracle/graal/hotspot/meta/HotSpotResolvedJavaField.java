@@ -87,10 +87,16 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             }
             return constant;
         } else {
+            /*
+             * for non-static final fields, we must assume that they are only initialized if they
+             * have a non-default value.
+             */
             assert !Modifier.isStatic(flags);
-            // TODO (chaeubl) HotSpot does not trust final non-static fields (see ciField.cpp)
             if (Modifier.isFinal(getModifiers())) {
-                return readValue(receiver);
+                Constant value = readValue(receiver);
+                if (!value.isDefaultForKind()) {
+                    return value;
+                }
             }
         }
         return null;
