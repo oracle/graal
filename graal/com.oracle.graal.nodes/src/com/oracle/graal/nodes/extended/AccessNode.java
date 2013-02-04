@@ -58,6 +58,12 @@ public abstract class AccessNode extends FixedWithNextNode implements Access {
         this.location = location;
     }
 
+    public AccessNode(ValueNode object, ValueNode location, Stamp stamp, ValueNode... dependencies) {
+        super(stamp, dependencies);
+        this.object = object;
+        this.location = location;
+    }
+
     @Override
     public Node node() {
         return this;

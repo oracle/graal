@@ -86,19 +86,4 @@ public interface Signature {
      * @return the size of the parameters in slots
      */
     int getParameterSlots(boolean withReceiver);
-
-    /**
-     * Gets the <a
-     * href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">method
-     * descriptor</a> corresponding to this signature. For example:
-     * 
-     * <pre>
-     * (ILjava/lang/String;D)V
-     * </pre>
-     * 
-     * .
-     * 
-     * @return the signature as a string
-     */
-    String getMethodDescriptor();
 }

@@ -384,7 +384,7 @@ public class ComputeProbabilityPhase extends Phase {
                         current = getMaxProbabilitySux((ControlSplitNode) current, pathBeginNodes);
                         minPathProbability = getMinPathProbability((FixedNode) current, minPathProbability);
                     } else {
-                        assert current.successors().count() <= 1;
+                        assert current.successors.count() <= 1;
                         current = current.successors().first();
                     }
                 } while (current != null);
@@ -394,7 +394,7 @@ public class ComputeProbabilityPhase extends Phase {
         }
 
         private static double getMinPathProbability(FixedNode current, double minPathProbability) {
-            if (current.probability() < minPathProbability) {
+            if (current != null && current.probability() < minPathProbability) {
                 return current.probability();
             }
             return minPathProbability;

@@ -77,7 +77,8 @@ public @interface ClassSubstitution {
         boolean isStatic() default true;
 
         /**
-         * Gets the {@linkplain Signature#getMethodDescriptor() signature} of the original method.
+         * Gets the {@linkplain MetaUtil#signatureToMethodDescriptor signature} of the original
+         * method.
          * <p>
          * If the default value is specified for this element, then the signature of the original
          * method is the same as the substitute method.
@@ -110,7 +111,7 @@ public @interface ClassSubstitution {
         boolean isStatic() default true;
 
         /**
-         * Gets the {@linkplain Signature#getMethodDescriptor() signature} of the substituted
+         * Gets the {@linkplain MetaUtil#signatureToMethodDescriptor signature} of the substituted
          * method.
          * <p>
          * If the default value is specified for this element, then the signature of the substituted

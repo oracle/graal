@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import static com.oracle.graal.graph.FieldIntrospection.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -42,11 +41,12 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
         super(object, object.graph().add(new LocationNode(locationIdentity, kind, displacement)), StampFactory.forKind(kind));
     }
 
-    private ReadNode(ValueNode object, ValueNode location) {
-        // Used by node intrinsics. Since the initial value for location is a parameter, i.e., a
-        // LocalNode, the
-        // constructor cannot use the declared type LocationNode
-        this(object, location, StampFactory.forNodeIntrinsic());
+    private ReadNode(ValueNode object, ValueNode location, ValueNode dependency) {
+        /*
+         * Used by node intrinsics. Since the initial value for location is a parameter, i.e., a
+         * LocalNode, the constructor cannot use the declared type LocationNode.
+         */
+        super(object, location, StampFactory.forNodeIntrinsic(), dependency);
     }
 
     @Override
@@ -59,60 +59,27 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
         return canonicalizeRead(this, tool);
     }
 
-    /**
-     * Utility function for reading a value of this kind using a base address and a displacement.
-     * 
-     * @param base the base address from which the value is read
-     * @param displacement the displacement within the object in bytes
-     * @return the read value encapsulated in a {@link Constant} object
-     */
-    public static Constant readUnsafeConstant(Kind kind, Object base, long displacement) {
-        switch (kind) {
-            case Boolean:
-                return Constant.forBoolean(base == null ? unsafe.getByte(displacement) != 0 : unsafe.getBoolean(base, displacement));
-            case Byte:
-                return Constant.forByte(base == null ? unsafe.getByte(displacement) : unsafe.getByte(base, displacement));
-            case Char:
-                return Constant.forChar(base == null ? unsafe.getChar(displacement) : unsafe.getChar(base, displacement));
-            case Short:
-                return Constant.forShort(base == null ? unsafe.getShort(displacement) : unsafe.getShort(base, displacement));
-            case Int:
-                return Constant.forInt(base == null ? unsafe.getInt(displacement) : unsafe.getInt(base, displacement));
-            case Long:
-                return Constant.forLong(base == null ? unsafe.getLong(displacement) : unsafe.getLong(base, displacement));
-            case Float:
-                return Constant.forFloat(base == null ? unsafe.getFloat(displacement) : unsafe.getFloat(base, displacement));
-            case Double:
-                return Constant.forDouble(base == null ? unsafe.getDouble(displacement) : unsafe.getDouble(base, displacement));
-            case Object:
-                return Constant.forObject(unsafe.getObject(base, displacement));
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
     public static ValueNode canonicalizeRead(Access read, CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
-        if (runtime != null && read.object() != null && read.object().isConstant()/*
-                                                                                   * &&
-                                                                                   * read.object()
-                                                                                   * .kind() ==
-                                                                                   * Kind.Object
-                                                                                   */) {
+        if (runtime != null && read.object() != null && read.object().isConstant()) {
             if (read.location().locationIdentity() == LocationNode.FINAL_LOCATION && read.location().getClass() == LocationNode.class) {
                 long displacement = read.location().displacement();
                 Kind kind = read.location().getValueKind();
                 if (read.object().kind() == Kind.Object) {
                     Object base = read.object().asConstant().asObject();
                     if (base != null) {
-                        Constant constant = readUnsafeConstant(kind, base, displacement);
-                        return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                        Constant constant = tool.runtime().readUnsafeConstant(kind, base, displacement);
+                        if (constant != null) {
+                            return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                        }
                     }
                 } else if (read.object().kind() == Kind.Long || read.object().kind().getStackKind() == Kind.Int) {
                     long base = read.object().asConstant().asLong();
                     if (base != 0L) {
-                        Constant constant = readUnsafeConstant(kind, null, base + displacement);
-                        return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                        Constant constant = tool.runtime().readUnsafeConstant(kind, null, base + displacement);
+                        if (constant != null) {
+                            return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                        }
                     }
                 }
             }

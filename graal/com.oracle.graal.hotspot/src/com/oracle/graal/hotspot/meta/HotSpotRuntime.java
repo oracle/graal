@@ -28,6 +28,7 @@ import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.code.Register.RegisterFlag.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.Value.*;
+import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.snippets.SystemSubstitutions.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
@@ -915,5 +916,31 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         }
         gcRoots.put(object, object);
         return object;
+    }
+
+    @Override
+    public Constant readUnsafeConstant(Kind kind, Object base, long displacement) {
+        switch (kind) {
+            case Boolean:
+                return Constant.forBoolean(base == null ? unsafe.getByte(displacement) != 0 : unsafe.getBoolean(base, displacement));
+            case Byte:
+                return Constant.forByte(base == null ? unsafe.getByte(displacement) : unsafe.getByte(base, displacement));
+            case Char:
+                return Constant.forChar(base == null ? unsafe.getChar(displacement) : unsafe.getChar(base, displacement));
+            case Short:
+                return Constant.forShort(base == null ? unsafe.getShort(displacement) : unsafe.getShort(base, displacement));
+            case Int:
+                return Constant.forInt(base == null ? unsafe.getInt(displacement) : unsafe.getInt(base, displacement));
+            case Long:
+                return Constant.forLong(base == null ? unsafe.getLong(displacement) : unsafe.getLong(base, displacement));
+            case Float:
+                return Constant.forFloat(base == null ? unsafe.getFloat(displacement) : unsafe.getFloat(base, displacement));
+            case Double:
+                return Constant.forDouble(base == null ? unsafe.getDouble(displacement) : unsafe.getDouble(base, displacement));
+            case Object:
+                return Constant.forObject(unsafe.getObject(base, displacement));
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
     }
 }

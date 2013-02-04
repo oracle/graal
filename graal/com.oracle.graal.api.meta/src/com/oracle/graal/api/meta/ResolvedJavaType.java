@@ -26,7 +26,7 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 /**
- * Represents a resolved Java types. Types include primitives, objects, {@code void}, and arrays
+ * Represents a resolved Java type. Types include primitives, objects, {@code void}, and arrays
  * thereof. Types, like fields and methods, are resolved through {@link ConstantPool constant pools}
  * .
  */

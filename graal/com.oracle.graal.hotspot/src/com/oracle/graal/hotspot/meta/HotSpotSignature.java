@@ -124,8 +124,8 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         return type;
     }
 
-    @Override
     public String getMethodDescriptor() {
+        assert originalString.equals(MetaUtil.signatureToMethodDescriptor(this));
         return originalString;
     }
 
