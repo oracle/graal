@@ -70,7 +70,7 @@ public class MetaUtil {
         ResolvedJavaType elementalType = getElementalType(type);
         Class elementalClass;
         if (elementalType.isPrimitive()) {
-            elementalClass = type.getKind().toJavaClass();
+            elementalClass = elementalType.getKind().toJavaClass();
         } else {
             try {
                 elementalClass = Class.forName(toJavaName(elementalType), true, loader);
