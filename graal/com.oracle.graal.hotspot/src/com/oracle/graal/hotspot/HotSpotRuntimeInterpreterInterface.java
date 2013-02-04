@@ -28,11 +28,10 @@ import java.lang.reflect.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.api.interpreter.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 
-public class HotSpotRuntimeInterpreterInterface implements RuntimeInterpreterInterface {
+public class HotSpotRuntimeInterpreterInterface {
 
     private final MetaAccessProvider metaProvider;
 

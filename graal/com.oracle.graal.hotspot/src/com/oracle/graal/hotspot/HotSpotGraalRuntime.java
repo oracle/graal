@@ -28,7 +28,6 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.interpreter.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
@@ -264,9 +263,6 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         }
         if (clazz == GraalCompiler.class) {
             return (T) getCompiler();
-        }
-        if (clazz == RuntimeInterpreterInterface.class) {
-            return (T) getRuntimeInterpreterInterface();
         }
         return null;
     }
