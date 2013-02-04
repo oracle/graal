@@ -78,8 +78,6 @@ public class StandardOp {
      * LIR operation that is an unconditional jump to {@link #destination()}. When the LIR is
      * constructed, the last operation of every block must implement this interface. After register
      * allocation, unnecessary jumps can be deleted.
-     * 
-     * TODO (cwimmer) Currently, a block can also end with an XIR operation.
      */
     public static class JumpOp extends LIRInstruction {
 
