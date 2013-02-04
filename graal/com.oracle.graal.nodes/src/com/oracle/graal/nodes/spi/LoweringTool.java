@@ -34,11 +34,11 @@ public interface LoweringTool {
 
     GraalCodeCacheProvider getRuntime();
 
-    ValueNode createNullCheckGuard(ValueNode object, long leafGraphId);
+    ValueNode createNullCheckGuard(ValueNode object);
 
-    ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, long leafGraphId);
+    ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action);
 
-    ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated, long leafGraphId);
+    ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated);
 
     Assumptions assumptions();
 

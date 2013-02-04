@@ -35,7 +35,6 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
     private final DeoptimizationReason reason;
     private final DeoptimizationAction action;
     private boolean negated;
-    private final long leafGraphId;
 
     public BooleanNode condition() {
         return condition;
@@ -46,15 +45,14 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
         condition = x;
     }
 
-    public FixedGuardNode(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, long leafGraphId) {
-        this(condition, deoptReason, action, false, leafGraphId);
+    public FixedGuardNode(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
+        this(condition, deoptReason, action, false);
     }
 
-    public FixedGuardNode(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated, long leafGraphId) {
+    public FixedGuardNode(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
         super(StampFactory.forVoid());
         this.action = action;
         this.negated = negated;
-        this.leafGraphId = leafGraphId;
         this.condition = condition;
         this.reason = deoptReason;
     }
@@ -71,10 +69,6 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
         return negated;
     }
 
-    public long getLeafGraphId() {
-        return leafGraphId;
-    }
-
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name && negated) {
@@ -86,7 +80,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitGuardCheck(condition, reason, action, negated, leafGraphId);
+        gen.emitGuardCheck(condition, reason, action, negated);
     }
 
     @Override
@@ -100,7 +94,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
                 if (next != null) {
                     tool.deleteBranch(next);
                 }
-                setNext(graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, reason, leafGraphId)));
+                setNext(graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, reason)));
                 return;
             }
         }

@@ -49,8 +49,8 @@ public class SafeWriteNode extends SafeAccessNode implements StateSplit, Lowerab
         return true;
     }
 
-    public SafeWriteNode(ValueNode object, ValueNode value, LocationNode location, long leafGraphId) {
-        super(object, location, StampFactory.forVoid(), leafGraphId);
+    public SafeWriteNode(ValueNode object, ValueNode value, LocationNode location) {
+        super(object, location, StampFactory.forVoid());
         this.value = value;
     }
 
@@ -61,7 +61,7 @@ public class SafeWriteNode extends SafeAccessNode implements StateSplit, Lowerab
     @Override
     public void lower(LoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) graph();
-        ValueNode guard = tool.createNullCheckGuard(object(), leafGraphId());
+        ValueNode guard = tool.createNullCheckGuard(object());
         WriteNode write = graph.add(new WriteNode(object(), value(), location()));
         write.dependencies().add(guard);
         graph.replaceFixedWithFixed(this, write);

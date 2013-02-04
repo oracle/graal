@@ -109,7 +109,7 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo);
 
-    public abstract void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo, long leafGraphId);
+    public abstract void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo);
 
     public abstract Value emitCall(RuntimeCallTarget callTarget, CallingConvention cc, boolean canTrap, Value... args);
 
@@ -117,7 +117,7 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitConditional(ConditionalNode i);
 
-    public abstract void emitGuardCheck(BooleanNode comp, DeoptimizationReason deoptReason, DeoptimizationAction deoptAction, boolean negated, long leafGraphId);
+    public abstract void emitGuardCheck(BooleanNode comp, DeoptimizationReason deoptReason, DeoptimizationAction deoptAction, boolean negated);
 
     public abstract void emitSwitch(SwitchNode i);
 

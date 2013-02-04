@@ -76,10 +76,10 @@ public final class CyclicMaterializeStoreNode extends FixedWithNextNode implemen
         ResolvedJavaType type = object.objectStamp().type();
         FixedWithNextNode store;
         if (target instanceof Integer) {
-            store = graph.add(new StoreIndexedNode(object, ConstantNode.forInt((int) target, graph), type.getComponentType().getKind(), value, -1));
+            store = graph.add(new StoreIndexedNode(object, ConstantNode.forInt((int) target, graph), type.getComponentType().getKind(), value));
         } else {
             assert target instanceof ResolvedJavaField;
-            store = graph.add(new StoreFieldNode(object, (ResolvedJavaField) target, value, -1));
+            store = graph.add(new StoreFieldNode(object, (ResolvedJavaField) target, value));
         }
         graph.replaceFixedWithFixed(this, store);
     }

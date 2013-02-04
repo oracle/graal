@@ -41,7 +41,6 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     private final int bci;
     private boolean polymorphic;
     private boolean useForInlining;
-    private final long leafGraphId;
     private double inliningRelevance;
 
     /**
@@ -50,11 +49,10 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
      * @param bci the bytecode index of the original invoke (used for debug infos)
      * @param callTarget the target method being called
      */
-    public InvokeNode(CallTargetNode callTarget, int bci, long leafGraphId) {
+    public InvokeNode(CallTargetNode callTarget, int bci) {
         super(callTarget.returnStamp());
         this.callTarget = callTarget;
         this.bci = bci;
-        this.leafGraphId = leafGraphId;
         this.polymorphic = false;
         this.useForInlining = true;
         this.inliningRelevance = Double.NaN;
@@ -97,11 +95,6 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     @Override
     public void setInliningRelevance(double value) {
         inliningRelevance = value;
-    }
-
-    @Override
-    public long leafGraphId() {
-        return leafGraphId;
     }
 
     @Override

@@ -63,8 +63,8 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
      * @param field the compiler interface field
      * @param value the node representing the value to store to the field
      */
-    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, long leafGraphId) {
-        super(StampFactory.forVoid(), object, field, leafGraphId);
+    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value) {
+        super(StampFactory.forVoid(), object, field);
         this.value = value;
     }
 

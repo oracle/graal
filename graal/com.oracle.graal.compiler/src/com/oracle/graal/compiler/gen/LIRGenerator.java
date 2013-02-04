@@ -227,23 +227,18 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     public LIRFrameState state() {
         assert lastState != null || needOnlyOopMaps() : "must have state before instruction";
-        return stateFor(lastState, StructuredGraph.INVALID_GRAPH_ID);
+        return stateFor(lastState);
     }
 
-    public LIRFrameState state(long leafGraphId) {
-        assert lastState != null || needOnlyOopMaps() : "must have state before instruction";
-        return stateFor(lastState, leafGraphId);
+    public LIRFrameState stateFor(FrameState state) {
+        return stateFor(state, null);
     }
 
-    public LIRFrameState stateFor(FrameState state, long leafGraphId) {
-        return stateFor(state, null, leafGraphId);
-    }
-
-    public LIRFrameState stateFor(FrameState state, LabelRef exceptionEdge, long leafGraphId) {
+    public LIRFrameState stateFor(FrameState state, LabelRef exceptionEdge) {
         if (needOnlyOopMaps()) {
             return new LIRFrameState(null, null, null);
         }
-        return debugInfoBuilder.build(state, lockDataSlots.subList(0, currentLockCount), exceptionEdge, leafGraphId);
+        return debugInfoBuilder.build(state, lockDataSlots.subList(0, currentLockCount), exceptionEdge);
     }
 
     /**
@@ -590,15 +585,15 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void emitGuardCheck(BooleanNode comp, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated, long leafGraphId) {
+    public void emitGuardCheck(BooleanNode comp, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
         if (comp instanceof IsNullNode && negated) {
-            emitNullCheckGuard(((IsNullNode) comp).object(), leafGraphId);
+            emitNullCheckGuard(((IsNullNode) comp).object());
         } else if (comp instanceof ConstantNode && (comp.asConstant().asBoolean() != negated)) {
             // True constant, nothing to emit.
             // False constants are handled within emitBranch.
         } else {
             // Fall back to a normal branch.
-            LIRFrameState info = state(leafGraphId);
+            LIRFrameState info = state();
             LabelRef stubEntry = createDeoptStub(action, deoptReason, info, comp);
             if (negated) {
                 emitBranch(comp, stubEntry, null, info);
@@ -608,7 +603,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    protected abstract void emitNullCheckGuard(ValueNode object, long leafGraphId);
+    protected abstract void emitNullCheckGuard(ValueNode object);
 
     public void emitBranch(BooleanNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
         if (node instanceof IsNullNode) {
@@ -698,7 +693,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         LIRFrameState callState = null;
         if (x.stateAfter() != null) {
-            callState = stateFor(x.stateDuring(), x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
+            callState = stateFor(x.stateDuring(), x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null);
         }
 
         Value result = cc.getReturn();
@@ -800,7 +795,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             if ((stateAfter.stackSize() > 0 && stateAfter.stackAt(stateAfter.stackSize() - 1) == x) || (stateAfter.stackSize() > 1 && stateAfter.stackAt(stateAfter.stackSize() - 2) == x)) {
                 stateBeforeReturn = stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), x.kind());
             }
-            info = stateFor(stateBeforeReturn, -1);
+            info = stateFor(stateBeforeReturn);
         } else {
             info = state();
         }
