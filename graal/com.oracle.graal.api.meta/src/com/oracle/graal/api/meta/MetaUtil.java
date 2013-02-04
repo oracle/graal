@@ -177,7 +177,7 @@ public class MetaUtil {
     public static String toJavaName(JavaType type, boolean qualified) {
         Kind kind = type.getKind();
         if (kind == Kind.Object) {
-            return internalNameToJava(type.getName(), qualified);
+            return internalNameToJava(type.getName(), qualified, false);
         }
         return type.getKind().getJavaName();
     }
@@ -196,10 +196,10 @@ public class MetaUtil {
      * @return the Java name corresponding to {@code type}
      */
     public static String toJavaName(JavaType type) {
-        return (type == null) ? null : internalNameToJava(type.getName(), true);
+        return (type == null) ? null : internalNameToJava(type.getName(), true, false);
     }
 
-    private static String internalNameToJava(String name, boolean qualified) {
+    private static String internalNameToJava(String name, boolean qualified, boolean classForNameCompatible) {
         switch (name.charAt(0)) {
             case 'L': {
                 String result = name.substring(1, name.length() - 1).replace('/', '.');
@@ -210,15 +210,27 @@ public class MetaUtil {
                     }
                 }
                 return result;
-
             }
             case '[':
-                return internalNameToJava(name.substring(1), qualified) + "[]";
+                return classForNameCompatible ? name.replace('/',  '.') : internalNameToJava(name.substring(1), qualified, classForNameCompatible) + "[]";
             default:
                 if (name.length() != 1) {
                     throw new IllegalArgumentException("Illegal internal name: " + name);
                 }
                 return Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0)).getJavaName();
+        }
+    }
+
+   /**
+     * Turns an class name in internal format into a resolved Java type.
+     */
+    public static ResolvedJavaType classForName(String internal, MetaAccessProvider metaAccess, ClassLoader cl) {
+        Kind k = Kind.fromTypeString(internal);
+        try {
+            String n = internalNameToJava(internal, true, true);
+            return metaAccess.lookupJavaType(k.isPrimitive() ? k.toJavaClass() : Class.forName(n, true, cl));
+        } catch (ClassNotFoundException cnfe) {
+            throw new IllegalArgumentException("could not instantiate class described by " + internal, cnfe);
         }
     }
 
