@@ -46,7 +46,7 @@ public class IterativeConditionalEliminationPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         Set<Node> canonicalizationRoots = new HashSet<>();
-        ConditionalEliminationPhase eliminate = new ConditionalEliminationPhase();
+        ConditionalEliminationPhase eliminate = new ConditionalEliminationPhase(runtime);
         Listener listener = new Listener(canonicalizationRoots);
         while (true) {
             graph.trackInputChange(listener);

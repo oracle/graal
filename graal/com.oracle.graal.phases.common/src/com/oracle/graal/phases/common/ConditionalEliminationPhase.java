@@ -30,6 +30,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
@@ -38,15 +39,23 @@ import com.oracle.graal.phases.graph.*;
 
 public class ConditionalEliminationPhase extends Phase {
 
-    private static final DebugMetric metricInstanceOfRegistered = Debug.metric("InstanceOfRegistered");
-    private static final DebugMetric metricNullCheckRegistered = Debug.metric("NullCheckRegistered");
+    private static final DebugMetric metricConditionRegistered = Debug.metric("ConditionRegistered");
+    private static final DebugMetric metricTypeRegistered = Debug.metric("TypeRegistered");
+    private static final DebugMetric metricNullnessRegistered = Debug.metric("NullnessRegistered");
+    private static final DebugMetric metricObjectEqualsRegistered = Debug.metric("ObjectEqualsRegistered");
     private static final DebugMetric metricCheckCastRemoved = Debug.metric("CheckCastRemoved");
     private static final DebugMetric metricInstanceOfRemoved = Debug.metric("InstanceOfRemoved");
     private static final DebugMetric metricNullCheckRemoved = Debug.metric("NullCheckRemoved");
-    private static final DebugMetric metricNullCheckGuardRemoved = Debug.metric("NullCheckGuardRemoved");
-    private static final DebugMetric metricGuardsReplaced = Debug.metric("GuardsReplaced");
+    private static final DebugMetric metricObjectEqualsRemoved = Debug.metric("ObjectEqualsRemoved");
+    private static final DebugMetric metricGuardsRemoved = Debug.metric("GuardsRemoved");
+
+    private final MetaAccessProvider metaAccessProvider;
 
     private StructuredGraph graph;
+
+    public ConditionalEliminationPhase(MetaAccessProvider metaAccessProvider) {
+        this.metaAccessProvider = metaAccessProvider;
+    }
 
     @Override
     protected void run(StructuredGraph inputGraph) {
@@ -57,14 +66,14 @@ public class ConditionalEliminationPhase extends Phase {
     public static class State implements MergeableState<State> {
 
         private IdentityHashMap<ValueNode, ResolvedJavaType> knownTypes;
-        private HashSet<ValueNode> knownNotNull;
+        private HashSet<ValueNode> knownNonNull;
         private HashSet<ValueNode> knownNull;
         private IdentityHashMap<BooleanNode, ValueNode> trueConditions;
         private IdentityHashMap<BooleanNode, ValueNode> falseConditions;
 
         public State() {
             this.knownTypes = new IdentityHashMap<>();
-            this.knownNotNull = new HashSet<>();
+            this.knownNonNull = new HashSet<>();
             this.knownNull = new HashSet<>();
             this.trueConditions = new IdentityHashMap<>();
             this.falseConditions = new IdentityHashMap<>();
@@ -72,7 +81,7 @@ public class ConditionalEliminationPhase extends Phase {
 
         public State(State other) {
             this.knownTypes = new IdentityHashMap<>(other.knownTypes);
-            this.knownNotNull = new HashSet<>(other.knownNotNull);
+            this.knownNonNull = new HashSet<>(other.knownNonNull);
             this.knownNull = new HashSet<>(other.knownNull);
             this.trueConditions = new IdentityHashMap<>(other.trueConditions);
             this.falseConditions = new IdentityHashMap<>(other.falseConditions);
@@ -81,10 +90,15 @@ public class ConditionalEliminationPhase extends Phase {
         @Override
         public boolean merge(MergeNode merge, List<State> withStates) {
             IdentityHashMap<ValueNode, ResolvedJavaType> newKnownTypes = new IdentityHashMap<>();
-            HashSet<ValueNode> newKnownNotNull = new HashSet<>();
-            HashSet<ValueNode> newKnownNull = new HashSet<>();
             IdentityHashMap<BooleanNode, ValueNode> newTrueConditions = new IdentityHashMap<>();
             IdentityHashMap<BooleanNode, ValueNode> newFalseConditions = new IdentityHashMap<>();
+
+            HashSet<ValueNode> newKnownNull = new HashSet<>(knownNull);
+            HashSet<ValueNode> newKnownNonNull = new HashSet<>(knownNonNull);
+            for (State state : withStates) {
+                newKnownNull.retainAll(state.knownNull);
+                newKnownNonNull.retainAll(state.knownNonNull);
+            }
 
             for (Map.Entry<ValueNode, ResolvedJavaType> entry : knownTypes.entrySet()) {
                 ValueNode node = entry.getKey();
@@ -101,30 +115,7 @@ public class ConditionalEliminationPhase extends Phase {
                     newKnownTypes.put(node, type);
                 }
             }
-            for (ValueNode node : knownNotNull) {
-                boolean notNull = true;
-                for (State other : withStates) {
-                    if (!other.knownNotNull.contains(node)) {
-                        notNull = false;
-                        break;
-                    }
-                }
-                if (notNull) {
-                    newKnownNotNull.add(node);
-                }
-            }
-            for (ValueNode node : knownNull) {
-                boolean isNull = true;
-                for (State other : withStates) {
-                    if (!other.knownNull.contains(node)) {
-                        isNull = false;
-                        break;
-                    }
-                }
-                if (isNull) {
-                    newKnownNull.add(node);
-                }
-            }
+
             for (Map.Entry<BooleanNode, ValueNode> entry : trueConditions.entrySet()) {
                 BooleanNode check = entry.getKey();
                 ValueNode guard = entry.getValue();
@@ -162,14 +153,13 @@ public class ConditionalEliminationPhase extends Phase {
                 }
             }
 
-            // this piece of code handles phis (merges the types and knownNull/knownNotNull of the
-            // values)
+            // this piece of code handles phis
             if (!(merge instanceof LoopBeginNode)) {
                 for (PhiNode phi : merge.phis()) {
                     if (phi.type() == PhiType.Value && phi.kind() == Kind.Object) {
                         ValueNode firstValue = phi.valueAt(0);
                         ResolvedJavaType type = getNodeType(firstValue);
-                        boolean notNull = knownNotNull.contains(firstValue);
+                        boolean nonNull = knownNonNull.contains(firstValue);
                         boolean isNull = knownNull.contains(firstValue);
 
                         for (int i = 0; i < withStates.size(); i++) {
@@ -177,14 +167,14 @@ public class ConditionalEliminationPhase extends Phase {
                             ValueNode value = phi.valueAt(i + 1);
                             ResolvedJavaType otherType = otherState.getNodeType(value);
                             type = widen(type, otherType);
-                            notNull &= otherState.knownNotNull.contains(value);
+                            nonNull &= otherState.knownNonNull.contains(value);
                             isNull &= otherState.knownNull.contains(value);
                         }
                         if (type != null) {
                             newKnownTypes.put(phi, type);
                         }
-                        if (notNull) {
-                            newKnownNotNull.add(phi);
+                        if (nonNull) {
+                            newKnownNonNull.add(phi);
                         }
                         if (isNull) {
                             newKnownNull.add(phi);
@@ -194,7 +184,7 @@ public class ConditionalEliminationPhase extends Phase {
             }
 
             this.knownTypes = newKnownTypes;
-            this.knownNotNull = newKnownNotNull;
+            this.knownNonNull = newKnownNonNull;
             this.knownNull = newKnownNull;
             this.trueConditions = newTrueConditions;
             this.falseConditions = newFalseConditions;
@@ -204,6 +194,14 @@ public class ConditionalEliminationPhase extends Phase {
         public ResolvedJavaType getNodeType(ValueNode node) {
             ResolvedJavaType result = knownTypes.get(node);
             return result == null ? node.objectStamp().type() : result;
+        }
+
+        public boolean isNull(ValueNode value) {
+            return value.objectStamp().alwaysNull() || knownNull.contains(value);
+        }
+
+        public boolean isNonNull(ValueNode value) {
+            return value.objectStamp().nonNull() || knownNonNull.contains(value);
         }
 
         @Override
@@ -221,6 +219,52 @@ public class ConditionalEliminationPhase extends Phase {
         @Override
         public State clone() {
             return new State(this);
+        }
+
+        /**
+         * Adds information about a condition. If isTrue is true then the condition is known to
+         * hold, otherwise the condition is known not to hold.
+         */
+        public void addCondition(boolean isTrue, BooleanNode condition, ValueNode anchor) {
+            if (isTrue) {
+                if (!trueConditions.containsKey(condition)) {
+                    trueConditions.put(condition, anchor);
+                    metricConditionRegistered.increment();
+                }
+            } else {
+                if (!falseConditions.containsKey(condition)) {
+                    falseConditions.put(condition, anchor);
+                    metricConditionRegistered.increment();
+                }
+            }
+        }
+
+        /**
+         * Adds information about the nullness of a value. If isNull is true then the value is known
+         * to be null, otherwise the value is known to be non-null.
+         */
+        public void addNullness(boolean isNull, ValueNode value) {
+            if (isNull) {
+                if (!isNull(value)) {
+                    metricNullnessRegistered.increment();
+                    knownNull.add(value);
+                }
+            } else {
+                if (!isNonNull(value)) {
+                    metricNullnessRegistered.increment();
+                    knownNonNull.add(value);
+                }
+            }
+        }
+
+        public void addType(ResolvedJavaType type, ValueNode value) {
+            ResolvedJavaType knownType = getNodeType(value);
+            ResolvedJavaType newType = tighten(type, knownType);
+
+            if (newType != knownType) {
+                knownTypes.put(value, newType);
+                metricTypeRegistered.increment();
+            }
         }
     }
 
@@ -241,8 +285,6 @@ public class ConditionalEliminationPhase extends Phase {
             return a;
         } else if (a == b) {
             return a;
-        } else if (b.isAssignableFrom(a)) {
-            return a;
         } else if (a.isAssignableFrom(b)) {
             return b;
         } else {
@@ -252,131 +294,219 @@ public class ConditionalEliminationPhase extends Phase {
 
     public class ConditionalElimination extends PostOrderNodeIterator<State> {
 
-        private BeginNode lastBegin = null;
+        private final BooleanNode trueConstant;
+        private final BooleanNode falseConstant;
 
         public ConditionalElimination(FixedNode start, State initialState) {
             super(start, initialState);
+            this.trueConstant = ConstantNode.forBoolean(true, graph);
+            this.falseConstant = ConstantNode.forBoolean(false, graph);
+        }
+
+        private void registerCondition(boolean isTrue, BooleanNode condition, ValueNode anchor) {
+            state.addCondition(isTrue, condition, anchor);
+
+            if (isTrue && condition instanceof InstanceOfNode) {
+                InstanceOfNode instanceOf = (InstanceOfNode) condition;
+                ValueNode object = instanceOf.object();
+                state.addNullness(false, object);
+                state.addType(instanceOf.type(), object);
+            } else if (condition instanceof IsNullNode) {
+                IsNullNode nullCheck = (IsNullNode) condition;
+                state.addNullness(isTrue, nullCheck.object());
+            } else if (condition instanceof ObjectEqualsNode) {
+                ObjectEqualsNode equals = (ObjectEqualsNode) condition;
+                ValueNode x = equals.x();
+                ValueNode y = equals.y();
+                if (isTrue) {
+                    if (state.isNull(x) && !state.isNull(y)) {
+                        metricObjectEqualsRegistered.increment();
+                        state.addNullness(true, y);
+                    } else if (!state.isNull(x) && state.isNull(y)) {
+                        metricObjectEqualsRegistered.increment();
+                        state.addNullness(true, x);
+                    }
+                    if (state.isNonNull(x) && !state.isNonNull(y)) {
+                        metricObjectEqualsRegistered.increment();
+                        state.addNullness(false, y);
+                    } else if (!state.isNonNull(x) && state.isNonNull(y)) {
+                        metricObjectEqualsRegistered.increment();
+                        state.addNullness(false, x);
+                    }
+                } else {
+                    if (state.isNull(x) && !state.isNonNull(y)) {
+                        metricObjectEqualsRegistered.increment();
+                        state.addNullness(true, y);
+                    } else if (!state.isNonNull(x) && state.isNull(y)) {
+                        metricObjectEqualsRegistered.increment();
+                        state.addNullness(true, x);
+                    }
+                }
+            }
+        }
+
+        private void registerControlSplitInfo(Node pred, BeginNode begin) {
+            assert pred != null && begin != null;
+
+            if (pred instanceof IfNode) {
+                IfNode ifNode = (IfNode) pred;
+
+                if (!(ifNode.condition() instanceof ConstantNode)) {
+                    registerCondition(begin == ifNode.trueSuccessor(), ifNode.condition(), begin);
+                }
+            } else if (pred instanceof TypeSwitchNode) {
+                TypeSwitchNode typeSwitch = (TypeSwitchNode) pred;
+
+                if (typeSwitch.value() instanceof LoadHubNode) {
+                    LoadHubNode loadHub = (LoadHubNode) typeSwitch.value();
+                    ResolvedJavaType type = null;
+                    for (int i = 0; i < typeSwitch.keyCount(); i++) {
+                        if (typeSwitch.keySuccessor(i) == begin) {
+                            if (type == null) {
+                                type = typeSwitch.typeAt(i);
+                            } else {
+                                type = widen(type, typeSwitch.typeAt(i));
+                            }
+                        }
+                    }
+                    if (type != null) {
+                        state.addNullness(false, loadHub.object());
+                        state.addType(type, loadHub.object());
+                    }
+                }
+            }
+        }
+
+        private void registerGuard(GuardNode guard) {
+            BooleanNode condition = guard.condition();
+
+            ValueNode existingGuards = guard.negated() ? state.falseConditions.get(condition) : state.trueConditions.get(condition);
+            if (existingGuards != null) {
+                guard.replaceAtUsages(existingGuards);
+                GraphUtil.killWithUnusedFloatingInputs(guard);
+                metricGuardsRemoved.increment();
+            } else {
+                BooleanNode replacement = evaluateCondition(condition, trueConstant, falseConstant);
+                if (replacement != null) {
+                    guard.setCondition(replacement);
+                    if (condition.usages().isEmpty()) {
+                        GraphUtil.killWithUnusedFloatingInputs(condition);
+                    }
+                    metricGuardsRemoved.increment();
+                } else {
+                    registerCondition(!guard.negated(), condition, guard);
+                }
+            }
+        }
+
+        /**
+         * Determines if, at the current point in the control flow, the condition is known to be
+         * true, false or unknown. In case of true or false the corresponding value is returned,
+         * otherwise null.
+         */
+        private <T extends ValueNode> T evaluateCondition(BooleanNode condition, T trueValue, T falseValue) {
+            if (state.trueConditions.containsKey(condition)) {
+                return trueValue;
+            } else if (state.falseConditions.containsKey(condition)) {
+                return falseValue;
+            } else {
+                if (condition instanceof InstanceOfNode) {
+                    InstanceOfNode instanceOf = (InstanceOfNode) condition;
+                    ValueNode object = instanceOf.object();
+                    if (state.isNull(object)) {
+                        metricInstanceOfRemoved.increment();
+                        return falseValue;
+                    } else if (state.isNonNull(object)) {
+                        ResolvedJavaType type = state.getNodeType(object);
+                        if (type != null && instanceOf.type().isAssignableFrom(type)) {
+                            metricInstanceOfRemoved.increment();
+                            return trueValue;
+                        }
+                    }
+                } else if (condition instanceof IsNullNode) {
+                    IsNullNode isNull = (IsNullNode) condition;
+                    ValueNode object = isNull.object();
+                    if (state.isNull(object)) {
+                        metricNullCheckRemoved.increment();
+                        return trueValue;
+                    } else if (state.isNonNull(object)) {
+                        metricNullCheckRemoved.increment();
+                        return falseValue;
+                    }
+                } else if (condition instanceof ObjectEqualsNode) {
+                    ObjectEqualsNode equals = (ObjectEqualsNode) condition;
+                    ValueNode x = equals.x();
+                    ValueNode y = equals.y();
+                    if (state.isNull(x) && state.isNonNull(y) || state.isNonNull(x) && state.isNull(y)) {
+                        metricObjectEqualsRemoved.increment();
+                        return falseValue;
+                    } else if (state.isNull(x) && state.isNull(y)) {
+                        metricObjectEqualsRemoved.increment();
+                        return trueValue;
+                    }
+                }
+            }
+            return null;
         }
 
         @Override
         protected void node(FixedNode node) {
             if (node instanceof BeginNode) {
                 BeginNode begin = (BeginNode) node;
-                lastBegin = begin;
                 Node pred = node.predecessor();
-                if (pred != null && pred instanceof IfNode) {
-                    IfNode ifNode = (IfNode) pred;
-                    if (!(ifNode.condition() instanceof ConstantNode)) {
-                        boolean isTrue = (node == ifNode.trueSuccessor());
-                        if (isTrue) {
-                            state.trueConditions.put(ifNode.condition(), begin);
-                        } else {
-                            state.falseConditions.put(ifNode.condition(), begin);
-                        }
-                    }
-                    if (ifNode.condition() instanceof InstanceOfNode) {
-                        InstanceOfNode instanceOf = (InstanceOfNode) ifNode.condition();
-                        if ((node == ifNode.trueSuccessor())) {
-                            ValueNode object = instanceOf.object();
-                            state.knownNotNull.add(object);
-                            state.knownTypes.put(object, tighten(instanceOf.type(), state.getNodeType(object)));
-                            metricInstanceOfRegistered.increment();
-                        }
-                    } else if (ifNode.condition() instanceof IsNullNode) {
-                        IsNullNode nullCheck = (IsNullNode) ifNode.condition();
-                        boolean isNull = (node == ifNode.trueSuccessor());
-                        if (isNull) {
-                            state.knownNull.add(nullCheck.object());
-                        } else {
-                            state.knownNotNull.add(nullCheck.object());
-                        }
-                        metricNullCheckRegistered.increment();
-                    }
+
+                if (pred != null) {
+                    registerControlSplitInfo(pred, begin);
                 }
                 for (GuardNode guard : begin.guards().snapshot()) {
-                    BooleanNode condition = guard.condition();
-                    ValueNode existingGuards = guard.negated() ? state.falseConditions.get(condition) : state.trueConditions.get(condition);
-                    if (existingGuards != null) {
-                        guard.replaceAtUsages(existingGuards);
-                        GraphUtil.killWithUnusedFloatingInputs(guard);
-                        metricGuardsReplaced.increment();
-                    } else {
-                        boolean removeCheck = false;
-                        if (condition instanceof IsNullNode) {
-                            IsNullNode isNull = (IsNullNode) condition;
-                            if (guard.negated() && state.knownNotNull.contains(isNull.object())) {
-                                removeCheck = true;
-                            } else if (!guard.negated() && state.knownNull.contains(isNull.object())) {
-                                removeCheck = true;
-                            }
-                            if (removeCheck) {
-                                metricNullCheckGuardRemoved.increment();
-                            }
-                        }
-                        if (removeCheck) {
-                            guard.replaceAtUsages(begin);
-                            GraphUtil.killWithUnusedFloatingInputs(guard);
-                        } else {
-                            if (guard.negated()) {
-                                state.falseConditions.put(condition, guard);
-                            } else {
-                                state.trueConditions.put(condition, guard);
-                            }
-                        }
-                    }
+                    registerGuard(guard);
                 }
             } else if (node instanceof CheckCastNode) {
                 CheckCastNode checkCast = (CheckCastNode) node;
-                ResolvedJavaType type = state.getNodeType(checkCast.object());
-                if (type != null && checkCast.type().isAssignableFrom(type)) {
+                ValueNode object = checkCast.object();
+                boolean isNull = state.isNull(object);
+                ResolvedJavaType type = state.getNodeType(object);
+                if (isNull || (type != null && checkCast.type().isAssignableFrom(type))) {
+                    boolean nonNull = state.isNonNull(object);
+                    ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
                     PiNode piNode;
-                    boolean nonNull = state.knownNotNull.contains(checkCast.object());
-                    piNode = graph.unique(new PiNode(checkCast.object(), lastBegin, nonNull ? StampFactory.declaredNonNull(type) : StampFactory.declared(type)));
+                    if (isNull) {
+                        ConstantNode nullObject = ConstantNode.forObject(null, metaAccessProvider, graph);
+                        piNode = graph.unique(new PiNode(nullObject, anchor, StampFactory.forConstant(nullObject.value, metaAccessProvider)));
+                    } else {
+                        piNode = graph.unique(new PiNode(object, anchor, StampFactory.declared(type, nonNull)));
+                    }
                     checkCast.replaceAtUsages(piNode);
-                    graph.removeFixed(checkCast);
+                    graph.replaceFixedWithFixed(checkCast, anchor);
                     metricCheckCastRemoved.increment();
                 }
             } else if (node instanceof IfNode) {
                 IfNode ifNode = (IfNode) node;
-                BooleanNode replaceWith = null;
                 BooleanNode compare = ifNode.condition();
+                BooleanNode replacement = evaluateCondition(compare, trueConstant, falseConstant);
 
-                if (state.trueConditions.containsKey(compare)) {
-                    replaceWith = ConstantNode.forBoolean(true, graph);
-                } else if (state.falseConditions.containsKey(compare)) {
-                    replaceWith = ConstantNode.forBoolean(false, graph);
-                } else {
-                    if (compare instanceof InstanceOfNode) {
-                        InstanceOfNode instanceOf = (InstanceOfNode) compare;
-                        ValueNode object = instanceOf.object();
-                        if (state.knownNull.contains(object)) {
-                            replaceWith = ConstantNode.forBoolean(false, graph);
-                        } else if (state.knownNotNull.contains(object)) {
-                            ResolvedJavaType type = state.getNodeType(object);
-                            if (type != null && instanceOf.type().isAssignableFrom(type)) {
-                                replaceWith = ConstantNode.forBoolean(true, graph);
-                            }
-                        }
-                        if (replaceWith != null) {
-                            metricInstanceOfRemoved.increment();
-                        }
-                    } else if (compare instanceof IsNullNode) {
-                        IsNullNode isNull = (IsNullNode) compare;
-                        ValueNode object = isNull.object();
-                        if (state.knownNull.contains(object)) {
-                            replaceWith = ConstantNode.forBoolean(true, graph);
-                        } else if (state.knownNotNull.contains(object)) {
-                            replaceWith = ConstantNode.forBoolean(false, graph);
-                        }
-                        if (replaceWith != null) {
-                            metricNullCheckRemoved.increment();
-                        }
-                    }
-                }
-                if (replaceWith != null) {
-                    ifNode.setCondition(replaceWith);
+                if (replacement != null) {
+                    ifNode.setCondition(replacement);
                     if (compare.usages().isEmpty()) {
                         GraphUtil.killWithUnusedFloatingInputs(compare);
+                    }
+                }
+            } else if (node instanceof EndNode) {
+                EndNode endNode = (EndNode) node;
+                for (PhiNode phi : endNode.merge().phis()) {
+                    int index = endNode.merge().phiPredecessorIndex(endNode);
+                    ValueNode value = phi.valueAt(index);
+                    if (value instanceof MaterializeNode) {
+                        MaterializeNode materialize = (MaterializeNode) value;
+                        BooleanNode compare = materialize.condition();
+                        ValueNode replacement = evaluateCondition(compare, materialize.trueValue(), materialize.falseValue());
+
+                        if (replacement != null) {
+                            phi.setValueAt(index, replacement);
+                            if (materialize.usages().isEmpty()) {
+                                GraphUtil.killWithUnusedFloatingInputs(materialize);
+                            }
+                        }
                     }
                 }
             }
