@@ -212,7 +212,7 @@ public class MetaUtil {
                 return result;
             }
             case '[':
-                return classForNameCompatible ? name.replace('/',  '.') : internalNameToJava(name.substring(1), qualified, classForNameCompatible) + "[]";
+                return classForNameCompatible ? name.replace('/', '.') : internalNameToJava(name.substring(1), qualified, classForNameCompatible) + "[]";
             default:
                 if (name.length() != 1) {
                     throw new IllegalArgumentException("Illegal internal name: " + name);
@@ -221,7 +221,7 @@ public class MetaUtil {
         }
     }
 
-   /**
+    /**
      * Turns an class name in internal format into a resolved Java type.
      */
     public static ResolvedJavaType classForName(String internal, MetaAccessProvider metaAccess, ClassLoader cl) {
@@ -512,6 +512,29 @@ public class MetaUtil {
             result[i + j] = signature.getParameterType(j, null);
         }
         return result;
+    }
+
+    /**
+     * Gets the <a
+     * href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">method
+     * descriptor</a> corresponding to this signature. For example:
+     * 
+     * <pre>
+     * (ILjava/lang/String;D)V
+     * </pre>
+     * 
+     * .
+     * 
+     * @param sig the {@link Signature} to be converted.
+     * @return the signature as a string
+     */
+    public static String signatureToMethodDescriptor(Signature sig) {
+        StringBuilder sb = new StringBuilder("(");
+        for (int i = 0; i < sig.getParameterCount(false); ++i) {
+            sb.append(sig.getParameterType(i, null).getName());
+        }
+        sb.append(')').append(sig.getReturnType(null).getName());
+        return sb.toString();
     }
 
     /**

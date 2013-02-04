@@ -52,7 +52,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private final HotSpotResolvedObjectType holder;
     private/* final */int codeSize;
     private/* final */int exceptionHandlerCount;
-    private Signature signature;
+    private HotSpotSignature signature;
     private Boolean hasBalancedMonitors;
     private Map<Object, Object> compilerStorage;
     private HotSpotMethodData methodData;
@@ -162,7 +162,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     @Override
-    public Signature getSignature() {
+    public HotSpotSignature getSignature() {
         if (signature == null) {
             signature = new HotSpotSignature(HotSpotGraalRuntime.getInstance().getCompilerToVM().getSignature(metaspaceMethod));
         }
