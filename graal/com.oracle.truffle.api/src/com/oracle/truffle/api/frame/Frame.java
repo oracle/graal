@@ -132,4 +132,23 @@ public interface Frame {
     void setDouble(FrameSlot slot, double value);
 
     void updateToLatestVersion();
+
+    /**
+     * Converts this virtual frame into a packed frame that has no longer direct access to the local
+     * variables. This packing is an important hint to the Truffle optimizer and therefore passing
+     * around a {@link PackedFrame} should be preferred over passing around a {@link VirtualFrame}
+     * when the probability that an unpacking will occur is low.
+     * 
+     * @return the packed frame
+     */
+    PackedFrame pack();
+
+    /**
+     * Materializes this frame, which allows it to be stored in a field or cast to
+     * {@link java.lang.Object}. The frame however looses the ability to be packed or to access the
+     * caller frame.
+     * 
+     * @return the new materialized frame
+     */
+    MaterializedFrame materialize();
 }

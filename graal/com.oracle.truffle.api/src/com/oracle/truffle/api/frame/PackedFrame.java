@@ -35,5 +35,5 @@ public interface PackedFrame {
      * 
      * @return the virtual frame that was the content of this packed frame
      */
-    VirtualFrame unpack();
+    Frame unpack();
 }

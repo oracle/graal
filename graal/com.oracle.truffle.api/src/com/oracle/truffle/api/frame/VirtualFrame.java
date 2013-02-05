@@ -35,29 +35,10 @@ import com.oracle.truffle.api.*;
 public interface VirtualFrame extends Frame {
 
     /**
-     * Converts this virtual frame into a packed frame that has no longer direct access to the local
-     * variables. This packing is an important hint to the Truffle optimizer and therefore passing
-     * around a {@link PackedFrame} should be preferred over passing around a {@link VirtualFrame}
-     * when the probability that an unpacking will occur is low.
-     * 
-     * @return the packed frame
-     */
-    PackedFrame pack();
-
-    /**
      * Accesses the caller frame passed in via {@link CallTarget#call}. To get full access, it must
      * be first unpacked using {@link PackedFrame#unpack()}.
      * 
      * @return the caller frame or null if this was a root method call
      */
     PackedFrame getCaller();
-
-    /**
-     * Materializes this frame, which allows it to be stored in a field or cast to
-     * {@link java.lang.Object}. The frame however looses the ability to be packed or to access the
-     * caller frame.
-     * 
-     * @return the new materialized frame
-     */
-    MaterializedFrame materialize();
 }
