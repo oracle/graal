@@ -33,7 +33,7 @@ public final class FrameDescriptor {
     protected final TypeConversion typeConversion;
     private final ArrayList<FrameSlotImpl> slots;
     private FrameVersionImpl lastVersion;
-    private final HashMap<String, FrameSlotImpl> nameToSlotMap;
+    private final HashMap<Object, FrameSlotImpl> identifierToSlotMap;
 
     public FrameDescriptor() {
         this(DefaultTypeConversion.getInstance());
@@ -42,32 +42,32 @@ public final class FrameDescriptor {
     public FrameDescriptor(TypeConversion typeConversion) {
         this.typeConversion = typeConversion;
         slots = new ArrayList<>();
-        nameToSlotMap = new HashMap<>();
+        identifierToSlotMap = new HashMap<>();
         lastVersion = new FrameVersionImpl();
     }
 
-    public FrameSlot addFrameSlot(String name) {
-        return addFrameSlot(name, typeConversion.getTopType());
+    public FrameSlot addFrameSlot(Object identifier) {
+        return addFrameSlot(identifier, typeConversion.getTopType());
     }
 
-    public FrameSlot addFrameSlot(String name, Class<?> type) {
-        assert !nameToSlotMap.containsKey(name);
-        FrameSlotImpl slot = new FrameSlotImpl(this, name, slots.size(), type);
+    public FrameSlot addFrameSlot(Object identifier, Class<?> type) {
+        assert !identifierToSlotMap.containsKey(identifier);
+        FrameSlotImpl slot = new FrameSlotImpl(this, identifier, slots.size(), type);
         slots.add(slot);
-        nameToSlotMap.put(name, slot);
+        identifierToSlotMap.put(identifier, slot);
         return slot;
     }
 
-    public FrameSlot findFrameSlot(String name) {
-        return nameToSlotMap.get(name);
+    public FrameSlot findFrameSlot(Object identifier) {
+        return identifierToSlotMap.get(identifier);
     }
 
-    public FrameSlot findOrAddFrameSlot(String name) {
-        FrameSlot result = findFrameSlot(name);
+    public FrameSlot findOrAddFrameSlot(Object identifier) {
+        FrameSlot result = findFrameSlot(identifier);
         if (result != null) {
             return result;
         }
-        return addFrameSlot(name);
+        return addFrameSlot(identifier);
     }
 
     public FrameVersion getCurrentVersion() {
@@ -120,21 +120,21 @@ class TypeChangeFrameVersionImpl extends FrameVersionImpl implements FrameVersio
 class FrameSlotImpl implements FrameSlot {
 
     private final FrameDescriptor descriptor;
-    private final String name;
+    private final Object identifier;
     private final int index;
     private Class<?> type;
     private ArrayList<FrameSlotTypeListener> listeners;
 
-    protected FrameSlotImpl(FrameDescriptor descriptor, String name, int index, Class<?> type) {
+    protected FrameSlotImpl(FrameDescriptor descriptor, Object identifier, int index, Class<?> type) {
         this.descriptor = descriptor;
-        this.name = name;
+        this.identifier = identifier;
         this.index = index;
         this.type = type;
         assert type != null;
     }
 
-    public String getName() {
-        return name;
+    public Object getIdentifier() {
+        return identifier;
     }
 
     public int getIndex() {
@@ -189,7 +189,7 @@ class FrameSlotImpl implements FrameSlot {
 
     @Override
     public String toString() {
-        return "[" + index + "," + name + "]";
+        return "[" + index + "," + identifier + "]";
     }
 
     @Override
