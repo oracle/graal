@@ -258,7 +258,7 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getCapability(Class<T> clazz) {
-        if (clazz == GraalCodeCacheProvider.class || clazz == MetaAccessProvider.class || clazz == SnippetProvider.class) {
+        if (clazz == GraalCodeCacheProvider.class || clazz == CodeCacheProvider.class || clazz == MetaAccessProvider.class || clazz == SnippetProvider.class) {
             return (T) getRuntime();
         }
         if (clazz == GraalCompiler.class) {

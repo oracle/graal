@@ -43,6 +43,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.printer.*;
+import com.oracle.graal.test.*;
 
 /**
  * Base class for Graal compiler unit tests.
@@ -63,7 +64,7 @@ import com.oracle.graal.printer.*;
  * <p>
  * These tests will be run by the {@code mx unittest} command.
  */
-public abstract class GraalCompilerTest {
+public abstract class GraalCompilerTest extends GraalTest {
 
     protected final GraalCodeCacheProvider runtime;
     protected final GraalCompiler graalCompiler;
@@ -144,21 +145,6 @@ public abstract class GraalCompilerTest {
      */
     protected StructuredGraph parse(String methodName) {
         return parse(getMethod(methodName));
-    }
-
-    protected Method getMethod(String methodName) {
-        Method found = null;
-        for (Method m : this.getClass().getMethods()) {
-            if (m.getName().equals(methodName)) {
-                Assert.assertNull(found);
-                found = m;
-            }
-        }
-        if (found != null) {
-            return found;
-        } else {
-            throw new RuntimeException("method not found: " + methodName);
-        }
     }
 
     private static int compilationId = 0;
