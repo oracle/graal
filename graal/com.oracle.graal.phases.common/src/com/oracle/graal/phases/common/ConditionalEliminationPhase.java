@@ -496,8 +496,8 @@ public class ConditionalEliminationPhase extends Phase {
                 for (PhiNode phi : endNode.merge().phis()) {
                     int index = endNode.merge().phiPredecessorIndex(endNode);
                     ValueNode value = phi.valueAt(index);
-                    if (value instanceof MaterializeNode) {
-                        MaterializeNode materialize = (MaterializeNode) value;
+                    if (value instanceof ConditionalNode) {
+                        ConditionalNode materialize = (ConditionalNode) value;
                         BooleanNode compare = materialize.condition();
                         ValueNode replacement = evaluateCondition(compare, materialize.trueValue(), materialize.falseValue());
 

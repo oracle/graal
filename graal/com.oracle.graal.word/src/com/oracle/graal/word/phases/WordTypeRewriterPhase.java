@@ -248,7 +248,7 @@ public class WordTypeRewriterPhase extends Phase {
         } else {
             comparison = new IntegerLessThanNode(a, b);
         }
-        MaterializeNode materialize = MaterializeNode.create(graph.unique(comparison));
+        ConditionalNode materialize = graph.unique(new ConditionalNode(graph.unique(comparison), ConstantNode.forInt(1, graph), ConstantNode.forInt(0, graph)));
 
         ValueNode op;
         if (condition.canonicalNegate()) {
