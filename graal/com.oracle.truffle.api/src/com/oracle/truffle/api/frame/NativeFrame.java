@@ -126,4 +126,9 @@ public class NativeFrame implements VirtualFrame, PackedFrame {
     @Override
     public void updateToLatestVersion() {
     }
+
+    @Override
+    public FrameDescriptor getFrameDescriptor() {
+        throw new UnsupportedOperationException("native frame");
+    }
 }
