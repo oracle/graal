@@ -2863,6 +2863,12 @@ public class AMD64Assembler extends AbstractAssembler {
         emitArith(0x85, 0xC0, dst, src);
     }
 
+    public final void testq(Register dst, Address src) {
+        prefixq(src, dst);
+        emitByte(0x85);
+        emitOperandHelper(dst, src);
+    }
+
     public final void xaddq(Address dst, Register src) {
         prefixq(dst, src);
         emitByte(0x0F);

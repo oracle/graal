@@ -612,6 +612,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             emitCompareBranch((CompareNode) node, trueSuccessor, falseSuccessor, info);
         } else if (node instanceof ConstantNode) {
             emitConstantBranch(((ConstantNode) node).asConstant().asBoolean(), trueSuccessor, falseSuccessor, info);
+        } else if (node instanceof IntegerTestNode) {
+            emitIntegerTestBranch((IntegerTestNode) node, trueSuccessor, falseSuccessor, info);
         } else {
             throw GraalInternalError.unimplemented(node.toString());
         }
@@ -619,23 +621,34 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
         if (falseSuccessor != null) {
-            emitBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.NE, false, falseSuccessor, info);
+            emitCompareBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.NE, false, falseSuccessor, info);
             if (trueSuccessor != null) {
                 emitJump(trueSuccessor, null);
             }
         } else {
-            emitBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueSuccessor, info);
+            emitCompareBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueSuccessor, info);
         }
     }
 
     public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRFrameState info) {
         if (falseSuccessorBlock != null) {
-            emitBranch(operand(compare.x()), operand(compare.y()), compare.condition().negate(), !compare.unorderedIsTrue(), falseSuccessorBlock, info);
+            emitCompareBranch(operand(compare.x()), operand(compare.y()), compare.condition().negate(), !compare.unorderedIsTrue(), falseSuccessorBlock, info);
             if (trueSuccessorBlock != null) {
                 emitJump(trueSuccessorBlock, null);
             }
         } else {
-            emitBranch(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueSuccessorBlock, info);
+            emitCompareBranch(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueSuccessorBlock, info);
+        }
+    }
+
+    public void emitIntegerTestBranch(IntegerTestNode test, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRFrameState info) {
+        if (falseSuccessorBlock != null) {
+            emitIntegerTestBranch(operand(test.x()), operand(test.y()), true, falseSuccessorBlock, info);
+            if (trueSuccessorBlock != null) {
+                emitJump(trueSuccessorBlock, null);
+            }
+        } else {
+            emitIntegerTestBranch(operand(test.x()), operand(test.y()), false, trueSuccessorBlock, info);
         }
     }
 
@@ -655,33 +668,31 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     public Variable emitConditional(BooleanNode node, Value trueValue, Value falseValue) {
         if (node instanceof IsNullNode) {
-            return emitNullCheckConditional((IsNullNode) node, trueValue, falseValue);
+            IsNullNode isNullNode = (IsNullNode) node;
+            return emitConditionalMove(operand(isNullNode.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueValue, falseValue);
         } else if (node instanceof CompareNode) {
-            return emitCompareConditional((CompareNode) node, trueValue, falseValue);
+            CompareNode compare = (CompareNode) node;
+            return emitConditionalMove(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueValue, falseValue);
         } else if (node instanceof ConstantNode) {
-            return emitConstantConditional(((ConstantNode) node).asConstant().asBoolean(), trueValue, falseValue);
+            ConstantNode constantNode = (ConstantNode) node;
+            return emitMove(constantNode.asConstant().asBoolean() ? trueValue : falseValue);
+        } else if (node instanceof IntegerTestNode) {
+            IntegerTestNode test = (IntegerTestNode) node;
+            return emitIntegerTestMove(operand(test.x()), operand(test.y()), trueValue, falseValue);
         } else {
             throw GraalInternalError.unimplemented(node.toString());
         }
     }
 
-    private Variable emitNullCheckConditional(IsNullNode node, Value trueValue, Value falseValue) {
-        return emitCMove(operand(node.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueValue, falseValue);
-    }
-
-    private Variable emitConstantConditional(boolean value, Value trueValue, Value falseValue) {
-        return emitMove(value ? trueValue : falseValue);
-    }
-
-    private Variable emitCompareConditional(CompareNode compare, Value trueValue, Value falseValue) {
-        return emitCMove(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueValue, falseValue);
-    }
-
     public abstract void emitJump(LabelRef label, LIRFrameState info);
 
-    public abstract void emitBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info);
+    public abstract void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info);
 
-    public abstract Variable emitCMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
+    public abstract void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label, LIRFrameState info);
+
+    public abstract Variable emitConditionalMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
+
+    public abstract Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
 
     @Override
     public void emitInvoke(Invoke x) {

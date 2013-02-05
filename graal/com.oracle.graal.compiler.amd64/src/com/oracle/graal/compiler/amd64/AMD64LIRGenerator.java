@@ -229,7 +229,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info) {
+    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info) {
         boolean mirrored = emitCompare(left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         switch (left.getKind().getStackKind()) {
@@ -248,7 +248,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitCMove(Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
+    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label, LIRFrameState info) {
+        emitIntegerTest(left, right);
+        append(new BranchOp(negated ? Condition.NE : Condition.EQ, label, info));
+    }
+
+    @Override
+    public Variable emitConditionalMove(Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
         boolean mirrored = emitCompare(left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
 
@@ -263,9 +269,27 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             case Double:
                 append(new FloatCondMoveOp(result, finalCondition, unorderedIsTrue, load(trueValue), load(falseValue)));
                 break;
-
+            default:
+                throw GraalInternalError.shouldNotReachHere("" + left.getKind());
         }
         return result;
+    }
+
+    @Override
+    public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
+        emitIntegerTest(left, right);
+        Variable result = newVariable(trueValue.getKind());
+        append(new CondMoveOp(result, Condition.EQ, load(trueValue), loadNonConst(falseValue)));
+        return result;
+    }
+
+    private void emitIntegerTest(Value a, Value b) {
+        assert a.getKind().getStackKind() == Kind.Int || a.getKind() == Kind.Long;
+        if (LIRValueUtil.isVariable(b)) {
+            append(new AMD64TestOp(load(b), loadNonConst(a)));
+        } else {
+            append(new AMD64TestOp(load(a), loadNonConst(b)));
+        }
     }
 
     /**
