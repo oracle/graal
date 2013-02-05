@@ -69,8 +69,8 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         return effects;
     }
 
-    public int getVirtualIdCount() {
-        return tool.getNextVirtualId();
+    public int getNewVirtualObjectCount() {
+        return tool.getNewVirtualObjectCount();
     }
 
     @Override

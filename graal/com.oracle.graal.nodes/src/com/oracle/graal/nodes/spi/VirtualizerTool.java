@@ -50,11 +50,6 @@ public interface VirtualizerTool {
      */
     int getMaximumEntryCount();
 
-    /**
-     * @return the next id for virtual objects (can be used for the VirtualObject constructor).
-     */
-    int getNextVirtualId();
-
     // methods working on virtualized/materialized objects
 
     /**

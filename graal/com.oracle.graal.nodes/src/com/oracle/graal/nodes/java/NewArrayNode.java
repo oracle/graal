@@ -124,7 +124,7 @@ public class NewArrayNode extends FixedWithNextNode implements Canonicalizable, 
                 for (int i = 0; i < constantLength; i++) {
                     state[i] = defaultForKind;
                 }
-                VirtualObjectNode virtualObject = new VirtualArrayNode(tool.getNextVirtualId(), elementType, constantLength);
+                VirtualObjectNode virtualObject = new VirtualArrayNode(elementType, constantLength);
                 tool.createVirtualObject(virtualObject, state, 0);
                 tool.replaceWithVirtual(virtualObject);
             }

@@ -62,7 +62,7 @@ public class GraphEffectList extends EffectList {
      * 
      * @param node The floating node to be added.
      */
-    public void addFloatingNode(final FloatingNode node) {
+    public void addFloatingNode(final ValueNode node) {
         add(new Effect() {
 
             @Override

@@ -95,7 +95,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
                     PartialEscapeClosure closure = new PartialEscapeClosure(graph.createNodeBitMap(), schedule, runtime);
                     ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock(), new BlockState(), null);
 
-                    if (closure.getVirtualIdCount() == 0) {
+                    if (closure.getNewVirtualObjectCount() == 0) {
                         return false;
                     }
 
