@@ -708,7 +708,8 @@ public final class GraphBuilderPhase extends Phase {
         if (type instanceof ResolvedJavaType) {
             ResolvedJavaType resolvedType = (ResolvedJavaType) type;
             InstanceOfNode instanceOfNode = new InstanceOfNode((ResolvedJavaType) type, object, getProfileForTypeCheck(resolvedType));
-            frameState.ipush(append(MaterializeNode.create(currentGraph.unique(instanceOfNode))));
+            ConditionalNode conditional = currentGraph.unique(new ConditionalNode(currentGraph.unique(instanceOfNode), ConstantNode.forInt(1, currentGraph), ConstantNode.forInt(0, currentGraph)));
+            frameState.ipush(append(conditional));
         } else {
             BlockPlaceholderNode successor = currentGraph.add(new BlockPlaceholderNode());
             DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved));

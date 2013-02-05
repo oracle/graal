@@ -22,15 +22,18 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import static com.oracle.graal.nodes.calc.CompareNode.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * The {@code ConditionalNode} class represents a comparison that yields one of two values. Note
  * that these nodes are not built directly from the bytecode but are introduced by canonicalization.
  */
-public class ConditionalNode extends BinaryNode implements Canonicalizable, LIRLowerable, Negatable {
+public final class ConditionalNode extends BinaryNode implements Canonicalizable, LIRLowerable, Negatable {
 
     @Input private BooleanNode condition;
 
@@ -42,6 +45,11 @@ public class ConditionalNode extends BinaryNode implements Canonicalizable, LIRL
         super(trueValue.kind(), trueValue, falseValue);
         assert trueValue.kind() == falseValue.kind();
         this.condition = condition;
+    }
+
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(x().stamp().meet(y().stamp()));
     }
 
     public ValueNode trueValue() {
@@ -91,4 +99,21 @@ public class ConditionalNode extends BinaryNode implements Canonicalizable, LIRL
         ((StructuredGraph) graph()).replaceFloating(this, replacement);
         return replacement;
     }
+
+    private ConditionalNode(Condition condition, ValueNode x, ValueNode y) {
+        this(createCompareNode(condition, x, y), ConstantNode.forInt(1, x.graph()), ConstantNode.forInt(0, x.graph()));
+    }
+
+    private ConditionalNode(ValueNode type, ValueNode object) {
+        this(type.graph().add(new InstanceOfDynamicNode(type, object)), ConstantNode.forInt(1, type.graph()), ConstantNode.forInt(0, type.graph()));
+    }
+
+    @NodeIntrinsic
+    public static native boolean materializeCondition(@ConstantNodeParameter Condition condition, int x, int y);
+
+    @NodeIntrinsic
+    public static native boolean materializeCondition(@ConstantNodeParameter Condition condition, long x, long y);
+
+    @NodeIntrinsic
+    public static native boolean materializeIsInstance(Class mirror, Object object);
 }

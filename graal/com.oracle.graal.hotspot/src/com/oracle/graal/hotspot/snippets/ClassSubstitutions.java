@@ -27,7 +27,7 @@ import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 
 import java.lang.reflect.*;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 import com.oracle.graal.word.*;
@@ -113,6 +113,6 @@ public class ClassSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static boolean isInstance(final Class<?> thisObj, Object obj) {
-        return !thisObj.isPrimitive() && MaterializeNode.isInstance(thisObj, obj);
+        return !thisObj.isPrimitive() && ConditionalNode.materializeIsInstance(thisObj, obj);
     }
 }

@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -184,8 +185,8 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
     public void testInstanceOf() {
         ReturnNode returnNode = testEscapeAnalysis("testInstanceOfSnippet", null, false);
         ValueNode result = returnNode.result();
-        Assert.assertTrue(result instanceof MaterializeNode);
-        Assert.assertEquals(Constant.TRUE, ((MaterializeNode) result).condition().asConstant());
+        Assert.assertTrue(result instanceof ConditionalNode);
+        Assert.assertEquals(Constant.TRUE, ((ConditionalNode) result).condition().asConstant());
     }
 
     public boolean testInstanceOfSnippet() {

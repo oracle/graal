@@ -49,7 +49,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
     private boolean customAction;
     private BlockState state;
     private ValueNode current;
-    private int virtualIds = 0;
+    private int newVirtualObjectCount = 0;
 
     @Override
     public MetaAccessProvider getMetaAccessProvider() {
@@ -71,9 +71,8 @@ class VirtualizerToolImpl implements VirtualizerTool {
         return customAction;
     }
 
-    @Override
-    public int getNextVirtualId() {
-        return virtualIds;
+    public int getNewVirtualObjectCount() {
+        return newVirtualObjectCount;
     }
 
     @Override
@@ -156,7 +155,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
         state.addObject(virtualObject, new ObjectState(virtualObject, entryState, EscapeState.Virtual, lockCount));
         state.addAndMarkAlias(virtualObject, virtualObject, usages);
         PartialEscapeClosure.METRIC_ALLOCATION_REMOVED.increment();
-        virtualIds++;
+        newVirtualObjectCount++;
     }
 
     @Override

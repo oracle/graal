@@ -34,8 +34,7 @@ public class VirtualArrayNode extends VirtualObjectNode {
     private final ResolvedJavaType componentType;
     private final int length;
 
-    public VirtualArrayNode(long virtualId, ResolvedJavaType componentType, int length) {
-        super(virtualId);
+    public VirtualArrayNode(ResolvedJavaType componentType, int length) {
         this.componentType = componentType;
         this.length = length;
     }

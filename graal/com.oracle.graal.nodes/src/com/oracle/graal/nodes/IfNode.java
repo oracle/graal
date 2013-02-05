@@ -191,7 +191,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                             return false;
                         }
                         if (trueValue.isConstant() && falseValue.isConstant()) {
-                            MaterializeNode materialize = MaterializeNode.create(condition(), trueValue, falseValue);
+                            ConditionalNode materialize = graph().unique(new ConditionalNode(condition(), trueValue, falseValue));
                             ((StructuredGraph) graph()).replaceFloating(singlePhi, materialize);
                             removeEmptyIf(tool);
                             return true;

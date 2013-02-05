@@ -172,7 +172,7 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
                 // Can simply use the phi result if the same materialized values are expected.
                 return result;
             } else {
-                return MaterializeNode.create(asCondition(trueValue), t, f);
+                return t.graph().unique(new ConditionalNode(asCondition(trueValue), t, f));
             }
         }
     }

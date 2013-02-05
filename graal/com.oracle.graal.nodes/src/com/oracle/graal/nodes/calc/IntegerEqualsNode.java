@@ -74,6 +74,12 @@ public final class IntegerEqualsNode extends CompareNode {
         } else if (x().integerStamp().alwaysDistinct(y().integerStamp())) {
             return ConstantNode.forBoolean(false, graph());
         }
+
+        if (x() instanceof AndNode && y().isConstant() && y().asConstant().asLong() == 0) {
+            return graph().unique(new IntegerTestNode(((AndNode) x()).x(), ((AndNode) x()).y()));
+        } else if (y() instanceof AndNode && x().isConstant() && x().asConstant().asLong() == 0) {
+            return graph().unique(new IntegerTestNode(((AndNode) y()).x(), ((AndNode) y()).y()));
+        }
         return super.canonical(tool);
     }
 }

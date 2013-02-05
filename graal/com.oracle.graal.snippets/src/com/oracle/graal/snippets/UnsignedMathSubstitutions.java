@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.snippets;
 
-import static com.oracle.graal.nodes.MaterializeNode.*;
+import static com.oracle.graal.nodes.calc.ConditionalNode.*;
 import static com.oracle.graal.nodes.calc.Condition.*;
 
 import com.oracle.graal.api.code.*;
@@ -38,12 +38,12 @@ public class UnsignedMathSubstitutions {
 
     @MethodSubstitution
     public static boolean aboveThan(int a, int b) {
-        return materialize(BT, b, a);
+        return materializeCondition(BT, b, a);
     }
 
     @MethodSubstitution
     public static boolean aboveOrEqual(int a, int b) {
-        return !materialize(BT, a, b);
+        return !materializeCondition(BT, a, b);
     }
 
     /**
@@ -51,7 +51,7 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static boolean belowThan(int a, int b) {
-        return materialize(BT, a, b);
+        return materializeCondition(BT, a, b);
     }
 
     /**
@@ -59,7 +59,7 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static boolean belowOrEqual(int a, int b) {
-        return !materialize(BT, b, a);
+        return !materializeCondition(BT, b, a);
     }
 
     /**
@@ -67,7 +67,7 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static boolean aboveThan(long a, long b) {
-        return materialize(BT, b, a);
+        return materializeCondition(BT, b, a);
     }
 
     /**
@@ -75,7 +75,7 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static boolean aboveOrEqual(long a, long b) {
-        return !materialize(BT, a, b);
+        return !materializeCondition(BT, a, b);
     }
 
     /**
@@ -83,7 +83,7 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static boolean belowThan(long a, long b) {
-        return materialize(BT, a, b);
+        return materializeCondition(BT, a, b);
     }
 
     /**
@@ -91,7 +91,7 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static boolean belowOrEqual(long a, long b) {
-        return !materialize(BT, b, a);
+        return !materializeCondition(BT, b, a);
     }
 
     /**

@@ -38,7 +38,6 @@ import com.oracle.graal.phases.*;
 public class BoxingEliminationPhase extends Phase {
 
     private final MetaAccessProvider metaAccess;
-    private int virtualIds = Integer.MIN_VALUE;
 
     public BoxingEliminationPhase(MetaAccessProvider metaAccess) {
         this.metaAccess = metaAccess;
@@ -113,7 +112,7 @@ public class BoxingEliminationPhase extends Phase {
         }
     }
 
-    private void tryEliminate(BoxNode boxNode) {
+    private static void tryEliminate(BoxNode boxNode) {
 
         assert boxNode.objectStamp().isExactType();
         virtualizeUsages(boxNode, boxNode.source(), boxNode.objectStamp().type(), boxNode.getSourceKind());
@@ -130,12 +129,12 @@ public class BoxingEliminationPhase extends Phase {
         ((StructuredGraph) boxNode.graph()).removeFixed(boxNode);
     }
 
-    private void virtualizeUsages(ValueNode boxNode, ValueNode replacement, ResolvedJavaType exactType, Kind sourceKind) {
+    private static void virtualizeUsages(ValueNode boxNode, ValueNode replacement, ResolvedJavaType exactType, Kind sourceKind) {
         ValueNode virtualValueNode = null;
         VirtualObjectNode virtualObjectNode = null;
         for (Node n : boxNode.usages().filter(NodePredicates.isA(VirtualState.class)).snapshot()) {
             if (virtualValueNode == null) {
-                virtualObjectNode = n.graph().unique(new BoxedVirtualObjectNode(virtualIds++, exactType, sourceKind, replacement));
+                virtualObjectNode = n.graph().unique(new BoxedVirtualObjectNode(exactType, sourceKind, replacement));
             }
             n.replaceFirstInput(boxNode, virtualObjectNode);
         }
