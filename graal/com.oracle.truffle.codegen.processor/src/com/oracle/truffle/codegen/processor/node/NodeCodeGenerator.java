@@ -653,13 +653,13 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (specialization.getExceptions().length > 0) {
                 for (SpecializationThrowsData exception : specialization.getExceptions()) {
                     builder.end().startCatchBlock(exception.getJavaClass(), "ex");
-                    buildThrowSpecialize(builder, exception.getTransitionTo(), null);
+                    buildThrowSpecialize(builder, specialization, exception.getTransitionTo(), null);
                 }
                 builder.end();
             }
             if (specialization.hasDynamicGuards()) {
                 builder.end().startElseBlock();
-                buildThrowSpecialize(builder, specialization.findNextSpecialization(), null);
+                buildThrowSpecialize(builder, specialization, specialization.findNextSpecialization(), null);
                 builder.end();
             }
         }
@@ -737,7 +737,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                         execute = true;
                     }
                 }
-                buildThrowSpecialize(builder, specialization.findNextSpecialization(), param.getSpecification());
+                buildThrowSpecialize(builder, specialization, specialization.findNextSpecialization(), param.getSpecification());
                 builder.end(); // catch block
             }
 
@@ -785,7 +785,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
         }
 
-        private void buildThrowSpecialize(CodeTreeBuilder builder, SpecializationData nextSpecialization, ParameterSpec exceptionSpec) {
+        private void buildThrowSpecialize(CodeTreeBuilder builder, SpecializationData currentSpecialization, SpecializationData nextSpecialization, ParameterSpec exceptionSpec) {
             boolean canThrowUnexpected = Utils.canThrowType(builder.findMethod().getThrownTypes(), getContext().getTruffleTypes().getUnexpectedValueException());
 
             CodeTreeBuilder specializeCall = CodeTreeBuilder.createBuilder();
@@ -795,10 +795,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             specializeCall.end().end();
 
             if (canThrowUnexpected) {
-                builder.startThrow();
-                builder.startNew(getContext().getTruffleTypes().getUnexpectedValueException());
+                builder.startReturn();
+                TypeData expectedType = currentSpecialization.getReturnType().getActualTypeData(currentSpecialization.getNode().getTypeSystem());
+                startCallTypeSystemMethod(context, builder, currentSpecialization.getNode(), TypeSystemCodeGenerator.expectTypeMethodName(expectedType));
                 builder.tree(specializeCall.getRoot());
                 builder.end().end();
+                builder.end(); // return
             } else {
                 builder.startReturn();
                 builder.tree(specializeCall.getRoot());

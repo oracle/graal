@@ -120,6 +120,8 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             return null;
         }
 
+        List<TypeDef> typeDefs = createTypeDefinitions(methodSpecification.getReturnType(), methodSpecification.getParameters());
+
         ParameterSpec returnTypeSpec = methodSpecification.getReturnType();
         List<ParameterSpec> parameterSpecs = new ArrayList<>();
         parameterSpecs.addAll(methodSpecification.getParameters());
@@ -127,11 +129,11 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         ActualParameter returnTypeMirror = resolveTypeMirror(returnTypeSpec, method.getReturnType(), template);
         if (returnTypeMirror == null) {
             if (isEmitErrors()) {
-                String expectedReturnType = createTypeSignature(returnTypeSpec, true);
+                String expectedReturnType = createTypeSignature(returnTypeSpec, typeDefs, true);
                 String actualReturnType = Utils.getSimpleName(method.getReturnType());
 
                 String message = String.format("The provided return type \"%s\" does not match expected return type \"%s\".\nExpected signature: \n %s", actualReturnType, expectedReturnType,
-                                createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs));
+                                createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs, typeDefs));
 
                 context.getLog().error(method, annotation, message);
             }
@@ -160,10 +162,10 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
                 } else if (!specification.isOptional()) {
                     if (isEmitErrors()) {
                         // non option type specification found -> argument missing
-                        String expectedType = createTypeSignature(specification, false);
+                        String expectedType = createTypeSignature(specification, typeDefs, false);
 
                         String message = String.format("Missing argument \"%s\".\nExpected signature: \n %s", expectedType,
-                                        createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs));
+                                        createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs, typeDefs));
 
                         context.getLog().error(method, message);
                     }
@@ -184,11 +186,11 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
                 }
 
                 if (isEmitErrors()) {
-                    String expectedReturnType = createTypeSignature(specification, false);
+                    String expectedReturnType = createTypeSignature(specification, typeDefs, false);
                     String actualReturnType = Utils.getSimpleName(parameter.asType()) + " " + parameter.getSimpleName();
 
                     String message = String.format("The provided argument type \"%s\" does not match expected type \"%s\".\nExpected signature: \n %s", actualReturnType, expectedReturnType,
-                                    createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs));
+                                    createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs, typeDefs));
 
                     context.getLog().error(parameter, message);
                 }
@@ -208,7 +210,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             if (isEmitErrors()) {
                 String actualReturnType = Utils.getSimpleName(parameter.asType()) + " " + parameter.getSimpleName();
                 String message = String.format("No argument expected but found \"%s\".\nExpected signature: \n %s", actualReturnType,
-                                createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs));
+                                createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs, typeDefs));
 
                 context.getLog().error(parameter, message);
             }
@@ -231,11 +233,67 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         return new ActualParameter(specification, resolvedType);
     }
 
-    public static String createExpectedSignature(String methodName, ParameterSpec returnType, List<? extends ParameterSpec> parameters) {
+    protected static List<TypeDef> createTypeDefinitions(ParameterSpec returnType, List<? extends ParameterSpec> parameters) {
+        List<TypeDef> typeDefs = new ArrayList<>();
+
+        TypeMirror[] types = returnType.getAllowedTypes();
+        List<ParameterSpec> allParams = new ArrayList<>();
+        allParams.add(returnType);
+        allParams.addAll(parameters);
+
+        int defIndex = 0;
+        for (ParameterSpec spec : allParams) {
+            TypeMirror[] allowedTypes = spec.getAllowedTypes();
+            if (types != null && allowedTypes.length > 1) {
+                TypeDef foundDef = null;
+                for (TypeDef def : typeDefs) {
+                    if (Arrays.equals(spec.getAllowedTypes(), def.getTypes())) {
+                        foundDef = def;
+                        break;
+                    }
+                }
+                if (foundDef == null) {
+                    foundDef = new TypeDef(types, "Types" + defIndex);
+                    typeDefs.add(foundDef);
+                    defIndex++;
+                }
+
+                foundDef.getParameters().add(spec);
+            }
+        }
+
+        return typeDefs;
+    }
+
+    protected static class TypeDef {
+
+        private final TypeMirror[] types;
+        private final String name;
+        private final List<ParameterSpec> parameters = new ArrayList<>();
+
+        public TypeDef(TypeMirror[] types, String name) {
+            this.types = types;
+            this.name = name;
+        }
+
+        public List<ParameterSpec> getParameters() {
+            return parameters;
+        }
+
+        public TypeMirror[] getTypes() {
+            return types;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
+    public static String createExpectedSignature(String methodName, ParameterSpec returnType, List<? extends ParameterSpec> parameters, List<TypeDef> typeDefs) {
         StringBuilder b = new StringBuilder();
 
         b.append("    ");
-        b.append(createTypeSignature(returnType, true));
+        b.append(createTypeSignature(returnType, typeDefs, true));
 
         b.append(" ");
         b.append(methodName);
@@ -250,7 +308,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
                 b.append("{");
             }
 
-            b.append(createTypeSignature(specification, false));
+            b.append(createTypeSignature(specification, typeDefs, false));
 
             if (specification.isOptional()) {
                 b.append("]");
@@ -268,34 +326,40 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
 
         b.append(")");
 
-        TypeMirror[] types = null;
+        if (!typeDefs.isEmpty()) {
+            b.append("\n\n");
 
-        // TODO allowed types may differ so different <Any> must be generated.
-        if (returnType.getAllowedTypes().length > 1) {
-            types = returnType.getAllowedTypes();
-        }
-        for (ParameterSpec param : parameters) {
-            if (param.getAllowedTypes().length > 1) {
-                types = param.getAllowedTypes();
+            String lineSep = "";
+            for (TypeDef def : typeDefs) {
+                b.append(lineSep);
+                b.append("    <").append(def.getName()).append(">");
+                b.append(" = {");
+                String separator = "";
+                for (TypeMirror type : def.getTypes()) {
+                    b.append(separator).append(Utils.getSimpleName(type));
+                    separator = ", ";
+                }
+                b.append("}");
+                lineSep = "\n";
+
             }
-        }
-        if (types != null) {
-            b.append("\n\n    ");
-            b.append("<Any> = {");
-            String separator = "";
-            for (TypeMirror type : types) {
-                b.append(separator).append(Utils.getSimpleName(type));
-                separator = ", ";
-            }
-            b.append("}");
         }
         return b.toString();
     }
 
-    private static String createTypeSignature(ParameterSpec spec, boolean typeOnly) {
+    private static String createTypeSignature(ParameterSpec spec, List<TypeDef> typeDefs, boolean typeOnly) {
         StringBuilder builder = new StringBuilder();
         if (spec.getAllowedTypes().length > 1) {
-            builder.append("<Any>");
+            TypeDef foundTypeDef = null;
+            for (TypeDef typeDef : typeDefs) {
+                if (typeDef.getParameters().contains(spec)) {
+                    foundTypeDef = typeDef;
+                    break;
+                }
+            }
+            if (foundTypeDef != null) {
+                builder.append("<" + foundTypeDef.getName() + ">");
+            }
         } else if (spec.getAllowedTypes().length == 1) {
             builder.append(Utils.getSimpleName(spec.getAllowedTypes()[0]));
         } else {

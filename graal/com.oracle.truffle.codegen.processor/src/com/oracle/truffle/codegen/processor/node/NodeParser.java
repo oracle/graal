@@ -44,8 +44,6 @@ public class NodeParser extends TemplateParser<NodeData> {
     public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Generic.class, GuardCheck.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class,
                     SpecializationGuard.class, SpecializationListener.class, SpecializationThrows.class);
 
-    private static final boolean DEBUG = false;
-
     private Map<String, NodeData> parsedNodes;
     private TypeElement originalType;
 
@@ -62,7 +60,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
             return parseInnerClassHierarchy((TypeElement) element);
         } finally {
-            if (DEBUG) {
+            if (Log.DEBUG) {
                 NodeData parsed = parsedNodes.get(Utils.getQualifiedName(originalType));
                 if (parsed != null) {
                     String dump = parsed.dump();
@@ -149,7 +147,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         nodeData.setExecutableTypes(executableTypes.toArray(new ExecutableTypeData[executableTypes.size()]));
 
         parsedNodes.put(Utils.getQualifiedName(type), nodeData); // node fields will resolve node
-                                                                 // types, to avoid endless loops
+// types, to avoid endless loops
 
         NodeFieldData[] fields = parseFields(nodeData, elements, typeHierarchy);
         if (fields == null) {
@@ -319,6 +317,19 @@ public class NodeParser extends TemplateParser<NodeData> {
                 filteredExecutableTypes.add(t1);
             }
         }
+
+        Collections.sort(filteredExecutableTypes, new Comparator<ExecutableTypeData>() {
+
+            @Override
+            public int compare(ExecutableTypeData o1, ExecutableTypeData o2) {
+                int index1 = o1.getTypeSystem().findType(o1.getType());
+                int index2 = o2.getTypeSystem().findType(o2.getType());
+                if (index1 == -1 || index2 == -1) {
+                    return 0;
+                }
+                return index1 - index2;
+            }
+        });
         return filteredExecutableTypes;
     }
 
@@ -425,7 +436,8 @@ public class NodeParser extends TemplateParser<NodeData> {
                 context.getLog().error(errorElement, "Node type '%s' is invalid.", Utils.getQualifiedName(nodeType));
                 return null;
             } else if (fieldNodeData.findGenericExecutableType(context) == null) {
-                context.getLog().error(errorElement, "No executable generic type found for node '%s'.", Utils.getQualifiedName(nodeType));
+                // TODO better error handling for (no or multiple?)
+                context.getLog().error(errorElement, "No or multiple executable generic types found for node '%s'.", Utils.getQualifiedName(nodeType));
                 return null;
             }
         }
