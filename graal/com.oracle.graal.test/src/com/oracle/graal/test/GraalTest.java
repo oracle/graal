@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.test;
+package com.oracle.graal.test;
 
-import static org.junit.Assert.*;
+import java.lang.reflect.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.runtime.*;
-
+/**
+ * Base class for Graal tests.
+ * <p>
+ * This contains common utility methods that are used in multiple test projects.
+ */
 public class GraalTest {
 
-    @Test
-    public void testRuntimeAvailable() {
-        assertNotNull(Graal.getRuntime());
-        System.out.println(Graal.getRuntime().getClass());
-    }
-
-    @Test
-    public void testRuntimeNamed() {
-        assertNotNull(Graal.getRuntime().getName());
-        System.out.println(Graal.getRuntime().getName());
+    protected Method getMethod(String methodName) {
+        Method found = null;
+        for (Method m : this.getClass().getMethods()) {
+            if (m.getName().equals(methodName)) {
+                Assert.assertNull(found);
+                found = m;
+            }
+        }
+        if (found != null) {
+            return found;
+        } else {
+            throw new RuntimeException("method not found: " + methodName);
+        }
     }
 }

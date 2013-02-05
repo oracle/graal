@@ -123,7 +123,6 @@ public class CanonicalizerPhase extends Phase {
 
         for (Node n : workList) {
             processNode(n, graph);
-            Debug.dump(graph, "After processing %s", n);
         }
 
         graph.stopTrackingInputChange();
