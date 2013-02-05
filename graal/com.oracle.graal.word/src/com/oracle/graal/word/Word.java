@@ -871,6 +871,11 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     public final int hashCode() {
         throw GraalInternalError.shouldNotReachHere("hashCode must not be called on words");
     }
+
+    @Override
+    public String toString() {
+        throw GraalInternalError.shouldNotReachHere("toString must not be called on words");
+    }
 }
 
 final class HostedWord extends Word {
@@ -902,5 +907,10 @@ final class HostedWord extends Word {
     @Override
     protected long unbox() {
         return rawValue;
+    }
+
+    @Override
+    public String toString() {
+        return "Word<" + rawValue + ">";
     }
 }
