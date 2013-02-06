@@ -27,7 +27,7 @@ public class AMD64AsmOptions {
     public static int Atomics = 0;
     public static boolean UseNormalNop = false;
     public static boolean UseAddressNop = true;
-    public static boolean UseIncDec = false;
+    public static boolean UseIncDec = true;
     public static boolean UseXmmLoadAndClearUpper = true;
-    public static boolean UseXmmRegToRegMoveAll = false;
+    public static boolean UseXmmRegToRegMoveAll = true;
 }
