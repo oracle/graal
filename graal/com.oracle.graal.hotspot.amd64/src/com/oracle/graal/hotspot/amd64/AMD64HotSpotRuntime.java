@@ -195,9 +195,4 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
     protected RegisterConfig createRegisterConfig(boolean globalStubConfig) {
         return new AMD64HotSpotRegisterConfig(config, globalStubConfig);
     }
-
-    @Override
-    public TargetDescription getTarget() {
-        return graalRuntime.getTarget();
-    }
 }

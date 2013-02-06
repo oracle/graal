@@ -943,4 +943,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                 throw GraalInternalError.shouldNotReachHere();
         }
     }
+
+    @Override
+    public TargetDescription getTarget() {
+        return graalRuntime.getTarget();
+    }
 }
