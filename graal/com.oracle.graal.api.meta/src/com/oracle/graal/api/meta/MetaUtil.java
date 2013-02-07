@@ -410,9 +410,9 @@ public class MetaUtil {
      * @return the annotation of type {@code annotationClass} (if any) for each formal parameter
      *         present
      */
+    @SuppressWarnings("unchecked")
     public static <T extends Annotation> T[] getParameterAnnotations(Class<T> annotationClass, ResolvedJavaMethod method) {
         Annotation[][] parameterAnnotations = method.getParameterAnnotations();
-        @SuppressWarnings("unchecked")
         T[] result = (T[]) Array.newInstance(annotationClass, parameterAnnotations.length);
         for (int i = 0; i < parameterAnnotations.length; i++) {
             for (Annotation a : parameterAnnotations[i]) {
