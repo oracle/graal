@@ -62,7 +62,6 @@ public class CompilationServer implements Runnable {
      */
     public CompilationServer(boolean multiple) {
         this.multiple = multiple;
-        HotSpotOptions.setDefaultOptions();
     }
 
     public void addConnectionObserver(ConnectionObserver observer) {

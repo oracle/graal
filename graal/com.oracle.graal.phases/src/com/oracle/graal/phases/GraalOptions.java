@@ -106,7 +106,7 @@ public final class GraalOptions {
     public static int     LoopUnswitchUncertaintyBoost       = 5;
 
     // debugging settings
-    public static int     MethodEndBreakpointGuards          = 0;
+    public static int     MethodEndBreakpointGuards          = 2;
     public static boolean ZapStackOnMethodEntry              = ____;
     public static boolean DeoptALot                          = ____;
     public static boolean VerifyPhases                       = true;
@@ -165,7 +165,7 @@ public final class GraalOptions {
     public static boolean AlwaysInlineVTableStubs            = ____;
     public static boolean GenAssertionCode                   = ____;
     public static boolean AlignCallsForPatching              = true;
-    public static boolean ResolveClassBeforeStaticInvoke     = true;
+    public static boolean ResolveClassBeforeStaticInvoke     = ____;
     public static boolean CanOmitFrame                       = true;
     public static int     SafepointPollOffset                = 256;
 

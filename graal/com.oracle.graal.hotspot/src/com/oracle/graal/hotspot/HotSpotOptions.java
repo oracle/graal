@@ -31,11 +31,6 @@ import com.oracle.graal.phases.*;
 
 public class HotSpotOptions {
 
-    public static void setDefaultOptions() {
-        GraalOptions.MethodEndBreakpointGuards = 2;
-        GraalOptions.ResolveClassBeforeStaticInvoke = false;
-    }
-
     // Called from VM code
     public static boolean setOption(String option) {
         if (option.length() == 0) {
