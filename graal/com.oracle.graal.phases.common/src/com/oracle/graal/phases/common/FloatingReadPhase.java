@@ -73,6 +73,7 @@ public class FloatingReadPhase extends Phase {
             return "Map=" + lastMemorySnapshot.toString() + " Loops=" + loops.toString();
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         public boolean merge(MergeNode merge, List<MemoryMap> withStates) {
             if (withStates.size() == 0) {
@@ -106,7 +107,6 @@ public class FloatingReadPhase extends Phase {
                     keys.add(key);
                 }
             }
-            @SuppressWarnings("unchecked")
             IdentityHashMap<Object, ValueNode> newMemorySnapshot = (IdentityHashMap<Object, ValueNode>) lastMemorySnapshot.clone();
 
             for (Object key : keys) {

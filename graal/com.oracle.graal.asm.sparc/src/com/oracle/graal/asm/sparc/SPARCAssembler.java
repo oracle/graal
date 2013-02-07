@@ -31,10 +31,10 @@ import com.oracle.graal.sparc.*;
  */
 public class SPARCAssembler extends AbstractAssembler {
 
+    @SuppressWarnings("unused")
     public SPARCAssembler(TargetDescription target) {
         super(target);
         // TODO Auto-generated constructor stub
-        @SuppressWarnings("unused")
         SPARC sparc;
     }
 
