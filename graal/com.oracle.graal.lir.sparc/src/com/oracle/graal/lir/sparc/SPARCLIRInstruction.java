@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,41 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.sparc;
+package com.oracle.graal.lir.sparc;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.asm.*;
-import com.oracle.graal.sparc.*;
+import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.asm.*;
 
 /**
- * This class implements an assembler that can encode most SPARC instructions.
+ * Convenience class to provide AMD64MacroAssembler for the {@link #emitCode} method.
  */
-public class SPARCAssembler extends AbstractAssembler {
-
-    public SPARCAssembler(TargetDescription target) {
-        super(target);
-        // TODO Auto-generated constructor stub
-        @SuppressWarnings("unused")
-        SPARC sparc;
-    }
+public abstract class SPARCLIRInstruction extends LIRInstruction {
 
     @Override
-    public void align(int modulus) {
-        // SPARC: Implement alignment.
+    public final void emitCode(TargetMethodAssembler tasm) {
+        emitCode(tasm, (SPARCAssembler) tasm.asm);
     }
 
-    @Override
-    public void jmp(Label l) {
-        // SPARC: Implement jump.
-    }
-
-    @Override
-    protected void patchJumpTarget(int branch, int jumpTarget) {
-        // SPARC: Implement patching of jump target.
-    }
-
-    @Override
-    public void bangStack(int disp) {
-        // SPARC: Implement stack banging.
-    }
+    public abstract void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm);
 }

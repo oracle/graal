@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.sparc;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.sparc.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
@@ -42,8 +43,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
-        // SPARC: Add LIR generator.
-        return null;
+        return new SPARCLIRGenerator(graph, this.runtime(), this.target, frameMap, method, lir);
     }
 
     @Override
