@@ -256,7 +256,7 @@ public class ArrayCopySnippets implements SnippetsInterface {
             long end = (dstAddr + header + ((long) destPos + length - 1) * scale) >>> cardShift;
             long count = end - start + 1;
             while (count-- > 0) {
-                DirectStoreNode.store((start + cardStart) + count, false);
+                DirectStoreNode.store((start + cardStart) + count, false, Kind.Boolean);
             }
         }
     }

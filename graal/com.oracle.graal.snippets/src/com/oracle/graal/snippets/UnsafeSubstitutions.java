@@ -313,37 +313,37 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static void putByte(@SuppressWarnings("unused") final Object thisObj, long address, byte value) {
-        DirectStoreNode.store(address, value);
+        DirectStoreNode.store(address, value, Kind.Byte);
     }
 
     @MethodSubstitution(isStatic = false)
     public static void putShort(@SuppressWarnings("unused") final Object thisObj, long address, short value) {
-        DirectStoreNode.store(address, value);
+        DirectStoreNode.store(address, value, Kind.Short);
     }
 
     @MethodSubstitution(isStatic = false)
     public static void putChar(@SuppressWarnings("unused") final Object thisObj, long address, char value) {
-        DirectStoreNode.store(address, value);
+        DirectStoreNode.store(address, value, Kind.Char);
     }
 
     @MethodSubstitution(isStatic = false)
     public static void putInt(@SuppressWarnings("unused") final Object thisObj, long address, int value) {
-        DirectStoreNode.store(address, value);
+        DirectStoreNode.store(address, value, Kind.Int);
     }
 
     @MethodSubstitution(isStatic = false)
     public static void putLong(@SuppressWarnings("unused") final Object thisObj, long address, long value) {
-        DirectStoreNode.store(address, value);
+        DirectStoreNode.store(address, value, Kind.Long);
     }
 
     @MethodSubstitution(isStatic = false)
     public static void putFloat(@SuppressWarnings("unused") final Object thisObj, long address, float value) {
-        DirectStoreNode.store(address, value);
+        DirectStoreNode.store(address, value, Kind.Float);
     }
 
     @MethodSubstitution(isStatic = false)
     public static void putDouble(@SuppressWarnings("unused") final Object thisObj, long address, double value) {
-        DirectStoreNode.store(address, value);
+        DirectStoreNode.store(address, value, Kind.Double);
     }
 
     @MethodSubstitution(isStatic = false)
