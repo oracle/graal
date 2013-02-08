@@ -427,27 +427,32 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             addValueParameters(method, node.getGenericSpecialization(), true);
 
             CodeTreeBuilder builder = method.createBuilder();
-            boolean ifStarted = false;
-            for (int i = 0; i < node.getSpecializations().length; i++) {
-                SpecializationData specialization = node.getSpecializations()[i];
-                if (specialization.isUninitialized()) {
-                    continue;
-                }
-                if (!specialization.isGeneric()) {
-                    if (!ifStarted) {
-                        builder.startIf();
-                        ifStarted = true;
-                    } else {
-                        builder.startElseIf();
-                    }
-                    emitGuards(getContext(), builder, "", specialization, false, true);
-                    builder.end().startBlock();
-                } else {
-                    builder.startElseBlock();
-                }
 
-                emitInvokeDoMethod(builder, specialization, 0);
-                builder.end();
+            if (node.getGenericSpecialization().isUseSpecializationsForGeneric()) {
+                boolean ifStarted = false;
+                for (int i = 0; i < node.getSpecializations().length; i++) {
+                    SpecializationData specialization = node.getSpecializations()[i];
+                    if (specialization.isUninitialized()) {
+                        continue;
+                    }
+                    if (!specialization.isGeneric()) {
+                        if (!ifStarted) {
+                            builder.startIf();
+                            ifStarted = true;
+                        } else {
+                            builder.startElseIf();
+                        }
+                        emitGuards(getContext(), builder, "", specialization, false, true);
+                        builder.end().startBlock();
+                    } else {
+                        builder.startElseBlock();
+                    }
+
+                    emitInvokeDoMethod(builder, specialization, 0);
+                    builder.end();
+                }
+            } else {
+                emitInvokeDoMethod(builder, node.getGenericSpecialization(), 0);
             }
             return method;
         }

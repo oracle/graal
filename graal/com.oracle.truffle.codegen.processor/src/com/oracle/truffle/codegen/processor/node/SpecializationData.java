@@ -33,7 +33,7 @@ public class SpecializationData extends TemplateMethod {
     private final SpecializationThrowsData[] exceptions;
     private SpecializationGuardData[] guards;
     private ShortCircuitData[] shortCircuits;
-
+    private boolean useSpecializationsForGeneric = true;
     private NodeData node;
 
     public SpecializationData(TemplateMethod template, int order, SpecializationThrowsData[] exceptions) {
@@ -95,6 +95,14 @@ public class SpecializationData extends TemplateMethod {
 
     public ShortCircuitData[] getShortCircuits() {
         return shortCircuits;
+    }
+
+    void setUseSpecializationsForGeneric(boolean useSpecializationsForGeneric) {
+        this.useSpecializationsForGeneric = useSpecializationsForGeneric;
+    }
+
+    public boolean isUseSpecializationsForGeneric() {
+        return useSpecializationsForGeneric;
     }
 
     public SpecializationData findNextSpecialization() {
