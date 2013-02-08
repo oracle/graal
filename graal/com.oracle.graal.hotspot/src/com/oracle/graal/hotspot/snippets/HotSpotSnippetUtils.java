@@ -442,6 +442,12 @@ public class HotSpotSnippetUtils {
         return config().layoutHelperElementTypeMask;
     }
 
+    @Fold
+    public static int layoutHelperElementTypePrimitiveInPlace() {
+        System.out.println(String.format("%x", config().layoutHelperElementTypePrimitiveInPlace));
+        return config().layoutHelperElementTypePrimitiveInPlace;
+    }
+
     static {
         assert arrayIndexScale(Kind.Byte) == 1;
         assert arrayIndexScale(Kind.Boolean) == 1;
