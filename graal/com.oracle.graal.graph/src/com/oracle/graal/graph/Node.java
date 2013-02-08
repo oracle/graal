@@ -74,7 +74,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     /**
      * Denotes that a parameter of an {@linkplain NodeIntrinsic intrinsic} method must be a compile
-     * time constant at all call sites to the intrinic method.
+     * time constant at all call sites to the intrinsic method.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)

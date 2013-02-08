@@ -26,6 +26,11 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
+/**
+ * This node will perform a "test" operation on its arguments. Its result is equivalent to the
+ * expression "(x &amp; y) == 0", meaning that it will return true if (and only if) no bit is set in
+ * both x and y.
+ */
 public class IntegerTestNode extends BooleanNode implements Canonicalizable, LIRLowerable {
 
     @Input private ValueNode x;

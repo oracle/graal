@@ -30,7 +30,6 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
 
-//@formatter:off
 public class AMD64TestOp extends AMD64LIRInstruction {
 
     @Use({REG}) protected Value x;
@@ -55,21 +54,36 @@ public class AMD64TestOp extends AMD64LIRInstruction {
     public static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value x, Value y) {
         if (isRegister(y)) {
             switch (x.getKind()) {
-                case Int: masm.testl(asIntReg(x), asIntReg(y)); break;
-                case Long: masm.testq(asLongReg(x), asLongReg(y)); break;
-                default: throw GraalInternalError.shouldNotReachHere();
+                case Int:
+                    masm.testl(asIntReg(x), asIntReg(y));
+                    break;
+                case Long:
+                    masm.testq(asLongReg(x), asLongReg(y));
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(y)) {
             switch (x.getKind()) {
-                case Int: masm.testl(asIntReg(x), tasm.asIntConst(y)); break;
-                case Long: masm.testq(asLongReg(x), tasm.asIntConst(y)); break;
-                default: throw GraalInternalError.shouldNotReachHere();
+                case Int:
+                    masm.testl(asIntReg(x), tasm.asIntConst(y));
+                    break;
+                case Long:
+                    masm.testq(asLongReg(x), tasm.asIntConst(y));
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
             }
         } else {
             switch (x.getKind()) {
-                case Int: masm.testl(asIntReg(x), tasm.asIntAddr(y)); break;
-                case Long: masm.testq(asLongReg(x), tasm.asLongAddr(y)); break;
-                default: throw GraalInternalError.shouldNotReachHere();
+                case Int:
+                    masm.testl(asIntReg(x), tasm.asIntAddr(y));
+                    break;
+                case Long:
+                    masm.testq(asLongReg(x), tasm.asLongAddr(y));
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
             }
         }
     }

@@ -26,5 +26,8 @@ import com.oracle.graal.nodes.*;
 
 public interface ArrayLengthProvider {
 
+    /**
+     * @return the length of the array described by this node, or null if it is not available
+     */
     ValueNode length();
 }
