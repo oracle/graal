@@ -32,37 +32,32 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.test.*;
 
-public abstract class AssemblerTest<T extends AbstractAssembler> extends GraalTest {
+public abstract class AssemblerTest extends GraalTest {
 
     protected final CodeCacheProvider codeCache;
 
-    public interface CodeGenTest<T> {
+    public interface CodeGenTest {
 
-        void generateCode(CompilationResult compResult, T asm, RegisterConfig registerConfig);
+        Buffer generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig);
     }
 
     public AssemblerTest() {
         this.codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
     }
 
-    protected abstract T createAssembler(TargetDescription target, RegisterConfig registerConfig);
-
-    protected InstalledCode assembleMethod(Method m, CodeGenTest<? super T> test) {
+    protected InstalledCode assembleMethod(Method m, CodeGenTest test) {
         ResolvedJavaMethod method = codeCache.lookupJavaMethod(m);
         RegisterConfig registerConfig = codeCache.lookupRegisterConfig(method);
 
         CompilationResult compResult = new CompilationResult();
-        T asm = createAssembler(codeCache.getTarget(), registerConfig);
 
-        test.generateCode(compResult, asm, registerConfig);
+        Buffer codeBuffer = test.generateCode(compResult, codeCache.getTarget(), registerConfig);
+        compResult.setTargetCode(codeBuffer.close(true), codeBuffer.position());
 
-        compResult.setTargetCode(asm.codeBuffer.close(true), asm.codeBuffer.position());
-        InstalledCode code = codeCache.addMethod(method, compResult, null);
-
-        return code;
+        return codeCache.addMethod(method, compResult, null);
     }
 
-    protected void assertReturn(String methodName, CodeGenTest<? super T> test, Object expected, Object... args) {
+    protected void assertReturn(String methodName, CodeGenTest test, Object expected, Object... args) {
         Method method = getMethod(methodName);
         InstalledCode code = assembleMethod(method, test);
 
