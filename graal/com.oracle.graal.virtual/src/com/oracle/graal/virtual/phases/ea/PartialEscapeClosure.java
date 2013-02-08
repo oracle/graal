@@ -26,6 +26,7 @@ import static com.oracle.graal.virtual.phases.ea.PartialEscapeAnalysisPhase.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -59,10 +60,10 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
     private final VirtualizerToolImpl tool;
 
-    public PartialEscapeClosure(NodeBitMap usages, SchedulePhase schedule, MetaAccessProvider metaAccess) {
+    public PartialEscapeClosure(NodeBitMap usages, SchedulePhase schedule, MetaAccessProvider metaAccess, Assumptions assumptions) {
         this.usages = usages;
         this.schedule = schedule;
-        tool = new VirtualizerToolImpl(effects, usages, metaAccess);
+        tool = new VirtualizerToolImpl(effects, usages, metaAccess, assumptions);
     }
 
     public GraphEffectList getEffects() {
