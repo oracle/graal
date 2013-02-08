@@ -27,15 +27,21 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.test.*;
 
-public class SimpleAssemblerTest extends AMD64AssemblerTest {
+public class SimpleAssemblerTest extends AssemblerTest<AMD64MacroAssembler> {
+
+    @Override
+    protected AMD64MacroAssembler createAssembler(TargetDescription target, RegisterConfig registerConfig) {
+        return new AMD64MacroAssembler(target, registerConfig);
+    }
 
     @Test
     public void intTest() {
-        CodeGenTest test = new CodeGenTest() {
+        CodeGenTest<AMD64Assembler> test = new CodeGenTest<AMD64Assembler>() {
 
             @Override
-            public void generateCode(CompilationResult compResult, AMD64MacroAssembler asm, RegisterConfig registerConfig) {
+            public void generateCode(CompilationResult compResult, AMD64Assembler asm, RegisterConfig registerConfig) {
                 Register ret = registerConfig.getReturnRegister(Kind.Int);
                 asm.movl(ret, 8472);
                 asm.ret(0);
@@ -46,7 +52,7 @@ public class SimpleAssemblerTest extends AMD64AssemblerTest {
 
     @Test
     public void doubleTest() {
-        CodeGenTest test = new CodeGenTest() {
+        CodeGenTest<AMD64MacroAssembler> test = new CodeGenTest<AMD64MacroAssembler>() {
 
             @Override
             public void generateCode(CompilationResult compResult, AMD64MacroAssembler asm, RegisterConfig registerConfig) {

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.amd64.test;
+package com.oracle.graal.asm.test;
 
 import java.lang.reflect.*;
 
@@ -29,28 +29,30 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.test.*;
 
-public abstract class AMD64AssemblerTest extends GraalTest {
+public abstract class AssemblerTest<T extends AbstractAssembler> extends GraalTest {
 
     protected final CodeCacheProvider codeCache;
 
-    public interface CodeGenTest {
+    public interface CodeGenTest<T> {
 
-        void generateCode(CompilationResult compResult, AMD64MacroAssembler asm, RegisterConfig registerConfig);
+        void generateCode(CompilationResult compResult, T asm, RegisterConfig registerConfig);
     }
 
-    public AMD64AssemblerTest() {
+    public AssemblerTest() {
         this.codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
     }
 
-    protected InstalledCode assembleMethod(Method m, CodeGenTest test) {
+    protected abstract T createAssembler(TargetDescription target, RegisterConfig registerConfig);
+
+    protected InstalledCode assembleMethod(Method m, CodeGenTest<? super T> test) {
         ResolvedJavaMethod method = codeCache.lookupJavaMethod(m);
         RegisterConfig registerConfig = codeCache.lookupRegisterConfig(method);
 
         CompilationResult compResult = new CompilationResult();
-        AMD64MacroAssembler asm = new AMD64MacroAssembler(codeCache.getTarget(), registerConfig);
+        T asm = createAssembler(codeCache.getTarget(), registerConfig);
 
         test.generateCode(compResult, asm, registerConfig);
 
@@ -60,7 +62,7 @@ public abstract class AMD64AssemblerTest extends GraalTest {
         return code;
     }
 
-    protected void assertReturn(String methodName, CodeGenTest test, Object expected, Object... args) {
+    protected void assertReturn(String methodName, CodeGenTest<? super T> test, Object expected, Object... args) {
         Method method = getMethod(methodName);
         InstalledCode code = assembleMethod(method, test);
 
