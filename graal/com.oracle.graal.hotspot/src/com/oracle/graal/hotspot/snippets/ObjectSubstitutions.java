@@ -26,7 +26,7 @@ import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 
 import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
+import com.oracle.graal.snippets.ClassSubstitution.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -45,4 +45,7 @@ public class ObjectSubstitutions {
     public static int hashCode(final Object thisObj) {
         return computeHashCode(thisObj);
     }
+
+    @MacroSubstitution(macro = ObjectCloneNode.class, isStatic = false)
+    public static native Object clone(Object obj);
 }

@@ -350,6 +350,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         if (GraalOptions.IntrinsifyArrayCopy) {
             installer.installSnippets(ArrayCopySnippets.class);
         }
+        if (GraalOptions.IntrinsifyObjectClone) {
+            installer.installSnippets(ObjectCloneSnippets.class);
+        }
 
         installer.installSnippets(CheckCastSnippets.class);
         installer.installSnippets(InstanceOfSnippets.class);
@@ -705,7 +708,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
             assert loadHub.kind() == wordKind;
             LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, wordKind, config.hubOffset, graph);
             ValueNode object = loadHub.object();
-            assert !object.isConstant();
+            assert !object.isConstant() || object.asConstant().isNull();
             ValueNode guard = tool.createNullCheckGuard(object);
             ReadNode hub = graph.add(new ReadNode(object, location, StampFactory.forKind(wordKind())));
             hub.dependencies().add(guard);
