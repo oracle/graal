@@ -102,7 +102,7 @@ public class LoopsData {
                     }
                     negated = true;
                 }
-                BooleanNode ifTest = ifNode.condition();
+                LogicNode ifTest = ifNode.condition();
                 if (!(ifTest instanceof IntegerLessThanNode)) {
                     if (ifTest instanceof IntegerBelowThanNode) {
                         Debug.log("Ignored potential Counted loop at %s with |<|", loopBegin);

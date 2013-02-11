@@ -36,9 +36,9 @@ public interface LoweringTool {
 
     ValueNode createNullCheckGuard(ValueNode object);
 
-    ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action);
+    ValueNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action);
 
-    ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated);
+    ValueNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated);
 
     Assumptions assumptions();
 

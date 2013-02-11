@@ -585,10 +585,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void emitGuardCheck(BooleanNode comp, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
+    public void emitGuardCheck(LogicNode comp, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
         if (comp instanceof IsNullNode && negated) {
             emitNullCheckGuard(((IsNullNode) comp).object());
-        } else if (comp instanceof ConstantNode && (comp.asConstant().asBoolean() != negated)) {
+        } else if (comp instanceof LogicConstantNode && ((LogicConstantNode) comp).getValue() != negated) {
             // True constant, nothing to emit.
             // False constants are handled within emitBranch.
         } else {
@@ -605,13 +605,13 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected abstract void emitNullCheckGuard(ValueNode object);
 
-    public void emitBranch(BooleanNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
+    public void emitBranch(LogicNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
         if (node instanceof IsNullNode) {
             emitNullCheckBranch((IsNullNode) node, trueSuccessor, falseSuccessor, info);
         } else if (node instanceof CompareNode) {
             emitCompareBranch((CompareNode) node, trueSuccessor, falseSuccessor, info);
-        } else if (node instanceof ConstantNode) {
-            emitConstantBranch(((ConstantNode) node).asConstant().asBoolean(), trueSuccessor, falseSuccessor, info);
+        } else if (node instanceof LogicConstantNode) {
+            emitConstantBranch(((LogicConstantNode) node).getValue(), trueSuccessor, falseSuccessor, info);
         } else if (node instanceof IntegerTestNode) {
             emitIntegerTestBranch((IntegerTestNode) node, trueSuccessor, falseSuccessor, info);
         } else {
@@ -666,16 +666,15 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         setResult(conditional, emitConditional(conditional.condition(), tVal, fVal));
     }
 
-    public Variable emitConditional(BooleanNode node, Value trueValue, Value falseValue) {
+    public Variable emitConditional(LogicNode node, Value trueValue, Value falseValue) {
         if (node instanceof IsNullNode) {
             IsNullNode isNullNode = (IsNullNode) node;
             return emitConditionalMove(operand(isNullNode.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueValue, falseValue);
         } else if (node instanceof CompareNode) {
             CompareNode compare = (CompareNode) node;
             return emitConditionalMove(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueValue, falseValue);
-        } else if (node instanceof ConstantNode) {
-            ConstantNode constantNode = (ConstantNode) node;
-            return emitMove(constantNode.asConstant().asBoolean() ? trueValue : falseValue);
+        } else if (node instanceof LogicConstantNode) {
+            return emitMove(((LogicConstantNode) node).getValue() ? trueValue : falseValue);
         } else if (node instanceof IntegerTestNode) {
             IntegerTestNode test = (IntegerTestNode) node;
             return emitIntegerTestMove(operand(test.x()), operand(test.y()), trueValue, falseValue);

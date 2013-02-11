@@ -54,7 +54,7 @@ public final class IntegerLessThanNode extends CompareNode {
     }
 
     @Override
-    protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+    protected LogicNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         assert condition() == Condition.LT;
         if (constant.getKind() == Kind.Int && constant.asInt() == 0) {
             ValueNode a = mirrored ? normalizeNode.y() : normalizeNode.x();
@@ -70,13 +70,13 @@ public final class IntegerLessThanNode extends CompareNode {
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public LogicNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
-            return ConstantNode.forBoolean(false, graph());
+            return LogicConstantNode.contradiction(graph());
         } else if (x().integerStamp().upperBound() < y().integerStamp().lowerBound()) {
-            return ConstantNode.forBoolean(true, graph());
+            return LogicConstantNode.tautology(graph());
         } else if (x().integerStamp().lowerBound() >= y().integerStamp().upperBound()) {
-            return ConstantNode.forBoolean(false, graph());
+            return LogicConstantNode.contradiction(graph());
         }
         if (IntegerStamp.sameSign(x().integerStamp(), y().integerStamp())) {
             return graph().unique(new IntegerBelowThanNode(x(), y()));

@@ -53,9 +53,9 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public LogicNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
-            return ConstantNode.forBoolean(true, graph());
+            return LogicConstantNode.tautology(graph());
         }
 
         if (x().objectStamp().alwaysNull()) {
@@ -64,7 +64,7 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
             return graph().unique(new IsNullNode(x()));
         }
         if (x().stamp().alwaysDistinct(y().stamp())) {
-            return ConstantNode.forBoolean(false, graph());
+            return LogicConstantNode.contradiction(graph());
         }
 
         return super.canonical(tool);
@@ -79,10 +79,10 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
 
         if (xVirtual ^ yVirtual) {
             // one of them is virtual: they can never be the same objects
-            tool.replaceWithValue(ConstantNode.forBoolean(false, graph()));
+            tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
         } else if (xVirtual && yVirtual) {
             // both are virtual: check if they refer to the same object
-            tool.replaceWithValue(ConstantNode.forBoolean(stateX == stateY, graph()));
+            tool.replaceWithValue(LogicConstantNode.forBoolean(stateX == stateY, graph()));
         }
     }
 }

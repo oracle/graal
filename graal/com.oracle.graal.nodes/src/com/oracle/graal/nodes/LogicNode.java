@@ -27,14 +27,10 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class BooleanNode extends FloatingNode {
+public abstract class LogicNode extends FloatingNode {
 
-    public BooleanNode(Stamp stamp) {
-        super(stamp);
-    }
-
-    public BooleanNode(Stamp stamp, ValueNode... dependencies) {
-        super(stamp, dependencies);
+    public LogicNode(ValueNode... dependencies) {
+        super(StampFactory.condition(), dependencies);
     }
 
     /**
@@ -47,4 +43,7 @@ public abstract class BooleanNode extends FloatingNode {
             ((Negatable) n).negate();
         }
     }
+
+    // forces all subclasses to canonicalize to BooleanNode instances
+    public abstract LogicNode canonical(CanonicalizerTool tool);
 }

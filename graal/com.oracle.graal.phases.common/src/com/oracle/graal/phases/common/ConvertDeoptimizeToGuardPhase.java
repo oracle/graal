@@ -79,7 +79,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         } else if (deoptBegin.predecessor() instanceof IfNode) {
             IfNode ifNode = (IfNode) deoptBegin.predecessor();
             BeginNode otherBegin = ifNode.trueSuccessor();
-            BooleanNode conditionNode = ifNode.condition();
+            LogicNode conditionNode = ifNode.condition();
             if (conditionNode instanceof InstanceOfNode) {
                 // TODO The lowering currently does not support a FixedGuard as the usage of an
                 // InstanceOfNode. Relax this restriction.

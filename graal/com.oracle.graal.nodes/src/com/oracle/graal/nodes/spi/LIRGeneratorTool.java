@@ -117,7 +117,7 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitConditional(ConditionalNode i);
 
-    public abstract void emitGuardCheck(BooleanNode comp, DeoptimizationReason deoptReason, DeoptimizationAction deoptAction, boolean negated);
+    public abstract void emitGuardCheck(LogicNode comp, DeoptimizationReason deoptReason, DeoptimizationAction deoptAction, boolean negated);
 
     public abstract void emitSwitch(SwitchNode i);
 

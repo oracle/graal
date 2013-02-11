@@ -68,8 +68,8 @@ public class ConditionalEliminationPhase extends Phase {
         private IdentityHashMap<ValueNode, ResolvedJavaType> knownTypes;
         private HashSet<ValueNode> knownNonNull;
         private HashSet<ValueNode> knownNull;
-        private IdentityHashMap<BooleanNode, ValueNode> trueConditions;
-        private IdentityHashMap<BooleanNode, ValueNode> falseConditions;
+        private IdentityHashMap<LogicNode, ValueNode> trueConditions;
+        private IdentityHashMap<LogicNode, ValueNode> falseConditions;
 
         public State() {
             this.knownTypes = new IdentityHashMap<>();
@@ -90,8 +90,8 @@ public class ConditionalEliminationPhase extends Phase {
         @Override
         public boolean merge(MergeNode merge, List<State> withStates) {
             IdentityHashMap<ValueNode, ResolvedJavaType> newKnownTypes = new IdentityHashMap<>();
-            IdentityHashMap<BooleanNode, ValueNode> newTrueConditions = new IdentityHashMap<>();
-            IdentityHashMap<BooleanNode, ValueNode> newFalseConditions = new IdentityHashMap<>();
+            IdentityHashMap<LogicNode, ValueNode> newTrueConditions = new IdentityHashMap<>();
+            IdentityHashMap<LogicNode, ValueNode> newFalseConditions = new IdentityHashMap<>();
 
             HashSet<ValueNode> newKnownNull = new HashSet<>(knownNull);
             HashSet<ValueNode> newKnownNonNull = new HashSet<>(knownNonNull);
@@ -116,8 +116,8 @@ public class ConditionalEliminationPhase extends Phase {
                 }
             }
 
-            for (Map.Entry<BooleanNode, ValueNode> entry : trueConditions.entrySet()) {
-                BooleanNode check = entry.getKey();
+            for (Map.Entry<LogicNode, ValueNode> entry : trueConditions.entrySet()) {
+                LogicNode check = entry.getKey();
                 ValueNode guard = entry.getValue();
 
                 for (State other : withStates) {
@@ -134,8 +134,8 @@ public class ConditionalEliminationPhase extends Phase {
                     newTrueConditions.put(check, guard);
                 }
             }
-            for (Map.Entry<BooleanNode, ValueNode> entry : falseConditions.entrySet()) {
-                BooleanNode check = entry.getKey();
+            for (Map.Entry<LogicNode, ValueNode> entry : falseConditions.entrySet()) {
+                LogicNode check = entry.getKey();
                 ValueNode guard = entry.getValue();
 
                 for (State other : withStates) {
@@ -225,7 +225,7 @@ public class ConditionalEliminationPhase extends Phase {
          * Adds information about a condition. If isTrue is true then the condition is known to
          * hold, otherwise the condition is known not to hold.
          */
-        public void addCondition(boolean isTrue, BooleanNode condition, ValueNode anchor) {
+        public void addCondition(boolean isTrue, LogicNode condition, ValueNode anchor) {
             if (isTrue) {
                 if (!trueConditions.containsKey(condition)) {
                     trueConditions.put(condition, anchor);
@@ -294,16 +294,16 @@ public class ConditionalEliminationPhase extends Phase {
 
     public class ConditionalElimination extends PostOrderNodeIterator<State> {
 
-        private final BooleanNode trueConstant;
-        private final BooleanNode falseConstant;
+        private final LogicNode trueConstant;
+        private final LogicNode falseConstant;
 
         public ConditionalElimination(FixedNode start, State initialState) {
             super(start, initialState);
-            this.trueConstant = ConstantNode.forBoolean(true, graph);
-            this.falseConstant = ConstantNode.forBoolean(false, graph);
+            this.trueConstant = LogicConstantNode.tautology(graph);
+            this.falseConstant = LogicConstantNode.contradiction(graph);
         }
 
-        private void registerCondition(boolean isTrue, BooleanNode condition, ValueNode anchor) {
+        private void registerCondition(boolean isTrue, LogicNode condition, ValueNode anchor) {
             state.addCondition(isTrue, condition, anchor);
 
             if (isTrue && condition instanceof InstanceOfNode) {
@@ -351,7 +351,7 @@ public class ConditionalEliminationPhase extends Phase {
             if (pred instanceof IfNode) {
                 IfNode ifNode = (IfNode) pred;
 
-                if (!(ifNode.condition() instanceof ConstantNode)) {
+                if (!(ifNode.condition() instanceof LogicConstantNode)) {
                     registerCondition(begin == ifNode.trueSuccessor(), ifNode.condition(), begin);
                 }
             } else if (pred instanceof TypeSwitchNode) {
@@ -378,7 +378,7 @@ public class ConditionalEliminationPhase extends Phase {
         }
 
         private void registerGuard(GuardNode guard) {
-            BooleanNode condition = guard.condition();
+            LogicNode condition = guard.condition();
 
             ValueNode existingGuards = guard.negated() ? state.falseConditions.get(condition) : state.trueConditions.get(condition);
             if (existingGuards != null) {
@@ -386,7 +386,7 @@ public class ConditionalEliminationPhase extends Phase {
                 GraphUtil.killWithUnusedFloatingInputs(guard);
                 metricGuardsRemoved.increment();
             } else {
-                BooleanNode replacement = evaluateCondition(condition, trueConstant, falseConstant);
+                LogicNode replacement = evaluateCondition(condition, trueConstant, falseConstant);
                 if (replacement != null) {
                     guard.setCondition(replacement);
                     if (condition.usages().isEmpty()) {
@@ -404,7 +404,7 @@ public class ConditionalEliminationPhase extends Phase {
          * true, false or unknown. In case of true or false the corresponding value is returned,
          * otherwise null.
          */
-        private <T extends ValueNode> T evaluateCondition(BooleanNode condition, T trueValue, T falseValue) {
+        private <T extends ValueNode> T evaluateCondition(LogicNode condition, T trueValue, T falseValue) {
             if (state.trueConditions.containsKey(condition)) {
                 return trueValue;
             } else if (state.falseConditions.containsKey(condition)) {
@@ -482,8 +482,8 @@ public class ConditionalEliminationPhase extends Phase {
                 }
             } else if (node instanceof IfNode) {
                 IfNode ifNode = (IfNode) node;
-                BooleanNode compare = ifNode.condition();
-                BooleanNode replacement = evaluateCondition(compare, trueConstant, falseConstant);
+                LogicNode compare = ifNode.condition();
+                LogicNode replacement = evaluateCondition(compare, trueConstant, falseConstant);
 
                 if (replacement != null) {
                     ifNode.setCondition(replacement);
@@ -498,7 +498,7 @@ public class ConditionalEliminationPhase extends Phase {
                     ValueNode value = phi.valueAt(index);
                     if (value instanceof ConditionalNode) {
                         ConditionalNode materialize = (ConditionalNode) value;
-                        BooleanNode compare = materialize.condition();
+                        LogicNode compare = materialize.condition();
                         ValueNode replacement = evaluateCondition(compare, materialize.trueValue(), materialize.falseValue());
 
                         if (replacement != null) {

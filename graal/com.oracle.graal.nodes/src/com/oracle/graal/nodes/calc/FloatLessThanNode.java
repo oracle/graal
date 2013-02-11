@@ -58,9 +58,9 @@ public final class FloatLessThanNode extends CompareNode {
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public LogicNode canonical(CanonicalizerTool tool) {
         if (x() == y() && !unorderedIsTrue()) {
-            return ConstantNode.forBoolean(false, graph());
+            return LogicConstantNode.contradiction(graph());
         }
         return super.canonical(tool);
     }

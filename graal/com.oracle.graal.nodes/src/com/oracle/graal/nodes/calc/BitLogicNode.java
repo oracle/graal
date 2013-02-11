@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.*;
 /**
  * The {@code LogicNode} class definition.
  */
-public abstract class LogicNode extends BinaryNode {
+public abstract class BitLogicNode extends BinaryNode {
 
     /**
      * Constructs a new logic operation node.
@@ -37,12 +37,12 @@ public abstract class LogicNode extends BinaryNode {
      * @param x the first input into this node
      * @param y the second input into this node
      */
-    public LogicNode(Kind kind, ValueNode x, ValueNode y) {
+    public BitLogicNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
         assert kind == Kind.Int || kind == Kind.Long;
     }
 
-    public static LogicNode and(ValueNode v1, ValueNode v2) {
+    public static BitLogicNode and(ValueNode v1, ValueNode v2) {
         assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
         Graph graph = v1.graph();
         switch (v1.kind()) {
@@ -55,7 +55,7 @@ public abstract class LogicNode extends BinaryNode {
         }
     }
 
-    public static LogicNode or(ValueNode v1, ValueNode v2) {
+    public static BitLogicNode or(ValueNode v1, ValueNode v2) {
         assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
         Graph graph = v1.graph();
         switch (v1.kind()) {
@@ -68,7 +68,7 @@ public abstract class LogicNode extends BinaryNode {
         }
     }
 
-    public static LogicNode xor(ValueNode v1, ValueNode v2) {
+    public static BitLogicNode xor(ValueNode v1, ValueNode v2) {
         assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
         Graph graph = v1.graph();
         switch (v1.kind()) {

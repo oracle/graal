@@ -25,12 +25,11 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * An IsNullNode will be true if the supplied value is null, and false if it is non-null.
  */
-public final class IsNullNode extends BooleanNode implements Canonicalizable, LIRLowerable, Virtualizable {
+public final class IsNullNode extends LogicNode implements Canonicalizable, LIRLowerable, Virtualizable {
 
     @Input private ValueNode object;
 
@@ -44,7 +43,6 @@ public final class IsNullNode extends BooleanNode implements Canonicalizable, LI
      * @param object the instruction producing the object to check against null
      */
     public IsNullNode(ValueNode object) {
-        super(StampFactory.condition());
         assert object.kind() == Kind.Object : object;
         this.object = object;
     }
@@ -62,14 +60,14 @@ public final class IsNullNode extends BooleanNode implements Canonicalizable, LI
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public LogicNode canonical(CanonicalizerTool tool) {
         Constant constant = object().asConstant();
         if (constant != null) {
             assert constant.getKind() == Kind.Object;
-            return ConstantNode.forBoolean(constant.isNull(), graph());
+            return LogicConstantNode.forBoolean(constant.isNull(), graph());
         }
         if (object.objectStamp().nonNull()) {
-            return ConstantNode.forBoolean(false, graph());
+            return LogicConstantNode.contradiction(graph());
         }
         return this;
     }
@@ -77,7 +75,7 @@ public final class IsNullNode extends BooleanNode implements Canonicalizable, LI
     @Override
     public void virtualize(VirtualizerTool tool) {
         if (tool.getObjectState(object) != null) {
-            tool.replaceWithValue(ConstantNode.forBoolean(false, graph()));
+            tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
         }
     }
 }

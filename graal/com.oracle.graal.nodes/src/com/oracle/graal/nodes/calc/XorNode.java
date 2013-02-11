@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "^")
-public final class XorNode extends LogicNode implements Canonicalizable, LIRLowerable {
+public final class XorNode extends BitLogicNode implements Canonicalizable, LIRLowerable {
 
     public XorNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);

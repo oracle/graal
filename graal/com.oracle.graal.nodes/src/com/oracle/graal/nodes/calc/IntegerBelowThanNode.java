@@ -54,17 +54,17 @@ public final class IntegerBelowThanNode extends CompareNode {
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public LogicNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
-            return ConstantNode.forBoolean(false, graph());
+            return LogicConstantNode.contradiction(graph());
         } else {
             IntegerStamp xStamp = x().integerStamp();
             IntegerStamp yStamp = y().integerStamp();
             if (yStamp.isPositive()) {
                 if (xStamp.isPositive() && xStamp.upperBound() < yStamp.lowerBound()) {
-                    return ConstantNode.forBoolean(true, graph());
+                    return LogicConstantNode.tautology(graph());
                 } else if (xStamp.isStrictlyNegative() || xStamp.lowerBound() >= yStamp.upperBound()) {
-                    return ConstantNode.forBoolean(false, graph());
+                    return LogicConstantNode.contradiction(graph());
                 }
             }
         }

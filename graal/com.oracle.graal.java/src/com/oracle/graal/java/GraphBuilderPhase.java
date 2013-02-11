@@ -512,7 +512,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genLogicOp(Kind kind, int opcode) {
         ValueNode y = frameState.pop(kind);
         ValueNode x = frameState.pop(kind);
-        LogicNode v;
+        BitLogicNode v;
         switch (opcode) {
             case IAND:
             case LAND:

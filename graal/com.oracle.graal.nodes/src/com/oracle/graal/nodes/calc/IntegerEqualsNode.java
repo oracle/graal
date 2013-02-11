@@ -53,7 +53,7 @@ public final class IntegerEqualsNode extends CompareNode {
     }
 
     @Override
-    protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+    protected LogicNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         if (constant.getKind() == Kind.Int && constant.asInt() == 0) {
             ValueNode a = mirrored ? normalizeNode.y() : normalizeNode.x();
             ValueNode b = mirrored ? normalizeNode.x() : normalizeNode.y();
@@ -68,11 +68,11 @@ public final class IntegerEqualsNode extends CompareNode {
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public LogicNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
-            return ConstantNode.forBoolean(true, graph());
+            return LogicConstantNode.tautology(graph());
         } else if (x().integerStamp().alwaysDistinct(y().integerStamp())) {
-            return ConstantNode.forBoolean(false, graph());
+            return LogicConstantNode.contradiction(graph());
         }
 
         if (x() instanceof AndNode && y().isConstant() && y().asConstant().asLong() == 0) {

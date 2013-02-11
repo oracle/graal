@@ -27,14 +27,13 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code InstanceOfDynamicNode} represents a type check where the type being checked is not
  * known at compile time. This is used, for instance, to intrinsify {@link Class#isInstance(Object)}
  * .
  */
-public final class InstanceOfDynamicNode extends BooleanNode implements Canonicalizable, Lowerable {
+public final class InstanceOfDynamicNode extends LogicNode implements Canonicalizable, Lowerable {
 
     @Input private ValueNode object;
     @Input private ValueNode mirror;
@@ -47,7 +46,6 @@ public final class InstanceOfDynamicNode extends BooleanNode implements Canonica
      * @param object the object being tested by the instanceof
      */
     public InstanceOfDynamicNode(ValueNode mirror, ValueNode object) {
-        super(StampFactory.condition());
         this.mirror = mirror;
         this.object = object;
         assert mirror.kind() == Kind.Object;
@@ -61,7 +59,7 @@ public final class InstanceOfDynamicNode extends BooleanNode implements Canonica
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public LogicNode canonical(CanonicalizerTool tool) {
         assert object() != null : this;
         if (mirror().isConstant()) {
             Class clazz = (Class) mirror().asConstant().asObject();

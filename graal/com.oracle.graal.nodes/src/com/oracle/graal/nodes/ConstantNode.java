@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -35,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
  * reference, address, etc.
  */
 @NodeInfo(shortName = "Const", nameTemplate = "Const({p#rawvalue})")
-public class ConstantNode extends BooleanNode implements LIRLowerable {
+public class ConstantNode extends FloatingNode implements LIRLowerable {
 
     public final Constant value;
 

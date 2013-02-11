@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
-public final class InstanceOfNode extends BooleanNode implements Canonicalizable, Lowerable, Virtualizable {
+public final class InstanceOfNode extends LogicNode implements Canonicalizable, Lowerable, Virtualizable {
 
     @Input private ValueNode object;
     private final ResolvedJavaType type;
@@ -45,7 +45,6 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
      * @param object the object being tested by the instanceof
      */
     public InstanceOfNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
-        super(StampFactory.condition());
         this.type = type;
         this.object = object;
         this.profile = profile;
@@ -58,7 +57,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public LogicNode canonical(CanonicalizerTool tool) {
         assert object() != null : this;
 
         ObjectStamp stamp = object().objectStamp();
@@ -70,7 +69,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
             if (subType) {
                 if (stamp.nonNull()) {
                     // the instanceOf matches, so return true
-                    return ConstantNode.forBoolean(true, graph());
+                    return LogicConstantNode.tautology(graph());
                 } else {
                     // the instanceof matches if the object is non-null, so return true depending on
                     // the null-ness.
@@ -81,7 +80,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
                 // since this type check failed for an exact type we know that it can never succeed
                 // at run time.
                 // we also don't care about null values, since they will also make the check fail.
-                return ConstantNode.forBoolean(false, graph());
+                return LogicConstantNode.contradiction(graph());
             }
         } else if (stampType != null) {
             boolean subType = type().isAssignableFrom(stampType);
@@ -89,7 +88,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
             if (subType) {
                 if (stamp.nonNull()) {
                     // the instanceOf matches, so return true
-                    return ConstantNode.forBoolean(true, graph());
+                    return LogicConstantNode.tautology(graph());
                 } else {
                     // the instanceof matches if the object is non-null, so return true depending on
                     // the null-ness.
@@ -102,7 +101,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
             }
         }
         if (object().objectStamp().alwaysNull()) {
-            return ConstantNode.forBoolean(false, graph());
+            return LogicConstantNode.contradiction(graph());
         }
         return this;
     }
@@ -134,7 +133,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object);
         if (state != null) {
-            tool.replaceWithValue(ConstantNode.forBoolean(type().isAssignableFrom(state.getVirtualObject().type()), graph()));
+            tool.replaceWithValue(LogicConstantNode.forBoolean(type().isAssignableFrom(state.getVirtualObject().type()), graph()));
         }
     }
 }

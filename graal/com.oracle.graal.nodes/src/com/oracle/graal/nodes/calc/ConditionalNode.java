@@ -35,13 +35,13 @@ import com.oracle.graal.nodes.spi.*;
  */
 public final class ConditionalNode extends BinaryNode implements Canonicalizable, LIRLowerable, Negatable {
 
-    @Input private BooleanNode condition;
+    @Input private LogicNode condition;
 
-    public BooleanNode condition() {
+    public LogicNode condition() {
         return condition;
     }
 
-    public ConditionalNode(BooleanNode condition, ValueNode trueValue, ValueNode falseValue) {
+    public ConditionalNode(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
         super(trueValue.kind(), trueValue, falseValue);
         assert trueValue.kind() == falseValue.kind();
         this.condition = condition;
@@ -73,9 +73,9 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
                 }
             }
         }
-        if (condition instanceof ConstantNode) {
-            ConstantNode c = (ConstantNode) condition;
-            if (c.asConstant().asBoolean()) {
+        if (condition instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) condition;
+            if (c.getValue()) {
                 return trueValue();
             } else {
                 return falseValue();

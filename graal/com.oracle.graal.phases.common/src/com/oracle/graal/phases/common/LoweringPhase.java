@@ -70,7 +70,7 @@ public class LoweringPhase extends Phase {
         }
 
         @Override
-        public ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
+        public ValueNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
             return createGuard(condition, deoptReason, action, false);
         }
 
@@ -80,7 +80,7 @@ public class LoweringPhase extends Phase {
         }
 
         @Override
-        public ValueNode createGuard(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
+        public ValueNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
             if (GraalOptions.OptEliminateGuards) {
                 for (Node usage : condition.usages()) {
                     if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage)) {

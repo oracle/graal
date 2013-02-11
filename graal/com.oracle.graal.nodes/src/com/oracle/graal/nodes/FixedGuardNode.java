@@ -31,25 +31,25 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "FixedGuard(!={p#negated}) {p#reason/s}")
 public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, LIRLowerable, Node.IterableNodeType, Negatable {
 
-    @Input private BooleanNode condition;
+    @Input private LogicNode condition;
     private final DeoptimizationReason reason;
     private final DeoptimizationAction action;
     private boolean negated;
 
-    public BooleanNode condition() {
+    public LogicNode condition() {
         return condition;
     }
 
-    public void setCondition(BooleanNode x) {
+    public void setCondition(LogicNode x) {
         updateUsages(condition, x);
         condition = x;
     }
 
-    public FixedGuardNode(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
+    public FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
         this(condition, deoptReason, action, false);
     }
 
-    public FixedGuardNode(BooleanNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
+    public FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
         super(StampFactory.forVoid());
         this.action = action;
         this.negated = negated;
@@ -85,9 +85,9 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
 
     @Override
     public void simplify(SimplifierTool tool) {
-        if (condition instanceof ConstantNode) {
-            ConstantNode c = (ConstantNode) condition;
-            if (c.asConstant().asBoolean() != negated) {
+        if (condition instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) condition;
+            if (c.getValue() != negated) {
                 ((StructuredGraph) graph()).removeFixed(this);
             } else {
                 FixedNode next = this.next();

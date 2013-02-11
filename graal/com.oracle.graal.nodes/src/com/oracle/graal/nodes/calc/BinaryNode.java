@@ -175,11 +175,11 @@ public abstract class BinaryNode extends FloatingNode {
         } else if (node instanceof IntegerMulNode) {
             return IntegerArithmeticNode.mul(a, IntegerAddNode.mul(m1, m2));
         } else if (node instanceof AndNode) {
-            return LogicNode.and(a, LogicNode.and(m1, m2));
+            return BitLogicNode.and(a, BitLogicNode.and(m1, m2));
         } else if (node instanceof OrNode) {
-            return LogicNode.or(a, LogicNode.or(m1, m2));
+            return BitLogicNode.or(a, BitLogicNode.or(m1, m2));
         } else if (node instanceof XorNode) {
-            return LogicNode.xor(a, LogicNode.xor(m1, m2));
+            return BitLogicNode.xor(a, BitLogicNode.xor(m1, m2));
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }

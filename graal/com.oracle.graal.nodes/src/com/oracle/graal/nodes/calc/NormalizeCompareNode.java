@@ -51,8 +51,8 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
     public void lower(LoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) graph();
 
-        BooleanNode equalComp;
-        BooleanNode lessComp;
+        LogicNode equalComp;
+        LogicNode lessComp;
         if (x().kind() == Kind.Double || x().kind() == Kind.Float) {
             equalComp = graph.unique(new FloatEqualsNode(x(), y()));
             lessComp = graph.unique(new FloatLessThanNode(x(), y(), isUnorderedLess));

@@ -41,23 +41,23 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     @Successor private BeginNode trueSuccessor;
     @Successor private BeginNode falseSuccessor;
-    @Input private BooleanNode condition;
+    @Input private LogicNode condition;
     private double trueSuccessorProbability;
 
-    public BooleanNode condition() {
+    public LogicNode condition() {
         return condition;
     }
 
-    public void setCondition(BooleanNode x) {
+    public void setCondition(LogicNode x) {
         updateUsages(condition, x);
         condition = x;
     }
 
-    public IfNode(BooleanNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double trueSuccessorProbability) {
+    public IfNode(LogicNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double trueSuccessorProbability) {
         this(condition, BeginNode.begin(trueSuccessor), BeginNode.begin(falseSuccessor), trueSuccessorProbability);
     }
 
-    public IfNode(BooleanNode condition, BeginNode trueSuccessor, BeginNode falseSuccessor, double trueSuccessorProbability) {
+    public IfNode(LogicNode condition, BeginNode trueSuccessor, BeginNode falseSuccessor, double trueSuccessorProbability) {
         super(StampFactory.forVoid());
         this.condition = condition;
         this.falseSuccessor = falseSuccessor;
@@ -140,9 +140,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     @Override
     public void simplify(SimplifierTool tool) {
-        if (condition() instanceof ConstantNode) {
-            ConstantNode c = (ConstantNode) condition();
-            if (c.asConstant().asBoolean()) {
+        if (condition() instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) condition();
+            if (c.getValue()) {
                 tool.deleteBranch(falseSuccessor());
                 tool.addToWorkList(trueSuccessor());
                 ((StructuredGraph) graph()).removeSplit(this, trueSuccessor());
