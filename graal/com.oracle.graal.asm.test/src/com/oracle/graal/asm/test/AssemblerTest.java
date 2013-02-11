@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.amd64.test;
+package com.oracle.graal.asm.test;
 
 import java.lang.reflect.*;
 
@@ -29,19 +29,19 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.test.*;
 
-public abstract class AMD64AssemblerTest extends GraalTest {
+public abstract class AssemblerTest extends GraalTest {
 
     protected final CodeCacheProvider codeCache;
 
     public interface CodeGenTest {
 
-        void generateCode(CompilationResult compResult, AMD64MacroAssembler asm, RegisterConfig registerConfig);
+        Buffer generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig);
     }
 
-    public AMD64AssemblerTest() {
+    public AssemblerTest() {
         this.codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
     }
 
@@ -50,14 +50,11 @@ public abstract class AMD64AssemblerTest extends GraalTest {
         RegisterConfig registerConfig = codeCache.lookupRegisterConfig(method);
 
         CompilationResult compResult = new CompilationResult();
-        AMD64MacroAssembler asm = new AMD64MacroAssembler(codeCache.getTarget(), registerConfig);
 
-        test.generateCode(compResult, asm, registerConfig);
+        Buffer codeBuffer = test.generateCode(compResult, codeCache.getTarget(), registerConfig);
+        compResult.setTargetCode(codeBuffer.close(true), codeBuffer.position());
 
-        compResult.setTargetCode(asm.codeBuffer.close(true), asm.codeBuffer.position());
-        InstalledCode code = codeCache.addMethod(method, compResult, null);
-
-        return code;
+        return codeCache.addMethod(method, compResult, null);
     }
 
     protected void assertReturn(String methodName, CodeGenTest test, Object expected, Object... args) {
