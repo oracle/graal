@@ -186,7 +186,9 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
         ReturnNode returnNode = testEscapeAnalysis("testInstanceOfSnippet", null, false);
         ValueNode result = returnNode.result();
         Assert.assertTrue(result instanceof ConditionalNode);
-        Assert.assertEquals(Constant.TRUE, ((ConditionalNode) result).condition().asConstant());
+        ConditionalNode conditional = (ConditionalNode) result;
+        Assert.assertTrue(conditional.condition() instanceof LogicConstantNode);
+        Assert.assertEquals(true, ((LogicConstantNode) conditional.condition()).getValue());
     }
 
     public boolean testInstanceOfSnippet() {
