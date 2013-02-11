@@ -27,6 +27,7 @@ import static com.oracle.truffle.codegen.processor.Utils.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
+import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.ast.*;
 
 public class GenerateOverrideVisitor extends CodeElementScanner<Void, Void> {
@@ -42,6 +43,13 @@ public class GenerateOverrideVisitor extends CodeElementScanner<Void, Void> {
         if (!e.getModifiers().contains(Modifier.STATIC) && !e.getModifiers().contains(Modifier.PRIVATE)) {
             String name = e.getSimpleName().toString();
             TypeMirror[] params = e.getParameterTypes();
+
+            for (AnnotationMirror mirror : e.getAnnotationMirrors()) {
+                if (Utils.typeEquals(overrideType, mirror.getAnnotationType())) {
+                    // already declared (may happen if method copied from super class)
+                    return super.visitExecutable(e, p);
+                }
+            }
 
             if (isDeclaredMethodInSuperType(e.getEnclosingClass(), name, params)) {
                 e.addAnnotationMirror(new CodeAnnotationMirror(overrideType));
