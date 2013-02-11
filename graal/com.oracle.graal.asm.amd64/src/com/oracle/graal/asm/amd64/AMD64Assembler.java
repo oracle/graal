@@ -201,7 +201,7 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(op2 | encode(dst) << 3 | encode(src));
     }
 
-    private void emitOperandHelper(Register reg, Address addr) {
+    protected void emitOperandHelper(Register reg, Address addr) {
         Register base = isLegal(addr.getBase()) ? asRegister(addr.getBase()) : Register.None;
         Register index = isLegal(addr.getIndex()) ? asRegister(addr.getIndex()) : Register.None;
 

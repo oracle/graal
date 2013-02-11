@@ -38,7 +38,7 @@ public abstract class AssemblerTest extends GraalTest {
 
     public interface CodeGenTest {
 
-        Buffer generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig);
+        Buffer generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc);
     }
 
     public AssemblerTest() {
@@ -51,17 +51,28 @@ public abstract class AssemblerTest extends GraalTest {
 
         CompilationResult compResult = new CompilationResult();
 
-        Buffer codeBuffer = test.generateCode(compResult, codeCache.getTarget(), registerConfig);
+        Signature sig = method.getSignature();
+        JavaType retType = sig.getReturnType(null);
+        JavaType[] argTypes = new JavaType[sig.getParameterCount(false)];
+        for (int i = 0; i < argTypes.length; i++) {
+            argTypes[i] = sig.getParameterType(i, null);
+        }
+        CallingConvention cc = registerConfig.getCallingConvention(CallingConvention.Type.JavaCallee, retType, argTypes, codeCache.getTarget(), false);
+
+        Buffer codeBuffer = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);
         compResult.setTargetCode(codeBuffer.close(true), codeBuffer.position());
 
         return codeCache.addMethod(method, compResult, null);
     }
 
-    protected void assertReturn(String methodName, CodeGenTest test, Object expected, Object... args) {
+    protected Object runTest(String methodName, CodeGenTest test, Object... args) {
         Method method = getMethod(methodName);
         InstalledCode code = assembleMethod(method, test);
+        return code.executeVarargs(args);
+    }
 
-        Object actual = code.executeVarargs(args);
+    protected void assertReturn(String methodName, CodeGenTest test, Object expected, Object... args) {
+        Object actual = runTest(methodName, test, args);
         Assert.assertEquals("unexpected return value: " + actual, actual, expected);
     }
 }
