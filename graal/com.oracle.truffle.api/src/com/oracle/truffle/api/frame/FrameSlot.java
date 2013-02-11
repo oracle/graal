@@ -27,7 +27,7 @@ package com.oracle.truffle.api.frame;
  */
 public interface FrameSlot {
 
-    String getName();
+    Object getIdentifier();
 
     int getIndex();
 

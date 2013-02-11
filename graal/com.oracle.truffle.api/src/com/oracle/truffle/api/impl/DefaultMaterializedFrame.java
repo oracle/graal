@@ -25,7 +25,7 @@ package com.oracle.truffle.api.impl;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
-final class DefaultMaterializedFrame implements MaterializedFrame {
+final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
 
     private final DefaultVirtualFrame wrapped;
 
@@ -101,5 +101,25 @@ final class DefaultMaterializedFrame implements MaterializedFrame {
     @Override
     public void updateToLatestVersion() {
         wrapped.updateToLatestVersion();
+    }
+
+    @Override
+    public PackedFrame pack() {
+        return this;
+    }
+
+    @Override
+    public MaterializedFrame materialize() {
+        return this;
+    }
+
+    @Override
+    public Frame unpack() {
+        return this;
+    }
+
+    @Override
+    public FrameDescriptor getFrameDescriptor() {
+        return wrapped.getFrameDescriptor();
     }
 }

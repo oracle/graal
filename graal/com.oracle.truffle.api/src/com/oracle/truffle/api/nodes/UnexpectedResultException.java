@@ -54,8 +54,9 @@ public final class UnexpectedResultException extends SlowPathException {
     /**
      * For performance reasons, this exception does not record any stack trace information.
      */
+    @SuppressWarnings("sync-override")
     @Override
-    public synchronized Throwable fillInStackTrace() {
+    public Throwable fillInStackTrace() {
         return null;
     }
 }

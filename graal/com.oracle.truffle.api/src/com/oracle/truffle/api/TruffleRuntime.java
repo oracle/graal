@@ -58,4 +58,20 @@ public interface TruffleRuntime {
      * @return the new call target object
      */
     CallTarget createCallTarget(RootNode rootNode, FrameDescriptor frameDescriptor);
+
+    /**
+     * Creates a new materialized frame object that can be used to store values.
+     * 
+     * @return the newly created materialized frame object
+     */
+    MaterializedFrame createMaterializedFrame(Arguments arguments);
+
+    /**
+     * Creates a new materialized frame object with the given frame descriptor that can be used to
+     * store values.
+     * 
+     * @param frameDescriptor the frame descriptor describing this frame's values
+     * @return the newly created materialized frame object
+     */
+    MaterializedFrame createMaterializedFrame(Arguments arguments, FrameDescriptor frameDescriptor);
 }

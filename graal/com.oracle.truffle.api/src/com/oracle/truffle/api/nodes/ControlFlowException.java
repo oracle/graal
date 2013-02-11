@@ -39,8 +39,9 @@ public class ControlFlowException extends RuntimeException {
     /**
      * For performance reasons, this exception does not record any stack trace information.
      */
+    @SuppressWarnings("sync-override")
     @Override
-    public synchronized Throwable fillInStackTrace() {
+    public final Throwable fillInStackTrace() {
         return null;
     }
 }

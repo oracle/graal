@@ -46,4 +46,14 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     public CallTarget createCallTarget(RootNode rootNode) {
         return createCallTarget(rootNode, new FrameDescriptor());
     }
+
+    @Override
+    public MaterializedFrame createMaterializedFrame(Arguments arguments) {
+        return createMaterializedFrame(arguments, new FrameDescriptor());
+    }
+
+    @Override
+    public MaterializedFrame createMaterializedFrame(Arguments arguments, FrameDescriptor frameDescriptor) {
+        return new DefaultMaterializedFrame(new DefaultVirtualFrame(frameDescriptor, null, arguments));
+    }
 }
