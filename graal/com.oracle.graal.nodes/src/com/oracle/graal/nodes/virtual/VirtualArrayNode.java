@@ -132,4 +132,9 @@ public class VirtualArrayNode extends VirtualObjectNode {
         assert index >= 0 && index < length;
         return componentType.getKind();
     }
+
+    @Override
+    public VirtualArrayNode duplicate() {
+        return new VirtualArrayNode(componentType, length);
+    }
 }

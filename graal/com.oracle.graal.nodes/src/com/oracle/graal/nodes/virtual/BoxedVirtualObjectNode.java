@@ -70,4 +70,9 @@ public class BoxedVirtualObjectNode extends VirtualObjectNode implements LIRLowe
     public Kind entryKind(int index) {
         return kind;
     }
+
+    @Override
+    public BoxedVirtualObjectNode duplicate() {
+        return new BoxedVirtualObjectNode(type, kind, unboxedValue);
+    }
 }

@@ -107,7 +107,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
                 for (int i = 0; i < newEntryState.length; i++) {
                     newEntryState[i] = originalState.getEntry(i);
                 }
-                VirtualObjectNode newVirtual = (VirtualObjectNode) originalVirtual.copyWithInputs();
+                VirtualObjectNode newVirtual = originalVirtual.duplicate();
                 tool.createVirtualObject(newVirtual, newEntryState, 0);
                 tool.replaceWithVirtual(newVirtual);
             }
