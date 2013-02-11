@@ -197,7 +197,7 @@ public final class GraalOptions {
     public static boolean OptDevirtualizeInvokesOptimistically = true;
 
     // Intrinsification settings
-    public static boolean IntrinsifyObjectClone              = true;
+    public static boolean IntrinsifyObjectClone              = ____;
     public static boolean IntrinsifyArrayCopy                = true;
     public static boolean IntrinsifyObjectMethods            = true;
     public static boolean IntrinsifySystemMethods            = true;
