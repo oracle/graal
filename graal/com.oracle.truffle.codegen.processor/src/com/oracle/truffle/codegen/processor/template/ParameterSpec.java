@@ -66,7 +66,7 @@ public class ParameterSpec {
     }
 
     private static TypeMirror[] nodeTypeMirrors(NodeData nodeData) {
-        List<TypeMirror> typeMirrors = new ArrayList<>();
+        Set<TypeMirror> typeMirrors = new LinkedHashSet<>();
 
         for (ExecutableTypeData typeData : nodeData.getExecutableTypes()) {
             typeMirrors.add(typeData.getType().getPrimitiveType());
