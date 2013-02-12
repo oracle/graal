@@ -227,7 +227,7 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
         public void replace(ValueNode oldNode, ValueNode newNode) {
             assert newNode instanceof PhiNode;
             assert oldNode == instanceOf;
-            if (sameBlock && solitaryUsage) {
+            if (sameBlock && solitaryUsage && instantiation.result != null && instantiation.result.merge().next() == usage) {
                 removeIntermediateMaterialization(newNode);
             } else {
                 newNode.inferStamp();
