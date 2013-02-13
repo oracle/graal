@@ -29,54 +29,49 @@ import com.oracle.graal.nodes.cfg.*;
 
 public final class ReentrantBlockIterator {
 
-    public abstract static class MergeableBlockState<T> {
+    public static class LoopInfo<StateT> {
 
-        public abstract T cloneState();
+        public final List<StateT> endStates = new ArrayList<>();
+        public final List<StateT> exitStates = new ArrayList<>();
     }
 
-    public static class LoopInfo<T extends MergeableBlockState<T>> {
+    public abstract static class BlockIteratorClosure<StateT> {
 
-        public final List<T> endStates = new ArrayList<>();
-        public final List<T> exitStates = new ArrayList<>();
-    }
+        protected abstract void processBlock(Block block, StateT currentState);
 
-    public abstract static class BlockIteratorClosure<T extends MergeableBlockState<T>> {
+        protected abstract StateT merge(MergeNode merge, List<StateT> states);
 
-        protected abstract void processBlock(Block block, T currentState);
+        protected abstract StateT afterSplit(FixedNode node, StateT oldState);
 
-        protected abstract T merge(MergeNode merge, List<T> states);
-
-        protected abstract T afterSplit(FixedNode node, T oldState);
-
-        protected abstract List<T> processLoop(Loop loop, T initialState);
+        protected abstract List<StateT> processLoop(Loop loop, StateT initialState);
     }
 
     private ReentrantBlockIterator() {
         // no instances allowed
     }
 
-    public static <T extends MergeableBlockState<T>> LoopInfo<T> processLoop(BlockIteratorClosure<T> closure, Loop loop, T initialState) {
-        IdentityHashMap<FixedNode, T> blockEndStates = apply(closure, loop.header, initialState, new HashSet<>(loop.blocks));
+    public static <StateT> LoopInfo<StateT> processLoop(BlockIteratorClosure<StateT> closure, Loop loop, StateT initialState) {
+        IdentityHashMap<FixedNode, StateT> blockEndStates = apply(closure, loop.header, initialState, new HashSet<>(loop.blocks));
 
-        LoopInfo<T> info = new LoopInfo<>();
+        LoopInfo<StateT> info = new LoopInfo<>();
         List<Block> predecessors = loop.header.getPredecessors();
         for (int i = 1; i < predecessors.size(); i++) {
             info.endStates.add(blockEndStates.get(predecessors.get(i).getEndNode()));
         }
         for (Block loopExit : loop.exits) {
             assert loopExit.getPredecessorCount() == 1;
-            T exitState = blockEndStates.get(loopExit.getFirstPredecessor().getEndNode());
+            StateT exitState = blockEndStates.get(loopExit.getFirstPredecessor().getEndNode());
             assert exitState != null;
             info.exitStates.add(exitState);
         }
         return info;
     }
 
-    public static <T extends MergeableBlockState<T>> IdentityHashMap<FixedNode, T> apply(BlockIteratorClosure<T> closure, Block start, T initialState, Set<Block> boundary) {
+    public static <StateT> IdentityHashMap<FixedNode, StateT> apply(BlockIteratorClosure<StateT> closure, Block start, StateT initialState, Set<Block> boundary) {
         Deque<Block> blockQueue = new ArrayDeque<>();
-        IdentityHashMap<FixedNode, T> blockEndStates = new IdentityHashMap<>();
+        IdentityHashMap<FixedNode, StateT> blockEndStates = new IdentityHashMap<>();
 
-        T state = initialState;
+        StateT state = initialState;
         Block current = start;
 
         do {
@@ -98,7 +93,7 @@ public final class ReentrantBlockIterator {
                             LoopBeginNode loopBegin = loop.loopBegin();
                             assert successor.getBeginNode() == loopBegin;
 
-                            List<T> exitStates = closure.processLoop(loop, state);
+                            List<StateT> exitStates = closure.processLoop(loop, state);
 
                             int i = 0;
                             assert loop.exits.size() == exitStates.size();
@@ -157,9 +152,9 @@ public final class ReentrantBlockIterator {
                     current = blockQueue.removeFirst();
                     if (current.getPredecessors().size() > 1) {
                         MergeNode merge = (MergeNode) current.getBeginNode();
-                        ArrayList<T> states = new ArrayList<>(merge.forwardEndCount());
+                        ArrayList<StateT> states = new ArrayList<>(merge.forwardEndCount());
                         for (int i = 0; i < merge.forwardEndCount(); i++) {
-                            T other = blockEndStates.get(merge.forwardEndAt(i));
+                            StateT other = blockEndStates.get(merge.forwardEndAt(i));
                             assert other != null;
                             states.add(other);
                         }
