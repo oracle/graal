@@ -59,6 +59,7 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -74,7 +75,7 @@ import com.oracle.graal.word.*;
 /**
  * HotSpot implementation of {@link GraalCodeCacheProvider}.
  */
-public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetProvider {
+public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetProvider, DisassemblerProvider, BytecodeDisassemblerProvider {
 
     public final HotSpotVMConfig config;
 
@@ -950,5 +951,17 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
     @Override
     public TargetDescription getTarget() {
         return graalRuntime.getTarget();
+    }
+
+    public String disassemble(InstalledCode code) {
+        if (code.isValid()) {
+            long nmethod = ((HotSpotInstalledCode) code).nmethod;
+            return graalRuntime.getCompilerToVM().disassembleNMethod(nmethod);
+        }
+        return "";
+    }
+
+    public String disassemble(ResolvedJavaMethod method) {
+        return new BytecodeDisassembler().disassemble(method);
     }
 }

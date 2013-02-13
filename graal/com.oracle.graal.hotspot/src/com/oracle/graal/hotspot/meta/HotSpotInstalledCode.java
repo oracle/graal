@@ -38,7 +38,7 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     private static final long serialVersionUID = 156632908220561612L;
 
     private final HotSpotResolvedJavaMethod method;
-    private long nmethod;
+    long nmethod;
 
     public HotSpotInstalledCode(HotSpotResolvedJavaMethod method) {
         this.method = method;
