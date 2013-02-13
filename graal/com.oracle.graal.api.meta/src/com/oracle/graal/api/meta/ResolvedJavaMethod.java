@@ -170,4 +170,10 @@ public interface ResolvedJavaMethod extends JavaMethod {
      * Returns the LineNumberTable of this method.
      */
     LineNumberTable getLineNumberTable();
+
+    /**
+     * Returns the localvariable table of this method.
+     */
+    LocalVariableTable getLocalVariableTable();
+
 }

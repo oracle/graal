@@ -308,6 +308,12 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return new LineNumberTableImpl(line, bci);
     }
 
+    @Override
+    public LocalVariableTable getLocalVariableTable() {
+        Local[] locals = HotSpotGraalRuntime.getInstance().getCompilerToVM().getLocalVariableTable(this);
+        return new LocalVariableTableImpl(locals);
+    }
+
     /**
      * Returns the offset of this method into the v-table. If the holder is not initialized, returns
      * -1

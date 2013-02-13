@@ -40,6 +40,7 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
@@ -606,6 +607,11 @@ public class VMToCompilerImpl implements VMToCompiler {
     @Override
     public Constant createConstantObject(Object object) {
         return Constant.forObject(object);
+    }
+
+    @Override
+    public LocalImpl createLocalImpl(String name, String type, HotSpotResolvedObjectType holder, int bciStart, int bciEnd, int slot) {
+        return new LocalImpl(name, type, holder, bciStart, bciEnd, slot);
     }
 
     public PhasePlan createPhasePlan(OptimisticOptimizations optimisticOpts, boolean onStackReplacement) {
