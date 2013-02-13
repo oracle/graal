@@ -41,6 +41,11 @@ public final class MonitorExitNode extends AccessMonitorNode implements Lowerabl
         super(object);
     }
 
+    @Override
+    public Object getLocationIdentity() {
+        return LocationNode.ANY_LOCATION;
+    }
+
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }

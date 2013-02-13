@@ -50,11 +50,6 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGe
         this.newValue = newValue;
     }
 
-    @Override
-    public void generate(LIRGenerator gen) {
-        ((HotSpotLIRGenerator) gen).visitDirectCompareAndSwap(this);
-    }
-
     public ValueNode object() {
         return object;
     }
@@ -69,6 +64,16 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGe
 
     public ValueNode newValue() {
         return newValue;
+    }
+
+    @Override
+    public Object getLocationIdentity() {
+        return LocationNode.ANY_LOCATION;
+    }
+
+    @Override
+    public void generate(LIRGenerator gen) {
+        ((HotSpotLIRGenerator) gen).visitDirectCompareAndSwap(this);
     }
 
     /**
