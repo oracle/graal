@@ -43,7 +43,7 @@ import com.oracle.graal.phases.common.*;
 
 public class OnStackReplacementPhase extends Phase {
 
-    public static final Descriptor OSR_MIGRATION_END = new Descriptor("OSR_migration_end", true, null, void.class, long.class);
+    public static final Descriptor OSR_MIGRATION_END = new Descriptor("OSR_migration_end", true, void.class, long.class);
 
     public class OSREntryProxyNode extends FloatingNode implements LIRLowerable {
 
