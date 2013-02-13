@@ -40,7 +40,7 @@ programs with the -XX:-BootstrapGraal options. For example:
 Other Build Configurations
 --------------------------
 
-By default the build commands above create a HotSpot binary where the Graal
+By default the build commands above create a HotSpot binary where Graal
 is the only compiler. This binary is the Graal VM binary and identifies as
 such with the -version option:
 
