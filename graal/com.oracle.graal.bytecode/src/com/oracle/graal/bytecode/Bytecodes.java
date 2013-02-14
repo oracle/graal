@@ -226,7 +226,7 @@ public class Bytecodes {
     public static final int INVOKESPECIAL        = 183; // 0xB7
     public static final int INVOKESTATIC         = 184; // 0xB8
     public static final int INVOKEINTERFACE      = 185; // 0xB9
-    public static final int XXXUNUSEDXXX         = 186; // 0xBA
+    public static final int INVOKEDYNAMIC        = 186; // 0xBA
     public static final int NEW                  = 187; // 0xBB
     public static final int NEWARRAY             = 188; // 0xBC
     public static final int ANEWARRAY            = 189; // 0xBD
@@ -552,7 +552,7 @@ public class Bytecodes {
         def(INVOKESPECIAL       , "invokespecial"   , "bjj"  , 5, TRAP | INVOKE);
         def(INVOKESTATIC        , "invokestatic"    , "bjj"  , 5, TRAP | INVOKE);
         def(INVOKEINTERFACE     , "invokeinterface" , "bjja_", 7, TRAP | INVOKE);
-        def(XXXUNUSEDXXX        , "xxxunusedxxx"    , ""     , 0);
+        def(INVOKEDYNAMIC       , "invokedynamic"   , "bjjjj", 7, TRAP | INVOKE);
         def(NEW                 , "new"             , "bii"  , 6, TRAP);
         def(NEWARRAY            , "newarray"        , "bc"   , 6, TRAP);
         def(ANEWARRAY           , "anewarray"       , "bii"  , 6, TRAP);

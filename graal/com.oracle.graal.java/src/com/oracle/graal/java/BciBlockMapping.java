@@ -345,7 +345,8 @@ public final class BciBlockMapping {
                 case INVOKEINTERFACE:
                 case INVOKESPECIAL:
                 case INVOKESTATIC:
-                case INVOKEVIRTUAL: {
+                case INVOKEVIRTUAL:
+                case INVOKEDYNAMIC: {
                     current = null;
                     addSuccessor(bci, makeBlock(stream.nextBCI()));
                     ExceptionDispatchBlock handler = handleExceptions(bci);
