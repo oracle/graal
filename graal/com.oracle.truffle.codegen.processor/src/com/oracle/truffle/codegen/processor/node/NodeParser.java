@@ -435,9 +435,9 @@ public class NodeParser extends TemplateParser<NodeData> {
                 // TODO redirect errors from resolve.
                 context.getLog().error(errorElement, "Node type '%s' is invalid.", Utils.getQualifiedName(nodeType));
                 return null;
-            } else if (fieldNodeData.findGenericExecutableType(context) == null) {
+            } else if (fieldNodeData.findGenericExecutableTypes(context).isEmpty()) {
                 // TODO better error handling for (no or multiple?)
-                context.getLog().error(errorElement, "No or multiple executable generic types found for node '%s'.", Utils.getQualifiedName(nodeType));
+                context.getLog().error(errorElement, "No executable generic types found for node '%s'.", Utils.getQualifiedName(nodeType));
                 return null;
             }
         }
@@ -612,13 +612,21 @@ public class NodeParser extends TemplateParser<NodeData> {
         return valid;
     }
 
-    private static boolean isGenericShortCutMethod(NodeData node, TemplateMethod method) {
+    private boolean isGenericShortCutMethod(NodeData node, TemplateMethod method) {
         for (NodeFieldData field : node.getFields()) {
             ActualParameter parameter = method.findParameter(field.getName());
             if (parameter == null) {
                 continue;
             }
-            if (!Utils.typeEquals(node.getTypeSystem().getGenericType(), parameter.getActualType())) {
+            ExecutableTypeData found = null;
+            List<ExecutableTypeData> executableElements = field.getNodeData().findGenericExecutableTypes(context);
+            for (ExecutableTypeData executable : executableElements) {
+                if (executable.getType().equalsType(parameter.getActualTypeData(node.getTypeSystem()))) {
+                    found = executable;
+                    break;
+                }
+            }
+            if (found == null) {
                 return false;
             }
         }

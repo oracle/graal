@@ -747,7 +747,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
         private void buildGenericValueExecute(CodeTreeBuilder builder, SpecializationData specialization, NodeFieldData field, NodeFieldData exceptionSpec) {
             ActualParameter specParameter = specialization.findParameter(field.getName());
-
+            NodeData node = specialization.getNode();
             boolean shortCircuit = startShortCircuit(builder, specialization, field, exceptionSpec);
 
             builder.startStatement();
@@ -758,7 +758,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             builder.string(valueName(specialization, specParameter));
             builder.string(" = ");
-            ExecutableTypeData genericExecutableType = field.getNodeData().findGenericExecutableType(getContext());
+            ExecutableTypeData genericExecutableType = field.getNodeData().findGenericExecutableType(getContext(), specParameter.getActualTypeData(node.getTypeSystem()));
             if (genericExecutableType == null) {
                 throw new AssertionError("Must have generic executable type. Parser validation most likely failed. " + Arrays.toString(field.getNodeData().getExecutableTypes()));
             }

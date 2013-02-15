@@ -126,34 +126,17 @@ public class NodeData extends Template {
         return executableTypes;
     }
 
-    public ExecutableTypeData findGenericExecutableType(ProcessorContext context) {
+    public ExecutableTypeData findGenericExecutableType(ProcessorContext context, TypeData type) {
         List<ExecutableTypeData> types = findGenericExecutableTypes(context);
-        if (types.isEmpty()) {
-            return null;
-        } else if (types.size() == 1) {
-            return types.get(0);
-        } else if (types.size() == 2) {
-            if (types.get(0).getType().isVoid()) {
-                return types.get(1);
-            } else if (types.get(1).getType().isVoid()) {
-                return types.get(0);
+        for (ExecutableTypeData availableType : types) {
+            if (Utils.typeEquals(availableType.getType().getBoxedType(), type.getBoxedType())) {
+                return availableType;
             }
         }
-
-        ExecutableTypeData execType = null;
-        for (ExecutableTypeData type : types) {
-            TypeData returnType = type.getReturnType().getActualTypeData(getTypeSystem());
-            if (returnType.isGeneric()) {
-                if (execType != null) {
-                    return null;
-                }
-                execType = type;
-            }
-        }
-        return execType;
+        return null;
     }
 
-    private List<ExecutableTypeData> findGenericExecutableTypes(ProcessorContext context) {
+    public List<ExecutableTypeData> findGenericExecutableTypes(ProcessorContext context) {
         List<ExecutableTypeData> types = new ArrayList<>();
         for (ExecutableTypeData type : executableTypes) {
             if (!type.hasUnexpectedValue(context)) {

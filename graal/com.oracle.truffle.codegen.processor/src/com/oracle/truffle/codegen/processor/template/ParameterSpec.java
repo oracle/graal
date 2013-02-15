@@ -38,12 +38,10 @@ public class ParameterSpec {
 
     private final String name;
     private final TypeMirror[] allowedTypes;
-    private final TypeMirror valueType;
     private final boolean optional;
     private final Cardinality cardinality;
 
-    public ParameterSpec(String name, TypeMirror[] allowedTypes, TypeMirror valueType, boolean optional, Cardinality cardinality) {
-        this.valueType = valueType;
+    public ParameterSpec(String name, TypeMirror[] allowedTypes, boolean optional, Cardinality cardinality) {
         this.allowedTypes = allowedTypes;
         this.name = name;
         this.optional = optional;
@@ -52,17 +50,17 @@ public class ParameterSpec {
 
     /** Type constructor. */
     public ParameterSpec(String name, TypeMirror singleFixedType, boolean optional) {
-        this(name, new TypeMirror[]{singleFixedType}, singleFixedType, optional, Cardinality.ONE);
+        this(name, new TypeMirror[]{singleFixedType}, optional, Cardinality.ONE);
     }
 
     /** Type system value constructor. */
     public ParameterSpec(String name, TypeSystemData typeSystem, boolean optional, Cardinality cardinality) {
-        this(name, typeSystem.getPrimitiveTypeMirrors(), typeSystem.getGenericType(), optional, cardinality);
+        this(name, typeSystem.getPrimitiveTypeMirrors(), optional, cardinality);
     }
 
     /** Node value constructor. */
     public ParameterSpec(String name, NodeData nodeData, boolean optional, Cardinality cardinality) {
-        this(name, nodeTypeMirrors(nodeData), nodeData.getTypeSystem().getGenericType(), optional, cardinality);
+        this(name, nodeTypeMirrors(nodeData), optional, cardinality);
     }
 
     private static TypeMirror[] nodeTypeMirrors(NodeData nodeData) {
@@ -103,7 +101,4 @@ public class ParameterSpec {
         return false;
     }
 
-    public TypeMirror getValueType() {
-        return valueType;
-    }
 }

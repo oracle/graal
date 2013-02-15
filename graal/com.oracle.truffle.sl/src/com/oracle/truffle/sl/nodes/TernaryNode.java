@@ -28,7 +28,7 @@ import com.oracle.truffle.api.codegen.*;
 
 @SuppressWarnings("unused")
 @ExecuteChildren({"conditionNode", "ifPartNode", "elsePartNode"})
-public abstract class ConditionalNode extends TypedNode {
+public abstract class TernaryNode extends TypedNode {
 
     @Child protected ConditionNode conditionNode;
 
@@ -36,13 +36,13 @@ public abstract class ConditionalNode extends TypedNode {
 
     @Child protected TypedNode elsePartNode;
 
-    public ConditionalNode(ConditionNode condition, TypedNode ifPart, TypedNode elsePart) {
+    public TernaryNode(ConditionNode condition, TypedNode ifPart, TypedNode elsePart) {
         this.conditionNode = adoptChild(condition);
         this.ifPartNode = adoptChild(ifPart);
         this.elsePartNode = adoptChild(elsePart);
     }
 
-    public ConditionalNode(ConditionalNode condition) {
+    public TernaryNode(TernaryNode condition) {
         this(condition.conditionNode, condition.ifPartNode, condition.elsePartNode);
     }
 
@@ -51,23 +51,8 @@ public abstract class ConditionalNode extends TypedNode {
         return condition;
     }
 
-    @ShortCircuit("ifPartNode")
-    public boolean needsIfPart(Object condition) {
-        throw new RuntimeException("operation not defined for type " + condition.getClass().getSimpleName());
-    }
-
     @ShortCircuit("elsePartNode")
-    public boolean needsElsePart(Object condition, boolean hasIfPart, Object ifPart) {
-        return !hasIfPart;
-    }
-
-    @ShortCircuit("elsePartNode")
-    public boolean needsElsePart(boolean condition, boolean hasIfPart, int ifPart) {
-        return !hasIfPart;
-    }
-
-    @ShortCircuit("elsePartNode")
-    public boolean needsElsePart(boolean condition, boolean hasIfPart, BigInteger ifPart) {
+    public boolean needsElsePart(boolean condition, boolean hasIfPart, Object ifPart) {
         return !hasIfPart;
     }
 

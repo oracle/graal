@@ -23,12 +23,15 @@
 package com.oracle.truffle.codegen.processor.node;
 
 import java.lang.annotation.*;
+import java.util.*;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
+import com.oracle.truffle.codegen.processor.template.ParameterSpec.*;
 
 public class GenericParser extends MethodParser<SpecializationData> {
 
@@ -43,7 +46,13 @@ public class GenericParser extends MethodParser<SpecializationData> {
 
     @Override
     protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData) {
-        return new ParameterSpec(valueName, nodeData.findGenericExecutableType(getContext()).getType().getPrimitiveType(), false);
+        List<ExecutableTypeData> execTypes = nodeData.findGenericExecutableTypes(getContext());
+        List<TypeMirror> types = new ArrayList<>();
+        for (ExecutableTypeData type : execTypes) {
+            types.add(type.getType().getPrimitiveType());
+        }
+        TypeMirror[] array = types.toArray(new TypeMirror[types.size()]);
+        return new ParameterSpec(valueName, array, nodeData.getTypeSystem().getGenericType(), false, Cardinality.ONE);
     }
 
     @Override
