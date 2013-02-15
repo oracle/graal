@@ -44,7 +44,6 @@ public class GuardParser extends TemplateMethodParser<Template, GuardData> {
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         List<ParameterSpec> specs = new ArrayList<>();
-        specs.add(new ParameterSpec("value1", typeSystem, false, Cardinality.ONE));
         specs.add(new ParameterSpec("valueN", typeSystem, false, Cardinality.MULTIPLE));
         ParameterSpec returnTypeSpec = new ParameterSpec("returnType", getContext().getType(boolean.class), false);
         return new MethodSpec(returnTypeSpec, specs);
