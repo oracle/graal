@@ -52,7 +52,7 @@ public class GenericParser extends MethodParser<SpecializationData> {
             types.add(type.getType().getPrimitiveType());
         }
         TypeMirror[] array = types.toArray(new TypeMirror[types.size()]);
-        return new ParameterSpec(valueName, array, nodeData.getTypeSystem().getGenericType(), false, Cardinality.ONE);
+        return new ParameterSpec(valueName, array, false, Cardinality.ONE);
     }
 
     @Override

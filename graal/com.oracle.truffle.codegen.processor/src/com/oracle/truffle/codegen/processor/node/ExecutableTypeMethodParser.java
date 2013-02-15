@@ -47,7 +47,7 @@ public class ExecutableTypeMethodParser extends MethodParser<ExecutableTypeData>
         types.addAll(Arrays.asList(getNode().getTypeSystem().getPrimitiveTypeMirrors()));
         types.add(getContext().getType(void.class));
 
-        ParameterSpec returnTypeSpec = new ParameterSpec("executedValue", types.toArray(new TypeMirror[types.size()]), getNode().getTypeSystem().getGenericType(), false, Cardinality.ONE);
+        ParameterSpec returnTypeSpec = new ParameterSpec("executedValue", types.toArray(new TypeMirror[types.size()]), false, Cardinality.ONE);
 
         List<ParameterSpec> parameters = new ArrayList<>();
         parameters.add(new ParameterSpec("frame", getContext().getTruffleTypes().getFrame(), true));
