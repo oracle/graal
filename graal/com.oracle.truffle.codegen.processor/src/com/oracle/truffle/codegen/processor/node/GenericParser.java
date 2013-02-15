@@ -45,7 +45,7 @@ public class GenericParser extends MethodParser<SpecializationData> {
     }
 
     @Override
-    protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData) {
+    protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData, boolean optional) {
         List<ExecutableTypeData> execTypes = nodeData.findGenericExecutableTypes(getContext());
         List<TypeMirror> types = new ArrayList<>();
         for (ExecutableTypeData type : execTypes) {
@@ -57,7 +57,7 @@ public class GenericParser extends MethodParser<SpecializationData> {
 
     @Override
     protected ParameterSpec createReturnParameterSpec() {
-        return super.createValueParameterSpec("returnValue", getNode());
+        return super.createValueParameterSpec("returnValue", getNode(), false);
     }
 
     @Override

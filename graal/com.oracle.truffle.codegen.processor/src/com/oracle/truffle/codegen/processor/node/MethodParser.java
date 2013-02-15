@@ -41,12 +41,12 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
         return template;
     }
 
-    protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData) {
-        return new ParameterSpec(valueName, nodeData, false, Cardinality.ONE);
+    protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData, boolean optional) {
+        return new ParameterSpec(valueName, nodeData, optional, Cardinality.ONE);
     }
 
     protected ParameterSpec createReturnParameterSpec() {
-        return createValueParameterSpec("operation", getNode());
+        return createValueParameterSpec("operation", getNode(), false);
     }
 
     @Override
@@ -65,7 +65,7 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
             }
 
             if (field.getExecutionKind() == ExecutionKind.DEFAULT) {
-                defaultParameters.add(createValueParameterSpec(field.getName(), field.getNodeData()));
+                defaultParameters.add(createValueParameterSpec(field.getName(), field.getNodeData(), false));
             } else if (field.getExecutionKind() == ExecutionKind.SHORT_CIRCUIT) {
                 String valueName = field.getName();
                 if (shortCircuitName != null && valueName.equals(shortCircuitName)) {
@@ -73,8 +73,7 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
                 }
 
                 defaultParameters.add(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class), false));
-
-                defaultParameters.add(createValueParameterSpec(valueName, field.getNodeData()));
+                defaultParameters.add(createValueParameterSpec(valueName, field.getNodeData(), false));
             } else {
                 assert false;
             }

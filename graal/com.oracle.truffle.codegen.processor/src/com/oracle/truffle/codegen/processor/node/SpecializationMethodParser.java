@@ -47,10 +47,6 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
         return specification;
     }
 
-    public MethodSpec getSpecification() {
-        return specification;
-    }
-
     @Override
     public SpecializationData create(TemplateMethod method) {
         return parseSpecialization(method);
