@@ -317,7 +317,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public void flog(Register dest, Register value, boolean base10) {
-        assert value.spillSlotSize == dest.spillSlotSize;
+        assert dest.isFpu() && value.isFpu();
 
         Address tmp = new Address(Kind.Double, AMD64.RSP);
         if (base10) {
@@ -325,13 +325,13 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         } else {
             fldln2();
         }
-        subq(AMD64.rsp, value.spillSlotSize);
+        subq(AMD64.rsp, 8);
         movsd(tmp, value);
         fld(tmp);
         fyl2x();
         fstp(tmp);
         movsd(dest, tmp);
-        addq(AMD64.rsp, dest.spillSlotSize);
+        addq(AMD64.rsp, 8);
     }
 
     public void fsin(Register dest, Register value) {
@@ -347,10 +347,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     private void ftrig(Register dest, Register value, char op) {
-        assert value.spillSlotSize == dest.spillSlotSize;
+        assert dest.isFpu() && value.isFpu();
 
         Address tmp = new Address(Kind.Double, AMD64.RSP);
-        subq(AMD64.rsp, value.spillSlotSize);
+        subq(AMD64.rsp, 8);
         movsd(tmp, value);
         fld(tmp);
         if (op == 's') {
@@ -365,7 +365,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
         fstp(tmp);
         movsd(dest, tmp);
-        addq(AMD64.rsp, dest.spillSlotSize);
+        addq(AMD64.rsp, 8);
     }
 
     /**
