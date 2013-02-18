@@ -48,17 +48,9 @@ public abstract class AssemblerTest extends GraalTest {
     protected InstalledCode assembleMethod(Method m, CodeGenTest test) {
         ResolvedJavaMethod method = codeCache.lookupJavaMethod(m);
         RegisterConfig registerConfig = codeCache.lookupRegisterConfig(method);
+        CallingConvention cc = CodeUtil.getCallingConvention(codeCache, CallingConvention.Type.JavaCallee, method, false);
 
         CompilationResult compResult = new CompilationResult();
-
-        Signature sig = method.getSignature();
-        JavaType retType = sig.getReturnType(null);
-        JavaType[] argTypes = new JavaType[sig.getParameterCount(false)];
-        for (int i = 0; i < argTypes.length; i++) {
-            argTypes[i] = sig.getParameterType(i, null);
-        }
-        CallingConvention cc = registerConfig.getCallingConvention(CallingConvention.Type.JavaCallee, retType, argTypes, codeCache.getTarget(), false);
-
         Buffer codeBuffer = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);
         compResult.setTargetCode(codeBuffer.close(true), codeBuffer.position());
 
