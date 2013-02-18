@@ -186,18 +186,20 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         TypeSystemData typeSystem = specialization.getNode().getTypeSystem();
         // Implict guards based on method signature
         String andOperator = prefix;
-        for (NodeFieldData field : specialization.getNode().getFields()) {
-            ActualParameter param = specialization.findParameter(field.getName());
-            TypeData type = param.getActualTypeData(typeSystem);
-            if (type == null || type.isGeneric()) {
-                continue;
-            }
+        if (needsCast) {
+            for (NodeFieldData field : specialization.getNode().getFields()) {
+                ActualParameter param = specialization.findParameter(field.getName());
+                TypeData type = param.getActualTypeData(typeSystem);
+                if (type == null || type.isGeneric()) {
+                    continue;
+                }
 
-            body.string(andOperator);
-            startCallTypeSystemMethod(context, body, specialization.getNode(), TypeSystemCodeGenerator.isTypeMethodName(type));
-            body.string(valueName(specialization, param));
-            body.end().end(); // call
-            andOperator = " && ";
+                body.string(andOperator);
+                startCallTypeSystemMethod(context, body, specialization.getNode(), TypeSystemCodeGenerator.isTypeMethodName(type));
+                body.string(valueName(specialization, param));
+                body.end().end(); // call
+                andOperator = " && ";
+            }
         }
 
         if (specialization.getGuards().length > 0) {
