@@ -106,6 +106,27 @@ public abstract class Buffer {
         position = emitLong(b, position);
     }
 
+    private static final String NEWLINE = System.getProperty("line.separator");
+
+    public void emitString(String s) {
+        position = emitString("\t", position);  // XXX REMOVE ME pretty-printing
+        position = emitString(s, position);
+        position = emitString(NEWLINE, position);
+    }
+
+    // XXX for pretty-printing
+    public void emitString0(String s) {
+        emitBytes(s.getBytes(), 0, s.length());
+    }
+
+    public int emitBytes(byte[] arr, int pos) {
+        final int len = arr.length;
+        final int newPos = pos + len;
+        ensureSize(newPos);
+        System.arraycopy(arr, 0, data, pos, len);
+        return newPos;
+    }
+
     public int emitByte(int b, int pos) {
         assert NumUtil.isUByte(b);
         int newPos = pos + 1;
@@ -119,6 +140,10 @@ public abstract class Buffer {
     public abstract int emitInt(int b, int pos);
 
     public abstract int emitLong(long b, int pos);
+
+    public int emitString(String s, int pos) {
+        return emitBytes(s.getBytes(), pos);
+    }
 
     public int getByte(int pos) {
         return data[pos] & 0xff;

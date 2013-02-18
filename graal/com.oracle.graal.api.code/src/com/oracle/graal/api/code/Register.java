@@ -65,6 +65,13 @@ public final class Register implements Comparable<Register>, Serializable {
     public final int encoding;
 
     /**
+     * The assembler calls this method to get the register's encoding.
+     */
+    public final int encoding() {
+        return encoding;
+    }
+
+    /**
      * The size of the stack slot used to spill the value of this register.
      */
     public final int spillSlotSize;

@@ -44,7 +44,7 @@ public abstract class AbstractAssembler {
         }
     }
 
-    public final void bind(Label l) {
+    public void bind(Label l) {
         assert !l.isBound() : "can bind label only once";
         l.bind(codeBuffer.position());
         l.patchInstructions(this);
@@ -78,5 +78,17 @@ public abstract class AbstractAssembler {
 
     protected final void emitLong(long x) {
         codeBuffer.emitLong(x);
+    }
+
+    /**
+     * Some GPU architectures have a text based encoding.
+     */
+    protected final void emitString(String x) {
+        codeBuffer.emitString(x);
+    }
+    
+    // XXX for pretty-printing
+    protected final void emitString0(String x) {
+        codeBuffer.emitString0(x);
     }
 }
