@@ -52,6 +52,10 @@ public class NodeFieldData {
         this.executionKind = executionKind;
     }
 
+    public boolean isShortCircuit() {
+        return executionKind == ExecutionKind.SHORT_CIRCUIT;
+    }
+
     public VariableElement getFieldElement() {
         return fieldElement;
     }
