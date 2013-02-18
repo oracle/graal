@@ -73,6 +73,6 @@ public abstract class AssemblerTest extends GraalTest {
 
     protected void assertReturn(String methodName, CodeGenTest test, Object expected, Object... args) {
         Object actual = runTest(methodName, test, args);
-        Assert.assertEquals("unexpected return value: " + actual, actual, expected);
+        Assert.assertEquals("unexpected return value", expected, actual);
     }
 }
