@@ -59,6 +59,7 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
         }
     }
 
+    /* Support JDK8 langtools. */
     public boolean isDefault() {
         return false;
     }

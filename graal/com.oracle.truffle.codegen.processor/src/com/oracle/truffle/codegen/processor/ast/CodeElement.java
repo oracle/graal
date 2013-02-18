@@ -109,6 +109,11 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
         throw new UnsupportedOperationException();
     }
 
+    /* Support for some JDK8 builds. (remove after jdk8 is released) */
+    public <A extends Annotation> A[] getAnnotations(Class<A> annotationType) {
+        throw new UnsupportedOperationException();
+    }
+
     @Override
     public <A extends Annotation> A getAnnotation(Class<A> annotationType) {
         throw new UnsupportedOperationException();
