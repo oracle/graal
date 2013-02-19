@@ -127,4 +127,8 @@ public class NodeFactory {
         StatementNode write = WriteLocalNodeFactory.create(slot, value);
         return new ReturnNode(write);
     }
+
+    public TypedNode createTernary(TypedNode condition, TypedNode thenPart, TypedNode elsePart) {
+        return TernaryNodeFactory.create(condition, thenPart, elsePart);
+    }
 }

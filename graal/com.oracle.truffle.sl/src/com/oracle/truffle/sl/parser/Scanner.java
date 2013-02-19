@@ -311,8 +311,8 @@ public class Scanner {
 
     static final char EOL = '\n';
     static final int eofSym = 0;
-	static final int maxT = 25;
-	static final int noSym = 25;
+	static final int maxT = 28;
+	static final int noSym = 28;
 
 
     public Buffer buffer; // scanner buffer
@@ -339,27 +339,30 @@ public class Scanner {
 		for (int i = 65; i <= 90; ++i) start.set(i, 1);
 		for (int i = 97; i <= 122; ++i) start.set(i, 1);
 		for (int i = 49; i <= 57; ++i) start.set(i, 4);
-		start.set(34, 2);
-		start.set(48, 5);
-		start.set(123, 6);
-		start.set(125, 7);
-		start.set(40, 8);
-		start.set(41, 9);
-		start.set(61, 20);
-		start.set(59, 10);
-		start.set(60, 21);
-		start.set(62, 22);
-		start.set(33, 14);
-		start.set(43, 16);
-		start.set(45, 17);
-		start.set(42, 18);
-		start.set(47, 19);
+		start.set(34, 2); 
+		start.set(48, 5); 
+		start.set(123, 6); 
+		start.set(125, 7); 
+		start.set(40, 8); 
+		start.set(41, 9); 
+		start.set(61, 23); 
+		start.set(59, 10); 
+		start.set(60, 24); 
+		start.set(62, 25); 
+		start.set(33, 14); 
+		start.set(43, 16); 
+		start.set(45, 17); 
+		start.set(42, 18); 
+		start.set(47, 19); 
+		start.set(35, 20); 
+		start.set(63, 21); 
+		start.set(58, 22); 
 		start.set(Buffer.EOF, -1);
 		literals.put("function", new Integer(4));
 		literals.put("while", new Integer(7));
 		literals.put("print", new Integer(12));
 		literals.put("return", new Integer(13));
-		literals.put("time", new Integer(24));
+		literals.put("time", new Integer(27));
 
     }
 
@@ -425,7 +428,7 @@ public class Scanner {
             tval = newBuf;
         }
         if (ch != Buffer.EOF) {
-			tval[tlen++] = (char)ch;
+			tval[tlen++] = (char)ch; 
 
             NextCh();
         }
@@ -484,9 +487,9 @@ public class Scanner {
     }
 
     Token NextToken() {
-        while (ch == ' ' ||
+        while (ch == ' ' || 
 			ch >= 9 && ch <= 10 || ch == 13
-		) NextCh();
+        ) NextCh();
 		if (ch == '/' && Comment0() ||ch == '/' && Comment1()) return NextToken();
         int recKind = noSym;
         int recEnd = pos;
@@ -559,14 +562,20 @@ public class Scanner {
 				case 19:
 					{t.kind = 23; break loop;}
 				case 20:
+					{t.kind = 24; break loop;}
+				case 21:
+					{t.kind = 25; break loop;}
+				case 22:
+					{t.kind = 26; break loop;}
+				case 23:
 					recEnd = pos; recKind = 10;
 					if (ch == '=') {AddCh(); state = 13; break;}
 					else {t.kind = 10; break loop;}
-				case 21:
+				case 24:
 					recEnd = pos; recKind = 14;
 					if (ch == '=') {AddCh(); state = 11; break;}
 					else {t.kind = 14; break loop;}
-				case 22:
+				case 25:
 					recEnd = pos; recKind = 15;
 					if (ch == '=') {AddCh(); state = 12; break;}
 					else {t.kind = 15; break loop;}
