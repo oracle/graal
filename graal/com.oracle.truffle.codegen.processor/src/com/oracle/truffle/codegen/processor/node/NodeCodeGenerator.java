@@ -535,14 +535,11 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             if (next != null) {
                 builder.end();
-                builder.startElseBlock();
 
                 builder.startReturn().startCall(generatedGenericMethodName(next));
                 builder.string(THIS_NODE_LOCAL_VAR_NAME);
                 addValueParameterNames(builder, next, null, true);
                 builder.end().end();
-
-                builder.end();
             }
         }
 

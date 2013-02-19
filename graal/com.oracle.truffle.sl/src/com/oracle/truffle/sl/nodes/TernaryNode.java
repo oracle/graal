@@ -56,7 +56,14 @@ public abstract class TernaryNode extends TypedNode {
         return !hasIfPart;
     }
 
+    @GuardCheck
+    public boolean demoIntegerGuard(boolean condition, boolean hasIfPart, int ifPart, boolean hasElsePart, int elsePart) {
+        return true;
+    }
+
     @Specialization
+    @SpecializationGuard(methodName = "demoIntegerGuard")
+    @SpecializationThrows(javaClass = RuntimeException.class, transitionTo = "doBigInteger")
     public int doInteger(boolean condition, boolean hasIfPart, int ifPart, boolean hasElsePart, int elsePart) {
         return hasIfPart ? ifPart : elsePart;
     }
