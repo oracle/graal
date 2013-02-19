@@ -37,10 +37,6 @@ public abstract class Buffer {
         data = new byte[AsmOptions.InitialCodeBufferSize];
     }
 
-    public void reset() {
-        position = 0;
-    }
-
     public int position() {
         return position;
     }

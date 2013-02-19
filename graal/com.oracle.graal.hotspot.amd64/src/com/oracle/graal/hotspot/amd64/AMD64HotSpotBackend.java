@@ -222,7 +222,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             RegisterConfig regConfig = tasm.frameMap.registerConfig;
 
             if (csl != null && csl.size != 0) {
-                tasm.targetMethod.setRegisterRestoreEpilogueOffset(asm.codeBuffer.position());
+                tasm.compilationResult.setRegisterRestoreEpilogueOffset(asm.codeBuffer.position());
                 // saved all registers, restore all registers
                 int frameToCSA = tasm.frameMap.offsetToCalleeSaveArea();
                 asm.restore(csl, frameToCSA);
@@ -268,7 +268,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext();
         TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, lir.stubs);
         tasm.setFrameSize(frameMap.frameSize());
-        tasm.targetMethod.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
+        tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
         return tasm;
     }
 

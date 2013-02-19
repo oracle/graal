@@ -48,7 +48,7 @@ public class TargetMethodAssembler {
     }
 
     public final AbstractAssembler asm;
-    public final CompilationResult targetMethod;
+    public final CompilationResult compilationResult;
     public final TargetDescription target;
     public final CodeCacheProvider runtime;
     public final FrameMap frameMap;
@@ -73,52 +73,52 @@ public class TargetMethodAssembler {
         this.frameMap = frameMap;
         this.stubs = stubs;
         this.asm = asm;
-        this.targetMethod = new CompilationResult();
+        this.compilationResult = new CompilationResult();
         this.frameContext = frameContext;
         // 0 is a valid pc for safepoints in template methods
         this.lastSafepointPos = -1;
     }
 
     public void setFrameSize(int frameSize) {
-        targetMethod.setFrameSize(frameSize);
+        compilationResult.setFrameSize(frameSize);
     }
 
     private static final CompilationResult.Mark[] NO_REFS = {};
 
     public CompilationResult.Mark recordMark(Object id) {
-        return targetMethod.recordMark(asm.codeBuffer.position(), id, NO_REFS);
+        return compilationResult.recordMark(asm.codeBuffer.position(), id, NO_REFS);
     }
 
     public CompilationResult.Mark recordMark(Object id, CompilationResult.Mark... references) {
-        return targetMethod.recordMark(asm.codeBuffer.position(), id, references);
+        return compilationResult.recordMark(asm.codeBuffer.position(), id, references);
     }
 
     public void blockComment(String s) {
-        targetMethod.addAnnotation(new CompilationResult.CodeComment(asm.codeBuffer.position(), s));
+        compilationResult.addAnnotation(new CompilationResult.CodeComment(asm.codeBuffer.position(), s));
     }
 
     public CompilationResult finishTargetMethod(Object name, boolean isStub) {
         // Install code, data and frame size
-        targetMethod.setTargetCode(asm.codeBuffer.close(false), asm.codeBuffer.position());
+        compilationResult.setTargetCode(asm.codeBuffer.close(false), asm.codeBuffer.position());
 
         // Record exception handlers if they exist
         if (exceptionInfoList != null) {
             for (ExceptionInfo ei : exceptionInfoList) {
                 int codeOffset = ei.codeOffset;
-                targetMethod.recordExceptionHandler(codeOffset, ei.exceptionEdge.label().position());
+                compilationResult.recordExceptionHandler(codeOffset, ei.exceptionEdge.label().position());
             }
         }
 
         // Set the info on callee-saved registers
-        targetMethod.setCalleeSaveLayout(frameMap.registerConfig.getCalleeSaveLayout());
+        compilationResult.setCalleeSaveLayout(frameMap.registerConfig.getCalleeSaveLayout());
 
         Debug.metric("TargetMethods").increment();
-        Debug.metric("CodeBytesEmitted").add(targetMethod.getTargetCodeSize());
-        Debug.metric("SafepointsEmitted").add(targetMethod.getSafepoints().size());
-        Debug.metric("DataPatches").add(targetMethod.getDataReferences().size());
-        Debug.metric("ExceptionHandlersEmitted").add(targetMethod.getExceptionHandlers().size());
+        Debug.metric("CodeBytesEmitted").add(compilationResult.getTargetCodeSize());
+        Debug.metric("SafepointsEmitted").add(compilationResult.getSafepoints().size());
+        Debug.metric("DataPatches").add(compilationResult.getDataReferences().size());
+        Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
         Debug.log("Finished target method %s, isStub %b", name, isStub);
-        return targetMethod;
+        return compilationResult;
     }
 
     public void recordExceptionHandlers(int pcOffset, LIRFrameState info) {
@@ -137,7 +137,7 @@ public class TargetMethodAssembler {
         if (info != null) {
             assert lastSafepointPos < pcOffset : lastSafepointPos + "<" + pcOffset;
             lastSafepointPos = pcOffset;
-            targetMethod.recordSafepoint(pcOffset, info.debugInfo());
+            compilationResult.recordSafepoint(pcOffset, info.debugInfo());
             assert info.exceptionEdge == null;
         }
     }
@@ -146,14 +146,14 @@ public class TargetMethodAssembler {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
         assert lastSafepointPos < posAfter;
         lastSafepointPos = posAfter;
-        targetMethod.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
+        compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
     }
 
     public void recordIndirectCall(int posBefore, int posAfter, Object callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
         assert lastSafepointPos < posAfter;
         lastSafepointPos = posAfter;
-        targetMethod.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
+        compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
     }
 
     public void recordSafepoint(int pos, LIRFrameState info) {
@@ -161,14 +161,14 @@ public class TargetMethodAssembler {
         DebugInfo debugInfo = info.debugInfo();
         assert lastSafepointPos < pos;
         lastSafepointPos = pos;
-        targetMethod.recordSafepoint(pos, debugInfo);
+        compilationResult.recordSafepoint(pos, debugInfo);
     }
 
     public Address recordDataReferenceInCode(Constant data, int alignment, boolean inlined) {
         assert data != null;
         int pos = asm.codeBuffer.position();
         Debug.log("Data reference in code: pos = %d, data = %s", pos, data.toString());
-        targetMethod.recordDataReference(pos, data, alignment, inlined);
+        compilationResult.recordDataReference(pos, data, alignment, inlined);
         return Address.Placeholder;
     }
 
