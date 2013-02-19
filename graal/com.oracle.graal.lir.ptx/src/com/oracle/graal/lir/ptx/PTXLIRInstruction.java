@@ -27,14 +27,14 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * Convenience class to provide PTXMacroAssembler for the {@link #emitCode} method.
+ * Convenience class to provide PTXAssembler for the {@link #emitCode} method.
  */
 public abstract class PTXLIRInstruction extends LIRInstruction {
 
     @Override
     public final void emitCode(TargetMethodAssembler tasm) {
-        emitCode(tasm, (PTXMacroAssembler) tasm.asm);
+        emitCode(tasm, (PTXAssembler) tasm.asm);
     }
 
-    public abstract void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm);
+    public abstract void emitCode(TargetMethodAssembler tasm, PTXAssembler masm);
 }

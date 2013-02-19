@@ -67,7 +67,7 @@ public final class Register implements Comparable<Register>, Serializable {
     /**
      * The assembler calls this method to get the register's encoding.
      */
-    public final int encoding() {
+    public int encoding() {
         return encoding;
     }
 

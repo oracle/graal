@@ -24,7 +24,6 @@ package com.oracle.graal.asm.ptx;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.lir.ptx.*;
 
 /**
  * The platform-dependent base class for the PTX assembler.
@@ -35,10 +34,12 @@ public abstract class AbstractPTXAssembler extends AbstractAssembler {
         super(target);
     }
 
+    public static final String UNBOUND_TARGET = "L" + Integer.MAX_VALUE;
+
     @Override
     public final void bind(Label l) {
         super.bind(l);
-        emitString0("L"+l.toString() + ":\n");
+        emitString0("L" + l.toString() + ":\n");
     }
 
     @Override
@@ -53,10 +54,10 @@ public abstract class AbstractPTXAssembler extends AbstractAssembler {
 
     @Override
     protected void patchJumpTarget(int branch, int jumpTarget) {
-        final int spaces = PTXControlFlow.BranchOp.UNBOUND_TARGET.length();
-        String target = String.format("L%-" + spaces + "s", jumpTarget+";");
+        final int spaces = UNBOUND_TARGET.length();
+        String targetString = String.format("L%-" + spaces + "s", jumpTarget + ";");
         int offset = "\tbra ".length();  // XXX we need a better way to figure this out
-        codeBuffer.emitString(target, branch + offset);
+        codeBuffer.emitString(targetString, branch + offset);
     }
 
     @Override

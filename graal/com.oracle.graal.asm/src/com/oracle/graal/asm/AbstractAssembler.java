@@ -86,7 +86,7 @@ public abstract class AbstractAssembler {
     protected final void emitString(String x) {
         codeBuffer.emitString(x);
     }
-    
+
     // XXX for pretty-printing
     protected final void emitString0(String x) {
         codeBuffer.emitString0(x);

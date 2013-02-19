@@ -27,11 +27,8 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.ptx.PTXArithmetic.*;
 import static com.oracle.graal.lir.ptx.PTXCompare.*;
 import static com.oracle.graal.lir.ptx.PTXBitManipulationOp.IntrinsicOpcode.*;
-//import static com.oracle.graal.lir.ptx.PTXMathIntrinsicOp.IntrinsicOpcode.*;
 
-import com.oracle.graal.ptx.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
@@ -46,30 +43,23 @@ import com.oracle.graal.lir.ptx.PTXControlFlow.ReturnOp;
 import com.oracle.graal.lir.ptx.PTXMove.LoadOp;
 import com.oracle.graal.lir.ptx.PTXMove.MoveFromRegOp;
 import com.oracle.graal.lir.ptx.PTXMove.MoveToRegOp;
-import com.oracle.graal.lir.ptx.PTXMove.NullCheckOp;
 import com.oracle.graal.lir.ptx.PTXMove.StoreOp;
-import com.oracle.graal.nodes.BreakpointNode;
-import com.oracle.graal.nodes.DirectCallTargetNode;
-import com.oracle.graal.nodes.IndirectCallTargetNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.Condition;
 import com.oracle.graal.nodes.calc.ConvertNode;
 import com.oracle.graal.nodes.extended.IndexedLocationNode;
 import com.oracle.graal.nodes.extended.LocationNode;
-import com.oracle.graal.nodes.java.CompareAndSwapNode;
-import com.oracle.graal.phases.util.Util;
+import com.oracle.graal.nodes.java.*;
 
 /**
  * This class implements the PTX specific portion of the LIR generator.
  */
-public abstract class PTXLIRGenerator extends LIRGenerator {
+public class PTXLIRGenerator extends LIRGenerator {
 
     public static class PTXSpillMoveFactory implements LIR.SpillMoveFactory {
 
         @Override
         public LIRInstruction createMove(Value result, Value input) {
-//            return new SpillMoveOp(result, input);
             throw new InternalError("NYI");
         }
     }
@@ -188,9 +178,6 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitLea(Value address) {
-//        Variable result = newVariable(target().wordKind);
-//        append(new LeaOp(result, address));
-//        return result;
         throw new InternalError("NYI");
     }
 
@@ -201,22 +188,15 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info) {
-//        boolean mirrored = emitCompare(left, right);
-//        Condition finalCondition = mirrored ? cond.mirror() : cond;
         switch (left.getKind().getStackKind()) {
             case Int:
                 append(new CompareOp(ICMP, cond, left, right));
                 append(new BranchOp(cond, label, info));
                 break;
-//            case Long:
             case Object:
                 append(new CompareOp(ACMP, cond, left, right));
                 append(new BranchOp(cond, label, info));
                 break;
-//            case Float:
-//            case Double:
-//                append(new FloatBranchOp(finalCondition, unorderedIsTrue, label, info));
-//                break;
             default:
                 throw GraalInternalError.shouldNotReachHere("" + left.getKind());
         }
@@ -224,96 +204,18 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label, LIRFrameState info) {
-//        emitIntegerTest(left, right);
-//        append(new BranchOp(negated ? Condition.NE : Condition.EQ, label, info));
         throw new InternalError("NYI");
     }
 
     @Override
     public Variable emitConditionalMove(Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
-//        boolean mirrored = emitCompare(left, right);
-//        Condition finalCondition = mirrored ? cond.mirror() : cond;
-//
-//        Variable result = newVariable(trueValue.getKind());
-//        switch (left.getKind().getStackKind()) {
-//            case Int:
-//            case Long:
-//            case Object:
-//                append(new CondMoveOp(result, finalCondition, load(trueValue), loadNonConst(falseValue)));
-//                break;
-//            case Float:
-//            case Double:
-//                append(new FloatCondMoveOp(result, finalCondition, unorderedIsTrue, load(trueValue), load(falseValue)));
-//                break;
-//            default:
-//                throw GraalInternalError.shouldNotReachHere("" + left.getKind());
-//        }
-//        return result;
         throw new InternalError("NYI");
     }
 
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
-//        emitIntegerTest(left, right);
-//        Variable result = newVariable(trueValue.getKind());
-//        append(new CondMoveOp(result, Condition.EQ, load(trueValue), loadNonConst(falseValue)));
-//        return result;
         throw new InternalError("NYI");
     }
-
-    private void emitIntegerTest(Value a, Value b) {
-//        assert a.getKind().getStackKind() == Kind.Int || a.getKind() == Kind.Long;
-//        if (LIRValueUtil.isVariable(b)) {
-//            append(new AMD64TestOp(load(b), loadNonConst(a)));
-//        } else {
-//            append(new AMD64TestOp(load(a), loadNonConst(b)));
-//        }
-        throw new InternalError("NYI");
-    }
-
-//    /**
-//     * This method emits the compare instruction, and may reorder the operands. It returns true if
-//     * it did so.
-//     * 
-//     * @param a the left operand of the comparison
-//     * @param b the right operand of the comparison
-//     * @return true if the left and right operands were switched, false otherwise
-//     */
-//    private boolean emitCompare(Value a, Value b) {
-//        Variable left;
-//        Value right;
-//        boolean mirrored;
-//        if (LIRValueUtil.isVariable(b)) {
-//            left = load(b);
-//            right = loadNonConst(a);
-//            mirrored = true;
-//        } else {
-//            left = load(a);
-//            right = loadNonConst(b);
-//            mirrored = false;
-//        }
-//        switch (left.getKind().getStackKind()) {
-////            case Jsr:
-//            case Int:
-//                append(new CompareOp(ICMP, left, right));
-//                break;
-////            case Long:
-////                append(new CompareOp(LCMP, left, right));
-////                break;
-////            case Object:
-////                append(new CompareOp(ACMP, left, right));
-////                break;
-////            case Float:
-////                append(new CompareOp(FCMP, left, right));
-////                break;
-////            case Double:
-////                append(new CompareOp(DCMP, left, right));
-////                break;
-//            default:
-//                throw GraalInternalError.shouldNotReachHere();
-//        }
-//        return mirrored;
-//    }
 
     @Override
     public Variable emitNegate(Value input) {
@@ -322,15 +224,6 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
             case Int:
                 append(new Op1Stack(INEG, result, input));
                 break;
-//            case Long:
-//                append(new Op1Stack(LNEG, result, input));
-//                break;
-//            case Float:
-//                append(new Op2Reg(FXOR, result, input, Constant.forFloat(Float.intBitsToFloat(0x80000000))));
-//                break;
-//            case Double:
-//                append(new Op2Reg(DXOR, result, input, Constant.forDouble(Double.longBitsToDouble(0x8000000000000000L))));
-//                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -344,15 +237,6 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
             case Int:
                 append(new Op2Stack(IADD, result, a, loadNonConst(b)));
                 break;
-//            case Long:
-//                append(new Op2Stack(LADD, result, a, loadNonConst(b)));
-//                break;
-//            case Float:
-//                append(new Op2Stack(FADD, result, a, loadNonConst(b)));
-//                break;
-//            case Double:
-//                append(new Op2Stack(DADD, result, a, loadNonConst(b)));
-//                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -366,15 +250,6 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
             case Int:
                 append(new Op2Stack(ISUB, result, a, loadNonConst(b)));
                 break;
-//            case Long:
-//                append(new Op2Stack(LSUB, result, a, loadNonConst(b)));
-//                break;
-//            case Float:
-//                append(new Op2Stack(FSUB, result, a, loadNonConst(b)));
-//                break;
-//            case Double:
-//                append(new Op2Stack(DSUB, result, a, loadNonConst(b)));
-//                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -388,15 +263,6 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
             case Int:
                 append(new Op2Reg(IMUL, result, a, loadNonConst(b)));
                 break;
-//            case Long:
-//                append(new Op2Reg(LMUL, result, a, loadNonConst(b)));
-//                break;
-//            case Float:
-//                append(new Op2Stack(FMUL, result, a, loadNonConst(b)));
-//                break;
-//            case Double:
-//                append(new Op2Stack(DMUL, result, a, loadNonConst(b)));
-//                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -409,105 +275,23 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
         return false;
     }
 
-    public Value[] emitIntegerDivRem(Value a, Value b) {
-//        switch (a.getKind()) {
-//            case Int:
-//                emitMove(a, RAX_I);
-//                append(new DivRemOp(IDIVREM, RAX_I, load(b), state()));
-//                return new Value[]{emitMove(RAX_I), emitMove(RDX_I)};
-//            case Long:
-//                emitMove(a, RAX_L);
-//                append(new DivRemOp(LDIVREM, RAX_L, load(b), state()));
-//                return new Value[]{emitMove(RAX_L), emitMove(RDX_L)};
-//            default:
-//                throw GraalInternalError.shouldNotReachHere();
-//        }
-        throw new InternalError("NYI");
-    }
-
     @Override
     public Value emitDiv(Value a, Value b) {
-//        switch (a.getKind()) {
-//            case Int:
-//                emitMove(a, RAX_I);
-//                append(new DivOp(IDIV, RAX_I, RAX_I, load(b), state()));
-//                return emitMove(RAX_I);
-//            case Long:
-//                emitMove(a, RAX_L);
-//                append(new DivOp(LDIV, RAX_L, RAX_L, load(b), state()));
-//                return emitMove(RAX_L);
-//            case Float: {
-//                Variable result = newVariable(a.getKind());
-//                append(new Op2Stack(FDIV, result, a, loadNonConst(b)));
-//                return result;
-//            }
-//            case Double: {
-//                Variable result = newVariable(a.getKind());
-//                append(new Op2Stack(DDIV, result, a, loadNonConst(b)));
-//                return result;
-//            }
-//            default:
-//                throw GraalInternalError.shouldNotReachHere();
-//        }
         throw new InternalError("NYI");
     }
 
     @Override
     public Value emitRem(Value a, Value b) {
-//        switch (a.getKind()) {
-//            case Int:
-//                emitMove(a, RAX_I);
-//                append(new DivOp(IREM, RDX_I, RAX_I, load(b), state()));
-//                return emitMove(RDX_I);
-//            case Long:
-//                emitMove(a, RAX_L);
-//                append(new DivOp(LREM, RDX_L, RAX_L, load(b), state()));
-//                return emitMove(RDX_L);
-//            case Float: {
-//                RuntimeCallTarget stub = runtime.lookupRuntimeCall(ARITHMETIC_FREM);
-//                return emitCall(stub, stub.getCallingConvention(), false, a, b);
-//            }
-//            case Double: {
-//                RuntimeCallTarget stub = runtime.lookupRuntimeCall(ARITHMETIC_DREM);
-//                return emitCall(stub, stub.getCallingConvention(), false, a, b);
-//            }
-//            default:
-//                throw GraalInternalError.shouldNotReachHere();
-//        }
         throw new InternalError("NYI");
     }
 
     @Override
     public Variable emitUDiv(Value a, Value b) {
-//        switch (a.getKind()) {
-//            case Int:
-//                emitMove(a, RAX_I);
-//                append(new DivOp(IUDIV, RAX_I, RAX_I, load(b), state()));
-//                return emitMove(RAX_I);
-//            case Long:
-//                emitMove(a, RAX_L);
-//                append(new DivOp(LUDIV, RAX_L, RAX_L, load(b), state()));
-//                return emitMove(RAX_L);
-//            default:
-//                throw GraalInternalError.shouldNotReachHere();
-//        }
         throw new InternalError("NYI");
     }
 
     @Override
     public Variable emitURem(Value a, Value b) {
-//        switch (a.getKind()) {
-//            case Int:
-//                emitMove(a, RAX_I);
-//                append(new DivOp(IUREM, RDX_I, RAX_I, load(b), state()));
-//                return emitMove(RDX_I);
-//            case Long:
-//                emitMove(a, RAX_L);
-//                append(new DivOp(LUREM, RDX_L, RAX_L, load(b), state()));
-//                return emitMove(RDX_L);
-//            default:
-//                throw GraalInternalError.shouldNotReachHere();
-//        }
         throw new InternalError("NYI");
     }
 
@@ -518,9 +302,6 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
             case Int:
                 append(new Op2Stack(IAND, result, a, loadNonConst(b)));
                 break;
-//            case Long:
-//                append(new Op2Stack(LAND, result, a, loadNonConst(b)));
-//                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -529,69 +310,21 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitOr(Value a, Value b) {
-//        Variable result = newVariable(a.getKind());
-//        switch (a.getKind()) {
-//            case Int:
-//                append(new Op2Stack(IOR, result, a, loadNonConst(b)));
-//                break;
-//            case Long:
-//                append(new Op2Stack(LOR, result, a, loadNonConst(b)));
-//                break;
-//            default:
-//                throw GraalInternalError.shouldNotReachHere();
-//        }
-//        return result;
         throw new InternalError("NYI");
     }
 
     @Override
     public Variable emitXor(Value a, Value b) {
-//        Variable result = newVariable(a.getKind());
-//        switch (a.getKind()) {
-//            case Int:
-//                append(new Op2Stack(IXOR, result, a, loadNonConst(b)));
-//                break;
-//            case Long:
-//                append(new Op2Stack(LXOR, result, a, loadNonConst(b)));
-//                break;
-//            default:
-//                throw GraalInternalError.shouldNotReachHere();
-//        }
-//        return result;
         throw new InternalError("NYI");
     }
 
     @Override
     public Variable emitShl(Value a, Value b) {
-//        Variable result = newVariable(a.getKind());
-//        switch (a.getKind()) {
-//            case Int:
-//                append(new ShiftOp(ISHL, result, a, b));
-//                break;
-//            case Long:
-//                append(new ShiftOp(LSHL, result, a, b));
-//                break;
-//            default:
-//                GraalInternalError.shouldNotReachHere();
-//        }
-//        return result;
         throw new InternalError("NYI");
     }
 
     @Override
     public Variable emitShr(Value a, Value b) {
-//        Variable result = newVariable(a.getKind());
-//        switch (a.getKind()) {
-//            case Int:
-//                append(new ShiftOp(ISHR, result, a, b));
-//                break;
-//            case Long:
-//                append(new ShiftOp(LSHR, result, a, b));
-//                break;
-//            default:
-//                GraalInternalError.shouldNotReachHere();
-//        }
-//        return result;
         throw new InternalError("NYI");
     }
 
@@ -602,9 +335,6 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
             case Int:
                 append(new ShiftOp(IUSHR, result, a, b));
                 break;
-//            case Long:
-//                append(new ShiftOp(LUSHR, result, a, b));
-//                break;
             default:
                 GraalInternalError.shouldNotReachHere();
         }
@@ -613,127 +343,36 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitConvert(ConvertNode.Op opcode, Value inputVal) {
-//        Variable input = load(inputVal);
-//        Variable result = newVariable(opcode.to);
-//        switch (opcode) {
-//            case I2L:
-//                append(new Op1Reg(I2L, result, input));
-//                break;
-//            case L2I:
-//                append(new Op1Stack(L2I, result, input));
-//                break;
-//            case I2B:
-//                append(new Op1Stack(I2B, result, input));
-//                break;
-//            case I2C:
-//                append(new Op1Stack(I2C, result, input));
-//                break;
-//            case I2S:
-//                append(new Op1Stack(I2S, result, input));
-//                break;
-//            case F2D:
-//                append(new Op1Reg(F2D, result, input));
-//                break;
-//            case D2F:
-//                append(new Op1Reg(D2F, result, input));
-//                break;
-//            case I2F:
-//                append(new Op1Reg(I2F, result, input));
-//                break;
-//            case I2D:
-//                append(new Op1Reg(I2D, result, input));
-//                break;
-//            case F2I:
-//                append(new Op1Reg(F2I, result, input));
-//                break;
-//            case D2I:
-//                append(new Op1Reg(D2I, result, input));
-//                break;
-//            case L2F:
-//                append(new Op1Reg(L2F, result, input));
-//                break;
-//            case L2D:
-//                append(new Op1Reg(L2D, result, input));
-//                break;
-//            case F2L:
-//                append(new Op1Reg(F2L, result, input));
-//                break;
-//            case D2L:
-//                append(new Op1Reg(D2L, result, input));
-//                break;
-//            case MOV_I2F:
-//                append(new Op1Reg(MOV_I2F, result, input));
-//                break;
-//            case MOV_L2D:
-//                append(new Op1Reg(MOV_L2D, result, input));
-//                break;
-//            case MOV_F2I:
-//                append(new Op1Reg(MOV_F2I, result, input));
-//                break;
-//            case MOV_D2L:
-//                append(new Op1Reg(MOV_D2L, result, input));
-//                break;
-//            case UNSIGNED_I2L:
-//                // Instructions that move or generate 32-bit register values also set the upper 32
-//                // bits of the register to zero.
-//                // Consequently, there is no need for a special zero-extension move.
-//                emitMove(input, result);
-//                break;
-//            default:
-//                throw GraalInternalError.shouldNotReachHere();
-//        }
-//        return result;
         throw new InternalError("NYI");
     }
 
     @Override
     public void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo) {
-//        LIRFrameState info = state();
-//        LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
-//        append(new BranchOp(ConditionFlag.overflow, stubEntry, info));
         throw new InternalError("NYI");
     }
 
     @Override
     public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo) {
-//        LIRFrameState info = state();
-//        LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
-//        append(new JumpOp(stubEntry, info));
-        System.err.println("deopt");
+        throw new InternalError("NYI");
     }
 
     @Override
     public void emitMembar(int barriers) {
-//        int necessaryBarriers = target.arch.requiredBarriers(barriers);
-//        if (target.isMP && necessaryBarriers != 0) {
-//            append(new MembarOp(necessaryBarriers));
-//        }
         throw new InternalError("NYI");
     }
 
     @Override
     protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-//        append(new DirectCallOp(callTarget.target(), result, parameters, temps, callState));
         throw new InternalError("NYI");
     }
 
     @Override
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-//        // The current register allocator cannot handle variables at call sites, need a fixed
-//        // register.
-//        Value targetAddress = AMD64.rax.asValue();
-//        emitMove(operand(callTarget.computedAddress()), targetAddress);
-//        append(new IndirectCallOp(callTarget.target(), result, parameters, temps, targetAddress, callState));
         throw new InternalError("NYI");
     }
 
     @Override
     protected void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info) {
-//        if (isConstant(targetAddress)) {
-//            append(new DirectCallOp(callTarget, result, arguments, temps, info));
-//        } else {
-//            append(new IndirectCallOp(callTarget, result, arguments, temps, targetAddress, info));
-//        }
         throw new InternalError("NYI");
     }
 
@@ -748,59 +387,46 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitBitScanForward(Variable result, Value value) {
-//        append(new AMD64BitManipulationOp(BSF, result, value));
         throw new InternalError("NYI");
     }
 
     @Override
     public void emitBitScanReverse(Variable result, Value value) {
-//        if (value.getKind().getStackKind() == Kind.Int) {
-//            append(new AMD64BitManipulationOp(IBSR, result, value));
-//        } else {
-//            append(new AMD64BitManipulationOp(LBSR, result, value));
-//        }
         throw new InternalError("NYI");
     }
 
     @Override
     public void emitMathAbs(Variable result, Variable input) {
-//        append(new Op2Reg(DAND, result, input, Constant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL))));
         throw new InternalError("NYI");
     }
 
     @Override
     public void emitMathSqrt(Variable result, Variable input) {
-//        append(new AMD64MathIntrinsicOp(SQRT, result, input));
         throw new InternalError("NYI");
     }
 
     @Override
     public void emitMathLog(Variable result, Variable input, boolean base10) {
-//        append(new AMD64MathIntrinsicOp(base10 ? LOG10 : LOG, result, input));
         throw new InternalError("NYI");
     }
 
     @Override
     public void emitMathCos(Variable result, Variable input) {
-//        append(new AMD64MathIntrinsicOp(COS, result, input));
         throw new InternalError("NYI");
     }
 
     @Override
     public void emitMathSin(Variable result, Variable input) {
-//        append(new AMD64MathIntrinsicOp(SIN, result, input));
         throw new InternalError("NYI");
     }
 
     @Override
     public void emitMathTan(Variable result, Variable input) {
-//        append(new AMD64MathIntrinsicOp(TAN, result, input));
         throw new InternalError("NYI");
     }
 
     @Override
     public void emitByteSwap(Variable result, Value input) {
-//        append(new AMD64ByteSwapOp(result, input));
         throw new InternalError("NYI");
     }
 
@@ -811,29 +437,16 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
-//        // Making a copy of the switch value is necessary because jump table destroys the input
-//        // value
-//        if (key.getKind() == Kind.Int || key.getKind() == Kind.Long) {
-//            append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, Value.ILLEGAL));
-//        } else {
-//            assert key.getKind() == Kind.Object : key.getKind();
-//            append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, newVariable(Kind.Object)));
-//        }
         throw new InternalError("NYI");
     }
 
     @Override
     protected void emitSwitchRanges(int[] lowKeys, int[] highKeys, LabelRef[] targets, LabelRef defaultTarget, Value key) {
-//        append(new SwitchRangesOp(lowKeys, highKeys, targets, defaultTarget, key));
         throw new InternalError("NYI");
     }
 
     @Override
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-//        // Making a copy of the switch value is necessary because jump table destroys the input
-//        // value
-//        Variable tmp = emitMove(key);
-//        append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(target.wordKind)));
         throw new InternalError("NYI");
     }
 
@@ -847,50 +460,26 @@ public abstract class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitNullCheckGuard(ValueNode object) {
-        Variable value = load(operand(object));
-        LIRFrameState info = state();
-        append(new NullCheckOp(value, info));
+        throw new InternalError("NYI");
     }
 
     @Override
     public void visitCompareAndSwap(CompareAndSwapNode node) {
-//        Kind kind = node.newValue().kind();
-//        assert kind == node.expected().kind();
-//
-//        Value expected = loadNonConst(operand(node.expected()));
-//        Variable newValue = load(operand(node.newValue()));
-//
-//        Address address;
-//        int displacement = node.displacement();
-//        Value index = operand(node.offset());
-//        if (isConstant(index) && NumUtil.isInt(asConstant(index).asLong() + displacement)) {
-//            assert !runtime.needsDataPatch(asConstant(index));
-//            displacement += (int) asConstant(index).asLong();
-//            address = new Address(kind, load(operand(node.object())), displacement);
-//        } else {
-//            address = new Address(kind, load(operand(node.object())), load(index), Address.Scale.Times1, displacement);
-//        }
-//
-//        RegisterValue rax = AMD64.rax.asValue(kind);
-//        emitMove(expected, rax);
-//        append(new CompareAndSwapOp(rax, address, rax, newValue));
-//
-//        Variable result = newVariable(node.kind());
-//        append(new CondMoveOp(result, Condition.EQ, load(Constant.TRUE), Constant.FALSE));
-//        setResult(node, result);
         throw new InternalError("NYI");
     }
 
     @Override
     public void visitBreakpointNode(BreakpointNode node) {
-//        JavaType[] sig = new JavaType[node.arguments.size()];
-//        for (int i = 0; i < sig.length; i++) {
-//            sig[i] = node.arguments.get(i).stamp().javaType(runtime);
-//        }
-//
-//        CallingConvention cc = frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, target(), false);
-//        Value[] parameters = visitInvokeArguments(cc, node.arguments);
-//        append(new AMD64BreakpointOp(parameters));
+        throw new InternalError("NYI");
+    }
+
+    @Override
+    public void visitExceptionObject(ExceptionObjectNode i) {
+        throw new InternalError("NYI");
+    }
+
+    @Override
+    public void visitSafepointNode(SafepointNode i) {
         throw new InternalError("NYI");
     }
 }

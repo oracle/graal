@@ -25,6 +25,7 @@ package com.oracle.graal.lir.ptx;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.ptx.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
 
 public class PTXBitManipulationOp extends PTXLIRInstruction {
@@ -44,47 +45,18 @@ public class PTXBitManipulationOp extends PTXLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
+    public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
         Register dst = ValueUtil.asIntReg(result);
-//        if (ValueUtil.isAddress(input)) {
-//            Address src = ValueUtil.asAddress(input);
-//            switch (opcode) {
-//                case IPOPCNT:
-//                    masm.popcntl(dst, src);
-//                    break;
-//                case LPOPCNT:
-//                    masm.popcntq(dst, src);
-//                    break;
-//                case BSF:
-//                    masm.bsfq(dst, src);
-//                    break;
-//                case IBSR:
-//                    masm.bsrl(dst, src);
-//                    break;
-//                case LBSR:
-//                    masm.bsrq(dst, src);
-//                    break;
-//            }
-//        } else {
-            Register src = ValueUtil.asRegister(input);
-            switch (opcode) {
-                case IPOPCNT:
-                    masm.popc_b32(dst, src);
-                    break;
-                case LPOPCNT:
-                    masm.popc_b64(dst, src);
-                    break;
-//                case BSF:
-//                    masm.bsfq(dst, src);
-//                    break;
-//                case IBSR:
-//                    masm.bsrl(dst, src);
-//                    break;
-//                case LBSR:
-//                    masm.bsrq(dst, src);
-//                    break;
-            }
-//        }
+        Register src = ValueUtil.asRegister(input);
+        switch (opcode) {
+            case IPOPCNT:
+                masm.popc_b32(dst, src);
+                break;
+            case LPOPCNT:
+                masm.popc_b64(dst, src);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
     }
-
 }

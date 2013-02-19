@@ -32,11 +32,11 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 
-// @formatter:off
 public enum PTXCompare {
     ICMP, LCMP, ACMP, FCMP, DCMP;
 
     public static class CompareOp extends PTXLIRInstruction {
+
         @Opcode private final PTXCompare opcode;
         @Use({REG}) protected Value x;
         @Use({REG, STACK, CONST}) protected Value y;
@@ -50,91 +50,177 @@ public enum PTXCompare {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
             emit(tasm, masm, opcode, condition, x, y);
         }
 
         @Override
         protected void verify() {
             super.verify();
-            assert (name().startsWith("I") && x.getKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int)
-                || (name().startsWith("L") && x.getKind() == Kind.Long && y.getKind() == Kind.Long)
-                || (name().startsWith("A") && x.getKind() == Kind.Object && y.getKind() == Kind.Object)
-                || (name().startsWith("F") && x.getKind() == Kind.Float && y.getKind() == Kind.Float)
-                || (name().startsWith("D") && x.getKind() == Kind.Double && y.getKind() == Kind.Double);
+            assert (name().startsWith("I") && x.getKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int) || (name().startsWith("L") && x.getKind() == Kind.Long && y.getKind() == Kind.Long) ||
+                            (name().startsWith("A") && x.getKind() == Kind.Object && y.getKind() == Kind.Object) ||
+                            (name().startsWith("F") && x.getKind() == Kind.Float && y.getKind() == Kind.Float) || (name().startsWith("D") && x.getKind() == Kind.Double && y.getKind() == Kind.Double);
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, PTXMacroAssembler masm, PTXCompare opcode, Condition condition, Value x, Value y) {
+    public static void emit(TargetMethodAssembler tasm, PTXAssembler masm, PTXCompare opcode, Condition condition, Value x, Value y) {
         if (isConstant(x)) {
-            int      a = tasm.asIntConst(x);
+            int a = tasm.asIntConst(x);
             Register b = asIntReg(y);
             switch (opcode) {
                 case ICMP:
-                    switch (condition) {
-                        case EQ: masm.setp_eq_s32(a, b); break;
-                        case NE: masm.setp_ne_s32(a, b); break;
-                        case AE: masm.setp_ge_u32(a, b); break;
-                        case BT: masm.setp_lt_u32(a, b); break;
-                        default: throw GraalInternalError.shouldNotReachHere();
-                    }
+                    emitCompareConstReg(masm, condition, a, b);
                     break;
-//                case LCMP: masm.cmpq(asLongReg(x), asLongReg(y)); break;
-//                case ACMP: masm.cmpptr(asObjectReg(x), asObjectReg(y)); break;
-//                case FCMP: masm.ucomiss(asFloatReg(x), asFloatReg(y)); break;
-//                case DCMP: masm.ucomisd(asDoubleReg(x), asDoubleReg(y)); break;
-                default:   throw GraalInternalError.shouldNotReachHere();
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(y)) {
             Register a = asIntReg(x);
-            int      b = tasm.asIntConst(y);
+            int b = tasm.asIntConst(y);
             switch (opcode) {
                 case ICMP:
-                    switch (condition) {
-                        case EQ: masm.setp_eq_s32(a, b); break;
-                        case NE: masm.setp_ne_s32(a, b); break;
-                        default: throw GraalInternalError.shouldNotReachHere();
-                    }
+                    emitCompareRegConst(masm, condition, a, b);
                     break;
-//                case ICMP: masm.cmpl(asIntReg(x), tasm.asIntConst(y)); break;
-//                case LCMP: masm.cmpq(asLongReg(x), tasm.asIntConst(y)); break;
                 case ACMP:
                     if (((Constant) y).isNull()) {
                         switch (condition) {
-                            case EQ: masm.setp_eq_s32(a, b); break;
-                            case NE: masm.setp_ne_s32(a, b); break;
-                            default: throw GraalInternalError.shouldNotReachHere();
+                            case EQ:
+                                masm.setp_eq_s32(a, b);
+                                break;
+                            case NE:
+                                masm.setp_ne_s32(a, b);
+                                break;
+                            default:
+                                throw GraalInternalError.shouldNotReachHere();
                         }
                     } else {
                         throw GraalInternalError.shouldNotReachHere("Only null object constants are allowed in comparisons");
                     }
-                break;
-//                case FCMP: masm.ucomiss(asFloatReg(x), tasm.asFloatConstRef(y)); break;
-//                case DCMP: masm.ucomisd(asDoubleReg(x), tasm.asDoubleConstRef(y)); break;
-                default:   throw GraalInternalError.shouldNotReachHere();
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
             }
         } else {
             Register a = asIntReg(x);
             Register b = asIntReg(y);
             switch (opcode) {
                 case ICMP:
-                    switch (condition) {
-                        case EQ: masm.setp_eq_s32(a, b); break;
-                        case NE: masm.setp_ne_s32(a, b); break;
-                        case GE: masm.setp_ge_s32(a, b); break;
-                        case LT: masm.setp_lt_s32(a, b); break;
-                        case AE: masm.setp_ge_u32(a, b); break;
-                        case BT: masm.setp_lt_u32(a, b); break;
-                        default: throw GraalInternalError.shouldNotReachHere();
-                    }
-                break;
-//                case ICMP: masm.cmpl(asIntReg(x), tasm.asIntAddr(y)); break;
-//                case LCMP: masm.cmpq(asLongReg(x), tasm.asLongAddr(y)); break;
-//                case ACMP: masm.cmpptr(asObjectReg(x), tasm.asObjectAddr(y)); break;
-//                case FCMP: masm.ucomiss(asFloatReg(x), tasm.asFloatAddr(y)); break;
-//                case DCMP: masm.ucomisd(asDoubleReg(x), tasm.asDoubleAddr(y)); break;
-                default:  throw GraalInternalError.shouldNotReachHere();
+                    emitCompareRegReg(masm, condition, a, b);
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
             }
+        }
+    }
+
+    private static void emitCompareConstReg(PTXAssembler masm, Condition condition, int a, Register b) {
+        switch (condition) {
+            case EQ:
+                masm.setp_eq_s32(a, b);
+                break;
+            case NE:
+                masm.setp_ne_s32(a, b);
+                break;
+            case LT:
+                masm.setp_lt_s32(a, b);
+                break;
+            case LE:
+                masm.setp_le_s32(a, b);
+                break;
+            case GT:
+                masm.setp_gt_s32(a, b);
+                break;
+            case GE:
+                masm.setp_ge_s32(a, b);
+                break;
+            case AT:
+                masm.setp_gt_u32(a, b);
+                break;
+            case AE:
+                masm.setp_ge_u32(a, b);
+                break;
+            case BT:
+                masm.setp_lt_u32(a, b);
+                break;
+            case BE:
+                masm.setp_le_u32(a, b);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    private static void emitCompareRegConst(PTXAssembler masm, Condition condition, Register a, int b) {
+        switch (condition) {
+            case EQ:
+                masm.setp_eq_s32(a, b);
+                break;
+            case NE:
+                masm.setp_ne_s32(a, b);
+                break;
+            case LT:
+                masm.setp_lt_s32(a, b);
+                break;
+            case LE:
+                masm.setp_le_s32(a, b);
+                break;
+            case GT:
+                masm.setp_gt_s32(a, b);
+                break;
+            case GE:
+                masm.setp_ge_s32(a, b);
+                break;
+            case AT:
+                masm.setp_gt_u32(a, b);
+                break;
+            case AE:
+                masm.setp_ge_u32(a, b);
+                break;
+            case BT:
+                masm.setp_lt_u32(a, b);
+                break;
+            case BE:
+                masm.setp_le_u32(a, b);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    private static void emitCompareRegReg(PTXAssembler masm, Condition condition, Register a, Register b) {
+        switch (condition) {
+            case EQ:
+                masm.setp_eq_s32(a, b);
+                break;
+            case NE:
+                masm.setp_ne_s32(a, b);
+                break;
+            case LT:
+                masm.setp_lt_s32(a, b);
+                break;
+            case LE:
+                masm.setp_le_s32(a, b);
+                break;
+            case GT:
+                masm.setp_gt_s32(a, b);
+                break;
+            case GE:
+                masm.setp_ge_s32(a, b);
+                break;
+            case AT:
+                masm.setp_gt_u32(a, b);
+                break;
+            case AE:
+                masm.setp_ge_u32(a, b);
+                break;
+            case BT:
+                masm.setp_lt_u32(a, b);
+                break;
+            case BE:
+                masm.setp_le_u32(a, b);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 }

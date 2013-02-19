@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.ptx;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.*;
 import com.oracle.graal.api.meta.*;
@@ -32,7 +30,6 @@ import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.phases.*;
 
 public class PTXDeoptimizationStub extends PTXCode {
 
@@ -52,24 +49,8 @@ public class PTXDeoptimizationStub extends PTXCode {
         this.deoptInfo = deoptInfo;
     }
 
-    private static ArrayList<Object> keepAlive = new ArrayList<>();
-
     @Override
-    public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
-        Register scratch = tasm.frameMap.registerConfig.getScratchRegister();
-
-        masm.bind(label);
-        if (GraalOptions.CreateDeoptInfo && deoptInfo != null) {
-//            masm.nop();
-            keepAlive.add(deoptInfo.toString());
-//            AMD64Move.move(tasm, masm, scratch.asValue(), Constant.forObject(deoptInfo));
-//            AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(SET_DEOPT_INFO), info);
-            masm.exit();
-        }
-
-//        masm.movl(scratch, tasm.runtime.encodeDeoptActionAndReason(action, reason));
-//        AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(DEOPTIMIZE), info);
-//        AMD64Call.shouldNotReachHere(tasm, masm);
+    public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
         masm.exit();
     }
 
