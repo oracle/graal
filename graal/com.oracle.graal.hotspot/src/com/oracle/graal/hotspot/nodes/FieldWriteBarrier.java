@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-public final class FieldWriteBarrier extends WriteBarrier implements LIRLowerable {
+public final class FieldWriteBarrier extends WriteBarrier implements Lowerable {
 
     @Input private ValueNode object;
 
@@ -38,10 +37,7 @@ public final class FieldWriteBarrier extends WriteBarrier implements LIRLowerabl
         this.object = object;
     }
 
-    @Override
-    public void generate(LIRGeneratorTool generator) {
-        Value obj = generator.newVariable(generator.target().wordKind);
-        generator.emitMove(generator.operand(object()), obj);
-        generateBarrier(obj, generator);
+    public void lower(LoweringTool generator) {
+        generator.getRuntime().lower(this, generator);
     }
 }

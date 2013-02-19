@@ -42,6 +42,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public boolean useBiasedLocking;
     public boolean usePopCountInstruction;
     public boolean useAESIntrinsics;
+    public boolean useG1GC;
 
     // offsets, ...
     public int vmPageSize;

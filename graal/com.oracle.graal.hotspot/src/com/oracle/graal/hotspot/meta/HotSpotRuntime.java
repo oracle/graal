@@ -87,6 +87,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
     private InstanceOfSnippets.Templates instanceofSnippets;
     private NewObjectSnippets.Templates newObjectSnippets;
     private MonitorSnippets.Templates monitorSnippets;
+    private WriteBarrierSnippets.Templates writeBarrierSnippets;
 
     private NewInstanceStub newInstanceStub;
     private NewArrayStub newArrayStub;
@@ -362,16 +363,19 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
 
         installer.installSnippets(NewInstanceStub.class);
         installer.installSnippets(NewArrayStub.class);
+        installer.installSnippets(WriteBarrierSnippets.class);
 
         checkcastSnippets = new CheckCastSnippets.Templates(this, assumptions, graalRuntime.getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(this, assumptions, graalRuntime.getTarget());
         newObjectSnippets = new NewObjectSnippets.Templates(this, assumptions, graalRuntime.getTarget(), config.useTLAB);
         monitorSnippets = new MonitorSnippets.Templates(this, assumptions, graalRuntime.getTarget(), config.useFastLocking);
+        writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, assumptions, graalRuntime.getTarget(), config.useG1GC);
 
         newInstanceStub = new NewInstanceStub(this, assumptions, graalRuntime.getTarget());
         newArrayStub = new NewArrayStub(this, assumptions, graalRuntime.getTarget());
         newInstanceStub.install(graalRuntime.getCompiler());
         newArrayStub.install(graalRuntime.getCompiler());
+
     }
 
     public HotSpotGraalRuntime getGraalRuntime() {
@@ -694,15 +698,17 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
             graph.replaceFixedWithFixed(store, write);
             if (write.value().kind() == Kind.Object && !write.value().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = object.objectStamp().type();
-                WriteBarrier writeBarrier;
+                // WriteBarrier writeBarrier;
                 if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
                     // Use a field write barrier since it's not an array store
-                    writeBarrier = graph.add(new FieldWriteBarrier(object));
+                    FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(object));
+                    graph.addAfterFixed(write, writeBarrier);
                 } else {
                     // This may be an array store so use an array write barrier
-                    writeBarrier = graph.add(new ArrayWriteBarrier(object, location));
+                    ArrayWriteBarrier writeBarrier = graph.add(new ArrayWriteBarrier(object, location));
+                    graph.addAfterFixed(write, writeBarrier);
                 }
-                graph.addAfterFixed(write, writeBarrier);
+
             }
         } else if (n instanceof LoadHubNode) {
             LoadHubNode loadHub = (LoadHubNode) n;
@@ -734,6 +740,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
             monitorSnippets.lower((MonitorEnterNode) n, tool);
         } else if (n instanceof MonitorExitNode) {
             monitorSnippets.lower((MonitorExitNode) n, tool);
+        } else if (n instanceof FieldWriteBarrier) {
+            writeBarrierSnippets.lower((FieldWriteBarrier) n, tool);
+        } else if (n instanceof ArrayWriteBarrier) {
+            writeBarrierSnippets.lower((ArrayWriteBarrier) n, tool);
         } else if (n instanceof TLABAllocateNode) {
             newObjectSnippets.lower((TLABAllocateNode) n, tool);
         } else if (n instanceof InitializeObjectNode) {
