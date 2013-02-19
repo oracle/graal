@@ -30,14 +30,23 @@ public class ActualParameter {
 
     private final ParameterSpec specification;
     private final TypeMirror actualType;
+    private TemplateMethod method;
 
     public ActualParameter(ParameterSpec specification, TypeMirror actualType) {
         this.specification = specification;
         this.actualType = actualType;
     }
 
+    void setMethod(TemplateMethod method) {
+        this.method = method;
+    }
+
     public ParameterSpec getSpecification() {
         return specification;
+    }
+
+    public TemplateMethod getMethod() {
+        return method;
     }
 
     public TypeMirror getActualType() {
@@ -46,5 +55,9 @@ public class ActualParameter {
 
     public TypeData getActualTypeData(TypeSystemData typeSystem) {
         return typeSystem.findTypeData(actualType);
+    }
+
+    public ActualParameter getPreviousParameter() {
+        return method.getPreviousParam(this);
     }
 }

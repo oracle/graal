@@ -40,15 +40,16 @@ public class TemplateMethod {
         this.markerAnnotation = markerAnnotation;
         this.returnType = returnType;
         this.parameters = parameters;
+
+        if (parameters != null) {
+            for (ActualParameter param : parameters) {
+                param.setMethod(this);
+            }
+        }
     }
 
     public TemplateMethod(TemplateMethod method) {
-        this.template = method.template;
-        this.specification = method.specification;
-        this.method = method.method;
-        this.markerAnnotation = method.markerAnnotation;
-        this.returnType = method.returnType;
-        this.parameters = method.parameters;
+        this(method.template, method.specification, method.method, method.markerAnnotation, method.returnType, method.parameters);
     }
 
     public Template getTemplate() {
@@ -100,5 +101,16 @@ public class TemplateMethod {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " [method = " + method + "]";
+    }
+
+    public ActualParameter getPreviousParam(ActualParameter searchParam) {
+        ActualParameter prev = null;
+        for (ActualParameter param : getParameters()) {
+            if (param == searchParam) {
+                return prev;
+            }
+            prev = param;
+        }
+        return prev;
     }
 }

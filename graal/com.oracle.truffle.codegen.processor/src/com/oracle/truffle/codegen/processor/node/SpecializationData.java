@@ -124,15 +124,4 @@ public class SpecializationData extends TemplateMethod {
         return false;
     }
 
-    public ActualParameter getPreviousParam(ActualParameter searchParam) {
-        ActualParameter prev = null;
-        for (ActualParameter param : getParameters()) {
-            if (param == searchParam) {
-                return prev;
-            }
-            prev = param;
-        }
-        return prev;
-    }
-
 }
