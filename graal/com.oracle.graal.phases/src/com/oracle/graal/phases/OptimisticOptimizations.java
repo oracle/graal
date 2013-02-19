@@ -56,7 +56,6 @@ public final class OptimisticOptimizations {
              * TODO (chaeubl): see GRAAL-75 (remove when we are sure that optimistic optimizations
              * are not disabled unnecessarily
              */
-            TTY.println("WARN: deactivated optimistic optimization %s for %s", optimization.name(), MetaUtil.format("%H.%n(%p)", method));
             disabledOptimisticOptsMetric.increment();
         }
     }

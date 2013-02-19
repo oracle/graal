@@ -966,8 +966,6 @@ public class InliningUtil {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "the method's class is not initialized");
         } else if (!method.canBeInlined()) {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "it is marked non-inlinable");
-        } else if (computeInliningLevel(invoke) > GraalOptions.MaximumInlineLevel) {
-            return logNotInlinedMethodAndReturnFalse(invoke, method, "it exceeds the maximum inlining depth");
         } else if (computeRecursiveInliningLevel(invoke.stateAfter(), method) > GraalOptions.MaximumRecursiveInlining) {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "it exceeds the maximum recursive inlining depth");
         } else if (new OptimisticOptimizations(method).lessOptimisticThan(optimisticOpts)) {
