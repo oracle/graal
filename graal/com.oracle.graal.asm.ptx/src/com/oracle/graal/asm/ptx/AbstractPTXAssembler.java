@@ -60,9 +60,4 @@ public abstract class AbstractPTXAssembler extends AbstractAssembler {
         codeBuffer.emitString(targetString, branch + offset);
     }
 
-    @Override
-    public void bangStack(int disp) {
-        // TODO Auto-generated method stub
-    }
-
 }

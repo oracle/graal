@@ -52,9 +52,4 @@ public class SPARCAssembler extends AbstractAssembler {
     protected void patchJumpTarget(int branch, int jumpTarget) {
         // SPARC: Implement patching of jump target.
     }
-
-    @Override
-    public void bangStack(int disp) {
-        // SPARC: Implement stack banging.
-    }
 }

@@ -56,14 +56,6 @@ public abstract class AbstractAssembler {
 
     protected abstract void patchJumpTarget(int branch, int jumpTarget);
 
-    /**
-     * Emits instruction(s) that access an address specified by a given displacement from the stack
-     * pointer in the direction that the stack grows (which is down on most architectures).
-     * 
-     * @param disp the displacement from the stack pointer at which the stack should be accessed
-     */
-    public abstract void bangStack(int disp);
-
     protected final void emitByte(int x) {
         codeBuffer.emitByte(x);
     }

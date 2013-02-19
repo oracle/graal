@@ -3071,9 +3071,4 @@ public class AMD64Assembler extends AbstractAssembler {
     public void fstp(int i) {
         emitx87(0xDD, 0xD8, i);
     }
-
-    @Override
-    public void bangStack(int disp) {
-        movq(new Address(target.wordKind, AMD64.RSP, -disp), AMD64.rax);
-    }
 }
