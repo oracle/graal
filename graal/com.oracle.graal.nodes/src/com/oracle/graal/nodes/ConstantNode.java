@@ -165,17 +165,6 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     /**
-     * Returns a node for an address (jsr/ret address) constant.
-     * 
-     * @param i the address value for which to create the instruction
-     * @param graph
-     * @return a node representing the address
-     */
-    public static ConstantNode forJsr(int i, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forJsr(i)));
-    }
-
-    /**
      * Returns a node for an object constant.
      * 
      * @param o the object value for which to create the instruction

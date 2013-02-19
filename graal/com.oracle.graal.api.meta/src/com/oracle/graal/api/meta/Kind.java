@@ -60,9 +60,6 @@ public enum Kind {
     /** The void float kind. */
     Void('v', "void", false, java.lang.Void.TYPE, java.lang.Void.class),
 
-    /** Denote a bytecode address in a {@code JSR} bytecode. */
-    Jsr('r', "jsr", false, null, null),
-
     /** The non-type. */
     Illegal('-', "illegal", false, null, null);
 
@@ -318,7 +315,6 @@ public enum Kind {
                 return java.lang.Character.MIN_VALUE;
             case Short:
                 return java.lang.Short.MIN_VALUE;
-            case Jsr:
             case Int:
                 return java.lang.Integer.MIN_VALUE;
             case Long:
@@ -343,7 +339,6 @@ public enum Kind {
                 return java.lang.Character.MAX_VALUE;
             case Short:
                 return java.lang.Short.MAX_VALUE;
-            case Jsr:
             case Int:
                 return java.lang.Integer.MAX_VALUE;
             case Long:
@@ -367,7 +362,6 @@ public enum Kind {
             case Char:
             case Short:
                 return 16;
-            case Jsr:
             case Int:
                 return 32;
             case Long:

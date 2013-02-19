@@ -31,7 +31,7 @@ import com.oracle.graal.graph.Node.Verbosity;
 public class ValueNodeUtil {
 
     public static ValueNode assertKind(Kind kind, ValueNode x) {
-        assert x != null && ((x.kind() == kind) || (x.kind() == Kind.Jsr && kind == Kind.Object)) : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.kind());
+        assert x != null && x.kind() == kind : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.kind());
         return x;
     }
 
@@ -45,11 +45,6 @@ public class ValueNodeUtil {
 
     public static ValueNode assertLong(ValueNode x) {
         assert x != null && (x.kind() == Kind.Long);
-        return x;
-    }
-
-    public static ValueNode assertJsr(ValueNode x) {
-        assert x != null && (x.kind() == Kind.Jsr);
         return x;
     }
 

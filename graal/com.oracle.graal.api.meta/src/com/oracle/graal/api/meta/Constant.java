@@ -134,8 +134,6 @@ public final class Constant extends Value {
                 return (short) primitive;
             case Char:
                 return (char) primitive;
-            case Jsr:
-                return (int) primitive;
             case Int:
                 return (int) primitive;
             case Long:
@@ -163,12 +161,12 @@ public final class Constant extends Value {
 
     /**
      * Returns the primitive int value this constant represents. The constant must have a
-     * {@link Kind#getStackKind()} of {@link Kind#Int}, or kind {@link Kind#Jsr}.
+     * {@link Kind#getStackKind()} of {@link Kind#Int}.
      * 
      * @return the constant value
      */
     public int asInt() {
-        assert getKind().getStackKind() == Kind.Int || getKind() == Kind.Jsr;
+        assert getKind().getStackKind() == Kind.Int;
         return (int) primitive;
     }
 
@@ -185,13 +183,12 @@ public final class Constant extends Value {
 
     /**
      * Returns the primitive long value this constant represents. The constant must have kind
-     * {@link Kind#Long}, a {@link Kind#getStackKind()} of {@link Kind#Int}, or kind
-     * {@link Kind#Jsr}.
+     * {@link Kind#Long}, a {@link Kind#getStackKind()} of {@link Kind#Int}.
      * 
      * @return the constant value
      */
     public long asLong() {
-        assert getKind() == Kind.Long || getKind().getStackKind() == Kind.Int || getKind() == Kind.Jsr;
+        assert getKind() == Kind.Long || getKind().getStackKind() == Kind.Int;
         return primitive;
     }
 
@@ -362,16 +359,6 @@ public final class Constant extends Value {
      */
     public static Constant forShort(short i) {
         return new Constant(Kind.Short, null, i);
-    }
-
-    /**
-     * Creates a boxed address (jsr/ret address) constant.
-     * 
-     * @param i the address value to box
-     * @return a boxed copy of {@code value}
-     */
-    public static Constant forJsr(int i) {
-        return new Constant(Kind.Jsr, null, i);
     }
 
     /**

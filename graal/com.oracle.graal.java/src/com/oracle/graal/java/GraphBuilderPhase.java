@@ -1103,7 +1103,7 @@ public final class GraphBuilderPhase extends Phase {
         if (successor.jsrScope.nextReturnAddress() != stream().nextBCI()) {
             throw new JsrNotSupportedBailout("unstructured control flow (internal limitation)");
         }
-        frameState.push(Kind.Jsr, ConstantNode.forJsr(stream().nextBCI(), currentGraph));
+        frameState.push(Kind.Int, ConstantNode.forInt(stream().nextBCI(), currentGraph));
         appendGoto(createTarget(successor, frameState));
     }
 
@@ -1112,7 +1112,7 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode local = frameState.loadLocal(localIndex);
         JsrScope scope = currentBlock.jsrScope;
         int retAddress = scope.nextReturnAddress();
-        append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new IntegerEqualsNode(local, ConstantNode.forJsr(retAddress, currentGraph))), DeoptimizationReason.JavaSubroutineMismatch,
+        append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new IntegerEqualsNode(local, ConstantNode.forInt(retAddress, currentGraph))), DeoptimizationReason.JavaSubroutineMismatch,
                         DeoptimizationAction.InvalidateReprofile)));
         if (!successor.jsrScope.equals(scope.pop())) {
             throw new JsrNotSupportedBailout("unstructured control flow (ret leaves more than one scope)");

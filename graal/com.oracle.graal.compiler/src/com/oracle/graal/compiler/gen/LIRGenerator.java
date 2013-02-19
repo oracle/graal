@@ -151,7 +151,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public Variable newVariable(Kind kind) {
         Kind stackKind = kind.getStackKind();
         switch (stackKind) {
-            case Jsr:
             case Int:
             case Long:
             case Object:

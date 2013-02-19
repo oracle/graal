@@ -54,7 +54,6 @@ public enum AMD64Compare {
         protected void verify() {
             super.verify();
             assert (name().startsWith("I") && x.getKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int)
-                || (name().startsWith("I") && x.getKind() == Kind.Jsr && y.getKind() == Kind.Jsr)
                 || (name().startsWith("L") && x.getKind() == Kind.Long && y.getKind() == Kind.Long)
                 || (name().startsWith("A") && x.getKind() == Kind.Object && y.getKind() == Kind.Object)
                 || (name().startsWith("F") && x.getKind() == Kind.Float && y.getKind() == Kind.Float)

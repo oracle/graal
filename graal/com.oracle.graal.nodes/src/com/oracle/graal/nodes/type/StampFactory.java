@@ -57,8 +57,6 @@ public class StampFactory {
         setCache(Kind.Float, new FloatStamp(Kind.Float));
         setCache(Kind.Double, new FloatStamp(Kind.Double));
 
-        setCache(Kind.Jsr, new IntegerStamp(Kind.Jsr));
-
         setCache(Kind.Object, objectStamp);
         setCache(Kind.Void, voidStamp);
     }

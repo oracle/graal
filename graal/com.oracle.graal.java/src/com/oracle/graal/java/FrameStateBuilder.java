@@ -479,15 +479,6 @@ public class FrameStateBuilder {
     }
 
     /**
-     * Pushes a value onto the stack and checks that it is a JSR return address.
-     * 
-     * @param x the instruction to push onto the stack
-     */
-    public void jpush(ValueNode x) {
-        xpush(assertJsr(x));
-    }
-
-    /**
      * Pushes a value onto the stack and checks that it is a long.
      * 
      * @param x the instruction to push onto the stack
@@ -563,15 +554,6 @@ public class FrameStateBuilder {
      */
     public ValueNode apop() {
         return assertObject(xpop());
-    }
-
-    /**
-     * Pops a value off of the stack and checks that it is a JSR return address.
-     * 
-     * @return x the instruction popped off the stack
-     */
-    public ValueNode jpop() {
-        return assertJsr(xpop());
     }
 
     /**

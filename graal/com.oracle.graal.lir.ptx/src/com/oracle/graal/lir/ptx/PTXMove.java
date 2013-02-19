@@ -226,7 +226,6 @@ public class PTXMove {
 
     private static void const2reg(TargetMethodAssembler tasm, PTXAssembler masm, Value result, Constant input) {
         switch (input.getKind().getStackKind()) {
-            case Jsr:
             case Int:
                 if (tasm.runtime.needsDataPatch(input)) {
                     tasm.recordDataReferenceInCode(input, 0, true);

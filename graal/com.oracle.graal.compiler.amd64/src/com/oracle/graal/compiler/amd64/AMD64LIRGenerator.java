@@ -314,7 +314,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             mirrored = false;
         }
         switch (left.getKind().getStackKind()) {
-            case Jsr:
             case Int:
                 append(new CompareOp(ICMP, left, right));
                 break;

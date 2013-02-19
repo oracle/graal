@@ -256,7 +256,6 @@ public class AMD64Move {
             return;
         }
         switch (input.getKind()) {
-            case Jsr:
             case Int:    masm.movl(asRegister(result),    asRegister(input)); break;
             case Long:   masm.movq(asRegister(result),    asRegister(input)); break;
             case Float:  masm.movflt(asFloatReg(result),  asFloatReg(input)); break;
@@ -268,7 +267,6 @@ public class AMD64Move {
 
     private static void reg2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value input) {
         switch (input.getKind()) {
-            case Jsr:
             case Int:    masm.movl(tasm.asAddress(result),   asRegister(input)); break;
             case Long:   masm.movq(tasm.asAddress(result),   asRegister(input)); break;
             case Float:  masm.movflt(tasm.asAddress(result), asFloatReg(input)); break;
@@ -280,7 +278,6 @@ public class AMD64Move {
 
     private static void stack2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value input) {
         switch (input.getKind()) {
-            case Jsr:
             case Int:    masm.movl(asRegister(result),    tasm.asAddress(input)); break;
             case Long:   masm.movq(asRegister(result),    tasm.asAddress(input)); break;
             case Float:  masm.movflt(asFloatReg(result),  tasm.asAddress(input)); break;
@@ -295,7 +292,6 @@ public class AMD64Move {
         // in all cases. For example, an object constant can be loaded to a long register when unsafe casts occurred (e.g.,
         // for a write barrier where arithmetic operations are then performed on the pointer).
         switch (input.getKind().getStackKind()) {
-            case Jsr:
             case Int:
                 if (tasm.runtime.needsDataPatch(input)) {
                     tasm.recordDataReferenceInCode(input, 0, true);
@@ -354,7 +350,6 @@ public class AMD64Move {
     private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Constant input) {
         assert !tasm.runtime.needsDataPatch(input);
         switch (input.getKind().getStackKind()) {
-            case Jsr:
             case Int:    masm.movl(tasm.asAddress(result), input.asInt()); break;
             case Long:   masm.movlong(tasm.asAddress(result), input.asLong()); break;
             case Float:  masm.movl(tasm.asAddress(result), floatToRawIntBits(input.asFloat())); break;
@@ -415,7 +410,6 @@ public class AMD64Move {
                 case Byte:   masm.movb(storeAddr, c.asInt() & 0xFF); break;
                 case Char:
                 case Short:  masm.movw(storeAddr, c.asInt() & 0xFFFF); break;
-                case Jsr:
                 case Int:    masm.movl(storeAddr, c.asInt()); break;
                 case Long:
                     if (NumUtil.isInt(c.asLong())) {

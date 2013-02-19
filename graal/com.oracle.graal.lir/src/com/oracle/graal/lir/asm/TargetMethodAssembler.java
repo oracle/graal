@@ -181,7 +181,7 @@ public class TargetMethodAssembler {
      * including long constants that fit into the 32-bit range.
      */
     public int asIntConst(Value value) {
-        assert (value.getKind().getStackKind() == Kind.Int || value.getKind() == Kind.Jsr || value.getKind() == Kind.Long) && isConstant(value);
+        assert (value.getKind().getStackKind() == Kind.Int || value.getKind() == Kind.Long) && isConstant(value);
         Constant constant = (Constant) value;
         assert !runtime.needsDataPatch(constant) : constant + " should be in a DataPatch";
         long c = constant.asLong();

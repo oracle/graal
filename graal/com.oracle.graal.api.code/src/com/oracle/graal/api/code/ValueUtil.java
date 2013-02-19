@@ -89,7 +89,7 @@ public final class ValueUtil {
     }
 
     public static Register asIntReg(Value value) {
-        assert value.getKind() == Kind.Int || value.getKind() == Kind.Jsr;
+        assert value.getKind() == Kind.Int;
         return asRegister(value);
     }
 
