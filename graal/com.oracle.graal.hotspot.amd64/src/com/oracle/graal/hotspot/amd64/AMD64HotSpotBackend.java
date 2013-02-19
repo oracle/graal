@@ -50,7 +50,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.word.*;
 
 /**
  * HotSpot AMD64 specific backend.
