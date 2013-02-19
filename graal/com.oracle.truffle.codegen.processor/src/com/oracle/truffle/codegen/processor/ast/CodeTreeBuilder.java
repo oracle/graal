@@ -33,17 +33,25 @@ import com.oracle.truffle.codegen.processor.*;
 
 public class CodeTreeBuilder {
 
+    private final CodeTreeBuilder parent;
+
     private BuilderCodeTree currentElement;
     private final BuilderCodeTree root;
 
-    public CodeTreeBuilder() {
+    private int treeCount;
+
+    public CodeTreeBuilder(CodeTreeBuilder parent) {
         this.root = new BuilderCodeTree(GROUP, null, null);
         this.currentElement = root;
+        this.parent = parent;
     }
 
-    public CodeTreeBuilder(CodeTree tree) {
-        this.root = (BuilderCodeTree) tree;
-        this.currentElement = root;
+    public int getTreeCount() {
+        return treeCount;
+    }
+
+    public boolean isEmpty() {
+        return treeCount == 0;
     }
 
     public CodeTreeBuilder statement(String statement) {
@@ -55,11 +63,11 @@ public class CodeTreeBuilder {
     }
 
     public static CodeTreeBuilder createBuilder() {
-        return new CodeTreeBuilder();
+        return new CodeTreeBuilder(null);
     }
 
     public static CodeTree singleString(String s) {
-        return new CodeTreeBuilder().string(s).getTree();
+        return new CodeTreeBuilder(null).string(s).getTree();
     }
 
     private CodeTreeBuilder push(CodeTreeKind kind) {
@@ -89,11 +97,14 @@ public class CodeTreeBuilder {
                 currentElement = tree;
                 break;
         }
+        treeCount++;
         return this;
     }
 
     private void clearLast(CodeTreeKind kind) {
-        clearLastRec(kind, currentElement.getEnclosedElements());
+        if (clearLastRec(kind, currentElement.getEnclosedElements())) {
+            treeCount--;
+        }
     }
 
     public CodeTreeBuilder startStatement() {
@@ -358,6 +369,13 @@ public class CodeTreeBuilder {
         return push(CodeTreeKind.INDENT);
     }
 
+    public CodeTreeBuilder end(int times) {
+        for (int i = 0; i < times; i++) {
+            end();
+        }
+        return this;
+    }
+
     public CodeTreeBuilder end() {
         BuilderCodeTree tree = currentElement;
         EndCallback callback = tree.getAtEndListener();
@@ -372,9 +390,9 @@ public class CodeTreeBuilder {
     }
 
     private void toParent() {
-        Element parent = currentElement.getEnclosingElement();
+        Element parentElement = currentElement.getEnclosingElement();
         if (currentElement != root) {
-            this.currentElement = (BuilderCodeTree) parent;
+            this.currentElement = (BuilderCodeTree) parentElement;
         } else {
             this.currentElement = root;
         }
@@ -433,7 +451,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder create() {
-        return new CodeTreeBuilder();
+        return new CodeTreeBuilder(null);
     }
 
     public CodeTreeBuilder type(TypeMirror type) {
@@ -496,7 +514,11 @@ public class CodeTreeBuilder {
         while (element != null && (element.getKind() != ElementKind.METHOD)) {
             element = element.getEnclosingElement();
         }
-        return element != null ? (ExecutableElement) element : null;
+        ExecutableElement found = element != null ? (ExecutableElement) element : null;
+        if (found == null && parent != null) {
+            found = parent.findMethod();
+        }
+        return found;
     }
 
     public CodeTreeBuilder returnTrue() {

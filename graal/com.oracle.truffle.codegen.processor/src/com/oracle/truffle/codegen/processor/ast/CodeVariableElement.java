@@ -58,7 +58,7 @@ public final class CodeVariableElement extends CodeElement<Element> implements W
     }
 
     public CodeTreeBuilder createInitBuilder() {
-        CodeTreeBuilder builder = new CodeTreeBuilder();
+        CodeTreeBuilder builder = new CodeTreeBuilder(null);
         init = builder.getTree();
         init.setEnclosingElement(this);
         return builder;
