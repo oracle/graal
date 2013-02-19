@@ -502,12 +502,12 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public String getClassFilePath() {
         Class<?> cls = mirror();
-        String classFileName = MetaUtil.getSimpleName(cls, false);
-        while (cls.isLocalClass() || cls.isMemberClass()) {
-            cls = cls.getEnclosingClass();
-            classFileName = new StringBuilder(MetaUtil.getSimpleName(cls, false)).append('$').append(classFileName).toString();
+        String name = cls.getName();
+        int dot = name.lastIndexOf('.');
+        if (dot != -1) {
+            name = name.substring(dot + 1);
         }
-        URL classFilePath = cls.getResource(classFileName + ".class");
+        URL classFilePath = cls.getResource(name + ".class");
         return classFilePath == null ? null : classFilePath.getPath();
     }
 }
