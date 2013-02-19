@@ -776,13 +776,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         return HotSpotResolvedObjectType.fromClass(clazz);
     }
 
-    public Object lookupCallTarget(Object callTarget) {
-        if (callTarget instanceof HotSpotRuntimeCallTarget) {
-            return ((HotSpotRuntimeCallTarget) callTarget).getAddress();
-        }
-        return callTarget;
-    }
-
     /**
      * Gets the stub corresponding to a given method.
      * 

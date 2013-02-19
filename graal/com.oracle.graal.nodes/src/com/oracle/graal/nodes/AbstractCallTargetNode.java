@@ -32,10 +32,10 @@ public abstract class AbstractCallTargetNode extends CallTargetNode {
 
     private final Stamp returnStamp;
     private final JavaType[] signature;
-    private final Object target;
+    private final InvokeTarget target;
     private final CallingConvention.Type callType;
 
-    public AbstractCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, Object target, CallingConvention.Type callType) {
+    public AbstractCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, InvokeTarget target, CallingConvention.Type callType) {
         super(arguments);
         this.returnStamp = returnStamp;
         this.signature = signature;
@@ -52,7 +52,7 @@ public abstract class AbstractCallTargetNode extends CallTargetNode {
         return signature;
     }
 
-    public Object target() {
+    public InvokeTarget target() {
         return target;
     }
 

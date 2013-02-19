@@ -45,9 +45,9 @@ public class AMD64Call {
         @Temp protected Value[] temps;
         @State protected LIRFrameState state;
 
-        protected final Object callTarget;
+        protected final InvokeTarget callTarget;
 
-        public DirectCallOp(Object callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        public DirectCallOp(InvokeTarget callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
             this.callTarget = callTarget;
             this.result = result;
             this.parameters = parameters;
@@ -79,9 +79,9 @@ public class AMD64Call {
         @Temp protected Value[] temps;
         @State protected LIRFrameState state;
 
-        protected final Object callTarget;
+        protected final InvokeTarget callTarget;
 
-        public IndirectCallOp(Object callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
+        public IndirectCallOp(InvokeTarget callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
             this.callTarget = callTarget;
             this.result = result;
             this.parameters = parameters;
@@ -103,7 +103,7 @@ public class AMD64Call {
         }
     }
 
-    public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Object callTarget, LIRFrameState info) {
+    public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, InvokeTarget callTarget, LIRFrameState info) {
         int before = masm.codeBuffer.position();
         if (callTarget instanceof RuntimeCallTarget) {
             long maxOffset = ((RuntimeCallTarget) callTarget).getMaxCallTargetOffset();
@@ -121,24 +121,24 @@ public class AMD64Call {
             masm.call();
         }
         int after = masm.codeBuffer.position();
-        tasm.recordDirectCall(before, after, tasm.runtime.lookupCallTarget(callTarget), info);
+        tasm.recordDirectCall(before, after, callTarget, info);
         tasm.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
     }
 
-    public static void directJmp(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Object target) {
+    public static void directJmp(TargetMethodAssembler tasm, AMD64MacroAssembler masm, InvokeTarget target) {
         int before = masm.codeBuffer.position();
         masm.jmp(0, true);
         int after = masm.codeBuffer.position();
-        tasm.recordDirectCall(before, after, tasm.runtime.lookupCallTarget(target), null);
+        tasm.recordDirectCall(before, after, target, null);
         masm.ensureUniquePC();
     }
 
-    public static void indirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Register dst, Object callTarget, LIRFrameState info) {
+    public static void indirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
         int before = masm.codeBuffer.position();
         masm.call(dst);
         int after = masm.codeBuffer.position();
-        tasm.recordIndirectCall(before, after, tasm.runtime.lookupCallTarget(callTarget), info);
+        tasm.recordIndirectCall(before, after, callTarget, info);
         tasm.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
     }

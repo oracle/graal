@@ -142,14 +142,14 @@ public class TargetMethodAssembler {
         }
     }
 
-    public void recordDirectCall(int posBefore, int posAfter, Object callTarget, LIRFrameState info) {
+    public void recordDirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
         assert lastSafepointPos < posAfter;
         lastSafepointPos = posAfter;
         compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
     }
 
-    public void recordIndirectCall(int posBefore, int posAfter, Object callTarget, LIRFrameState info) {
+    public void recordIndirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
         assert lastSafepointPos < posAfter;
         lastSafepointPos = posAfter;

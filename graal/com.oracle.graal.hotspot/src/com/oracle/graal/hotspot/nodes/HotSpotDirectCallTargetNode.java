@@ -34,7 +34,7 @@ public class HotSpotDirectCallTargetNode extends DirectCallTargetNode {
 
     private final InvokeKind invokeKind;
 
-    public HotSpotDirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, Object target, Type callType, InvokeKind invokeKind) {
+    public HotSpotDirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, InvokeTarget target, Type callType, InvokeKind invokeKind) {
         super(arguments, returnStamp, signature, target, callType);
         this.invokeKind = invokeKind;
     }

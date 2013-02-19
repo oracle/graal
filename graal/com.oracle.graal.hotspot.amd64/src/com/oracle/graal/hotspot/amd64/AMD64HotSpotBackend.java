@@ -31,6 +31,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCallTarget.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -49,11 +50,16 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.word.*;
 
 /**
  * HotSpot AMD64 specific backend.
  */
 public class AMD64HotSpotBackend extends HotSpotBackend {
+
+    public static final Descriptor EXCEPTION_HANDLER = new Descriptor("exceptionHandler", true, void.class);
+    public static final Descriptor DEOPT_HANDLER = new Descriptor("deoptHandler", true, void.class);
+    public static final Descriptor IC_MISS_HANDLER = new Descriptor("icMissHandler", true, void.class);
 
     public AMD64HotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
         super(runtime, target);
@@ -305,11 +311,11 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         boolean frameOmitted = tasm.frameContext == null;
         if (!frameOmitted) {
             tasm.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
-            AMD64Call.directCall(tasm, asm, config.handleExceptionStub, null);
+            AMD64Call.directCall(tasm, asm, runtime().lookupRuntimeCall(EXCEPTION_HANDLER), null);
             AMD64Call.shouldNotReachHere(tasm, asm);
 
             tasm.recordMark(Marks.MARK_DEOPT_HANDLER_ENTRY);
-            AMD64Call.directCall(tasm, asm, config.handleDeoptStub, null);
+            AMD64Call.directCall(tasm, asm, runtime().lookupRuntimeCall(DEOPT_HANDLER), null);
             AMD64Call.shouldNotReachHere(tasm, asm);
         } else {
             // No need to emit the stubs for entries back into the method since
@@ -319,7 +325,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
         if (unverifiedStub != null) {
             asm.bind(unverifiedStub);
-            AMD64Call.directJmp(tasm, asm, config.inlineCacheMissStub);
+            AMD64Call.directJmp(tasm, asm, runtime().lookupRuntimeCall(IC_MISS_HANDLER));
         }
 
         for (int i = 0; i < GraalOptions.MethodEndBreakpointGuards; ++i) {
@@ -327,4 +333,5 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         }
 
     }
+
 }

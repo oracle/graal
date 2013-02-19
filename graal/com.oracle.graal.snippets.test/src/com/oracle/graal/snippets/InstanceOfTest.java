@@ -280,7 +280,7 @@ public class InstanceOfTest extends TypeCheckTest {
     @Test
     public void test10() {
         Mark[] noMarks = {};
-        Call callAt63 = new Call("ignore", 63, 5, true, null);
+        Call callAt63 = new Call(null, 63, 5, true, null);
         Mark markAt63 = new Mark(63, "1", noMarks);
         test("compareSites", callAt63, callAt63);
         test("compareSites", callAt63, markAt63);

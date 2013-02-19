@@ -94,7 +94,7 @@ public class CompilationResult implements Serializable {
         /**
          * The target of the call.
          */
-        public final Object target;
+        public final InvokeTarget target;
 
         /**
          * The size of the call instruction.
@@ -108,7 +108,7 @@ public class CompilationResult implements Serializable {
          */
         public final boolean direct;
 
-        public Call(Object target, int pcOffset, int size, boolean direct, DebugInfo debugInfo) {
+        public Call(InvokeTarget target, int pcOffset, int size, boolean direct, DebugInfo debugInfo) {
             super(pcOffset, debugInfo);
             this.size = size;
             this.target = target;
@@ -438,11 +438,11 @@ public class CompilationResult implements Serializable {
      * 
      * @param codePos the position of the call in the code array
      * @param size the size of the call instruction
-     * @param target the {@link CodeCacheProvider#lookupCallTarget(Object) target} being called
+     * @param target the being called
      * @param debugInfo the debug info for the call
      * @param direct specifies if this is a {@linkplain Call#direct direct} call
      */
-    public void recordCall(int codePos, int size, Object target, DebugInfo debugInfo, boolean direct) {
+    public void recordCall(int codePos, int size, InvokeTarget target, DebugInfo debugInfo, boolean direct) {
         final Call call = new Call(target, codePos, size, direct, debugInfo);
         addSafepoint(call);
     }

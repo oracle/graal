@@ -81,11 +81,6 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     int getMinimumOutgoingSize();
 
     /**
-     * Performs any runtime-specific conversion on the object used to describe the target of a call.
-     */
-    Object lookupCallTarget(Object callTarget);
-
-    /**
      * Gets the signature and linkage information for a runtime call.
      */
     RuntimeCallTarget lookupRuntimeCall(Descriptor descriptor);
