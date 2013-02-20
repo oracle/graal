@@ -135,7 +135,7 @@ public class MetaUtil {
                 String prefix = "";
                 Class<?> enclosingClass = clazz;
                 while ((enclosingClass = enclosingClass.getEnclosingClass()) != null) {
-                    prefix = prefix + enclosingClass.getSimpleName() + ".";
+                    prefix = enclosingClass.getSimpleName() + "." + prefix;
                 }
                 return prefix + simpleName;
             }
