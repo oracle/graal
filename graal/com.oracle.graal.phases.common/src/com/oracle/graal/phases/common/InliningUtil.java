@@ -696,7 +696,8 @@ public class InliningUtil {
                 ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
                 ResolvedJavaType leastCommonType = getLeastCommonType();
                 // check if we have a common base type that implements the interface -> in that case
-// we have a vtable entry for the interface method and can use a less expensive virtual call
+                // we have a vtable entry for the interface method and can use a less expensive
+                // virtual call
                 if (!leastCommonType.isInterface() && targetMethod.getDeclaringClass().isAssignableFrom(leastCommonType)) {
                     ResolvedJavaMethod baseClassTargetMethod = leastCommonType.resolveMethod(targetMethod);
                     if (baseClassTargetMethod != null) {
