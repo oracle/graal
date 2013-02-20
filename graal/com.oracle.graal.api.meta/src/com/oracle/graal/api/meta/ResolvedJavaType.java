@@ -24,6 +24,7 @@ package com.oracle.graal.api.meta;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
+import java.net.*;
 
 /**
  * Represents a resolved Java type. Types include primitives, objects, {@code void}, and arrays
@@ -257,5 +258,5 @@ public interface ResolvedJavaType extends JavaType {
     /**
      * Returns the class file path - if available - of this type, or {@code null}.
      */
-    String getClassFilePath();
+    URL getClassFilePath();
 }

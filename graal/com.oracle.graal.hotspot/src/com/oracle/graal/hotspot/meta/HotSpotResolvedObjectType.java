@@ -500,14 +500,13 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
-    public String getClassFilePath() {
+    public URL getClassFilePath() {
         Class<?> cls = mirror();
         String name = cls.getName();
         int dot = name.lastIndexOf('.');
         if (dot != -1) {
             name = name.substring(dot + 1);
         }
-        URL classFilePath = cls.getResource(name + ".class");
-        return classFilePath == null ? null : classFilePath.getPath();
+        return cls.getResource(name + ".class");
     }
 }
