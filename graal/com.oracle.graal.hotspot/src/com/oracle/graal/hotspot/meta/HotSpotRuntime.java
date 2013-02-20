@@ -614,8 +614,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                     graph.addAfterFixed(memoryWrite, writeBarrier);
                     last = writeBarrier;
                 } else {
-                    WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(memoryWrite.object()));
-                    WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(memoryWrite.object()));
+                    WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(memoryWrite.object(), null, true));
+                    WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(memoryWrite.object(), memoryWrite.value()));
                     graph.addBeforeFixed(memoryWrite, writeBarrierPre);
                     graph.addAfterFixed(memoryWrite, writeBarrierPost);
                     last = writeBarrierPost;
@@ -640,8 +640,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                         FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(cas.object()));
                         graph.addAfterFixed(cas, writeBarrier);
                     } else {
-                        WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(cas.object()));
-                        WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(cas.object()));
+                        WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(cas.object(), cas.expected(), false));
+                        WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(cas.object(), cas.newValue()));
                         graph.addAfterFixed(cas, writeBarrierPre);
                         graph.addAfterFixed(cas, writeBarrierPost);
                     }
@@ -651,8 +651,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                         LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, false);
                         graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location)));
                     } else {
-                        graph.addBeforeFixed(cas, graph.add(new WriteBarrierPre(cas.object())));
-                        graph.addAfterFixed(cas, graph.add(new WriteBarrierPost(cas.object())));
+                        graph.addBeforeFixed(cas, graph.add(new WriteBarrierPre(cas.object(), cas.expected(), false)));
+                        graph.addAfterFixed(cas, graph.add(new WriteBarrierPost(cas.object(), cas.newValue())));
                     }
                 }
             }
@@ -702,8 +702,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                 if (!config.useG1GC) {
                     graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation)));
                 } else {
-                    graph.addBeforeFixed(memoryWrite, graph.add(new WriteBarrierPre(array)));
-                    graph.addAfterFixed(memoryWrite, graph.add(new WriteBarrierPost(array)));
+                    graph.addBeforeFixed(memoryWrite, graph.add(new WriteBarrierPre(array, null, true)));
+                    graph.addAfterFixed(memoryWrite, graph.add(new WriteBarrierPost(array, value)));
                 }
             }
         } else if (n instanceof UnsafeLoadNode) {
@@ -731,8 +731,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                         FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(object));
                         graph.addAfterFixed(write, writeBarrier);
                     } else {
-                        graph.addBeforeFixed(write, graph.add(new WriteBarrierPre(object)));
-                        graph.addAfterFixed(write, graph.add(new WriteBarrierPost(object)));
+                        graph.addBeforeFixed(write, graph.add(new WriteBarrierPre(object, null, true)));
+                        graph.addAfterFixed(write, graph.add(new WriteBarrierPost(object, write.value())));
                     }
                 } else {
                     // This may be an array store so use an array write barrier
@@ -740,8 +740,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                         ArrayWriteBarrier writeBarrier = graph.add(new ArrayWriteBarrier(object, location));
                         graph.addAfterFixed(write, writeBarrier);
                     } else {
-                        graph.addBeforeFixed(write, graph.add(new WriteBarrierPre(object)));
-                        graph.addAfterFixed(write, graph.add(new WriteBarrierPost(object)));
+                        graph.addBeforeFixed(write, graph.add(new WriteBarrierPre(object, null, true)));
+                        graph.addAfterFixed(write, graph.add(new WriteBarrierPost(object, store.value())));
                     }
                 }
             }

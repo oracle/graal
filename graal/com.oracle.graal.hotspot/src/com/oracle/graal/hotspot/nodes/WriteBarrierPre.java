@@ -28,13 +28,25 @@ import com.oracle.graal.nodes.spi.*;
 public final class WriteBarrierPre extends WriteBarrier implements Lowerable {
 
     @Input private ValueNode object;
+    @Input private ValueNode previousValue;
+    private boolean doLoad;
 
     public ValueNode object() {
         return object;
     }
 
-    public WriteBarrierPre(ValueNode object) {
+    public ValueNode previousValue() {
+        return previousValue;
+    }
+
+    public boolean doLoad() {
+        return doLoad;
+    }
+
+    public WriteBarrierPre(ValueNode object, ValueNode previousValue, boolean doLoad) {
         this.object = object;
+        this.previousValue = previousValue;
+        this.doLoad = doLoad;
     }
 
     public void lower(LoweringTool generator) {
