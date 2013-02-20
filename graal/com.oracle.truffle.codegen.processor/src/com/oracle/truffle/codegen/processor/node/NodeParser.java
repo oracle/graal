@@ -147,7 +147,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         nodeData.setExecutableTypes(executableTypes.toArray(new ExecutableTypeData[executableTypes.size()]));
 
         parsedNodes.put(Utils.getQualifiedName(type), nodeData); // node fields will resolve node
-// types, to avoid endless loops
+        // types, to avoid endless loops
 
         NodeFieldData[] fields = parseFields(nodeData, elements, typeHierarchy);
         if (fields == null) {
