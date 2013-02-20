@@ -40,13 +40,72 @@ import com.oracle.graal.word.*;
 public class WriteBarrierSnippets implements SnippetsInterface {
 
     @Snippet
-    public static void g1PreWriteBarrier(@Parameter("object") Object object) {
+    public static void g1PreWriteBarrier(@Parameter("object") Object object, @Parameter("previousValue") Word previousValue, @Parameter("load") boolean doLoad) {
+        Word thread = thread();
+        Pointer oop = Word.fromObject(object);
+        Word markingAddress = thread.add(HotSpotSnippetUtils.g1SATBQueueMarkingOffset());
+        Word bufferAddress = thread.add(HotSpotSnippetUtils.g1SATBQueueBufferOffset());
+        Word indexAddress = thread.add(HotSpotSnippetUtils.g1SATBQueueIndexOffset());
+        Word prevValue = previousValue;
 
+        Word marking = markingAddress.readWord(0);
+        if (marking.notEqual(Word.zero())) {
+            if (doLoad) {
+                prevValue = (Word) Word.fromObject(oop.readObject(0));
+            }
+
+            if (prevValue.notEqual(Word.zero())) {
+                if (indexAddress.readInt(0) != 0) {
+                    Word nextIndex = indexAddress.subtract(Word.signed(HotSpotSnippetUtils.wordSize()));
+                    Word nextIndexX = nextIndex;
+                    Word logAddress = bufferAddress.add(nextIndexX);
+                    logAddress.writeWord(0, prevValue);
+                    indexAddress.writeWord(0, nextIndex);
+                } else {
+                    WriteBarrierPostStubCall.call(object);
+                }
+            }
+        }
     }
 
     @Snippet
-    public static void g1PostWriteBarrier(@Parameter("object") Object object) {
+    public static void g1PostWriteBarrier(@Parameter("object") Object object, @Parameter("value") Word value) {
+        Word thread = thread();
+        Pointer oop = Word.fromObject(object);
 
+        Word bufferAddress = thread.add(HotSpotSnippetUtils.g1CardQueueBufferOffset());
+        Word indexAddress = thread.add(HotSpotSnippetUtils.g1CardQueueIndexOffset());
+
+        // Card Table
+        Word base = (Word) oop.unsignedShiftRight(cardTableShift());
+        long startAddress = cardTableStart();
+        int displacement = 0;
+        if (((int) startAddress) == startAddress) {
+            displacement = (int) startAddress;
+        } else {
+            base = base.add(Word.unsigned(cardTableStart()));
+        }
+
+        if (value != null) {
+            Word xorResult = (((Word) oop.xor(value)).unsignedShiftRight(HotSpotSnippetUtils.logOfHRGrainBytes()));
+            if (xorResult.notEqual(Word.zero())) {
+                if (value.notEqual(Word.zero())) {
+                    Word cardValue = base.readWord(displacement);
+                    if (cardValue.notEqual(Word.zero())) {
+                        base.writeWord(displacement, Word.zero()); // smash zero into card
+                        if (indexAddress.readInt(0) != 0) {
+                            Word nextIndex = indexAddress.subtract(Word.signed(HotSpotSnippetUtils.wordSize()));
+                            Word nextIndexX = nextIndex;
+                            Word logAddress = bufferAddress.add(nextIndexX);
+                            logAddress.writeWord(0, base.add(displacement));
+                            indexAddress.writeWord(0, nextIndex);
+                        } else {
+                            WriteBarrierPostStubCall.call(object);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private static void trace(boolean enabled, String format, WordBase value) {
@@ -68,7 +127,7 @@ public class WriteBarrierSnippets implements SnippetsInterface {
             base = base.add(Word.unsigned(cardTableStart()));
         }
         base.writeWord(displacement, Word.zero());
-        WriteBarrierStubCall.call(object);
+        // WriteBarrierStubCall.call(object);
     }
 
     @Snippet
@@ -104,7 +163,7 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         }
 
         public void lower(ArrayWriteBarrier arrayWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
-            ResolvedJavaMethod method = !useG1GC ? serialArrayWriteBarrier : serialArrayWriteBarrier;
+            ResolvedJavaMethod method = serialArrayWriteBarrier;
             Key key = new Key(method);
             Arguments arguments = new Arguments();
             arguments.add("object", arrayWriteBarrier.object());
@@ -113,12 +172,30 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         }
 
         public void lower(FieldWriteBarrier fieldWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
-            ResolvedJavaMethod method = !useG1GC ? serialFieldWriteBarrier : serialFieldWriteBarrier;
+            ResolvedJavaMethod method = serialFieldWriteBarrier;
             Key key = new Key(method);
             Arguments arguments = new Arguments();
             arguments.add("object", fieldWriteBarrier.object());
             SnippetTemplate template = cache.get(key, assumptions);
             template.instantiate(runtime, fieldWriteBarrier, DEFAULT_REPLACER, arguments);
+        }
+
+        public void lower(WriteBarrierPre writeBarrierPre, @SuppressWarnings("unused") LoweringTool tool) {
+            ResolvedJavaMethod method = g1PreWriteBarrier;
+            Key key = new Key(method);
+            Arguments arguments = new Arguments();
+            arguments.add("object", writeBarrierPre.object());
+            SnippetTemplate template = cache.get(key, assumptions);
+            template.instantiate(runtime, writeBarrierPre, DEFAULT_REPLACER, arguments);
+        }
+
+        public void lower(WriteBarrierPost writeBarrierPost, @SuppressWarnings("unused") LoweringTool tool) {
+            ResolvedJavaMethod method = g1PostWriteBarrier;
+            Key key = new Key(method);
+            Arguments arguments = new Arguments();
+            arguments.add("object", writeBarrierPost.object());
+            SnippetTemplate template = cache.get(key, assumptions);
+            template.instantiate(runtime, writeBarrierPost, DEFAULT_REPLACER, arguments);
         }
     }
 }

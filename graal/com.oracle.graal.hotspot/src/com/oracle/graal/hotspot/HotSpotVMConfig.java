@@ -213,6 +213,16 @@ public final class HotSpotVMConfig extends CompilerObject {
     public boolean isPollingPageFar;
 
     /**
+     * G1 Collector Related Values.
+     */
+    public int g1CardQueueIndexOffset;
+    public int g1CardQueueBufferOffset;
+    public int logOfHRGrainBytes;
+    public int g1SATBQueueMarkingOffset;
+    public int g1SATBQueueIndexOffset;
+    public int g1SATBQueueBufferOffset;
+
+    /**
      * The offset of the _java_mirror field (of type {@link Class}) in a Klass.
      */
     public int classMirrorOffset;
@@ -316,7 +326,8 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long handleDeoptStub;
     public long monitorEnterStub;
     public long monitorExitStub;
-    public long g1WBSlowStub;
+    public long wbPreCallStub;
+    public long wbPostCallStub;
     public long verifyOopStub;
     public long vmErrorStub;
     public long deoptimizeStub;
