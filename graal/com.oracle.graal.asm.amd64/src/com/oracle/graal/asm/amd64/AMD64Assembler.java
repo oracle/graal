@@ -50,12 +50,29 @@ public class AMD64Assembler extends AbstractAssembler {
      * The x86 condition codes used for conditional jumps/moves.
      */
     public enum ConditionFlag {
-        zero(0x4, "|zero|"), notZero(0x5, "|nzero|"), equal(0x4, "="), notEqual(0x5, "!="), less(0xc, "<"), lessEqual(0xe, "<="), greater(0xf, ">"), greaterEqual(0xd, ">="), below(0x2, "|<|"), belowEqual(
-                        0x6, "|<=|"), above(0x7, "|>|"), aboveEqual(0x3, "|>=|"), overflow(0x0, "|of|"), noOverflow(0x1, "|nof|"), carrySet(0x2, "|carry|"), carryClear(0x3, "|ncarry|"), negative(0x8,
-                        "|neg|"), positive(0x9, "|pos|"), parity(0xa, "|par|"), noParity(0xb, "|npar|");
+        Zero(0x4, "|zero|"),
+        NotZero(0x5, "|nzero|"),
+        Equal(0x4, "="),
+        NotEqual(0x5, "!="),
+        Less(0xc, "<"),
+        LessEqual(0xe, "<="),
+        Greater(0xf, ">"),
+        GreaterEqual(0xd, ">="),
+        Below(0x2, "|<|"),
+        BelowEqual(0x6, "|<=|"),
+        Above(0x7, "|>|"),
+        AboveEqual(0x3, "|>=|"),
+        Overflow(0x0, "|of|"),
+        NoOverflow(0x1, "|nof|"),
+        CarrySet(0x2, "|carry|"),
+        CarryClear(0x3, "|ncarry|"),
+        Negative(0x8, "|neg|"),
+        Positive(0x9, "|pos|"),
+        Parity(0xa, "|par|"),
+        NoParity(0xb, "|npar|");
 
-        public final int value;
-        public final String operator;
+        private final int value;
+        private final String operator;
 
         private ConditionFlag(int value, String operator) {
             this.value = value;
@@ -64,48 +81,57 @@ public class AMD64Assembler extends AbstractAssembler {
 
         public ConditionFlag negate() {
             switch (this) {
-                case zero:
-                    return notZero;
-                case notZero:
-                    return zero;
-                case equal:
-                    return notEqual;
-                case notEqual:
-                    return equal;
-                case less:
-                    return greaterEqual;
-                case lessEqual:
-                    return greater;
-                case greater:
-                    return lessEqual;
-                case greaterEqual:
-                    return less;
-                case below:
-                    return aboveEqual;
-                case belowEqual:
-                    return above;
-                case above:
-                    return belowEqual;
-                case aboveEqual:
-                    return below;
-                case overflow:
-                    return noOverflow;
-                case noOverflow:
-                    return overflow;
-                case carrySet:
-                    return carryClear;
-                case carryClear:
-                    return carrySet;
-                case negative:
-                    return positive;
-                case positive:
-                    return negative;
-                case parity:
-                    return noParity;
-                case noParity:
-                    return parity;
+                case Zero:
+                    return NotZero;
+                case NotZero:
+                    return Zero;
+                case Equal:
+                    return NotEqual;
+                case NotEqual:
+                    return Equal;
+                case Less:
+                    return GreaterEqual;
+                case LessEqual:
+                    return Greater;
+                case Greater:
+                    return LessEqual;
+                case GreaterEqual:
+                    return Less;
+                case Below:
+                    return AboveEqual;
+                case BelowEqual:
+                    return Above;
+                case Above:
+                    return BelowEqual;
+                case AboveEqual:
+                    return Below;
+                case Overflow:
+                    return NoOverflow;
+                case NoOverflow:
+                    return Overflow;
+                case CarrySet:
+                    return CarryClear;
+                case CarryClear:
+                    return CarrySet;
+                case Negative:
+                    return Positive;
+                case Positive:
+                    return Negative;
+                case Parity:
+                    return NoParity;
+                case NoParity:
+                    return Parity;
             }
             throw new IllegalArgumentException();
+        }
+
+        public int getValue() {
+            return value;
+        }
+
+        @Override
+        public String toString() {
+            return operator;
         }
     }
 
@@ -155,16 +181,6 @@ public class AMD64Assembler extends AbstractAssembler {
         return r.encoding & 0x7;
     }
 
-    private void emitArithB(int op1, int op2, Register dst, int imm8) {
-        assert dst.isByte() : "must have byte register";
-        assert isUByte(op1) && isUByte(op2) : "wrong opcode";
-        assert isUByte(imm8) : "not a byte";
-        assert (op1 & 0x01) == 0 : "should be 8bit operation";
-        emitByte(op1);
-        emitByte(op2 | encode(dst));
-        emitByte(imm8);
-    }
-
     private void emitArith(int op1, int op2, Register dst, int imm32) {
         assert isUByte(op1) && isUByte(op2) : "wrong opcode";
         assert (op1 & 0x01) == 1 : "should be 32bit operation";
@@ -201,7 +217,7 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(op2 | encode(dst) << 3 | encode(src));
     }
 
-    protected void emitOperandHelper(Register reg, Address addr) {
+    private void emitOperandHelper(Register reg, Address addr) {
         Register base = isLegal(addr.getBase()) ? asRegister(addr.getBase()) : Register.None;
         Register index = isLegal(addr.getIndex()) ? asRegister(addr.getIndex()) : Register.None;
 
@@ -211,11 +227,6 @@ public class AMD64Assembler extends AbstractAssembler {
         if (base == Register.Frame) {
             assert frameRegister != null : "cannot use register " + Register.Frame + " in assembler with null register configuration";
             base = frameRegister;
-            // } else if (base == Register.CallerFrame) {
-            // assert frameRegister != null : "cannot use register " + Register.Frame +
-            // " in assembler with null register configuration";
-            // base = frameRegister;
-            // disp += targetMethod.frameSize() + 8;
         }
 
         // Encode the registers as needed in the fields they are used in
@@ -319,12 +330,6 @@ public class AMD64Assembler extends AbstractAssembler {
     public final void addl(Address dst, int imm32) {
         prefix(dst);
         emitArithOperand(0x81, rax, dst, imm32);
-    }
-
-    public final void addl(Address dst, Register src) {
-        prefix(dst, src);
-        emitByte(0x01);
-        emitOperandHelper(src, dst);
     }
 
     public final void addl(Register dst, int imm32) {
@@ -468,18 +473,10 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(dst, src);
     }
 
-    public final void bswapl(Register reg) { // bswap
+    public final void bswapl(Register reg) {
         int encode = prefixAndEncode(reg.encoding);
         emitByte(0x0F);
         emitByte(0xC8 | encode);
-    }
-
-    public final void btli(Address src, int imm8) {
-        prefixq(src);
-        emitByte(0x0F);
-        emitByte(0xBA);
-        emitOperandHelper(rsp, src);
-        emitByte(imm8);
     }
 
     public final void cdql() {
@@ -489,29 +486,15 @@ public class AMD64Assembler extends AbstractAssembler {
     public final void cmovl(ConditionFlag cc, Register dst, Register src) {
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
-        emitByte(0x40 | cc.value);
+        emitByte(0x40 | cc.getValue());
         emitByte(0xC0 | encode);
     }
 
     public final void cmovl(ConditionFlag cc, Register dst, Address src) {
         prefix(src, dst);
         emitByte(0x0F);
-        emitByte(0x40 | cc.value);
+        emitByte(0x40 | cc.getValue());
         emitOperandHelper(dst, src);
-    }
-
-    public final void cmpb(Address dst, int imm8) {
-        prefix(dst);
-        emitByte(0x80);
-        emitOperandHelper(rdi, dst);
-        emitByte(imm8);
-    }
-
-    public final void cmpl(Address dst, int imm32) {
-        prefix(dst);
-        emitByte(0x81);
-        emitOperandHelper(rdi, dst);
-        emitInt(imm32);
     }
 
     public final void cmpl(Register dst, int imm32) {
@@ -543,7 +526,7 @@ public class AMD64Assembler extends AbstractAssembler {
             movl(rax, adr);
             if (reg != rax) {
                 Label l = new Label();
-                jcc(ConditionFlag.notEqual, l);
+                jccb(ConditionFlag.NotEqual, l);
                 movl(adr, reg);
                 bind(l);
             }
@@ -554,43 +537,6 @@ public class AMD64Assembler extends AbstractAssembler {
             emitByte(0xB1);
             emitOperandHelper(reg, adr);
         }
-    }
-
-    public final void comisd(Register dst, Address src) {
-        assert dst.isFpu();
-        // NOTE: dbx seems to decode this as comiss even though the
-        // 0x66 is there. Strangly ucomisd comes out correct
-        emitByte(0x66);
-        comiss(dst, src);
-    }
-
-    public final void comiss(Register dst, Address src) {
-        assert dst.isFpu();
-
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x2F);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cvtdq2pd(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
-
-        emitByte(0xF3);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xE6);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void cvtdq2ps(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x5B);
-        emitByte(0xC0 | encode);
     }
 
     public final void cvtsd2ss(Register dst, Register src) {
@@ -649,8 +595,7 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC0 | encode);
     }
 
-    public final void decl(Address dst) {
-        // Don't use it directly. Use Macrodecrement() instead.
+    protected final void decl(Address dst) {
         prefix(dst);
         emitByte(0xFF);
         emitOperandHelper(rcx, dst);
@@ -730,32 +675,31 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
-    public final void incl(Address dst) {
-        // Don't use it directly. Use Macroincrement() instead.
+    protected final void incl(Address dst) {
         prefix(dst);
         emitByte(0xFF);
         emitOperandHelper(rax, dst);
     }
 
-    public final void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
+    private void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
         int shortSize = 2;
         int longSize = 6;
         long disp = jumpTarget - codeBuffer.position();
         if (!forceDisp32 && isByte(disp - shortSize)) {
             // 0111 tttn #8-bit disp
-            emitByte(0x70 | cc.value);
+            emitByte(0x70 | cc.getValue());
             emitByte((int) ((disp - shortSize) & 0xFF));
         } else {
             // 0000 1111 1000 tttn #32-bit disp
             assert isInt(disp - longSize) : "must be 32bit offset (call4)";
             emitByte(0x0F);
-            emitByte(0x80 | cc.value);
+            emitByte(0x80 | cc.getValue());
             emitInt((int) (disp - longSize));
         }
     }
 
     public final void jcc(ConditionFlag cc, Label l) {
-        assert (0 <= cc.value) && (cc.value < 16) : "illegal cc";
+        assert (0 <= cc.getValue()) && (cc.getValue() < 16) : "illegal cc";
         if (l.isBound()) {
             jcc(cc, l.position(), false);
         } else {
@@ -765,7 +709,7 @@ public class AMD64Assembler extends AbstractAssembler {
             // an 8-bit displacement
             l.addPatchAt(codeBuffer.position());
             emitByte(0x0F);
-            emitByte(0x80 | cc.value);
+            emitByte(0x80 | cc.getValue());
             emitInt(0);
         }
 
@@ -778,20 +722,14 @@ public class AMD64Assembler extends AbstractAssembler {
             assert isByte(entry - (codeBuffer.position() + shortSize)) : "Dispacement too large for a short jmp";
             long disp = entry - codeBuffer.position();
             // 0111 tttn #8-bit disp
-            emitByte(0x70 | cc.value);
+            emitByte(0x70 | cc.getValue());
             emitByte((int) ((disp - shortSize) & 0xFF));
         } else {
 
             l.addPatchAt(codeBuffer.position());
-            emitByte(0x70 | cc.value);
+            emitByte(0x70 | cc.getValue());
             emitByte(0);
         }
-    }
-
-    public final void jmp(Address adr) {
-        prefix(adr);
-        emitByte(0xFF);
-        emitOperandHelper(rsp, adr);
     }
 
     public final void jmp(int jumpTarget, boolean forceDisp32) {
@@ -851,12 +789,6 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(dst, src);
     }
 
-    public final void enter(int imm16, int imm8) {
-        emitByte(0xC8);
-        emitShort(imm16);
-        emitByte(imm8);
-    }
-
     public final void leave() {
         emitByte(0xC9);
     }
@@ -868,17 +800,6 @@ public class AMD64Assembler extends AbstractAssembler {
         } else {
             emitByte(0xF0);
         }
-    }
-
-    // Emit mfence instruction
-    public final void mfence() {
-        emitByte(0x0F);
-        emitByte(0xAE);
-        emitByte(0xF0);
-    }
-
-    public final void mov(Register dst, Register src) {
-        movq(dst, src);
     }
 
     public final void movapd(Register dst, Register src) {
@@ -930,12 +851,6 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC0 | dstenc << 3 | srcenc);
     }
 
-    public final void movb(Register dst, Address src) {
-        prefix(src, dst); // , true)
-        emitByte(0x8A);
-        emitOperandHelper(dst, src);
-    }
-
     public final void movb(Address dst, int imm8) {
         prefix(dst);
         emitByte(0xC6);
@@ -967,63 +882,6 @@ public class AMD64Assembler extends AbstractAssembler {
             emitByte(0x7E);
             emitByte(0xC0 | encode);
         }
-    }
-
-    public final void movdqa(Register dst, Address src) {
-        assert dst.isFpu();
-        emitByte(0x66);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x6F);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void movdqa(Register dst, Register src) {
-        assert dst.isFpu();
-        emitByte(0x66);
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x6F);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void movdqa(Address dst, Register src) {
-        assert src.isFpu();
-        emitByte(0x66);
-        prefix(dst, src);
-        emitByte(0x0F);
-        emitByte(0x7F);
-        emitOperandHelper(src, dst);
-    }
-
-    public final void movdqu(Register dst, Address src) {
-        assert dst.isFpu();
-        emitByte(0xF3);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x6F);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void movdqu(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
-
-        emitByte(0xF3);
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x6F);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void movdqu(Address dst, Register src) {
-        assert src.isFpu();
-
-        emitByte(0xF3);
-        prefix(dst, src);
-        emitByte(0x0F);
-        emitByte(0x7F);
-        emitOperandHelper(src, dst);
     }
 
     public final void movl(Register dst, int imm32) {
@@ -1072,15 +930,6 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(dst, src);
     }
 
-    public final void movlpd(Address dst, Register src) {
-        assert src.isFpu();
-        emitByte(0x66);
-        prefix(dst, src);
-        emitByte(0x0F);
-        emitByte(0x13);
-        emitOperandHelper(src, dst);
-    }
-
     public final void movq(Register dst, Address src) {
         if (dst.isFpu()) {
             emitByte(0xF3);
@@ -1115,14 +964,14 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
-    public final void movsxb(Register dst, Address src) { // movsxb
+    public final void movsxb(Register dst, Address src) {
         prefix(src, dst);
         emitByte(0x0F);
         emitByte(0xBE);
         emitOperandHelper(dst, src);
     }
 
-    public final void movsxb(Register dst, Register src) { // movsxb
+    public final void movsxb(Register dst, Register src) {
         int encode = prefixAndEncode(dst.encoding, src.encoding, true);
         emitByte(0x0F);
         emitByte(0xBE);
@@ -1192,30 +1041,11 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(dst, src);
     }
 
-    public final void movsxw(Register dst, Register src) { // movsxw
+    public final void movsxw(Register dst, Register src) {
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
         emitByte(0xBF);
         emitByte(0xC0 | encode);
-    }
-
-    public final void movsxw(Register dst, Address src) { // movsxw
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBF);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void movzxd(Register dst, Register src) { // movzxd
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x63);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void movzxd(Register dst, Address src) { // movzxd
-        prefix(src, dst);
-        emitByte(0x63);
-        emitOperandHelper(dst, src);
     }
 
     public final void movw(Address dst, int imm16) {
@@ -1226,13 +1056,6 @@ public class AMD64Assembler extends AbstractAssembler {
         emitShort(imm16);
     }
 
-    public final void movw(Register dst, Address src) {
-        emitByte(0x66);
-        prefix(src, dst);
-        emitByte(0x8B);
-        emitOperandHelper(dst, src);
-    }
-
     public final void movw(Address dst, Register src) {
         emitByte(0x66);
         prefix(dst, src);
@@ -1240,38 +1063,11 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(src, dst);
     }
 
-    public final void movzxb(Register dst, Address src) { // movzxb
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0xB6);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void movzxb(Register dst, Register src) { // movzxb
-        int encode = prefixAndEncode(dst.encoding, src.encoding, true);
-        emitByte(0x0F);
-        emitByte(0xB6);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void movzxl(Register dst, Address src) { // movzxw
+    public final void movzxl(Register dst, Address src) {
         prefix(src, dst);
         emitByte(0x0F);
         emitByte(0xB7);
         emitOperandHelper(dst, src);
-    }
-
-    public final void movzxl(Register dst, Register src) { // movzxw
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xB7);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void mull(Address src) {
-        prefix(src);
-        emitByte(0xF7);
-        emitOperandHelper(rsp, src);
     }
 
     public final void mulsd(Register dst, Address src) {
@@ -1530,19 +1326,6 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
-    public final void notl(Register dst) {
-        int encode = prefixAndEncode(dst.encoding);
-        emitByte(0xF7);
-        emitByte(0xD0 | encode);
-    }
-
-    public final void orl(Address dst, int imm32) {
-        prefix(dst);
-        emitByte(0x81);
-        emitOperandHelper(rcx, dst);
-        emitInt(imm32);
-    }
-
     public final void orl(Register dst, int imm32) {
         prefix(dst);
         emitArith(0x81, 0xC8, dst, imm32);
@@ -1591,221 +1374,14 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC0 | encode);
     }
 
-    // generic
     public final void pop(Register dst) {
         int encode = prefixAndEncode(dst.encoding);
         emitByte(0x58 | encode);
     }
 
-    public final void prefetchPrefix(Address src) {
-        prefix(src);
-        emitByte(0x0F);
-    }
-
-    public final void prefetchnta(Address src) {
-        prefetchPrefix(src);
-        emitByte(0x18);
-        emitOperandHelper(rax, src); // 0, src
-    }
-
-    public final void prefetchr(Address src) {
-        prefetchPrefix(src);
-        emitByte(0x0D);
-        emitOperandHelper(rax, src); // 0, src
-    }
-
-    public final void prefetcht0(Address src) {
-        prefetchPrefix(src);
-        emitByte(0x18);
-        emitOperandHelper(rcx, src); // 1, src
-
-    }
-
-    public final void prefetcht1(Address src) {
-        prefetchPrefix(src);
-        emitByte(0x18);
-        emitOperandHelper(rdx, src); // 2, src
-    }
-
-    public final void prefetcht2(Address src) {
-        prefetchPrefix(src);
-        emitByte(0x18);
-        emitOperandHelper(rbx, src); // 3, src
-    }
-
-    public final void prefetchw(Address src) {
-        prefetchPrefix(src);
-        emitByte(0x0D);
-        emitOperandHelper(rcx, src); // 1, src
-    }
-
-    public final void pshufd(Register dst, Register src, int mode) {
-        assert dst.isFpu();
-        assert src.isFpu();
-        assert isUByte(mode) : "invalid value";
-
-        emitByte(0x66);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x70);
-        emitByte(0xC0 | encode);
-        emitByte(mode & 0xFF);
-    }
-
-    public final void pshufd(Register dst, Address src, int mode) {
-        assert dst.isFpu();
-        assert isUByte(mode) : "invalid value";
-
-        emitByte(0x66);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x70);
-        emitOperandHelper(dst, src);
-        emitByte(mode & 0xFF);
-
-    }
-
-    public final void pshuflw(Register dst, Register src, int mode) {
-        assert dst.isFpu();
-        assert src.isFpu();
-        assert isUByte(mode) : "invalid value";
-
-        emitByte(0xF2);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x70);
-        emitByte(0xC0 | encode);
-        emitByte(mode & 0xFF);
-    }
-
-    public final void pshuflw(Register dst, Address src, int mode) {
-        assert dst.isFpu();
-        assert isUByte(mode) : "invalid value";
-
-        emitByte(0xF2);
-        prefix(src, dst); // QQ new
-        emitByte(0x0F);
-        emitByte(0x70);
-        emitOperandHelper(dst, src);
-        emitByte(mode & 0xFF);
-    }
-
-    public final void psrlq(Register dst, int shift) {
-        assert dst.isFpu();
-        // HMM Table D-1 says sse2 or mmx
-
-        int encode = prefixqAndEncode(xmm2.encoding, dst.encoding);
-        emitByte(0x66);
-        emitByte(0x0F);
-        emitByte(0x73);
-        emitByte(0xC0 | encode);
-        emitByte(shift);
-    }
-
-    public final void punpcklbw(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
-        emitByte(0x66);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x60);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void push(int imm32) {
-        // in 64bits we push 64bits onto the stack but only
-        // take a 32bit immediate
-        emitByte(0x68);
-        emitInt(imm32);
-    }
-
     public final void push(Register src) {
         int encode = prefixAndEncode(src.encoding);
         emitByte(0x50 | encode);
-    }
-
-    public final void pushf() {
-        emitByte(0x9C);
-    }
-
-    public final void pxor(Register dst, Address src) {
-        assert dst.isFpu();
-
-        emitByte(0x66);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0xEF);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void pxor(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
-
-        emitByte(0x66);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xEF);
-        emitByte(0xC0 | encode);
-
-    }
-
-    public final void rcll(Register dst, int imm8) {
-        assert isShiftCount(imm8) : "illegal shift count";
-        int encode = prefixAndEncode(dst.encoding);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitByte(0xD0 | encode);
-        } else {
-            emitByte(0xC1);
-            emitByte(0xD0 | encode);
-            emitByte(imm8);
-        }
-    }
-
-    public final void pause() {
-        emitByte(0xF3);
-        emitByte(0x90);
-    }
-
-    // Copies data from [X86.rsi] to [X86.rdi] using X86.rcx heap words.
-    public final void repeatMoveWords() {
-        emitByte(0xF3);
-        emitByte(Prefix.REXW);
-        emitByte(0xA5);
-    }
-
-    // Copies data from [X86.rsi] to [X86.rdi] using X86.rcx bytes.
-    public final void repeatMoveBytes() {
-        emitByte(0xF3);
-        emitByte(Prefix.REXW);
-        emitByte(0xA4);
-    }
-
-    // sets X86.rcx pointer sized words with X86.rax, value at [edi]
-    // generic
-    public final void repSet() { // repSet
-        emitByte(0xF3);
-        // STOSQ
-        emitByte(Prefix.REXW);
-        emitByte(0xAB);
-    }
-
-    // scans X86.rcx pointer sized words at [edi] for occurance of X86.rax,
-    // generic
-    public final void repneScan() { // repneScan
-        emitByte(0xF2);
-        // SCASQ
-        emitByte(Prefix.REXW);
-        emitByte(0xAF);
-    }
-
-    // scans X86.rcx 4 byte words at [edi] for occurance of X86.rax,
-    // generic
-    public final void repneScanl() { // repneScan
-        emitByte(0xF2);
-        // SCASL
-        emitByte(0xAF);
     }
 
     public final void ret(int imm16) {
@@ -1834,35 +1410,6 @@ public class AMD64Assembler extends AbstractAssembler {
         int encode = prefixAndEncode(dst.encoding);
         emitByte(0xD3);
         emitByte(0xF8 | encode);
-    }
-
-    public final void sbbl(Address dst, int imm32) {
-        prefix(dst);
-        emitArithOperand(0x81, rbx, dst, imm32);
-    }
-
-    public final void sbbl(Register dst, int imm32) {
-        prefix(dst);
-        emitArith(0x81, 0xD8, dst, imm32);
-    }
-
-    public final void sbbl(Register dst, Address src) {
-        prefix(src, dst);
-        emitByte(0x1B);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void sbbl(Register dst, Register src) {
-        prefixAndEncode(dst.encoding, src.encoding);
-        emitArith(0x1B, 0xC0, dst, src);
-    }
-
-    public final void setb(ConditionFlag cc, Register dst) {
-        assert 0 <= cc.value && cc.value < 16 : "illegal cc";
-        int encode = prefixAndEncode(dst.encoding, true);
-        emitByte(0x0F);
-        emitByte(0x90 | cc.value);
-        emitByte(0xC0 | encode);
     }
 
     public final void shll(Register dst, int imm8) {
@@ -1898,11 +1445,6 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xE8 | encode);
     }
 
-    // copies a single word from [esi] to [edi]
-    public final void smovl() {
-        emitByte(0xA5);
-    }
-
     public final void sqrtsd(Register dst, Register src) {
         assert dst.isFpu();
         assert src.isFpu();
@@ -1931,12 +1473,6 @@ public class AMD64Assembler extends AbstractAssembler {
     public final void subl(Register dst, int imm32) {
         prefix(dst);
         emitArith(0x81, 0xE8, dst, imm32);
-    }
-
-    public final void subl(Address dst, Register src) {
-        prefix(dst, src);
-        emitByte(0x29);
-        emitOperandHelper(src, dst);
     }
 
     public final void subl(Register dst, Address src) {
@@ -1988,11 +1524,6 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x0F);
         emitByte(0x5C);
         emitOperandHelper(dst, src);
-    }
-
-    public final void testb(Register dst, int imm8) {
-        prefixAndEncode(dst.encoding, true);
-        emitArithB(0xF6, 0xC0, dst, imm8);
     }
 
     public final void testl(Register dst, int imm32) {
@@ -2050,27 +1581,6 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x0F);
         emitByte(0x2E);
         emitByte(0xC0 | encode);
-    }
-
-    public final void xaddl(Address dst, Register src) {
-        assert src.isFpu();
-
-        prefix(dst, src);
-        emitByte(0x0F);
-        emitByte(0xC1);
-        emitOperandHelper(src, dst);
-    }
-
-    public final void xchgl(Register dst, Address src) { // xchg
-        prefix(src, dst);
-        emitByte(0x87);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void xchgl(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x87);
-        emitByte(0xc0 | encode);
     }
 
     public final void xorl(Register dst, int imm32) {
@@ -2167,29 +1677,25 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(dst, src);
     }
 
-    // 32bit only pieces of the assembler
-
-    public final void decl(Register dst) {
-        // Don't use it directly. Use Macrodecrementl() instead.
+    protected final void decl(Register dst) {
         // Use two-byte form (one-byte form is a REX prefix in 64-bit mode)
         int encode = prefixAndEncode(dst.encoding);
         emitByte(0xFF);
         emitByte(0xC8 | encode);
     }
 
-    public final void incl(Register dst) {
-        // Don't use it directly. Use Macroincrementl() instead.
+    protected final void incl(Register dst) {
         // Use two-byte form (one-byte from is a REX prefix in 64-bit mode)
         int encode = prefixAndEncode(dst.encoding);
         emitByte(0xFF);
         emitByte(0xC0 | encode);
     }
 
-    int prefixAndEncode(int regEnc) {
+    private int prefixAndEncode(int regEnc) {
         return prefixAndEncode(regEnc, false);
     }
 
-    int prefixAndEncode(int regEnc, boolean byteinst) {
+    private int prefixAndEncode(int regEnc, boolean byteinst) {
         if (regEnc >= 8) {
             emitByte(Prefix.REXB);
             return regEnc - 8;
@@ -2199,7 +1705,7 @@ public class AMD64Assembler extends AbstractAssembler {
         return regEnc;
     }
 
-    int prefixqAndEncode(int regEnc) {
+    private int prefixqAndEncode(int regEnc) {
         if (regEnc < 8) {
             emitByte(Prefix.REXW);
             return regEnc;
@@ -2209,11 +1715,11 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
-    int prefixAndEncode(int dstEnc, int srcEnc) {
+    private int prefixAndEncode(int dstEnc, int srcEnc) {
         return prefixAndEncode(dstEnc, srcEnc, false);
     }
 
-    int prefixAndEncode(int dstEncoding, int srcEncoding, boolean byteinst) {
+    private int prefixAndEncode(int dstEncoding, int srcEncoding, boolean byteinst) {
         int srcEnc = srcEncoding;
         int dstEnc = dstEncoding;
         if (dstEnc < 8) {
@@ -2369,17 +1875,6 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
-    public final void addq(Address dst, int imm32) {
-        prefixq(dst);
-        emitArithOperand(0x81, rax, dst, imm32);
-    }
-
-    public final void addq(Address dst, Register src) {
-        prefixq(dst, src);
-        emitByte(0x01);
-        emitOperandHelper(src, dst);
-    }
-
     public final void addq(Register dst, int imm32) {
         prefixqAndEncode(dst.encoding);
         emitArith(0x81, 0xC0, dst, imm32);
@@ -2426,33 +1921,20 @@ public class AMD64Assembler extends AbstractAssembler {
     public final void cmovq(ConditionFlag cc, Register dst, Register src) {
         int encode = prefixqAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
-        emitByte(0x40 | cc.value);
+        emitByte(0x40 | cc.getValue());
         emitByte(0xC0 | encode);
     }
 
     public final void cmovq(ConditionFlag cc, Register dst, Address src) {
         prefixq(src, dst);
         emitByte(0x0F);
-        emitByte(0x40 | cc.value);
+        emitByte(0x40 | cc.getValue());
         emitOperandHelper(dst, src);
-    }
-
-    public final void cmpq(Address dst, int imm32) {
-        prefixq(dst);
-        emitByte(0x81);
-        emitOperandHelper(rdi, dst);
-        emitInt(imm32);
     }
 
     public final void cmpq(Register dst, int imm32) {
         prefixqAndEncode(dst.encoding);
         emitArith(0x81, 0xF8, dst, imm32);
-    }
-
-    public final void cmpq(Address dst, Register src) {
-        prefixq(dst, src);
-        emitByte(0x3B);
-        emitOperandHelper(src, dst);
     }
 
     public final void cmpq(Register dst, Register src) {
@@ -2509,16 +1991,14 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC0 | encode);
     }
 
-    public final void decq(Register dst) {
-        // Don't use it directly. Use Macrodecrementq() instead.
+    protected final void decq(Register dst) {
         // Use two-byte form (one-byte from is a REX prefix in 64-bit mode)
         int encode = prefixqAndEncode(dst.encoding);
         emitByte(0xFF);
         emitByte(0xC8 | encode);
     }
 
-    public final void decq(Address dst) {
-        // Don't use it directly. Use Macrodecrementq() instead.
+    protected final void decq(Address dst) {
         prefixq(dst);
         emitByte(0xFF);
         emitOperandHelper(rcx, dst);
@@ -2564,13 +2044,6 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC0 | encode);
     }
 
-    public final void incq(Address dst) {
-        // Don't use it directly. Use Macroincrementq() instead.
-        prefixq(dst);
-        emitByte(0xFF);
-        emitOperandHelper(rax, dst);
-    }
-
     public final void movq(Register dst, long imm64) {
         int encode = prefixqAndEncode(dst.encoding);
         emitByte(0xB8 | encode);
@@ -2600,30 +2073,6 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
-    public final void movsbq(Register dst, Address src) {
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBE);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void movsbq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xBE);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void movslq(Register dst, int imm32) {
-        int encode = prefixqAndEncode(dst.encoding);
-        emitByte(0xC7 | encode);
-        emitInt(imm32);
-        // dbx shows movslq(X86.rcx, 3) as movq $0x0000000049000000,(%X86.rbx)
-        // and movslq(X86.r8, 3); as movl $0x0000000048000000,(%X86.rbx)
-        // as a result we shouldn't use until tested at runtime...
-        throw new InternalError("untested");
-    }
-
     public final void movslq(Address dst, int imm32) {
         prefixq(dst);
         emitByte(0xC7);
@@ -2643,65 +2092,10 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC0 | encode);
     }
 
-    public final void movswq(Register dst, Address src) {
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBF);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void movswq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xBF);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void movzbq(Register dst, Address src) {
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0xB6);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void movzbq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xB6);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void movzwq(Register dst, Address src) {
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0xB7);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void movzwq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xB7);
-        emitByte(0xC0 | encode);
-    }
-
     public final void negq(Register dst) {
         int encode = prefixqAndEncode(dst.encoding);
         emitByte(0xF7);
         emitByte(0xD8 | encode);
-    }
-
-    public final void notq(Register dst) {
-        int encode = prefixqAndEncode(dst.encoding);
-        emitByte(0xF7);
-        emitByte(0xD0 | encode);
-    }
-
-    public final void orq(Address dst, int imm32) {
-        prefixq(dst);
-        emitByte(0x81);
-        emitOperandHelper(rcx, dst);
-        emitInt(imm32);
     }
 
     public final void orq(Register dst, int imm32) {
@@ -2718,31 +2112,6 @@ public class AMD64Assembler extends AbstractAssembler {
     public final void orq(Register dst, Register src) {
         prefixqAndEncode(dst.encoding, src.encoding);
         emitArith(0x0B, 0xC0, dst, src);
-    }
-
-    public final void popq(Address dst) {
-        prefixq(dst);
-        emitByte(0x8F);
-        emitOperandHelper(rax, dst);
-    }
-
-    public final void pushq(Address src) {
-        prefixq(src);
-        emitByte(0xFF);
-        emitOperandHelper(rsi, src);
-    }
-
-    public final void rclq(Register dst, int imm8) {
-        assert isShiftCount(imm8 >> 1) : "illegal shift count";
-        int encode = prefixqAndEncode(dst.encoding);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitByte(0xD0 | encode);
-        } else {
-            emitByte(0xC1);
-            emitByte(0xD0 | encode);
-            emitByte(imm8);
-        }
     }
 
     public final void sarq(Register dst, int imm8) {
@@ -2797,38 +2166,9 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xE8 | encode);
     }
 
-    public final void sqrtsd(Register dst, Address src) {
-        assert dst.isFpu();
-
-        emitByte(0xF2);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x51);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void subq(Address dst, int imm32) {
-        prefixq(dst);
-        if (isByte(imm32)) {
-            emitByte(0x83);
-            emitOperandHelper(rbp, dst);
-            emitByte(imm32 & 0xFF);
-        } else {
-            emitByte(0x81);
-            emitOperandHelper(rbp, dst);
-            emitInt(imm32);
-        }
-    }
-
     public final void subq(Register dst, int imm32) {
         prefixqAndEncode(dst.encoding);
         emitArith(0x81, 0xE8, dst, imm32);
-    }
-
-    public final void subq(Address dst, Register src) {
-        prefixq(dst, src);
-        emitByte(0x29);
-        emitOperandHelper(src, dst);
     }
 
     public final void subq(Register dst, Address src) {
@@ -2869,25 +2209,6 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(dst, src);
     }
 
-    public final void xaddq(Address dst, Register src) {
-        prefixq(dst, src);
-        emitByte(0x0F);
-        emitByte(0xC1);
-        emitOperandHelper(src, dst);
-    }
-
-    public final void xchgq(Register dst, Address src) {
-        prefixq(src, dst);
-        emitByte(0x87);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void xchgq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x87);
-        emitByte(0xc0 | encode);
-    }
-
     public final void xorq(Register dst, int imm32) {
         prefixqAndEncode(dst.encoding);
         emitArith(0x81, 0xF0, dst, imm32);
@@ -2899,11 +2220,9 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void xorq(Register dst, Address src) {
-
         prefixq(src, dst);
         emitByte(0x33);
         emitOperandHelper(dst, src);
-
     }
 
     public final void membar(int barriers) {
@@ -2970,26 +2289,6 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
-    public void pushfq() {
-        emitByte(0x9c);
-    }
-
-    public void popfq() {
-        emitByte(0x9D);
-    }
-
-    /**
-     * Makes sure that a subsequent {@linkplain #call} does not fail the alignment check.
-     */
-    public final void alignForPatchableDirectCall() {
-        int dispStart = codeBuffer.position() + 1;
-        int mask = target.wordSize - 1;
-        if ((dispStart & ~mask) != ((dispStart + 3) & ~mask)) {
-            nop(target.wordSize - (dispStart & mask));
-            assert ((codeBuffer.position() + 1) & mask) == 0;
-        }
-    }
-
     /**
      * Emits a direct call instruction. Note that the actual call target is not specified, because
      * all calls need patching anyway. Therefore, 0 is emitted as the call target, and the user is
@@ -3006,16 +2305,8 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xD0 | encode);
     }
 
-    public void int3() {
+    public final void int3() {
         emitByte(0xCC);
-    }
-
-    public void enter(short imm16, byte imm8) {
-        emitByte(0xC8);
-        // appended:
-        emitByte(imm16 & 0xff);
-        emitByte((imm16 >> 8) & 0xff);
-        emitByte(imm8);
     }
 
     private void emitx87(int b1, int b2, int i) {
@@ -3024,51 +2315,47 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(b2 + i);
     }
 
-    public void fld(Address src) {
+    public final void fld(Address src) {
         emitByte(0xDD);
         emitOperandHelper(rax, src);
     }
 
-    public void fld(int i) {
-        emitx87(0xD9, 0xC0, i);
-    }
-
-    public void fldln2() {
+    public final void fldln2() {
         emitByte(0xD9);
         emitByte(0xED);
     }
 
-    public void fldlg2() {
+    public final void fldlg2() {
         emitByte(0xD9);
         emitByte(0xEC);
     }
 
-    public void fyl2x() {
+    public final void fyl2x() {
         emitByte(0xD9);
         emitByte(0xF1);
     }
 
-    public void fstp(Address src) {
+    public final void fstp(Address src) {
         emitByte(0xDD);
         emitOperandHelper(rbx, src);
     }
 
-    public void fsin() {
+    public final void fsin() {
         emitByte(0xD9);
         emitByte(0xFE);
     }
 
-    public void fcos() {
+    public final void fcos() {
         emitByte(0xD9);
         emitByte(0xFF);
     }
 
-    public void fptan() {
+    public final void fptan() {
         emitByte(0xD9);
         emitByte(0xF2);
     }
 
-    public void fstp(int i) {
+    public final void fstp(int i) {
         emitx87(0xDD, 0xD8, i);
     }
 }
