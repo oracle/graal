@@ -196,25 +196,6 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Labels some inline data in the code.
-     */
-    public static final class InlineData extends CodeAnnotation {
-
-        private static final long serialVersionUID = 305997507263827108L;
-        public final int size;
-
-        public InlineData(int position, int size) {
-            super(position);
-            this.size = size;
-        }
-
-        @Override
-        public String toString() {
-            return getClass().getSimpleName() + "@" + position + ": size=" + size;
-        }
-    }
-
-    /**
      * Describes a table of signed offsets embedded in the code. The offsets are relative to the
      * starting address of the table. This type of table maybe generated when translating a
      * multi-way branch based on a key value from a dense value set (e.g. the {@code tableswitch}
@@ -252,43 +233,6 @@ public class CompilationResult implements Serializable {
         @Override
         public String toString() {
             return getClass().getSimpleName() + "@" + position + ": [" + low + " .. " + high + "]";
-        }
-    }
-
-    /**
-     * Describes a table of key and offset pairs. The offset in each table entry is relative to the
-     * address of the table. This type of table maybe generated when translating a multi-way branch
-     * based on a key value from a sparse value set (e.g. the {@code lookupswitch} JVM instruction).
-     */
-    public static final class LookupTable extends CodeAnnotation {
-
-        private static final long serialVersionUID = 8367952567559116160L;
-
-        /**
-         * The number of entries in the table.
-         */
-        public final int npairs;
-
-        /**
-         * The size (in bytes) of entry's key.
-         */
-        public final int keySize;
-
-        /**
-         * The size (in bytes) of entry's offset value.
-         */
-        public final int offsetSize;
-
-        public LookupTable(int position, int npairs, int keySize, int offsetSize) {
-            super(position);
-            this.npairs = npairs;
-            this.keySize = keySize;
-            this.offsetSize = offsetSize;
-        }
-
-        @Override
-        public String toString() {
-            return getClass().getSimpleName() + "@" + position + ": [npairs=" + npairs + ", keySize=" + keySize + ", offsetSize=" + offsetSize + "]";
         }
     }
 
@@ -349,8 +293,6 @@ public class CompilationResult implements Serializable {
     private int customStackAreaOffset = -1;
     private int registerRestoreEpilogueOffset = -1;
 
-    private CalleeSaveLayout calleeSaveLayout;
-
     /**
      * The buffer containing the emitted machine code.
      */
@@ -407,15 +349,6 @@ public class CompilationResult implements Serializable {
     public void setTargetCode(byte[] code, int size) {
         targetCode = code;
         targetCodeSize = size;
-    }
-
-    /**
-     * Sets the info on callee-saved registers used by this method.
-     * 
-     * @param csl the register-saving info.
-     */
-    public void setCalleeSaveLayout(CalleeSaveLayout csl) {
-        calleeSaveLayout = csl;
     }
 
     /**
@@ -534,13 +467,6 @@ public class CompilationResult implements Serializable {
      */
     public void setCustomStackAreaOffset(int offset) {
         customStackAreaOffset = offset;
-    }
-
-    /**
-     * @return the layout information for callee-saved registers used by this method.
-     */
-    public CalleeSaveLayout getCalleeSaveLayout() {
-        return calleeSaveLayout;
     }
 
     /**

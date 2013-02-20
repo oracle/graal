@@ -30,7 +30,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.CodeAnnotation;
 import com.oracle.graal.api.code.CompilationResult.CodeComment;
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
-import com.oracle.graal.api.code.CompilationResult.LookupTable;
 
 /**
  * A HexCodeFile is a textual format for representing a chunk of machine code along with extra
@@ -122,8 +121,6 @@ public class HexCodeFile {
 
     public final ArrayList<JumpTable> jumpTables = new ArrayList<>();
 
-    public final ArrayList<LookupTable> lookupTables = new ArrayList<>();
-
     public final String isa;
 
     public final int wordWidth;
@@ -167,10 +164,6 @@ public class HexCodeFile {
 
         for (JumpTable table : jumpTables) {
             ps.printf("JumpTable %d %d %d %d %s%n", table.position, table.entrySize, table.low, table.high, SECTION_DELIM);
-        }
-
-        for (LookupTable table : lookupTables) {
-            ps.printf("LookupTable %d %d %d %d %s%n", table.position, table.npairs, table.keySize, table.keySize, SECTION_DELIM);
         }
 
         for (Map.Entry<Integer, List<String>> e : comments.entrySet()) {
@@ -233,9 +226,6 @@ public class HexCodeFile {
             if (a instanceof JumpTable) {
                 JumpTable table = (JumpTable) a;
                 hcf.jumpTables.add(table);
-            } else if (a instanceof LookupTable) {
-                LookupTable table = (LookupTable) a;
-                hcf.lookupTables.add(table);
             } else if (a instanceof CodeComment) {
                 CodeComment comment = (CodeComment) a;
                 hcf.addComment(comment.position, comment.value);
@@ -422,15 +412,6 @@ public class HexCodeFile {
                 int low = parseInt(bodyOffset + m.start(3), m.group(3));
                 int high = parseInt(bodyOffset + m.start(4), m.group(4));
                 hcf.jumpTables.add(new JumpTable(pos, low, high, entrySize));
-            } else if (header.equals("LookupTable")) {
-                checkHCF("LookupTable", headerOffset);
-                m = HexCodeFile.LOOKUP_TABLE.matcher(body);
-                check(m.matches(), bodyOffset, "LookupTable does not match pattern " + HexCodeFile.LOOKUP_TABLE);
-                int pos = parseInt(bodyOffset + m.start(1), m.group(1));
-                int npairs = parseInt(bodyOffset + m.start(2), m.group(2));
-                int keySize = parseInt(bodyOffset + m.start(3), m.group(3));
-                int offsetSize = parseInt(bodyOffset + m.start(4), m.group(4));
-                hcf.lookupTables.add(new LookupTable(pos, npairs, keySize, offsetSize));
             } else {
                 error(offset, "Unknown section header: " + header);
             }
