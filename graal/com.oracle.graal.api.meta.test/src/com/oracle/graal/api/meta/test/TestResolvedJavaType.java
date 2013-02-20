@@ -29,6 +29,7 @@ import static org.junit.Assert.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
+import java.net.*;
 import java.util.*;
 
 import org.junit.*;
@@ -553,6 +554,23 @@ public class TestResolvedJavaType {
             assertFalse(enclc == null ^ enclt == null);
             if (enclc != null) {
                 assertEquals(enclt, runtime.lookupJavaType(enclc));
+            }
+        }
+    }
+
+    @Test
+    public void classFilePathTest() {
+        for (Class c : classes) {
+            ResolvedJavaType type = runtime.lookupJavaType(c);
+            URL path = type.getClassFilePath();
+            if (type.isPrimitive() || type.isArray()) {
+                assertEquals(null, path);
+            } else {
+                assertNotNull(path);
+                String pathString = path.getPath();
+                if (type.isLocal() || type.isMember()) {
+                    assertTrue(pathString.indexOf('$') > 0);
+                }
             }
         }
     }
