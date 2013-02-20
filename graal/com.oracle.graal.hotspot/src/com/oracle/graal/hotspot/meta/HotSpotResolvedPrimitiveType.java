@@ -195,4 +195,19 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     public URL getClassFilePath() {
         return null;
     }
+
+    @Override
+    public boolean isLocal() {
+        return false;
+    }
+
+    @Override
+    public boolean isMember() {
+        return false;
+    }
+
+    @Override
+    public ResolvedJavaType getEnclosingType() {
+        return null;
+    }
 }

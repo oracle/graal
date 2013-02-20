@@ -541,4 +541,19 @@ public class TestResolvedJavaType {
             }
         }
     }
+
+    @Test
+    public void memberClassesTest() {
+        for (Class c : classes) {
+            ResolvedJavaType type = runtime.lookupJavaType(c);
+            assertEquals(c.isLocalClass(), type.isLocal());
+            assertEquals(c.isMemberClass(), type.isMember());
+            Class enclc = c.getEnclosingClass();
+            ResolvedJavaType enclt = type.getEnclosingType();
+            assertFalse(enclc == null ^ enclt == null);
+            if (enclc != null) {
+                assertEquals(enclt, runtime.lookupJavaType(enclc));
+            }
+        }
+    }
 }

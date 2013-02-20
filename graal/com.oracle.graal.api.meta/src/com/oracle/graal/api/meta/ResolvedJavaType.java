@@ -259,4 +259,19 @@ public interface ResolvedJavaType extends JavaType {
      * Returns the class file path - if available - of this type, or {@code null}.
      */
     URL getClassFilePath();
+
+    /**
+     * Returns {@code true} if the type is a local type.
+     */
+    boolean isLocal();
+
+    /**
+     * Returns {@code true} if the type is a member type.
+     */
+    boolean isMember();
+
+    /**
+     * Returns the enclosing type of this type, if it exists, or {@code null}.
+     */
+    ResolvedJavaType getEnclosingType();
 }
