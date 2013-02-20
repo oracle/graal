@@ -162,13 +162,13 @@ public class AMD64ControlFlow {
                     long lc = keyConstants[i].asLong();
                     assert NumUtil.isInt(lc);
                     masm.cmpl(intKey, (int) lc);
-                    masm.jcc(ConditionFlag.equal, keyTargets[i].label());
+                    masm.jcc(ConditionFlag.Equal, keyTargets[i].label());
                 }
             } else if (key.getKind() == Kind.Long) {
                 Register longKey = asLongReg(key);
                 for (int i = 0; i < keyConstants.length; i++) {
                     masm.cmpq(longKey, tasm.asLongConstRef(keyConstants[i]));
-                    masm.jcc(ConditionFlag.equal, keyTargets[i].label());
+                    masm.jcc(ConditionFlag.Equal, keyTargets[i].label());
                 }
             } else if (key.getKind() == Kind.Object) {
                 Register intKey = asObjectReg(key);
@@ -176,7 +176,7 @@ public class AMD64ControlFlow {
                 for (int i = 0; i < keyConstants.length; i++) {
                     AMD64Move.move(tasm, masm, temp.asValue(Kind.Object), keyConstants[i]);
                     masm.cmpptr(intKey, temp);
-                    masm.jcc(ConditionFlag.equal, keyTargets[i].label());
+                    masm.jcc(ConditionFlag.Equal, keyTargets[i].label());
                 }
             } else {
                 throw new GraalInternalError("sequential switch only supported for int, long and object");
@@ -226,15 +226,15 @@ public class AMD64ControlFlow {
                 int highKey = highKeys[i];
                 if (lowKey == highKey) {
                     masm.cmpl(asIntReg(key), lowKey);
-                    masm.jcc(ConditionFlag.equal, keyTargets[i].label());
+                    masm.jcc(ConditionFlag.Equal, keyTargets[i].label());
                     skipLowCheck = false;
                 } else {
                     if (!skipLowCheck || (prevHighKey + 1) != lowKey) {
                         masm.cmpl(asIntReg(key), lowKey);
-                        masm.jcc(ConditionFlag.less, actualDefaultTarget);
+                        masm.jcc(ConditionFlag.Less, actualDefaultTarget);
                     }
                     masm.cmpl(asIntReg(key), highKey);
-                    masm.jcc(ConditionFlag.lessEqual, keyTargets[i].label());
+                    masm.jcc(ConditionFlag.LessEqual, keyTargets[i].label());
                     skipLowCheck = true;
                 }
                 prevHighKey = highKey;
@@ -333,7 +333,7 @@ public class AMD64ControlFlow {
 
         // Jump to default target if index is not within the jump table
         if (defaultTarget != null) {
-            masm.jcc(ConditionFlag.above, defaultTarget.label());
+            masm.jcc(ConditionFlag.Above, defaultTarget.label());
         }
 
         // Set scratch to address of jump table
@@ -380,9 +380,9 @@ public class AMD64ControlFlow {
     private static void floatJcc(AMD64MacroAssembler masm, ConditionFlag condition, boolean unorderedIsTrue, Label label) {
         Label endLabel = new Label();
         if (unorderedIsTrue && !trueOnUnordered(condition)) {
-            masm.jcc(ConditionFlag.parity, label);
+            masm.jcc(ConditionFlag.Parity, label);
         } else if (!unorderedIsTrue && trueOnUnordered(condition)) {
-            masm.jcc(ConditionFlag.parity, endLabel);
+            masm.jccb(ConditionFlag.Parity, endLabel);
         }
         masm.jcc(condition, label);
         masm.bind(endLabel);
@@ -397,9 +397,9 @@ public class AMD64ControlFlow {
 
         if (isFloat) {
             if (unorderedIsTrue && !trueOnUnordered(condition)) {
-                cmove(tasm, masm, result, ConditionFlag.parity, trueValue);
+                cmove(tasm, masm, result, ConditionFlag.Parity, trueValue);
             } else if (!unorderedIsTrue && trueOnUnordered(condition)) {
-                cmove(tasm, masm, result, ConditionFlag.parity, falseValue);
+                cmove(tasm, masm, result, ConditionFlag.Parity, falseValue);
             }
         }
     }
@@ -423,45 +423,45 @@ public class AMD64ControlFlow {
 
     private static ConditionFlag intCond(Condition cond) {
         switch (cond) {
-            case EQ: return ConditionFlag.equal;
-            case NE: return ConditionFlag.notEqual;
-            case LT: return ConditionFlag.less;
-            case LE: return ConditionFlag.lessEqual;
-            case GE: return ConditionFlag.greaterEqual;
-            case GT: return ConditionFlag.greater;
-            case BE: return ConditionFlag.belowEqual;
-            case AE: return ConditionFlag.aboveEqual;
-            case AT: return ConditionFlag.above;
-            case BT: return ConditionFlag.below;
+            case EQ: return ConditionFlag.Equal;
+            case NE: return ConditionFlag.NotEqual;
+            case LT: return ConditionFlag.Less;
+            case LE: return ConditionFlag.LessEqual;
+            case GE: return ConditionFlag.GreaterEqual;
+            case GT: return ConditionFlag.Greater;
+            case BE: return ConditionFlag.BelowEqual;
+            case AE: return ConditionFlag.AboveEqual;
+            case AT: return ConditionFlag.Above;
+            case BT: return ConditionFlag.Below;
             default: throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     private static ConditionFlag floatCond(Condition cond) {
         switch (cond) {
-            case EQ: return ConditionFlag.equal;
-            case NE: return ConditionFlag.notEqual;
-            case LT: return ConditionFlag.below;
-            case LE: return ConditionFlag.belowEqual;
-            case GE: return ConditionFlag.aboveEqual;
-            case GT: return ConditionFlag.above;
+            case EQ: return ConditionFlag.Equal;
+            case NE: return ConditionFlag.NotEqual;
+            case LT: return ConditionFlag.Below;
+            case LE: return ConditionFlag.BelowEqual;
+            case GE: return ConditionFlag.AboveEqual;
+            case GT: return ConditionFlag.Above;
             default: throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     private static boolean trueOnUnordered(ConditionFlag condition) {
         switch(condition) {
-            case aboveEqual:
-            case notEqual:
-            case above:
-            case less:
-            case overflow:
+            case AboveEqual:
+            case NotEqual:
+            case Above:
+            case Less:
+            case Overflow:
                 return false;
-            case equal:
-            case belowEqual:
-            case below:
-            case greaterEqual:
-            case noOverflow:
+            case Equal:
+            case BelowEqual:
+            case Below:
+            case GreaterEqual:
+            case NoOverflow:
                 return true;
             default:
                 throw GraalInternalError.shouldNotReachHere();

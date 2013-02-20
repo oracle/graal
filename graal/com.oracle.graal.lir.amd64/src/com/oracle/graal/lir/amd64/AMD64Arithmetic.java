@@ -458,7 +458,7 @@ public enum AMD64Arithmetic {
             case Long: masm.cmpq(asLongReg(result), tasm.asLongConstRef(Constant.forLong(java.lang.Long.MIN_VALUE))); break;
             default:   throw GraalInternalError.shouldNotReachHere();
         }
-        masm.jcc(ConditionFlag.equal, slowPath.start);
+        masm.jcc(ConditionFlag.Equal, slowPath.start);
         masm.bind(slowPath.continuation);
     }
 
@@ -482,8 +482,8 @@ public enum AMD64Arithmetic {
                 default:     throw GraalInternalError.shouldNotReachHere();
             }
             Label nan = new Label();
-            masm.jcc(ConditionFlag.parity, nan);
-            masm.jcc(ConditionFlag.below, continuation);
+            masm.jcc(ConditionFlag.Parity, nan);
+            masm.jcc(ConditionFlag.Below, continuation);
 
             // input is > 0 -> return maxInt
             // result register already contains 0x80000000, so subtracting 1 gives 0x7fffffff

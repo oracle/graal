@@ -297,7 +297,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             Address src = new Address(target.wordKind, receiver.asValue(), config.hubOffset);
 
             asm.cmpq(inlineCacheKlass, src);
-            asm.jcc(ConditionFlag.notEqual, unverifiedStub);
+            asm.jcc(ConditionFlag.NotEqual, unverifiedStub);
         }
 
         asm.align(config.codeEntryAlignment);
