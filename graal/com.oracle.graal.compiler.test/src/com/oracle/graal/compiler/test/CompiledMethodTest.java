@@ -56,7 +56,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     public void test1() {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
-        new CanonicalizerPhase(null, runtime(), new Assumptions(false)).apply(graph);
+        new CanonicalizerPhase(runtime(), new Assumptions(false)).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
 
         for (Node node : graph.getNodes()) {
@@ -113,7 +113,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
         StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
-        new CanonicalizerPhase(null, runtime, new Assumptions(false)).apply(graph);
+        new CanonicalizerPhase(runtime, new Assumptions(false)).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
 
         for (Node node : graph.getNodes()) {

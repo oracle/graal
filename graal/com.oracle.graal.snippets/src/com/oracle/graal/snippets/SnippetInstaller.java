@@ -254,7 +254,7 @@ public class SnippetInstaller {
 
                 Debug.dump(graph, "after inlining %s", callee);
                 if (GraalOptions.OptCanonicalizer) {
-                    new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+                    new CanonicalizerPhase(runtime, assumptions).apply(graph);
                 }
                 substituteCallsOriginal = true;
             } else {
@@ -264,7 +264,7 @@ public class SnippetInstaller {
                     Debug.dump(graph, "after inlining %s", callee);
                     if (GraalOptions.OptCanonicalizer) {
                         new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
-                        new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+                        new CanonicalizerPhase(runtime, assumptions).apply(graph);
                     }
                 }
             }
@@ -276,7 +276,7 @@ public class SnippetInstaller {
 
         new DeadCodeEliminationPhase().apply(graph);
         if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+            new CanonicalizerPhase(runtime, assumptions).apply(graph);
         }
 
         for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {

@@ -627,7 +627,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                     graph.addAfterFixed(cas, writeBarrier);
                 } else {
                     // This may be an array store so use an array write barrier
-                    LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, false);
+                    LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
                     graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location)));
                 }
             }
@@ -679,7 +679,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
             assert load.kind() != Kind.Illegal;
-            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, false);
+            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
             ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp()));
             // An unsafe read must not floating outside its block as may float above an explicit
             // null check on its object.
@@ -687,7 +687,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
             graph.replaceFixedWithFixed(load, memoryRead);
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
-            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, store.accessKind(), store.displacement(), store.offset(), graph, false);
+            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, store.accessKind(), store.displacement(), store.offset(), graph, 1);
             ValueNode object = store.object();
             WriteNode write = graph.add(new WriteNode(object, store.value(), location));
             write.setStateAfter(store.stateAfter());
@@ -751,8 +751,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         }
     }
 
-    private static IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {
-        return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, getArrayBaseOffset(elementKind), index, graph, true);
+    private IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {
+        int scale = this.graalRuntime.getTarget().sizeInBytes(elementKind);
+        return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, getArrayBaseOffset(elementKind), index, graph, scale);
     }
 
     private SafeReadNode safeReadArrayLength(ValueNode array) {

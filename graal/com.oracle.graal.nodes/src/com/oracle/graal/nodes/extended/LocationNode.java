@@ -30,8 +30,9 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * A location for a memory access in terms of the kind of value accessed and the displacement (in
- * bytes) from a base object or address.
+ * A location for a memory access in terms of the kind of value accessed and how to access it. The
+ * base version can represent addresses of the form [base + disp] where base is a node and disp is a
+ * constant.
  */
 @NodeInfo(nameTemplate = "Loc {p#locationIdentity/s}")
 public class LocationNode extends FloatingNode implements LIRLowerable, ValueNumberable {

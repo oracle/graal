@@ -126,13 +126,13 @@ public class BoxingEliminationTest extends GraalCompilerTest {
                 }
 
                 Assumptions assumptions = new Assumptions(false);
-                new InliningPhase(null, runtime(), hints, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
-                new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
+                new InliningPhase(runtime(), hints, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
+                new CanonicalizerPhase(runtime(), assumptions).apply(graph);
                 Debug.dump(graph, "Graph");
                 new BoxingEliminationPhase(runtime()).apply(graph);
                 Debug.dump(graph, "Graph");
                 new ExpandBoxingNodesPhase(pool).apply(graph);
-                new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
+                new CanonicalizerPhase(runtime(), assumptions).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
                 StructuredGraph referenceGraph = parse(referenceSnippet);
                 assertEquals(referenceGraph, graph);

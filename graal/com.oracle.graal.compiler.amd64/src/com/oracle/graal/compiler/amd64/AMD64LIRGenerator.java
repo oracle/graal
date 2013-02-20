@@ -164,9 +164,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             IndexedLocationNode indexedLoc = (IndexedLocationNode) location;
 
             index = operand(indexedLoc.index());
-            if (indexedLoc.indexScalingEnabled()) {
-                scale = target().sizeInBytes(location.getValueKind());
-            }
+            scale = indexedLoc.indexScaling();
             if (isConstant(index)) {
                 long newDisplacement = displacement + asConstant(index).asLong() * scale;
                 // only use the constant index if the resulting displacement fits into a 32 bit

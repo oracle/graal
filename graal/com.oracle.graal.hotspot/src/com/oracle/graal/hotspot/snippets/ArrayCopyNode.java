@@ -83,9 +83,9 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         }
         // the canonicalization before loop unrolling is needed to propagate the length into
         // additions, etc.
-        new CanonicalizerPhase(tool.getTarget(), tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
+        new CanonicalizerPhase(tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
         new LoopFullUnrollPhase(tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
-        new CanonicalizerPhase(tool.getTarget(), tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
+        new CanonicalizerPhase(tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
     }
 
     @Override

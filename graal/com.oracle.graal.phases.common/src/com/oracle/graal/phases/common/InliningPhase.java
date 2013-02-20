@@ -47,7 +47,6 @@ public class InliningPhase extends Phase implements InliningCallback {
      * invoke.bci, method, true);
      */
 
-    private final TargetDescription target;
     private final PhasePlan plan;
 
     private final GraalCodeCacheProvider runtime;
@@ -63,18 +62,15 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
     private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
 
-    public InliningPhase(TargetDescription target, GraalCodeCacheProvider runtime, Collection<Invoke> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan,
-                    OptimisticOptimizations optimisticOpts) {
-        this(target, runtime, assumptions, cache, plan, createInliningPolicy(runtime, assumptions, optimisticOpts, hints), optimisticOpts);
+    public InliningPhase(GraalCodeCacheProvider runtime, Collection<Invoke> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+        this(runtime, assumptions, cache, plan, createInliningPolicy(runtime, assumptions, optimisticOpts, hints), optimisticOpts);
     }
 
     public void setCustomCanonicalizer(CustomCanonicalizer customCanonicalizer) {
         this.customCanonicalizer = customCanonicalizer;
     }
 
-    public InliningPhase(TargetDescription target, GraalCodeCacheProvider runtime, Assumptions assumptions, GraphCache cache, PhasePlan plan, InliningPolicy inliningPolicy,
-                    OptimisticOptimizations optimisticOpts) {
-        this.target = target;
+    public InliningPhase(GraalCodeCacheProvider runtime, Assumptions assumptions, GraphCache cache, PhasePlan plan, InliningPolicy inliningPolicy, OptimisticOptimizations optimisticOpts) {
         this.runtime = runtime;
         this.assumptions = assumptions;
         this.cache = cache;
@@ -103,7 +99,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                         Iterable<Node> newNodes = graph.getNewNodes(mark);
                         inliningPolicy.scanInvokes(newNodes);
                         if (GraalOptions.OptCanonicalizer) {
-                            new CanonicalizerPhase(target, runtime, assumptions, invokeUsages, mark, customCanonicalizer).apply(graph);
+                            new CanonicalizerPhase(runtime, assumptions, invokeUsages, mark, customCanonicalizer).apply(graph);
                         }
                         metricInliningPerformed.increment();
                     } catch (BailoutException bailout) {
@@ -142,7 +138,7 @@ public class InliningPhase extends Phase implements InliningCallback {
             new ComputeProbabilityPhase().apply(newGraph);
         }
         if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
+            new CanonicalizerPhase(runtime, assumptions).apply(newGraph);
         }
         if (GraalOptions.CullFrameStates) {
             new CullFrameStatesPhase().apply(newGraph);

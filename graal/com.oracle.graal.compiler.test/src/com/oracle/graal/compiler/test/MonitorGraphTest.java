@@ -93,8 +93,8 @@ public class MonitorGraphTest extends GraalCompilerTest {
             hints.add(invoke);
         }
         Assumptions assumptions = new Assumptions(false);
-        new InliningPhase(null, runtime(), hints, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-        new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
+        new InliningPhase(runtime(), hints, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+        new CanonicalizerPhase(runtime(), assumptions).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
         return graph;
     }

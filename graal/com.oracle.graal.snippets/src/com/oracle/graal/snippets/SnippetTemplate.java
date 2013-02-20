@@ -285,7 +285,7 @@ public class SnippetTemplate {
             new SnippetIntrinsificationPhase(runtime, new BoxingMethodPool(runtime), false).apply(snippetCopy);
             new WordTypeRewriterPhase(runtime, target.wordKind).apply(snippetCopy);
 
-            new CanonicalizerPhase(null, runtime, assumptions, 0, null).apply(snippetCopy);
+            new CanonicalizerPhase(runtime, assumptions, 0, null).apply(snippetCopy);
         }
 
         // Gather the template parameters
@@ -344,7 +344,7 @@ public class SnippetTemplate {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     int mark = snippetCopy.getMark();
                     LoopTransformations.fullUnroll(loop, runtime, null);
-                    new CanonicalizerPhase(null, runtime, assumptions, mark, null).apply(snippetCopy);
+                    new CanonicalizerPhase(runtime, assumptions, mark, null).apply(snippetCopy);
                 }
                 FixedNode explodeLoopNext = explodeLoop.next();
                 explodeLoop.clearSuccessors();

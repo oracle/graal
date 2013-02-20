@@ -48,7 +48,6 @@ public class CanonicalizerPhase extends Phase {
     public static final DebugMetric METRIC_GLOBAL_VALUE_NUMBERING_HITS = Debug.metric("GlobalValueNumberingHits");
 
     private final int newNodesMark;
-    private final TargetDescription target;
     private final Assumptions assumptions;
     private final MetaAccessProvider runtime;
     private final CustomCanonicalizer customCanonicalizer;
@@ -63,33 +62,31 @@ public class CanonicalizerPhase extends Phase {
         ValueNode canonicalize(Node node);
     }
 
-    public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions) {
-        this(target, runtime, assumptions, null, 0, null);
+    public CanonicalizerPhase(MetaAccessProvider runtime, Assumptions assumptions) {
+        this(runtime, assumptions, null, 0, null);
     }
 
     /**
-     * @param target
      * @param runtime
      * @param assumptions
      * @param workingSet the initial working set of nodes on which the canonicalizer works, should
      *            be an auto-grow node bitmap
      * @param customCanonicalizer
      */
-    public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
-        this(target, runtime, assumptions, workingSet, 0, customCanonicalizer);
+    public CanonicalizerPhase(MetaAccessProvider runtime, Assumptions assumptions, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
+        this(runtime, assumptions, workingSet, 0, customCanonicalizer);
     }
 
     /**
      * @param newNodesMark only the {@linkplain Graph#getNewNodes(int) new nodes} specified by this
      *            mark are processed otherwise all nodes in the graph are processed
      */
-    public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
-        this(target, runtime, assumptions, null, newNodesMark, customCanonicalizer);
+    public CanonicalizerPhase(MetaAccessProvider runtime, Assumptions assumptions, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
+        this(runtime, assumptions, null, newNodesMark, customCanonicalizer);
     }
 
-    public CanonicalizerPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions, Iterable<Node> workingSet, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
+    public CanonicalizerPhase(MetaAccessProvider runtime, Assumptions assumptions, Iterable<Node> workingSet, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
         this.newNodesMark = newNodesMark;
-        this.target = target;
         this.assumptions = assumptions;
         this.runtime = runtime;
         this.customCanonicalizer = customCanonicalizer;
@@ -108,7 +105,7 @@ public class CanonicalizerPhase extends Phase {
         if (newNodesMark > 0) {
             workList.addAll(graph.getNewNodes(newNodesMark));
         }
-        tool = new Tool(workList, runtime, target, assumptions);
+        tool = new Tool(workList, runtime, assumptions);
         processWorkSet(graph);
     }
 
@@ -309,13 +306,11 @@ public class CanonicalizerPhase extends Phase {
 
         private final NodeWorkList nodeWorkSet;
         private final MetaAccessProvider runtime;
-        private final TargetDescription target;
         private final Assumptions assumptions;
 
-        public Tool(NodeWorkList nodeWorkSet, MetaAccessProvider runtime, TargetDescription target, Assumptions assumptions) {
+        public Tool(NodeWorkList nodeWorkSet, MetaAccessProvider runtime, Assumptions assumptions) {
             this.nodeWorkSet = nodeWorkSet;
             this.runtime = runtime;
-            this.target = target;
             this.assumptions = assumptions;
         }
 
@@ -323,15 +318,6 @@ public class CanonicalizerPhase extends Phase {
         public void deleteBranch(FixedNode branch) {
             branch.predecessor().replaceFirstSuccessor(branch, null);
             GraphUtil.killCFG(branch);
-        }
-
-        /**
-         * @return the current target or {@code null} if no target is available in the current
-         *         context.
-         */
-        @Override
-        public TargetDescription target() {
-            return target;
         }
 
         /**

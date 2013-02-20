@@ -28,17 +28,14 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Extension of a {@linkplain LocationNode location} to include a scaled index or an additional
- * offset.
+ * Extension of a {@linkplain LocationNode location} to include a scaled index. Can represent
+ * locations in the form of [base + index * scale + disp] where base and index are nodes and scale
+ * and disp are integer constants.
  */
 public final class IndexedLocationNode extends LocationNode implements Canonicalizable {
 
-    /**
-     * An offset or index depending on whether {@link #indexScalingEnabled} is true or false
-     * respectively.
-     */
     @Input private ValueNode index;
-    private final boolean indexScalingEnabled;
+    private final int indexScaling;
 
     /**
      * Gets the index or offset of this location.
@@ -52,21 +49,20 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     }
 
     /**
-     * @return whether scaling of the index by the value kind's size is enabled (the default) or
-     *         disabled.
+     * @return Constant that is used to scale the index.
      */
-    public boolean indexScalingEnabled() {
-        return indexScalingEnabled;
+    public int indexScaling() {
+        return indexScaling;
     }
 
-    public static IndexedLocationNode create(Object identity, Kind kind, int displacement, ValueNode index, Graph graph, boolean indexScalingEnabled) {
-        return graph.unique(new IndexedLocationNode(identity, kind, index, displacement, indexScalingEnabled));
+    public static IndexedLocationNode create(Object identity, Kind kind, int displacement, ValueNode index, Graph graph, int indexScaling) {
+        return graph.unique(new IndexedLocationNode(identity, kind, index, displacement, indexScaling));
     }
 
-    private IndexedLocationNode(Object identity, Kind kind, ValueNode index, int displacement, boolean indexScalingEnabled) {
+    private IndexedLocationNode(Object identity, Kind kind, ValueNode index, int displacement, int indexScaling) {
         super(identity, kind, displacement);
         this.index = index;
-        this.indexScalingEnabled = indexScalingEnabled;
+        this.indexScaling = indexScaling;
     }
 
     @Override
@@ -74,12 +70,7 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
         Constant constantIndex = index.asConstant();
         if (constantIndex != null) {
             long constantIndexLong = constantIndex.asLong();
-            if (indexScalingEnabled) {
-                if (tool.target() == null) {
-                    return this;
-                }
-                constantIndexLong *= tool.target().sizeInBytes(getValueKind());
-            }
+            constantIndexLong *= indexScaling;
             constantIndexLong += displacement();
             int constantIndexInt = (int) constantIndexLong;
             if (constantIndexLong == constantIndexInt) {
