@@ -153,7 +153,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                     Assumptions assumptions = new Assumptions(false);
                     SnippetInstaller installer = new HotSpotSnippetInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
                     GraalIntrinsics.installIntrinsics(installer);
-                    runtime.installSnippets(installer, assumptions);
+                    runtime.installSnippets(graalRuntime.getBackend(), installer, assumptions);
                 }
             });
 

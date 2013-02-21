@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -70,7 +71,7 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
 
     /**
      * Creates a new stub container. The new stub still needs to be
-     * {@linkplain #install(GraalCompiler) installed}.
+     * {@linkplain #install(Backend, GraalCompiler) installed}.
      * 
      * @param descriptor linkage details for a call to the stub
      */
@@ -106,7 +107,7 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
      * Compiles the code for this stub, installs it and initializes the address used for calls to
      * it.
      */
-    public void install(GraalCompiler compiler) {
+    public void install(Backend backend, GraalCompiler compiler) {
         StructuredGraph graph = (StructuredGraph) stubMethod.getCompilerStorage().get(Graph.class);
 
         Key key = new Key(stubMethod);
@@ -117,7 +118,7 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
         PhasePlan phasePlan = new PhasePlan();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-        final CompilationResult compResult = compiler.compileMethod(runtime().getTarget(), stubMethod, graph, null, phasePlan, OptimisticOptimizations.ALL);
+        final CompilationResult compResult = compiler.compileMethod(runtime(), backend, runtime().getTarget(), stubMethod, graph, null, phasePlan, OptimisticOptimizations.ALL);
 
         final CodeInfo[] info = new CodeInfo[1];
         stubCode = Debug.scope("CodeInstall", new Object[]{compiler, stubMethod}, new Callable<InstalledCode>() {

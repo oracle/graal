@@ -51,6 +51,7 @@ import com.oracle.graal.api.code.CompilationResult.Safepoint;
 import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
@@ -328,7 +329,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
 
     protected abstract RegisterConfig createRegisterConfig(boolean globalStubConfig);
 
-    public void installSnippets(SnippetInstaller installer, Assumptions assumptions) {
+    public void installSnippets(Backend backend, SnippetInstaller installer, Assumptions assumptions) {
         if (GraalOptions.IntrinsifyObjectMethods) {
             installer.installSubstitutions(ObjectSubstitutions.class);
         }
@@ -370,8 +371,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
 
         newInstanceStub = new NewInstanceStub(this, assumptions, graalRuntime.getTarget());
         newArrayStub = new NewArrayStub(this, assumptions, graalRuntime.getTarget());
-        newInstanceStub.install(graalRuntime.getCompiler());
-        newArrayStub.install(graalRuntime.getCompiler());
+        newInstanceStub.install(backend, graalRuntime.getCompiler());
+        newArrayStub.install(backend, graalRuntime.getCompiler());
     }
 
     public HotSpotGraalRuntime getGraalRuntime() {

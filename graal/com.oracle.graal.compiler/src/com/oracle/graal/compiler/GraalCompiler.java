@@ -47,23 +47,8 @@ import com.oracle.graal.virtual.phases.ea.*;
 
 public class GraalCompiler {
 
-    /**
-     * The runtime that this compiler has been configured for.
-     */
-    public final GraalCodeCacheProvider runtime;
-
-    /**
-     * The backend that this compiler has been configured for.
-     */
-    public final Backend backend;
-
-    public GraalCompiler(GraalCodeCacheProvider runtime, Backend backend) {
-        this.runtime = runtime;
-        this.backend = backend;
-    }
-
-    public CompilationResult compileMethod(final TargetDescription target, final ResolvedJavaMethod method, final StructuredGraph graph, final GraphCache cache, final PhasePlan plan,
-                    final OptimisticOptimizations optimisticOpts) {
+    public CompilationResult compileMethod(final GraalCodeCacheProvider runtime, final Backend backend, final TargetDescription target, final ResolvedJavaMethod method, final StructuredGraph graph,
+                    final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.getModifiers() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
 
         return Debug.scope("GraalCompiler", new Object[]{graph, method, this}, new Callable<CompilationResult>() {
@@ -73,19 +58,19 @@ public class GraalCompiler {
                 final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
 
                     public LIR call() {
-                        return emitHIR(target, graph, assumptions, cache, plan, optimisticOpts);
+                        return emitHIR(runtime, target, graph, assumptions, cache, plan, optimisticOpts);
                     }
                 });
                 final FrameMap frameMap = Debug.scope("BackEnd", lir, new Callable<FrameMap>() {
 
                     public FrameMap call() {
-                        return emitLIR(lir, graph, method);
+                        return emitLIR(runtime, backend, target, lir, graph, method);
                     }
                 });
                 return Debug.scope("CodeGen", frameMap, new Callable<CompilationResult>() {
 
                     public CompilationResult call() {
-                        return emitCode(getLeafGraphIdArray(graph), assumptions, method, lir, frameMap);
+                        return emitCode(backend, getLeafGraphIdArray(graph), assumptions, method, lir, frameMap);
                     }
 
                 });
@@ -106,9 +91,12 @@ public class GraalCompiler {
     /**
      * Builds the graph, optimizes it.
      * 
+     * @param runtime
+     * 
      * @param target
      */
-    public LIR emitHIR(TargetDescription target, StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public LIR emitHIR(GraalCodeCacheProvider runtime, TargetDescription target, StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhasePlan plan,
+                    OptimisticOptimizations optimisticOpts) {
 
         if (graph.start().next() == null) {
             plan.runPhases(PhasePosition.AFTER_PARSING, graph);
@@ -237,7 +225,7 @@ public class GraalCompiler {
 
     }
 
-    public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method) {
+    public FrameMap emitLIR(GraalCodeCacheProvider runtime, Backend backend, final TargetDescription target, final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method) {
         final FrameMap frameMap = backend.newFrameMap(runtime.lookupRegisterConfig(method));
         final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir);
 
@@ -272,7 +260,7 @@ public class GraalCompiler {
         return frameMap;
     }
 
-    public CompilationResult emitCode(long[] leafGraphIds, Assumptions assumptions, ResolvedJavaMethod method, LIR lir, FrameMap frameMap) {
+    public CompilationResult emitCode(Backend backend, long[] leafGraphIds, Assumptions assumptions, ResolvedJavaMethod method, LIR lir, FrameMap frameMap) {
         TargetMethodAssembler tasm = backend.newAssembler(frameMap, lir);
         backend.emitCode(tasm, method, lir);
         CompilationResult result = tasm.finishTargetMethod(method, false);

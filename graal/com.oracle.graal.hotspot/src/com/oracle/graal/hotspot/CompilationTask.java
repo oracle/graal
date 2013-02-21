@@ -143,10 +143,10 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                         } else {
                             // Compiling an intrinsic graph - must clone the graph
                             graph = graph.copy();
-                            // System.out.println("compiling intrinsic " + method);
                         }
                         InlinedBytecodes.add(method.getCodeSize());
-                        return graalRuntime.getCompiler().compileMethod(graalRuntime.getTarget(), method, graph, graalRuntime.getCache(), plan, optimisticOpts);
+                        return graalRuntime.getCompiler().compileMethod(graalRuntime.getRuntime(), graalRuntime.getBackend(), graalRuntime.getTarget(), method, graph, graalRuntime.getCache(), plan,
+                                        optimisticOpts);
                     }
                 });
             } finally {
