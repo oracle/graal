@@ -305,8 +305,6 @@ public abstract class GraalCompilerTest extends GraalTest {
             Assert.assertTrue("expected " + expect.exception, actual.exception != null);
             Assert.assertEquals(expect.exception.getClass(), actual.exception.getClass());
         } else {
-            // System.out.println(name + "(" + Arrays.toString(args) + "): expected=" +
-            // expect.returnValue + ", actual=" + actual.returnValue);
             assertEquals(expect.returnValue, actual.returnValue);
         }
     }
@@ -342,8 +340,6 @@ public abstract class GraalCompilerTest extends GraalTest {
             if (cached != null) {
                 if (cached.isValid()) {
                     return cached;
-                } else {
-                    // System.out.println(cached.getMethod() + " was invalidated");
                 }
 
             }
