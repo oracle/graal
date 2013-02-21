@@ -47,8 +47,8 @@ import com.oracle.graal.virtual.phases.ea.*;
 
 public class GraalCompiler {
 
-    public CompilationResult compileMethod(final GraalCodeCacheProvider runtime, final Backend backend, final TargetDescription target, final ResolvedJavaMethod method, final StructuredGraph graph,
-                    final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
+    public static CompilationResult compileMethod(final GraalCodeCacheProvider runtime, final Backend backend, final TargetDescription target, final ResolvedJavaMethod method,
+                    final StructuredGraph graph, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.getModifiers() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
 
         return Debug.scope("GraalCompiler", new Object[]{graph, method, this}, new Callable<CompilationResult>() {
@@ -95,7 +95,7 @@ public class GraalCompiler {
      * 
      * @param target
      */
-    public LIR emitHIR(GraalCodeCacheProvider runtime, TargetDescription target, StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhasePlan plan,
+    public static LIR emitHIR(GraalCodeCacheProvider runtime, TargetDescription target, StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhasePlan plan,
                     OptimisticOptimizations optimisticOpts) {
 
         if (graph.start().next() == null) {
@@ -225,7 +225,7 @@ public class GraalCompiler {
 
     }
 
-    public FrameMap emitLIR(GraalCodeCacheProvider runtime, Backend backend, final TargetDescription target, final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method) {
+    public static FrameMap emitLIR(GraalCodeCacheProvider runtime, Backend backend, final TargetDescription target, final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method) {
         final FrameMap frameMap = backend.newFrameMap(runtime.lookupRegisterConfig(method));
         final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir);
 
@@ -260,7 +260,7 @@ public class GraalCompiler {
         return frameMap;
     }
 
-    public CompilationResult emitCode(Backend backend, long[] leafGraphIds, Assumptions assumptions, ResolvedJavaMethod method, LIR lir, FrameMap frameMap) {
+    public static CompilationResult emitCode(Backend backend, long[] leafGraphIds, Assumptions assumptions, ResolvedJavaMethod method, LIR lir, FrameMap frameMap) {
         TargetMethodAssembler tasm = backend.newAssembler(frameMap, lir);
         backend.emitCode(tasm, method, lir);
         CompilationResult result = tasm.finishTargetMethod(method, false);
