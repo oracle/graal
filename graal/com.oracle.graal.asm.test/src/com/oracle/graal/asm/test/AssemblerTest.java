@@ -47,7 +47,7 @@ public abstract class AssemblerTest extends GraalTest {
 
     protected InstalledCode assembleMethod(Method m, CodeGenTest test) {
         ResolvedJavaMethod method = codeCache.lookupJavaMethod(m);
-        RegisterConfig registerConfig = codeCache.lookupRegisterConfig(method);
+        RegisterConfig registerConfig = codeCache.lookupRegisterConfig();
         CallingConvention cc = CodeUtil.getCallingConvention(codeCache, CallingConvention.Type.JavaCallee, method, false);
 
         CompilationResult compResult = new CompilationResult();

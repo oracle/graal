@@ -24,9 +24,17 @@ package com.oracle.graal.compiler.ptx.test;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.ptx.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.PhasePlan.*;
+import com.oracle.graal.ptx.*;
 
 /**
  * Test class for small Java methods compiled to PTX kernels.
@@ -46,5 +54,12 @@ public class BasicPTXTest extends GraalCompilerTest {
     private void test(String snippet) {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
+        TargetDescription target = new TargetDescription(new PTX(), true, 1, 0, 0, 0, 0, true);
+        PTXBackend ptxBackend = new PTXBackend(Graal.getRequiredCapability(CodeCacheProvider.class), target);
+        PhasePlan phasePlan = new PhasePlan();
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
+        phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+        CompilationResult result = GraalCompiler.compileMethod(runtime, ptxBackend, target, graph.method(), graph, null, phasePlan, OptimisticOptimizations.NONE);
+        System.out.println("result=" + result);
     }
 }

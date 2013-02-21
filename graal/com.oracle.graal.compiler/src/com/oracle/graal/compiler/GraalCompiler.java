@@ -51,7 +51,7 @@ public class GraalCompiler {
                     final StructuredGraph graph, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.getModifiers() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
 
-        return Debug.scope("GraalCompiler", new Object[]{graph, method, this}, new Callable<CompilationResult>() {
+        return Debug.scope("GraalCompiler", new Object[]{graph, method}, new Callable<CompilationResult>() {
 
             public CompilationResult call() {
                 final Assumptions assumptions = new Assumptions(GraalOptions.OptAssumptions);
@@ -64,7 +64,7 @@ public class GraalCompiler {
                 final FrameMap frameMap = Debug.scope("BackEnd", lir, new Callable<FrameMap>() {
 
                     public FrameMap call() {
-                        return emitLIR(runtime, backend, target, lir, graph, method);
+                        return emitLIR(backend, target, lir, graph, method);
                     }
                 });
                 return Debug.scope("CodeGen", frameMap, new Callable<CompilationResult>() {
@@ -225,8 +225,8 @@ public class GraalCompiler {
 
     }
 
-    public static FrameMap emitLIR(GraalCodeCacheProvider runtime, Backend backend, final TargetDescription target, final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method) {
-        final FrameMap frameMap = backend.newFrameMap(runtime.lookupRegisterConfig(method));
+    public static FrameMap emitLIR(Backend backend, final TargetDescription target, final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method) {
+        final FrameMap frameMap = backend.newFrameMap();
         final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir);
 
         Debug.scope("LIRGen", lirGenerator, new Runnable() {

@@ -46,8 +46,8 @@ public abstract class Backend {
         return runtime;
     }
 
-    public FrameMap newFrameMap(RegisterConfig registerConfig) {
-        return new FrameMap(runtime, target, registerConfig);
+    public FrameMap newFrameMap() {
+        return new FrameMap(runtime, target, runtime.lookupRegisterConfig());
     }
 
     public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir);

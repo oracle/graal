@@ -505,7 +505,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
     }
 
     @Override
-    public RegisterConfig lookupRegisterConfig(ResolvedJavaMethod method) {
+    public RegisterConfig lookupRegisterConfig() {
         return regConfig;
     }
 
