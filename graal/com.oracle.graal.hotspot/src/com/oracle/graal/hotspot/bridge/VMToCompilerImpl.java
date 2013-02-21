@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
@@ -143,10 +142,9 @@ public class VMToCompilerImpl implements VMToCompiler {
         }
 
         // Install intrinsics.
-        GraalCompiler compiler = graalRuntime.getCompiler();
-        final HotSpotRuntime runtime = (HotSpotRuntime) compiler.runtime;
+        final HotSpotRuntime runtime = graalRuntime.getCapability(HotSpotRuntime.class);
         if (GraalOptions.Intrinsify) {
-            Debug.scope("InstallSnippets", new Object[]{new DebugDumpScope("InstallSnippets"), compiler}, new Runnable() {
+            Debug.scope("InstallSnippets", new Object[]{new DebugDumpScope("InstallSnippets")}, new Runnable() {
 
                 @Override
                 public void run() {

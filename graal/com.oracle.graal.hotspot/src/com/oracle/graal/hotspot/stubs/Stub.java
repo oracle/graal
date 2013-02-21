@@ -117,7 +117,7 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
         PhasePlan phasePlan = new PhasePlan();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-        final CompilationResult compResult = compiler.compileMethod(stubMethod, graph, null, phasePlan, OptimisticOptimizations.ALL);
+        final CompilationResult compResult = compiler.compileMethod(runtime().getTarget(), stubMethod, graph, null, phasePlan, OptimisticOptimizations.ALL);
 
         final CodeInfo[] info = new CodeInfo[1];
         stubCode = Debug.scope("CodeInstall", new Object[]{compiler, stubMethod}, new Callable<InstalledCode>() {

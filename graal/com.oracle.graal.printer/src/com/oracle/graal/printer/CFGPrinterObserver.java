@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
@@ -100,10 +99,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     private static final AtomicInteger uniqueId = new AtomicInteger();
 
     public void dumpSandboxed(Object object, String message) {
-        GraalCompiler compiler = Debug.contextLookup(GraalCompiler.class);
-        if (compiler == null) {
-            return;
-        }
 
         if (cfgPrinter == null) {
             cfgFile = new File("compilations-" + timestamp + "_" + uniqueId.incrementAndGet() + ".cfg");
@@ -120,7 +115,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             return;
         }
 
-        cfgPrinter.target = compiler.target;
+        cfgPrinter.target = Debug.contextLookup(TargetDescription.class);
         if (object instanceof LIR) {
             cfgPrinter.lir = (LIR) object;
         } else {
@@ -131,7 +126,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             cfgPrinter.cfg = cfgPrinter.lir.cfg;
         }
 
-        CodeCacheProvider runtime = compiler.runtime;
+        CodeCacheProvider runtime = Debug.contextLookup(CodeCacheProvider.class);
 
         if (object instanceof BciBlockMapping) {
             BciBlockMapping blockMap = (BciBlockMapping) object;
