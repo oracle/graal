@@ -109,8 +109,8 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         public void visitExceptionObject(ExceptionObjectNode x) {
             HotSpotVMConfig config = runtime().config;
             RegisterValue thread = runtime().threadRegister().asValue();
-            Address exceptionAddress = new Address(Kind.Object, thread, config.threadExceptionOopOffset);
-            Address pcAddress = new Address(Kind.Long, thread, config.threadExceptionPcOffset);
+            Address exceptionAddress = new AMD64Address(Kind.Object, thread, config.threadExceptionOopOffset);
+            Address pcAddress = new AMD64Address(Kind.Long, thread, config.threadExceptionPcOffset);
             Value exception = emitLoad(exceptionAddress, false);
             emitStore(exceptionAddress, Constant.NULL_OBJECT, false);
             emitStore(pcAddress, Constant.LONG_0, false);
@@ -132,9 +132,9 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             if (ValueUtil.isConstant(index) && NumUtil.isInt(ValueUtil.asConstant(index).asLong() + disp)) {
                 assert !runtime.needsDataPatch(asConstant(index));
                 disp += (int) ValueUtil.asConstant(index).asLong();
-                address = new Address(kind, load(operand(x.object())), disp);
+                address = new AMD64Address(kind, load(operand(x.object())), disp);
             } else {
-                address = new Address(kind, load(operand(x.object())), load(index), Address.Scale.Times1, disp);
+                address = new AMD64Address(kind, load(operand(x.object())), load(index), AMD64Address.Scale.Times1, disp);
             }
 
             RegisterValue rax = AMD64.rax.asValue(kind);
@@ -187,7 +187,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
                         disp -= frameSize;
                     }
                     tasm.blockComment("[stack overflow check]");
-                    asm.movq(new Address(asm.target.wordKind, AMD64.RSP, -disp), AMD64.rax);
+                    asm.movq(new AMD64Address(asm.target.wordKind, AMD64.RSP, -disp), AMD64.rax);
                 }
             }
         }
@@ -208,7 +208,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             if (GraalOptions.ZapStackOnMethodEntry) {
                 final int intSize = 4;
                 for (int i = 0; i < frameSize / intSize; ++i) {
-                    asm.movl(new Address(Kind.Int, rsp.asValue(), i * intSize), 0xC1C1C1C1);
+                    asm.movl(new AMD64Address(Kind.Int, rsp.asValue(), i * intSize), 0xC1C1C1C1);
                 }
             }
             CalleeSaveLayout csl = frameMap.registerConfig.getCalleeSaveLayout();
@@ -248,12 +248,12 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
                 if (config.isPollingPageFar) {
                     asm.movq(scratch, config.safepointPollingAddress + offset);
                     tasm.recordMark(Marks.MARK_POLL_RETURN_FAR);
-                    asm.movq(scratch, new Address(tasm.target.wordKind, scratch.asValue()));
+                    asm.movq(scratch, new AMD64Address(tasm.target.wordKind, scratch.asValue()));
                 } else {
                     tasm.recordMark(Marks.MARK_POLL_RETURN_NEAR);
                     // The C++ code transforms the polling page offset into an RIP displacement
                     // to the real address at that offset in the polling page.
-                    asm.movq(scratch, new Address(tasm.target.wordKind, rip.asValue(), offset));
+                    asm.movq(scratch, new AMD64Address(tasm.target.wordKind, rip.asValue(), offset));
                 }
             }
         }
@@ -294,7 +294,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             Register inlineCacheKlass = rax; // see definition of IC_Klass in
                                              // c1_LIRAssembler_x86.cpp
             Register receiver = asRegister(cc.getArgument(0));
-            Address src = new Address(target.wordKind, receiver.asValue(), config.hubOffset);
+            AMD64Address src = new AMD64Address(target.wordKind, receiver.asValue(), config.hubOffset);
 
             asm.cmpq(inlineCacheKlass, src);
             asm.jcc(ConditionFlag.NotEqual, unverifiedStub);

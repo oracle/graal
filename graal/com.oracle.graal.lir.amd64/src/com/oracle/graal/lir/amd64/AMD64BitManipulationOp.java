@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.amd64;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
@@ -47,7 +48,7 @@ public class AMD64BitManipulationOp extends AMD64LIRInstruction {
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         Register dst = ValueUtil.asIntReg(result);
         if (ValueUtil.isAddress(input)) {
-            Address src = ValueUtil.asAddress(input);
+            AMD64Address src = (AMD64Address) ValueUtil.asAddress(input);
             switch (opcode) {
                 case IPOPCNT:
                     masm.popcntl(dst, src);

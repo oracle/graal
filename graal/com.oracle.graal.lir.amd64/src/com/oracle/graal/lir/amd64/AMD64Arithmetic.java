@@ -400,46 +400,46 @@ public enum AMD64Arithmetic {
                 case LSHR: masm.sarq(asLongReg(dst), tasm.asIntConst(src) & 63); break;
                 case LUSHR:masm.shrq(asLongReg(dst), tasm.asIntConst(src) & 63); break;
 
-                case FADD: masm.addss(asFloatReg(dst), tasm.asFloatConstRef(src)); break;
-                case FSUB: masm.subss(asFloatReg(dst), tasm.asFloatConstRef(src)); break;
-                case FMUL: masm.mulss(asFloatReg(dst), tasm.asFloatConstRef(src)); break;
-                case FAND: masm.andps(asFloatReg(dst), tasm.asFloatConstRef(src, 16)); break;
-                case FOR:  masm.orps(asFloatReg(dst),  tasm.asFloatConstRef(src, 16)); break;
-                case FXOR: masm.xorps(asFloatReg(dst), tasm.asFloatConstRef(src, 16)); break;
-                case FDIV: masm.divss(asFloatReg(dst), tasm.asFloatConstRef(src)); break;
+                case FADD: masm.addss(asFloatReg(dst), (AMD64Address) tasm.asFloatConstRef(src)); break;
+                case FSUB: masm.subss(asFloatReg(dst), (AMD64Address) tasm.asFloatConstRef(src)); break;
+                case FMUL: masm.mulss(asFloatReg(dst), (AMD64Address) tasm.asFloatConstRef(src)); break;
+                case FAND: masm.andps(asFloatReg(dst), (AMD64Address) tasm.asFloatConstRef(src, 16)); break;
+                case FOR:  masm.orps(asFloatReg(dst),  (AMD64Address) tasm.asFloatConstRef(src, 16)); break;
+                case FXOR: masm.xorps(asFloatReg(dst), (AMD64Address) tasm.asFloatConstRef(src, 16)); break;
+                case FDIV: masm.divss(asFloatReg(dst), (AMD64Address) tasm.asFloatConstRef(src)); break;
 
-                case DADD: masm.addsd(asDoubleReg(dst), tasm.asDoubleConstRef(src)); break;
-                case DSUB: masm.subsd(asDoubleReg(dst), tasm.asDoubleConstRef(src)); break;
-                case DMUL: masm.mulsd(asDoubleReg(dst), tasm.asDoubleConstRef(src)); break;
-                case DDIV: masm.divsd(asDoubleReg(dst), tasm.asDoubleConstRef(src)); break;
-                case DAND: masm.andpd(asDoubleReg(dst), tasm.asDoubleConstRef(src, 16)); break;
-                case DOR:  masm.orpd(asDoubleReg(dst),  tasm.asDoubleConstRef(src, 16)); break;
-                case DXOR: masm.xorpd(asDoubleReg(dst), tasm.asDoubleConstRef(src, 16)); break;
+                case DADD: masm.addsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleConstRef(src)); break;
+                case DSUB: masm.subsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleConstRef(src)); break;
+                case DMUL: masm.mulsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleConstRef(src)); break;
+                case DDIV: masm.divsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleConstRef(src)); break;
+                case DAND: masm.andpd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleConstRef(src, 16)); break;
+                case DOR:  masm.orpd(asDoubleReg(dst),  (AMD64Address) tasm.asDoubleConstRef(src, 16)); break;
+                case DXOR: masm.xorpd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleConstRef(src, 16)); break;
                 default:   throw GraalInternalError.shouldNotReachHere();
             }
         } else {
             switch (opcode) {
-                case IADD: masm.addl(asIntReg(dst), tasm.asIntAddr(src)); break;
-                case ISUB: masm.subl(asIntReg(dst), tasm.asIntAddr(src)); break;
-                case IAND: masm.andl(asIntReg(dst), tasm.asIntAddr(src)); break;
-                case IOR:  masm.orl(asIntReg(dst),  tasm.asIntAddr(src)); break;
-                case IXOR: masm.xorl(asIntReg(dst), tasm.asIntAddr(src)); break;
+                case IADD: masm.addl(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
+                case ISUB: masm.subl(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
+                case IAND: masm.andl(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
+                case IOR:  masm.orl(asIntReg(dst),  (AMD64Address) tasm.asIntAddr(src)); break;
+                case IXOR: masm.xorl(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
 
-                case LADD: masm.addq(asLongReg(dst), tasm.asLongAddr(src)); break;
-                case LSUB: masm.subq(asLongReg(dst), tasm.asLongAddr(src)); break;
-                case LAND: masm.andq(asLongReg(dst), tasm.asLongAddr(src)); break;
-                case LOR:  masm.orq(asLongReg(dst),  tasm.asLongAddr(src)); break;
-                case LXOR: masm.xorq(asLongReg(dst), tasm.asLongAddr(src)); break;
+                case LADD: masm.addq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
+                case LSUB: masm.subq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
+                case LAND: masm.andq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
+                case LOR:  masm.orq(asLongReg(dst),  (AMD64Address) tasm.asLongAddr(src)); break;
+                case LXOR: masm.xorq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
 
-                case FADD: masm.addss(asFloatReg(dst), tasm.asFloatAddr(src)); break;
-                case FSUB: masm.subss(asFloatReg(dst), tasm.asFloatAddr(src)); break;
-                case FMUL: masm.mulss(asFloatReg(dst), tasm.asFloatAddr(src)); break;
-                case FDIV: masm.divss(asFloatReg(dst), tasm.asFloatAddr(src)); break;
+                case FADD: masm.addss(asFloatReg(dst), (AMD64Address) tasm.asFloatAddr(src)); break;
+                case FSUB: masm.subss(asFloatReg(dst), (AMD64Address) tasm.asFloatAddr(src)); break;
+                case FMUL: masm.mulss(asFloatReg(dst), (AMD64Address) tasm.asFloatAddr(src)); break;
+                case FDIV: masm.divss(asFloatReg(dst), (AMD64Address) tasm.asFloatAddr(src)); break;
 
-                case DADD: masm.addsd(asDoubleReg(dst), tasm.asDoubleAddr(src)); break;
-                case DSUB: masm.subsd(asDoubleReg(dst), tasm.asDoubleAddr(src)); break;
-                case DMUL: masm.mulsd(asDoubleReg(dst), tasm.asDoubleAddr(src)); break;
-                case DDIV: masm.divsd(asDoubleReg(dst), tasm.asDoubleAddr(src)); break;
+                case DADD: masm.addsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleAddr(src)); break;
+                case DSUB: masm.subsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleAddr(src)); break;
+                case DMUL: masm.mulsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleAddr(src)); break;
+                case DDIV: masm.divsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleAddr(src)); break;
                 default:   throw GraalInternalError.shouldNotReachHere();
             }
         }
@@ -455,7 +455,7 @@ public enum AMD64Arithmetic {
         tasm.stubs.add(slowPath);
         switch (result.getKind()) {
             case Int:  masm.cmpl(asIntReg(result),  Integer.MIN_VALUE); break;
-            case Long: masm.cmpq(asLongReg(result), tasm.asLongConstRef(Constant.forLong(java.lang.Long.MIN_VALUE))); break;
+            case Long: masm.cmpq(asLongReg(result), (AMD64Address) tasm.asLongConstRef(Constant.forLong(java.lang.Long.MIN_VALUE))); break;
             default:   throw GraalInternalError.shouldNotReachHere();
         }
         masm.jcc(ConditionFlag.Equal, slowPath.start);
@@ -477,8 +477,8 @@ public enum AMD64Arithmetic {
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             masm.bind(start);
             switch (x.getKind()) {
-                case Float:  masm.ucomiss(asFloatReg(x),  tasm.asFloatConstRef(Constant.FLOAT_0)); break;
-                case Double: masm.ucomisd(asDoubleReg(x), tasm.asDoubleConstRef(Constant.DOUBLE_0)); break;
+                case Float:  masm.ucomiss(asFloatReg(x),  (AMD64Address) tasm.asFloatConstRef(Constant.FLOAT_0)); break;
+                case Double: masm.ucomisd(asDoubleReg(x), (AMD64Address) tasm.asDoubleConstRef(Constant.DOUBLE_0)); break;
                 default:     throw GraalInternalError.shouldNotReachHere();
             }
             Label nan = new Label();

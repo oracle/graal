@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,13 @@
  */
 package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-
 import com.oracle.graal.api.meta.*;
 
 /**
- * Represents an address in target machine memory, specified via some combination of a base
- * register, an index register, a displacement and a scale. Note that the base and index registers
- * may be a variable that will get a register assigned later by the register allocator.
+ * Base class to represent an address in target machine memory. The concrete representation of the
+ * address is platform dependent.
  */
-public final class Address extends Value {
+public abstract class Address extends Value {
 
     private static final long serialVersionUID = -1003772042519945089L;
 
@@ -39,168 +36,20 @@ public final class Address extends Value {
      * A sentinel value used as a place holder in an instruction stream for an address that will be
      * patched.
      */
-    public static final Address Placeholder = new Address(Kind.Illegal, Value.ILLEGAL);
-
-    private Value base;
-    private Value index;
-    private final Scale scale;
-    private final int displacement;
-
-    /**
-     * Creates an {@link Address} with given base register, no scaling and no displacement.
+    /*
+     * @SuppressWarnings("serial") public static final Address Placeholder = new
+     * Address(Kind.Illegal) {
      * 
-     * @param kind the kind of the value being addressed
-     * @param base the base register
+     * @Override public String toString() { return "[<placeholder>]"; } };
      */
-    public Address(Kind kind, Value base) {
-        this(kind, base, ILLEGAL, Scale.Times1, 0);
-    }
 
-    /**
-     * Creates an {@link Address} with given base register, no scaling and a given displacement.
-     * 
-     * @param kind the kind of the value being addressed
-     * @param base the base register
-     * @param displacement the displacement
-     */
-    public Address(Kind kind, Value base, int displacement) {
-        this(kind, base, ILLEGAL, Scale.Times1, displacement);
-    }
-
-    /**
-     * Creates an {@link Address} with given base and index registers, scaling and displacement.
-     * This is the most general constructor.
-     * 
-     * @param kind the kind of the value being addressed
-     * @param base the base register
-     * @param index the index register
-     * @param scale the scaling factor
-     * @param displacement the displacement
-     */
-    public Address(Kind kind, Value base, Value index, Scale scale, int displacement) {
+    public Address(Kind kind) {
         super(kind);
-        this.setBase(base);
-        this.setIndex(index);
-        this.scale = scale;
-        this.displacement = displacement;
-
-        assert !isConstant(base) && !isStackSlot(base);
-        assert !isConstant(index) && !isStackSlot(index);
     }
 
     /**
-     * A scaling factor used in complex addressing modes such as those supported by x86 platforms.
+     * The values that this address is composed of. Used by the register allocator to manipulate
+     * addresses in a platform independent way.
      */
-    public enum Scale {
-        Times1(1, 0), Times2(2, 1), Times4(4, 2), Times8(8, 3);
-
-        private Scale(int value, int log2) {
-            this.value = value;
-            this.log2 = log2;
-        }
-
-        /**
-         * The value (or multiplier) of this scale.
-         */
-        public final int value;
-
-        /**
-         * The {@linkplain #value value} of this scale log 2.
-         */
-        public final int log2;
-
-        public static Scale fromInt(int scale) {
-            switch (scale) {
-                case 1:
-                    return Times1;
-                case 2:
-                    return Times2;
-                case 4:
-                    return Times4;
-                case 8:
-                    return Times8;
-                default:
-                    throw new IllegalArgumentException(String.valueOf(scale));
-            }
-        }
-    }
-
-    @Override
-    public String toString() {
-        if (this == Placeholder) {
-            return "[<placeholder>]";
-        }
-
-        StringBuilder s = new StringBuilder();
-        s.append(getKind().getJavaName()).append("[");
-        String sep = "";
-        if (isLegal(getBase())) {
-            s.append(getBase());
-            sep = " + ";
-        }
-        if (isLegal(getIndex())) {
-            s.append(sep).append(getIndex()).append(" * ").append(getScale().value);
-            sep = " + ";
-        }
-        if (getDisplacement() < 0) {
-            s.append(" - ").append(-getDisplacement());
-        } else if (getDisplacement() > 0) {
-            s.append(sep).append(getDisplacement());
-        }
-        s.append("]");
-        return s.toString();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof Address) {
-            Address addr = (Address) obj;
-            return getKind() == addr.getKind() && getDisplacement() == addr.getDisplacement() && getBase().equals(addr.getBase()) && getScale() == addr.getScale() &&
-                            getIndex().equals(addr.getIndex());
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return getBase().hashCode() ^ getIndex().hashCode() ^ (getDisplacement() << 4) ^ (getScale().value << 8) ^ (getKind().ordinal() << 12);
-    }
-
-    /**
-     * @return Base register that defines the start of the address computation. If not present, is
-     *         denoted by {@link Value#ILLEGAL}.
-     */
-    public Value getBase() {
-        return base;
-    }
-
-    public void setBase(Value base) {
-        this.base = base;
-    }
-
-    /**
-     * @return Index register, the value of which (possibly scaled by {@link #scale}) is added to
-     *         {@link #base}. If not present, is denoted by {@link Value#ILLEGAL}.
-     */
-    public Value getIndex() {
-        return index;
-    }
-
-    public void setIndex(Value index) {
-        this.index = index;
-    }
-
-    /**
-     * @return Scaling factor for indexing, dependent on target operand size.
-     */
-    public Scale getScale() {
-        return scale;
-    }
-
-    /**
-     * @return Optional additive displacement.
-     */
-    public int getDisplacement() {
-        return displacement;
-    }
+    public abstract Value[] components();
 }

@@ -25,6 +25,7 @@ package com.oracle.graal.asm;
 import java.nio.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * The platform-independent base class for the assembler.
@@ -83,4 +84,15 @@ public abstract class AbstractAssembler {
     protected final void emitString0(String x) {
         codeBuffer.emitString0(x);
     }
+
+    /**
+     * This is used by the TargetMethodAssembler to convert a {@link StackSlot} to an
+     * {@link Address}.
+     */
+    public abstract Address makeAddress(Kind kind, Value base, int displacement);
+
+    /**
+     * Returns a target specific placeholder address that can be used for code patching.
+     */
+    public abstract Address getPlaceholder();
 }

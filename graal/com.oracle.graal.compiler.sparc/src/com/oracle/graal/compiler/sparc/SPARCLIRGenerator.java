@@ -215,6 +215,11 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public Address makeAddress(Kind kind, Value base, int displacement) {
+        return null;
+    }
+
+    @Override
     public Address makeAddress(LocationNode location, ValueNode object) {
         // SPARC: Auto-generated method stub
         return null;

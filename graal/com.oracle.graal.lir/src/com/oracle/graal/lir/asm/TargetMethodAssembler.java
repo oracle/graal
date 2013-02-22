@@ -155,7 +155,7 @@ public class TargetMethodAssembler {
         int pos = asm.codeBuffer.position();
         Debug.log("Data reference in code: pos = %d, data = %s", pos, data.toString());
         compilationResult.recordDataReference(pos, data, alignment, inlined);
-        return Address.Placeholder;
+        return asm.getPlaceholder();
     }
 
     /**
@@ -233,7 +233,7 @@ public class TargetMethodAssembler {
     public Address asAddress(Value value) {
         if (isStackSlot(value)) {
             StackSlot slot = (StackSlot) value;
-            return new Address(slot.getKind(), frameMap.registerConfig.getFrameRegister().asValue(), frameMap.offsetForStackSlot(slot));
+            return asm.makeAddress(slot.getKind(), frameMap.registerConfig.getFrameRegister().asValue(), frameMap.offsetForStackSlot(slot));
         }
         return (Address) value;
     }

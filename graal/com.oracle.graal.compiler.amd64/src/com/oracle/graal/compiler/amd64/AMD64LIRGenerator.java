@@ -137,6 +137,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public Address makeAddress(Kind kind, Value base, int displacement) {
+        return new AMD64Address(kind, base, displacement);
+    }
+
+    @Override
     public Address makeAddress(LocationNode location, ValueNode object) {
         Value base = operand(object);
         Value index = Value.ILLEGAL;
@@ -182,7 +187,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             }
         }
 
-        return new Address(location.getValueKind(), base, index, Address.Scale.fromInt(scale), displacement);
+        return new AMD64Address(location.getValueKind(), base, index, AMD64Address.Scale.fromInt(scale), displacement);
     }
 
     @Override
@@ -886,9 +891,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         if (isConstant(index) && NumUtil.isInt(asConstant(index).asLong() + displacement)) {
             assert !runtime.needsDataPatch(asConstant(index));
             displacement += (int) asConstant(index).asLong();
-            address = new Address(kind, load(operand(node.object())), displacement);
+            address = new AMD64Address(kind, load(operand(node.object())), displacement);
         } else {
-            address = new Address(kind, load(operand(node.object())), load(index), Address.Scale.Times1, displacement);
+            address = new AMD64Address(kind, load(operand(node.object())), load(index), AMD64Address.Scale.Times1, displacement);
         }
 
         RegisterValue rax = AMD64.rax.asValue(kind);

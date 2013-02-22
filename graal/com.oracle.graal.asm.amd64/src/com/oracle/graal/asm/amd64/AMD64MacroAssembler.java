@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,7 +79,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
     }
 
-    public final void movptr(Address dst, int src) {
+    public final void movptr(AMD64Address dst, int src) {
         movslq(dst, src);
     }
 
@@ -87,7 +87,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         cmpq(src1, src2);
     }
 
-    public final void cmpptr(Register src1, Address src2) {
+    public final void cmpptr(Register src1, AMD64Address src2) {
         cmpq(src1, src2);
     }
 
@@ -110,7 +110,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
     }
 
-    public final void decrementl(Address dst, int value) {
+    public final void decrementl(AMD64Address dst, int value) {
         if (value == Integer.MIN_VALUE) {
             subl(dst, value);
             return;
@@ -148,7 +148,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
     }
 
-    public final void incrementl(Address dst, int value) {
+    public final void incrementl(AMD64Address dst, int value) {
         if (value == Integer.MIN_VALUE) {
             addl(dst, value);
             return;
@@ -189,12 +189,12 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
     }
 
-    public final void movflt(Register dst, Address src) {
+    public final void movflt(Register dst, AMD64Address src) {
         assert dst.isFpu();
         movss(dst, src);
     }
 
-    public final void movflt(Address dst, Register src) {
+    public final void movflt(AMD64Address dst, Register src) {
         assert src.isFpu();
         movss(dst, src);
     }
@@ -208,7 +208,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
     }
 
-    public final void movdbl(Register dst, Address src) {
+    public final void movdbl(Register dst, AMD64Address src) {
         assert dst.isFpu();
         if (UseXmmLoadAndClearUpper) {
             movsd(dst, src);
@@ -221,8 +221,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * Non-atomic write of a 64-bit constant to memory. Do not use if the address might be a
      * volatile field!
      */
-    public final void movlong(Address dst, long src) {
-        Address high = new Address(dst.getKind(), dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4);
+    public final void movlong(AMD64Address dst, long src) {
+        AMD64Address high = new AMD64Address(dst.getKind(), dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4);
         movl(dst, (int) (src & 0xFFFFFFFF));
         movl(high, (int) (src >> 32));
     }
@@ -230,7 +230,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     public final void flog(Register dest, Register value, boolean base10) {
         assert dest.isFpu() && value.isFpu();
 
-        Address tmp = new Address(Kind.Double, AMD64.RSP);
+        AMD64Address tmp = new AMD64Address(Kind.Double, AMD64.RSP);
         if (base10) {
             fldlg2();
         } else {
@@ -244,34 +244,34 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void fsin(Register dest, Register value) {
-        Address tmp = trigPrologue(value);
+        AMD64Address tmp = trigPrologue(value);
         fsin();
         trigEpilogue(dest, tmp);
     }
 
     public final void fcos(Register dest, Register value) {
-        Address tmp = trigPrologue(value);
+        AMD64Address tmp = trigPrologue(value);
         fcos();
         trigEpilogue(dest, tmp);
     }
 
     public final void ftan(Register dest, Register value) {
-        Address tmp = trigPrologue(value);
+        AMD64Address tmp = trigPrologue(value);
         fptan();
         fstp(0); // ftan pushes 1.0 in addition to the actual result, pop
         trigEpilogue(dest, tmp);
     }
 
-    private Address trigPrologue(Register value) {
+    private AMD64Address trigPrologue(Register value) {
         assert value.isFpu();
-        Address tmp = new Address(Kind.Double, AMD64.RSP);
+        AMD64Address tmp = new AMD64Address(Kind.Double, AMD64.RSP);
         subq(AMD64.rsp, 8);
         movsd(tmp, value);
         fld(tmp);
         return tmp;
     }
 
-    private void trigEpilogue(Register dest, Address tmp) {
+    private void trigEpilogue(Register dest, AMD64Address tmp) {
         assert dest.isFpu();
         fstp(tmp);
         movsd(dest, tmp);
@@ -289,7 +289,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         RegisterValue frame = frameRegister.asValue();
         for (Register r : csl.registers) {
             int offset = csl.offsetOf(r);
-            movq(new Address(target.wordKind, frame, frameToCSA + offset), r);
+            movq(new AMD64Address(target.wordKind, frame, frameToCSA + offset), r);
         }
     }
 
@@ -297,7 +297,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         RegisterValue frame = frameRegister.asValue();
         for (Register r : csl.registers) {
             int offset = csl.offsetOf(r);
-            movq(r, new Address(target.wordKind, frame, frameToCSA + offset));
+            movq(r, new AMD64Address(target.wordKind, frame, frameToCSA + offset));
         }
     }
 }

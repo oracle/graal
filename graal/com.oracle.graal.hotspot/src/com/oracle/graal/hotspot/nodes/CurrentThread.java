@@ -42,7 +42,7 @@ public final class CurrentThread extends FloatingNode implements LIRLowerable {
     public void generate(LIRGeneratorTool gen) {
         HotSpotGraalRuntime runtime = HotSpotGraalRuntime.getInstance();
         Register thread = runtime.getRuntime().threadRegister();
-        gen.setResult(this, gen.emitLoad(new Address(Kind.Object, thread.asValue(gen.target().wordKind), runtime.getConfig().threadObjectOffset), false));
+        gen.setResult(this, gen.emitLoad(gen.makeAddress(Kind.Object, thread.asValue(gen.target().wordKind), runtime.getConfig().threadObjectOffset), false));
     }
 
     @NodeIntrinsic

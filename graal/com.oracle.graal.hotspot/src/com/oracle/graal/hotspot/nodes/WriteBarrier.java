@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
@@ -46,6 +45,6 @@ public abstract class WriteBarrier extends FixedWithNextNode {
         } else {
             base = gen.emitAdd(base, Constant.forLong(config.cardtableStartAddress));
         }
-        gen.emitStore(new Address(Kind.Boolean, base, displacement), Constant.FALSE, false);
+        gen.emitStore(gen.makeAddress(Kind.Boolean, base, displacement), Constant.FALSE, false);
     }
 }

@@ -25,8 +25,8 @@ package com.oracle.graal.compiler.ptx;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.ptx.PTXArithmetic.*;
-import static com.oracle.graal.lir.ptx.PTXCompare.*;
 import static com.oracle.graal.lir.ptx.PTXBitManipulationOp.IntrinsicOpcode.*;
+import static com.oracle.graal.lir.ptx.PTXCompare.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -36,7 +36,11 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
-import com.oracle.graal.lir.ptx.PTXBitManipulationOp;
+import com.oracle.graal.lir.ptx.PTXArithmetic.Op1Stack;
+import com.oracle.graal.lir.ptx.PTXArithmetic.Op2Reg;
+import com.oracle.graal.lir.ptx.PTXArithmetic.Op2Stack;
+import com.oracle.graal.lir.ptx.PTXArithmetic.ShiftOp;
+import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.lir.ptx.PTXCompare.CompareOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.BranchOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.ReturnOp;
@@ -45,11 +49,10 @@ import com.oracle.graal.lir.ptx.PTXMove.MoveFromRegOp;
 import com.oracle.graal.lir.ptx.PTXMove.MoveToRegOp;
 import com.oracle.graal.lir.ptx.PTXMove.StoreOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.Condition;
-import com.oracle.graal.nodes.calc.ConvertNode;
-import com.oracle.graal.nodes.extended.IndexedLocationNode;
-import com.oracle.graal.nodes.extended.LocationNode;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.ptx.*;
 
 /**
  * This class implements the PTX specific portion of the LIR generator.
@@ -97,52 +100,44 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public Address makeAddress(Kind kind, Value base, int displacement) {
+        return new PTXAddress(kind, base, displacement);
+    }
+
+    @Override
     public Address makeAddress(LocationNode location, ValueNode object) {
         Value base = operand(object);
-        Value index = Value.ILLEGAL;
-        int scale = 1;
-        int displacement = location.displacement();
+        long displacement = location.displacement();
 
         if (isConstant(base)) {
             if (asConstant(base).isNull()) {
                 base = Value.ILLEGAL;
             } else if (asConstant(base).getKind() != Kind.Object) {
-                long newDisplacement = displacement + asConstant(base).asLong();
-                if (NumUtil.isInt(newDisplacement)) {
-                    assert !runtime.needsDataPatch(asConstant(base));
-                    displacement = (int) newDisplacement;
-                    base = Value.ILLEGAL;
-                } else {
-                    Value newBase = newVariable(Kind.Long);
-                    emitMove(base, newBase);
-                    base = newBase;
-                }
+                displacement += asConstant(base).asLong();
+                base = Value.ILLEGAL;
             }
         }
 
         if (location instanceof IndexedLocationNode) {
             IndexedLocationNode indexedLoc = (IndexedLocationNode) location;
 
-            index = operand(indexedLoc.index());
-            scale = indexedLoc.indexScaling();
+            Value index = operand(indexedLoc.index());
+            int scale = indexedLoc.indexScaling();
             if (isConstant(index)) {
-                long newDisplacement = displacement + asConstant(index).asLong() * scale;
-                // only use the constant index if the resulting displacement fits into a 32 bit
-                // offset
-                if (NumUtil.isInt(newDisplacement)) {
-                    displacement = (int) newDisplacement;
-                    index = Value.ILLEGAL;
+                displacement += asConstant(index).asLong() * scale;
+            } else {
+                if (scale != 1) {
+                    index = emitMul(index, Constant.forInt(scale));
+                }
+                if (base == Value.ILLEGAL) {
+                    base = index;
                 } else {
-                    // create a temporary variable for the index, the pointer load cannot handle a
-                    // constant index
-                    Value newIndex = newVariable(Kind.Long);
-                    emitMove(index, newIndex);
-                    index = newIndex;
+                    base = emitAdd(base, index);
                 }
             }
         }
 
-        return new Address(location.getValueKind(), base, index, Address.Scale.fromInt(scale), displacement);
+        return new PTXAddress(location.getValueKind(), base, displacement);
     }
 
     @Override
