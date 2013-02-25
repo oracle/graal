@@ -124,14 +124,14 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         AnnotationMirror typeSystemMirror = findFirstAnnotation(typeHierarchy, TypeSystemReference.class);
         if (typeSystemMirror == null) {
-            log.error(originalType, "No @%s annotation found in type hierarchy.", TypeSystemReference.class.getSimpleName());
+            log.error(type, "No @%s annotation found in type hierarchy.", TypeSystemReference.class.getSimpleName());
             return null;
         }
 
         TypeMirror typeSytemType = Utils.getAnnotationValueType(typeSystemMirror, "value");
         final TypeSystemData typeSystem = (TypeSystemData) context.getTemplate(typeSytemType, true);
         if (typeSystem == null) {
-            log.error(originalType, "The used type system '%s' is invalid.", Utils.getQualifiedName(typeSytemType));
+            log.error(type, "The used type system '%s' is invalid.", Utils.getQualifiedName(typeSytemType));
             return null;
         }
 
@@ -146,8 +146,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         nodeData.setExecutableTypes(executableTypes.toArray(new ExecutableTypeData[executableTypes.size()]));
 
-        parsedNodes.put(Utils.getQualifiedName(type), nodeData); // node fields will resolve node
-// types, to avoid endless loops
+        parsedNodes.put(Utils.getQualifiedName(type), nodeData);
 
         NodeFieldData[] fields = parseFields(nodeData, elements, typeHierarchy);
         if (fields == null) {
@@ -179,7 +178,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         if (specializations.size() > 1 && genericSpecialization == null) {
-            log.error(originalType, "Need a @%s method.", Generic.class.getSimpleName());
+            log.error(type, "Need a @%s method.", Generic.class.getSimpleName());
             return null;
         }
 
