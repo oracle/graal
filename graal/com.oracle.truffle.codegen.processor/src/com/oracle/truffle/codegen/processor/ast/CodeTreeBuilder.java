@@ -204,6 +204,24 @@ public class CodeTreeBuilder {
         return this;
     }
 
+    private CodeTreeBuilder startCurlyBracesCommaGroup() {
+        startGroup();
+        string("{").startCommaGroup();
+        registerCallBack(new EndCallback() {
+
+            @Override
+            public void beforeEnd() {
+            }
+
+            @Override
+            public void afterEnd() {
+                string("}");
+            }
+        });
+        endAfter();
+        return this;
+    }
+
     public CodeTreeBuilder startParantheses() {
         startGroup();
         string("(").startGroup();
@@ -220,6 +238,10 @@ public class CodeTreeBuilder {
         });
         endAfter();
         return this;
+    }
+
+    public CodeTreeBuilder doubleQuote(String s) {
+        return startGroup().string("\"").string(s).string("\"").end();
     }
 
     public CodeTreeBuilder startDoubleQuote() {
@@ -280,6 +302,15 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder startIf() {
         return startGroup().string("if ").startParanthesesCommaGroup().endAndWhitespaceAfter().startGroup().endAfter();
+    }
+
+    public boolean startIf(boolean elseIf) {
+        if (elseIf) {
+            startElseIf();
+        } else {
+            startIf();
+        }
+        return true;
     }
 
     public CodeTreeBuilder startElseIf() {
@@ -355,6 +386,19 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder startAssert() {
         return startStatement().string("assert ");
+    }
+
+    public CodeTreeBuilder startNewArray(ArrayType arrayType, CodeTree size) {
+        startGroup().string("new ").type(arrayType.getComponentType()).string("[");
+        if (size != null) {
+            tree(size);
+        }
+        string("]");
+        if (size == null) {
+            string(" ");
+            startCurlyBracesCommaGroup().endAfter();
+        }
+        return this;
     }
 
     public CodeTreeBuilder startNew(TypeMirror uninializedNodeClass) {
