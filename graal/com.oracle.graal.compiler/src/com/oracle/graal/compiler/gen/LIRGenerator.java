@@ -353,7 +353,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                         if (nextInstr instanceof Access) {
                             Access access = (Access) nextInstr;
                             if (isNullNode.object() == access.object() && canBeNullCheck(access.location())) {
-                                // TTY.println("implicit null check");
                                 access.setNullCheck(true);
                                 continue;
                             }

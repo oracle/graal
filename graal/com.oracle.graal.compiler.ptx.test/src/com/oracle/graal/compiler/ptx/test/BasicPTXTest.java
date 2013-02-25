@@ -54,7 +54,7 @@ public class BasicPTXTest extends GraalCompilerTest {
     private void test(String snippet) {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
-        TargetDescription target = new TargetDescription(new PTX(), true, 1, 0, 0, 0, 0, true);
+        TargetDescription target = new TargetDescription(new PTX(), true, 1, 0, true);
         PTXBackend ptxBackend = new PTXBackend(Graal.getRequiredCapability(CodeCacheProvider.class), target);
         PhasePlan phasePlan = new PhasePlan();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);

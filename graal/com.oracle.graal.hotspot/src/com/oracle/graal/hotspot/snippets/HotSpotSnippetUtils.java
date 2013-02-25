@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.snippets;
 
 import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
+import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -98,7 +99,7 @@ public class HotSpotSnippetUtils {
 
     @Fold
     public static int pageSize() {
-        return HotSpotGraalRuntime.getInstance().getTarget().pageSize;
+        return Unsafe.getUnsafe().pageSize();
     }
 
     @Fold

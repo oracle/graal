@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.phases.GraalOptions.*;
+import sun.misc.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
@@ -41,6 +42,8 @@ import com.oracle.graal.lir.asm.*;
 @Opcode("SAFEPOINT")
 public class AMD64SafepointOp extends AMD64LIRInstruction {
 
+    private static final Unsafe unsafe = Unsafe.getUnsafe();
+
     @State protected LIRFrameState state;
 
     private final HotSpotVMConfig config;
@@ -54,7 +57,7 @@ public class AMD64SafepointOp extends AMD64LIRInstruction {
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm) {
         Register scratch = tasm.frameMap.registerConfig.getScratchRegister();
         int pos = asm.codeBuffer.position();
-        int offset = SafepointPollOffset % tasm.target.pageSize;
+        int offset = SafepointPollOffset % unsafe.pageSize();
         if (config.isPollingPageFar) {
             asm.movq(scratch, config.safepointPollingAddress + offset);
             tasm.recordMark(Marks.MARK_POLL_FAR);

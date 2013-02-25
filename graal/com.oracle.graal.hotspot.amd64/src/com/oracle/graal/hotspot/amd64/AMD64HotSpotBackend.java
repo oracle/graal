@@ -29,6 +29,8 @@ import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
 
+import sun.misc.*;
+
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.*;
@@ -56,6 +58,7 @@ import com.oracle.graal.phases.*;
  */
 public class AMD64HotSpotBackend extends HotSpotBackend {
 
+    private static final Unsafe unsafe = Unsafe.getUnsafe();
     public static final Descriptor EXCEPTION_HANDLER = new Descriptor("exceptionHandler", true, void.class);
     public static final Descriptor DEOPT_HANDLER = new Descriptor("deoptHandler", true, void.class);
     public static final Descriptor IC_MISS_HANDLER = new Descriptor("icMissHandler", true, void.class);
@@ -179,10 +182,10 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             int frameSize = tasm.frameMap.frameSize();
             if (frameSize > 0) {
-                int lastFramePage = frameSize / tasm.target.pageSize;
+                int lastFramePage = frameSize / unsafe.pageSize();
                 // emit multiple stack bangs for methods with frames larger than a page
                 for (int i = 0; i <= lastFramePage; i++) {
-                    int disp = (i + GraalOptions.StackShadowPages) * tasm.target.pageSize;
+                    int disp = (i + GraalOptions.StackShadowPages) * unsafe.pageSize();
                     if (afterFrameInit) {
                         disp -= frameSize;
                     }
@@ -244,7 +247,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
                 // detects this case - see the definition of frame::should_be_deoptimized()
 
                 Register scratch = regConfig.getScratchRegister();
-                int offset = SafepointPollOffset % target.pageSize;
+                int offset = SafepointPollOffset % unsafe.pageSize();
                 if (config.isPollingPageFar) {
                     asm.movq(scratch, config.safepointPollingAddress + offset);
                     tasm.recordMark(Marks.MARK_POLL_RETURN_FAR);

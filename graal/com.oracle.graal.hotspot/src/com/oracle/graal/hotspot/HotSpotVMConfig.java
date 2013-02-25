@@ -44,7 +44,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public boolean useAESIntrinsics;
 
     // offsets, ...
-    public int vmPageSize;
     public int stackShadowPages;
 
     /**
@@ -362,7 +361,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int deoptActionMakeNotCompilable;
 
     public void check() {
-        assert vmPageSize >= 16;
         assert codeEntryAlignment > 0;
         assert stackShadowPages > 0;
     }
