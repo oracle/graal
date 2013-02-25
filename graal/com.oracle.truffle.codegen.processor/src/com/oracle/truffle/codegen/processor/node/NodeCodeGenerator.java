@@ -31,6 +31,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
+import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.ast.*;
 import com.oracle.truffle.codegen.processor.node.NodeFieldData.ExecutionKind;
@@ -422,10 +423,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             add(factory, node);
         }
 
-        if (node.getSpecializations() == null) {
-            return;
-        }
-
         if (node.needsFactory() || childTypes.size() > 0) {
             add(new NodeFactoryFactory(context, childTypes), node);
         }
@@ -511,6 +508,15 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 for (SpecializationData specialization : node.getSpecializations()) {
                     add(new SpecializedNodeFactory(context), specialization);
                 }
+
+                TypeMirror nodeFactory = getContext().getEnvironment().getTypeUtils().getDeclaredType(Utils.fromTypeMirror(getContext().getType(NodeFactory.class)), node.getNodeType());
+                clazz.getImplements().add(nodeFactory);
+                clazz.add(createCreateNodeMethod(node, createVisibility));
+                clazz.add(createCreateNodeSpecializedMethod(node, createVisibility));
+                clazz.add(createGetNodeClassMethod(node));
+                clazz.add(createGetNodeSignaturesMethod(node));
+                clazz.add(createGetInstanceMethod(node, clazz.asType(), createVisibility));
+                clazz.add(createInstanceConstant(node, clazz.asType()));
             }
 
             for (NodeData childNode : childTypes.keySet()) {
@@ -531,9 +537,235 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     clazz.add(type);
                 }
             }
+
+            if (node.getParent() == null && node.getDeclaredChildren().size() > 0) {
+                List<NodeData> children = node.getNodeChildren();
+                List<TypeMirror> types = new ArrayList<>();
+                if (node.needsFactory()) {
+                    types.add(node.getNodeType());
+                }
+                for (NodeData child : children) {
+                    types.add(child.getTemplateType().asType());
+                }
+                TypeMirror commonSuperType = Utils.getCommonSuperType(getContext(), types.toArray(new TypeMirror[types.size()]));
+                clazz.add(createGetFactories(node, commonSuperType));
+            }
+
+        }
+
+        private CodeExecutableElement createGetNodeClassMethod(NodeData node) {
+            Types types = getContext().getEnvironment().getTypeUtils();
+            TypeMirror returnType = types.getDeclaredType(Utils.fromTypeMirror(getContext().getType(Class.class)), node.getNodeType());
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), returnType, "getNodeClass");
+            CodeTreeBuilder builder = method.createBuilder();
+            builder.startReturn().typeLiteral(node.getNodeType()).end();
+            return method;
+        }
+
+        private CodeExecutableElement createGetNodeSignaturesMethod(NodeData node) {
+            Types types = getContext().getEnvironment().getTypeUtils();
+            TypeElement listType = Utils.fromTypeMirror(getContext().getType(List.class));
+            TypeMirror classType = getContext().getType(Class.class);
+            TypeMirror returnType = types.getDeclaredType(listType, types.getDeclaredType(listType, classType));
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), returnType, "getNodeSignatures");
+            CodeTreeBuilder builder = method.createBuilder();
+            builder.startReturn();
+            builder.startStaticCall(getContext().getType(Arrays.class), "asList");
+            List<ExecutableElement> constructors = findUserConstructors(node);
+            for (ExecutableElement constructor : constructors) {
+                builder.startGroup();
+                builder.type(getContext().getType(Arrays.class));
+                builder.string(".<").type(getContext().getType(Class.class)).string(">");
+                builder.startCall("asList");
+                for (VariableElement param : constructor.getParameters()) {
+                    builder.typeLiteral(param.asType());
+                }
+                builder.end();
+                builder.end();
+            }
+            builder.end();
+            builder.end();
+            return method;
+        }
+
+        private CodeExecutableElement createCreateNodeMethod(NodeData node, Modifier visibility) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(), node.getNodeType(), "createNode");
+            CodeVariableElement arguments = new CodeVariableElement(getContext().getType(Object.class), "arguments");
+            method.setVarArgs(true);
+            method.addParameter(arguments);
+
+            if (visibility != null) {
+                method.getModifiers().add(visibility);
+            }
+
+            CodeTreeBuilder builder = method.createBuilder();
+            List<ExecutableElement> signatures = findUserConstructors(node);
+            boolean ifStarted = false;
+
+            for (ExecutableElement element : signatures) {
+                ifStarted = builder.startIf(ifStarted);
+                builder.string("arguments.length == " + element.getParameters().size());
+
+                int index = 0;
+                for (VariableElement param : element.getParameters()) {
+                    builder.string(" && ");
+                    if (!param.asType().getKind().isPrimitive()) {
+                        builder.string("(arguments[" + index + "] == null || ");
+                    }
+                    builder.string("arguments[" + index + "] instanceof ");
+                    builder.type(Utils.boxType(getContext(), param.asType()));
+                    if (!param.asType().getKind().isPrimitive()) {
+                        builder.string(")");
+                    }
+                    index++;
+                }
+                builder.end();
+                builder.startBlock();
+
+                builder.startReturn().startCall("create");
+                index = 0;
+                for (VariableElement param : element.getParameters()) {
+                    builder.startGroup();
+                    builder.string("(").type(param.asType()).string(") ");
+                    builder.string("arguments[").string(String.valueOf(index)).string("]");
+                    builder.end();
+                    index++;
+                }
+                builder.end().end();
+
+                builder.end(); // block
+            }
+
+            builder.startElseBlock();
+            builder.startThrow().startNew(getContext().getType(IllegalArgumentException.class));
+            builder.doubleQuote("Invalid create signature.");
+            builder.end().end();
+            builder.end(); // else block
+            return method;
+        }
+
+        private CodeExecutableElement createCreateNodeSpecializedMethod(NodeData node, Modifier visibility) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(), node.getNodeType(), "createNodeSpecialized");
+            CodeVariableElement nodeParam = new CodeVariableElement(node.getNodeType(), "thisNode");
+            CodeVariableElement arguments = new CodeVariableElement(getContext().getType(Class.class), "types");
+            method.addParameter(nodeParam);
+            method.addParameter(arguments);
+            method.setVarArgs(true);
+            if (visibility != null) {
+                method.getModifiers().add(visibility);
+            }
+
+            CodeTreeBuilder builder = method.createBuilder();
+            if (!node.needsRewrites(getContext())) {
+                builder.startThrow().startNew(getContext().getType(UnsupportedOperationException.class)).end().end();
+            } else {
+                builder.startIf();
+                builder.string("types.length == 1");
+                builder.end();
+                builder.startBlock();
+
+                builder.startReturn().startCall("createSpecialized");
+                builder.string("thisNode");
+                builder.string("types[0]");
+                builder.end().end();
+
+                builder.end();
+                builder.startElseBlock();
+                builder.startThrow().startNew(getContext().getType(IllegalArgumentException.class));
+                builder.doubleQuote("Invalid createSpecialized signature.");
+                builder.end().end();
+                builder.end();
+            }
+
+            return method;
+        }
+
+        private ExecutableElement createGetInstanceMethod(NodeData node, TypeMirror factoryType, Modifier visibility) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(), factoryType, "getInstance");
+            if (visibility != null) {
+                method.getModifiers().add(visibility);
+            }
+            method.getModifiers().add(Modifier.STATIC);
+
+            String varName = instanceVarName(node);
+
+            CodeTreeBuilder builder = method.createBuilder();
+            builder.startIf();
+            builder.string(varName).string(" == null");
+            builder.end().startBlock();
+
+            builder.startStatement();
+            builder.string(varName);
+            builder.string(" = ");
+            builder.startNew(factoryClassName(node)).end();
+            builder.end();
+
+            builder.end();
+            builder.startReturn().string(varName).end();
+            return method;
+        }
+
+        private String instanceVarName(NodeData node) {
+            if (node.getParent() != null) {
+                return Utils.firstLetterLowerCase(factoryClassName(node)) + "Instance";
+            } else {
+                return "instance";
+            }
+        }
+
+        private CodeVariableElement createInstanceConstant(NodeData node, TypeMirror factoryType) {
+            String varName = instanceVarName(node);
+            CodeVariableElement var = new CodeVariableElement(modifiers(), factoryType, varName);
+            var.getModifiers().add(Modifier.PRIVATE);
+            var.getModifiers().add(Modifier.STATIC);
+            return var;
+        }
+
+        private ExecutableElement createGetFactories(NodeData node, TypeMirror commonSuperType) {
+            Types types = getContext().getEnvironment().getTypeUtils();
+            TypeMirror classType = getContext().getType(NodeFactory.class);
+            TypeMirror classWithWildcards = types.getDeclaredType(Utils.fromTypeMirror(classType), types.getWildcardType(commonSuperType, null));
+            TypeMirror listType = types.getDeclaredType(Utils.fromTypeMirror(getContext().getType(List.class)), classWithWildcards);
+
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, STATIC), listType, "getFactories");
+
+            CodeTreeBuilder builder = method.createBuilder();
+            builder.startReturn();
+            builder.startStaticCall(getContext().getType(Arrays.class), "asList");
+            List<NodeData> children = node.getNodeChildren();
+            if (node.needsFactory()) {
+                children.add(node);
+            }
+
+            for (NodeData child : children) {
+                builder.startGroup();
+                NodeData childNode = child;
+                List<NodeData> factories = new ArrayList<>();
+                while (childNode.getParent() != null) {
+                    factories.add(childNode);
+                    childNode = childNode.getParent();
+                }
+                Collections.reverse(factories);
+                for (NodeData nodeData : factories) {
+                    builder.string(factoryClassName(nodeData)).string(".");
+                }
+                builder.string("getInstance()");
+                builder.end();
+            }
+            builder.end();
+            builder.end();
+            return method;
         }
 
         private void createFactoryMethods(NodeData node, CodeTypeElement clazz, Modifier createVisibility) {
+            List<ExecutableElement> constructors = findUserConstructors(node);
+            for (ExecutableElement constructor : constructors) {
+                clazz.add(createCreateMethod(node, createVisibility, constructor));
+            }
+        }
+
+        private List<ExecutableElement> findUserConstructors(NodeData node) {
+            List<ExecutableElement> constructors = new ArrayList<>();
             for (ExecutableElement constructor : ElementFilter.constructorsIn(Utils.fromTypeMirror(node.getNodeType()).getEnclosedElements())) {
                 if (constructor.getModifiers().contains(PRIVATE)) {
                     continue;
@@ -543,9 +775,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 if (constructor.getParameters().size() == 1 && typeEquals(constructor.getParameters().get(0).asType(), node.getNodeType())) {
                     continue;
                 }
-
-                clazz.add(createCreateMethod(node, createVisibility, constructor));
+                constructors.add(constructor);
             }
+            return constructors;
         }
 
         private CodeExecutableElement createCreateMethod(NodeData node, Modifier visibility, ExecutableElement constructor) {

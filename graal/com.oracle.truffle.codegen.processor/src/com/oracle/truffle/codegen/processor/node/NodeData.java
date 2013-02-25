@@ -71,6 +71,17 @@ public class NodeData extends Template {
         return !noSpecialization;
     }
 
+    public List<NodeData> getNodeChildren() {
+        List<NodeData> children = new ArrayList<>();
+        for (NodeData child : getDeclaredChildren()) {
+            if (child.needsFactory()) {
+                children.add(child);
+            }
+            children.addAll(child.getNodeChildren());
+        }
+        return children;
+    }
+
     void setDeclaredChildren(List<NodeData> declaredChildren) {
         this.declaredChildren = declaredChildren;
 
