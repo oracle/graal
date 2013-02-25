@@ -347,28 +347,4 @@ public final class FrameMap {
             }
         }
     }
-
-    /**
-     * Clears the specified location as a reference in the reference map of the debug information.
-     * The tracked location can be a {@link RegisterValue} or a {@link StackSlot}. Note that a
-     * {@link Constant} is automatically tracked.
-     * 
-     * @param location The location to be removed from the reference map.
-     * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
-     * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
-     */
-    public void clearReference(Value location, BitSet registerRefMap, BitSet frameRefMap) {
-        if (location.getKind() == Kind.Object) {
-            if (location instanceof RegisterValue) {
-                registerRefMap.clear(asRegister(location).number);
-            } else if (isStackSlot(location)) {
-                int index = frameRefMapIndex(asStackSlot(location));
-                if (index < frameRefMap.size()) {
-                    frameRefMap.clear(index);
-                }
-            } else {
-                assert isConstant(location);
-            }
-        }
-    }
 }
