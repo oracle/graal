@@ -511,8 +511,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
                 TypeMirror nodeFactory = getContext().getEnvironment().getTypeUtils().getDeclaredType(Utils.fromTypeMirror(getContext().getType(NodeFactory.class)), node.getNodeType());
                 clazz.getImplements().add(nodeFactory);
-                clazz.add(createCreateNodeMethod(node, createVisibility));
-                clazz.add(createCreateNodeSpecializedMethod(node, createVisibility));
+                clazz.add(createCreateNodeMethod(node));
+                clazz.add(createCreateNodeSpecializedMethod(node));
                 clazz.add(createGetNodeClassMethod(node));
                 clazz.add(createGetNodeSignaturesMethod(node));
                 clazz.add(createGetInstanceMethod(node, createVisibility));
@@ -580,15 +580,11 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return method;
         }
 
-        private CodeExecutableElement createCreateNodeMethod(NodeData node, Modifier visibility) {
-            CodeExecutableElement method = new CodeExecutableElement(modifiers(), node.getNodeType(), "createNode");
+        private CodeExecutableElement createCreateNodeMethod(NodeData node) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), node.getNodeType(), "createNode");
             CodeVariableElement arguments = new CodeVariableElement(getContext().getType(Object.class), "arguments");
             method.setVarArgs(true);
             method.addParameter(arguments);
-
-            if (visibility != null) {
-                method.getModifiers().add(visibility);
-            }
 
             CodeTreeBuilder builder = method.createBuilder();
             List<ExecutableElement> signatures = findUserConstructors(node);
@@ -636,16 +632,13 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return method;
         }
 
-        private CodeExecutableElement createCreateNodeSpecializedMethod(NodeData node, Modifier visibility) {
-            CodeExecutableElement method = new CodeExecutableElement(modifiers(), node.getNodeType(), "createNodeSpecialized");
+        private CodeExecutableElement createCreateNodeSpecializedMethod(NodeData node) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), node.getNodeType(), "createNodeSpecialized");
             CodeVariableElement nodeParam = new CodeVariableElement(node.getNodeType(), "thisNode");
             CodeVariableElement arguments = new CodeVariableElement(getContext().getType(Class.class), "types");
             method.addParameter(nodeParam);
             method.addParameter(arguments);
             method.setVarArgs(true);
-            if (visibility != null) {
-                method.getModifiers().add(visibility);
-            }
 
             CodeTreeBuilder builder = method.createBuilder();
             if (!node.needsRewrites(getContext())) {
