@@ -28,8 +28,10 @@ import static com.oracle.graal.snippets.SnippetTemplate.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.snippets.*;
+import com.oracle.graal.snippets.Snippet.ConstantParameter;
 import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.snippets.SnippetTemplate.Arguments;
@@ -85,8 +87,7 @@ public class WriteBarrierSnippets implements SnippetsInterface {
             base = base.add(Word.unsigned(cardTableStart()));
         }
 
-        // if (value != null) {
-        if (true) {
+        if (value.notEqual(0)) {
             Word xorResult = (((Word) oop.xor(value)).unsignedShiftRight(HotSpotSnippetUtils.logOfHRGrainBytes()));
             if (xorResult.notEqual(Word.zero())) {
                 if (value.notEqual(Word.zero())) {
@@ -116,7 +117,7 @@ public class WriteBarrierSnippets implements SnippetsInterface {
 
     @Snippet
     public static void serialFieldWriteBarrier(@Parameter("object") Object object) {
-        // verifyOop(object);
+        verifyOop(object);
         Pointer oop = Word.fromObject(object);
         Word base = (Word) oop.unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
@@ -127,13 +128,11 @@ public class WriteBarrierSnippets implements SnippetsInterface {
             base = base.add(Word.unsigned(cardTableStart()));
         }
         base.writeWord(displacement, Word.zero());
-        // WriteBarrierStubCall.call(object);
     }
 
     @Snippet
-    public static void serialArrayWriteBarrier(@Parameter("object") Object object) {
-        // verifyOop(object);
-        Pointer oop = Word.fromObject(object);
+    public static void serialArrayWriteBarrier(@Parameter("object") Object object, @Parameter("location") Object location) {
+        Pointer oop = Word.fromArray(object, location);
         Word base = (Word) oop.unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
         int displacement = 0;
@@ -156,7 +155,7 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         public Templates(CodeCacheProvider runtime, Assumptions assumptions, TargetDescription target, boolean useG1GC) {
             super(runtime, assumptions, target, WriteBarrierSnippets.class);
             serialFieldWriteBarrier = snippet("serialFieldWriteBarrier", Object.class);
-            serialArrayWriteBarrier = snippet("serialArrayWriteBarrier", Object.class);
+            serialArrayWriteBarrier = snippet("serialArrayWriteBarrier", Object.class, Object.class);
             g1PreWriteBarrier = snippet("g1PreWriteBarrier", Object.class, Word.class, boolean.class);
             g1PostWriteBarrier = snippet("g1PostWriteBarrier", Object.class, Word.class);
             this.useG1GC = useG1GC;
@@ -167,6 +166,7 @@ public class WriteBarrierSnippets implements SnippetsInterface {
             Key key = new Key(method);
             Arguments arguments = new Arguments();
             arguments.add("object", arrayWriteBarrier.object());
+            arguments.add("location", arrayWriteBarrier.location());
             SnippetTemplate template = cache.get(key, assumptions);
             template.instantiate(runtime, arrayWriteBarrier, DEFAULT_REPLACER, arguments);
         }
@@ -200,5 +200,6 @@ public class WriteBarrierSnippets implements SnippetsInterface {
             SnippetTemplate template = cache.get(key, assumptions);
             template.instantiate(runtime, writeBarrierPost, DEFAULT_REPLACER, arguments);
         }
+
     }
 }

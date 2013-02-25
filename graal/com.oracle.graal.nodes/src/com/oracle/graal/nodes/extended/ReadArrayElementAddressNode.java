@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,43 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-public final class WriteBarrierPre extends WriteBarrier implements Lowerable {
+/**
+ * The {@code UnsafeCastNode} produces the same value as its input, but with a different type.
+ */
+public class ReadArrayElementAddressNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
     @Input private ValueNode object;
-    @Input private ValueNode previousValue;
-    @Input private LocationNode location;
-    private boolean doLoad;
+    @Input private ValueNode location;
 
     public ValueNode object() {
         return object;
     }
 
-    public ValueNode previousValue() {
-        return previousValue;
-    }
-
-    public boolean doLoad() {
-        return doLoad;
-    }
-
     public LocationNode location() {
-        return location;
+        return (LocationNode) location;
     }
 
-    public WriteBarrierPre(ValueNode object, ValueNode previousValue, LocationNode location, boolean doLoad) {
+    public ReadArrayElementAddressNode(ValueNode object, ValueNode location, Stamp stamp) {
+        super(stamp);
         this.object = object;
-        this.previousValue = previousValue;
-        this.doLoad = doLoad;
         this.location = location;
     }
 
-    public void lower(LoweringTool generator) {
-        generator.getRuntime().lower(this, generator);
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        return this;
+    }
+
+    @Override
+    public void generate(LIRGeneratorTool gen) {
+        Value addr = gen.emitLea(gen.makeAddress(location(), object()));
+        gen.setResult(this, addr);
     }
 }

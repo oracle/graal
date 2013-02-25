@@ -29,17 +29,17 @@ import com.oracle.graal.nodes.spi.*;
 public final class ArrayWriteBarrier extends WriteBarrier implements Lowerable {
 
     @Input private ValueNode object;
-    @Input private LocationNode location;
+    @Input private IndexedLocationNode location;
 
     public ValueNode object() {
         return object;
     }
 
-    public LocationNode location() {
+    public IndexedLocationNode location() {
         return location;
     }
 
-    public ArrayWriteBarrier(ValueNode object, LocationNode location) {
+    public ArrayWriteBarrier(ValueNode object, IndexedLocationNode location) {
         this.object = object;
         this.location = location;
     }

@@ -64,6 +64,7 @@ public abstract class Word implements Signed, Unsigned, Pointer {
          FROM_UNSIGNED,
          FROM_SIGNED,
          FROM_OBJECT,
+         FROM_ARRAY,
          TO_OBJECT,
          TO_RAW_VALUE,
     }
@@ -146,6 +147,9 @@ public abstract class Word implements Signed, Unsigned, Pointer {
 
     @Operation(opcode = Opcode.FROM_OBJECT)
     public static native Pointer fromObject(Object val);
+
+    @Operation(opcode = Opcode.FROM_ARRAY)
+    public static native Pointer fromArray(Object oop, Object location);
 
     @Override
     @Operation(opcode = Opcode.TO_OBJECT)
