@@ -185,8 +185,6 @@ public class FloatingReadPhase extends Phase {
     private void processNode(FixedNode node, MemoryMap state) {
         if (node instanceof ReadNode) {
             processRead((ReadNode) node, state);
-        } else if (node instanceof WriteNode) {
-            processWrite((WriteNode) node, state);
         } else if (node instanceof MemoryCheckpoint) {
             processCheckpoint((MemoryCheckpoint) node, state);
         } else if (node instanceof LoopExitNode) {
@@ -195,42 +193,35 @@ public class FloatingReadPhase extends Phase {
     }
 
     private static void processCheckpoint(MemoryCheckpoint checkpoint, MemoryMap state) {
-        processAnyLocationWrite((ValueNode) checkpoint, state);
-    }
-
-    private static void processWrite(WriteNode writeNode, MemoryMap state) {
-        if (writeNode.location().locationIdentity() == LocationNode.ANY_LOCATION) {
-            processAnyLocationWrite(writeNode, state);
+        if (checkpoint.getLocationIdentity() == LocationNode.ANY_LOCATION) {
+            for (Map.Entry<Object, ValueNode> entry : state.lastMemorySnapshot.entrySet()) {
+                entry.setValue((ValueNode) checkpoint);
+            }
+            state.loops.clear();
         }
-        state.lastMemorySnapshot.put(writeNode.location().locationIdentity(), writeNode);
-    }
-
-    private static void processAnyLocationWrite(ValueNode modifiying, MemoryMap state) {
-        for (Map.Entry<Object, ValueNode> entry : state.lastMemorySnapshot.entrySet()) {
-            entry.setValue(modifiying);
-        }
-        state.lastMemorySnapshot.put(LocationNode.ANY_LOCATION, modifiying);
-        state.loops.clear();
+        state.lastMemorySnapshot.put(checkpoint.getLocationIdentity(), (ValueNode) checkpoint);
     }
 
     private void processRead(ReadNode readNode, MemoryMap state) {
         StructuredGraph graph = (StructuredGraph) readNode.graph();
         assert readNode.getNullCheck() == false;
         Object locationIdentity = readNode.location().locationIdentity();
-        ValueNode lastLocationAccess = getLastLocationAccessForRead(state, locationIdentity);
-        FloatingReadNode floatingRead = graph.unique(new FloatingReadNode(readNode.object(), readNode.location(), lastLocationAccess, readNode.stamp(), readNode.dependencies()));
-        floatingRead.setNullCheck(readNode.getNullCheck());
-        ValueAnchorNode anchor = null;
-        for (GuardNode guard : readNode.dependencies().filter(GuardNode.class)) {
-            if (anchor == null) {
-                anchor = graph.add(new ValueAnchorNode());
+        if (locationIdentity != LocationNode.UNKNOWN_LOCATION) {
+            ValueNode lastLocationAccess = getLastLocationAccessForRead(state, locationIdentity);
+            FloatingReadNode floatingRead = graph.unique(new FloatingReadNode(readNode.object(), readNode.location(), lastLocationAccess, readNode.stamp(), readNode.dependencies()));
+            floatingRead.setNullCheck(readNode.getNullCheck());
+            ValueAnchorNode anchor = null;
+            for (GuardNode guard : readNode.dependencies().filter(GuardNode.class)) {
+                if (anchor == null) {
+                    anchor = graph.add(new ValueAnchorNode());
+                }
+                anchor.addAnchoredNode(guard);
             }
-            anchor.addAnchoredNode(guard);
+            if (anchor != null) {
+                graph.addAfterFixed(readNode, anchor);
+            }
+            graph.replaceFixedWithFloating(readNode, floatingRead);
         }
-        if (anchor != null) {
-            graph.addAfterFixed(readNode, anchor);
-        }
-        graph.replaceFixedWithFloating(readNode, floatingRead);
     }
 
     private ValueNode getLastLocationAccessForRead(MemoryMap state, Object locationIdentity) {

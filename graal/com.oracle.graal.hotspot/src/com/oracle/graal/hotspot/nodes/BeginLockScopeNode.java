@@ -52,6 +52,11 @@ public final class BeginLockScopeNode extends AbstractStateSplit implements LIRG
     }
 
     @Override
+    public Object getLocationIdentity() {
+        return LocationNode.ANY_LOCATION;
+    }
+
+    @Override
     public void generate(LIRGenerator gen) {
         gen.lock();
         StackSlot lockData = gen.peekLock();

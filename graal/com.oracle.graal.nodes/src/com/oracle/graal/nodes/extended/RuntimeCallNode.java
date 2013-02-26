@@ -49,6 +49,11 @@ public final class RuntimeCallNode extends AbstractCallNode implements LIRLowera
     }
 
     @Override
+    public Object getLocationIdentity() {
+        return LocationNode.ANY_LOCATION;
+    }
+
+    @Override
     public void generate(LIRGeneratorTool gen) {
         gen.visitRuntimeCall(this);
     }

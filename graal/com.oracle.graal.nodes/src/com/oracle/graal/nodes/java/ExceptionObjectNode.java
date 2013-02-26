@@ -42,6 +42,11 @@ public class ExceptionObjectNode extends AbstractStateSplit implements StateSpli
     }
 
     @Override
+    public Object getLocationIdentity() {
+        return LocationNode.ANY_LOCATION;
+    }
+
+    @Override
     public void generate(LIRGeneratorTool gen) {
         gen.visitExceptionObject(this);
     }

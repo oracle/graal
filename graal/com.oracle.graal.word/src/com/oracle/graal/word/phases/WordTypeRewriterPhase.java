@@ -138,18 +138,13 @@ public class WordTypeRewriterPhase extends Phase {
                         break;
 
                     case READ:
-                        assert arguments.size() == 2;
-                        replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke, LocationNode.ANY_LOCATION));
-                        break;
-
-                    case READ_FINAL:
-                        assert arguments.size() == 2;
-                        replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke, LocationNode.FINAL_LOCATION));
+                        assert arguments.size() == 3;
+                        replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke, arguments.get(2).asConstant().asObject()));
                         break;
 
                     case WRITE:
-                        assert arguments.size() == 3;
-                        replace(invoke, writeOp(graph, arguments.get(0), arguments.get(1), arguments.get(2), invoke, LocationNode.ANY_LOCATION));
+                        assert arguments.size() == 4;
+                        replace(invoke, writeOp(graph, arguments.get(0), arguments.get(1), arguments.get(2), invoke, arguments.get(3).asConstant().asObject()));
                         break;
 
                     case ZERO:

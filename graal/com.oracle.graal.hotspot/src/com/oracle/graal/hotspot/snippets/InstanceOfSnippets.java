@@ -99,7 +99,7 @@ public class InstanceOfSnippets implements SnippetsInterface {
             return falseValue;
         }
         Word objectHub = loadHub(object);
-        if (objectHub.readWord(superCheckOffset).notEqual(hub)) {
+        if (objectHub.readWord(superCheckOffset, FINAL_LOCATION).notEqual(hub)) {
             probability(NOT_LIKELY_PROBABILITY);
             displayMiss.inc();
             return falseValue;
