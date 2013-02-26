@@ -150,7 +150,7 @@ public final class GraalOptions {
     public static boolean ExitVMOnException                  = true;
 
     // Code generator settings
-    public static boolean CheckCastElimination               = true;
+    public static boolean ConditionalElimination             = true;
     public static boolean CullFrameStates                    = ____;
     public static boolean UseProfilingInformation            = true;
            static boolean RemoveNeverExecutedCode            = true;
