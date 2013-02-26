@@ -112,11 +112,9 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         public void visitExceptionObject(ExceptionObjectNode x) {
             HotSpotVMConfig config = runtime().config;
             RegisterValue thread = runtime().threadRegister().asValue();
-            Address exceptionAddress = new AMD64Address(Kind.Object, thread, config.threadExceptionOopOffset);
-            Address pcAddress = new AMD64Address(Kind.Long, thread, config.threadExceptionPcOffset);
-            Value exception = emitLoad(exceptionAddress, false);
-            emitStore(exceptionAddress, Constant.NULL_OBJECT, false);
-            emitStore(pcAddress, Constant.LONG_0, false);
+            Value exception = emitLoad(Kind.Object, thread, config.threadExceptionOopOffset, Value.ILLEGAL, 0, false);
+            emitStore(Kind.Object, thread, config.threadExceptionOopOffset, Value.ILLEGAL, 0, Constant.NULL_OBJECT, false);
+            emitStore(Kind.Long, thread, config.threadExceptionPcOffset, Value.ILLEGAL, 0, Constant.LONG_0, false);
             setResult(x, exception);
         }
 

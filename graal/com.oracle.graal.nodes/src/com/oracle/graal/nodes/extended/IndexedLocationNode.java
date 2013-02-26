@@ -79,4 +79,19 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
         }
         return this;
     }
+
+    @Override
+    public Value generateLea(LIRGeneratorTool gen, ValueNode base) {
+        return gen.emitLea(gen.operand(base), displacement(), gen.operand(index()), indexScaling());
+    }
+
+    @Override
+    public Value generateLoad(LIRGeneratorTool gen, ValueNode base, boolean canTrap) {
+        return gen.emitLoad(getValueKind(), gen.operand(base), displacement(), gen.operand(index()), indexScaling(), canTrap);
+    }
+
+    @Override
+    public void generateStore(LIRGeneratorTool gen, ValueNode base, ValueNode value, boolean canTrap) {
+        gen.emitStore(getValueKind(), gen.operand(base), displacement(), gen.operand(index()), indexScaling(), gen.operand(value), canTrap);
+    }
 }

@@ -31,7 +31,6 @@ import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.ConvertNode.Op;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 
 /**
@@ -215,36 +214,31 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Address makeAddress(Kind kind, Value base, int displacement) {
-        return null;
-    }
-
-    @Override
-    public Address makeAddress(LocationNode location, ValueNode object) {
-        // SPARC: Auto-generated method stub
-        return null;
-    }
-
-    @Override
     public void emitMove(Value src, Value dst) {
         // SPARC: Auto-generated method stub
 
     }
 
     @Override
-    public Value emitLoad(Value loadAddress, boolean canTrap) {
+    public Value emitLoad(Kind kind, Value base, int displacement, Value index, int scale, boolean canTrap) {
         // SPARC: Auto-generated method stub
         return null;
     }
 
     @Override
-    public void emitStore(Value storeAddress, Value input, boolean canTrap) {
+    public void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value input, boolean canTrap) {
         // SPARC: Auto-generated method stub
 
     }
 
     @Override
-    public Value emitLea(Value address) {
+    public Value emitLea(Value base, int displacement, Value index, int scale) {
+        // SPARC: Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Value emitLea(StackSlot address) {
         // SPARC: Auto-generated method stub
         return null;
     }

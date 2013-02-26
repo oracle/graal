@@ -25,8 +25,8 @@ package com.oracle.graal.compiler.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
-import static com.oracle.graal.lir.amd64.AMD64Compare.*;
 import static com.oracle.graal.lir.amd64.AMD64BitManipulationOp.IntrinsicOpcode.*;
+import static com.oracle.graal.lir.amd64.AMD64Compare.*;
 import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.*;
 
 import com.oracle.graal.amd64.*;
@@ -41,6 +41,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivOp;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivRemOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Reg;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Stack;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op2Reg;
@@ -69,7 +70,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.SpillMoveOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.util.*;
 
@@ -137,60 +137,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Address makeAddress(Kind kind, Value base, int displacement) {
-        return new AMD64Address(kind, base, displacement);
-    }
-
-    @Override
-    public Address makeAddress(LocationNode location, ValueNode object) {
-        Value base = operand(object);
-        Value index = Value.ILLEGAL;
-        int scale = 1;
-        int displacement = location.displacement();
-
-        if (isConstant(base)) {
-            if (asConstant(base).isNull()) {
-                base = Value.ILLEGAL;
-            } else if (asConstant(base).getKind() != Kind.Object) {
-                long newDisplacement = displacement + asConstant(base).asLong();
-                if (NumUtil.isInt(newDisplacement)) {
-                    assert !runtime.needsDataPatch(asConstant(base));
-                    displacement = (int) newDisplacement;
-                    base = Value.ILLEGAL;
-                } else {
-                    Value newBase = newVariable(Kind.Long);
-                    emitMove(base, newBase);
-                    base = newBase;
-                }
-            }
-        }
-
-        if (location instanceof IndexedLocationNode) {
-            IndexedLocationNode indexedLoc = (IndexedLocationNode) location;
-
-            index = operand(indexedLoc.index());
-            scale = indexedLoc.indexScaling();
-            if (isConstant(index)) {
-                long newDisplacement = displacement + asConstant(index).asLong() * scale;
-                // only use the constant index if the resulting displacement fits into a 32 bit
-                // offset
-                if (NumUtil.isInt(newDisplacement)) {
-                    displacement = (int) newDisplacement;
-                    index = Value.ILLEGAL;
-                } else {
-                    // create a temporary variable for the index, the pointer load cannot handle a
-                    // constant index
-                    Value newIndex = newVariable(Kind.Long);
-                    emitMove(index, newIndex);
-                    index = newIndex;
-                }
-            }
-        }
-
-        return new AMD64Address(location.getValueKind(), base, index, AMD64Address.Scale.fromInt(scale), displacement);
-    }
-
-    @Override
     public Variable emitMove(Value input) {
         Variable result = newVariable(input.getKind());
         emitMove(input, result);
@@ -206,21 +152,78 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
+    private AMD64Address prepareAddress(Kind kind, Value base, int displacement, Value index, int scale) {
+        Value baseRegister = base;
+        int finalDisp = displacement;
+        if (isConstant(base)) {
+            if (asConstant(base).isNull()) {
+                baseRegister = Value.ILLEGAL;
+            } else if (asConstant(base).getKind() != Kind.Object) {
+                long newDisplacement = displacement + asConstant(base).asLong();
+                if (NumUtil.isInt(newDisplacement)) {
+                    assert !runtime.needsDataPatch(asConstant(base));
+                    finalDisp = (int) newDisplacement;
+                    baseRegister = Value.ILLEGAL;
+                } else {
+                    Value newBase = newVariable(Kind.Long);
+                    emitMove(base, newBase);
+                    baseRegister = newBase;
+                }
+            }
+        }
+
+        Value indexRegister = index;
+        AMD64Address.Scale scaleEnum;
+        if (index != Value.ILLEGAL && scale > 0) {
+            scaleEnum = AMD64Address.Scale.fromInt(scale);
+            if (isConstant(index)) {
+                long newDisplacement = finalDisp + asConstant(index).asLong() * scale;
+                // only use the constant index if the resulting displacement fits into a 32 bit
+                // offset
+                if (NumUtil.isInt(newDisplacement)) {
+                    finalDisp = (int) newDisplacement;
+                    indexRegister = Value.ILLEGAL;
+                } else {
+                    // create a temporary variable for the index, the pointer load cannot handle a
+                    // constant index
+                    Value newIndex = newVariable(Kind.Long);
+                    emitMove(index, newIndex);
+                    indexRegister = newIndex;
+                }
+            }
+        } else {
+            indexRegister = Value.ILLEGAL;
+            scaleEnum = AMD64Address.Scale.Times1;
+        }
+
+        return new AMD64Address(kind, baseRegister, indexRegister, scaleEnum, finalDisp);
+    }
+
     @Override
-    public Variable emitLoad(Value loadAddress, boolean canTrap) {
+    public Variable emitLoad(Kind kind, Value base, int displacement, Value index, int scale, boolean canTrap) {
+        AMD64Address loadAddress = prepareAddress(kind, base, displacement, index, scale);
         Variable result = newVariable(loadAddress.getKind());
         append(new LoadOp(result, loadAddress, canTrap ? state() : null));
         return result;
     }
 
     @Override
-    public void emitStore(Value storeAddress, Value inputVal, boolean canTrap) {
+    public void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value inputVal, boolean canTrap) {
+        AMD64Address storeAddress = prepareAddress(kind, base, displacement, index, scale);
         Value input = loadForStore(inputVal, storeAddress.getKind());
         append(new StoreOp(storeAddress, input, canTrap ? state() : null));
     }
 
     @Override
-    public Variable emitLea(Value address) {
+    public Variable emitLea(Value base, int displacement, Value index, int scale) {
+        Variable result = newVariable(target().wordKind);
+        AMD64Address address = prepareAddress(result.getKind(), base, displacement, index, scale);
+        append(new LeaOp(result, address));
+        return result;
+    }
+
+    @Override
+    public Variable emitLea(StackSlot address) {
         Variable result = newVariable(target().wordKind);
         append(new LeaOp(result, address));
         return result;

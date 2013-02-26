@@ -51,7 +51,7 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.setResult(this, gen.emitLoad(gen.makeAddress(location(), object()), getNullCheck()));
+        gen.setResult(this, location().generateLoad(gen, object(), getNullCheck()));
     }
 
     @Override
