@@ -70,7 +70,7 @@ public class AESCryptSubstitutions {
     }
 
     private static void crypt(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset, boolean encrypt) {
-        Word kAddr = Word.fromObject(rcvr).readWord(Word.unsigned(kOffset)).add(arrayBaseOffset(Kind.Byte));
+        Word kAddr = Word.fromObject(rcvr).readWord(Word.unsigned(kOffset), UNKNOWN_LOCATION).add(arrayBaseOffset(Kind.Byte));
         Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
         Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + arrayBaseOffset(Kind.Byte) + outOffset);
         if (encrypt) {

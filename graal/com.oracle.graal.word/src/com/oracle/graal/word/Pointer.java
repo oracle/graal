@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.word;
 
+import com.oracle.graal.nodes.extended.*;
+
 public interface Pointer extends Unsigned {
 
     /**
@@ -42,9 +44,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    byte readByte(WordBase offset);
+    byte readByte(WordBase offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -55,9 +58,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    char readChar(WordBase offset);
+    char readChar(WordBase offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -68,9 +72,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    short readShort(WordBase offset);
+    short readShort(WordBase offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -81,9 +86,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    int readInt(WordBase offset);
+    int readInt(WordBase offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -94,9 +100,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    long readLong(WordBase offset);
+    long readLong(WordBase offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -107,9 +114,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    float readFloat(WordBase offset);
+    float readFloat(WordBase offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -120,9 +128,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    double readDouble(WordBase offset);
+    double readDouble(WordBase offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -133,9 +142,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    Word readWord(WordBase offset);
+    Word readWord(WordBase offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -146,234 +156,100 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    Object readObject(WordBase offset);
+    Object readObject(WordBase offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    byte readByte(int offset);
+    byte readByte(int offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    char readChar(int offset);
+    char readChar(int offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    short readShort(int offset);
+    short readShort(int offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    int readInt(int offset);
+    int readInt(int offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    long readLong(int offset);
+    long readLong(int offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    float readFloat(int offset);
+    float readFloat(int offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    double readDouble(int offset);
+    double readDouble(int offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    Word readWord(int offset);
+    Word readWord(int offset, Object locationIdentity);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the read (see {@link LocationNode})
      * @return the result of the memory access
      */
-    Object readObject(int offset);
-
-    /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and
-     * offset are in bytes.
-     * <p>
-     * The caller guarantees that the memory content is final, i.e., never changing. The compiler
-     * can therefore eliminate memory accesses more aggressively.
-     * <p>
-     * The offset is always treated as a {@link Signed} value. However, the static type is
-     * {@link WordBase} to avoid the frequent casts to of {@link Unsigned} values (where the caller
-     * knows that the highest-order bit of the unsigned value is never used).
-     * 
-     * @param offset the signed offset for the memory access
-     * @return the result of the memory access
-     */
-    byte readFinalByte(WordBase offset);
-
-    /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and
-     * offset are in bytes.
-     * <p>
-     * The caller guarantees that the memory content is final, i.e., never changing. The compiler
-     * can therefore eliminate memory accesses more aggressively.
-     * <p>
-     * The offset is always treated as a {@link Signed} value. However, the static type is
-     * {@link WordBase} to avoid the frequent casts to of {@link Unsigned} values (where the caller
-     * knows that the highest-order bit of the unsigned value is never used).
-     * 
-     * @param offset the signed offset for the memory access
-     * @return the result of the memory access
-     */
-    char readFinalChar(WordBase offset);
-
-    /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and
-     * offset are in bytes.
-     * <p>
-     * The caller guarantees that the memory content is final, i.e., never changing. The compiler
-     * can therefore eliminate memory accesses more aggressively.
-     * <p>
-     * The offset is always treated as a {@link Signed} value. However, the static type is
-     * {@link WordBase} to avoid the frequent casts to of {@link Unsigned} values (where the caller
-     * knows that the highest-order bit of the unsigned value is never used).
-     * 
-     * @param offset the signed offset for the memory access
-     * @return the result of the memory access
-     */
-    short readFinalShort(WordBase offset);
-
-    /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and
-     * offset are in bytes.
-     * <p>
-     * The caller guarantees that the memory content is final, i.e., never changing. The compiler
-     * can therefore eliminate memory accesses more aggressively.
-     * <p>
-     * The offset is always treated as a {@link Signed} value. However, the static type is
-     * {@link WordBase} to avoid the frequent casts to of {@link Unsigned} values (where the caller
-     * knows that the highest-order bit of the unsigned value is never used).
-     * 
-     * @param offset the signed offset for the memory access
-     * @return the result of the memory access
-     */
-    int readFinalInt(WordBase offset);
-
-    /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and
-     * offset are in bytes.
-     * <p>
-     * The caller guarantees that the memory content is final, i.e., never changing. The compiler
-     * can therefore eliminate memory accesses more aggressively.
-     * <p>
-     * The offset is always treated as a {@link Signed} value. However, the static type is
-     * {@link WordBase} to avoid the frequent casts to of {@link Unsigned} values (where the caller
-     * knows that the highest-order bit of the unsigned value is never used).
-     * 
-     * @param offset the signed offset for the memory access
-     * @return the result of the memory access
-     */
-    long readFinalLong(WordBase offset);
-
-    /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and
-     * offset are in bytes.
-     * <p>
-     * The caller guarantees that the memory content is final, i.e., never changing. The compiler
-     * can therefore eliminate memory accesses more aggressively.
-     * <p>
-     * The offset is always treated as a {@link Signed} value. However, the static type is
-     * {@link WordBase} to avoid the frequent casts to of {@link Unsigned} values (where the caller
-     * knows that the highest-order bit of the unsigned value is never used).
-     * 
-     * @param offset the signed offset for the memory access
-     * @return the result of the memory access
-     */
-    float readFinalFloat(WordBase offset);
-
-    /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and
-     * offset are in bytes.
-     * <p>
-     * The caller guarantees that the memory content is final, i.e., never changing. The compiler
-     * can therefore eliminate memory accesses more aggressively.
-     * <p>
-     * The offset is always treated as a {@link Signed} value. However, the static type is
-     * {@link WordBase} to avoid the frequent casts to of {@link Unsigned} values (where the caller
-     * knows that the highest-order bit of the unsigned value is never used).
-     * 
-     * @param offset the signed offset for the memory access
-     * @return the result of the memory access
-     */
-    double readFinalDouble(WordBase offset);
-
-    /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and
-     * offset are in bytes.
-     * <p>
-     * The caller guarantees that the memory content is final, i.e., never changing. The compiler
-     * can therefore eliminate memory accesses more aggressively.
-     * <p>
-     * The offset is always treated as a {@link Signed} value. However, the static type is
-     * {@link WordBase} to avoid the frequent casts to of {@link Unsigned} values (where the caller
-     * knows that the highest-order bit of the unsigned value is never used).
-     * 
-     * @param offset the signed offset for the memory access
-     * @return the result of the memory access
-     */
-    Word readFinalWord(WordBase offset);
-
-    /**
-     * Reads the constant memory at address {@code (this + offset)}. Both the base address and
-     * offset are in bytes.
-     * <p>
-     * The caller guarantees that the memory content is final, i.e., never changing. The compiler
-     * can therefore eliminate memory accesses more aggressively.
-     * <p>
-     * The offset is always treated as a {@link Signed} value. However, the static type is
-     * {@link WordBase} to avoid the frequent casts to of {@link Unsigned} values (where the caller
-     * knows that the highest-order bit of the unsigned value is never used).
-     * 
-     * @param offset the signed offset for the memory access
-     * @return the result of the memory access
-     */
-    Object readFinalObject(WordBase offset);
+    Object readObject(int offset, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -384,9 +260,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeByte(WordBase offset, byte val);
+    void writeByte(WordBase offset, byte val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -397,9 +274,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeChar(WordBase offset, char val);
+    void writeChar(WordBase offset, char val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -410,9 +288,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeShort(WordBase offset, Short val);
+    void writeShort(WordBase offset, Short val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -423,9 +302,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeInt(WordBase offset, int val);
+    void writeInt(WordBase offset, int val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -436,9 +316,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeLong(WordBase offset, long val);
+    void writeLong(WordBase offset, long val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -449,9 +330,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeFloat(WordBase offset, float val);
+    void writeFloat(WordBase offset, float val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -462,9 +344,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeDouble(WordBase offset, double val);
+    void writeDouble(WordBase offset, double val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -475,9 +358,10 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeWord(WordBase offset, WordBase val);
+    void writeWord(WordBase offset, WordBase val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -488,90 +372,100 @@ public interface Pointer extends Unsigned {
      * knows that the highest-order bit of the unsigned value is never used).
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeObject(WordBase offset, Object val);
+    void writeObject(WordBase offset, Object val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeByte(int offset, byte val);
+    void writeByte(int offset, byte val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeChar(int offset, char val);
+    void writeChar(int offset, char val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeShort(int offset, short val);
+    void writeShort(int offset, short val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeInt(int offset, int val);
+    void writeInt(int offset, int val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeLong(int offset, long val);
+    void writeLong(int offset, long val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeFloat(int offset, float val);
+    void writeFloat(int offset, float val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeDouble(int offset, double val);
+    void writeDouble(int offset, double val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeWord(int offset, WordBase val);
+    void writeWord(int offset, WordBase val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
      * @param offset the signed offset for the memory access
+     * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeObject(int offset, Object val);
+    void writeObject(int offset, Object val, Object locationIdentity);
 
     // Math functions that are defined in Unsigned, but known to preserve the
     // pointer-characteristics.

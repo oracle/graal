@@ -32,8 +32,8 @@ import com.oracle.graal.word.*;
 
 /**
  * A special purpose store node that differs from {@link CompareAndSwapNode} in that it is not a
- * {@link StateSplit} and it {@linkplain #compareAndSwap(Object, long, Word, Word) returns} either
- * the expected value or the compared against value instead of a boolean.
+ * {@link StateSplit} and it {@linkplain #compareAndSwap(Object, long, Word, Word, Object)} returns
+ * either the expected value or the compared against value instead of a boolean.
  */
 public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGenLowerable, MemoryCheckpoint {
 
@@ -42,12 +42,15 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGe
     @Input private ValueNode expectedValue;
     @Input private ValueNode newValue;
 
-    public DirectCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue) {
+    private final Object locationIdentity;
+
+    public DirectCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, Object locationIdentity) {
         super(expected.stamp());
         this.object = object;
         this.offset = offset;
         this.expectedValue = expected;
         this.newValue = newValue;
+        this.locationIdentity = locationIdentity;
     }
 
     public ValueNode object() {
@@ -68,7 +71,7 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGe
 
     @Override
     public Object getLocationIdentity() {
-        return LocationNode.ANY_LOCATION;
+        return locationIdentity;
     }
 
     @Override
@@ -89,5 +92,5 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGe
      * @return either {@code expectedValue} or the actual value
      */
     @NodeIntrinsic
-    public static native Word compareAndSwap(Object object, long offset, Word expectedValue, Word newValue);
+    public static native Word compareAndSwap(Object object, long offset, Word expectedValue, Word newValue, @ConstantNodeParameter Object locationIdentity);
 }

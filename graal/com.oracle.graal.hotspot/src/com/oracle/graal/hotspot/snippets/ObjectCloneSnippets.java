@@ -53,12 +53,12 @@ public class ObjectCloneSnippets implements SnippetsInterface {
     private static Object instanceClone(Object src, Word hub, int layoutHelper) {
         int instanceSize = layoutHelper;
         Pointer memory = NewObjectSnippets.allocate(instanceSize);
-        Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset());
+        Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
         Object result = NewObjectSnippets.initializeObject((Word) memory, hub, prototypeMarkWord, instanceSize, false, false);
 
         memory = Word.fromObject(result);
         for (int offset = 2 * wordSize(); offset < instanceSize; offset += wordSize()) {
-            memory.writeWord(offset, Word.fromObject(src).readWord(offset));
+            memory.writeWord(offset, Word.fromObject(src).readWord(offset, UNKNOWN_LOCATION), ANY_LOCATION);
         }
 
         return result;
@@ -71,12 +71,12 @@ public class ObjectCloneSnippets implements SnippetsInterface {
         int sizeInBytes = NewObjectSnippets.computeArrayAllocationSize(arrayLength, wordSize(), headerSize, log2ElementSize);
 
         Pointer memory = NewObjectSnippets.allocate(sizeInBytes);
-        Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset());
+        Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
         Object result = NewObjectSnippets.initializeArray((Word) memory, hub, arrayLength, sizeInBytes, prototypeMarkWord, headerSize, false, false);
 
         memory = Word.fromObject(result);
         for (int offset = headerSize; offset < sizeInBytes; offset += wordSize()) {
-            memory.writeWord(offset, Word.fromObject(src).readWord(offset));
+            memory.writeWord(offset, Word.fromObject(src).readWord(offset, UNKNOWN_LOCATION), ANY_LOCATION);
         }
         return result;
     }
@@ -94,14 +94,14 @@ public class ObjectCloneSnippets implements SnippetsInterface {
     public static Object instanceClone(Object src) {
         instanceCloneCounter.inc();
         Word hub = getAndCheckHub(src);
-        return instanceClone(src, hub, hub.readInt(layoutHelperOffset()));
+        return instanceClone(src, hub, hub.readInt(layoutHelperOffset(), FINAL_LOCATION));
     }
 
     @Snippet
     public static Object arrayClone(Object src) {
         arrayCloneCounter.inc();
         Word hub = getAndCheckHub(src);
-        int layoutHelper = hub.readInt(layoutHelperOffset());
+        int layoutHelper = hub.readInt(layoutHelperOffset(), FINAL_LOCATION);
         return arrayClone(src, hub, layoutHelper);
     }
 
@@ -109,7 +109,7 @@ public class ObjectCloneSnippets implements SnippetsInterface {
     public static Object genericClone(Object src) {
         genericCloneCounter.inc();
         Word hub = getAndCheckHub(src);
-        int layoutHelper = hub.readInt(layoutHelperOffset());
+        int layoutHelper = hub.readInt(layoutHelperOffset(), FINAL_LOCATION);
         if (layoutHelper < 0) {
             probability(LIKELY_PROBABILITY);
             genericArrayCloneCounter.inc();
