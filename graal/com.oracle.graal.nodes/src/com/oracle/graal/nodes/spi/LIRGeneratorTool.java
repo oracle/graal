@@ -45,16 +45,6 @@ public abstract class LIRGeneratorTool {
      */
     public abstract boolean canInlineConstant(Constant c);
 
-    /**
-     * Checks whether the supplied constant can be used without loading it into a register for store
-     * operations, i.e., on the right hand side of a memory access.
-     * 
-     * @param c The constant to check.
-     * @return True if the constant can be used directly, false if the constant needs to be in a
-     *         register.
-     */
-    public abstract boolean canStoreConstant(Constant c);
-
     public abstract RegisterAttributes attributes(Register register);
 
     public abstract Value operand(ValueNode object);

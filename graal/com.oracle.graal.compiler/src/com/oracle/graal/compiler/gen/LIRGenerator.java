@@ -90,6 +90,16 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      */
     private final ArrayList<StackSlot> lockDataSlots;
 
+    /**
+     * Checks whether the supplied constant can be used without loading it into a register for store
+     * operations, i.e., on the right hand side of a memory access.
+     * 
+     * @param c The constant to check.
+     * @return True if the constant can be used directly, false if the constant needs to be in a
+     *         register.
+     */
+    public abstract boolean canStoreConstant(Constant c);
+
     public LIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
         this.graph = graph;
         this.runtime = runtime;
