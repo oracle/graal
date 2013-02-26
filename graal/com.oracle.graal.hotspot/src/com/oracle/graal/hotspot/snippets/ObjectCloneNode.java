@@ -86,7 +86,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
     }
 
     private static ResolvedJavaType getConcreteType(ObjectStamp stamp, Assumptions assumptions) {
-        if (stamp.isExactType()) {
+        if (stamp.isExactType() || stamp.type() == null) {
             return stamp.type();
         } else {
             ResolvedJavaType type = stamp.type().findUniqueConcreteSubtype();

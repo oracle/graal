@@ -32,10 +32,9 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.graph.ReentrantBlockIterator.MergeableBlockState;
 import com.oracle.graal.virtual.nodes.*;
 
-class BlockState extends MergeableBlockState<BlockState> {
+class BlockState {
 
     private final HashMap<VirtualObjectNode, ObjectState> objectStates = new HashMap<>();
     private final HashMap<ValueNode, VirtualObjectNode> objectAliases = new HashMap<>();
@@ -70,7 +69,6 @@ class BlockState extends MergeableBlockState<BlockState> {
         return object == null ? null : getObjectState(object);
     }
 
-    @Override
     public BlockState cloneState() {
         return new BlockState(this);
     }

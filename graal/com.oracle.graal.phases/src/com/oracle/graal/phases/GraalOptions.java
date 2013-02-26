@@ -150,7 +150,7 @@ public final class GraalOptions {
     public static boolean ExitVMOnException                  = true;
 
     // Code generator settings
-    public static boolean CheckCastElimination               = true;
+    public static boolean ConditionalElimination             = true;
     public static boolean CullFrameStates                    = ____;
     public static boolean UseProfilingInformation            = true;
            static boolean RemoveNeverExecutedCode            = true;
@@ -167,6 +167,8 @@ public final class GraalOptions {
     public static boolean ResolveClassBeforeStaticInvoke     = ____;
     public static boolean CanOmitFrame                       = true;
     public static int     SafepointPollOffset                = 256;
+
+    public static boolean MemoryAwareScheduling              = true;
 
     // Translating tableswitch instructions
     public static int     MinimumJumpTableSize               = 5;
