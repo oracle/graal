@@ -156,7 +156,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     @Override
     public void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value inputVal, boolean canTrap) {
         PTXAddress storeAddress = prepareAddress(kind, base, displacement, index, scale);
-        Value input = loadForStore(inputVal, storeAddress.getKind());
+        Value input = load(inputVal);
         append(new StoreOp(storeAddress, input, canTrap ? state() : null));
     }
 

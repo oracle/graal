@@ -197,18 +197,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return value;
     }
 
-    public Value loadForStore(Value value, Kind storeKind) {
-        if (isConstant(value) && canStoreConstant((Constant) value)) {
-            return value;
-        }
-        if (storeKind == Kind.Byte || storeKind == Kind.Boolean) {
-            Variable tempVar = new Variable(value.getKind(), lir.nextVariable(), Register.RegisterFlag.Byte);
-            emitMove(tempVar, value);
-            return tempVar;
-        }
-        return load(value);
-    }
-
     protected LabelRef getLIRBlock(FixedNode b) {
         Block result = lir.cfg.blockFor(b);
         int suxIndex = currentBlock.getSuccessors().indexOf(result);
