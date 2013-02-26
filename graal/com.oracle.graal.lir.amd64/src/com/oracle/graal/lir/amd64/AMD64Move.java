@@ -28,7 +28,6 @@ import static java.lang.Double.*;
 import static java.lang.Float.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
@@ -120,10 +119,10 @@ public class AMD64Move {
 
     public static class LoadOp extends AMD64LIRInstruction {
         @Def({REG}) protected Value result;
-        @Use({ADDR}) protected Value address;
+        @Use({ADDR}) protected AMD64Address address;
         @State protected LIRFrameState state;
 
-        public LoadOp(Value result, Value address, LIRFrameState state) {
+        public LoadOp(Value result, AMD64Address address, LIRFrameState state) {
             this.result = result;
             this.address = address;
             this.state = state;
@@ -131,17 +130,17 @@ public class AMD64Move {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            load(tasm, masm, result, (AMD64Address) address, state);
+            load(tasm, masm, result, address, state);
         }
     }
 
 
     public static class StoreOp extends AMD64LIRInstruction {
-        @Use({ADDR}) protected Value address;
+        @Use({ADDR}) protected AMD64Address address;
         @Use({REG, CONST}) protected Value input;
         @State protected LIRFrameState state;
 
-        public StoreOp(Value address, Value input, LIRFrameState state) {
+        public StoreOp(AMD64Address address, Value input, LIRFrameState state) {
             this.address = address;
             this.input = input;
             this.state = state;
@@ -149,7 +148,7 @@ public class AMD64Move {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            store(tasm, masm, (AMD64Address) address, input, state);
+            store(tasm, masm, address, input, state);
         }
     }
 
@@ -204,11 +203,11 @@ public class AMD64Move {
     @Opcode("CAS")
     public static class CompareAndSwapOp extends AMD64LIRInstruction {
         @Def protected Value result;
-        @Use({ADDR}) protected Value address;
+        @Use({ADDR}) protected AMD64Address address;
         @Use protected Value cmpValue;
         @Use protected Value newValue;
 
-        public CompareAndSwapOp(Value result, Address address, Value cmpValue, Value newValue) {
+        public CompareAndSwapOp(Value result, AMD64Address address, Value cmpValue, Value newValue) {
             this.result = result;
             this.address = address;
             this.cmpValue = cmpValue;
@@ -217,7 +216,7 @@ public class AMD64Move {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            compareAndSwap(tasm, masm, result, (AMD64Address) address, cmpValue, newValue);
+            compareAndSwap(tasm, masm, result, address, cmpValue, newValue);
         }
     }
 

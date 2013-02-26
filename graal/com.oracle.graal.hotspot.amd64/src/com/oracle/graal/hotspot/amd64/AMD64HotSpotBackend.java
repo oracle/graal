@@ -128,7 +128,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             Variable newVal = load(operand(x.newValue()));
 
             int disp = 0;
-            Address address;
+            AMD64Address address;
             Value index = operand(x.offset());
             if (ValueUtil.isConstant(index) && NumUtil.isInt(ValueUtil.asConstant(index).asLong() + disp)) {
                 assert !runtime.needsDataPatch(asConstant(index));

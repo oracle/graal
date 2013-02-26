@@ -121,10 +121,10 @@ public class PTXMove {
     public static class LoadOp extends PTXLIRInstruction {
 
         @Def({REG}) protected Value result;
-        @Use({ADDR}) protected Value address;
+        @Use({ADDR}) protected PTXAddress address;
         @State protected LIRFrameState state;
 
-        public LoadOp(Value result, Value address, LIRFrameState state) {
+        public LoadOp(Value result, PTXAddress address, LIRFrameState state) {
             this.result = result;
             this.address = address;
             this.state = state;
@@ -132,17 +132,17 @@ public class PTXMove {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            load(tasm, masm, result, (PTXAddress) address, state);
+            load(tasm, masm, result, address, state);
         }
     }
 
     public static class StoreOp extends PTXLIRInstruction {
 
-        @Use({ADDR}) protected Value address;
+        @Use({ADDR}) protected PTXAddress address;
         @Use({REG, CONST}) protected Value input;
         @State protected LIRFrameState state;
 
-        public StoreOp(Value address, Value input, LIRFrameState state) {
+        public StoreOp(PTXAddress address, Value input, LIRFrameState state) {
             this.address = address;
             this.input = input;
             this.state = state;
@@ -150,7 +150,7 @@ public class PTXMove {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            store(tasm, masm, (PTXAddress) address, input, state);
+            store(tasm, masm, address, input, state);
         }
     }
 
@@ -174,11 +174,11 @@ public class PTXMove {
     public static class CompareAndSwapOp extends PTXLIRInstruction {
 
         @Def protected Value result;
-        @Use({ADDR}) protected Value address;
+        @Use({ADDR}) protected PTXAddress address;
         @Use protected Value cmpValue;
         @Use protected Value newValue;
 
-        public CompareAndSwapOp(Value result, Address address, Value cmpValue, Value newValue) {
+        public CompareAndSwapOp(Value result, PTXAddress address, Value cmpValue, Value newValue) {
             this.result = result;
             this.address = address;
             this.cmpValue = cmpValue;
@@ -187,7 +187,7 @@ public class PTXMove {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            compareAndSwap(tasm, masm, result, (Address) address, cmpValue, newValue);
+            compareAndSwap(tasm, masm, result, address, cmpValue, newValue);
         }
     }
 
@@ -279,7 +279,7 @@ public class PTXMove {
     }
 
     @SuppressWarnings("unused")
-    protected static void compareAndSwap(TargetMethodAssembler tasm, PTXAssembler masm, Value result, Address address, Value cmpValue, Value newValue) {
+    protected static void compareAndSwap(TargetMethodAssembler tasm, PTXAssembler masm, Value result, PTXAddress address, Value cmpValue, Value newValue) {
         throw new InternalError("NYI");
     }
 }
