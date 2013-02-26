@@ -40,11 +40,12 @@ import com.oracle.graal.word.*;
 
 public class WriteBarrierSnippets implements SnippetsInterface {
 
-    private static boolean TRACE = false;
+    private static final boolean TRACE = true;
 
     @Snippet
     public static void g1PreWriteBarrier(@Parameter("object") Object object, @Parameter("location") Object location, @ConstantParameter("doLoad") boolean doLoad) {
         Word thread = thread();
+        trace(WriteBarrierSnippets.TRACE, "---------------G1 PRE Enter: 0x%016lx\n", thread);
         Pointer oop = Word.fromObject(object);
         Pointer field = Word.fromArray(object, location);
         Pointer previousOop = field.readWord(0);
@@ -54,23 +55,23 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         Word indexAddress = thread.add(HotSpotSnippetUtils.g1SATBQueueIndexOffset());
         Word indexValue = thread.readWord(HotSpotSnippetUtils.g1SATBQueueIndexOffset());
 
-        trace(WriteBarrierSnippets.TRACE, "      SATB thread address: 0x%16lx\n", thread);
-        trace(WriteBarrierSnippets.TRACE, "      SATB oop: 0x%16lx\n", oop);
-        trace(WriteBarrierSnippets.TRACE, "      SATB field: 0x%16lx\n", field);
-        trace(WriteBarrierSnippets.TRACE, "      SATB previous OOP: 0x%16lx\n", previousOop);
-        trace(WriteBarrierSnippets.TRACE, "      SATB QueueMarkingOffset: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.g1SATBQueueMarkingOffset()));
-        trace(WriteBarrierSnippets.TRACE, "      SATB QueueBufferOffset: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.g1SATBQueueBufferOffset()));
-        trace(WriteBarrierSnippets.TRACE, "      SATB QueueIndexOffset: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.g1SATBQueueIndexOffset()));
-        trace(WriteBarrierSnippets.TRACE, "      SATB markingAddress: 0x%016lx\n", markingAddress);
-        trace(WriteBarrierSnippets.TRACE, "      SATB bufferAddress: 0x%016lx\n", bufferAddress);
-        trace(WriteBarrierSnippets.TRACE, "      SATB indexAddress: 0x%016lx\n", indexAddress);
-        trace(WriteBarrierSnippets.TRACE, "      SATB indexValue: 0x%016lx\n", indexValue);// in
+        trace(WriteBarrierSnippets.TRACE, "      G1 PRE thread address: 0x%16lx\n", thread);
+        trace(WriteBarrierSnippets.TRACE, "      G1 PRE oop: 0x%16lx\n", oop);
+        trace(WriteBarrierSnippets.TRACE, "      G1 PRE field: 0x%16lx\n", field);
+        trace(WriteBarrierSnippets.TRACE, "      G1 PRE previous OOP: 0x%16lx\n", previousOop);
+        trace(WriteBarrierSnippets.TRACE, "      G1 PRE QueueMarkingOffset: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.g1SATBQueueMarkingOffset()));
+        trace(WriteBarrierSnippets.TRACE, "      G1 PRE QueueBufferOffset: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.g1SATBQueueBufferOffset()));
+        trace(WriteBarrierSnippets.TRACE, "      G1 PRE QueueIndexOffset: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.g1SATBQueueIndexOffset()));
+        trace(WriteBarrierSnippets.TRACE, "      G1 PRE markingAddress: 0x%016lx\n", markingAddress);
+        trace(WriteBarrierSnippets.TRACE, "      G1 PRE bufferAddress: 0x%016lx\n", bufferAddress);
+        trace(WriteBarrierSnippets.TRACE, "      G1 PRE indexAddress: 0x%016lx\n", indexAddress);
+        trace(WriteBarrierSnippets.TRACE, "      G1 PRE indexValue: 0x%016lx\n", indexValue);// in
 // bytes
 
         if (markingAddress.notEqual(Word.zero())) {
             if (doLoad) {
                 previousOop = field.readWord(0);
-                trace(WriteBarrierSnippets.TRACE, "      SATB Do Load previous OOP: 0x%16lx\n", previousOop);
+                trace(WriteBarrierSnippets.TRACE, "      G1 PRE Do Load previous OOP: 0x%16lx\n", previousOop);
             }
             if (previousOop.notEqual(Word.zero())) {
                 if (indexValue.readInt(0) != 0) {
@@ -79,30 +80,35 @@ public class WriteBarrierSnippets implements SnippetsInterface {
                     Word logAddress = bufferAddress.add(nextIndexX);
                     logAddress.writeWord(0, previousOop);
                     indexAddress.writeWord(0, nextIndex);
-                    trace(WriteBarrierSnippets.TRACE, "      SATB nextIndexindex: 0x%016lx\n", nextIndex);
+                    trace(WriteBarrierSnippets.TRACE, "      G1 PRE nextIndexindex: 0x%016lx\n", nextIndex);
                 } else {
                     WriteBarrierPostStubCall.call(object);
                 }
             }
         }
 
-        trace(WriteBarrierSnippets.TRACE, "---------------SATB Exit: 0x%016lx\n", indexValue);
+        trace(WriteBarrierSnippets.TRACE, "---------------G1 PRE Exit: 0x%016lx\n", indexValue);
 
     }
 
     @Snippet
     public static void g1PostWriteBarrier(@Parameter("object") Object object, @Parameter("value") Object value, @Parameter("location") Object location) {
         Word thread = thread();
+        trace(WriteBarrierSnippets.TRACE, "##############G1 POST Enter: 0x%016lx\n", thread);
+
         Pointer oop = Word.fromObject(object);
         Pointer field = Word.fromArray(object, location);
         Pointer writtenValue = Word.fromObject(value);
 
         Word bufferAddress = thread.readWord(HotSpotSnippetUtils.g1CardQueueBufferOffset());
         Word indexAddress = thread.readWord(HotSpotSnippetUtils.g1CardQueueIndexOffset());
+        Word indexValue = thread.readWord(HotSpotSnippetUtils.g1CardQueueIndexOffset());
 
-        trace(WriteBarrierSnippets.TRACE, "     G1 thread address: 0x%16lx\n", thread);
-        trace(WriteBarrierSnippets.TRACE, "     G1 bufferAddress: 0x%016lx\n", bufferAddress);
-        trace(WriteBarrierSnippets.TRACE, "     G1 indexAddress: 0x%016lx\n", indexAddress);
+        trace(WriteBarrierSnippets.TRACE, "     G1 POST thread address: 0x%16lx\n", thread);
+        trace(WriteBarrierSnippets.TRACE, "     G1 POST bufferAddress: 0x%016lx\n", bufferAddress);
+        trace(WriteBarrierSnippets.TRACE, "     G1 POST indexAddress: 0x%016lx\n", indexAddress);
+        trace(WriteBarrierSnippets.TRACE, "     G1 POST indexValue: 0x%016lx\n", indexValue);
+        trace(WriteBarrierSnippets.TRACE, "     G1 POST written value: 0x%016lx\n", writtenValue);
 
         // Card Table
         Word base = (Word) oop.unsignedShiftRight(cardTableShift());
@@ -116,15 +122,23 @@ public class WriteBarrierSnippets implements SnippetsInterface {
 
         // if (writtenValue.notEqual(Word.zero())) {
         Word xorResult = (((Word) field.xor(writtenValue)).unsignedShiftRight(HotSpotSnippetUtils.logOfHRGrainBytes()));
+        trace(WriteBarrierSnippets.TRACE, "     G1 POST xor result: 0x%016lx\n", xorResult);
+
         if (xorResult.notEqual(Word.zero())) {
             if (writtenValue.notEqual(Word.zero())) {
                 Word cardValue = base.readWord(displacement);
+                trace(WriteBarrierSnippets.TRACE, "     G1 POST cardValue: 0x%016lx\n", cardValue);
+
                 if (cardValue.notEqual(Word.zero())) {
                     base.writeWord(displacement, Word.zero()); // smash zero into card
-                    if (indexAddress.readInt(0) != 0) {
+                    if (indexValue.readInt(0) != 0) {
                         Word nextIndex = indexAddress.subtract(Word.signed(HotSpotSnippetUtils.wordSize()));
+                        trace(WriteBarrierSnippets.TRACE, "     G1 POST nextIndex: 0x%016lx\n", nextIndex);
+
                         Word nextIndexX = nextIndex;
                         Word logAddress = bufferAddress.add(nextIndexX);
+                        trace(WriteBarrierSnippets.TRACE, "     G1 POST logAddress: 0x%016lx\n", logAddress);
+
                         logAddress.writeWord(0, base.add(displacement));
                         indexAddress.writeWord(0, nextIndex);
                     } else {
@@ -135,6 +149,8 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         }
         // } else { Object clone intrinsic(?!)
         // }
+        trace(WriteBarrierSnippets.TRACE, "#################G1 POST Exit: 0x%016lx\n", thread);
+
     }
 
     private static void trace(boolean enabled, String format, WordBase value) {
