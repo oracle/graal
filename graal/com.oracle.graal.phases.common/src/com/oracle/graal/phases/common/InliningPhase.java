@@ -24,6 +24,7 @@ package com.oracle.graal.phases.common;
 
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -127,26 +128,32 @@ public class InliningPhase extends Phase implements InliningCallback {
                 return cachedGraph;
             }
         }
-        StructuredGraph newGraph = new StructuredGraph(method);
-        if (plan != null) {
-            plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
-        }
-        assert newGraph.start().next() != null : "graph needs to be populated during PhasePosition.AFTER_PARSING";
+        final StructuredGraph newGraph = new StructuredGraph(method);
+        return Debug.scope("InlineGraph", newGraph, new Callable<StructuredGraph>() {
 
-        if (GraalOptions.ProbabilityAnalysis) {
-            new DeadCodeEliminationPhase().apply(newGraph);
-            new ComputeProbabilityPhase().apply(newGraph);
-        }
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase(runtime, assumptions).apply(newGraph);
-        }
-        if (GraalOptions.CullFrameStates) {
-            new CullFrameStatesPhase().apply(newGraph);
-        }
-        if (GraalOptions.CacheGraphs && cache != null) {
-            cache.put(newGraph);
-        }
-        return newGraph;
+            @Override
+            public StructuredGraph call() throws Exception {
+                if (plan != null) {
+                    plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
+                }
+                assert newGraph.start().next() != null : "graph needs to be populated during PhasePosition.AFTER_PARSING";
+
+                if (GraalOptions.ProbabilityAnalysis) {
+                    new DeadCodeEliminationPhase().apply(newGraph);
+                    new ComputeProbabilityPhase().apply(newGraph);
+                }
+                if (GraalOptions.OptCanonicalizer) {
+                    new CanonicalizerPhase(runtime, assumptions).apply(newGraph);
+                }
+                if (GraalOptions.CullFrameStates) {
+                    new CullFrameStatesPhase().apply(newGraph);
+                }
+                if (GraalOptions.CacheGraphs && cache != null) {
+                    cache.put(newGraph);
+                }
+                return newGraph;
+            }
+        });
     }
 
     private interface InliningDecision {
