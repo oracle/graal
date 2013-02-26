@@ -101,12 +101,12 @@ public class PTXLIRGenerator extends LIRGenerator {
     @Override
     public Variable emitMove(Value input) {
         Variable result = newVariable(input.getKind());
-        emitMove(input, result);
+        emitMove(result, input);
         return result;
     }
 
     @Override
-    public void emitMove(Value src, Value dst) {
+    public void emitMove(Value dst, Value src) {
         if (isRegister(src) || isStackSlot(dst)) {
             append(new MoveFromRegOp(dst, src));
         } else {
