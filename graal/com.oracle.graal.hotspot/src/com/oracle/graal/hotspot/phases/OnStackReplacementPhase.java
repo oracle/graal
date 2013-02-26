@@ -31,6 +31,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -131,12 +132,13 @@ public class OnStackReplacementPhase extends Phase {
         start.setStateAfter(null);
         GraphUtil.killWithUnusedFloatingInputs(oldStartState);
 
+        // mirroring the calculations in c1_GraphBuilder.cpp (setup_osr_entry_block)
         int localsOffset = (graph.method().getMaxLocals() - 1) * 8;
         for (int i = 0; i < osrState.localsSize(); i++) {
             ValueNode value = osrState.localAt(i);
             if (value != null) {
                 ValueProxyNode proxy = (ValueProxyNode) value;
-                int size = (value.kind() == Kind.Long || value.kind() == Kind.Double) ? 2 : 1;
+                int size = FrameStateBuilder.stackSlots(value.kind());
                 int offset = localsOffset - (i + size - 1) * 8;
                 UnsafeLoadNode load = graph.add(new UnsafeLoadNode(buffer, offset, ConstantNode.forInt(0, graph), value.kind()));
                 OSREntryProxyNode newProxy = graph.add(new OSREntryProxyNode(load, migrationEnd));
