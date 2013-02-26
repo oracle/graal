@@ -50,7 +50,6 @@ import com.oracle.graal.lir.ptx.PTXMove.MoveToRegOp;
 import com.oracle.graal.lir.ptx.PTXMove.StoreOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.ptx.*;
 
@@ -100,47 +99,6 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Address makeAddress(Kind kind, Value base, int displacement) {
-        return new PTXAddress(kind, base, displacement);
-    }
-
-    @Override
-    public Address makeAddress(LocationNode location, ValueNode object) {
-        Value base = operand(object);
-        long displacement = location.displacement();
-
-        if (isConstant(base)) {
-            if (asConstant(base).isNull()) {
-                base = Value.ILLEGAL;
-            } else if (asConstant(base).getKind() != Kind.Object) {
-                displacement += asConstant(base).asLong();
-                base = Value.ILLEGAL;
-            }
-        }
-
-        if (location instanceof IndexedLocationNode) {
-            IndexedLocationNode indexedLoc = (IndexedLocationNode) location;
-
-            Value index = operand(indexedLoc.index());
-            int scale = indexedLoc.indexScaling();
-            if (isConstant(index)) {
-                displacement += asConstant(index).asLong() * scale;
-            } else {
-                if (scale != 1) {
-                    index = emitMul(index, Constant.forInt(scale));
-                }
-                if (base == Value.ILLEGAL) {
-                    base = index;
-                } else {
-                    base = emitAdd(base, index);
-                }
-            }
-        }
-
-        return new PTXAddress(location.getValueKind(), base, displacement);
-    }
-
-    @Override
     public Variable emitMove(Value input) {
         Variable result = newVariable(input.getKind());
         emitMove(input, result);
@@ -156,21 +114,59 @@ public class PTXLIRGenerator extends LIRGenerator {
         }
     }
 
+    private PTXAddress prepareAddress(Kind kind, Value base, int displacement, Value index, int scale) {
+        Value baseRegister = base;
+        long finalDisp = displacement;
+        if (isConstant(base)) {
+            if (asConstant(base).isNull()) {
+                baseRegister = Value.ILLEGAL;
+            } else if (asConstant(base).getKind() != Kind.Object) {
+                finalDisp += asConstant(base).asLong();
+                baseRegister = Value.ILLEGAL;
+            }
+        }
+
+        if (index != Value.ILLEGAL) {
+            if (isConstant(index)) {
+                finalDisp += asConstant(index).asLong() * scale;
+            } else {
+                Value indexRegister = index;
+                if (scale != 1) {
+                    indexRegister = emitMul(index, Constant.forInt(scale));
+                }
+                if (baseRegister == Value.ILLEGAL) {
+                    baseRegister = indexRegister;
+                } else {
+                    baseRegister = emitAdd(baseRegister, indexRegister);
+                }
+            }
+        }
+
+        return new PTXAddress(kind, baseRegister, finalDisp);
+    }
+
     @Override
-    public Variable emitLoad(Value loadAddress, boolean canTrap) {
+    public Variable emitLoad(Kind kind, Value base, int displacement, Value index, int scale, boolean canTrap) {
+        PTXAddress loadAddress = prepareAddress(kind, base, displacement, index, scale);
         Variable result = newVariable(loadAddress.getKind());
         append(new LoadOp(result, loadAddress, canTrap ? state() : null));
         return result;
     }
 
     @Override
-    public void emitStore(Value storeAddress, Value inputVal, boolean canTrap) {
+    public void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value inputVal, boolean canTrap) {
+        PTXAddress storeAddress = prepareAddress(kind, base, displacement, index, scale);
         Value input = loadForStore(inputVal, storeAddress.getKind());
         append(new StoreOp(storeAddress, input, canTrap ? state() : null));
     }
 
     @Override
-    public Variable emitLea(Value address) {
+    public Variable emitLea(Value base, int displacement, Value index, int scale) {
+        throw new InternalError("NYI");
+    }
+
+    @Override
+    public Variable emitLea(StackSlot address) {
         throw new InternalError("NYI");
     }
 

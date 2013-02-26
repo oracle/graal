@@ -53,27 +53,17 @@ public abstract class LIRGeneratorTool {
 
     public abstract Value setResult(ValueNode x, Value operand);
 
-    public abstract Address makeAddress(LocationNode location, ValueNode object);
-
-    public abstract Address makeAddress(Kind kind, Value base, int displacement);
-
-    public Address makeAddress(Kind kind, Value base) {
-        return makeAddress(kind, base, 0);
-    }
-
-    public Address makeAddress(Kind kind, int address) {
-        return makeAddress(kind, Value.ILLEGAL, address);
-    }
-
     public abstract Value emitMove(Value input);
 
     public abstract void emitMove(Value src, Value dst);
 
-    public abstract Value emitLoad(Value loadAddress, boolean canTrap);
+    public abstract Value emitLoad(Kind kind, Value base, int displacement, Value index, int scale, boolean canTrap);
 
-    public abstract void emitStore(Value storeAddress, Value input, boolean canTrap);
+    public abstract void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value input, boolean canTrap);
 
-    public abstract Value emitLea(Value address);
+    public abstract Value emitLea(Value base, int displacement, Value index, int scale);
+
+    public abstract Value emitLea(StackSlot slot);
 
     public abstract Value emitNegate(Value input);
 
