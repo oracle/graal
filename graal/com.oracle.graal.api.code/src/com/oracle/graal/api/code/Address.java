@@ -32,17 +32,6 @@ public abstract class Address extends Value {
 
     private static final long serialVersionUID = -1003772042519945089L;
 
-    /**
-     * A sentinel value used as a place holder in an instruction stream for an address that will be
-     * patched.
-     */
-    /*
-     * @SuppressWarnings("serial") public static final Address Placeholder = new
-     * Address(Kind.Illegal) {
-     * 
-     * @Override public String toString() { return "[<placeholder>]"; } };
-     */
-
     public Address(Kind kind) {
         super(kind);
     }
