@@ -207,18 +207,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return value;
     }
 
-    public Value loadForStore(Value value, Kind storeKind) {
-        if (isConstant(value) && canStoreConstant((Constant) value)) {
-            return value;
-        }
-        if (storeKind == Kind.Byte || storeKind == Kind.Boolean) {
-            Variable tempVar = new Variable(value.getKind(), lir.nextVariable(), Register.RegisterFlag.Byte);
-            emitMove(value, tempVar);
-            return tempVar;
-        }
-        return load(value);
-    }
-
     protected LabelRef getLIRBlock(FixedNode b) {
         Block result = lir.cfg.blockFor(b);
         int suxIndex = currentBlock.getSuccessors().indexOf(result);
@@ -535,7 +523,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         Value operand = Value.ILLEGAL;
         if (x.result() != null) {
             operand = resultOperandFor(x.result().kind());
-            emitMove(operand(x.result()), operand);
+            emitMove(operand, operand(x.result()));
         }
         emitReturn(operand);
     }
@@ -757,7 +745,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         for (ValueNode arg : arguments) {
             if (arg != null) {
                 Value operand = toStackKind(cc.getArgument(j));
-                emitMove(operand(arg), operand);
+                emitMove(operand, operand(arg));
                 result[j] = operand;
                 j++;
             } else {
@@ -780,7 +768,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         for (int i = 0; i < args.length; i++) {
             Value arg = args[i];
             Value loc = cc.getArgument(i);
-            emitMove(arg, loc);
+            emitMove(loc, arg);
             argLocations[i] = loc;
         }
         emitCall(callTarget, cc.getReturn(), argLocations, cc.getTemporaries(), Constant.forLong(0), info);

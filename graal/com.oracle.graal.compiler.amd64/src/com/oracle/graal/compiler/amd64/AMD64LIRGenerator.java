@@ -67,6 +67,8 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.NullCheckOp;
 import com.oracle.graal.lir.amd64.AMD64Move.SpillMoveOp;
+import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
+import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -139,12 +141,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitMove(Value input) {
         Variable result = newVariable(input.getKind());
-        emitMove(input, result);
+        emitMove(result, input);
         return result;
     }
 
     @Override
-    public void emitMove(Value src, Value dst) {
+    public void emitMove(Value dst, Value src) {
         if (isRegister(src) || isStackSlot(dst)) {
             append(new MoveFromRegOp(dst, src));
         } else {
@@ -166,7 +168,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                     baseRegister = Value.ILLEGAL;
                 } else {
                     Value newBase = newVariable(Kind.Long);
-                    emitMove(base, newBase);
+                    emitMove(newBase, base);
                     baseRegister = newBase;
                 }
             }
@@ -187,7 +189,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                     // create a temporary variable for the index, the pointer load cannot handle a
                     // constant index
                     Value newIndex = newVariable(Kind.Long);
-                    emitMove(index, newIndex);
+                    emitMove(newIndex, index);
                     indexRegister = newIndex;
                 }
             }
@@ -210,8 +212,18 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value inputVal, boolean canTrap) {
         AMD64Address storeAddress = prepareAddress(kind, base, displacement, index, scale);
-        Value input = loadForStore(inputVal, storeAddress.getKind());
-        append(new StoreOp(storeAddress, input, canTrap ? state() : null));
+        LIRFrameState state = canTrap ? state() : null;
+
+        if (isConstant(inputVal)) {
+            Constant c = asConstant(inputVal);
+            if (canStoreConstant(c)) {
+                append(new StoreConstantOp(storeAddress, c, state));
+                return;
+            }
+        }
+
+        Variable input = load(inputVal);
+        append(new StoreOp(storeAddress, input, state));
     }
 
     @Override
@@ -225,7 +237,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitLea(StackSlot address) {
         Variable result = newVariable(target().wordKind);
-        append(new LeaOp(result, address));
+        append(new StackLeaOp(result, address));
         return result;
     }
 
@@ -459,11 +471,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Value[] emitIntegerDivRem(Value a, Value b) {
         switch (a.getKind()) {
             case Int:
-                emitMove(a, RAX_I);
+                emitMove(RAX_I, a);
                 append(new DivRemOp(IDIVREM, RAX_I, load(b), state()));
                 return new Value[]{emitMove(RAX_I), emitMove(RDX_I)};
             case Long:
-                emitMove(a, RAX_L);
+                emitMove(RAX_L, a);
                 append(new DivRemOp(LDIVREM, RAX_L, load(b), state()));
                 return new Value[]{emitMove(RAX_L), emitMove(RDX_L)};
             default:
@@ -475,11 +487,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Value emitDiv(Value a, Value b) {
         switch (a.getKind()) {
             case Int:
-                emitMove(a, RAX_I);
+                emitMove(RAX_I, a);
                 append(new DivOp(IDIV, RAX_I, RAX_I, load(b), state()));
                 return emitMove(RAX_I);
             case Long:
-                emitMove(a, RAX_L);
+                emitMove(RAX_L, a);
                 append(new DivOp(LDIV, RAX_L, RAX_L, load(b), state()));
                 return emitMove(RAX_L);
             case Float: {
@@ -501,11 +513,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Value emitRem(Value a, Value b) {
         switch (a.getKind()) {
             case Int:
-                emitMove(a, RAX_I);
+                emitMove(RAX_I, a);
                 append(new DivOp(IREM, RDX_I, RAX_I, load(b), state()));
                 return emitMove(RDX_I);
             case Long:
-                emitMove(a, RAX_L);
+                emitMove(RAX_L, a);
                 append(new DivOp(LREM, RDX_L, RAX_L, load(b), state()));
                 return emitMove(RDX_L);
             case Float: {
@@ -525,11 +537,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitUDiv(Value a, Value b) {
         switch (a.getKind()) {
             case Int:
-                emitMove(a, RAX_I);
+                emitMove(RAX_I, a);
                 append(new DivOp(IUDIV, RAX_I, RAX_I, load(b), state()));
                 return emitMove(RAX_I);
             case Long:
-                emitMove(a, RAX_L);
+                emitMove(RAX_L, a);
                 append(new DivOp(LUDIV, RAX_L, RAX_L, load(b), state()));
                 return emitMove(RAX_L);
             default:
@@ -541,11 +553,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitURem(Value a, Value b) {
         switch (a.getKind()) {
             case Int:
-                emitMove(a, RAX_I);
+                emitMove(RAX_I, a);
                 append(new DivOp(IUREM, RDX_I, RAX_I, load(b), state()));
                 return emitMove(RDX_I);
             case Long:
-                emitMove(a, RAX_L);
+                emitMove(RAX_L, a);
                 append(new DivOp(LUREM, RDX_L, RAX_L, load(b), state()));
                 return emitMove(RDX_L);
             default:
@@ -654,7 +666,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             return value;
         }
         // Non-constant shift count must be in RCX
-        emitMove(value, RCX_I);
+        emitMove(RCX_I, value);
         return RCX_I;
     }
 
@@ -724,7 +736,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 // Instructions that move or generate 32-bit register values also set the upper 32
                 // bits of the register to zero.
                 // Consequently, there is no need for a special zero-extension move.
-                emitMove(input, result);
+                emitMove(result, input);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -764,7 +776,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         // The current register allocator cannot handle variables at call sites, need a fixed
         // register.
         Value targetAddress = AMD64.rax.asValue();
-        emitMove(operand(callTarget.computedAddress()), targetAddress);
+        emitMove(targetAddress, operand(callTarget.computedAddress()));
         append(new IndirectCallOp(callTarget.target(), result, parameters, temps, targetAddress, callState));
     }
 
@@ -888,7 +900,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Value expected = loadNonConst(operand(node.expected()));
         Variable newValue = load(operand(node.newValue()));
 
-        Address address;
+        AMD64Address address;
         int displacement = node.displacement();
         Value index = operand(node.offset());
         if (isConstant(index) && NumUtil.isInt(asConstant(index).asLong() + displacement)) {
@@ -900,7 +912,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
 
         RegisterValue rax = AMD64.rax.asValue(kind);
-        emitMove(expected, rax);
+        emitMove(rax, expected);
         append(new CompareAndSwapOp(rax, address, rax, newValue));
 
         Variable result = newVariable(node.kind());

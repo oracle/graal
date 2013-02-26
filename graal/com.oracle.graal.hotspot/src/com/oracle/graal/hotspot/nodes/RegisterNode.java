@@ -54,7 +54,7 @@ public final class RegisterNode extends FixedWithNextNode implements LIRLowerabl
             // The register allocator would prefer us not to tie up an allocatable
             // register for the complete lifetime of this node.
             result = generator.newVariable(kind());
-            generator.emitMove(register.asValue(kind()), result);
+            generator.emitMove(result, register.asValue(kind()));
         } else {
             result = register.asValue(kind());
         }

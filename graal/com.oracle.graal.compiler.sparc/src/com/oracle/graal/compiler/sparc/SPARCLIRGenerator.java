@@ -214,7 +214,7 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitMove(Value src, Value dst) {
+    public void emitMove(Value dst, Value src) {
         // SPARC: Auto-generated method stub
 
     }

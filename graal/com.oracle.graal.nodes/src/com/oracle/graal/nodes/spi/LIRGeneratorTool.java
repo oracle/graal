@@ -55,7 +55,7 @@ public abstract class LIRGeneratorTool {
 
     public abstract Value emitMove(Value input);
 
-    public abstract void emitMove(Value src, Value dst);
+    public abstract void emitMove(Value dst, Value src);
 
     public abstract Value emitLoad(Kind kind, Value base, int displacement, Value index, int scale, boolean canTrap);
 

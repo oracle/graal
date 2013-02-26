@@ -93,7 +93,7 @@ public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIR
         if (kind() != object.kind()) {
             assert generator.target().sizeInBytes(kind()) == generator.target().sizeInBytes(object.kind()) : "unsafe cast cannot be used to change the size of a value";
             Value result = generator.newVariable(kind());
-            generator.emitMove(generator.operand(object), result);
+            generator.emitMove(result, generator.operand(object));
             generator.setResult(this, result);
         } else {
             // The LIR only cares about the kind of an operand, not the actual type of an object. So

@@ -101,12 +101,12 @@ public class PTXLIRGenerator extends LIRGenerator {
     @Override
     public Variable emitMove(Value input) {
         Variable result = newVariable(input.getKind());
-        emitMove(input, result);
+        emitMove(result, input);
         return result;
     }
 
     @Override
-    public void emitMove(Value src, Value dst) {
+    public void emitMove(Value dst, Value src) {
         if (isRegister(src) || isStackSlot(dst)) {
             append(new MoveFromRegOp(dst, src));
         } else {
@@ -156,7 +156,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     @Override
     public void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value inputVal, boolean canTrap) {
         PTXAddress storeAddress = prepareAddress(kind, base, displacement, index, scale);
-        Value input = loadForStore(inputVal, storeAddress.getKind());
+        Value input = load(inputVal);
         append(new StoreOp(storeAddress, input, canTrap ? state() : null));
     }
 
