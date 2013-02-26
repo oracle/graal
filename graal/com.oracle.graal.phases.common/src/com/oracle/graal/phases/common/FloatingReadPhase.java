@@ -29,262 +29,208 @@ import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
+import com.oracle.graal.phases.graph.ReentrantNodeIterator.LoopInfo;
+import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
 public class FloatingReadPhase extends Phase {
 
-    private IdentityHashMap<LoopBeginNode, List<MemoryMap>> loopEndStatesMap;
-
-    private static class LoopState {
-
-        public LoopBeginNode loopBegin;
-        public MemoryMap state;
-        public IdentityHashMap<PhiNode, Object> loopPhiLocations = new IdentityHashMap<>();
-        public ValueNode loopEntryAnyLocation;
-
-        public LoopState(LoopBeginNode loopBegin, MemoryMap state, ValueNode loopEntryAnyLocation) {
-            this.loopBegin = loopBegin;
-            this.state = state;
-            this.loopEntryAnyLocation = loopEntryAnyLocation;
-        }
-
-        @Override
-        public String toString() {
-            return "State@" + loopBegin;
-        }
-    }
-
-    private class MemoryMap implements MergeableState<MemoryMap> {
+    private static class MemoryMap {
 
         private IdentityHashMap<Object, ValueNode> lastMemorySnapshot;
-        private LinkedList<LoopState> loops;
 
         public MemoryMap(MemoryMap memoryMap) {
             lastMemorySnapshot = new IdentityHashMap<>(memoryMap.lastMemorySnapshot);
-            loops = new LinkedList<>(memoryMap.loops);
+        }
+
+        public MemoryMap(StartNode start) {
+            this();
+            lastMemorySnapshot.put(LocationNode.ANY_LOCATION, start);
         }
 
         public MemoryMap() {
             lastMemorySnapshot = new IdentityHashMap<>();
-            loops = new LinkedList<>();
+        }
+
+        private ValueNode getLastLocationAccess(Object locationIdentity) {
+            ValueNode lastLocationAccess;
+            if (locationIdentity == LocationNode.FINAL_LOCATION) {
+                return null;
+            } else {
+                lastLocationAccess = lastMemorySnapshot.get(locationIdentity);
+                if (lastLocationAccess == null) {
+                    lastLocationAccess = lastMemorySnapshot.get(LocationNode.ANY_LOCATION);
+                    assert lastLocationAccess != null;
+                }
+                return lastLocationAccess;
+            }
         }
 
         @Override
         public String toString() {
-            return "Map=" + lastMemorySnapshot.toString() + " Loops=" + loops.toString();
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public boolean merge(MergeNode merge, List<MemoryMap> withStates) {
-            if (withStates.size() == 0) {
-                return true;
-            }
-
-            int minLoops = loops.size();
-            for (MemoryMap other : withStates) {
-                int otherLoops = other.loops.size();
-                if (otherLoops < minLoops) {
-                    minLoops = otherLoops;
-                }
-            }
-            while (loops.size() > minLoops) {
-                loops.pop();
-            }
-            for (MemoryMap other : withStates) {
-                while (other.loops.size() > minLoops) {
-                    other.loops.pop();
-                }
-            }
-
-            Set<Object> keys = new HashSet<>();
-            for (Object key : lastMemorySnapshot.keySet()) {
-                keys.add(key);
-            }
-            for (MemoryMap other : withStates) {
-                assert other.loops.size() == loops.size();
-                assert other.loops.size() < 1 || other.loops.peek().loopBegin == loops.peek().loopBegin;
-                for (Object key : other.lastMemorySnapshot.keySet()) {
-                    keys.add(key);
-                }
-            }
-            IdentityHashMap<Object, ValueNode> newMemorySnapshot = (IdentityHashMap<Object, ValueNode>) lastMemorySnapshot.clone();
-
-            for (Object key : keys) {
-                ValueNode merged = lastMemorySnapshot.get(key);
-                if (merged == null) {
-                    merged = lastMemorySnapshot.get(LocationNode.ANY_LOCATION);
-                }
-                int mergedStatesCount = 1;
-                boolean isPhi = false;
-                for (MemoryMap other : withStates) {
-                    ValueNode otherValue = other.lastMemorySnapshot.get(key);
-                    if (otherValue == null) {
-                        otherValue = other.lastMemorySnapshot.get(LocationNode.ANY_LOCATION);
-                    }
-                    if (isPhi) {
-                        ((PhiNode) merged).addInput(otherValue);
-                    } else if (merged != otherValue) {
-                        PhiNode phi = merge.graph().add(new PhiNode(PhiType.Memory, merge));
-                        for (int j = 0; j < mergedStatesCount; j++) {
-                            phi.addInput(merged);
-                        }
-                        phi.addInput(otherValue);
-                        merged = phi;
-                        isPhi = true;
-                        newMemorySnapshot.put(key, phi);
-                    }
-                    mergedStatesCount++;
-                }
-            }
-
-            lastMemorySnapshot = newMemorySnapshot;
-            return true;
-        }
-
-        @Override
-        public void loopBegin(LoopBeginNode loopBegin) {
-            LoopState loopState = new LoopState(loopBegin, this, lastMemorySnapshot.get(LocationNode.ANY_LOCATION));
-            for (Map.Entry<Object, ValueNode> entry : lastMemorySnapshot.entrySet()) {
-                PhiNode phi = loopBegin.graph().add(new PhiNode(PhiType.Memory, loopBegin));
-                phi.addInput(entry.getValue());
-                entry.setValue(phi);
-                loopState.loopPhiLocations.put(phi, entry.getKey());
-            }
-            loops.push(loopState);
-        }
-
-        @Override
-        public void loopEnds(LoopBeginNode loopBegin, List<MemoryMap> loopEndStates) {
-            loopEndStatesMap.put(loopBegin, loopEndStates);
-            tryFinishLoopPhis(this, loopBegin);
-        }
-
-        @Override
-        public void afterSplit(BeginNode node) {
-            // nothing
-        }
-
-        @Override
-        public MemoryMap clone() {
-            return new MemoryMap(this);
+            return "Map=" + lastMemorySnapshot.toString();
         }
     }
+
+    private final Map<LoopBeginNode, Set<Object>> modifiedInLoops = new IdentityHashMap<>();
 
     @Override
     protected void run(StructuredGraph graph) {
-        loopEndStatesMap = new IdentityHashMap<>();
-        new PostOrderNodeIterator<MemoryMap>(graph.start(), new MemoryMap()) {
+        ReentrantNodeIterator.apply(new CollectMemoryCheckpointsClosure(), graph.start(), new HashSet<>(), null);
+        ReentrantNodeIterator.apply(new FloatingReadClosure(), graph.start(), new MemoryMap(graph.start()), null);
+    }
 
-            @Override
-            protected void node(FixedNode node) {
-                processNode(node, state);
+    private class CollectMemoryCheckpointsClosure extends NodeIteratorClosure<Set<Object>> {
+
+        @Override
+        protected void processNode(FixedNode node, Set<Object> currentState) {
+            if (node instanceof MemoryCheckpoint) {
+                currentState.add(((MemoryCheckpoint) node).getLocationIdentity());
             }
-        }.apply();
-    }
-
-    private void processNode(FixedNode node, MemoryMap state) {
-        if (node instanceof ReadNode) {
-            processRead((ReadNode) node, state);
-        } else if (node instanceof MemoryCheckpoint) {
-            processCheckpoint((MemoryCheckpoint) node, state);
-        } else if (node instanceof LoopExitNode) {
-            processLoopExit((LoopExitNode) node, state);
         }
-    }
 
-    private static void processCheckpoint(MemoryCheckpoint checkpoint, MemoryMap state) {
-        if (checkpoint.getLocationIdentity() == LocationNode.ANY_LOCATION) {
-            for (Map.Entry<Object, ValueNode> entry : state.lastMemorySnapshot.entrySet()) {
-                entry.setValue((ValueNode) checkpoint);
+        @Override
+        protected Set<Object> merge(MergeNode merge, List<Set<Object>> states) {
+            Set<Object> result = new HashSet<>();
+            for (Set<Object> other : states) {
+                result.addAll(other);
             }
-            state.loops.clear();
+            return result;
         }
-        state.lastMemorySnapshot.put(checkpoint.getLocationIdentity(), (ValueNode) checkpoint);
+
+        @Override
+        protected Set<Object> afterSplit(BeginNode node, Set<Object> oldState) {
+            return new HashSet<>(oldState);
+        }
+
+        @Override
+        protected Map<LoopExitNode, Set<Object>> processLoop(LoopBeginNode loop, Set<Object> initialState) {
+            LoopInfo<Set<Object>> loopInfo = ReentrantNodeIterator.processLoop(this, loop, new HashSet<>());
+            Set<Object> modifiedLocations = new HashSet<>();
+            for (Set<Object> end : loopInfo.endStates.values()) {
+                modifiedLocations.addAll(end);
+            }
+            for (Set<Object> exit : loopInfo.exitStates.values()) {
+                exit.addAll(modifiedLocations);
+                exit.addAll(initialState);
+            }
+            assert !modifiedLocations.contains(LocationNode.FINAL_LOCATION);
+            modifiedInLoops.put(loop, modifiedLocations);
+            return loopInfo.exitStates;
+        }
+
     }
 
-    private void processRead(ReadNode readNode, MemoryMap state) {
-        StructuredGraph graph = (StructuredGraph) readNode.graph();
-        assert readNode.getNullCheck() == false;
-        Object locationIdentity = readNode.location().locationIdentity();
-        if (locationIdentity != LocationNode.UNKNOWN_LOCATION) {
-            ValueNode lastLocationAccess = getLastLocationAccessForRead(state, locationIdentity);
-            FloatingReadNode floatingRead = graph.unique(new FloatingReadNode(readNode.object(), readNode.location(), lastLocationAccess, readNode.stamp(), readNode.dependencies()));
-            floatingRead.setNullCheck(readNode.getNullCheck());
-            ValueAnchorNode anchor = null;
-            for (GuardNode guard : readNode.dependencies().filter(GuardNode.class)) {
-                if (anchor == null) {
-                    anchor = graph.add(new ValueAnchorNode());
+    private class FloatingReadClosure extends NodeIteratorClosure<MemoryMap> {
+
+        @Override
+        protected void processNode(FixedNode node, MemoryMap state) {
+            if (node instanceof ReadNode) {
+                processRead((ReadNode) node, state);
+            } else if (node instanceof MemoryCheckpoint) {
+                processCheckpoint((MemoryCheckpoint) node, state);
+            }
+        }
+
+        private void processCheckpoint(MemoryCheckpoint checkpoint, MemoryMap state) {
+            if (checkpoint.getLocationIdentity() == LocationNode.ANY_LOCATION) {
+                state.lastMemorySnapshot.clear();
+            }
+            state.lastMemorySnapshot.put(checkpoint.getLocationIdentity(), (ValueNode) checkpoint);
+        }
+
+        private void processRead(ReadNode readNode, MemoryMap state) {
+            StructuredGraph graph = (StructuredGraph) readNode.graph();
+            assert readNode.getNullCheck() == false;
+            Object locationIdentity = readNode.location().locationIdentity();
+            if (locationIdentity != LocationNode.UNKNOWN_LOCATION) {
+                ValueNode lastLocationAccess = state.getLastLocationAccess(locationIdentity);
+                FloatingReadNode floatingRead = graph.unique(new FloatingReadNode(readNode.object(), readNode.location(), lastLocationAccess, readNode.stamp(), readNode.dependencies()));
+                floatingRead.setNullCheck(readNode.getNullCheck());
+                ValueAnchorNode anchor = null;
+                for (GuardNode guard : readNode.dependencies().filter(GuardNode.class)) {
+                    if (anchor == null) {
+                        anchor = graph.add(new ValueAnchorNode());
+                        graph.addAfterFixed(readNode, anchor);
+                    }
+                    anchor.addAnchoredNode(guard);
                 }
-                anchor.addAnchoredNode(guard);
+                graph.replaceFixedWithFloating(readNode, floatingRead);
             }
-            if (anchor != null) {
-                graph.addAfterFixed(readNode, anchor);
-            }
-            graph.replaceFixedWithFloating(readNode, floatingRead);
         }
-    }
 
-    private ValueNode getLastLocationAccessForRead(MemoryMap state, Object locationIdentity) {
-        ValueNode lastLocationAccess;
-        if (locationIdentity == LocationNode.FINAL_LOCATION) {
-            lastLocationAccess = null;
-        } else {
-            lastLocationAccess = state.lastMemorySnapshot.get(locationIdentity);
-            if (lastLocationAccess == null) {
-                LoopState lastLoop = state.loops.peek();
-                if (lastLoop == null) {
-                    lastLocationAccess = state.lastMemorySnapshot.get(LocationNode.ANY_LOCATION);
-                } else {
-                    ValueNode phiInit;
-                    if (state.loops.size() > 1) {
-                        phiInit = getLastLocationAccessForRead(state.loops.get(1).state, locationIdentity);
+        @Override
+        protected MemoryMap merge(MergeNode merge, List<MemoryMap> states) {
+            MemoryMap newState = new MemoryMap();
+
+            Set<Object> keys = new HashSet<>();
+            for (MemoryMap other : states) {
+                keys.addAll(other.lastMemorySnapshot.keySet());
+            }
+            assert !keys.contains(LocationNode.FINAL_LOCATION);
+
+            for (Object key : keys) {
+                int mergedStatesCount = 0;
+                boolean isPhi = false;
+                ValueNode merged = null;
+                for (MemoryMap state : states) {
+                    ValueNode last = state.getLastLocationAccess(key);
+                    if (isPhi) {
+                        ((PhiNode) merged).addInput(last);
                     } else {
-                        phiInit = lastLoop.loopEntryAnyLocation;
+                        if (merged == last) {
+                            // nothing to do
+                        } else if (merged == null) {
+                            merged = last;
+                        } else {
+                            PhiNode phi = merge.graph().add(new PhiNode(PhiType.Memory, merge));
+                            for (int j = 0; j < mergedStatesCount; j++) {
+                                phi.addInput(merged);
+                            }
+                            phi.addInput(last);
+                            merged = phi;
+                            isPhi = true;
+                        }
                     }
-                    PhiNode phi = lastLoop.loopBegin.graph().add(new PhiNode(PhiType.Memory, lastLoop.loopBegin));
-                    phi.addInput(phiInit);
-                    lastLoop.state.lastMemorySnapshot.put(locationIdentity, phi);
-                    lastLoop.loopPhiLocations.put(phi, locationIdentity);
-                    tryFinishLoopPhis(lastLoop.state, lastLoop.loopBegin);
-                    lastLocationAccess = phi;
+                    mergedStatesCount++;
                 }
-                state.lastMemorySnapshot.put(locationIdentity, lastLocationAccess);
+                newState.lastMemorySnapshot.put(key, merged);
             }
+            return newState;
         }
-        return lastLocationAccess;
-    }
 
-    private static void processLoopExit(LoopExitNode exit, MemoryMap state) {
-        for (Map.Entry<Object, ValueNode> entry : state.lastMemorySnapshot.entrySet()) {
-            entry.setValue(exit.graph().unique(new ValueProxyNode(entry.getValue(), exit, PhiType.Memory)));
+        @Override
+        protected MemoryMap afterSplit(BeginNode node, MemoryMap oldState) {
+            return new MemoryMap(oldState);
         }
-        if (!state.loops.isEmpty()) {
-            state.loops.pop();
-        }
-    }
 
-    private void tryFinishLoopPhis(MemoryMap loopMemory, LoopBeginNode loopBegin) {
-        List<MemoryMap> loopEndStates = loopEndStatesMap.get(loopBegin);
-        if (loopEndStates == null) {
-            return;
-        }
-        LoopState loopState = loopMemory.loops.get(0);
-        int i = 0;
-        while (loopState.loopBegin != loopBegin) {
-            loopState = loopMemory.loops.get(++i);
-        }
-        for (PhiNode phi : loopBegin.phis()) {
-            if (phi.type() == PhiType.Memory && phi.valueCount() == 1) {
-                Object location = loopState.loopPhiLocations.get(phi);
-                assert location != null : "unknown location for " + phi;
-                for (MemoryMap endState : loopEndStates) {
-                    ValueNode otherNode = endState.lastMemorySnapshot.get(location);
-                    if (otherNode == null) {
-                        otherNode = endState.lastMemorySnapshot.get(LocationNode.ANY_LOCATION);
-                    }
-                    phi.addInput(otherNode);
+        @Override
+        protected Map<LoopExitNode, MemoryMap> processLoop(LoopBeginNode loop, MemoryMap initialState) {
+            Set<Object> modifiedLocations = modifiedInLoops.get(loop);
+            if (modifiedLocations.contains(LocationNode.ANY_LOCATION)) {
+                // create phis for all locations if ANY is modified in the loop
+                modifiedLocations = new HashSet<>(modifiedLocations);
+                modifiedLocations.addAll(initialState.lastMemorySnapshot.keySet());
+            }
+
+            Map<Object, PhiNode> phis = new HashMap<>();
+            for (Object location : modifiedLocations) {
+                PhiNode phi = loop.graph().add(new PhiNode(PhiType.Memory, loop));
+                phi.addInput(initialState.getLastLocationAccess(location));
+                phis.put(location, phi);
+                initialState.lastMemorySnapshot.put(location, phi);
+            }
+
+            LoopInfo<MemoryMap> loopInfo = ReentrantNodeIterator.processLoop(this, loop, initialState);
+
+            for (Map.Entry<LoopEndNode, MemoryMap> entry : loopInfo.endStates.entrySet()) {
+                int endIndex = loop.phiPredecessorIndex(entry.getKey());
+                for (Map.Entry<Object, PhiNode> phiEntry : phis.entrySet()) {
+                    Object key = phiEntry.getKey();
+                    PhiNode phi = phiEntry.getValue();
+                    phi.initializeValueAt(endIndex, entry.getValue().getLastLocationAccess(key));
                 }
             }
+            return loopInfo.exitStates;
         }
     }
 }
