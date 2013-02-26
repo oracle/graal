@@ -179,7 +179,7 @@ public class WordTypeRewriterPhase extends Phase {
 
                     case FROM_ARRAY:
                         assert arguments.size() == 2;
-                        replace(invoke, graph.unique(new ReadArrayElementAddressNode(arguments.get(0), arguments.get(1), StampFactory.forKind(wordKind))));
+                        replace(invoke, graph.unique(new GenerateLEANode(arguments.get(0), arguments.get(1), StampFactory.forKind(wordKind))));
                         break;
 
                     case TO_OBJECT:
