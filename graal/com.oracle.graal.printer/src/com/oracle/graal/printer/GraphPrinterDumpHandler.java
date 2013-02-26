@@ -33,6 +33,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.schedule.*;
 
 /**
  * Observes compilation events and uses {@link IdealGraphPrinter} to generate a graph representation
@@ -153,13 +154,14 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 // Save inline context for next dump.
                 previousInlineContext = inlineContext;
 
+                final SchedulePhase predefinedSchedule = getPredefinedSchedule();
                 Debug.sandbox("PrintingGraph", new Runnable() {
 
                     @Override
                     public void run() {
                         // Finally, output the graph.
                         try {
-                            printer.print(graph, message, null);
+                            printer.print(graph, message, predefinedSchedule);
                         } catch (IOException e) {
                             failuresCount++;
                             printer = null;
@@ -187,6 +189,16 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         }
         if (result.isEmpty()) {
             result.add("Top Scope");
+        }
+        return result;
+    }
+
+    private static SchedulePhase getPredefinedSchedule() {
+        SchedulePhase result = null;
+        for (Object o : Debug.context()) {
+            if (o instanceof SchedulePhase) {
+                result = (SchedulePhase) o;
+            }
         }
         return result;
     }
