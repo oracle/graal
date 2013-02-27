@@ -30,7 +30,7 @@ public class RemoveValueProxyPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (ValueProxyNode vpn : graph.getNodes(ValueProxyNode.class)) {
+        for (ProxyNode vpn : graph.getNodes(ProxyNode.class)) {
             if (vpn.type() == PhiType.Value) {
                 graph.replaceFloating(vpn, vpn.value());
             }

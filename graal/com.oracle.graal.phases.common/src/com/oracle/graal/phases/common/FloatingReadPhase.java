@@ -236,7 +236,7 @@ public class FloatingReadPhase extends Phase {
                 for (Object location : modifiedLocations) {
                     ValueNode lastAccessAtExit = state.lastMemorySnapshot.get(location);
                     if (lastAccessAtExit != null) {
-                        state.lastMemorySnapshot.put(location, loop.graph().add(new ValueProxyNode(lastAccessAtExit, exit, PhiType.Memory)));
+                        state.lastMemorySnapshot.put(location, loop.graph().add(new ProxyNode(lastAccessAtExit, exit, PhiType.Memory)));
                     }
                 }
             }

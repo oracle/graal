@@ -104,7 +104,7 @@ public class OnStackReplacementPhase extends Phase {
 
             LoopTransformations.peel(osrLoop);
             for (Node usage : osr.usages().snapshot()) {
-                ValueProxyNode proxy = (ValueProxyNode) usage;
+                ProxyNode proxy = (ProxyNode) usage;
                 proxy.replaceAndDelete(proxy.value());
             }
             FixedNode next = osr.next();
@@ -136,7 +136,7 @@ public class OnStackReplacementPhase extends Phase {
         for (int i = 0; i < osrState.localsSize(); i++) {
             ValueNode value = osrState.localAt(i);
             if (value != null) {
-                ValueProxyNode proxy = (ValueProxyNode) value;
+                ProxyNode proxy = (ProxyNode) value;
                 int size = FrameStateBuilder.stackSlots(value.kind());
                 int offset = localsOffset - (i + size - 1) * 8;
                 UnsafeLoadNode load = graph.add(new UnsafeLoadNode(buffer, offset, ConstantNode.forInt(0, graph), value.kind()));

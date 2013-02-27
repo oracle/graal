@@ -34,13 +34,14 @@ import com.oracle.graal.nodes.type.*;
  * inside the loop (i.e. was not live on entry to the loop) and is (potentially) used after the
  * loop.
  */
-public class ValueProxyNode extends FloatingNode implements Node.IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable, LIRLowerable {
+@NodeInfo(nameTemplate = "{p#type/s}Proxy")
+public class ProxyNode extends FloatingNode implements Node.IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable, LIRLowerable {
 
     @Input(notDataflow = true) private BeginNode proxyPoint;
     @Input private ValueNode value;
     private final PhiType type;
 
-    public ValueProxyNode(ValueNode value, BeginNode exit, PhiType type) {
+    public ProxyNode(ValueNode value, BeginNode exit, PhiType type) {
         super(type == PhiType.Value ? value.stamp() : type.stamp);
         this.type = type;
         assert exit != null;

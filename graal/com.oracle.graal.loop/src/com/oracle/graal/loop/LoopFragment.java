@@ -179,7 +179,7 @@ public abstract class LoopFragment {
                 });
             }
             nodes.mark(earlyExit);
-            for (ValueProxyNode proxy : earlyExit.proxies()) {
+            for (ProxyNode proxy : earlyExit.proxies()) {
                 nodes.mark(proxy);
             }
         }
@@ -271,9 +271,9 @@ public abstract class LoopFragment {
                 anchored.replaceFirstInput(earlyExit, merge);
             }
 
-            for (final ValueProxyNode vpn : earlyExit.proxies().snapshot()) {
+            for (final ProxyNode vpn : earlyExit.proxies().snapshot()) {
                 final ValueNode replaceWith;
-                ValueProxyNode newVpn = getDuplicatedNode(vpn);
+                ProxyNode newVpn = getDuplicatedNode(vpn);
                 if (newVpn != null) {
                     PhiNode phi = graph.add(vpn.type() == PhiType.Value ? vpn.stamp() == StampFactory.virtual() ? new PhiNode(vpn.stamp(), merge) : new PhiNode(vpn.kind(), merge) : new PhiNode(
                                     vpn.type(), merge));

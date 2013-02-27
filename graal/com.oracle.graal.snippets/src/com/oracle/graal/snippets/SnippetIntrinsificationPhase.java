@@ -364,7 +364,7 @@ public class SnippetIntrinsificationPhase extends Phase {
         if (newInstance instanceof ValueNode && (((ValueNode) newInstance).kind() != Kind.Object || ((ValueNode) newInstance).stamp() == StampFactory.forNodeIntrinsic())) {
             StructuredGraph graph = (StructuredGraph) newInstance.graph();
             for (CheckCastNode checkCastNode : newInstance.usages().filter(CheckCastNode.class).snapshot()) {
-                for (ValueProxyNode vpn : checkCastNode.usages().filter(ValueProxyNode.class).snapshot()) {
+                for (ProxyNode vpn : checkCastNode.usages().filter(ProxyNode.class).snapshot()) {
                     graph.replaceFloating(vpn, checkCastNode);
                 }
                 for (Node checkCastUsage : checkCastNode.usages().snapshot()) {

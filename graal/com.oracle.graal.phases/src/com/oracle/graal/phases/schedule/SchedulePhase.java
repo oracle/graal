@@ -584,7 +584,7 @@ public final class SchedulePhase extends Phase {
             if (usage instanceof VirtualState) {
                 // only fixed nodes can have VirtualState -> no need to schedule them
             } else {
-                if (i instanceof LoopExitNode && usage instanceof ValueProxyNode) {
+                if (i instanceof LoopExitNode && usage instanceof ProxyNode) {
                     // value proxies should be scheduled before the loopexit, not after
                 } else {
                     addToEarliestSorting(b, (ScheduledNode) usage, sortedInstructions, visited);
@@ -593,11 +593,11 @@ public final class SchedulePhase extends Phase {
         }
 
         if (i instanceof BeginNode) {
-            ArrayList<ValueProxyNode> proxies = (i instanceof LoopExitNode) ? new ArrayList<ValueProxyNode>() : null;
+            ArrayList<ProxyNode> proxies = (i instanceof LoopExitNode) ? new ArrayList<ProxyNode>() : null;
             for (ScheduledNode inBlock : blockToNodesMap.get(b)) {
                 if (!visited.isMarked(inBlock)) {
-                    if (inBlock instanceof ValueProxyNode) {
-                        proxies.add((ValueProxyNode) inBlock);
+                    if (inBlock instanceof ProxyNode) {
+                        proxies.add((ProxyNode) inBlock);
                     } else {
                         addToEarliestSorting(b, inBlock, sortedInstructions, visited);
                     }
