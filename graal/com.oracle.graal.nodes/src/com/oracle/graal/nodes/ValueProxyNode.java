@@ -34,14 +34,14 @@ import com.oracle.graal.nodes.type.*;
  * inside the loop (i.e. was not live on entry to the loop) and is (potentially) used after the
  * loop.
  */
-public class ValueProxyNode extends FloatingNode implements Node.IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable {
+public class ValueProxyNode extends FloatingNode implements Node.IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable, LIRLowerable {
 
     @Input(notDataflow = true) private BeginNode proxyPoint;
     @Input private ValueNode value;
     private final PhiType type;
 
     public ValueProxyNode(ValueNode value, BeginNode exit, PhiType type) {
-        super(value.stamp());
+        super(type == PhiType.Value ? value.stamp() : type.stamp);
         this.type = type;
         assert exit != null;
         this.proxyPoint = exit;
@@ -78,8 +78,13 @@ public class ValueProxyNode extends FloatingNode implements Node.IterableNodeTyp
     }
 
     @Override
+    public void generate(LIRGeneratorTool generator) {
+        assert type == PhiType.Memory;
+    }
+
+    @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
+        if (type == PhiType.Value && value.isConstant()) {
             return value;
         }
         return this;
@@ -87,9 +92,11 @@ public class ValueProxyNode extends FloatingNode implements Node.IterableNodeTyp
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(value);
-        if (state != null && state.getState() == EscapeState.Virtual) {
-            tool.replaceWithVirtual(state.getVirtualObject());
+        if (type == PhiType.Value) {
+            State state = tool.getObjectState(value);
+            if (state != null && state.getState() == EscapeState.Virtual) {
+                tool.replaceWithVirtual(state.getVirtualObject());
+            }
         }
     }
 }
