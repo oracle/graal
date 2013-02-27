@@ -198,7 +198,7 @@ public final class GraalOptions {
 
     // Intrinsification settings
     public static boolean IntrinsifyObjectClone              = ____;
-    public static boolean IntrinsifyArrayCopy                = true;
+    public static boolean IntrinsifyArrayCopy                = false;
     public static boolean IntrinsifyObjectMethods            = true;
     public static boolean IntrinsifySystemMethods            = true;
     public static boolean IntrinsifyClassMethods             = true;

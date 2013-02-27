@@ -615,7 +615,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                     last = writeBarrier;
                 } else {
                     WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(memoryWrite.object(), LocationNode.create(field, field.getKind(), field.offset(), graph), true));
-                    WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(memoryWrite.object(), null, memoryWrite.location()));
+                    WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(memoryWrite.object(), memoryWrite.value(), memoryWrite.location()));
                     graph.addBeforeFixed(memoryWrite, writeBarrierPre);
                     graph.addAfterFixed(memoryWrite, writeBarrierPost);
                     last = writeBarrierPost;

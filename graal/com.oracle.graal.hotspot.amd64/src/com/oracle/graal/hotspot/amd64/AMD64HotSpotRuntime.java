@@ -97,7 +97,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
        addRuntimeCall(WBPOSTCALL, config.wbPostCallStub,
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void),
-                /* arg0: object */ javaCallingConvention(Kind.Object));
+                /* arg0: object */ javaCallingConvention(Kind.Object, word));
 
         addRuntimeCall(MONITOREXIT, config.monitorExitStub,
                 /*        temps */ null,
