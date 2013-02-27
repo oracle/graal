@@ -112,7 +112,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         Method method = CompilableObjectImpl.class.getDeclaredMethod("executeHelper", ObjectCompiler.class, String.class);
         ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
+        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.NONE).apply(graph);
         new CanonicalizerPhase(runtime, new Assumptions(false)).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
 
