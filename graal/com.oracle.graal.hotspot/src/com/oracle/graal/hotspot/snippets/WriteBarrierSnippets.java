@@ -131,11 +131,11 @@ public class WriteBarrierSnippets implements SnippetsInterface {
 
         if (xorResult.notEqual(Word.zero())) {
             if (writtenValue.notEqual(Word.zero())) {
-                Word cardValue = base.readWord(displacement);
-                char cardByte = base.readChar(displacement);
-                trace(WriteBarrierSnippets.TRACE, "     G1 POST cardValue: 0x%016lx\n", cardValue);
+                // Word cardValue = base.readWord(displacement);
+                short cardByte = base.readShort(displacement);
+                trace(WriteBarrierSnippets.TRACE, "     G1 POST cardValue: 0x%016lx\n", Word.signed((int) cardByte));
 
-                if (cardByte != (char) 0) {
+                if (cardByte != 0) {
                     base.writeWord(displacement, Word.zero()); // smash zero into card
                     if (indexValue.notEqual(Word.zero())) {
                         Word nextIndex = indexValue.subtract(HotSpotSnippetUtils.wordSize());

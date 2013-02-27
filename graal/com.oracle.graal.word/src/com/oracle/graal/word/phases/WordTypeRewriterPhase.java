@@ -265,6 +265,8 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     private static ValueNode readOp(StructuredGraph graph, ValueNode base, ValueNode offset, Invoke invoke, Object locationIdentity) {
+        // IndexedLocationNode location = IndexedLocationNode.create(locationIdentity,
+// invoke.methodCallTarget().returnKind(), 0, offset, graph, false);
         Kind resultKind = invoke.node().kind() == Kind.Int ? invoke.methodCallTarget().returnKind() : invoke.node().kind();
         IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, resultKind, 0, offset, graph, false);
         ReadNode read = graph.add(new ReadNode(base, location, invoke.node().stamp()));
