@@ -22,30 +22,98 @@
  */
 package com.oracle.graal.snippets;
 
-import com.oracle.graal.graph.*;
+import java.util.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.graph.*;
+import com.oracle.graal.phases.graph.ReentrantNodeIterator.LoopInfo;
+import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
 /**
  * Removes frame states from {@linkplain StateSplit#hasSideEffect() non-side-effecting} nodes in a
  * snippet.
+ * 
+ * The frame states of side-effecting nodes are replaced with
+ * {@linkplain FrameState#INVALID_FRAMESTATE_BCI invalid} frame states. Loops that contain invalid
+ * frame states are also assigned an invalid frame state.
+ * 
+ * The invalid frame states ensure that no deoptimization to a snippet frame state will happen.
  */
 public class SnippetFrameStateCleanupPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (Node node : graph.getNodes().filterInterface(StateSplit.class)) {
-            StateSplit stateSplit = (StateSplit) node;
-            FrameState frameState = stateSplit.stateAfter();
-            if (!stateSplit.hasSideEffect()) {
+        ReentrantNodeIterator.apply(new SnippetFrameStateCleanupClosure(), graph.start(), new CleanupState(false), null);
+    }
+
+    private static class CleanupState {
+
+        public boolean containsFrameState;
+
+        public CleanupState(boolean containsFrameState) {
+            this.containsFrameState = containsFrameState;
+        }
+    }
+
+    /**
+     * A proper (loop-aware) iteration over the graph is used to detect loops that contain invalid
+     * frame states, so that they can be marked with an invalid frame state.
+     */
+    private static class SnippetFrameStateCleanupClosure extends NodeIteratorClosure<CleanupState> {
+
+        @Override
+        protected void processNode(FixedNode node, CleanupState currentState) {
+            if (node instanceof StateSplit) {
+                StateSplit stateSplit = (StateSplit) node;
+                FrameState frameState = stateSplit.stateAfter();
                 if (frameState != null) {
-                    stateSplit.setStateAfter(null);
+                    if (stateSplit.hasSideEffect()) {
+                        currentState.containsFrameState = true;
+                        stateSplit.setStateAfter(node.graph().add(new FrameState(FrameState.INVALID_FRAMESTATE_BCI)));
+                    } else {
+                        stateSplit.setStateAfter(null);
+                    }
                     if (frameState.usages().isEmpty()) {
                         GraphUtil.killWithUnusedFloatingInputs(frameState);
                     }
                 }
             }
         }
+
+        @Override
+        protected CleanupState merge(MergeNode merge, List<CleanupState> states) {
+            for (CleanupState state : states) {
+                if (state.containsFrameState) {
+                    return new CleanupState(true);
+                }
+            }
+            return new CleanupState(false);
+        }
+
+        @Override
+        protected CleanupState afterSplit(BeginNode node, CleanupState oldState) {
+            return new CleanupState(oldState.containsFrameState);
+        }
+
+        @Override
+        protected Map<LoopExitNode, CleanupState> processLoop(LoopBeginNode loop, CleanupState initialState) {
+            LoopInfo<CleanupState> info = ReentrantNodeIterator.processLoop(this, loop, new CleanupState(false));
+            boolean containsFrameState = false;
+            for (CleanupState state : info.endStates.values()) {
+                containsFrameState |= state.containsFrameState;
+            }
+            if (containsFrameState) {
+                loop.setStateAfter(loop.graph().add(new FrameState(FrameState.INVALID_FRAMESTATE_BCI)));
+            }
+            if (containsFrameState || initialState.containsFrameState) {
+                for (CleanupState state : info.exitStates.values()) {
+                    state.containsFrameState = true;
+                }
+            }
+            return info.exitStates;
+        }
+
     }
 }

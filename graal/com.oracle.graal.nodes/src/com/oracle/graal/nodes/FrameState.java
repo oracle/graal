@@ -68,6 +68,12 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
      */
     public static final int AFTER_EXCEPTION_BCI = -3;
 
+    /**
+     * This BCI should be used for frame states that cannot be the target of a deoptimization, like
+     * snippet frame states.
+     */
+    public static final int INVALID_FRAMESTATE_BCI = -5;
+
     @Input private FrameState outerFrameState;
 
     @Input private final NodeInputList<ValueNode> values;

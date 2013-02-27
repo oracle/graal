@@ -1122,7 +1122,7 @@ public class InliningUtil {
                 } else {
                     // only handle the outermost frame states
                     if (frameState.outerFrameState() == null) {
-                        assert frameState.method() == inlineGraph.method();
+                        assert frameState.bci == FrameState.INVALID_FRAMESTATE_BCI || frameState.method() == inlineGraph.method();
                         if (outerFrameState == null) {
                             outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invoke.node().kind());
                             outerFrameState.setDuringCall(true);
