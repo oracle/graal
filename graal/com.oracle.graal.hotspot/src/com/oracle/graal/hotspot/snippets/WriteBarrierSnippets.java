@@ -36,6 +36,7 @@ import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
+import com.oracle.graal.snippets.nodes.*;
 import com.oracle.graal.word.*;
 
 public class WriteBarrierSnippets implements SnippetsInterface {
@@ -50,7 +51,7 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         Pointer field = Word.fromArray(object, location);
         Pointer previousOop = field.readWord(0);
 
-        Word markingValue = thread.readWord(HotSpotSnippetUtils.g1SATBQueueMarkingOffset());
+        byte markingValue = thread.add(HotSpotSnippetUtils.g1SATBQueueMarkingOffset()).readByte(0);
 
         Word bufferAddress = thread.readWord(HotSpotSnippetUtils.g1SATBQueueBufferOffset());
         Word indexAddress = thread.add(HotSpotSnippetUtils.g1SATBQueueIndexOffset());
@@ -63,13 +64,13 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         trace(WriteBarrierSnippets.TRACE, "      G1 PRE QueueMarkingOffset: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.g1SATBQueueMarkingOffset()));
         trace(WriteBarrierSnippets.TRACE, "      G1 PRE QueueBufferOffset: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.g1SATBQueueBufferOffset()));
         trace(WriteBarrierSnippets.TRACE, "      G1 PRE QueueIndexOffset: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.g1SATBQueueIndexOffset()));
-        trace(WriteBarrierSnippets.TRACE, "      G1 PRE markingValue: 0x%016lx\n", markingValue);
+        trace(WriteBarrierSnippets.TRACE, "      G1 PRE markingValue: 0x%016lx\n", Word.signed((int) markingValue));
 
         trace(WriteBarrierSnippets.TRACE, "      G1 PRE bufferAddress: 0x%016lx\n", bufferAddress);
         trace(WriteBarrierSnippets.TRACE, "      G1 PRE indexAddress: 0x%016lx\n", indexAddress);
         trace(WriteBarrierSnippets.TRACE, "      G1 PRE indexValue: 0x%016lx\n", indexValue);// in
 
-        if (markingValue.notEqual(Word.zero())) {
+        if (markingValue != (byte) 0) {
             if (doLoad) {
                 previousOop = field.readWord(0);
                 trace(WriteBarrierSnippets.TRACE, "      G1 PRE Do Load previous OOP: 0x%16lx\n", previousOop);
@@ -147,6 +148,7 @@ public class WriteBarrierSnippets implements SnippetsInterface {
                         logAddress.writeWord(0, base.add(displacement));
                         indexAddress.writeWord(0, nextIndex);
                     } else {
+                        trace(WriteBarrierSnippets.TRACE, "     G1 POST Card Address: 0x%016lx\n", base.add(displacement));
                         WriteBarrierPostStubCall.call(object, base.add(displacement));
                     }
                 }
