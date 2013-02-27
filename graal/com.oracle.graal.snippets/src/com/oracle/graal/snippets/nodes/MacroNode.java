@@ -30,6 +30,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.common.*;
 
 public class MacroNode extends AbstractStateSplit implements Lowerable {
 
@@ -47,14 +48,32 @@ public class MacroNode extends AbstractStateSplit implements Lowerable {
         this.returnType = invoke.methodCallTarget().returnType();
     }
 
-    @Override
-    public void lower(LoweringTool tool) {
-        replaceWithInvoke();
+    public int getBci() {
+        return bci;
     }
 
-    public InvokeNode replaceWithInvoke() {
-        InvokeNode invoke = createInvoke();
+    public ResolvedJavaMethod getTargetMethod() {
+        return targetMethod;
+    }
 
+    @SuppressWarnings("unused")
+    protected StructuredGraph getSnippetGraph(LoweringTool tool) {
+        return null;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        StructuredGraph snippetGraph = getSnippetGraph(tool);
+
+        InvokeNode invoke = replaceWithInvoke();
+
+        if (snippetGraph != null) {
+            InliningUtil.inline(invoke, snippetGraph, false);
+        }
+    }
+
+    private InvokeNode replaceWithInvoke() {
+        InvokeNode invoke = createInvoke();
         ((StructuredGraph) graph()).replaceFixedWithFixed(this, invoke);
         return invoke;
     }

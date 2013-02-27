@@ -161,8 +161,8 @@ public class HotSpotSnippetUtils {
         return config().klassLayoutHelperOffset;
     }
 
-    public static int readLayoutHelper(Word klass) {
-        return klass.readInt(klassLayoutHelperOffset(), FINAL_LOCATION);
+    public static int readLayoutHelper(Word hub) {
+        return hub.readInt(klassLayoutHelperOffset(), FINAL_LOCATION);
     }
 
     @Fold
@@ -516,7 +516,6 @@ public class HotSpotSnippetUtils {
 
     @Fold
     public static int layoutHelperElementTypePrimitiveInPlace() {
-        System.out.println(String.format("%x", config().layoutHelperElementTypePrimitiveInPlace));
         return config().layoutHelperElementTypePrimitiveInPlace;
     }
 

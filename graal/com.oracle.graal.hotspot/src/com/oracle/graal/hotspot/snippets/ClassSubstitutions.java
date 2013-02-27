@@ -110,6 +110,6 @@ public class ClassSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static boolean isInstance(final Class<?> thisObj, Object obj) {
-        return !thisObj.isPrimitive() && ConditionalNode.materializeIsInstance(thisObj, obj);
+        return !isPrimitive(thisObj) && ConditionalNode.materializeIsInstance(thisObj, obj);
     }
 }

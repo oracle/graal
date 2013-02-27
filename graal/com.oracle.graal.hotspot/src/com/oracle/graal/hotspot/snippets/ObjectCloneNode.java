@@ -26,7 +26,6 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -34,7 +33,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
 import com.oracle.graal.snippets.nodes.*;
 
 public class ObjectCloneNode extends MacroNode implements VirtualizableAllocation, ArrayLengthProvider {
@@ -52,33 +50,30 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
         return arguments.get(0);
     }
 
-    private Method selectSnippetMethod(LoweringTool tool) {
-        ResolvedJavaType type = getObject().objectStamp().type();
-        if (type.isArray()) {
-            return ObjectCloneSnippets.arrayCloneMethod;
-        } else if (type.isAssignableFrom(tool.getRuntime().lookupJavaType(Object[].class))) {
-            // arrays are assignable to Object, Cloneable and Serializable
-            return ObjectCloneSnippets.genericCloneMethod;
-        } else {
-            return ObjectCloneSnippets.instanceCloneMethod;
-        }
-    }
-
     @Override
-    public void lower(LoweringTool tool) {
+    protected StructuredGraph getSnippetGraph(LoweringTool tool) {
         if (!GraalOptions.IntrinsifyObjectClone) {
-            super.lower(tool);
-            return;
-        }
-        ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(selectSnippetMethod(tool));
-        if (Debug.isLogEnabled()) {
-            Debug.log("%s > Intrinsify (%s)", Debug.currentScope(), snippetMethod.getSignature().getParameterType(0, snippetMethod.getDeclaringClass()).getComponentType());
+            return null;
         }
 
+        ResolvedJavaType type = getObject().objectStamp().type();
+        Method method;
+        /*
+         * The first condition tests if the parameter is an array, the second condition tests if the
+         * parameter can be an array. Otherwise, the parameter is known to be a non-array object.
+         */
+        if (type.isArray()) {
+            method = ObjectCloneSnippets.arrayCloneMethod;
+        } else if (type == null || type.isAssignableFrom(tool.getRuntime().lookupJavaType(Object[].class))) {
+            method = ObjectCloneSnippets.genericCloneMethod;
+        } else {
+            method = ObjectCloneSnippets.instanceCloneMethod;
+        }
+        ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(method);
         StructuredGraph snippetGraph = (StructuredGraph) snippetMethod.getCompilerStorage().get(Graph.class);
+
         assert snippetGraph != null : "ObjectCloneSnippets should be installed";
-        InvokeNode invoke = replaceWithInvoke();
-        InliningUtil.inline(invoke, snippetGraph, false);
+        return snippetGraph;
     }
 
     private static boolean isCloneableType(ResolvedJavaType type, MetaAccessProvider metaAccess) {

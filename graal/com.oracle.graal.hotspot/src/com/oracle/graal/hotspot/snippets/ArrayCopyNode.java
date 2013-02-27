@@ -30,6 +30,7 @@ import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.snippets.nodes.*;
 
@@ -59,21 +60,19 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         return arguments.get(4);
     }
 
-    private ResolvedJavaMethod selectSnippet(LoweringTool tool) {
+    private StructuredGraph selectSnippet(LoweringTool tool) {
         ResolvedJavaType srcType = getSource().objectStamp().type();
         ResolvedJavaType destType = getDestination().objectStamp().type();
 
-        if (srcType != null && srcType.isArray() && destType != null && destType.isArray()) {
-            Kind componentKind = srcType.getComponentType().getKind();
-            if (componentKind != Kind.Object) {
-                if (srcType.getComponentType() == destType.getComponentType()) {
-                    return tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(componentKind));
-                }
-            } else if (destType.getComponentType().isAssignableFrom(srcType.getComponentType()) && getDestination().objectStamp().isExactType()) {
-                return tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(Kind.Object));
-            }
+        if (srcType == null || !srcType.isArray() || destType == null || !destType.isArray()) {
+            return null;
         }
-        return null;
+        if (!destType.getComponentType().isAssignableFrom(srcType.getComponentType()) || !getDestination().objectStamp().isExactType()) {
+            return null;
+        }
+        Kind componentKind = srcType.getComponentType().getKind();
+        ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(componentKind));
+        return (StructuredGraph) snippetMethod.getCompilerStorage().get(Graph.class);
     }
 
     private static void unrollFixedLengthLoop(StructuredGraph snippetGraph, int length, LoweringTool tool) {
@@ -88,27 +87,43 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         new CanonicalizerPhase(tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
     }
 
-    @Override
-    public void lower(LoweringTool tool) {
-        ResolvedJavaMethod snippetMethod = selectSnippet(tool);
-        if (snippetMethod == null) {
-            snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.increaseGenericCallCounterMethod);
-            // we will call the generic method. the generic snippet will only increase the counter,
-            // not call the actual method. therefore we create a second invoke here.
-            ((StructuredGraph) graph()).addAfterFixed(this, createInvoke());
+    private static void replaceSnippetInvokes(StructuredGraph snippetGraph, ResolvedJavaMethod targetMethod, int bci) {
+        for (InvokeNode invoke : snippetGraph.getNodes(InvokeNode.class)) {
+            if (invoke.methodCallTarget().targetMethod() != targetMethod) {
+                throw new GraalInternalError("unexpected invoke in arraycopy snippet");
+            }
+            if (invoke.stateAfter().bci == FrameState.INVALID_FRAMESTATE_BCI) {
+                InvokeNode newInvoke = snippetGraph.add(new InvokeNode(invoke.methodCallTarget(), bci));
+                newInvoke.setStateAfter(snippetGraph.add(new FrameState(FrameState.AFTER_BCI)));
+                snippetGraph.replaceFixedWithFixed(invoke, newInvoke);
+            } else {
+                assert invoke.stateAfter().bci == FrameState.AFTER_BCI : invoke;
+            }
         }
-        if (Debug.isLogEnabled()) {
-            Debug.log("%s > Intrinsify (%s)", Debug.currentScope(), snippetMethod.getSignature().getParameterType(0, snippetMethod.getDeclaringClass()).getComponentType());
+    }
+
+    @Override
+    protected StructuredGraph getSnippetGraph(LoweringTool tool) {
+        if (!GraalOptions.IntrinsifyArrayCopy) {
+            return null;
         }
 
-        StructuredGraph snippetGraph = (StructuredGraph) snippetMethod.getCompilerStorage().get(Graph.class);
-        assert snippetGraph != null : "ArrayCopySnippets should be installed";
-        if (getLength().isConstant()) {
-            snippetGraph = snippetGraph.copy();
-            unrollFixedLengthLoop(snippetGraph, getLength().asConstant().asInt(), tool);
+        StructuredGraph snippetGraph = selectSnippet(tool);
+        if (snippetGraph == null) {
+            ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.genericArraycopySnippet);
+            snippetGraph = ((StructuredGraph) snippetMethod.getCompilerStorage().get(Graph.class)).copy();
+            assert snippetGraph != null : "ArrayCopySnippets should be installed";
+
+            replaceSnippetInvokes(snippetGraph, getTargetMethod(), getBci());
+        } else {
+            assert snippetGraph != null : "ArrayCopySnippets should be installed";
+
+            if (getLength().isConstant()) {
+                snippetGraph = snippetGraph.copy();
+                unrollFixedLengthLoop(snippetGraph, getLength().asConstant().asInt(), tool);
+            }
         }
-        InvokeNode invoke = replaceWithInvoke();
-        InliningUtil.inline(invoke, snippetGraph, false);
+        return snippetGraph;
     }
 
     private static boolean checkBounds(int position, int length, VirtualObjectNode virtualObject) {
