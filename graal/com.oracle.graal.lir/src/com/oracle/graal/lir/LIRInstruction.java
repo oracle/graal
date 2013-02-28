@@ -181,6 +181,11 @@ public abstract class LIRInstruction {
         ILLEGAL,
 
         /**
+         * The value can be {@link AllocatableValue#UNUSED}.
+         */
+        UNUSED,
+
+        /**
          * The register allocator should try to assign a certain register to improve code quality.
          * Use {@link LIRInstruction#forEachRegisterHint} to access the register hints.
          */

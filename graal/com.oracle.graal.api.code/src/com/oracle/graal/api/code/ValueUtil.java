@@ -58,6 +58,16 @@ public final class ValueUtil {
         return (Constant) value;
     }
 
+    public static boolean isAllocatableValue(Value value) {
+        assert value != null;
+        return value instanceof AllocatableValue;
+    }
+
+    public static AllocatableValue asAllocatableValue(Value value) {
+        assert value != null;
+        return (AllocatableValue) value;
+    }
+
     public static boolean isStackSlot(Value value) {
         assert value != null;
         return value instanceof StackSlot;

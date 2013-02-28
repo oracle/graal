@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,39 +25,26 @@ package com.oracle.graal.api.code;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Denotes a register that stores a value of a fixed kind. There is exactly one (canonical) instance
- * of {@link RegisterValue} for each ({@link Register}, {@link Kind}) pair. Use
- * {@link Register#asValue(Kind)} to retrieve the canonical {@link RegisterValue} instance for a
- * given (register,kind) pair.
+ * Common base class for values that can be manipulated by the register allocator.
  */
-public final class RegisterValue extends AllocatableValue {
+public abstract class AllocatableValue extends Value {
 
-    private static final long serialVersionUID = 7999341472196897163L;
-
-    private final Register reg;
+    private static final long serialVersionUID = 153019506717492133L;
 
     /**
-     * Should only be called from {@link Register#Register} to ensure canonicalization.
+     * Marker to tell the register allocator that no storage location needs to be allocated for this
+     * value.
      */
-    protected RegisterValue(Kind kind, Register register) {
+    @SuppressWarnings("serial") public static final AllocatableValue UNUSED = new AllocatableValue(Kind.Illegal) {
+
+        @Override
+        public String toString() {
+            return "-";
+        }
+    };
+
+    public AllocatableValue(Kind kind) {
         super(kind);
-        this.reg = register;
     }
 
-    @Override
-    public int hashCode() {
-        return (getRegister().number << 4) ^ getKind().ordinal();
-    }
-
-    @Override
-    public String toString() {
-        return getRegister().name + getKindSuffix();
-    }
-
-    /**
-     * @return the register that contains the value
-     */
-    public Register getRegister() {
-        return reg;
-    }
 }

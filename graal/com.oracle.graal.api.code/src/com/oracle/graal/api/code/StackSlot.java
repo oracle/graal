@@ -30,7 +30,7 @@ import com.oracle.graal.api.meta.*;
  * Represents a compiler spill slot or an outgoing stack-based argument in a method's frame or an
  * incoming stack-based argument in a method's {@linkplain #isInCallerFrame() caller's frame}.
  */
-public final class StackSlot extends Value {
+public final class StackSlot extends AllocatableValue {
 
     private static final long serialVersionUID = -7725071921307318433L;
 

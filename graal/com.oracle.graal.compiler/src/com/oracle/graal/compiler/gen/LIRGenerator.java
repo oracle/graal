@@ -193,6 +193,14 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     @Override
     public abstract Variable emitMove(Value input);
 
+    public AllocatableValue asAllocatable(Value value) {
+        if (isAllocatableValue(value)) {
+            return asAllocatableValue(value);
+        } else {
+            return emitMove(value);
+        }
+    }
+
     public Variable load(Value value) {
         if (!isVariable(value)) {
             return emitMove(value);
