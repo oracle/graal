@@ -31,6 +31,7 @@ public final class WriteBarrierPre extends WriteBarrier implements Lowerable {
     @Input private ValueNode object;
     @Input private LocationNode location;
     private boolean doLoad;
+    private String name;
 
     public ValueNode object() {
         return object;
@@ -52,5 +53,13 @@ public final class WriteBarrierPre extends WriteBarrier implements Lowerable {
 
     public void lower(LoweringTool generator) {
         generator.getRuntime().lower(this, generator);
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 }
