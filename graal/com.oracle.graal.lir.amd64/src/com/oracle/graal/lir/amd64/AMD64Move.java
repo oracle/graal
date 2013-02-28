@@ -122,23 +122,38 @@ public class AMD64Move {
         }
     }
 
-    public static class LoadOp extends AMD64LIRInstruction {
+    public abstract static class MemOp extends AMD64LIRInstruction {
 
-        @Def({REG}) protected Value result;
         @Use({ADDR}) protected AMD64Address address;
         @State protected LIRFrameState state;
 
-        public LoadOp(Value result, AMD64Address address, LIRFrameState state) {
-            this.result = result;
+        public MemOp(AMD64Address address, LIRFrameState state) {
             this.address = address;
             this.state = state;
         }
+
+        protected abstract void emitMemAccess(AMD64MacroAssembler masm);
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             if (state != null) {
                 tasm.recordImplicitException(masm.codeBuffer.position(), state);
             }
+            emitMemAccess(masm);
+        }
+    }
+
+    public static class LoadOp extends MemOp {
+
+        @Def({REG}) protected Value result;
+
+        public LoadOp(Value result, AMD64Address address, LIRFrameState state) {
+            super(address, state);
+            this.result = result;
+        }
+
+        @Override
+        public void emitMemAccess(AMD64MacroAssembler masm) {
             switch (address.getKind()) {
                 case Boolean:
                 case Byte:
@@ -171,24 +186,17 @@ public class AMD64Move {
         }
     }
 
-    public static class StoreOp extends AMD64LIRInstruction {
+    public static class StoreOp extends MemOp {
 
-        @Use({ADDR}) protected AMD64Address address;
         @Use({REG}) protected Value input;
-        @State protected LIRFrameState state;
 
         public StoreOp(AMD64Address address, Value input, LIRFrameState state) {
-            this.address = address;
+            super(address, state);
             this.input = input;
-            this.state = state;
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            if (state != null) {
-                tasm.recordImplicitException(masm.codeBuffer.position(), state);
-            }
-
+        public void emitMemAccess(AMD64MacroAssembler masm) {
             assert isRegister(input);
             switch (address.getKind()) {
                 case Boolean:
@@ -220,24 +228,17 @@ public class AMD64Move {
         }
     }
 
-    public static class StoreConstantOp extends AMD64LIRInstruction {
+    public static class StoreConstantOp extends MemOp {
 
-        @Use({ADDR}) protected AMD64Address address;
         @Use({CONST}) protected Constant input;
-        @State protected LIRFrameState state;
 
         public StoreConstantOp(AMD64Address address, Constant input, LIRFrameState state) {
-            this.address = address;
+            super(address, state);
             this.input = input;
-            this.state = state;
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            if (state != null) {
-                tasm.recordImplicitException(masm.codeBuffer.position(), state);
-            }
-
+        public void emitMemAccess(AMD64MacroAssembler masm) {
             switch (address.getKind()) {
                 case Boolean:
                 case Byte:
