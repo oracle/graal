@@ -715,7 +715,7 @@ public abstract class Word implements Signed, Unsigned, Pointer {
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeShort(WordBase offset, Short val, Object locationIdentity) {
+    public void writeShort(WordBase offset, short val, Object locationIdentity) {
         unsafe.putShort(add((Word) offset).unbox(), val);
     }
 

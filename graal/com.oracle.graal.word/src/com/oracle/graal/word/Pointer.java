@@ -291,7 +291,7 @@ public interface Pointer extends Unsigned {
      * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void writeShort(WordBase offset, Short val, Object locationIdentity);
+    void writeShort(WordBase offset, short val, Object locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
