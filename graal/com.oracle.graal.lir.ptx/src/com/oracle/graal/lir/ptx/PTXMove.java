@@ -132,14 +132,25 @@ public class PTXMove {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            load(tasm, masm, result, address, state);
+            Register a = asRegister(address.getBase());
+            long immOff = address.getDisplacement();
+            switch (address.getKind()) {
+                case Int:
+                    masm.ld_global_s32(asRegister(result), a, immOff);
+                    break;
+                case Object:
+                    masm.ld_global_u32(asRegister(result), a, immOff);
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
         }
     }
 
     public static class StoreOp extends PTXLIRInstruction {
 
         @Use({ADDR}) protected PTXAddress address;
-        @Use({REG, CONST}) protected Value input;
+        @Use({REG}) protected Value input;
         @State protected LIRFrameState state;
 
         public StoreOp(PTXAddress address, Value input, LIRFrameState state) {
@@ -150,7 +161,17 @@ public class PTXMove {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            store(tasm, masm, address, input, state);
+            Register a = asRegister(address.getBase());
+            long immOff = address.getDisplacement();
+
+            assert isRegister(input);
+            switch (address.getKind()) {
+                case Int:
+                    masm.st_global_s32(a, immOff, asRegister(input));
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
         }
     }
 
@@ -251,46 +272,6 @@ public class PTXMove {
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    @SuppressWarnings("unused")
-    public static void load(TargetMethodAssembler tasm, PTXAssembler masm, Value result, PTXAddress loadAddr, LIRFrameState info) {
-        Register a = asRegister(loadAddr.getBase());
-        long immOff = loadAddr.getDisplacement();
-        switch (loadAddr.getKind()) {
-            case Int:
-                masm.ld_global_s32(asRegister(result), a, immOff);
-                break;
-            case Object:
-                masm.ld_global_u32(asRegister(result), a, immOff);
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    @SuppressWarnings("unused")
-    public static void store(TargetMethodAssembler tasm, PTXAssembler masm, PTXAddress storeAddr, Value input, LIRFrameState info) {
-        Register a = asRegister(storeAddr.getBase());
-        long immOff = storeAddr.getDisplacement();
-        if (isRegister(input)) {
-            switch (storeAddr.getKind()) {
-                case Int:
-                    masm.st_global_s32(a, immOff, asRegister(input));
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
-        } else if (isConstant(input)) {
-            Constant c = (Constant) input;
-            switch (storeAddr.getKind()) {
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
-
-        } else {
-            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
