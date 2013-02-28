@@ -792,23 +792,23 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitBitCount(Variable result, Value value) {
         if (value.getKind().getStackKind() == Kind.Int) {
-            append(new AMD64BitManipulationOp(IPOPCNT, result, value));
+            append(new AMD64BitManipulationOp(IPOPCNT, result, asAllocatable(value)));
         } else {
-            append(new AMD64BitManipulationOp(LPOPCNT, result, value));
+            append(new AMD64BitManipulationOp(LPOPCNT, result, asAllocatable(value)));
         }
     }
 
     @Override
     public void emitBitScanForward(Variable result, Value value) {
-        append(new AMD64BitManipulationOp(BSF, result, value));
+        append(new AMD64BitManipulationOp(BSF, result, asAllocatable(value)));
     }
 
     @Override
     public void emitBitScanReverse(Variable result, Value value) {
         if (value.getKind().getStackKind() == Kind.Int) {
-            append(new AMD64BitManipulationOp(IBSR, result, value));
+            append(new AMD64BitManipulationOp(IBSR, result, asAllocatable(value)));
         } else {
-            append(new AMD64BitManipulationOp(LBSR, result, value));
+            append(new AMD64BitManipulationOp(LBSR, result, asAllocatable(value)));
         }
     }
 

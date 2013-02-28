@@ -24,7 +24,6 @@ package com.oracle.graal.lir.amd64;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
@@ -35,10 +34,10 @@ public class AMD64BitManipulationOp extends AMD64LIRInstruction {
     }
 
     @Opcode private final IntrinsicOpcode opcode;
-    @Def protected Value result;
-    @Use({OperandFlag.REG, OperandFlag.ADDR}) protected Value input;
+    @Def protected AllocatableValue result;
+    @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue input;
 
-    public AMD64BitManipulationOp(IntrinsicOpcode opcode, Value result, Value input) {
+    public AMD64BitManipulationOp(IntrinsicOpcode opcode, AllocatableValue result, AllocatableValue input) {
         this.opcode = opcode;
         this.result = result;
         this.input = input;
@@ -47,8 +46,8 @@ public class AMD64BitManipulationOp extends AMD64LIRInstruction {
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         Register dst = ValueUtil.asIntReg(result);
-        if (ValueUtil.isAddress(input)) {
-            AMD64Address src = (AMD64Address) ValueUtil.asAddress(input);
+        if (ValueUtil.isRegister(input)) {
+            Register src = ValueUtil.asRegister(input);
             switch (opcode) {
                 case IPOPCNT:
                     masm.popcntl(dst, src);
@@ -67,7 +66,7 @@ public class AMD64BitManipulationOp extends AMD64LIRInstruction {
                     break;
             }
         } else {
-            Register src = ValueUtil.asRegister(input);
+            AMD64Address src = (AMD64Address) tasm.asAddress(input);
             switch (opcode) {
                 case IPOPCNT:
                     masm.popcntl(dst, src);
