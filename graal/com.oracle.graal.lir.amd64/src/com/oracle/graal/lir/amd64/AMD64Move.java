@@ -145,9 +145,9 @@ public class AMD64Move {
 
     public static class LoadOp extends MemOp {
 
-        @Def({REG}) protected Value result;
+        @Def({REG}) protected AllocatableValue result;
 
-        public LoadOp(Value result, AMD64Address address, LIRFrameState state) {
+        public LoadOp(AllocatableValue result, AMD64Address address, LIRFrameState state) {
             super(address, state);
             this.result = result;
         }
@@ -188,9 +188,9 @@ public class AMD64Move {
 
     public static class StoreOp extends MemOp {
 
-        @Use({REG}) protected Value input;
+        @Use({REG}) protected AllocatableValue input;
 
-        public StoreOp(AMD64Address address, Value input, LIRFrameState state) {
+        public StoreOp(AMD64Address address, AllocatableValue input, LIRFrameState state) {
             super(address, state);
             this.input = input;
         }
@@ -278,10 +278,10 @@ public class AMD64Move {
 
     public static class LeaOp extends AMD64LIRInstruction {
 
-        @Def({REG}) protected Value result;
+        @Def({REG}) protected AllocatableValue result;
         @Use({ADDR, UNINITIALIZED}) protected AMD64Address address;
 
-        public LeaOp(Value result, AMD64Address address) {
+        public LeaOp(AllocatableValue result, AMD64Address address) {
             this.result = result;
             this.address = address;
         }
@@ -294,10 +294,10 @@ public class AMD64Move {
 
     public static class StackLeaOp extends AMD64LIRInstruction {
 
-        @Def({REG}) protected Value result;
+        @Def({REG}) protected AllocatableValue result;
         @Use({STACK, UNINITIALIZED}) protected StackSlot slot;
 
-        public StackLeaOp(Value result, StackSlot slot) {
+        public StackLeaOp(AllocatableValue result, StackSlot slot) {
             this.result = result;
             this.slot = slot;
         }
@@ -324,7 +324,7 @@ public class AMD64Move {
 
     public static class NullCheckOp extends AMD64LIRInstruction {
 
-        @Use protected Value input;
+        @Use protected AllocatableValue input;
         @State protected LIRFrameState state;
 
         public NullCheckOp(Variable input, LIRFrameState state) {
@@ -342,12 +342,12 @@ public class AMD64Move {
     @Opcode("CAS")
     public static class CompareAndSwapOp extends AMD64LIRInstruction {
 
-        @Def protected Value result;
+        @Def protected AllocatableValue result;
         @Use({ADDR}) protected AMD64Address address;
-        @Use protected Value cmpValue;
-        @Use protected Value newValue;
+        @Use protected AllocatableValue cmpValue;
+        @Use protected AllocatableValue newValue;
 
-        public CompareAndSwapOp(Value result, AMD64Address address, Value cmpValue, Value newValue) {
+        public CompareAndSwapOp(AllocatableValue result, AMD64Address address, AllocatableValue cmpValue, AllocatableValue newValue) {
             this.result = result;
             this.address = address;
             this.cmpValue = cmpValue;
@@ -550,7 +550,7 @@ public class AMD64Move {
         }
     }
 
-    protected static void compareAndSwap(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, AMD64Address address, Value cmpValue, Value newValue) {
+    protected static void compareAndSwap(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AllocatableValue result, AMD64Address address, AllocatableValue cmpValue, AllocatableValue newValue) {
         assert asRegister(cmpValue) == AMD64.rax && asRegister(result) == AMD64.rax;
 
         if (tasm.target.isMP) {

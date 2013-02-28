@@ -120,11 +120,11 @@ public class PTXMove {
 
     public static class LoadOp extends PTXLIRInstruction {
 
-        @Def({REG}) protected Value result;
+        @Def({REG}) protected AllocatableValue result;
         @Use({ADDR}) protected PTXAddress address;
         @State protected LIRFrameState state;
 
-        public LoadOp(Value result, PTXAddress address, LIRFrameState state) {
+        public LoadOp(AllocatableValue result, PTXAddress address, LIRFrameState state) {
             this.result = result;
             this.address = address;
             this.state = state;
@@ -150,10 +150,10 @@ public class PTXMove {
     public static class StoreOp extends PTXLIRInstruction {
 
         @Use({ADDR}) protected PTXAddress address;
-        @Use({REG}) protected Value input;
+        @Use({REG}) protected AllocatableValue input;
         @State protected LIRFrameState state;
 
-        public StoreOp(PTXAddress address, Value input, LIRFrameState state) {
+        public StoreOp(PTXAddress address, AllocatableValue input, LIRFrameState state) {
             this.address = address;
             this.input = input;
             this.state = state;
@@ -177,10 +177,10 @@ public class PTXMove {
 
     public static class LeaOp extends PTXLIRInstruction {
 
-        @Def({REG}) protected Value result;
+        @Def({REG}) protected AllocatableValue result;
         @Use({ADDR, UNINITIALIZED}) protected PTXAddress address;
 
-        public LeaOp(Value result, PTXAddress address) {
+        public LeaOp(AllocatableValue result, PTXAddress address) {
             this.result = result;
             this.address = address;
         }
@@ -193,10 +193,10 @@ public class PTXMove {
 
     public static class StackLeaOp extends PTXLIRInstruction {
 
-        @Def({REG}) protected Value result;
+        @Def({REG}) protected AllocatableValue result;
         @Use({STACK, UNINITIALIZED}) protected StackSlot slot;
 
-        public StackLeaOp(Value result, StackSlot slot) {
+        public StackLeaOp(AllocatableValue result, StackSlot slot) {
             this.result = result;
             this.slot = slot;
         }
@@ -210,12 +210,12 @@ public class PTXMove {
     @Opcode("CAS")
     public static class CompareAndSwapOp extends PTXLIRInstruction {
 
-        @Def protected Value result;
+        @Def protected AllocatableValue result;
         @Use({ADDR}) protected PTXAddress address;
-        @Use protected Value cmpValue;
-        @Use protected Value newValue;
+        @Use protected AllocatableValue cmpValue;
+        @Use protected AllocatableValue newValue;
 
-        public CompareAndSwapOp(Value result, PTXAddress address, Value cmpValue, Value newValue) {
+        public CompareAndSwapOp(AllocatableValue result, PTXAddress address, AllocatableValue cmpValue, AllocatableValue newValue) {
             this.result = result;
             this.address = address;
             this.cmpValue = cmpValue;
@@ -276,7 +276,7 @@ public class PTXMove {
     }
 
     @SuppressWarnings("unused")
-    protected static void compareAndSwap(TargetMethodAssembler tasm, PTXAssembler masm, Value result, PTXAddress address, Value cmpValue, Value newValue) {
+    protected static void compareAndSwap(TargetMethodAssembler tasm, PTXAssembler masm, AllocatableValue result, PTXAddress address, AllocatableValue cmpValue, AllocatableValue newValue) {
         throw new InternalError("NYI");
     }
 }
