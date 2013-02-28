@@ -42,11 +42,11 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivRemOp;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Reg;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Stack;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op2Reg;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op2Stack;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.ShiftOp;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary1Op;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary2Op;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
 import com.oracle.graal.lir.amd64.AMD64Call.IndirectCallOp;
@@ -354,14 +354,15 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitNegate(Value input) {
+    public Variable emitNegate(Value inputVal) {
+        AllocatableValue input = asAllocatable(inputVal);
         Variable result = newVariable(input.getKind());
         switch (input.getKind()) {
             case Int:
-                append(new Op1Stack(INEG, result, input));
+                append(new Unary1Op(INEG, result, input));
                 break;
             case Long:
-                append(new Op1Stack(LNEG, result, input));
+                append(new Unary1Op(LNEG, result, input));
                 break;
             case Float:
                 append(new Op2Reg(FXOR, result, input, Constant.forFloat(Float.intBitsToFloat(0x80000000))));
@@ -676,61 +677,61 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(opcode.to);
         switch (opcode) {
             case I2L:
-                append(new Op1Reg(I2L, result, input));
+                append(new Unary2Op(I2L, result, input));
                 break;
             case L2I:
-                append(new Op1Stack(L2I, result, input));
+                append(new Unary1Op(L2I, result, input));
                 break;
             case I2B:
-                append(new Op1Stack(I2B, result, input));
+                append(new Unary2Op(I2B, result, input));
                 break;
             case I2C:
-                append(new Op1Stack(I2C, result, input));
+                append(new Unary1Op(I2C, result, input));
                 break;
             case I2S:
-                append(new Op1Stack(I2S, result, input));
+                append(new Unary2Op(I2S, result, input));
                 break;
             case F2D:
-                append(new Op1Reg(F2D, result, input));
+                append(new Unary2Op(F2D, result, input));
                 break;
             case D2F:
-                append(new Op1Reg(D2F, result, input));
+                append(new Unary2Op(D2F, result, input));
                 break;
             case I2F:
-                append(new Op1Reg(I2F, result, input));
+                append(new Unary2Op(I2F, result, input));
                 break;
             case I2D:
-                append(new Op1Reg(I2D, result, input));
+                append(new Unary2Op(I2D, result, input));
                 break;
             case F2I:
-                append(new Op1Reg(F2I, result, input));
+                append(new Unary2Op(F2I, result, input));
                 break;
             case D2I:
-                append(new Op1Reg(D2I, result, input));
+                append(new Unary2Op(D2I, result, input));
                 break;
             case L2F:
-                append(new Op1Reg(L2F, result, input));
+                append(new Unary2Op(L2F, result, input));
                 break;
             case L2D:
-                append(new Op1Reg(L2D, result, input));
+                append(new Unary2Op(L2D, result, input));
                 break;
             case F2L:
-                append(new Op1Reg(F2L, result, input));
+                append(new Unary2Op(F2L, result, input));
                 break;
             case D2L:
-                append(new Op1Reg(D2L, result, input));
+                append(new Unary2Op(D2L, result, input));
                 break;
             case MOV_I2F:
-                append(new Op1Reg(MOV_I2F, result, input));
+                append(new Unary2Op(MOV_I2F, result, input));
                 break;
             case MOV_L2D:
-                append(new Op1Reg(MOV_L2D, result, input));
+                append(new Unary2Op(MOV_L2D, result, input));
                 break;
             case MOV_F2I:
-                append(new Op1Reg(MOV_F2I, result, input));
+                append(new Unary2Op(MOV_F2I, result, input));
                 break;
             case MOV_D2L:
-                append(new Op1Reg(MOV_D2L, result, input));
+                append(new Unary2Op(MOV_D2L, result, input));
                 break;
             case UNSIGNED_I2L:
                 // Instructions that move or generate 32-bit register values also set the upper 32

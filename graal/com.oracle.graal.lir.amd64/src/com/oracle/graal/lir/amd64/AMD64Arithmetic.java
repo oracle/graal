@@ -26,10 +26,11 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.amd64.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -48,12 +49,12 @@ public enum AMD64Arithmetic {
     MOV_I2F, MOV_L2D, MOV_F2I, MOV_D2L;
 
 
-    public static class Op1Reg extends AMD64LIRInstruction {
+    public static class Unary2Op extends AMD64LIRInstruction {
         @Opcode private final AMD64Arithmetic opcode;
-        @Def({REG, HINT}) protected Value result;
-        @Use({REG}) protected Value x;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue x;
 
-        public Op1Reg(AMD64Arithmetic opcode, Value result, Value x) {
+        public Unary2Op(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -65,12 +66,12 @@ public enum AMD64Arithmetic {
         }
     }
 
-    public static class Op1Stack extends AMD64LIRInstruction {
+    public static class Unary1Op extends AMD64LIRInstruction {
         @Opcode private final AMD64Arithmetic opcode;
-        @Def({REG, HINT}) protected Value result;
-        @Use({REG, STACK, CONST}) protected Value x;
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue x;
 
-        public Op1Stack(AMD64Arithmetic opcode, Value result, Value x) {
+        public Unary1Op(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -264,14 +265,12 @@ public enum AMD64Arithmetic {
 
 
     @SuppressWarnings("unused")
-    protected static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Arithmetic opcode, Value result) {
+    protected static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Arithmetic opcode, AllocatableValue result) {
         switch (opcode) {
             case INEG: masm.negl(asIntReg(result)); break;
             case LNEG: masm.negq(asLongReg(result)); break;
             case L2I:  masm.andl(asIntReg(result), 0xFFFFFFFF); break;
-            case I2B:  masm.signExtendByte(asIntReg(result)); break;
             case I2C:  masm.andl(asIntReg(result), 0xFFFF); break;
-            case I2S:  masm.signExtendShort(asIntReg(result)); break;
             default:   throw GraalInternalError.shouldNotReachHere();
         }
     }
@@ -286,9 +285,9 @@ public enum AMD64Arithmetic {
                 case IMUL: masm.imull(asIntReg(dst), asIntReg(src)); break;
                 case IOR:  masm.orl(asIntReg(dst),   asIntReg(src)); break;
                 case IXOR: masm.xorl(asIntReg(dst),  asIntReg(src)); break;
-                case ISHL: masm.shll(asIntReg(dst)); break;
-                case ISHR: masm.sarl(asIntReg(dst)); break;
-                case IUSHR:masm.shrl(asIntReg(dst)); break;
+                case ISHL: assert asIntReg(src) == AMD64.rcx; masm.shll(asIntReg(dst)); break;
+                case ISHR: assert asIntReg(src) == AMD64.rcx; masm.sarl(asIntReg(dst)); break;
+                case IUSHR: assert asIntReg(src) == AMD64.rcx; masm.shrl(asIntReg(dst)); break;
 
                 case LADD: masm.addq(asLongReg(dst),  asLongReg(src)); break;
                 case LSUB: masm.subq(asLongReg(dst),  asLongReg(src)); break;
@@ -296,9 +295,9 @@ public enum AMD64Arithmetic {
                 case LAND: masm.andq(asLongReg(dst),  asLongReg(src)); break;
                 case LOR:  masm.orq(asLongReg(dst),   asLongReg(src)); break;
                 case LXOR: masm.xorq(asLongReg(dst),  asLongReg(src)); break;
-                case LSHL: masm.shlq(asLongReg(dst)); break;
-                case LSHR: masm.sarq(asLongReg(dst)); break;
-                case LUSHR:masm.shrq(asLongReg(dst)); break;
+                case LSHL: assert asIntReg(src) == AMD64.rcx; masm.shlq(asLongReg(dst)); break;
+                case LSHR: assert asIntReg(src) == AMD64.rcx; masm.sarq(asLongReg(dst)); break;
+                case LUSHR: assert asIntReg(src) == AMD64.rcx; masm.shrq(asLongReg(dst)); break;
 
                 case FADD: masm.addss(asFloatReg(dst), asFloatReg(src)); break;
                 case FSUB: masm.subss(asFloatReg(dst), asFloatReg(src)); break;
@@ -316,6 +315,8 @@ public enum AMD64Arithmetic {
                 case DOR:  masm.orpd(asDoubleReg(dst),  asDoubleReg(src)); break;
                 case DXOR: masm.xorpd(asDoubleReg(dst), asDoubleReg(src)); break;
 
+                case I2B: masm.movsxb(asIntReg(dst), asIntReg(src)); break;
+                case I2S: masm.movsxw(asIntReg(dst), asIntReg(src)); break;
                 case I2L: masm.movslq(asLongReg(dst), asIntReg(src)); break;
                 case F2D: masm.cvtss2sd(asDoubleReg(dst), asFloatReg(src)); break;
                 case D2F: masm.cvtsd2ss(asFloatReg(dst), asDoubleReg(src)); break;
