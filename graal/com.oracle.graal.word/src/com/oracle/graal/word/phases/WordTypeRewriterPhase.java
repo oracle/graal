@@ -138,15 +138,17 @@ public class WordTypeRewriterPhase extends Phase {
                         break;
 
                     case READ:
-                        assert arguments.size() == 3;
+                        assert arguments.size() == 2 || arguments.size() == 3;
                         Kind readKind = asKind(callTargetNode.returnType());
-                        replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke, readKind, arguments.get(2).asConstant().asObject()));
+                        Object readLocation = arguments.size() == 2 ? LocationNode.UNKNOWN_LOCATION : arguments.get(2).asConstant().asObject();
+                        replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke, readKind, readLocation));
                         break;
 
                     case WRITE:
-                        assert arguments.size() == 4;
+                        assert arguments.size() == 3 || arguments.size() == 4;
                         Kind writeKind = asKind(targetMethod.getSignature().getParameterType(1, targetMethod.getDeclaringClass()));
-                        replace(invoke, writeOp(graph, arguments.get(0), arguments.get(1), arguments.get(2), invoke, writeKind, arguments.get(3).asConstant().asObject()));
+                        Object writeLocation = arguments.size() == 3 ? LocationNode.ANY_LOCATION : arguments.get(3).asConstant().asObject();
+                        replace(invoke, writeOp(graph, arguments.get(0), arguments.get(1), arguments.get(2), invoke, writeKind, writeLocation));
                         break;
 
                     case ZERO:

@@ -808,6 +808,218 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     }
 
     @Override
+    @Operation(opcode = Opcode.READ)
+    public byte readByte(WordBase offset) {
+        return unsafe.getByte(add((Word) offset).unbox());
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public char readChar(WordBase offset) {
+        return unsafe.getChar(add((Word) offset).unbox());
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public short readShort(WordBase offset) {
+        return unsafe.getShort(add((Word) offset).unbox());
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public int readInt(WordBase offset) {
+        return unsafe.getInt(add((Word) offset).unbox());
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public long readLong(WordBase offset) {
+        return unsafe.getLong(add((Word) offset).unbox());
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public float readFloat(WordBase offset) {
+        return unsafe.getFloat(add((Word) offset).unbox());
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public double readDouble(WordBase offset) {
+        return unsafe.getDouble(add((Word) offset).unbox());
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public Word readWord(WordBase offset) {
+        return box(unsafe.getAddress(add((Word) offset).unbox()));
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public native Object readObject(WordBase offset);
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public byte readByte(int offset) {
+        return readByte(signed(offset));
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public char readChar(int offset) {
+        return readChar(signed(offset));
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public short readShort(int offset) {
+        return readShort(signed(offset));
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public int readInt(int offset) {
+        return readInt(signed(offset));
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public long readLong(int offset) {
+        return readLong(signed(offset));
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public float readFloat(int offset) {
+        return readFloat(signed(offset));
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public double readDouble(int offset) {
+        return readDouble(signed(offset));
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public Word readWord(int offset) {
+        return readWord(signed(offset));
+    }
+
+    @Override
+    @Operation(opcode = Opcode.READ)
+    public Object readObject(int offset) {
+        return readObject(signed(offset));
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeByte(WordBase offset, byte val) {
+        unsafe.putByte(add((Word) offset).unbox(), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeChar(WordBase offset, char val) {
+        unsafe.putChar(add((Word) offset).unbox(), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeShort(WordBase offset, short val) {
+        unsafe.putShort(add((Word) offset).unbox(), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeInt(WordBase offset, int val) {
+        unsafe.putInt(add((Word) offset).unbox(), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeLong(WordBase offset, long val) {
+        unsafe.putLong(add((Word) offset).unbox(), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeFloat(WordBase offset, float val) {
+        unsafe.putFloat(add((Word) offset).unbox(), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeDouble(WordBase offset, double val) {
+        unsafe.putDouble(add((Word) offset).unbox(), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeWord(WordBase offset, WordBase val) {
+        unsafe.putAddress(add((Word) offset).unbox(), ((Word) val).unbox());
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public native void writeObject(WordBase offset, Object val);
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeByte(int offset, byte val) {
+        writeByte(signed(offset), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeChar(int offset, char val) {
+        writeChar(signed(offset), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeShort(int offset, short val) {
+        writeShort(signed(offset), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeInt(int offset, int val) {
+        writeInt(signed(offset), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeLong(int offset, long val) {
+        writeLong(signed(offset), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeFloat(int offset, float val) {
+        writeFloat(signed(offset), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeDouble(int offset, double val) {
+        writeDouble(signed(offset), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeWord(int offset, WordBase val) {
+        writeWord(signed(offset), val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE)
+    public void writeObject(int offset, Object val) {
+        writeObject(signed(offset), val);
+    }
+
+    @Override
     public final boolean equals(Object obj) {
         throw GraalInternalError.shouldNotReachHere("equals must not be called on words");
     }
