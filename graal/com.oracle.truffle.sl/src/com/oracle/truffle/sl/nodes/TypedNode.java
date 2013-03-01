@@ -24,7 +24,6 @@ package com.oracle.truffle.sl.nodes;
 
 import java.math.*;
 
-import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -49,7 +48,6 @@ public abstract class TypedNode extends ConditionNode {
 
     public abstract Object executeGeneric(VirtualFrame frame);
 
-    @GuardCheck
     public boolean isString(Object a, Object b) {
         return a instanceof String || b instanceof String;
     }

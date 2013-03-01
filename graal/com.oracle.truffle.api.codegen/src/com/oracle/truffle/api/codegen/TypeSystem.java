@@ -28,8 +28,8 @@ import java.lang.annotation.*;
  * <p>
  * Annotates a type system class that represents type information for a node. Generates code for
  * converting and managing types. Methods contained in the type system may be annotated with
- * {@link TypeCast}, {@link TypeCheck} or {@link GuardCheck}. These methods alter the default
- * behavior of the type system.
+ * {@link TypeCast} or {@link TypeCheck}. These methods alter the default behavior of the type
+ * system.
  * </p>
  * 
  * 
@@ -62,7 +62,6 @@ import java.lang.annotation.*;
  * 
  * @see TypeCast
  * @see TypeCheck
- * @see GuardCheck
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})

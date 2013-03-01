@@ -87,24 +87,24 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
         });
         SpecializationData specialization = new SpecializationData(method, order, exceptionData);
         boolean valid = true;
-        List<AnnotationMirror> guardDefs = Utils.collectAnnotations(getContext(), method.getMarkerAnnotation(), "guards", method.getMethod(), SpecializationGuard.class);
+        List<String> guardDefs = Utils.getAnnotationValueList(specialization.getMarkerAnnotation(), "guards");
         SpecializationGuardData[] guardData = new SpecializationGuardData[guardDefs.size()];
         for (int i = 0; i < guardData.length; i++) {
-            AnnotationMirror guardMirror = guardDefs.get(i);
-            String guardMethod = Utils.getAnnotationValueString(guardMirror, "methodName");
-            boolean onSpecialization = Utils.getAnnotationValueBoolean(guardMirror, "onSpecialization");
-            boolean onExecution = Utils.getAnnotationValueBoolean(guardMirror, "onExecution");
+            String guardMethod = guardDefs.get(i);
+
+            boolean onSpecialization = true;
+            boolean onExecution = true;
 
             if (!onSpecialization && !onExecution) {
                 String message = "Either onSpecialization, onExecution or both must be enabled.";
-                getContext().getLog().error(method.getMethod(), guardMirror, message);
+                getContext().getLog().error(method.getMethod(), message);
                 valid = false;
                 continue;
             }
 
             guardData[i] = new SpecializationGuardData(guardMethod, onSpecialization, onExecution);
 
-            GuardData compatibleGuard = matchSpecializationGuard(guardMirror, specialization, guardData[i]);
+            GuardData compatibleGuard = matchSpecializationGuard(specialization, guardData[i]);
             if (compatibleGuard != null) {
                 guardData[i].setGuardDeclaration(compatibleGuard);
             } else {
@@ -121,7 +121,7 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
         return specialization;
     }
 
-    private GuardData matchSpecializationGuard(AnnotationMirror mirror, SpecializationData specialization, SpecializationGuardData specializationGuard) {
+    private GuardData matchSpecializationGuard(SpecializationData specialization, SpecializationGuardData specializationGuard) {
         List<GuardData> foundGuards = getNode().findGuards(specializationGuard.getGuardMethod());
 
         GuardData compatibleGuard = null;
@@ -142,8 +142,8 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
             }
             List<TypeDef> typeDefs = createTypeDefinitions(returnTypeSpec, expectedParameterSpecs);
             String expectedSignature = TemplateMethodParser.createExpectedSignature(specializationGuard.getGuardMethod(), returnTypeSpec, expectedParameterSpecs, typeDefs);
-            AnnotationValue value = Utils.getAnnotationValue(mirror, "methodName");
-            getContext().getLog().error(specialization.getMethod(), mirror, value, "No guard with signature '%s' found in type system.", expectedSignature);
+            AnnotationValue value = Utils.getAnnotationValue(specialization.getMarkerAnnotation(), "guards");
+            getContext().getLog().error(specialization.getMethod(), specialization.getMarkerAnnotation(), value, "No guard with signature '%s' found in type system.", expectedSignature);
             return null;
         }
 

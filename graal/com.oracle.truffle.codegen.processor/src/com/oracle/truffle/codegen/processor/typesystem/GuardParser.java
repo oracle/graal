@@ -27,7 +27,6 @@ import java.util.*;
 
 import javax.lang.model.element.*;
 
-import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
@@ -39,6 +38,8 @@ public class GuardParser extends TemplateMethodParser<Template, GuardData> {
     public GuardParser(ProcessorContext context, Template template, TypeSystemData typeSystem) {
         super(context, template);
         this.typeSystem = typeSystem;
+        setEmitErrors(false);
+        setParseNullOnError(false);
     }
 
     @Override
@@ -51,7 +52,7 @@ public class GuardParser extends TemplateMethodParser<Template, GuardData> {
 
     @Override
     public boolean isParsable(ExecutableElement method) {
-        return Utils.findAnnotationMirror(getContext().getEnvironment(), method, getAnnotationType()) != null;
+        return true;
     }
 
     @Override
@@ -61,7 +62,7 @@ public class GuardParser extends TemplateMethodParser<Template, GuardData> {
 
     @Override
     public Class<? extends Annotation> getAnnotationType() {
-        return GuardCheck.class;
+        return null;
     }
 
 }

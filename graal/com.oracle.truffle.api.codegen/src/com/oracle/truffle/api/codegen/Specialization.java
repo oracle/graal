@@ -34,6 +34,6 @@ public @interface Specialization {
 
     SpecializationThrows[] exceptions() default {};
 
-    SpecializationGuard[] guards() default {};
+    String[] guards() default {};
 
 }

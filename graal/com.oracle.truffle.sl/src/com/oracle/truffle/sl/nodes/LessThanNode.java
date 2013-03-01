@@ -46,8 +46,7 @@ public abstract class LessThanNode extends BinaryNode {
         return left.compareTo(right) < 0;
     }
 
-    @Specialization
-    @SpecializationGuard(methodName = "isString")
+    @Specialization(guards = "isString")
     public boolean doString(Object left, Object right) {
         return left.toString().compareTo(right.toString()) < 0;
     }

@@ -68,8 +68,7 @@ public abstract class ArithmeticNode extends BinaryNode {
             return left + right;
         }
 
-        @Specialization
-        @SpecializationGuard(methodName = "isString")
+        @Specialization(guards = "isString")
         String doString(Object left, Object right) {
             return left.toString() + right.toString();
         }

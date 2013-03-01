@@ -41,8 +41,8 @@ import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class NodeParser extends TemplateParser<NodeData> {
 
-    public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Generic.class, GuardCheck.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class,
-                    SpecializationGuard.class, SpecializationListener.class, SpecializationThrows.class);
+    public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Generic.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class, SpecializationListener.class,
+                    SpecializationThrows.class);
 
     private Map<String, NodeData> parsedNodes;
     private TypeElement originalType;
