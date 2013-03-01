@@ -39,7 +39,8 @@ public class ParameterSpec {
     private final String name;
     private final TypeMirror[] allowedTypes;
     private final boolean optional;
-    private final Cardinality cardinality;
+    private Cardinality cardinality;
+    private boolean indexed;
 
     public ParameterSpec(String name, TypeMirror[] allowedTypes, boolean optional, Cardinality cardinality) {
         this.allowedTypes = allowedTypes;
@@ -61,6 +62,18 @@ public class ParameterSpec {
     /** Node value constructor. */
     public ParameterSpec(String name, NodeData nodeData, boolean optional, Cardinality cardinality) {
         this(name, nodeTypeMirrors(nodeData), optional, cardinality);
+    }
+
+    public boolean isIndexed() {
+        return indexed;
+    }
+
+    public void setIndexed(boolean indexed) {
+        this.indexed = indexed;
+    }
+
+    public void setCardinality(Cardinality cardinality) {
+        this.cardinality = cardinality;
     }
 
     private static TypeMirror[] nodeTypeMirrors(NodeData nodeData) {
@@ -95,6 +108,7 @@ public class ParameterSpec {
         for (int i = 0; i < allowedTypes.length; i++) {
             TypeMirror mirror = allowedTypes[i];
             if (Utils.typeEquals(actualType, mirror)) {
+
                 return true;
             }
         }

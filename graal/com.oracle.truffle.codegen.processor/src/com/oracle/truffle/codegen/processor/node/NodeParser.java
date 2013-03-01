@@ -208,6 +208,11 @@ public class NodeParser extends TemplateParser<NodeData> {
             specialization.setNode(nodeData);
         }
 
+        // verify specialization parameter length
+        if (!verifySpecializationParameters(specializations)) {
+            return null;
+        }
+
         // verify order is not ambiguous
         if (!verifySpecializationOrder(typeSystem, specializations)) {
             return null;
@@ -245,6 +250,30 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         return nodeData;
+    }
+
+    private boolean verifySpecializationParameters(List<SpecializationData> specializations) {
+        boolean valid = true;
+        int args = -1;
+        for (SpecializationData specializationData : specializations) {
+            int specializationArgs = 0;
+            for (ActualParameter param : specializationData.getParameters()) {
+                if (!param.getSpecification().isOptional()) {
+                    specializationArgs++;
+                }
+            }
+            if (args != -1 && args != specializationArgs) {
+                valid = false;
+                break;
+            }
+            args = specializationArgs;
+        }
+        if (!valid) {
+            for (SpecializationData specialization : specializations) {
+                context.getLog().error(specialization.getMethod(), specialization.getMarkerAnnotation(), "All specializations must have the same number of arguments.");
+            }
+        }
+        return valid;
     }
 
     private boolean verifyMissingAbstractMethods(NodeData nodeData, List<Element> elements) {
@@ -424,10 +453,10 @@ public class NodeParser extends TemplateParser<NodeData> {
             nodeType = getComponentType(var.asType());
             kind = FieldKind.CHILDREN;
         } else {
-            mirror = null;
-            nodeType = null;
-            kind = FieldKind.FIELD;
             execution = ExecutionKind.IGNORE;
+            nodeType = null;
+            mirror = null;
+            kind = null;
         }
 
         NodeData fieldNodeData = null;
@@ -444,13 +473,12 @@ public class NodeParser extends TemplateParser<NodeData> {
                 context.getLog().error(errorElement, "No executable generic types found for node '%s'.", Utils.getQualifiedName(nodeType));
                 return null;
             }
-        }
 
-        // TODO correct handling of access elements
-        if (var.getModifiers().contains(Modifier.PRIVATE) && Utils.typeEquals(var.getEnclosingElement().asType(), parentNodeData.getTemplateType().asType())) {
-            execution = ExecutionKind.IGNORE;
+            // TODO correct handling of access elements
+            if (var.getModifiers().contains(Modifier.PRIVATE) && Utils.typeEquals(var.getEnclosingElement().asType(), parentNodeData.getTemplateType().asType())) {
+                execution = ExecutionKind.IGNORE;
+            }
         }
-
         return new NodeFieldData(fieldNodeData, var, findAccessElement(var), mirror, kind, execution);
     }
 
@@ -617,9 +645,9 @@ public class NodeParser extends TemplateParser<NodeData> {
     }
 
     private boolean isGenericShortCutMethod(NodeData node, TemplateMethod method) {
-        for (NodeFieldData field : node.getFields()) {
-            ActualParameter parameter = method.findParameter(field.getName());
-            if (parameter == null) {
+        for (ActualParameter parameter : method.getParameters()) {
+            NodeFieldData field = node.findField(parameter.getSpecification().getName());
+            if (field == null) {
                 continue;
             }
             ExecutableTypeData found = null;

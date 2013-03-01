@@ -71,6 +71,15 @@ public class NodeData extends Template {
         return !noSpecialization;
     }
 
+    public boolean supportsFrame() {
+        for (ExecutableTypeData execType : executableTypes) {
+            if (execType.findParameter("frameValue") == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public List<NodeData> getNodeChildren() {
         List<NodeData> children = new ArrayList<>();
         for (NodeData child : getDeclaredChildren()) {

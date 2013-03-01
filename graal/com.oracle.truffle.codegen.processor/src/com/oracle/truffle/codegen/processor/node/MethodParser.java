@@ -27,7 +27,7 @@ import java.util.*;
 import javax.lang.model.element.*;
 
 import com.oracle.truffle.codegen.processor.*;
-import com.oracle.truffle.codegen.processor.node.NodeFieldData.ExecutionKind;
+import com.oracle.truffle.codegen.processor.node.NodeFieldData.*;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
 
@@ -56,8 +56,11 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
 
     protected final MethodSpec createDefaultMethodSpec(String shortCircuitName) {
         List<ParameterSpec> defaultParameters = new ArrayList<>();
-        ParameterSpec frameSpec = new ParameterSpec("frame", getContext().getTruffleTypes().getFrame(), true);
-        defaultParameters.add(frameSpec);
+
+        if (getNode().supportsFrame()) {
+            ParameterSpec frameSpec = new ParameterSpec("frame", getContext().getTruffleTypes().getFrame(), true);
+            defaultParameters.add(frameSpec);
+        }
 
         for (NodeFieldData field : getNode().getFields()) {
             if (field.getExecutionKind() == ExecutionKind.IGNORE) {
@@ -65,7 +68,12 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
             }
 
             if (field.getExecutionKind() == ExecutionKind.DEFAULT) {
-                defaultParameters.add(createValueParameterSpec(field.getName(), field.getNodeData(), false));
+                ParameterSpec spec = createValueParameterSpec(field.getName(), field.getNodeData(), false);
+                if (field.getKind() == FieldKind.CHILDREN) {
+                    spec.setCardinality(Cardinality.MULTIPLE);
+                    spec.setIndexed(true);
+                }
+                defaultParameters.add(spec);
             } else if (field.getExecutionKind() == ExecutionKind.SHORT_CIRCUIT) {
                 String valueName = field.getName();
                 if (shortCircuitName != null && valueName.equals(shortCircuitName)) {

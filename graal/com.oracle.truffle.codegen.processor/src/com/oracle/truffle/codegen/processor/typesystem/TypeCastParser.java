@@ -54,7 +54,7 @@ class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
     @Override
     public TypeCastData create(TemplateMethod method) {
         TypeData targetType = findTypeByMethodName(method.getMethod(), method.getMarkerAnnotation(), "as");
-        ActualParameter parameter = method.findParameter("value");
+        ActualParameter parameter = method.findParameter("valueValue");
         return new TypeCastData(method, parameter.getActualTypeData(getTypeSystem()), targetType);
     }
 

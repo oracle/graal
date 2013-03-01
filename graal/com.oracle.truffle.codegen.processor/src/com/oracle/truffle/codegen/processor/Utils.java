@@ -591,6 +591,14 @@ public class Utils {
         }
         String qualified1 = getQualifiedName(type1);
         String qualified2 = getQualifiedName(type2);
+
+        if (type1.getKind() == TypeKind.ARRAY || type2.getKind() == TypeKind.ARRAY) {
+            if (type1.getKind() == TypeKind.ARRAY && type2.getKind() == TypeKind.ARRAY) {
+                return typeEquals(((ArrayType) type1).getComponentType(), ((ArrayType) type2).getComponentType());
+            } else {
+                return false;
+            }
+        }
         return qualified1.equals(qualified2);
     }
 

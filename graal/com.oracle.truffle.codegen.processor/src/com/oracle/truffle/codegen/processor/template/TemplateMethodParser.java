@@ -101,7 +101,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
                 continue;
             }
 
-            E parsedMethod = parse(method, mirror);
+            E parsedMethod = parseNew(method, mirror);
             if (parsedMethod != null) {
                 parsedMethods.add(parsedMethod);
             } else {
@@ -114,7 +114,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         return parsedMethods;
     }
 
-    private E parse(ExecutableElement method, AnnotationMirror annotation) {
+    private E parseNew(ExecutableElement method, AnnotationMirror annotation) {
         MethodSpec methodSpecification = createSpecification(method, annotation);
         if (methodSpecification == null) {
             return null;
@@ -126,7 +126,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         List<ParameterSpec> parameterSpecs = new ArrayList<>();
         parameterSpecs.addAll(methodSpecification.getParameters());
 
-        ActualParameter returnTypeMirror = resolveTypeMirror(returnTypeSpec, method.getReturnType(), template);
+        ActualParameter returnTypeMirror = matchParameter(returnTypeSpec, method.getReturnType(), template, 0);
         if (returnTypeMirror == null) {
             if (isEmitErrors()) {
                 String expectedReturnType = createTypeSignature(returnTypeSpec, typeDefs, true);
@@ -140,88 +140,65 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             return null;
         }
 
-        Iterator<? extends VariableElement> variableIterator = method.getParameters().iterator();
+        List<ActualParameter> parameters = parseParameters(method, parameterSpecs);
+        if (parameters == null) {
+            if (isEmitErrors()) {
+                String message = String.format("Method signature mismatch. Expected signature: \n%s",
+                                createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs, typeDefs));
+                context.getLog().error(method, annotation, message);
+            }
+            return null;
+        }
+        ActualParameter[] paramMirrors = parameters.toArray(new ActualParameter[parameters.size()]);
+        return create(new TemplateMethod(template, methodSpecification, method, annotation, returnTypeMirror, paramMirrors));
+    }
+
+    private List<ActualParameter> parseParameters(ExecutableElement method, List<ParameterSpec> parameterSpecs) {
+        Iterator<? extends VariableElement> parameterIterator = method.getParameters().iterator();
         Iterator<? extends ParameterSpec> specificationIterator = parameterSpecs.iterator();
 
-        List<ActualParameter> resolvedMirrors = new ArrayList<>();
-        VariableElement parameter = null;
-        ParameterSpec specification = null;
-        while (specificationIterator.hasNext() || specification != null) {
-            if (specification == null) {
-                specification = specificationIterator.next();
-            }
+        VariableElement parameter = parameterIterator.hasNext() ? parameterIterator.next() : null;
+        ParameterSpec specification = specificationIterator.hasNext() ? specificationIterator.next() : null;
 
-            if (parameter == null && variableIterator.hasNext()) {
-                parameter = variableIterator.next();
-            }
-
-            if (parameter == null) {
-                if (specification.getCardinality() == Cardinality.MULTIPLE) {
-                    specification = null;
+        int specificationIndex = 0;
+        List<ActualParameter> resolvedParameters = new ArrayList<>();
+        while (parameter != null || specification != null) {
+            if (parameter == null || specification == null) {
+                if (specification != null && (specification.isOptional() || specification.getCardinality() == Cardinality.MULTIPLE)) {
+                    specification = specificationIterator.hasNext() ? specificationIterator.next() : null;
+                    specificationIndex = 0;
                     continue;
-                } else if (!specification.isOptional()) {
-                    if (isEmitErrors()) {
-                        // non option type specification found -> argument missing
-                        String expectedType = createTypeSignature(specification, typeDefs, false);
-
-                        String message = String.format("Missing argument \"%s\".\nExpected signature: \n %s", expectedType,
-                                        createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs, typeDefs));
-
-                        context.getLog().error(method, message);
-                    }
-                    return null;
-                } else {
-                    // specification is optional -> continue
-                    specification = null;
-                    continue;
-                }
-            }
-
-            ActualParameter resolvedMirror = resolveTypeMirror(specification, parameter.asType(), template);
-
-            if (resolvedMirror == null) {
-                if (specification.isOptional()) {
-                    specification = null;
-                    continue;
-                }
-
-                if (isEmitErrors()) {
-                    String expectedReturnType = createTypeSignature(specification, typeDefs, false);
-                    String actualReturnType = Utils.getSimpleName(parameter.asType()) + " " + parameter.getSimpleName();
-
-                    String message = String.format("The provided argument type \"%s\" does not match expected type \"%s\".\nExpected signature: \n %s", actualReturnType, expectedReturnType,
-                                    createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs, typeDefs));
-
-                    context.getLog().error(parameter, message);
                 }
                 return null;
             }
 
-            resolvedMirrors.add(resolvedMirror);
-            parameter = null; // consume parameter
+            ActualParameter resolvedParameter = matchParameter(specification, parameter.asType(), template, specificationIndex);
+            if (resolvedParameter == null) {
+                // mismatch
+                if (specification.isOptional()) {
+                    specification = specificationIterator.hasNext() ? specificationIterator.next() : null;
+                    specificationIndex = 0;
+                } else {
+                    return null;
+                }
+            } else {
+                resolvedParameters.add(resolvedParameter);
 
-            if (specification.getCardinality() != Cardinality.MULTIPLE) {
-                specification = null;
+                // match
+                if (specification.getCardinality() == Cardinality.ONE) {
+                    parameter = parameterIterator.hasNext() ? parameterIterator.next() : null;
+                    specification = specificationIterator.hasNext() ? specificationIterator.next() : null;
+                    specificationIndex = 0;
+                } else if (specification.getCardinality() == Cardinality.MULTIPLE) {
+                    parameter = parameterIterator.hasNext() ? parameterIterator.next() : null;
+                    specificationIndex++;
+                }
             }
         }
-
-        if (variableIterator.hasNext()) {
-            parameter = variableIterator.next();
-            if (isEmitErrors()) {
-                String actualReturnType = Utils.getSimpleName(parameter.asType()) + " " + parameter.getSimpleName();
-                String message = String.format("No argument expected but found \"%s\".\nExpected signature: \n %s", actualReturnType,
-                                createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs, typeDefs));
-
-                context.getLog().error(parameter, message);
-            }
-            return null;
-        }
-
-        ActualParameter[] paramMirrors = resolvedMirrors.toArray(new ActualParameter[resolvedMirrors.size()]);
-        return create(new TemplateMethod(template, methodSpecification, method, annotation, returnTypeMirror, paramMirrors));
+        return resolvedParameters;
     }
 
-    private ActualParameter resolveTypeMirror(ParameterSpec specification, TypeMirror mirror, Template typeSystem) {
+    private ActualParameter matchParameter(ParameterSpec specification, TypeMirror mirror, Template typeSystem, int index) {
         TypeMirror resolvedType = mirror;
         if (hasError(resolvedType)) {
             resolvedType = context.resolveNotYetCompiledType(mirror, typeSystem);
@@ -230,7 +207,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         if (!specification.matches(resolvedType)) {
             return null;
         }
-        return new ActualParameter(specification, resolvedType);
+        return new ActualParameter(specification, resolvedType, index);
     }
 
     protected List<TypeDef> createTypeDefinitions(ParameterSpec returnType, List<? extends ParameterSpec> parameters) {

@@ -41,4 +41,14 @@ public class MethodSpec {
     public List<ParameterSpec> getParameters() {
         return parameters;
     }
+
+    public ParameterSpec findParameterSpec(String name) {
+        for (ParameterSpec spec : parameters) {
+            if (spec.getName().equals(name)) {
+                return spec;
+            }
+        }
+        return null;
+    }
+
 }

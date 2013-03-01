@@ -70,7 +70,7 @@ public class TemplateMethod {
 
     public ActualParameter findParameter(String valueName) {
         for (ActualParameter param : getParameters()) {
-            if (param.getSpecification().getName().equals(valueName)) {
+            if (param.getName().equals(valueName)) {
                 return param;
             }
         }

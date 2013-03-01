@@ -28,7 +28,7 @@ import javax.lang.model.type.*;
 public class NodeFieldData {
 
     public enum FieldKind {
-        FIELD, CHILD, CHILDREN
+        CHILD, CHILDREN
     }
 
     public enum ExecutionKind {
