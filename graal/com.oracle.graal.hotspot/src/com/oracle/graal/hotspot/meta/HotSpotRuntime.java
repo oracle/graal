@@ -953,7 +953,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
             long nmethod = ((HotSpotInstalledCode) code).nmethod;
             return graalRuntime.getCompilerToVM().disassembleNMethod(nmethod);
         }
-        return "";
+        return null;
     }
 
     public String disassemble(ResolvedJavaMethod method) {

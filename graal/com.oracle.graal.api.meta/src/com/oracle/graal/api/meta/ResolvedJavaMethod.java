@@ -34,18 +34,18 @@ import java.util.*;
 public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
 
     /**
-     * Returns the bytecodes of this method, if the method has code. The returned byte array does
-     * not contain breakpoints or non-Java bytecodes.
+     * Returns the bytecode of this method, if the method has code. The returned byte array does not
+     * contain breakpoints or non-Java bytecodes.
      * 
-     * @return the bytecodes of the method, or {@code null} if none is available
+     * @return the bytecode of the method, or {@code null} if none is available
      */
     byte[] getCode();
 
     /**
-     * Returns the size of the bytecodes of this method, if the method has code. This is equivalent
+     * Returns the size of the bytecode of this method, if the method has code. This is equivalent
      * to {@link #getCode()}. {@code length} if the method has code.
      * 
-     * @return the size of the bytecodes in bytes, or 0 if no bytecodes is available
+     * @return the size of the bytecode in bytes, or 0 if no bytecode is available
      */
     int getCodeSize();
 

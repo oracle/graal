@@ -54,7 +54,14 @@ public abstract class AssemblerTest extends GraalTest {
         Buffer codeBuffer = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);
         compResult.setTargetCode(codeBuffer.close(true), codeBuffer.position());
 
-        return codeCache.addMethod(method, compResult, null);
+        InstalledCode code = codeCache.addMethod(method, compResult, null);
+
+        DisassemblerProvider dis = Graal.getRuntime().getCapability(DisassemblerProvider.class);
+        if (dis != null) {
+            String disasm = dis.disassemble(code);
+            Assert.assertTrue(String.valueOf(code.getMethod()), disasm == null || disasm.length() > 0);
+        }
+        return code;
     }
 
     protected Object runTest(String methodName, CodeGenTest test, Object... args) {

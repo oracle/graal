@@ -86,6 +86,9 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public byte[] getCode() {
+        if (codeSize == 0) {
+            return null;
+        }
         if (code == null) {
             code = HotSpotGraalRuntime.getInstance().getCompilerToVM().initializeBytecode(metaspaceMethod, new byte[codeSize]);
             assert code.length == codeSize : "expected: " + codeSize + ", actual: " + code.length;
