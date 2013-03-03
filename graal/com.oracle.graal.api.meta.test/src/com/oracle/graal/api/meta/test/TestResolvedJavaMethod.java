@@ -49,11 +49,14 @@ public class TestResolvedJavaMethod {
         for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
             ResolvedJavaMethod m = e.getValue();
             byte[] code = m.getCode();
-            assertNotNull(code);
-            if (isAbstract(m.getModifiers())) {
-                assertTrue(code.length == 0);
-            } else if (!isNative(m.getModifiers())) {
-                assertTrue(code.length > 0);
+            if (code == null) {
+                assertTrue(m.getCodeSize() == 0);
+            } else {
+                if (isAbstract(m.getModifiers())) {
+                    assertTrue(code.length == 0);
+                } else if (!isNative(m.getModifiers())) {
+                    assertTrue(code.length > 0);
+                }
             }
         }
     }

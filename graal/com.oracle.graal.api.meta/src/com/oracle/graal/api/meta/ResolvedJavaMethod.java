@@ -37,7 +37,7 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      * Returns the bytecode of this method, if the method has code. The returned byte array does not
      * contain breakpoints or non-Java bytecodes.
      * 
-     * @return the bytecode of the method, or {@code null} if none is available
+     * @return the bytecode of the method, or {@code null} if {@code getCodeSize() == 0}
      */
     byte[] getCode();
 
