@@ -31,6 +31,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
+import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
 
@@ -149,8 +150,15 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             }
             return null;
         }
+
+        String id = method.getSimpleName().toString();
+        AnnotationMirror idAnnotation = Utils.findAnnotationMirror(context.getEnvironment(), method, NodeId.class);
+        if (idAnnotation != null) {
+            id = Utils.getAnnotationValueString(idAnnotation, "value");
+        }
+
         ActualParameter[] paramMirrors = parameters.toArray(new ActualParameter[parameters.size()]);
-        return create(new TemplateMethod(template, methodSpecification, method, annotation, returnTypeMirror, paramMirrors));
+        return create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, paramMirrors));
     }
 
     private List<ActualParameter> parseParameters(ExecutableElement method, List<ParameterSpec> parameterSpecs) {

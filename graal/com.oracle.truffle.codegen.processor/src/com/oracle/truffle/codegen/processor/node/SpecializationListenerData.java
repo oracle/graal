@@ -22,41 +22,12 @@
  */
 package com.oracle.truffle.codegen.processor.node;
 
-import java.lang.annotation.*;
-
-import javax.lang.model.element.*;
-
-import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 
-public class SpecializationListenerParser extends MethodParser<SpecializationListenerData> {
+public class SpecializationListenerData extends TemplateMethod {
 
-    private final MethodSpec specification;
-
-    public SpecializationListenerParser(ProcessorContext context, NodeData node) {
-        super(context, node);
-        this.specification = createDefaultMethodSpec(null);
-    }
-
-    @Override
-    public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        return specification;
-    }
-
-    @Override
-    protected ParameterSpec createReturnParameterSpec() {
-        return new ParameterSpec("void", getContext().getType(void.class), false);
-    }
-
-    @Override
-    public SpecializationListenerData create(TemplateMethod method) {
-        return new SpecializationListenerData(method);
-    }
-
-    @Override
-    public Class<? extends Annotation> getAnnotationType() {
-        return SpecializationListener.class;
+    public SpecializationListenerData(TemplateMethod method) {
+        super(method);
     }
 
 }

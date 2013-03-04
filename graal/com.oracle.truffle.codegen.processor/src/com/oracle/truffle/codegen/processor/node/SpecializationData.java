@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.codegen.processor.node;
 
+import java.util.*;
+
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.template.*;
 
@@ -106,10 +108,10 @@ public class SpecializationData extends TemplateMethod {
     }
 
     public SpecializationData findNextSpecialization() {
-        SpecializationData[] specializations = node.getSpecializations();
-        for (int i = 0; i < specializations.length - 1; i++) {
-            if (specializations[i] == this) {
-                return specializations[i + 1];
+        List<SpecializationData> specializations = node.getSpecializations();
+        for (int i = 0; i < specializations.size() - 1; i++) {
+            if (specializations.get(i) == this) {
+                return specializations.get(i + 1);
             }
         }
         return null;

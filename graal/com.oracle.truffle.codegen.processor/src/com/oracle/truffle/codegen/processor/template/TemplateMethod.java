@@ -26,6 +26,7 @@ import javax.lang.model.element.*;
 
 public class TemplateMethod {
 
+    private final String id;
     private final Template template;
     private final MethodSpec specification;
     private final ExecutableElement method;
@@ -33,13 +34,14 @@ public class TemplateMethod {
     private final ActualParameter returnType;
     private final ActualParameter[] parameters;
 
-    public TemplateMethod(Template template, MethodSpec specification, ExecutableElement method, AnnotationMirror markerAnnotation, ActualParameter returnType, ActualParameter[] parameters) {
+    public TemplateMethod(String id, Template template, MethodSpec specification, ExecutableElement method, AnnotationMirror markerAnnotation, ActualParameter returnType, ActualParameter[] parameters) {
         this.template = template;
         this.specification = specification;
         this.method = method;
         this.markerAnnotation = markerAnnotation;
         this.returnType = returnType;
         this.parameters = parameters;
+        this.id = id;
 
         if (parameters != null) {
             for (ActualParameter param : parameters) {
@@ -49,7 +51,11 @@ public class TemplateMethod {
     }
 
     public TemplateMethod(TemplateMethod method) {
-        this(method.template, method.specification, method.method, method.markerAnnotation, method.returnType, method.parameters);
+        this(method.id, method.template, method.specification, method.method, method.markerAnnotation, method.returnType, method.parameters);
+    }
+
+    public String getId() {
+        return id;
     }
 
     public Template getTemplate() {

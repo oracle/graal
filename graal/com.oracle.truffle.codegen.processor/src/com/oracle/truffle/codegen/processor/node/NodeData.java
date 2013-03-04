@@ -35,18 +35,18 @@ import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class NodeData extends Template {
 
-    private NodeData parent;
+    private NodeData declaringNode;
     private List<NodeData> declaredChildren;
 
     private final TypeSystemData typeSystem;
-
-    private NodeFieldData[] fields;
-    private SpecializationData[] specializations;
-    private TemplateMethod[] specializationListeners;
-    private GuardData[] guards;
-    private ExecutableTypeData[] executableTypes;
-
+    private List<NodeFieldData> fields;
     private TypeMirror nodeType;
+
+    private List<SpecializationData> specializations;
+    private List<SpecializationListenerData> specializationListeners;
+    private List<GuardData> guards;
+    private List<ExecutableTypeData> executableTypes;
+    private List<ShortCircuitData> shortCircuits;
 
     public NodeData(TypeElement type, TypeSystemData typeSystem) {
         super(type, null);
@@ -95,12 +95,12 @@ public class NodeData extends Template {
         this.declaredChildren = declaredChildren;
 
         for (NodeData child : declaredChildren) {
-            child.parent = this;
+            child.declaringNode = this;
         }
     }
 
     public NodeData getParent() {
-        return parent;
+        return declaringNode;
     }
 
     public List<NodeData> getDeclaredChildren() {
@@ -121,15 +121,12 @@ public class NodeData extends Template {
             }
         }
 
-        methods.addAll(Arrays.asList(getSpecializationListeners()));
-        methods.addAll(Arrays.asList(getExecutableTypes()));
-        methods.addAll(Arrays.asList(getGuards()));
+        methods.addAll(getSpecializationListeners());
+        methods.addAll(getExecutableTypes());
+        methods.addAll(getGuards());
+        methods.addAll(getShortCircuits());
 
         return methods;
-    }
-
-    public TemplateMethod[] getSpecializationListeners() {
-        return specializationListeners;
     }
 
     public List<GuardData> findGuards(String name) {
@@ -140,10 +137,6 @@ public class NodeData extends Template {
             }
         }
         return foundGuards;
-    }
-
-    public ExecutableTypeData[] getExecutableTypes() {
-        return executableTypes;
     }
 
     public ExecutableTypeData findGenericExecutableType(ProcessorContext context, TypeData type) {
@@ -189,47 +182,20 @@ public class NodeData extends Template {
         return result;
     }
 
-    public TypeMirror[] getExecutablePrimitiveTypeMirrors() {
-        TypeMirror[] typeMirrors = new TypeMirror[executableTypes.length];
-        for (int i = 0; i < executableTypes.length; i++) {
-            typeMirrors[i] = executableTypes[i].getType().getPrimitiveType();
+    public List<TypeMirror> getExecutablePrimitiveTypeMirrors() {
+        List<TypeMirror> typeMirrors = new ArrayList<>();
+        for (ExecutableTypeData executableType : executableTypes) {
+            typeMirrors.add(executableType.getType().getPrimitiveType());
         }
         return typeMirrors;
     }
 
-    void setExecutableTypes(ExecutableTypeData[] declaredExecuableTypes) {
-        this.executableTypes = declaredExecuableTypes;
-    }
-
-    void setFields(NodeFieldData[] fields) {
-        this.fields = fields;
-    }
-
-    void setSpecializations(SpecializationData[] specializations) {
-        this.specializations = specializations;
-    }
-
-    void setSpecializationListeners(TemplateMethod[] specializationListeners) {
-        this.specializationListeners = specializationListeners;
-    }
-
-    void setGuards(GuardData[] guards) {
-        this.guards = guards;
-    }
-
-    public GuardData[] getGuards() {
-        return guards;
-    }
-
     public NodeFieldData[] filterFields(FieldKind fieldKind, ExecutionKind usage) {
         List<NodeFieldData> filteredFields = new ArrayList<>();
-        NodeFieldData[] resolvedFields = getFields();
-        if (fields != null) {
-            for (NodeFieldData field : resolvedFields) {
-                if (usage == null || field.getExecutionKind() == usage) {
-                    if (fieldKind == null || field.getKind() == fieldKind) {
-                        filteredFields.add(field);
-                    }
+        for (NodeFieldData field : getFields()) {
+            if (usage == null || field.getExecutionKind() == usage) {
+                if (fieldKind == null || field.getKind() == fieldKind) {
+                    filteredFields.add(field);
                 }
             }
         }
@@ -258,7 +224,7 @@ public class NodeData extends Template {
             }
         }
 
-        needsRewrites &= specializations.length >= 2;
+        needsRewrites &= specializations.size() >= 2;
         return needsRewrites;
     }
 
@@ -279,18 +245,6 @@ public class NodeData extends Template {
         }
     }
 
-    public NodeFieldData[] getFields() {
-        return fields;
-    }
-
-    public NodeFieldData[] getDeclaredFields() {
-        return fields;
-    }
-
-    public SpecializationData[] getSpecializations() {
-        return specializations;
-    }
-
     public String dump() {
         StringBuilder b = new StringBuilder();
         b.append(String.format("[name = %s\n" + "  typeSystem = %s\n" + "  fields = %s\n" + "  types = %s\n" + "  specializations = %s\n" + "  guards = %s\n" + "]",
@@ -298,7 +252,7 @@ public class NodeData extends Template {
         return b.toString();
     }
 
-    private static String dumpList(Object[] array) {
+    private static String dumpList(List<?> array) {
         if (array == null) {
             return "null";
         }
@@ -322,6 +276,57 @@ public class NodeData extends Template {
             }
         }
         return null;
+    }
+
+    public List<NodeFieldData> getFields() {
+        return fields;
+    }
+
+    void setFields(List<NodeFieldData> fields) {
+        this.fields = fields;
+    }
+
+    public List<SpecializationData> getSpecializations() {
+        return specializations;
+    }
+
+    public List<SpecializationListenerData> getSpecializationListeners() {
+        return specializationListeners;
+    }
+
+    public List<GuardData> getGuards() {
+        return guards;
+    }
+
+    public List<ExecutableTypeData> getExecutableTypes() {
+        return executableTypes;
+    }
+
+    public List<ShortCircuitData> getShortCircuits() {
+        return shortCircuits;
+    }
+
+    void setSpecializations(List<SpecializationData> specializations) {
+        this.specializations = specializations;
+        for (SpecializationData specialization : specializations) {
+            specialization.setNode(this);
+        }
+    }
+
+    void setSpecializationListeners(List<SpecializationListenerData> specializationListeners) {
+        this.specializationListeners = specializationListeners;
+    }
+
+    void setGuards(List<GuardData> guards) {
+        this.guards = guards;
+    }
+
+    void setExecutableTypes(List<ExecutableTypeData> executableTypes) {
+        this.executableTypes = executableTypes;
+    }
+
+    void setShortCircuits(List<ShortCircuitData> shortCircuits) {
+        this.shortCircuits = shortCircuits;
     }
 
 }

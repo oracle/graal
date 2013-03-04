@@ -71,7 +71,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
     private static String specializationId(SpecializationData specialization) {
         String name = "";
         NodeData node = specialization.getNode();
-        if (node.getSpecializations().length > 1) {
+        if (node.getSpecializations().size() > 1) {
             name = specialization.getMethodName();
             if (name.startsWith("do")) {
                 name = name.substring(2);
@@ -480,7 +480,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (node.needsFactory()) {
                 createFactoryMethods(node, clazz, createVisibility);
 
-                if (node.getSpecializations().length > 1) {
+                if (node.getSpecializations().size() > 1) {
                     clazz.add(createCreateSpecializedMethod(node, createVisibility));
                 }
 
@@ -781,10 +781,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             CodeTreeBuilder body = method.createBuilder();
             body.startReturn();
-            if (node.getSpecializations().length == 0) {
+            if (node.getSpecializations().isEmpty()) {
                 body.null_();
             } else {
-                body.startNew(nodeClassName(node.getSpecializations()[0]));
+                body.startNew(nodeClassName(node.getSpecializations().get(0)));
                 for (VariableElement var : method.getParameters()) {
                     body.string(var.getSimpleName().toString());
                 }
@@ -836,10 +836,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             addValueParameters(method, node.getGenericSpecialization(), false);
 
             CodeTreeBuilder body = method.createBuilder();
-            body.startStatement().string("boolean allowed = (minimumState == ").string(nodeClassName(node.getSpecializations()[0])).string(".class)").end();
+            body.startStatement().string("boolean allowed = (minimumState == ").string(nodeClassName(node.getSpecializations().get(0))).string(".class)").end();
 
-            for (int i = 1; i < node.getSpecializations().length; i++) {
-                SpecializationData specialization = node.getSpecializations()[i];
+            for (int i = 1; i < node.getSpecializations().size(); i++) {
+                SpecializationData specialization = node.getSpecializations().get(i);
                 body.startStatement().string("allowed = allowed || (minimumState == ").string(nodeClassName(specialization)).string(".class)").end();
 
                 CodeTreeBuilder guarded = new CodeTreeBuilder(body);
@@ -859,11 +859,11 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (node.getGenericSpecialization().isUseSpecializationsForGeneric()) {
                 List<CodeExecutableElement> methods = new ArrayList<>();
 
-                SpecializationData[] specializations = node.getSpecializations();
+                List<SpecializationData> specializations = node.getSpecializations();
                 SpecializationData prev = null;
-                for (int i = 0; i < specializations.length; i++) {
-                    SpecializationData current = specializations[i];
-                    SpecializationData next = i + 1 < specializations.length ? specializations[i + 1] : null;
+                for (int i = 0; i < specializations.size(); i++) {
+                    SpecializationData current = specializations.get(i);
+                    SpecializationData next = i + 1 < specializations.size() ? specializations.get(i + 1) : null;
                     if (prev == null || current.isUninitialized()) {
                         prev = current;
                         continue;
@@ -1195,7 +1195,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.string(" = ");
             ExecutableTypeData genericExecutableType = field.getNodeData().findGenericExecutableType(getContext(), param.getActualTypeData(node.getTypeSystem()));
             if (genericExecutableType == null) {
-                throw new AssertionError("Must have generic executable type. Parser validation most likely failed. " + Arrays.toString(field.getNodeData().getExecutableTypes()));
+                throw new AssertionError("Must have generic executable type. Parser validation most likely failed. " + (field.getNodeData().getExecutableTypes()));
             }
             buildExecute(builder, param, field, genericExecutableType);
             builder.end();
