@@ -442,7 +442,7 @@ public enum AMD64Arithmetic {
 
                 case LADD: masm.addq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
                 case LSUB: masm.subq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
-                case LMUL: masm.imulq(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
+                case LMUL: masm.imulq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
                 case LAND: masm.andq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
                 case LOR:  masm.orq(asLongReg(dst),  (AMD64Address) tasm.asLongAddr(src)); break;
                 case LXOR: masm.xorq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
