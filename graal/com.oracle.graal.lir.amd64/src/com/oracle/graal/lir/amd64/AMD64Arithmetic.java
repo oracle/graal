@@ -49,6 +49,9 @@ public enum AMD64Arithmetic {
     MOV_I2F, MOV_L2D, MOV_F2I, MOV_D2L;
 
 
+    /**
+     * Unary operation with separate source and destination operand. 
+     */
     public static class Unary2Op extends AMD64LIRInstruction {
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
@@ -66,6 +69,9 @@ public enum AMD64Arithmetic {
         }
     }
 
+    /**
+     * Unary operation with single operand for source and destination. 
+     */
     public static class Unary1Op extends AMD64LIRInstruction {
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
@@ -84,13 +90,17 @@ public enum AMD64Arithmetic {
         }
     }
 
-    public static class Op2Stack extends AMD64LIRInstruction {
+    /**
+     * Binary operation with two operands. The first source operand is combined with the destination.
+     * The second source operand may be a stack slot. 
+     */
+    public static class BinaryRegStack extends AMD64LIRInstruction {
         @Opcode private final AMD64Arithmetic opcode;
-        @Def({REG, HINT}) protected Value result;
-        @Use({REG, STACK, CONST}) protected Value x;
-        @Alive({REG, STACK, CONST}) protected Value y;
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue x;
+        @Alive({REG, STACK}) protected AllocatableValue y;
 
-        public Op2Stack(AMD64Arithmetic opcode, Value result, Value x, Value y) {
+        public BinaryRegStack(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -111,13 +121,17 @@ public enum AMD64Arithmetic {
         }
     }
 
-    public static class Op2Reg extends AMD64LIRInstruction {
+    /**
+     * Binary operation with two operands. The first source operand is combined with the destination.
+     * The second source operand must be a register. 
+     */
+    public static class BinaryRegReg extends AMD64LIRInstruction {
         @Opcode private final AMD64Arithmetic opcode;
-        @Def({REG, HINT}) protected Value result;
-        @Use({REG, STACK, CONST}) protected Value x;
-        @Alive({REG, CONST}) protected Value y;
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue x;
+        @Alive({REG}) protected AllocatableValue y;
 
-        public Op2Reg(AMD64Arithmetic opcode, Value result, Value x, Value y) {
+        public BinaryRegReg(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -138,13 +152,45 @@ public enum AMD64Arithmetic {
         }
     }
 
-    public static class Op2RegCommutative extends AMD64LIRInstruction {
+    /**
+     * Binary operation with single source/destination operand and one constant.
+     */
+    public static class BinaryRegConst extends AMD64LIRInstruction {
         @Opcode private final AMD64Arithmetic opcode;
-        @Def({REG, HINT}) protected Value result;
-        @Use({REG, STACK, CONST}) protected Value x;
-        @Use({REG, CONST}) protected Value y;
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue x;
+        @Use({CONST}) protected Constant y;
 
-        public Op2RegCommutative(AMD64Arithmetic opcode, Value result, Value x, Value y) {
+        public BinaryRegConst(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, Constant y) {
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            AMD64Move.move(tasm, masm, result, x);
+            emit(tasm, masm, opcode, result, y, null);
+        }
+
+        @Override
+        public void verify() {
+            super.verify();
+            verifyKind(opcode, result, x, y);
+        }
+    }
+
+    /**
+     * Commutative binary operation with two operands. One of the operands is combined with the result.
+     */
+    public static class BinaryCommutative extends AMD64LIRInstruction {
+        @Opcode private final AMD64Arithmetic opcode;
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue x;
+        @Use({REG, STACK}) protected AllocatableValue y;
+
+        public BinaryCommutative(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -168,13 +214,16 @@ public enum AMD64Arithmetic {
         }
     }
 
-    public static class ShiftOp extends AMD64LIRInstruction {
+    /**
+     * Binary operation with separate source and destination and one constant operand.
+     */
+    public static class BinaryRegStackConst extends AMD64LIRInstruction {
         @Opcode private final AMD64Arithmetic opcode;
-        @Def({REG, HINT}) protected Value result;
-        @Use({REG, STACK, CONST}) protected Value x;
-        @Alive({REG, CONST}) protected Value y;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue x;
+        @Use({CONST}) protected Constant y;
 
-        public ShiftOp(AMD64Arithmetic opcode, Value result, Value x, Value y) {
+        public BinaryRegStackConst(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, Constant y) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -190,10 +239,7 @@ public enum AMD64Arithmetic {
         @Override
         public void verify() {
             super.verify();
-            assert isConstant(y) || asRegister(y) == AMD64.rcx;
-            assert differentRegisters(result, y) || sameRegister(x, y);
-            verifyKind(opcode, result, x, x);
-            assert y.getKind().getStackKind() == Kind.Int;
+            verifyKind(opcode, result, x, y);
         }
     }
 
@@ -423,11 +469,13 @@ public enum AMD64Arithmetic {
                 case IADD: masm.addl(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
                 case ISUB: masm.subl(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
                 case IAND: masm.andl(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
+                case IMUL: masm.imull(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
                 case IOR:  masm.orl(asIntReg(dst),  (AMD64Address) tasm.asIntAddr(src)); break;
                 case IXOR: masm.xorl(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
 
                 case LADD: masm.addq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
                 case LSUB: masm.subq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
+                case LMUL: masm.imulq(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
                 case LAND: masm.andq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
                 case LOR:  masm.orq(asLongReg(dst),  (AMD64Address) tasm.asLongAddr(src)); break;
                 case LXOR: masm.xorq(asLongReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
@@ -512,6 +560,7 @@ public enum AMD64Arithmetic {
         assert (opcode.name().startsWith("I") && result.getKind() == Kind.Int && x.getKind().getStackKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int)
             || (opcode.name().startsWith("L") && result.getKind() == Kind.Long && x.getKind() == Kind.Long && y.getKind() == Kind.Long)
             || (opcode.name().startsWith("F") && result.getKind() == Kind.Float && x.getKind() == Kind.Float && y.getKind() == Kind.Float)
-            || (opcode.name().startsWith("D") && result.getKind() == Kind.Double && x.getKind() == Kind.Double && y.getKind() == Kind.Double);
+            || (opcode.name().startsWith("D") && result.getKind() == Kind.Double && x.getKind() == Kind.Double && y.getKind() == Kind.Double)
+            || (opcode.name().matches(".U?SH.") && result.getKind() == x.getKind() && y.getKind() == Kind.Int && (isConstant(y) || asRegister(y) == AMD64.rcx));
     }
 }

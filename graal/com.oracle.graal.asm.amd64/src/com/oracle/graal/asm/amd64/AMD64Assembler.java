@@ -664,6 +664,13 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC0 | encode);
     }
 
+    public final void imull(Register dst, AMD64Address src) {
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0xAF);
+        emitOperandHelper(dst, src);
+    }
+
     public final void imull(Register dst, Register src, int value) {
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         if (isByte(value)) {
@@ -2023,6 +2030,13 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x0F);
         emitByte(0xAF);
         emitByte(0xC0 | encode);
+    }
+
+    public final void imulq(Register dst, AMD64Address src) {
+        prefixq(src, dst);
+        emitByte(0x0F);
+        emitByte(0xAF);
+        emitOperandHelper(dst, src);
     }
 
     public final void imulq(Register dst, Register src, int value) {
