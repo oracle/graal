@@ -41,8 +41,7 @@ import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class NodeParser extends TemplateParser<NodeData> {
 
-    public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Generic.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class, SpecializationListener.class,
-                    SpecializationThrows.class);
+    public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Generic.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class, SpecializationListener.class);
 
     private Map<String, NodeData> parsedNodes;
     private TypeElement originalType;
@@ -781,22 +780,10 @@ public class NodeParser extends TemplateParser<NodeData> {
         for (SpecializationData sourceSpecialization : node.getSpecializations()) {
             if (sourceSpecialization.getExceptions() != null) {
                 for (SpecializationThrowsData throwsData : sourceSpecialization.getExceptions()) {
-                    SpecializationData targetSpecialization = specializationMap.get(throwsData.getTransitionToName());
-                    AnnotationValue value = Utils.getAnnotationValue(throwsData.getAnnotationMirror(), "transitionTo");
-
-                    if (targetSpecialization == null) {
-                        log.error(throwsData.getSpecialization().getMethod(), throwsData.getAnnotationMirror(), value, "Specialization with name '%s' not found.", throwsData.getTransitionToName());
-                        valid = false;
-                    } else if (compareSpecialization(typeSystem, sourceSpecialization, targetSpecialization) >= 0) {
-                        log.error(throwsData.getSpecialization().getMethod(), throwsData.getAnnotationMirror(), value,
-                                        "The order of the target specializalization must be higher than the source specialization.", throwsData.getTransitionToName());
-                        valid = false;
-                    }
-
                     for (SpecializationThrowsData otherThrowsData : sourceSpecialization.getExceptions()) {
                         if (otherThrowsData != throwsData && Utils.typeEquals(otherThrowsData.getJavaClass(), throwsData.getJavaClass())) {
-                            AnnotationValue javaClassValue = Utils.getAnnotationValue(throwsData.getAnnotationMirror(), "javaClass");
-                            log.error(throwsData.getSpecialization().getMethod(), throwsData.getAnnotationMirror(), javaClassValue, "Duplicate exception type.", throwsData.getTransitionToName());
+                            AnnotationValue javaClassValue = Utils.getAnnotationValue(throwsData.getAnnotationMirror(), "rewriteOn");
+                            log.error(throwsData.getSpecialization().getMethod(), throwsData.getAnnotationMirror(), javaClassValue, "Duplicate exception type.");
                             valid = false;
                         }
                     }

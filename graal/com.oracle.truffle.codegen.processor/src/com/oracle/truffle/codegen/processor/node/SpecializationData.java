@@ -32,13 +32,13 @@ public class SpecializationData extends TemplateMethod {
     private final int order;
     private final boolean generic;
     private final boolean uninitialized;
-    private final SpecializationThrowsData[] exceptions;
+    private final List<SpecializationThrowsData> exceptions;
     private SpecializationGuardData[] guards;
     private ShortCircuitData[] shortCircuits;
     private boolean useSpecializationsForGeneric = true;
     private NodeData node;
 
-    public SpecializationData(TemplateMethod template, int order, SpecializationThrowsData[] exceptions) {
+    public SpecializationData(TemplateMethod template, int order, List<SpecializationThrowsData> exceptions) {
         super(template);
         this.order = order;
         this.generic = false;
@@ -55,7 +55,7 @@ public class SpecializationData extends TemplateMethod {
         this.order = Specialization.DEFAULT_ORDER;
         this.generic = generic;
         this.uninitialized = uninitialized;
-        this.exceptions = new SpecializationThrowsData[0];
+        this.exceptions = Collections.emptyList();
         this.guards = new SpecializationGuardData[0];
     }
 
@@ -83,7 +83,7 @@ public class SpecializationData extends TemplateMethod {
         return uninitialized;
     }
 
-    public SpecializationThrowsData[] getExceptions() {
+    public List<SpecializationThrowsData> getExceptions() {
         return exceptions;
     }
 

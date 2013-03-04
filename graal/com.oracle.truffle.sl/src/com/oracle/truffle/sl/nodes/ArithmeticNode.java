@@ -52,8 +52,7 @@ public abstract class ArithmeticNode extends BinaryNode {
             super(node);
         }
 
-        @Specialization
-        @SpecializationThrows(javaClass = ArithmeticException.class, transitionTo = "doBigInteger")
+        @Specialization(rewriteOn = ArithmeticException.class)
         int doInteger(int left, int right) {
             return ExactMath.addExact(left, right);
         }
@@ -84,8 +83,7 @@ public abstract class ArithmeticNode extends BinaryNode {
             super(node);
         }
 
-        @Specialization
-        @SpecializationThrows(javaClass = ArithmeticException.class, transitionTo = "doBigInteger")
+        @Specialization(rewriteOn = ArithmeticException.class)
         int doInteger(int left, int right) {
             return ExactMath.subtractExact(left, right);
         }
@@ -106,8 +104,7 @@ public abstract class ArithmeticNode extends BinaryNode {
             super(node);
         }
 
-        @Specialization
-        @SpecializationThrows(javaClass = ArithmeticException.class, transitionTo = "doBigInteger")
+        @Specialization(rewriteOn = ArithmeticException.class)
         int doInteger(int left, int right) {
             return left / right;
         }
@@ -128,8 +125,7 @@ public abstract class ArithmeticNode extends BinaryNode {
             super(node);
         }
 
-        @Specialization
-        @SpecializationThrows(javaClass = ArithmeticException.class, transitionTo = "doBigInteger")
+        @Specialization(rewriteOn = ArithmeticException.class)
         int doInteger(int left, int right) {
             return ExactMath.multiplyExact(left, right);
         }

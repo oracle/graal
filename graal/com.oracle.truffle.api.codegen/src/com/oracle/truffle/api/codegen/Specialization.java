@@ -32,7 +32,7 @@ public @interface Specialization {
 
     int order() default DEFAULT_ORDER;
 
-    SpecializationThrows[] exceptions() default {};
+    Class<? extends Throwable>[] rewriteOn() default {};
 
     String[] guards() default {};
 

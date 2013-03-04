@@ -29,13 +29,11 @@ public class SpecializationThrowsData {
 
     private final AnnotationMirror annotationMirror;
     private final TypeMirror javaClass;
-    private final String transitionTo;
     private SpecializationData specialization;
 
-    public SpecializationThrowsData(AnnotationMirror annotationMirror, TypeMirror javaClass, String transitionTo) {
+    public SpecializationThrowsData(AnnotationMirror annotationMirror, TypeMirror javaClass) {
         this.annotationMirror = annotationMirror;
         this.javaClass = javaClass;
-        this.transitionTo = transitionTo;
     }
 
     void setSpecialization(SpecializationData specialization) {
@@ -54,16 +52,7 @@ public class SpecializationThrowsData {
         return annotationMirror;
     }
 
-    public String getTransitionToName() {
-        return transitionTo;
-    }
-
     public SpecializationData getTransitionTo() {
-        for (SpecializationData s : specialization.getNode().getSpecializations()) {
-            if (s.getMethodName().equals(transitionTo)) {
-                return s;
-            }
-        }
-        return null;
+        return specialization.findNextSpecialization();
     }
 }

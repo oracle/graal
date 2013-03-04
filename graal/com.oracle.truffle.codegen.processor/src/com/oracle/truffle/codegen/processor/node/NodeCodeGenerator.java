@@ -912,7 +912,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         }
 
         private void emitInvokeDoMethod(CodeTreeBuilder builder, SpecializationData specialization, int level) {
-            if (specialization.getExceptions().length > 0) {
+            if (!specialization.getExceptions().isEmpty()) {
                 builder.startTryBlock();
             }
 
@@ -922,7 +922,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.end().end(); // start call operation
             builder.end(); // return
 
-            if (specialization.getExceptions().length > 0) {
+            if (!specialization.getExceptions().isEmpty()) {
                 for (SpecializationThrowsData exception : specialization.getExceptions()) {
                     builder.end().startCatchBlock(exception.getJavaClass(), "ex" + level);
 
@@ -1122,7 +1122,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         private CodeTree createExecute(CodeTreeBuilder parent, SpecializationData specialization) {
             NodeData node = specialization.getNode();
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
-            if (specialization.getExceptions().length > 0) {
+            if (!specialization.getExceptions().isEmpty()) {
                 builder.startTryBlock();
             }
 
@@ -1144,7 +1144,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 builder.end(); // return
             }
 
-            if (specialization.getExceptions().length > 0) {
+            if (!specialization.getExceptions().isEmpty()) {
                 for (SpecializationThrowsData exception : specialization.getExceptions()) {
                     builder.end().startCatchBlock(exception.getJavaClass(), "ex");
                     builder.tree(createReturnSpecializeAndExecute(parent, exception.getTransitionTo(), null));

@@ -64,21 +64,18 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
             return null;
         }
 
-        List<AnnotationMirror> exceptionDefs = Utils.collectAnnotations(getContext(), method.getMarkerAnnotation(), "exceptions", method.getMethod(), SpecializationThrows.class);
-        SpecializationThrowsData[] exceptionData = new SpecializationThrowsData[exceptionDefs.size()];
-        for (int i = 0; i < exceptionData.length; i++) {
-            AnnotationMirror mirror = exceptionDefs.get(i);
-            TypeMirror javaClass = Utils.getAnnotationValueType(mirror, "javaClass");
-            String transitionTo = Utils.getAnnotationValueString(mirror, "transitionTo");
-            exceptionData[i] = new SpecializationThrowsData(mirror, javaClass, transitionTo);
+        List<TypeMirror> exceptionTypes = Utils.getAnnotationValueList(method.getMarkerAnnotation(), "rewriteOn");
+        List<SpecializationThrowsData> exceptionData = new ArrayList<>();
+        for (TypeMirror exceptionType : exceptionTypes) {
+            exceptionData.add(new SpecializationThrowsData(method.getMarkerAnnotation(), exceptionType));
 
-            if (!Utils.canThrowType(method.getMethod().getThrownTypes(), javaClass)) {
-                getContext().getLog().error(method.getMethod(), "Method must specify a throws clause with the exception type '%s'.", Utils.getQualifiedName(javaClass));
+            if (!Utils.canThrowType(method.getMethod().getThrownTypes(), exceptionType)) {
+                getContext().getLog().error(method.getMethod(), "Method must specify a throws clause with the exception type '%s'.", Utils.getQualifiedName(exceptionType));
                 return null;
             }
         }
 
-        Arrays.sort(exceptionData, new Comparator<SpecializationThrowsData>() {
+        Collections.sort(exceptionData, new Comparator<SpecializationThrowsData>() {
 
             @Override
             public int compare(SpecializationThrowsData o1, SpecializationThrowsData o2) {
