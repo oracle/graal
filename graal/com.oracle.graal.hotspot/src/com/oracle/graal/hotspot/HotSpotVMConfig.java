@@ -328,6 +328,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long monitorExitStub;
     public long wbPreCallStub;
     public long wbPostCallStub;
+    public long verOopStub;
     public long verifyOopStub;
     public long vmErrorStub;
     public long deoptimizeStub;

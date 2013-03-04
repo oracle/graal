@@ -38,6 +38,7 @@ import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
 import static com.oracle.graal.hotspot.nodes.WriteBarrierPreStubCall.*;
 import static com.oracle.graal.hotspot.nodes.WriteBarrierPostStubCall.*;
+import static com.oracle.graal.hotspot.nodes.VerOopStubCall.*;
 import static com.oracle.graal.hotspot.snippets.AESCryptSubstitutions.DecryptBlockStubCall.*;
 import static com.oracle.graal.hotspot.snippets.AESCryptSubstitutions.EncryptBlockStubCall.*;
 import static com.oracle.graal.hotspot.snippets.CipherBlockChainingSubstitutions.DecryptAESCryptStubCall.*;
@@ -93,6 +94,11 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void),
                 /* arg0: object */ javaCallingConvention(Kind.Object));
+       
+       addRuntimeCall(VEROOPCALL, config.verOopStub,
+                       /*        temps */ null,
+                       /*          ret */ ret(Kind.Void),
+                       /* arg0: object */ javaCallingConvention(Kind.Object));
 
        addRuntimeCall(WBPOSTCALL, config.wbPostCallStub,
                 /*        temps */ null,
