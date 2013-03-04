@@ -46,7 +46,6 @@ import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegConst;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegReg;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegStack;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegStackConst;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivRemOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary1Op;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary2Op;
@@ -505,15 +504,19 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return false;
     }
 
+    private void emitDivRem(AMD64Arithmetic op, Value a, Value b) {
+        AllocatableValue rax = AMD64.rax.asValue(a.getKind());
+        emitMove(rax, a);
+        append(new DivRemOp(op, rax, asAllocatable(b), state()));
+    }
+
     public Value[] emitIntegerDivRem(Value a, Value b) {
         switch (a.getKind()) {
             case Int:
-                emitMove(RAX_I, a);
-                append(new DivRemOp(IDIVREM, RAX_I, load(b), state()));
+                emitDivRem(IDIVREM, a, b);
                 return new Value[]{emitMove(RAX_I), emitMove(RDX_I)};
             case Long:
-                emitMove(RAX_L, a);
-                append(new DivRemOp(LDIVREM, RAX_L, load(b), state()));
+                emitDivRem(LDIVREM, a, b);
                 return new Value[]{emitMove(RAX_L), emitMove(RDX_L)};
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -524,12 +527,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Value emitDiv(Value a, Value b) {
         switch (a.getKind()) {
             case Int:
-                emitMove(RAX_I, a);
-                append(new DivOp(IDIV, RAX_I, RAX_I, load(b), state()));
+                emitDivRem(IDIV, a, b);
                 return emitMove(RAX_I);
             case Long:
-                emitMove(RAX_L, a);
-                append(new DivOp(LDIV, RAX_L, RAX_L, load(b), state()));
+                emitDivRem(LDIV, a, b);
                 return emitMove(RAX_L);
             case Float: {
                 Variable result = newVariable(a.getKind());
@@ -550,12 +551,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Value emitRem(Value a, Value b) {
         switch (a.getKind()) {
             case Int:
-                emitMove(RAX_I, a);
-                append(new DivOp(IREM, RDX_I, RAX_I, load(b), state()));
+                emitDivRem(IREM, a, b);
                 return emitMove(RDX_I);
             case Long:
-                emitMove(RAX_L, a);
-                append(new DivOp(LREM, RDX_L, RAX_L, load(b), state()));
+                emitDivRem(LREM, a, b);
                 return emitMove(RDX_L);
             case Float: {
                 RuntimeCallTarget stub = runtime.lookupRuntimeCall(ARITHMETIC_FREM);
@@ -574,12 +573,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitUDiv(Value a, Value b) {
         switch (a.getKind()) {
             case Int:
-                emitMove(RAX_I, a);
-                append(new DivOp(IUDIV, RAX_I, RAX_I, load(b), state()));
+                emitDivRem(IUDIV, a, b);
                 return emitMove(RAX_I);
             case Long:
-                emitMove(RAX_L, a);
-                append(new DivOp(LUDIV, RAX_L, RAX_L, load(b), state()));
+                emitDivRem(LUDIV, a, b);
                 return emitMove(RAX_L);
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -590,12 +587,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitURem(Value a, Value b) {
         switch (a.getKind()) {
             case Int:
-                emitMove(RAX_I, a);
-                append(new DivOp(IUREM, RDX_I, RAX_I, load(b), state()));
+                emitDivRem(IUREM, a, b);
                 return emitMove(RDX_I);
             case Long:
-                emitMove(RAX_L, a);
-                append(new DivOp(LUREM, RDX_L, RAX_L, load(b), state()));
+                emitDivRem(LUREM, a, b);
                 return emitMove(RDX_L);
             default:
                 throw GraalInternalError.shouldNotReachHere();

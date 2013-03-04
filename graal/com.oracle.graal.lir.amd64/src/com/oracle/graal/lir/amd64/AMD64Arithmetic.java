@@ -276,39 +276,6 @@ public enum AMD64Arithmetic {
         }
     }
 
-    public static class DivOp extends AMD64LIRInstruction {
-        @Opcode private final AMD64Arithmetic opcode;
-        @Def protected Value result;
-        @Use protected Value x;
-        @Alive protected Value y;
-        @Temp protected Value temp;
-        @State protected LIRFrameState state;
-
-        public DivOp(AMD64Arithmetic opcode, Value result, Value x, Value y, LIRFrameState state) {
-            this.opcode = opcode;
-            this.result = result;
-            this.x = x;
-            this.y = y;
-            this.temp = asRegister(result) == AMD64.rax ? AMD64.rdx.asValue(result.getKind()) : AMD64.rax.asValue(result.getKind());
-            this.state = state;
-        }
-
-        @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            emit(tasm, masm, opcode, result, y, state);
-        }
-
-        @Override
-        protected void verify() {
-            super.verify();
-            // left input in rax, right input in any register but rax and rdx, result quotient in rax, result remainder in rdx
-            assert asRegister(x) == AMD64.rax;
-            assert differentRegisters(y, AMD64.rax.asValue(), AMD64.rdx.asValue());
-            assert (name().endsWith("DIV") && asRegister(result) == AMD64.rax) || (name().endsWith("REM") && asRegister(result) == AMD64.rdx);
-            verifyKind(opcode, result, x, y);
-        }
-    }
-
 
     @SuppressWarnings("unused")
     protected static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Arithmetic opcode, AllocatableValue result) {
