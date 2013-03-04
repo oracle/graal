@@ -245,13 +245,13 @@ public enum AMD64Arithmetic {
 
     public static class DivRemOp extends AMD64LIRInstruction {
         @Opcode private final AMD64Arithmetic opcode;
-        @Def protected Value divResult;
-        @Def protected Value remResult;
-        @Use protected Value x;
-        @Alive protected Value y;
+        @Def protected AllocatableValue divResult;
+        @Def protected AllocatableValue remResult;
+        @Use protected AllocatableValue x;
+        @Alive protected AllocatableValue y;
         @State protected LIRFrameState state;
 
-        public DivRemOp(AMD64Arithmetic opcode, Value x, Value y, LIRFrameState state) {
+        public DivRemOp(AMD64Arithmetic opcode, AllocatableValue x, AllocatableValue y, LIRFrameState state) {
             this.opcode = opcode;
             this.divResult = AMD64.rax.asValue(x.getKind());
             this.remResult = AMD64.rdx.asValue(x.getKind());
