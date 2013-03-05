@@ -590,9 +590,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void emitGuardCheck(LogicNode comp, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
-        if (comp instanceof IsNullNode && negated) {
-            emitNullCheckGuard(((IsNullNode) comp).object());
-        } else if (comp instanceof LogicConstantNode && ((LogicConstantNode) comp).getValue() != negated) {
+        if (comp instanceof LogicConstantNode && ((LogicConstantNode) comp).getValue() != negated) {
             // True constant, nothing to emit.
             // False constants are handled within emitBranch.
         } else {
@@ -606,8 +604,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             }
         }
     }
-
-    protected abstract void emitNullCheckGuard(ValueNode object);
 
     public void emitBranch(LogicNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
         if (node instanceof IsNullNode) {

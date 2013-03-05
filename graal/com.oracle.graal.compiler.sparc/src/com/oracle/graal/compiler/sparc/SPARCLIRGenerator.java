@@ -62,12 +62,6 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitNullCheckGuard(ValueNode object) {
-        // SPARC: Auto-generated method stub
-
-    }
-
-    @Override
     public void emitJump(LabelRef label, LIRFrameState info) {
         @SuppressWarnings("unused")
         SPARCLIRInstruction instruction = null;

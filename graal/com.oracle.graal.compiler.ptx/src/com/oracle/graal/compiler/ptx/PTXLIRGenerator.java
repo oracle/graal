@@ -448,11 +448,6 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitNullCheckGuard(ValueNode object) {
-        throw new InternalError("NYI");
-    }
-
-    @Override
     public void visitCompareAndSwap(CompareAndSwapNode node) {
         throw new InternalError("NYI");
     }

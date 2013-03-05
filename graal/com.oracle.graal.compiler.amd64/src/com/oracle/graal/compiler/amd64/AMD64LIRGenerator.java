@@ -897,7 +897,15 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitNullCheckGuard(ValueNode object) {
+    public void emitGuardCheck(LogicNode comp, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
+        if (comp instanceof IsNullNode && negated) {
+            emitNullCheckGuard(((IsNullNode) comp).object());
+        } else {
+            super.emitGuardCheck(comp, deoptReason, action, negated);
+        }
+    }
+
+    private void emitNullCheckGuard(ValueNode object) {
         Variable value = load(operand(object));
         LIRFrameState info = state();
         append(new NullCheckOp(value, info));
