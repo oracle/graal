@@ -38,7 +38,7 @@ public enum PTXCompare {
     public static class CompareOp extends PTXLIRInstruction {
 
         @Opcode private final PTXCompare opcode;
-        @Use({REG}) protected Value x;
+        @Use({REG, STACK, CONST}) protected Value x;
         @Use({REG, STACK, CONST}) protected Value y;
         private final Condition condition;
 

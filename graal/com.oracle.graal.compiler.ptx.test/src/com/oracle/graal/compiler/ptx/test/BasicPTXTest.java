@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.ptx.test;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.ptx.*;
@@ -32,6 +33,7 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.*;
 import com.oracle.graal.ptx.*;
@@ -67,7 +69,23 @@ public class BasicPTXTest extends GraalCompilerTest {
         PhasePlan phasePlan = new PhasePlan();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+        phasePlan.addPhase(PhasePosition.AFTER_PARSING, new PTXPhase());
+        new PTXPhase().apply(graph);
         CompilationResult result = GraalCompiler.compileMethod(runtime, ptxBackend, target, graph.method(), graph, null, phasePlan, OptimisticOptimizations.NONE);
         System.out.println("result=" + result);
+    }
+
+    private static class PTXPhase extends Phase {
+
+        @Override
+        protected void run(StructuredGraph graph) {
+            System.out.println("PTX phase");
+            for (LocalNode local : graph.getNodes(LocalNode.class)) {
+                if (local.kind() == Kind.Object) {
+                    local.setStamp(StampFactory.declaredNonNull(local.objectStamp().type()));
+                }
+            }
+        }
+
     }
 }
