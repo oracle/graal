@@ -29,24 +29,16 @@ package com.oracle.graal.hotspot.bridge;
  */
 public interface Marks {
 
-    // @formatter:off
-    // These constants need to correspond to those of the same name in graalCodeInstaller.hpp
-    Integer MARK_VERIFIED_ENTRY            = 0x0001;
-    Integer MARK_UNVERIFIED_ENTRY          = 0x0002;
-    Integer MARK_OSR_ENTRY                 = 0x0003;
-    Integer MARK_UNWIND_ENTRY              = 0x0004;
-    Integer MARK_EXCEPTION_HANDLER_ENTRY   = 0x0005;
-    Integer MARK_DEOPT_HANDLER_ENTRY       = 0x0006;
-    Integer MARK_STATIC_CALL_STUB          = 0x1000;
-    Integer MARK_INVOKEINTERFACE           = 0x2001;
-    Integer MARK_INVOKESTATIC              = 0x2002;
-    Integer MARK_INVOKESPECIAL             = 0x2003;
-    Integer MARK_INVOKEVIRTUAL             = 0x2004;
-    Integer MARK_INLINE_INVOKEVIRTUAL      = 0x2005;
-    Integer MARK_IMPLICIT_NULL             = 0x3000;
-    Integer MARK_POLL_NEAR                 = 0x3001;
-    Integer MARK_POLL_RETURN_NEAR          = 0x3002;
-    Integer MARK_POLL_FAR                  = 0x3003;
-    Integer MARK_POLL_RETURN_FAR           = 0x3004;
-
+    int MARK_VERIFIED_ENTRY = 1;
+    int MARK_UNVERIFIED_ENTRY = 2;
+    int MARK_OSR_ENTRY = 3;
+    int MARK_EXCEPTION_HANDLER_ENTRY = 4;
+    int MARK_DEOPT_HANDLER_ENTRY = 5;
+    int MARK_INVOKEINTERFACE = 6;
+    int MARK_INVOKEVIRTUAL = 7;
+    int MARK_INLINE_INVOKE = 8;
+    int MARK_POLL_NEAR = 9;
+    int MARK_POLL_RETURN_NEAR = 10;
+    int MARK_POLL_FAR = 11;
+    int MARK_POLL_RETURN_FAR = 12;
 }
