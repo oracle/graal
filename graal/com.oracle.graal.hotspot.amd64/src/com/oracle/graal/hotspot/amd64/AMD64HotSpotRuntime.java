@@ -40,7 +40,6 @@ import static com.oracle.graal.hotspot.snippets.AESCryptSubstitutions.DecryptBlo
 import static com.oracle.graal.hotspot.snippets.AESCryptSubstitutions.EncryptBlockStubCall.*;
 import static com.oracle.graal.hotspot.snippets.CipherBlockChainingSubstitutions.DecryptAESCryptStubCall.*;
 import static com.oracle.graal.hotspot.snippets.CipherBlockChainingSubstitutions.EncryptAESCryptStubCall.*;
-import static com.oracle.graal.lir.amd64.AMD64Call.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
