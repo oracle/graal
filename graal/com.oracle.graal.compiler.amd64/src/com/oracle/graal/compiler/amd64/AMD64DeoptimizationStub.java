@@ -52,7 +52,6 @@ public class AMD64DeoptimizationStub extends AMD64Code {
         masm.bind(label);
         masm.movl(scratch, tasm.runtime.encodeDeoptActionAndReason(action, reason));
         AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(DEOPTIMIZE), info);
-        AMD64Call.shouldNotReachHere(tasm, masm);
     }
 
     @Override

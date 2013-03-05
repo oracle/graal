@@ -35,8 +35,6 @@ import com.oracle.graal.lir.asm.*;
 
 public class AMD64Call {
 
-    public static final Descriptor DEBUG = new Descriptor("debug", false, void.class);
-
     @Opcode("CALL_DIRECT")
     public static class DirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
 
@@ -141,15 +139,5 @@ public class AMD64Call {
         tasm.recordIndirectCall(before, after, callTarget, info);
         tasm.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
-    }
-
-    public static void shouldNotReachHere(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        boolean assertions = false;
-        assert (assertions = true) == true;
-
-        if (assertions) {
-            directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(DEBUG), null);
-            masm.hlt();
-        }
     }
 }

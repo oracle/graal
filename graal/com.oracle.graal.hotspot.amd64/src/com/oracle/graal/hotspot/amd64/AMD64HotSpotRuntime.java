@@ -60,10 +60,6 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /*           temps */ null,
                 /*             ret */ ret(Kind.Void));
 
-        addRuntimeCall(DEBUG, config.debugStub,
-                /*           temps */ null,
-                /*             ret */ ret(Kind.Void));
-
         addRuntimeCall(ARITHMETIC_FREM, config.arithmeticFremStub,
                 /*           temps */ null,
                 /*             ret */ ret(Kind.Float),
