@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
 
@@ -105,7 +104,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         @Override
         public void visitSafepointNode(SafepointNode i) {
             LIRFrameState info = state();
-            append(new AMD64SafepointOp(info, runtime().config));
+            append(new AMD64SafepointOp(info, runtime().config, this));
         }
 
         @Override
@@ -225,7 +224,6 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             int frameSize = tasm.frameMap.frameSize();
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             CalleeSaveLayout csl = tasm.frameMap.registerConfig.getCalleeSaveLayout();
-            RegisterConfig regConfig = tasm.frameMap.registerConfig;
 
             if (csl != null && csl.size != 0) {
                 tasm.compilationResult.setRegisterRestoreEpilogueOffset(asm.codeBuffer.position());

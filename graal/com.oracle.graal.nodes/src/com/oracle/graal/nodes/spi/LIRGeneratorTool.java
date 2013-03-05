@@ -49,7 +49,7 @@ public abstract class LIRGeneratorTool {
 
     public abstract Value operand(ValueNode object);
 
-    public abstract Value newVariable(Kind kind);
+    public abstract AllocatableValue newVariable(Kind kind);
 
     public abstract Value setResult(ValueNode x, Value operand);
 
