@@ -236,27 +236,6 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
             asm.incrementq(rsp, frameSize - 8); // account for the pop of RBP below
             asm.pop(rbp);
-
-            if (GraalOptions.GenSafepoints) {
-                HotSpotVMConfig config = runtime().config;
-
-                // If at the return point, then the frame has already been popped
-                // so deoptimization cannot be performed here. The HotSpot runtime
-                // detects this case - see the definition of frame::should_be_deoptimized()
-
-                Register scratch = regConfig.getScratchRegister();
-                int offset = SafepointPollOffset % unsafe.pageSize();
-                if (config.isPollingPageFar) {
-                    asm.movq(scratch, config.safepointPollingAddress + offset);
-                    tasm.recordMark(Marks.MARK_POLL_RETURN_FAR);
-                    asm.movq(scratch, new AMD64Address(tasm.target.wordKind, scratch.asValue()));
-                } else {
-                    tasm.recordMark(Marks.MARK_POLL_RETURN_NEAR);
-                    // The C++ code transforms the polling page offset into an RIP displacement
-                    // to the real address at that offset in the polling page.
-                    asm.movq(scratch, new AMD64Address(tasm.target.wordKind, rip.asValue(), offset));
-                }
-            }
         }
     }
 

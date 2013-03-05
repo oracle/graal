@@ -186,10 +186,10 @@ public final class GraalOptions {
     public static boolean OptCanonicalizer                   = true;
     public static boolean OptScheduleOutOfLoops              = true;
     public static boolean OptEliminateGuards                 = true;
+    public static boolean OptEliminateSafepoints             = true;
     public static boolean OptImplicitNullChecks              = true;
     public static boolean OptLivenessAnalysis                = true;
     public static boolean OptLoopTransform                   = true;
-    public static boolean OptSafepointElimination            = true;
     public static boolean OptFloatingReads                   = true;
     public static boolean OptTailDuplication                 = true;
     public static boolean OptEliminatePartiallyRedundantGuards = true;
