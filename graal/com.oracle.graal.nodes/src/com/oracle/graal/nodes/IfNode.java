@@ -152,10 +152,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 ((StructuredGraph) graph()).removeSplit(this, falseSuccessor());
             }
         } else if (trueSuccessor().guards().isEmpty() && falseSuccessor().guards().isEmpty()) {
-            if (removeOrMaterializeIf(tool)) {
-                return;
-            } else if (removeIntermediateMaterialization(tool)) {
-                return;
+            if (!removeOrMaterializeIf(tool)) {
+                removeIntermediateMaterialization(tool);
             }
         }
     }
