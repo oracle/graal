@@ -29,8 +29,8 @@ import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 import static com.oracle.graal.snippets.Snippet.Varargs.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
-import static com.oracle.graal.snippets.nodes.ExplodeLoopNode.*;
 import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
+import static com.oracle.graal.snippets.nodes.ExplodeLoopNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -59,6 +59,11 @@ public class NewObjectSnippets implements SnippetsInterface {
 
     // @formatter:off
 
+    private static void trace(boolean enabled, String format, WordBase value) {
+        if (enabled) {
+            Log.printf(format, value.rawValue());
+        }
+    }
     @Snippet
     public static Word allocate(@Parameter("size") int size) {
         Word thread = thread();
@@ -69,7 +74,10 @@ public class NewObjectSnippets implements SnippetsInterface {
         if (newTop.belowOrEqual(end)) {
             probability(FAST_PATH_PROBABILITY);
             thread.writeWord(threadTlabTopOffset(), newTop);
+            trace(true, "     Allocate object at:   0x%016lx\n", newTop);
+
             return top;
+            
         }
         return Word.zero();
     }

@@ -40,19 +40,11 @@ import com.oracle.graal.word.*;
 
 public class WriteBarrierSnippets implements SnippetsInterface {
 
-    private static final boolean TRACE = true;
+    private static final boolean TRACE = false;
     private static final SnippetCounter.Group counters = WriteBarrierSnippets.TRACE ? new SnippetCounter.Group("GC") : null;
 
     private static final SnippetCounter g1PreCounter = new SnippetCounter(counters, "G1-PRE", "G1-PRE");
     private static final SnippetCounter g1PostCounter = new SnippetCounter(counters, "G1-POST", "G1-POST");
-
-    private static void traceObject(boolean enabled, String action, Object object) {
-        if (enabled) {
-            Log.print(action);
-            Log.print(' ');
-            Log.printlnObject(object);
-        }
-    }
 
     @Snippet
     public static void g1PreWriteBarrier(@Parameter("object") Object object, @Parameter("location") Object location, @ConstantParameter("doLoad") boolean doLoad) {
@@ -139,7 +131,7 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         trace(WriteBarrierSnippets.TRACE, "     G1 POST Word.size 0x%016lx\n", Word.signed(HotSpotSnippetUtils.wordSize()));
 
         // Card Table
-        Word cardBase = (Word) oop.unsignedShiftRight(cardTableShift());
+        Word cardBase = (Word) field.unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
         int displacement = 0;
         if (((int) startAddress) == startAddress) {
@@ -150,14 +142,12 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         Word cardAddress = cardBase.add(displacement);
 
         // if (writtenValue.notEqual(Word.zero())) {
-        Word xorResult = ((Word) oop.xor(writtenValue)).unsignedShiftRight(HotSpotSnippetUtils.logOfHRGrainBytes());
+        Word xorResult = ((Word) field.xor(writtenValue)).unsignedShiftRight(HotSpotSnippetUtils.logOfHRGrainBytes());
         trace(WriteBarrierSnippets.TRACE, "     G1 POST xor result: 0x%016lx\n", xorResult);
 
         if (xorResult.notEqual(Word.zero())) {
             if (writtenValue.notEqual(Word.zero())) {
                 byte cardByte = cardAddress.readByte(0);
-                trace(WriteBarrierSnippets.TRACE, "     G1 POST cardAddress: 0x%016lx\n", cardAddress);
-                trace(WriteBarrierSnippets.TRACE, "     G1 POST cardValue:  %d\n", Word.signed(cardByte));
 
                 if (cardByte != (byte) 0) {
                     cardAddress.writeByte(0, (byte) 0); // smash zero into card
@@ -166,6 +156,9 @@ public class WriteBarrierSnippets implements SnippetsInterface {
                         Word logAddress = bufferAddress.add(nextIndex);
                         logAddress.writeWord(0, cardAddress);
                         indexAddress.writeWord(0, nextIndex);
+                        trace(WriteBarrierSnippets.TRACE, "     G1 POST cardAddress: 0x%016lx\n", cardAddress);
+                        trace(WriteBarrierSnippets.TRACE, "     G1 POST cardValue:  %d\n", Word.signed(cardByte));
+
                         trace(WriteBarrierSnippets.TRACE, "     G1 POST nextIndex: 0x%016lx\n", nextIndex);
                         trace(WriteBarrierSnippets.TRACE, "     G1 POST logAddress: 0x%016lx\n", logAddress);
                     } else {
