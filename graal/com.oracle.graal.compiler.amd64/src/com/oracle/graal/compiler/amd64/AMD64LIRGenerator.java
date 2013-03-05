@@ -756,16 +756,16 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo) {
+    public void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason) {
         LIRFrameState info = state();
-        LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
+        LabelRef stubEntry = createDeoptStub(action, reason, info);
         append(new BranchOp(ConditionFlag.Overflow, stubEntry, info));
     }
 
     @Override
-    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo) {
+    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
         LIRFrameState info = state();
-        LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
+        LabelRef stubEntry = createDeoptStub(action, reason, info);
         append(new JumpOp(stubEntry, info));
     }
 
@@ -889,9 +889,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info, Object deoptInfo) {
+    protected LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info) {
         assert info.topFrame.getBCI() >= 0 : "invalid bci for deopt framestate";
-        AMD64DeoptimizationStub stub = new AMD64DeoptimizationStub(action, reason, info, deoptInfo);
+        AMD64DeoptimizationStub stub = new AMD64DeoptimizationStub(action, reason, info);
         lir.stubs.add(stub);
         return LabelRef.forLabel(stub.label);
     }

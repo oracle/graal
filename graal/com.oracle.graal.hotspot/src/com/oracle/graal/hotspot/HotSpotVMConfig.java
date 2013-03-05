@@ -320,7 +320,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long unwindExceptionStub;
     public long osrMigrationEndStub;
     public long registerFinalizerStub;
-    public long setDeoptInfoStub;
     public long createNullPointerExceptionStub;
     public long createOutOfBoundsExceptionStub;
     public long javaTimeMillisStub;

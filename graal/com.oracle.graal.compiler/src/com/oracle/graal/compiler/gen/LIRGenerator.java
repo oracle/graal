@@ -596,7 +596,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         } else {
             // Fall back to a normal branch.
             LIRFrameState info = state();
-            LabelRef stubEntry = createDeoptStub(action, deoptReason, info, comp);
+            LabelRef stubEntry = createDeoptStub(action, deoptReason, info);
             if (negated) {
                 emitBranch(comp, stubEntry, null, info);
             } else {
@@ -759,7 +759,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return result;
     }
 
-    protected abstract LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info, Object deoptInfo);
+    protected abstract LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info);
 
     @Override
     public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention cc, boolean canTrap, Value... args) {

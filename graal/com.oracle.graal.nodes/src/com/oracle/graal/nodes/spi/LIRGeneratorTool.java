@@ -97,9 +97,9 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitMembar(int barriers);
 
-    public abstract void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo);
+    public abstract void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason);
 
-    public abstract void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo);
+    public abstract void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason);
 
     public abstract Value emitCall(RuntimeCallTarget callTarget, CallingConvention cc, boolean canTrap, Value... args);
 

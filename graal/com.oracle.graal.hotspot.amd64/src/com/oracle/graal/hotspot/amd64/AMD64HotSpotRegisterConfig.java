@@ -209,8 +209,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         String res = String.format(
              "Allocatable: " + Arrays.toString(getAllocatableRegisters()) + "%n" +
              "CallerSave:  " + Arrays.toString(getCallerSaveRegisters()) + "%n" +
-             "CalleeSave:  " + getCalleeSaveLayout() + "%n" +
-             "Scratch:     " + getScratchRegister() + "%n");
+             "CalleeSave:  " + getCalleeSaveLayout() + "%n");
         return res;
     }
 }

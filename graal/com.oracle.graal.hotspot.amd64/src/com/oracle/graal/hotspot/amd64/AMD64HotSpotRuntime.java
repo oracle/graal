@@ -60,11 +60,6 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /*           temps */ null,
                 /*             ret */ ret(Kind.Void));
 
-        addRuntimeCall(SET_DEOPT_INFO, config.setDeoptInfoStub,
-                /*           temps */ null,
-                /*             ret */ ret(Kind.Void),
-                /* arg0:      info */ scratch(Kind.Object));
-
         addRuntimeCall(DEBUG, config.debugStub,
                 /*           temps */ null,
                 /*             ret */ ret(Kind.Void));

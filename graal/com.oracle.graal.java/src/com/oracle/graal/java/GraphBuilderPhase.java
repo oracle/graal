@@ -1026,7 +1026,6 @@ public final class GraphBuilderPhase extends Phase {
         Kind resultType = targetMethod.getSignature().getReturnKind();
         if (GraalOptions.DeoptALot) {
             DeoptimizeNode deoptimize = currentGraph.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint));
-            deoptimize.setMessage(targetMethod.getName());
             append(deoptimize);
             frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, currentGraph));
             return;

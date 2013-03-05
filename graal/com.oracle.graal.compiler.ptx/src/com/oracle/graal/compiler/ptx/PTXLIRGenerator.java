@@ -336,12 +336,12 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo) {
+    public void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason) {
         throw new InternalError("NYI");
     }
 
     @Override
-    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo) {
+    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
         throw new InternalError("NYI");
     }
 
@@ -440,9 +440,9 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info, Object deoptInfo) {
+    protected LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info) {
         assert info.topFrame.getBCI() >= 0 : "invalid bci for deopt framestate";
-        PTXDeoptimizationStub stub = new PTXDeoptimizationStub(action, reason, info, deoptInfo);
+        PTXDeoptimizationStub stub = new PTXDeoptimizationStub(action, reason, info);
         lir.stubs.add(stub);
         return LabelRef.forLabel(stub.label);
     }

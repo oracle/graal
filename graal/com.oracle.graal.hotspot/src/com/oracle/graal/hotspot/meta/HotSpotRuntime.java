@@ -196,10 +196,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         return result;
     }
 
-    protected Value scratch(Kind kind) {
-        return globalStubRegConfig.getScratchRegister().asValue(kind);
-    }
-
     public HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
         this.config = config;
         this.graalRuntime = graalRuntime;

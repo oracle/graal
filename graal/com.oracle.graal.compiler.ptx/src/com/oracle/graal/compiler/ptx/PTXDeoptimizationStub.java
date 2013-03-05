@@ -40,13 +40,11 @@ public class PTXDeoptimizationStub extends PTXCode {
     public final LIRFrameState info;
     public final DeoptimizationAction action;
     public final DeoptimizationReason reason;
-    public final Object deoptInfo;
 
-    public PTXDeoptimizationStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info, Object deoptInfo) {
+    public PTXDeoptimizationStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info) {
         this.action = action;
         this.reason = reason;
         this.info = info;
-        this.deoptInfo = deoptInfo;
     }
 
     @Override
