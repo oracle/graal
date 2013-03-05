@@ -42,13 +42,21 @@ import com.oracle.graal.ptx.*;
 public class BasicPTXTest extends GraalCompilerTest {
 
     @Test
-    public void test1() {
-        test("test1Snippet");
+    public void testAdd() {
+        test("testAddSnippet");
     }
 
-    @SuppressWarnings("all")
-    public static int test1Snippet(int a) {
+    public static int testAddSnippet(int a) {
         return a + 1;
+    }
+
+    @Test
+    public void testArray() {
+        test("testArraySnippet");
+    }
+
+    public static int testArraySnippet(int[] array) {
+        return array[0];
     }
 
     private void test(String snippet) {
