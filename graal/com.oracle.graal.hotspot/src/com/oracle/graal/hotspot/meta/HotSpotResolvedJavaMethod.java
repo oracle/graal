@@ -72,6 +72,13 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return holder;
     }
 
+    /**
+     * Gets the address of the C++ Method object for this method.
+     */
+    public Constant getMetaspaceMethodConstant() {
+        return Constant.forIntegerKind(HotSpotGraalRuntime.getInstance().getTarget().wordKind, metaspaceMethod, this);
+    }
+
     @Override
     public int getModifiers() {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
