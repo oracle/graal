@@ -32,7 +32,6 @@ import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.snippets.SystemSubstitutions.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
-import static com.oracle.graal.nodes.UnwindNode.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.snippets.Log.*;
 import static com.oracle.graal.snippets.MathSubstitutionsX86.*;
@@ -203,11 +202,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         globalStubRegConfig = createRegisterConfig(true);
 
         // @formatter:off
-
-        addRuntimeCall(UNWIND_EXCEPTION, config.unwindExceptionStub,
-                        /*           temps */ null,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0: exception */ javaCallingConvention(Kind.Object));
 
         addRuntimeCall(OnStackReplacementPhase.OSR_MIGRATION_END, config.osrMigrationEndStub,
                         /*           temps */ null,

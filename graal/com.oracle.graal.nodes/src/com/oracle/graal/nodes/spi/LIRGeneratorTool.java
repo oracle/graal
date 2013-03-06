@@ -132,4 +132,6 @@ public abstract class LIRGeneratorTool {
     public abstract void visitSafepointNode(SafepointNode i);
 
     public abstract void visitBreakpointNode(BreakpointNode i);
+
+    public abstract void emitUnwind(Value operand);
 }
