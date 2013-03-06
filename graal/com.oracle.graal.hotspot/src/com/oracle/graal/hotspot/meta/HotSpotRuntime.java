@@ -565,13 +565,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                         }
                     }
                 } else if (callTarget.invokeKind() == InvokeKind.Special || callTarget.invokeKind() == InvokeKind.Static) {
-                    HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
-                    ConstantNode metaspaceMethod = ConstantNode.forConstant(hsMethod.getMetaspaceMethodConstant(), this, graph);
-                    ReadNode compiledEntry = graph.add(new ReadNode(metaspaceMethod, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph),
-                                    StampFactory.forKind(wordKind())));
-                    loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(metaspaceMethod, compiledEntry, parameters, invoke.node().stamp(), signature, callTarget.targetMethod(),
-                                    CallingConvention.Type.JavaCall));
-                    graph.addBeforeFixed(invoke.node(), compiledEntry);
+                    loweredCallTarget = graph.add(new HotSpotDirectCallTargetNode(parameters, invoke.node().stamp(), signature, callTarget.targetMethod(), CallingConvention.Type.JavaCall,
+                                    callTarget.invokeKind()));
                 }
 
                 if (loweredCallTarget == null) {
