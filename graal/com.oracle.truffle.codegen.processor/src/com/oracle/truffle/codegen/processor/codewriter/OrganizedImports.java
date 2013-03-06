@@ -359,6 +359,100 @@ public final class OrganizedImports {
 
         public void visitAnnotation(AnnotationMirror e) {
             addImport(e.getAnnotationType());
+            if (!e.getElementValues().isEmpty()) {
+                Map<? extends ExecutableElement, ? extends AnnotationValue> values = e.getElementValues();
+                Set<? extends ExecutableElement> methodsSet = values.keySet();
+                List<ExecutableElement> methodsList = new ArrayList<>();
+                for (ExecutableElement method : methodsSet) {
+                    if (values.get(method) == null) {
+                        continue;
+                    }
+                    methodsList.add(method);
+                }
+
+                for (int i = 0; i < methodsList.size(); i++) {
+                    AnnotationValue value = values.get(methodsList.get(i));
+                    visitAnnotationValue(value);
+                }
+            }
+        }
+
+        public void visitAnnotationValue(AnnotationValue e) {
+            e.accept(new AnnotationValueReferenceVisitor(), null);
+        }
+
+        private class AnnotationValueReferenceVisitor extends AbstractAnnotationValueVisitor7<Void, Void> {
+
+            @Override
+            public Void visitBoolean(boolean b, Void p) {
+                return null;
+            }
+
+            @Override
+            public Void visitByte(byte b, Void p) {
+                return null;
+            }
+
+            @Override
+            public Void visitChar(char c, Void p) {
+                return null;
+            }
+
+            @Override
+            public Void visitDouble(double d, Void p) {
+                return null;
+            }
+
+            @Override
+            public Void visitFloat(float f, Void p) {
+                return null;
+            }
+
+            @Override
+            public Void visitInt(int i, Void p) {
+                return null;
+            }
+
+            @Override
+            public Void visitLong(long i, Void p) {
+                return null;
+            }
+
+            @Override
+            public Void visitShort(short s, Void p) {
+                return null;
+            }
+
+            @Override
+            public Void visitString(String s, Void p) {
+                return null;
+            }
+
+            @Override
+            public Void visitType(TypeMirror t, Void p) {
+                addImport(t);
+                return null;
+            }
+
+            @Override
+            public Void visitEnumConstant(VariableElement c, Void p) {
+                addImport(c.asType());
+                return null;
+            }
+
+            @Override
+            public Void visitAnnotation(AnnotationMirror a, Void p) {
+                ReferenceCollector.this.visitAnnotation(a);
+                return null;
+            }
+
+            @Override
+            public Void visitArray(List<? extends AnnotationValue> vals, Void p) {
+                for (int i = 0; i < vals.size(); i++) {
+                    ReferenceCollector.this.visitAnnotationValue(vals.get(i));
+                }
+                return null;
+            }
         }
 
         @Override

@@ -123,6 +123,14 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         writeClassImpl(e);
     }
 
+    private String useImport(TypeMirror type) {
+        if (imports != null) {
+            return imports.useImport(type);
+        } else {
+            return Utils.getSimpleName(type);
+        }
+    }
+
     private void writeClassImpl(CodeTypeElement e) {
         for (AnnotationMirror annotation : e.getAnnotationMirrors()) {
             visitAnnotation(annotation);
@@ -137,12 +145,12 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         }
         write(e.getSimpleName());
         if (e.getSuperclass() != null && !getQualifiedName(e.getSuperclass()).equals("java.lang.Object")) {
-            write(" extends ").write(typeSimpleName(e.getSuperclass()));
+            write(" extends ").write(useImport(e.getSuperclass()));
         }
         if (e.getImplements().size() > 0) {
             write(" implements ");
             for (int i = 0; i < e.getImplements().size(); i++) {
-                write(typeSimpleName(e.getImplements().get(i)));
+                write(useImport(e.getImplements().get(i)));
                 if (i < e.getImplements().size() - 1) {
                     write(", ");
                 }
@@ -267,7 +275,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             }
         } else {
             writeModifiers(f.getModifiers());
-            write(typeSimpleName(f.asType()));
+            write(useImport(f.asType()));
 
             if (f.getEnclosingElement().getKind() == ElementKind.METHOD) {
                 ExecutableElement method = (ExecutableElement) f.getEnclosingElement();
@@ -287,7 +295,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
     }
 
     public void visitAnnotation(AnnotationMirror e) {
-        write("@").write(typeSimpleName(e.getAnnotationType()));
+        write("@").write(useImport(e.getAnnotationType()));
 
         if (!e.getElementValues().isEmpty()) {
             write("(");
@@ -395,14 +403,14 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
 
         @Override
         public Void visitType(TypeMirror t, Void p) {
-            write(typeSimpleName(t));
+            write(useImport(t));
             write(".class");
             return null;
         }
 
         @Override
         public Void visitEnumConstant(VariableElement c, Void p) {
-            write(typeSimpleName(c.asType()));
+            write(useImport(c.asType()));
             write(".");
             write(c.getSimpleName().toString());
             return null;
@@ -458,7 +466,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         writeModifiers(e.getModifiers());
 
         if (e.getReturnType() != null) {
-            write(typeSimpleName(e.getReturnType()));
+            write(useImport(e.getReturnType()));
             write(" ");
         }
         write(e.getSimpleName());
@@ -477,7 +485,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         if (throwables.size() > 0) {
             write(" throws ");
             for (int i = 0; i < throwables.size(); i++) {
-                write(typeSimpleName(throwables.get(i)));
+                write(useImport(throwables.get(i)));
                 if (i < throwables.size() - 1) {
                     write(", ");
                 }
@@ -554,16 +562,12 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 }
                 break;
             case TYPE:
-                write(imports.useImport(e.getType()));
+                write(useImport(e.getType()));
                 break;
             default:
                 assert false;
                 return;
         }
-    }
-
-    private static String typeSimpleName(TypeMirror type) {
-        return Utils.getSimpleName(type);
     }
 
     protected void writeHeader() {
