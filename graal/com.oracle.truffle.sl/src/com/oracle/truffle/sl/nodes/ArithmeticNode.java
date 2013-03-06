@@ -37,11 +37,6 @@ public abstract class ArithmeticNode extends BinaryNode {
         super(node);
     }
 
-    @Generic
-    public Object doGeneric(Object left, Object right) {
-        throw new RuntimeException("Arithmetic not defined for types " + left.getClass().getSimpleName() + ", " + right.getClass().getSimpleName());
-    }
-
     public abstract static class AddNode extends ArithmeticNode {
 
         public AddNode(TypedNode left, TypedNode right) {
@@ -53,7 +48,7 @@ public abstract class ArithmeticNode extends BinaryNode {
         }
 
         @Specialization(rewriteOn = ArithmeticException.class)
-        int doInteger(int left, int right) {
+        int doInt(int left, int right) {
             return ExactMath.addExact(left, right);
         }
 
@@ -63,13 +58,18 @@ public abstract class ArithmeticNode extends BinaryNode {
         }
 
         @Specialization
-        String doStringDirect(String left, String right) {
+        String doString(String left, String right) {
             return left + right;
         }
 
         @Specialization(guards = "isString")
-        String doString(Object left, Object right) {
+        String add(Object left, Object right) {
             return left.toString() + right.toString();
+        }
+
+        @Generic
+        public Object addGeneric(Object left, Object right) {
+            throw new RuntimeException("Arithmetic not defined for types " + left.getClass().getSimpleName() + ", " + right.getClass().getSimpleName());
         }
     }
 
@@ -84,13 +84,18 @@ public abstract class ArithmeticNode extends BinaryNode {
         }
 
         @Specialization(rewriteOn = ArithmeticException.class)
-        int doInteger(int left, int right) {
+        int sub(int left, int right) {
             return ExactMath.subtractExact(left, right);
         }
 
         @Specialization
-        BigInteger doBigInteger(BigInteger left, BigInteger right) {
+        BigInteger sub(BigInteger left, BigInteger right) {
             return left.subtract(right);
+        }
+
+        @Generic
+        public Object sub(Object left, Object right) {
+            throw new RuntimeException("Arithmetic not defined for types " + left.getClass().getSimpleName() + ", " + right.getClass().getSimpleName());
         }
     }
 
@@ -105,13 +110,18 @@ public abstract class ArithmeticNode extends BinaryNode {
         }
 
         @Specialization(rewriteOn = ArithmeticException.class)
-        int doInteger(int left, int right) {
+        int div(int left, int right) {
             return left / right;
         }
 
         @Specialization
-        BigInteger doBigInteger(BigInteger left, BigInteger right) {
+        BigInteger div(BigInteger left, BigInteger right) {
             return left.divide(right);
+        }
+
+        @Generic
+        public Object div(Object left, Object right) {
+            throw new RuntimeException("Arithmetic not defined for types " + left.getClass().getSimpleName() + ", " + right.getClass().getSimpleName());
         }
     }
 
@@ -126,13 +136,18 @@ public abstract class ArithmeticNode extends BinaryNode {
         }
 
         @Specialization(rewriteOn = ArithmeticException.class)
-        int doInteger(int left, int right) {
+        int mul(int left, int right) {
             return ExactMath.multiplyExact(left, right);
         }
 
         @Specialization
-        BigInteger doBigInteger(BigInteger left, BigInteger right) {
+        BigInteger mul(BigInteger left, BigInteger right) {
             return left.multiply(right);
+        }
+
+        @Generic
+        public Object mul(Object left, Object right) {
+            throw new RuntimeException("Arithmetic not defined for types " + left.getClass().getSimpleName() + ", " + right.getClass().getSimpleName());
         }
     }
 

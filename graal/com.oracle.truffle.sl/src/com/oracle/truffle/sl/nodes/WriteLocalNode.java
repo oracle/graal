@@ -41,31 +41,31 @@ public abstract class WriteLocalNode extends FrameSlotNode {
     }
 
     @Specialization
-    public int doInteger(VirtualFrame frame, int right) {
+    public int write(VirtualFrame frame, int right) {
         frame.setInt(slot, right);
         return right;
     }
 
     @Specialization
-    public BigInteger doBigInteger(VirtualFrame frame, BigInteger right) {
+    public BigInteger write(VirtualFrame frame, BigInteger right) {
         frame.setObject(slot, right);
         return right;
     }
 
     @Specialization
-    public boolean doBoolean(VirtualFrame frame, boolean right) {
+    public boolean write(VirtualFrame frame, boolean right) {
         frame.setBoolean(slot, right);
         return right;
     }
 
     @Specialization
-    public String doString(VirtualFrame frame, String right) {
+    public String write(VirtualFrame frame, String right) {
         frame.setObject(slot, right);
         return right;
     }
 
     @Generic
-    public Object doGeneric(VirtualFrame frame, Object right) {
+    public Object write(VirtualFrame frame, Object right) {
         frame.setObject(slot, right);
         return right;
     }
