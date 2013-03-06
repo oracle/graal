@@ -41,7 +41,7 @@ import com.oracle.graal.word.*;
 public class WriteBarrierSnippets implements SnippetsInterface {
 
     private static final boolean TRACE = false;
-    private static final SnippetCounter.Group counters = WriteBarrierSnippets.TRACE ? new SnippetCounter.Group("GC") : null;
+    public static final SnippetCounter.Group counters = WriteBarrierSnippets.TRACE ? new SnippetCounter.Group("GC") : null;
 
     private static final SnippetCounter g1PreCounter = new SnippetCounter(counters, "G1-PRE", "G1-PRE");
     private static final SnippetCounter g1PostCounter = new SnippetCounter(counters, "G1-POST", "G1-POST");
@@ -55,7 +55,8 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         Pointer field = Word.fromArray(object, location);
         Pointer previousOop = field.readWord(0);
 
-        VerOopStubCall.call(oop);
+        // VerOopStubCall.call(oop);
+        long oopv = oop.rawValue();
 
         byte markingValue = thread.readByte(HotSpotSnippetUtils.g1SATBQueueMarkingOffset());
 
@@ -97,6 +98,9 @@ public class WriteBarrierSnippets implements SnippetsInterface {
                 }
             }
         }
+        if (oopv != oop.rawValue()) {
+            trace(true, "---------------G1 PRE ERROR: %lu\n", Word.unsigned(oopv));
+        }
 
         trace(WriteBarrierSnippets.TRACE, "---------------G1 PRE Exit: %lu\n", Word.unsigned(g1PreCounter.value()));
         g1PreCounter.inc();
@@ -111,7 +115,8 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         Pointer field = Word.fromArray(object, location);
         Pointer writtenValue = Word.fromObject(value);
 
-        VerOopStubCall.call(oop);
+        // VerOopStubCall.call(oop);
+        long oopv = oop.rawValue();
 
         Word bufferAddress = thread.readWord(HotSpotSnippetUtils.g1CardQueueBufferOffset());
         Word indexAddress = thread.add(HotSpotSnippetUtils.g1CardQueueIndexOffset());
@@ -172,6 +177,9 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         // }
         trace(WriteBarrierSnippets.TRACE, "---------------G1 POST EXIT: %lu\n", Word.unsigned(g1PostCounter.value()));
         g1PostCounter.inc();
+        if (oopv != oop.rawValue()) {
+            trace(true, "---------------G1 POST ERROR: %lu\n", Word.unsigned(oopv));
+        }
     }
 
     private static void trace(boolean enabled, String format, WordBase value) {

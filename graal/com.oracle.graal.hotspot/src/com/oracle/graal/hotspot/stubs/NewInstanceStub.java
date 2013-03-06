@@ -96,8 +96,9 @@ public class NewInstanceStub extends Stub {
      *         operation was unsuccessful
      */
     static Word refillAllocate(Word intArrayHub, int sizeInBytes, boolean log) {
-        if (HotSpotGraalRuntime.getInstance().getRuntime().config.useG1GC)
+        if (useG1GC()) {
             return Word.zero();
+        }
         Word intArrayMarkWord = Word.unsigned(tlabIntArrayMarkWord());
         int alignmentReserveInBytes = tlabAlignmentReserveInHeapWords() * wordSize();
 
@@ -174,12 +175,6 @@ public class NewInstanceStub extends Stub {
         }
     }
 
-    private static void trace(boolean enabled, String format, WordBase value) {
-        if (enabled) {
-            Log.printf(format, value.rawValue());
-        }
-    }
-
     /**
      * Attempts to allocate a chunk of memory from Eden space.
      * 
@@ -188,7 +183,6 @@ public class NewInstanceStub extends Stub {
      * @return the allocated chunk or {@link Word#zero()} if allocation fails
      */
     static Word edenAllocate(Word sizeInBytes, boolean log) {
-        trace(true, "REFILLTLAB: retaining TLAB 0x%16lu", Word.zero());
         Word heapTopAddress = Word.unsigned(heapTopAddress());
         Word heapEndAddress = Word.unsigned(heapEndAddress());
 

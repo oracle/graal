@@ -48,7 +48,7 @@ public class WriteBarrierPostStubCall extends FixedWithNextNode implements LIRGe
     @Override
     public void generate(LIRGenerator gen) {
         RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(WriteBarrierPostStubCall.WBPOSTCALL);
-        gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object), gen.operand(card));
+        gen.emitCall(stub, stub.getCallingConvention(), false, gen.operand(object), gen.operand(card));
     }
 
     @NodeIntrinsic

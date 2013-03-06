@@ -74,10 +74,7 @@ public class NewObjectSnippets implements SnippetsInterface {
         if (newTop.belowOrEqual(end)) {
             probability(FAST_PATH_PROBABILITY);
             thread.writeWord(threadTlabTopOffset(), newTop);
-            trace(true, "     Allocate object at:   0x%016lx\n", newTop);
-
             return top;
-            
         }
         return Word.zero();
     }

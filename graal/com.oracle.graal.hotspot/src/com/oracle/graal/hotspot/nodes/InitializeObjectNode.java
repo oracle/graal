@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -57,7 +58,7 @@ public final class InitializeObjectNode extends FixedWithNextNode implements Low
     }
 
     public boolean fillContents() {
-        return HotSpotGraalRuntime.getInstance().getConfig().useG1GC ? true : fillContents;
+        return HotSpotSnippetUtils.useG1GC() ? true : fillContents;
     }
 
     public boolean locked() {

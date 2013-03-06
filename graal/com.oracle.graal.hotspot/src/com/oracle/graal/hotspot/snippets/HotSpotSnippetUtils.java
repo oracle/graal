@@ -283,6 +283,11 @@ public class HotSpotSnippetUtils {
     }
 
     @Fold
+    public static boolean useG1GC() {
+        return config().useG1GC;
+    }
+
+    @Fold
     static int uninitializedIdentityHashCodeValue() {
         return config().uninitializedIdentityHashCodeValue;
     }
