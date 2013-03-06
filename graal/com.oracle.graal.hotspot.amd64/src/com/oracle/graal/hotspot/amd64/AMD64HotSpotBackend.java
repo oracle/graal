@@ -210,7 +210,6 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             emitStackOverflowCheck(tasm, false);
             asm.push(rbp);
-            asm.movq(rbp, rsp);
             asm.decrementq(rsp, frameSize - 8); // account for the push of RBP above
             if (GraalOptions.ZapStackOnMethodEntry) {
                 final int intSize = 4;
