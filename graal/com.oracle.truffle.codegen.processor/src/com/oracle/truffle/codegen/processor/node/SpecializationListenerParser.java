@@ -32,16 +32,13 @@ import com.oracle.truffle.codegen.processor.template.*;
 
 public class SpecializationListenerParser extends MethodParser<SpecializationListenerData> {
 
-    private final MethodSpec specification;
-
     public SpecializationListenerParser(ProcessorContext context, NodeData node) {
         super(context, node);
-        this.specification = createDefaultMethodSpec(null);
     }
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        return specification;
+        return createDefaultMethodSpec(method, mirror, null);
     }
 
     @Override

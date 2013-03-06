@@ -25,6 +25,7 @@ package com.oracle.truffle.codegen.processor.node;
 import java.util.*;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.node.NodeFieldData.*;
@@ -54,12 +55,20 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
         return Utils.findAnnotationMirror(getContext().getEnvironment(), method, getAnnotationType()) != null;
     }
 
-    protected final MethodSpec createDefaultMethodSpec(String shortCircuitName) {
+    @SuppressWarnings("unused")
+    protected final MethodSpec createDefaultMethodSpec(ExecutableElement method, AnnotationMirror mirror, String shortCircuitName) {
         List<ParameterSpec> defaultParameters = new ArrayList<>();
 
         if (getNode().supportsFrame()) {
-            ParameterSpec frameSpec = new ParameterSpec("frame", getContext().getTruffleTypes().getFrame(), true);
-            defaultParameters.add(frameSpec);
+            defaultParameters.add(new ParameterSpec("frame", getContext().getTruffleTypes().getFrame(), true));
+        }
+
+        TypeMirror declaredType = Utils.findNearestEnclosingType(method).asType();
+
+        List<TypeMirror> prefixTypes = new ArrayList<>();
+
+        if (!method.getModifiers().contains(Modifier.STATIC) && !Utils.isAssignable(declaredType, template.getNodeType())) {
+            prefixTypes.add(getNode().getTemplateType().asType());
         }
 
         for (NodeFieldData field : getNode().getFields()) {
@@ -87,7 +96,7 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
             }
         }
 
-        return new MethodSpec(createReturnParameterSpec(), defaultParameters);
+        return new MethodSpec(prefixTypes, createReturnParameterSpec(), defaultParameters);
     }
 
     private static String shortCircuitValueName(String valueName) {

@@ -41,7 +41,7 @@ public class GenericParser extends MethodParser<SpecializationData> {
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        return createDefaultMethodSpec(null);
+        return createDefaultMethodSpec(method, mirror, null);
     }
 
     @Override

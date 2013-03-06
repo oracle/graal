@@ -24,6 +24,6 @@ package com.oracle.truffle.api.codegen.test;
 
 import com.oracle.truffle.api.codegen.*;
 
-@TypeSystem({int.class, String.class})
+@TypeSystem({int.class, RuntimeString.class})
 class SimpleTypes {
 }

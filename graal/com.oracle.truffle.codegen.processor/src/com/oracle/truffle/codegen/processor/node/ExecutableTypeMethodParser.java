@@ -51,7 +51,7 @@ public class ExecutableTypeMethodParser extends MethodParser<ExecutableTypeData>
 
         List<ParameterSpec> parameters = new ArrayList<>();
         parameters.add(new ParameterSpec("frame", getContext().getTruffleTypes().getFrame(), true));
-        return new MethodSpec(returnTypeSpec, parameters);
+        return new MethodSpec(new ArrayList<TypeMirror>(), returnTypeSpec, parameters);
     }
 
     @Override

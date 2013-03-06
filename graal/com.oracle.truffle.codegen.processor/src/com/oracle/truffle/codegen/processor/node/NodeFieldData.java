@@ -41,7 +41,7 @@ public class NodeFieldData {
 
     private final FieldKind fieldKind;
     private final ExecutionKind executionKind;
-    private final NodeData nodeData;
+    private NodeData nodeData;
 
     public NodeFieldData(NodeData typeNodeData, VariableElement fieldElement, Element accessElement, AnnotationMirror childAnnotationMirror, FieldKind fieldKind, ExecutionKind executionKind) {
         this.fieldElement = fieldElement;
@@ -52,8 +52,21 @@ public class NodeFieldData {
         this.executionKind = executionKind;
     }
 
+    NodeFieldData(NodeFieldData field) {
+        this.fieldElement = field.fieldElement;
+        this.accessElement = field.accessElement;
+        this.childAnnotationMirror = field.childAnnotationMirror;
+        this.fieldKind = field.fieldKind;
+        this.executionKind = field.executionKind;
+        this.nodeData = field.nodeData;
+    }
+
     public boolean isShortCircuit() {
         return executionKind == ExecutionKind.SHORT_CIRCUIT;
+    }
+
+    void setNode(NodeData nodeData) {
+        this.nodeData = nodeData;
     }
 
     public VariableElement getFieldElement() {

@@ -33,17 +33,23 @@ public class ActualParameter {
     private TemplateMethod method;
     private final String name;
     private final int index;
+    private final boolean hidden;
 
-    public ActualParameter(ParameterSpec specification, TypeMirror actualType, int index) {
+    public ActualParameter(ParameterSpec specification, TypeMirror actualType, int index, boolean hidden) {
         this.specification = specification;
         this.actualType = actualType;
 
         this.index = index;
+        this.hidden = hidden;
         String valueName = specification.getName() + "Value";
         if (specification.isIndexed()) {
             valueName = valueName + index;
         }
         this.name = valueName;
+    }
+
+    public boolean isHidden() {
+        return hidden;
     }
 
     public int getIndex() {

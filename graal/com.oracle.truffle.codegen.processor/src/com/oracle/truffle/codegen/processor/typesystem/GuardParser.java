@@ -26,6 +26,7 @@ import java.lang.annotation.*;
 import java.util.*;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
@@ -47,7 +48,7 @@ public class GuardParser extends TemplateMethodParser<Template, GuardData> {
         List<ParameterSpec> specs = new ArrayList<>();
         specs.add(new ParameterSpec("valueN", typeSystem, false, Cardinality.MULTIPLE));
         ParameterSpec returnTypeSpec = new ParameterSpec("returnType", getContext().getType(boolean.class), false);
-        return new MethodSpec(returnTypeSpec, specs);
+        return new MethodSpec(Collections.<TypeMirror> emptyList(), returnTypeSpec, specs);
     }
 
     @Override
@@ -57,7 +58,7 @@ public class GuardParser extends TemplateMethodParser<Template, GuardData> {
 
     @Override
     public GuardData create(TemplateMethod method) {
-        return new GuardData(method, template);
+        return new GuardData(method);
     }
 
     @Override

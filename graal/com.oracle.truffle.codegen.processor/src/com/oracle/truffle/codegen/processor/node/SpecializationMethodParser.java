@@ -35,16 +35,13 @@ import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class SpecializationMethodParser extends MethodParser<SpecializationData> {
 
-    private final MethodSpec specification;
-
     public SpecializationMethodParser(ProcessorContext context, NodeData operation) {
         super(context, operation);
-        this.specification = createDefaultMethodSpec(null);
     }
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        return specification;
+        return createDefaultMethodSpec(method, mirror, null);
     }
 
     @Override
@@ -148,7 +145,7 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
     }
 
     private static boolean isGuardCompatible(SpecializationData specialization, GuardData guard) {
-        Iterator<ActualParameter> guardParameters = Arrays.asList(guard.getParameters()).iterator();
+        Iterator<ActualParameter> guardParameters = guard.getParameters().iterator();
         for (ActualParameter param : specialization.getParameters()) {
             if (param.getSpecification().isOptional()) {
                 continue;

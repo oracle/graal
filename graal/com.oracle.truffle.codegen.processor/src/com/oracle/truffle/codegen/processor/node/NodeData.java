@@ -35,12 +35,14 @@ import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class NodeData extends Template {
 
+    private final String nodeId;
     private NodeData declaringNode;
-    private List<NodeData> declaredChildren;
+    private List<NodeData> declaredChildren = new ArrayList<>();
 
     private final TypeSystemData typeSystem;
     private List<NodeFieldData> fields;
     private TypeMirror nodeType;
+    private ParameterSpec instanceParameterSpec;
 
     private List<SpecializationData> specializations;
     private List<SpecializationListenerData> specializationListeners;
@@ -48,9 +50,44 @@ public class NodeData extends Template {
     private List<ExecutableTypeData> executableTypes;
     private List<ShortCircuitData> shortCircuits;
 
-    public NodeData(TypeElement type, TypeSystemData typeSystem) {
+    public NodeData(TypeElement type, TypeSystemData typeSystem, String id) {
         super(type, null);
+        this.nodeId = id;
         this.typeSystem = typeSystem;
+    }
+
+    public NodeData(NodeData copy, String nodeId) {
+        super(copy.getTemplateType(), null);
+        this.nodeId = nodeId;
+        this.declaringNode = copy.declaringNode;
+        this.declaredChildren = copy.declaredChildren;
+        this.typeSystem = copy.typeSystem;
+        this.nodeType = copy.nodeType;
+        this.specializations = copy.specializations;
+        this.specializationListeners = copy.specializationListeners;
+        this.guards = copy.guards;
+        this.executableTypes = copy.executableTypes;
+        this.shortCircuits = copy.shortCircuits;
+
+        List<NodeFieldData> fieldsCopy = new ArrayList<>();
+        for (NodeFieldData field : copy.fields) {
+            NodeFieldData newField = new NodeFieldData(field);
+            newField.setNode(this);
+            fieldsCopy.add(newField);
+        }
+        this.fields = fieldsCopy;
+    }
+
+    public ParameterSpec getInstanceParameterSpec() {
+        return instanceParameterSpec;
+    }
+
+    public void setInstanceParameterSpec(ParameterSpec instanceParameter) {
+        this.instanceParameterSpec = instanceParameter;
+    }
+
+    public String getNodeId() {
+        return nodeId;
     }
 
     public TypeMirror getNodeType() {
@@ -247,8 +284,9 @@ public class NodeData extends Template {
 
     public String dump() {
         StringBuilder b = new StringBuilder();
-        b.append(String.format("[name = %s\n" + "  typeSystem = %s\n" + "  fields = %s\n" + "  types = %s\n" + "  specializations = %s\n" + "  guards = %s\n" + "]",
-                        Utils.getQualifiedName(getTemplateType()), getTypeSystem(), dumpList(fields), dumpList(getExecutableTypes()), dumpList(getSpecializations()), dumpList(guards)));
+        b.append(String.format("[id = %s, name = %s\n  typeSystem = %s\n  fields = %s\n  types = %s\n  specializations = %s\n  guards = %s\n  enclosing = %s\n  enclosed = %s\n]", getNodeId(),
+                        Utils.getQualifiedName(getTemplateType()), getTypeSystem(), dumpList(fields), dumpList(getExecutableTypes()), dumpList(getSpecializations()), dumpList(guards),
+                        dumpList(getDeclaredChildren()), getParent()));
         return b.toString();
     }
 
@@ -287,7 +325,21 @@ public class NodeData extends Template {
     }
 
     public List<SpecializationData> getSpecializations() {
-        return specializations;
+        return getSpecializations(false);
+    }
+
+    public List<SpecializationData> getSpecializations(boolean userDefinedOnly) {
+        if (userDefinedOnly) {
+            List<SpecializationData> specs = new ArrayList<>();
+            for (SpecializationData spec : specializations) {
+                if (spec.getMethod() != null) {
+                    specs.add(spec);
+                }
+            }
+            return specs;
+        } else {
+            return specializations;
+        }
     }
 
     public List<SpecializationListenerData> getSpecializationListeners() {
@@ -308,8 +360,10 @@ public class NodeData extends Template {
 
     void setSpecializations(List<SpecializationData> specializations) {
         this.specializations = specializations;
-        for (SpecializationData specialization : specializations) {
-            specialization.setNode(this);
+        if (this.specializations != null) {
+            for (SpecializationData specialization : specializations) {
+                specialization.setNode(this);
+            }
         }
     }
 
@@ -327,6 +381,11 @@ public class NodeData extends Template {
 
     void setShortCircuits(List<ShortCircuitData> shortCircuits) {
         this.shortCircuits = shortCircuits;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "[" + getNodeId() + "]";
     }
 
 }

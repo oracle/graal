@@ -55,7 +55,7 @@ public class ShortCircuitParser extends MethodParser<ShortCircuitData> {
             return null;
         }
 
-        return createDefaultMethodSpec(shortCircuitValue);
+        return createDefaultMethodSpec(method, mirror, shortCircuitValue);
     }
 
     @Override

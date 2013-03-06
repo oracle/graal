@@ -26,15 +26,8 @@ import com.oracle.truffle.codegen.processor.template.*;
 
 public class GuardData extends TemplateMethod {
 
-    private final Template origin;
-
-    public GuardData(TemplateMethod method, Template origin) {
+    public GuardData(TemplateMethod method) {
         super(method);
-        this.origin = origin;
-    }
-
-    public Template getOrigin() {
-        return origin;
     }
 
 }

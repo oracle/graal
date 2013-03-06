@@ -24,14 +24,23 @@ package com.oracle.truffle.codegen.processor.template;
 
 import java.util.*;
 
+import javax.lang.model.type.*;
+
 public class MethodSpec {
+
+    private final List<TypeMirror> implicitTypes;
 
     private final ParameterSpec returnType;
     private final List<ParameterSpec> parameters;
 
-    public MethodSpec(ParameterSpec returnType, List<ParameterSpec> parameters) {
+    public MethodSpec(List<TypeMirror> prefixTypes, ParameterSpec returnType, List<ParameterSpec> parameters) {
+        this.implicitTypes = prefixTypes;
         this.returnType = returnType;
         this.parameters = parameters;
+    }
+
+    public List<TypeMirror> getImplicitTypes() {
+        return implicitTypes;
     }
 
     public ParameterSpec getReturnType() {

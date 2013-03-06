@@ -22,19 +22,25 @@
  */
 package com.oracle.truffle.codegen.processor.template;
 
+import java.util.*;
+
 import javax.lang.model.element.*;
+import javax.lang.model.type.*;
+
+import com.oracle.truffle.codegen.processor.*;
 
 public class TemplateMethod {
 
-    private final String id;
+    private String id;
     private final Template template;
     private final MethodSpec specification;
     private final ExecutableElement method;
     private final AnnotationMirror markerAnnotation;
     private final ActualParameter returnType;
-    private final ActualParameter[] parameters;
+    private final List<ActualParameter> parameters;
 
-    public TemplateMethod(String id, Template template, MethodSpec specification, ExecutableElement method, AnnotationMirror markerAnnotation, ActualParameter returnType, ActualParameter[] parameters) {
+    public TemplateMethod(String id, Template template, MethodSpec specification, ExecutableElement method, AnnotationMirror markerAnnotation, ActualParameter returnType,
+                    List<ActualParameter> parameters) {
         this.template = template;
         this.specification = specification;
         this.method = method;
@@ -54,6 +60,10 @@ public class TemplateMethod {
         this(method.id, method.template, method.specification, method.method, method.markerAnnotation, method.returnType, method.parameters);
     }
 
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public String getId() {
         return id;
     }
@@ -70,7 +80,7 @@ public class TemplateMethod {
         return returnType;
     }
 
-    public ActualParameter[] getParameters() {
+    public List<ActualParameter> getParameters() {
         return parameters;
     }
 
@@ -83,13 +93,25 @@ public class TemplateMethod {
         return null;
     }
 
+    public List<ActualParameter> getReturnTypeAndParameters() {
+        List<ActualParameter> allParameters = new ArrayList<>(getParameters().size() + 1);
+        allParameters.add(getReturnType());
+        allParameters.addAll(getParameters());
+        return Collections.unmodifiableList(allParameters);
+    }
+
     public ActualParameter findParameter(ParameterSpec spec) {
         for (ActualParameter param : getParameters()) {
-            if (param.getSpecification() == spec) {
+            if (param.getSpecification().getName().equals(spec.getName())) {
                 return param;
             }
         }
         return null;
+    }
+
+    public boolean canBeAccessedByInstanceOf(TypeMirror type) {
+        TypeMirror methodType = Utils.findNearestEnclosingType(getMethod()).asType();
+        return Utils.isAssignable(type, methodType) || Utils.isAssignable(methodType, type);
     }
 
     public ExecutableElement getMethod() {
@@ -106,7 +128,7 @@ public class TemplateMethod {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " [method = " + method + "]";
+        return "id = " + getId() + ", " + getClass().getSimpleName() + " [method = " + getMethod() + "]";
     }
 
     public ActualParameter getPreviousParam(ActualParameter searchParam) {

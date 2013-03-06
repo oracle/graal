@@ -36,8 +36,11 @@
  * <p>
  * This introduction to Codegen contains items in the following recommended order:
  *
+ * Prerequisites:
+ * 
+ *
  * <ul>
- * <li>How would you generate builtin functions? {@link com.oracle.truffle.api.codegen.test.BuiltinFunctionTest}</li>
+ * <li>How would you generate function nodes for runtime objects? {@link com.oracle.truffle.api.codegen.test.RuntimeString}</li>
  * </ul>
  * </p>
  *

@@ -167,6 +167,46 @@ public class Utils {
         return new LinkedHashSet<>(Arrays.asList(modifier));
     }
 
+    public static String getTypeId(TypeMirror mirror) {
+        switch (mirror.getKind()) {
+            case BOOLEAN:
+                return "Boolean";
+            case BYTE:
+                return "Byte";
+            case CHAR:
+                return "Char";
+            case DOUBLE:
+                return "Double";
+            case FLOAT:
+                return "Float";
+            case SHORT:
+                return "Short";
+            case INT:
+                return "Int";
+            case LONG:
+                return "Long";
+            case DECLARED:
+                return ((DeclaredType) mirror).asElement().getSimpleName().toString();
+            case ARRAY:
+                return getTypeId(((ArrayType) mirror).getComponentType()) + "Array";
+            case VOID:
+                return "Void";
+            case WILDCARD:
+                StringBuilder b = new StringBuilder();
+                WildcardType type = (WildcardType) mirror;
+                if (type.getExtendsBound() != null) {
+                    b.append("Extends").append(getTypeId(type.getExtendsBound()));
+                } else if (type.getSuperBound() != null) {
+                    b.append("Super").append(getTypeId(type.getExtendsBound()));
+                }
+                return b.toString();
+            case TYPEVAR:
+                return "Any";
+            default:
+                throw new RuntimeException("Unknown type specified " + mirror.getKind() + " mirror: " + mirror);
+        }
+    }
+
     public static String getSimpleName(TypeElement element) {
         return getSimpleName(element.asType());
     }
