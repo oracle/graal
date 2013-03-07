@@ -87,12 +87,12 @@ public abstract class AbstractAssembler {
 
     /**
      * This is used by the TargetMethodAssembler to convert a {@link StackSlot} to an
-     * {@link Address}.
+     * {@link AbstractAddress}.
      */
-    public abstract Address makeAddress(Kind kind, Value base, int displacement);
+    public abstract AbstractAddress makeAddress(Kind kind, Value base, int displacement);
 
     /**
      * Returns a target specific placeholder address that can be used for code patching.
      */
-    public abstract Address getPlaceholder();
+    public abstract AbstractAddress getPlaceholder();
 }

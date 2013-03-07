@@ -26,7 +26,6 @@ import static com.oracle.graal.asm.amd64.AMD64AsmOptions.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 
 /**
  * This class implements commonly used X86 code patterns.
@@ -222,7 +221,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * volatile field!
      */
     public final void movlong(AMD64Address dst, long src) {
-        AMD64Address high = new AMD64Address(dst.getKind(), dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4);
+        AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4);
         movl(dst, (int) (src & 0xFFFFFFFF));
         movl(high, (int) (src >> 32));
     }
@@ -230,7 +229,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     public final void flog(Register dest, Register value, boolean base10) {
         assert dest.isFpu() && value.isFpu();
 
-        AMD64Address tmp = new AMD64Address(Kind.Double, AMD64.RSP);
+        AMD64Address tmp = new AMD64Address(AMD64.rsp);
         if (base10) {
             fldlg2();
         } else {
@@ -264,7 +263,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     private AMD64Address trigPrologue(Register value) {
         assert value.isFpu();
-        AMD64Address tmp = new AMD64Address(Kind.Double, AMD64.RSP);
+        AMD64Address tmp = new AMD64Address(AMD64.rsp);
         subq(AMD64.rsp, 8);
         movsd(tmp, value);
         fld(tmp);
@@ -286,18 +285,16 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * @param frameToCSA offset from the frame pointer to the CSA
      */
     public final void save(CalleeSaveLayout csl, int frameToCSA) {
-        RegisterValue frame = frameRegister.asValue();
         for (Register r : csl.registers) {
             int offset = csl.offsetOf(r);
-            movq(new AMD64Address(target.wordKind, frame, frameToCSA + offset), r);
+            movq(new AMD64Address(frameRegister, frameToCSA + offset), r);
         }
     }
 
     public final void restore(CalleeSaveLayout csl, int frameToCSA) {
-        RegisterValue frame = frameRegister.asValue();
         for (Register r : csl.registers) {
             int offset = csl.offsetOf(r);
-            movq(r, new AMD64Address(target.wordKind, frame, frameToCSA + offset));
+            movq(r, new AMD64Address(frameRegister, frameToCSA + offset));
         }
     }
 }

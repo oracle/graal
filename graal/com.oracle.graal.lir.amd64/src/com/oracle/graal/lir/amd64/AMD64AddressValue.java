@@ -25,10 +25,10 @@ package com.oracle.graal.lir.amd64;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.amd64.*;
-import com.oracle.graal.amd64.AMD64Address.Scale;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.lir.*;
 
 public class AMD64AddressValue extends CompositeValue {
@@ -52,10 +52,17 @@ public class AMD64AddressValue extends CompositeValue {
         this.displacement = displacement;
     }
 
+    private static Register toRegister(AllocatableValue value) {
+        if (value == AllocatableValue.UNUSED) {
+            return Register.None;
+        } else {
+            RegisterValue reg = (RegisterValue) value;
+            return reg.getRegister();
+        }
+    }
+
     public AMD64Address toAddress() {
-        Value baseVal = base == AllocatableValue.UNUSED ? Value.ILLEGAL : base;
-        Value indexVal = index == AllocatableValue.UNUSED ? Value.ILLEGAL : index;
-        return new AMD64Address(getKind(), baseVal, indexVal, scale, displacement);
+        return new AMD64Address(toRegister(base), toRegister(index), scale, displacement);
     }
 
     @Override

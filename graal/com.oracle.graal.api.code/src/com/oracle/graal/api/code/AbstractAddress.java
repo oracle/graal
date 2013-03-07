@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,8 @@
  */
 package com.oracle.graal.api.code;
 
-import com.oracle.graal.api.meta.*;
-
 /**
- * Base class to represent an address in target machine memory. The concrete representation of the
- * address is platform dependent.
+ * Marker interface that represents a platform specific address.
  */
-public abstract class Address extends Value implements AbstractAddress {
-
-    private static final long serialVersionUID = -1003772042519945089L;
-
-    public Address(Kind kind) {
-        super(kind);
-    }
-
-    /**
-     * The values that this address is composed of. Used by the register allocator to manipulate
-     * addresses in a platform independent way.
-     */
-    public abstract Value[] components();
+public interface AbstractAddress {
 }

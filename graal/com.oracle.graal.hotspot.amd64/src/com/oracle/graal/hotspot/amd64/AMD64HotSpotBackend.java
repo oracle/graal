@@ -31,13 +31,13 @@ import java.lang.reflect.*;
 import sun.misc.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.amd64.AMD64Address.Scale;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Address.Scale;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.*;
@@ -204,7 +204,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
                         disp -= frameSize;
                     }
                     tasm.blockComment("[stack overflow check]");
-                    asm.movq(new AMD64Address(asm.target.wordKind, AMD64.RSP, -disp), AMD64.rax);
+                    asm.movq(new AMD64Address(rsp, -disp), AMD64.rax);
                 }
             }
         }
@@ -224,7 +224,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             if (GraalOptions.ZapStackOnMethodEntry) {
                 final int intSize = 4;
                 for (int i = 0; i < frameSize / intSize; ++i) {
-                    asm.movl(new AMD64Address(Kind.Int, rsp.asValue(), i * intSize), 0xC1C1C1C1);
+                    asm.movl(new AMD64Address(rsp, i * intSize), 0xC1C1C1C1);
                 }
             }
             CalleeSaveLayout csl = frameMap.registerConfig.getCalleeSaveLayout();
@@ -288,7 +288,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             Register inlineCacheKlass = rax; // see definition of IC_Klass in
                                              // c1_LIRAssembler_x86.cpp
             Register receiver = asRegister(cc.getArgument(0));
-            AMD64Address src = new AMD64Address(target.wordKind, receiver.asValue(), config.hubOffset);
+            AMD64Address src = new AMD64Address(receiver, config.hubOffset);
 
             asm.cmpq(inlineCacheKlass, src);
             asm.jcc(ConditionFlag.NotEqual, unverifiedStub);
