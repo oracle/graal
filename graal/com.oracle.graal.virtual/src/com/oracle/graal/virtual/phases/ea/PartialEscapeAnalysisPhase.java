@@ -128,7 +128,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
         return true;
     }
 
-    private static boolean noObsoleteNodes(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+    static boolean noObsoleteNodes(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
         // helper code that determines the paths that keep obsolete nodes alive:
 
         NodeFlood flood = graph.createNodeFlood();
@@ -153,7 +153,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
 
         for (Node node : obsoleteNodes) {
             if (node instanceof FixedNode) {
-                assert !flood.isMarked(node);
+                assert !flood.isMarked(node) : node;
             }
         }
 

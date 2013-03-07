@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.virtual.nodes.*;
@@ -39,6 +40,32 @@ class BlockState {
     private final HashMap<VirtualObjectNode, ObjectState> objectStates = new HashMap<>();
     private final HashMap<ValueNode, VirtualObjectNode> objectAliases = new HashMap<>();
     private final HashMap<ValueNode, ValueNode> scalarAliases = new HashMap<>();
+
+    private static class ReadCacheEntry {
+
+        public final Object identity;
+        public final ValueNode object;
+
+        public ReadCacheEntry(Object identity, ValueNode object) {
+            this.identity = identity;
+            this.object = object;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = 31 + ((identity == null) ? 0 : identity.hashCode());
+            return 31 * result + ((object == null) ? 0 : object.hashCode());
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            ReadCacheEntry other = (ReadCacheEntry) obj;
+            return identity == other.identity && object == other.object;
+        }
+
+    }
+
+    private final HashMap<ReadCacheEntry, ValueNode> readCache = new HashMap<>();
 
     public BlockState() {
     }
@@ -52,6 +79,28 @@ class BlockState {
         }
         for (Map.Entry<ValueNode, ValueNode> entry : other.scalarAliases.entrySet()) {
             scalarAliases.put(entry.getKey(), entry.getValue());
+        }
+    }
+
+    public void addReadCache(ValueNode object, Object identity, ValueNode value) {
+        readCache.put(new ReadCacheEntry(identity, object), value);
+    }
+
+    public ValueNode getReadCache(ValueNode object, Object identity) {
+        return readCache.get(new ReadCacheEntry(identity, object));
+    }
+
+    public void killReadCache(Object identity) {
+        if (identity == LocationNode.ANY_LOCATION) {
+            readCache.clear();
+        } else {
+            Iterator<Map.Entry<ReadCacheEntry, ValueNode>> iter = readCache.entrySet().iterator();
+            while (iter.hasNext()) {
+                Map.Entry<ReadCacheEntry, ValueNode> entry = iter.next();
+                if (entry.getKey().identity == identity) {
+                    iter.remove();
+                }
+            }
         }
     }
 
@@ -175,7 +224,7 @@ class BlockState {
         return objectStates.toString();
     }
 
-    public static BlockState meetAliases(List<BlockState> states) {
+    public static BlockState meetAliasesAndCache(List<BlockState> states) {
         BlockState newState = new BlockState();
 
         newState.objectAliases.putAll(states.get(0).objectAliases);
@@ -201,6 +250,22 @@ class BlockState {
                 }
             }
         }
+
+        for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
+            ReadCacheEntry key = entry.getKey();
+            ValueNode value = entry.getValue();
+            for (int i = 1; i < states.size(); i++) {
+                ValueNode otherValue = states.get(i).readCache.get(key);
+                if (otherValue == null || otherValue != value) {
+                    value = null;
+                    break;
+                }
+            }
+            if (value != null) {
+                newState.readCache.put(key, value);
+            }
+        }
+
         return newState;
     }
 }

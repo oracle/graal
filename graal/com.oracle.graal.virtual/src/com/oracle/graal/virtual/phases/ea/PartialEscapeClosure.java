@@ -34,9 +34,12 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
+import com.oracle.graal.nodes.spi.Virtualizable.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
@@ -53,12 +56,19 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
     public static final DebugMetric METRIC_MATERIALIZATIONS_LOOP_END = Debug.metric("MaterializationsLoopEnd");
     public static final DebugMetric METRIC_ALLOCATION_REMOVED = Debug.metric("AllocationsRemoved");
 
+    public static final DebugMetric METRIC_STOREFIELD_RECORDED = Debug.metric("StoreFieldRecorded");
+    public static final DebugMetric METRIC_LOADFIELD_ELIMINATED = Debug.metric("LoadFieldEliminated");
+    public static final DebugMetric METRIC_LOADFIELD_NOT_ELIMINATED = Debug.metric("LoadFieldNotEliminated");
+    public static final DebugMetric METRIC_MEMORYCHECKOINT = Debug.metric("MemoryCheckpoint");
+
     private final NodeBitMap usages;
     private final SchedulePhase schedule;
 
     private final GraphEffectList effects = new GraphEffectList();
 
     private final VirtualizerToolImpl tool;
+
+    private final List<Invoke> hints = new ArrayList<>();
 
     public PartialEscapeClosure(NodeBitMap usages, SchedulePhase schedule, MetaAccessProvider metaAccess, Assumptions assumptions) {
         this.usages = usages;
@@ -74,6 +84,10 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         return tool.getNewVirtualObjectCount();
     }
 
+    public Collection<Invoke> getHints() {
+        return hints;
+    }
+
     @Override
     protected void processBlock(Block block, BlockState state) {
         trace("\nBlock: %s (", block);
@@ -81,27 +95,59 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
         FixedWithNextNode lastFixedNode = null;
         for (Node node : nodeList) {
+            boolean deleted;
             if (usages.isMarked(node) || node instanceof VirtualizableAllocation) {
                 trace("[[%s]] ", node);
-                processNode((ValueNode) node, lastFixedNode == null ? null : lastFixedNode.next(), state);
+                deleted = processNode((ValueNode) node, lastFixedNode == null ? null : lastFixedNode.next(), state);
             } else {
                 trace("%s ", node);
+                deleted = false;
             }
-
-            if (node instanceof FixedWithNextNode && node.isAlive()) {
+            if (GraalOptions.PEAReadCache) {
+                if (!deleted) {
+                    if (node instanceof StoreFieldNode) {
+                        METRIC_STOREFIELD_RECORDED.increment();
+                        StoreFieldNode store = (StoreFieldNode) node;
+                        ValueNode value = store.value();
+                        ObjectState obj = state.getObjectState(value);
+                        if (obj != null) {
+                            assert !obj.isVirtual();
+                            value = obj.getMaterializedValue();
+                        }
+                        value = state.getScalarAlias(value);
+                        state.addReadCache(store.object(), store.field(), value);
+                    } else if (node instanceof LoadFieldNode) {
+                        LoadFieldNode load = (LoadFieldNode) node;
+                        ValueNode cachedValue = state.getReadCache(load.object(), load.field());
+                        if (cachedValue != null) {
+                            METRIC_LOADFIELD_ELIMINATED.increment();
+                            effects.replaceAtUsages(load, cachedValue);
+                            state.addScalarAlias(load, cachedValue);
+                        } else {
+                            METRIC_LOADFIELD_NOT_ELIMINATED.increment();
+                            state.addReadCache(load.object(), load.field(), load);
+                        }
+                    } else if (node instanceof MemoryCheckpoint) {
+                        METRIC_MEMORYCHECKOINT.increment();
+                        MemoryCheckpoint checkpoint = (MemoryCheckpoint) node;
+                        state.killReadCache(checkpoint.getLocationIdentity());
+                    }
+                }
+            }
+            if (node instanceof FixedWithNextNode) {
                 lastFixedNode = (FixedWithNextNode) node;
             }
         }
         trace(")\n    end state: %s\n", state);
     }
 
-    private void processNode(final ValueNode node, FixedNode insertBefore, final BlockState state) {
+    private boolean processNode(final ValueNode node, FixedNode insertBefore, final BlockState state) {
         tool.reset(state, node);
         if (node instanceof Virtualizable) {
             ((Virtualizable) node).virtualize(tool);
         }
         if (tool.isDeleted()) {
-            return;
+            return true;
         }
         if (node instanceof StateSplit) {
             StateSplit split = (StateSplit) node;
@@ -178,15 +224,20 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         }
         if (tool.isCustomAction()) {
-            return;
+            return false;
         }
         for (ValueNode input : node.inputs().filter(ValueNode.class)) {
             ObjectState obj = state.getObjectState(input);
             if (obj != null) {
+                if (obj.isVirtual() && node instanceof MethodCallTargetNode) {
+                    Invoke invoke = ((MethodCallTargetNode) node).invoke();
+                    hints.add(invoke);
+                }
                 trace("replacing input %s at %s: %s", input, node, obj);
                 replaceWithMaterialized(input, node, insertBefore, state, obj, METRIC_MATERIALIZATIONS_UNHANDLED);
             }
         }
+        return false;
     }
 
     private void ensureMaterialized(BlockState state, ObjectState obj, FixedNode materializeBefore, DebugMetric metric) {
@@ -207,8 +258,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
     @Override
     protected BlockState merge(MergeNode merge, List<BlockState> states) {
-
-        BlockState newState = BlockState.meetAliases(states);
+        BlockState newState = BlockState.meetAliasesAndCache(states);
 
         // Iterative processing:
         // Merging the materialized/virtual state of virtual objects can lead to new
