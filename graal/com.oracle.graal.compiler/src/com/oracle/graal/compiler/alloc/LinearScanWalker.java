@@ -46,6 +46,11 @@ import com.oracle.graal.phases.util.*;
  */
 final class LinearScanWalker extends IntervalWalker {
 
+    /**
+     * Delta how much a probability must be lower to be considered a better split position.
+     */
+    private static final double DELTA_FACTOR = 0.75;
+
     private final boolean callKillsRegisters;
 
     private Register[] availableRegs;
@@ -280,12 +285,16 @@ final class LinearScanWalker extends IntervalWalker {
         }
 
         int minLoopDepth = maxBlock.getLoopDepth();
+        double probability = maxBlock.getProbability();
         for (int i = toBlockNr - 1; i >= fromBlockNr; i--) {
             Block cur = blockAt(i);
 
             if (cur.getLoopDepth() < minLoopDepth) {
                 // block with lower loop-depth found . split at the end of this block
                 minLoopDepth = cur.getLoopDepth();
+                optimalSplitPos = allocator.getLastLirInstructionId(cur) + 2;
+            } else if (cur.getLoopDepth() == minLoopDepth && cur.getProbability() < probability * DELTA_FACTOR) {
+                probability = cur.getProbability();
                 optimalSplitPos = allocator.getLastLirInstructionId(cur) + 2;
             }
         }
