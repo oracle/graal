@@ -29,7 +29,7 @@ import static com.oracle.graal.api.meta.Kind.*;
 import java.nio.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Register.*;
+import com.oracle.graal.api.code.Register.RegisterFlag;
 
 /**
  * Represents the AMD64 architecture.

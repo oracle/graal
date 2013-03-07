@@ -31,8 +31,9 @@ import java.lang.reflect.*;
 import sun.misc.*;
 
 import com.oracle.graal.amd64.*;
+import com.oracle.graal.amd64.AMD64Address.Scale;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.*;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -128,14 +129,14 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             Variable newVal = load(operand(x.newValue()));
 
             int disp = 0;
-            AMD64Address address;
+            AMD64AddressValue address;
             Value index = operand(x.offset());
             if (ValueUtil.isConstant(index) && NumUtil.isInt(ValueUtil.asConstant(index).asLong() + disp)) {
                 assert !runtime.needsDataPatch(asConstant(index));
                 disp += (int) ValueUtil.asConstant(index).asLong();
-                address = new AMD64Address(kind, load(operand(x.object())), disp);
+                address = new AMD64AddressValue(kind, load(operand(x.object())), disp);
             } else {
-                address = new AMD64Address(kind, load(operand(x.object())), load(index), AMD64Address.Scale.Times1, disp);
+                address = new AMD64AddressValue(kind, load(operand(x.object())), load(index), Scale.Times1, disp);
             }
 
             RegisterValue rax = AMD64.rax.asValue(kind);
