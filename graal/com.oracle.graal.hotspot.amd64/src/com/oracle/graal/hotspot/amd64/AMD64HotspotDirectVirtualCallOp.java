@@ -43,11 +43,11 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
  * Klass in an inline cache.
  */
 @Opcode("CALL_DIRECT")
-final class AMD64DirectCallOp extends DirectCallOp {
+final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
 
     private final InvokeKind invokeKind;
 
-    AMD64DirectCallOp(InvokeTarget target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
+    AMD64HotspotDirectVirtualCallOp(InvokeTarget target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
         super(target, result, parameters, temps, state);
         this.invokeKind = invokeKind;
         assert invokeKind == InvokeKind.Interface || invokeKind == InvokeKind.Virtual;
@@ -61,7 +61,6 @@ final class AMD64DirectCallOp extends DirectCallOp {
         // and replace the inline 0L value with Universe::non_oop_word()
         tasm.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
         AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Long), Constant.LONG_0);
-        emitAlignmentForDirectCall(tasm, masm);
-        AMD64Call.directCall(tasm, masm, callTarget, state);
+        super.emitCode(tasm, masm);
     }
 }

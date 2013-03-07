@@ -36,9 +36,11 @@ public interface Marks {
     int MARK_DEOPT_HANDLER_ENTRY = 5;
     int MARK_INVOKEINTERFACE = 6;
     int MARK_INVOKEVIRTUAL = 7;
-    int MARK_INLINE_INVOKE = 8;
-    int MARK_POLL_NEAR = 9;
-    int MARK_POLL_RETURN_NEAR = 10;
-    int MARK_POLL_FAR = 11;
-    int MARK_POLL_RETURN_FAR = 12;
+    int MARK_INVOKESTATIC = 8;
+    int MARK_INVOKESPECIAL = 9;
+    int MARK_INLINE_INVOKE = 10;
+    int MARK_POLL_NEAR = 11;
+    int MARK_POLL_RETURN_NEAR = 12;
+    int MARK_POLL_FAR = 13;
+    int MARK_POLL_RETURN_FAR = 14;
 }

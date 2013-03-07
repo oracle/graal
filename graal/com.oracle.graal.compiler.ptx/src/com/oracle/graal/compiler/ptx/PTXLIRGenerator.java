@@ -466,4 +466,10 @@ public class PTXLIRGenerator extends LIRGenerator {
     public void visitSafepointNode(SafepointNode i) {
         throw new InternalError("NYI");
     }
+
+    @Override
+    public void emitUnwind(Value operand) {
+        // TODO Auto-generated method stub
+
+    }
 }

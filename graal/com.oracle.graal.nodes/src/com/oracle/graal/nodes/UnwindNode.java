@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,8 +32,6 @@ import com.oracle.graal.nodes.type.*;
  * object to the system's exception dispatch code.
  */
 public final class UnwindNode extends FixedNode implements LIRLowerable, Node.IterableNodeType {
-
-    public static final Descriptor UNWIND_EXCEPTION = new Descriptor("unwindException", true, void.class, Object.class);
 
     @Input private ValueNode exception;
 
@@ -51,7 +47,6 @@ public final class UnwindNode extends FixedNode implements LIRLowerable, Node.It
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        RuntimeCallTarget call = gen.getRuntime().lookupRuntimeCall(UNWIND_EXCEPTION);
-        gen.emitCall(call, call.getCallingConvention(), false, gen.operand(exception()));
+        gen.emitUnwind(gen.operand(exception()));
     }
 }

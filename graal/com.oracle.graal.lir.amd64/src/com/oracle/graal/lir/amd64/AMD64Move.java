@@ -230,7 +230,7 @@ public class AMD64Move {
 
     public static class StoreConstantOp extends MemOp {
 
-        @Use({CONST}) protected Constant input;
+        protected final Constant input;
 
         public StoreConstantOp(AMD64Address address, Constant input, LIRFrameState state) {
             super(address, state);

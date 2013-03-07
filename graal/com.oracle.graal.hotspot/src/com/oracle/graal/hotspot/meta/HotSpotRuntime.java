@@ -32,7 +32,6 @@ import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.snippets.SystemSubstitutions.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
-import static com.oracle.graal.nodes.UnwindNode.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.snippets.Log.*;
 import static com.oracle.graal.snippets.MathSubstitutionsX86.*;
@@ -203,11 +202,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
         globalStubRegConfig = createRegisterConfig(true);
 
         // @formatter:off
-
-        addRuntimeCall(UNWIND_EXCEPTION, config.unwindExceptionStub,
-                        /*           temps */ null,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0: exception */ javaCallingConvention(Kind.Object));
 
         addRuntimeCall(OnStackReplacementPhase.OSR_MIGRATION_END, config.osrMigrationEndStub,
                         /*           temps */ null,
@@ -571,13 +565,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
                         }
                     }
                 } else if (callTarget.invokeKind() == InvokeKind.Special || callTarget.invokeKind() == InvokeKind.Static) {
-                    HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
-                    ConstantNode metaspaceMethod = ConstantNode.forConstant(hsMethod.getMetaspaceMethodConstant(), this, graph);
-                    ReadNode compiledEntry = graph.add(new ReadNode(metaspaceMethod, LocationNode.create(LocationNode.ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph),
-                                    StampFactory.forKind(wordKind())));
-                    loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(metaspaceMethod, compiledEntry, parameters, invoke.node().stamp(), signature, callTarget.targetMethod(),
-                                    CallingConvention.Type.JavaCall));
-                    graph.addBeforeFixed(invoke.node(), compiledEntry);
+                    loweredCallTarget = graph.add(new HotSpotDirectCallTargetNode(parameters, invoke.node().stamp(), signature, callTarget.targetMethod(), CallingConvention.Type.JavaCall,
+                                    callTarget.invokeKind()));
                 }
 
                 if (loweredCallTarget == null) {

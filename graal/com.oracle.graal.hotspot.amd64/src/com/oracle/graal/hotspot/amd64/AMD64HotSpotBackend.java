@@ -50,6 +50,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.*;
 
 /**
@@ -154,7 +155,15 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
         @Override
         protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-            append(new AMD64DirectCallOp(callTarget.target(), result, parameters, temps, callState, ((HotSpotDirectCallTargetNode) callTarget).invokeKind()));
+            InvokeKind invokeKind = ((HotSpotDirectCallTargetNode) callTarget).invokeKind();
+            if (invokeKind == InvokeKind.Interface || invokeKind == InvokeKind.Virtual) {
+                append(new AMD64HotspotDirectVirtualCallOp(callTarget.target(), result, parameters, temps, callState, invokeKind));
+            } else {
+                assert invokeKind == InvokeKind.Static || invokeKind == InvokeKind.Special;
+                HotSpotResolvedJavaMethod resolvedMethod = (HotSpotResolvedJavaMethod) callTarget.target();
+                Constant metaspaceMethod = resolvedMethod.getMetaspaceMethodConstant();
+                append(new AMD64HotspotDirectStaticCallOp(callTarget.target(), result, parameters, temps, callState, invokeKind, metaspaceMethod));
+            }
         }
 
         @Override
@@ -164,6 +173,13 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             Value targetAddress = AMD64.rax.asValue();
             emitMove(targetAddress, operand(callTarget.computedAddress()));
             append(new AMD64IndirectCallOp(callTarget.target(), result, parameters, temps, metaspaceMethod, targetAddress, callState));
+        }
+
+        @Override
+        public void emitUnwind(Value exception) {
+            RegisterValue exceptionParameter = AMD64.rax.asValue();
+            emitMove(exceptionParameter, exception);
+            append(new AMD64HotSpotUnwindOp(exceptionParameter));
         }
     }
 
@@ -203,7 +219,6 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             emitStackOverflowCheck(tasm, false);
             asm.push(rbp);
-            asm.movq(rbp, rsp);
             asm.decrementq(rsp, frameSize - 8); // account for the push of RBP above
             if (GraalOptions.ZapStackOnMethodEntry) {
                 final int intSize = 4;
