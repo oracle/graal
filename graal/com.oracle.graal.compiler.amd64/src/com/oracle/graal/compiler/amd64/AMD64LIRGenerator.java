@@ -67,7 +67,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.NullCheckOp;
-import com.oracle.graal.lir.amd64.AMD64Move.SpillMoveOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
@@ -94,7 +93,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
         @Override
         public LIRInstruction createMove(Value result, Value input) {
-            return new SpillMoveOp(result, input);
+            return AMD64LIRGenerator.createMove(result, input);
         }
     }
 
@@ -146,13 +145,17 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
+    private static AMD64LIRInstruction createMove(Value dst, Value src) {
+        if (isRegister(src) || isStackSlot(dst)) {
+            return new MoveFromRegOp(dst, src);
+        } else {
+            return new MoveToRegOp(dst, src);
+        }
+    }
+
     @Override
     public void emitMove(Value dst, Value src) {
-        if (isRegister(src) || isStackSlot(dst)) {
-            append(new MoveFromRegOp(dst, src));
-        } else {
-            append(new MoveToRegOp(dst, src));
-        }
+        append(createMove(dst, src));
     }
 
     private AMD64Address prepareAddress(Kind kind, Value base, int displacement, Value index, int scale) {
