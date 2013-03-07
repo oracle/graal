@@ -105,7 +105,10 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
             if (i < directCount) {
                 Value value = getValue(obj, offsets[i]);
-                if (isAddress(value)) {
+                if (value instanceof CompositeValue) {
+                    CompositeValue composite = (CompositeValue) value;
+                    composite.forEachComponent(mode, proc);
+                } else if (isAddress(value)) {
                     doAddress(asAddress(value), mode, flags[i], proc);
                 } else {
                     setValue(obj, offsets[i], proc.doValue(value, mode, flags[i]));
@@ -114,7 +117,10 @@ abstract class LIRIntrospection extends FieldIntrospection {
                 Value[] values = getValueArray(obj, offsets[i]);
                 for (int j = 0; j < values.length; j++) {
                     Value value = values[j];
-                    if (isAddress(value)) {
+                    if (value instanceof CompositeValue) {
+                        CompositeValue composite = (CompositeValue) value;
+                        composite.forEachComponent(mode, proc);
+                    } else if (isAddress(value)) {
                         doAddress(asAddress(value), mode, flags[i], proc);
                     } else {
                         values[j] = proc.doValue(value, mode, flags[i]);
