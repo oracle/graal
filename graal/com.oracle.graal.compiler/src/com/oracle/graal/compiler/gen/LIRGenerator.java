@@ -562,7 +562,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         for (PhiNode phi : merge.phis()) {
             if (phi.type() == PhiType.Value) {
                 ValueNode curVal = phi.valueAt(pred);
-                resolver.move(operand(curVal), operandForPhi(phi));
+                resolver.move(operandForPhi(phi), operand(curVal));
             }
         }
         resolver.dispose();
