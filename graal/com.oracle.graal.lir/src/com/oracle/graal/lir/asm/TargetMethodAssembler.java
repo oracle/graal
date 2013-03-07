@@ -231,10 +231,8 @@ public class TargetMethodAssembler {
     }
 
     public AbstractAddress asAddress(Value value) {
-        if (isStackSlot(value)) {
-            StackSlot slot = (StackSlot) value;
-            return asm.makeAddress(slot.getKind(), frameMap.registerConfig.getFrameRegister().asValue(), frameMap.offsetForStackSlot(slot));
-        }
-        return (Address) value;
+        assert isStackSlot(value);
+        StackSlot slot = asStackSlot(value);
+        return asm.makeAddress(slot.getKind(), frameMap.registerConfig.getFrameRegister().asValue(), frameMap.offsetForStackSlot(slot));
     }
 }

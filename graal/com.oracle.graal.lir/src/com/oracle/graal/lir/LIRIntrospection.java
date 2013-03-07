@@ -22,14 +22,11 @@
  */
 package com.oracle.graal.lir;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
@@ -108,8 +105,6 @@ abstract class LIRIntrospection extends FieldIntrospection {
                 if (value instanceof CompositeValue) {
                     CompositeValue composite = (CompositeValue) value;
                     composite.forEachComponent(mode, proc);
-                } else if (isAddress(value)) {
-                    doAddress(asAddress(value), mode, flags[i], proc);
                 } else {
                     setValue(obj, offsets[i], proc.doValue(value, mode, flags[i]));
                 }
@@ -120,21 +115,11 @@ abstract class LIRIntrospection extends FieldIntrospection {
                     if (value instanceof CompositeValue) {
                         CompositeValue composite = (CompositeValue) value;
                         composite.forEachComponent(mode, proc);
-                    } else if (isAddress(value)) {
-                        doAddress(asAddress(value), mode, flags[i], proc);
                     } else {
                         values[j] = proc.doValue(value, mode, flags[i]);
                     }
                 }
             }
-        }
-    }
-
-    private static void doAddress(Address address, OperandMode mode, EnumSet<OperandFlag> flags, ValueProcedure proc) {
-        assert flags.contains(OperandFlag.ADDR);
-        Value[] components = address.components();
-        for (int i = 0; i < components.length; i++) {
-            components[i] = proc.doValue(components[i], mode, LIRInstruction.ADDRESS_FLAGS);
         }
     }
 

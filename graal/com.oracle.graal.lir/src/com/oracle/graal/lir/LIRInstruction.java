@@ -166,11 +166,6 @@ public abstract class LIRInstruction {
         STACK,
 
         /**
-         * The value can be a {@link Address}.
-         */
-        ADDR,
-
-        /**
          * The value can be a {@link CompositeValue}.
          */
         COMPOSITE,
@@ -210,8 +205,8 @@ public abstract class LIRInstruction {
 
     static {
         ALLOWED_FLAGS = new EnumMap<>(OperandMode.class);
-        ALLOWED_FLAGS.put(USE, EnumSet.of(REG, STACK, ADDR, COMPOSITE, CONST, ILLEGAL, HINT, UNUSED, UNINITIALIZED));
-        ALLOWED_FLAGS.put(ALIVE, EnumSet.of(REG, STACK, ADDR, COMPOSITE, CONST, ILLEGAL, HINT, UNUSED, UNINITIALIZED));
+        ALLOWED_FLAGS.put(USE, EnumSet.of(REG, STACK, COMPOSITE, CONST, ILLEGAL, HINT, UNUSED, UNINITIALIZED));
+        ALLOWED_FLAGS.put(ALIVE, EnumSet.of(REG, STACK, COMPOSITE, CONST, ILLEGAL, HINT, UNUSED, UNINITIALIZED));
         ALLOWED_FLAGS.put(TEMP, EnumSet.of(REG, COMPOSITE, CONST, ILLEGAL, UNUSED, HINT));
         ALLOWED_FLAGS.put(DEF, EnumSet.of(REG, STACK, COMPOSITE, ILLEGAL, UNUSED, HINT));
     }

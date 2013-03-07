@@ -29,7 +29,7 @@ import com.oracle.graal.api.code.*;
  * register, an index register, a displacement and a scale. Note that the base and index registers
  * may be a variable that will get a register assigned later by the register allocator.
  */
-public final class AMD64Address implements AbstractAddress {
+public final class AMD64Address extends AbstractAddress {
 
     private final Register base;
     private final Register index;

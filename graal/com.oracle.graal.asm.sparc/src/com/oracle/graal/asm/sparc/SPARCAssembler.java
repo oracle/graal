@@ -55,13 +55,13 @@ public class SPARCAssembler extends AbstractAssembler {
     }
 
     @Override
-    public Address makeAddress(Kind kind, Value base, int displacement) {
+    public AbstractAddress makeAddress(Kind kind, Value base, int displacement) {
         // SPARC: Implement address calculation.
         return null;
     }
 
     @Override
-    public Address getPlaceholder() {
+    public AbstractAddress getPlaceholder() {
         // SPARC: Implement address patching.
         return null;
     }

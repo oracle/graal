@@ -23,7 +23,7 @@
 package com.oracle.graal.api.code;
 
 /**
- * Marker interface that represents a platform specific address.
+ * Abstract base class that represents a platform specific address.
  */
-public interface AbstractAddress {
+public abstract class AbstractAddress {
 }

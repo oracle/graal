@@ -29,7 +29,7 @@ import com.oracle.graal.api.meta.*;
  * Represents an address in target machine memory, specified via some combination of a base register
  * and a displacement.
  */
-public final class PTXAddress implements AbstractAddress {
+public final class PTXAddress extends AbstractAddress {
 
     private final Register base;
     private final long displacement;
