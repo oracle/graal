@@ -49,7 +49,7 @@ public final class GraalOptions {
     public static boolean LimitInlinedRelevance              = true;
     public static float   BoostInliningForEscapeAnalysis     = 2f;
     public static float   RelevanceCapForInlining            = 1f;
-    public static boolean IterativeInlining                  = true;
+    public static boolean IterativeInlining                  = ____;
 
     public static int     TrivialBytecodeSize                = 10;
     public static int     NormalBytecodeSize                 = 150;
@@ -68,7 +68,8 @@ public final class GraalOptions {
     public static int     EscapeAnalysisIterations           = 2;
     public static String  EscapeAnalyzeOnly                  = null;
     public static int     MaximumEscapeAnalysisArrayLength   = 32;
-    public static boolean PEAReadCache                       = true;
+    public static boolean PEAReadCache                       = ____;
+    public static boolean PEAInliningHints                   = ____;
 
     public static double  TailDuplicationProbability         = 0.5;
     public static int     TailDuplicationTrivialSize         = 1;

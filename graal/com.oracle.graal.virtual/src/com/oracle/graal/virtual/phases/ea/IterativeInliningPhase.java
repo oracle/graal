@@ -104,7 +104,7 @@ public class IterativeInliningPhase extends Phase {
                         }
                     }
 
-                    InliningPhase inlining = new InliningPhase(runtime, closure.getHints(), assumptions, cache, plan, optimisticOpts);
+                    InliningPhase inlining = new InliningPhase(runtime, GraalOptions.PEAInliningHints ? closure.getHints() : null, assumptions, cache, plan, optimisticOpts);
                     if (simple) {
                         inlining.setMaxMethodsPerInlining(1);
                     }
