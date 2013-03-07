@@ -93,7 +93,6 @@ public class CompilationServer implements Runnable {
 
                 // return the initialized compiler to the client
                 HotSpotGraalRuntime compiler = initializeServer(toVM);
-                compiler.getCompiler();
                 streams.getInvocation().sendResult(compiler);
 
                 for (ConnectionObserver observer : observers) {

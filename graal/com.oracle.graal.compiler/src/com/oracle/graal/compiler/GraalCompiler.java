@@ -51,7 +51,7 @@ public class GraalCompiler {
                     final StructuredGraph graph, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.getModifiers() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
 
-        return Debug.scope("GraalCompiler", new Object[]{graph, method}, new Callable<CompilationResult>() {
+        return Debug.scope("GraalCompiler", new Object[]{graph, method, runtime}, new Callable<CompilationResult>() {
 
             public CompilationResult call() {
                 final Assumptions assumptions = new Assumptions(GraalOptions.OptAssumptions);

@@ -30,7 +30,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
@@ -110,7 +109,6 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     protected/* final */VMToCompiler vmToCompiler;
 
     protected final HotSpotRuntime runtime;
-    protected final GraalCompiler compiler;
     protected final TargetDescription target;
 
     private HotSpotRuntimeInterpreterInterface runtimeInterpreterInterface;
@@ -143,7 +141,6 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
         backend = createBackend();
         GraalOptions.StackShadowPages = config.stackShadowPages;
-        compiler = new GraalCompiler();
         if (GraalOptions.CacheGraphs) {
             cache = new HotSpotGraphCache();
         }
@@ -176,10 +173,6 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     public TargetDescription getTarget() {
         return target;
-    }
-
-    public GraalCompiler getCompiler() {
-        return compiler;
     }
 
     public HotSpotGraphCache getCache() {
@@ -266,9 +259,6 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         }
         if (clazz == HotSpotRuntime.class) {
             return (T) runtime;
-        }
-        if (clazz == GraalCompiler.class) {
-            return (T) getCompiler();
         }
         if (clazz == Backend.class) {
             return (T) getBackend();

@@ -54,6 +54,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             dumpSandboxed(object, message);
         } catch (Throwable ex) {
             TTY.println("CFGPrinter: Exception during output of " + message + ": " + ex);
+            ex.printStackTrace();
         }
     }
 
@@ -115,18 +116,23 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             return;
         }
 
-        cfgPrinter.target = Debug.contextLookup(TargetDescription.class);
         if (object instanceof LIR) {
             cfgPrinter.lir = (LIR) object;
         } else {
             cfgPrinter.lir = Debug.contextLookup(LIR.class);
         }
         cfgPrinter.lirGenerator = Debug.contextLookup(LIRGenerator.class);
+        if (cfgPrinter.lirGenerator != null) {
+            cfgPrinter.target = cfgPrinter.lirGenerator.target();
+        }
         if (cfgPrinter.lir != null) {
             cfgPrinter.cfg = cfgPrinter.lir.cfg;
         }
 
         CodeCacheProvider runtime = Debug.contextLookup(CodeCacheProvider.class);
+        if (runtime != null) {
+            cfgPrinter.target = runtime.getTarget();
+        }
 
         if (object instanceof BciBlockMapping) {
             BciBlockMapping blockMap = (BciBlockMapping) object;
