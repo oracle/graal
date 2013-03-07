@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,33 +40,6 @@ import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.*;
 
 public class AMD64Move {
-
-    @Opcode("MOVE")
-    public static class SpillMoveOp extends AMD64LIRInstruction implements MoveOp {
-
-        @Def({REG, STACK}) protected Value result;
-        @Use({REG, STACK, CONST}) protected Value input;
-
-        public SpillMoveOp(Value result, Value input) {
-            this.result = result;
-            this.input = input;
-        }
-
-        @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            move(tasm, masm, getResult(), getInput());
-        }
-
-        @Override
-        public Value getInput() {
-            return input;
-        }
-
-        @Override
-        public Value getResult() {
-            return result;
-        }
-    }
 
     @Opcode("MOVE")
     public static class MoveToRegOp extends AMD64LIRInstruction implements MoveOp {

@@ -34,6 +34,7 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
+import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
@@ -108,32 +109,30 @@ public class AllocatorTest extends GraalCompilerTest {
         }
 
         private void collectStats(final LIRInstruction instr) {
-            final boolean move = instr.name().equals("MOVE");
             instr.forEachOutput(new ValueProcedure() {
 
                 @Override
-                public Value doValue(Value defValue) {
-                    if (ValueUtil.isRegister(defValue)) {
-                        final Register reg = ValueUtil.asRegister(defValue);
+                public Value doValue(Value value) {
+                    if (ValueUtil.isRegister(value)) {
+                        final Register reg = ValueUtil.asRegister(value);
                         registers.add(reg);
-                        if (move) {
-                            instr.forEachInput(new ValueProcedure() {
-
-                                @Override
-                                public Value doValue(Value useValue) {
-                                    if (ValueUtil.isRegister(useValue) && ValueUtil.asRegister(useValue) != reg) {
-                                        regRegMoves++;
-                                    }
-                                    return useValue;
-                                }
-                            });
-                        }
-                    } else if (move && ValueUtil.isStackSlot(defValue)) {
-                        spillMoves++;
                     }
-                    return defValue;
+                    return value;
                 }
             });
+
+            if (instr instanceof MoveOp) {
+                MoveOp move = (MoveOp) instr;
+                Value def = move.getResult();
+                Value use = move.getInput();
+                if (ValueUtil.isRegister(def)) {
+                    if (ValueUtil.isRegister(use) && ValueUtil.asRegister(def) != ValueUtil.asRegister(use)) {
+                        regRegMoves++;
+                    }
+                } else if (ValueUtil.isStackSlot(def)) {
+                    spillMoves++;
+                }
+            }
         }
     }
 
