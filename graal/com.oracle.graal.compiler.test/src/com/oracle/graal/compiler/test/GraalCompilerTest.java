@@ -350,7 +350,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
         final int id = compilationId++;
 
-        InstalledCode installedCode = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true), new Callable<InstalledCode>() {
+        InstalledCode installedCode = Debug.scope("Compiling", new Object[]{runtime, new DebugDumpScope(String.valueOf(id), true)}, new Callable<InstalledCode>() {
 
             public InstalledCode call() throws Exception {
                 final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
