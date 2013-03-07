@@ -33,7 +33,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.ptx.*;
 
 public class PTXMove {
 
@@ -121,10 +120,10 @@ public class PTXMove {
     public static class LoadOp extends PTXLIRInstruction {
 
         @Def({REG}) protected AllocatableValue result;
-        @Use({ADDR}) protected PTXAddress address;
+        @Use({COMPOSITE}) protected PTXAddressValue address;
         @State protected LIRFrameState state;
 
-        public LoadOp(AllocatableValue result, PTXAddress address, LIRFrameState state) {
+        public LoadOp(AllocatableValue result, PTXAddressValue address, LIRFrameState state) {
             this.result = result;
             this.address = address;
             this.state = state;
@@ -132,14 +131,13 @@ public class PTXMove {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            Register a = asRegister(address.getBase());
-            long immOff = address.getDisplacement();
+            PTXAddress addr = address.toAddress();
             switch (address.getKind()) {
                 case Int:
-                    masm.ld_global_s32(asRegister(result), a, immOff);
+                    masm.ld_global_s32(asRegister(result), addr.getBase(), addr.getDisplacement());
                     break;
                 case Object:
-                    masm.ld_global_u32(asRegister(result), a, immOff);
+                    masm.ld_global_u32(asRegister(result), addr.getBase(), addr.getDisplacement());
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -149,11 +147,11 @@ public class PTXMove {
 
     public static class StoreOp extends PTXLIRInstruction {
 
-        @Use({ADDR}) protected PTXAddress address;
+        @Use({COMPOSITE}) protected PTXAddressValue address;
         @Use({REG}) protected AllocatableValue input;
         @State protected LIRFrameState state;
 
-        public StoreOp(PTXAddress address, AllocatableValue input, LIRFrameState state) {
+        public StoreOp(PTXAddressValue address, AllocatableValue input, LIRFrameState state) {
             this.address = address;
             this.input = input;
             this.state = state;
@@ -161,13 +159,11 @@ public class PTXMove {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            Register a = asRegister(address.getBase());
-            long immOff = address.getDisplacement();
-
             assert isRegister(input);
+            PTXAddress addr = address.toAddress();
             switch (address.getKind()) {
                 case Int:
-                    masm.st_global_s32(a, immOff, asRegister(input));
+                    masm.st_global_s32(addr.getBase(), addr.getDisplacement(), asRegister(input));
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -178,9 +174,9 @@ public class PTXMove {
     public static class LeaOp extends PTXLIRInstruction {
 
         @Def({REG}) protected AllocatableValue result;
-        @Use({ADDR, UNINITIALIZED}) protected PTXAddress address;
+        @Use({COMPOSITE, UNINITIALIZED}) protected PTXAddressValue address;
 
-        public LeaOp(AllocatableValue result, PTXAddress address) {
+        public LeaOp(AllocatableValue result, PTXAddressValue address) {
             this.result = result;
             this.address = address;
         }
@@ -211,11 +207,11 @@ public class PTXMove {
     public static class CompareAndSwapOp extends PTXLIRInstruction {
 
         @Def protected AllocatableValue result;
-        @Use({ADDR}) protected PTXAddress address;
+        @Use({COMPOSITE}) protected PTXAddressValue address;
         @Use protected AllocatableValue cmpValue;
         @Use protected AllocatableValue newValue;
 
-        public CompareAndSwapOp(AllocatableValue result, PTXAddress address, AllocatableValue cmpValue, AllocatableValue newValue) {
+        public CompareAndSwapOp(AllocatableValue result, PTXAddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
             this.result = result;
             this.address = address;
             this.cmpValue = cmpValue;
@@ -276,7 +272,7 @@ public class PTXMove {
     }
 
     @SuppressWarnings("unused")
-    protected static void compareAndSwap(TargetMethodAssembler tasm, PTXAssembler masm, AllocatableValue result, PTXAddress address, AllocatableValue cmpValue, AllocatableValue newValue) {
+    protected static void compareAndSwap(TargetMethodAssembler tasm, PTXAssembler masm, AllocatableValue result, PTXAddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
         throw new InternalError("NYI");
     }
 }

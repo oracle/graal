@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.asm.ptx;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.ptx.*;
 
 public class PTXAssembler extends AbstractPTXAssembler {
 
@@ -177,7 +178,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("exit;" + " " + "");
     }
 
-    public final void ld_global_b8(Register d, Register a, int immOff) {
+    public final void ld_global_b8(Register d, Register a, long immOff) {
         emitString("ld.global.b8" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
     }
 
@@ -743,7 +744,8 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     @Override
     public PTXAddress makeAddress(Kind kind, Value base, int displacement) {
-        return new PTXAddress(kind, base, displacement);
+        assert isRegister(base);
+        return new PTXAddress(asRegister(base), displacement);
     }
 
     @Override

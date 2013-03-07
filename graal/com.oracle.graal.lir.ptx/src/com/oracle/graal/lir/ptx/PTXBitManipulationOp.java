@@ -36,7 +36,7 @@ public class PTXBitManipulationOp extends PTXLIRInstruction {
 
     @Opcode private final IntrinsicOpcode opcode;
     @Def protected Value result;
-    @Use({OperandFlag.REG, OperandFlag.ADDR}) protected Value input;
+    @Use({OperandFlag.REG}) protected Value input;
 
     public PTXBitManipulationOp(IntrinsicOpcode opcode, Value result, Value input) {
         this.opcode = opcode;

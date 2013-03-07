@@ -20,54 +20,56 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.ptx;
+package com.oracle.graal.lir.ptx;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.ptx.*;
+import com.oracle.graal.lir.*;
 
 /**
  * Represents an address in target machine memory, specified via some combination of a base register
  * and a displacement.
  */
-public final class PTXAddress extends Address {
+public final class PTXAddressValue extends CompositeValue {
 
-    private static final long serialVersionUID = 8343625682010474837L;
+    private static final long serialVersionUID = 1802222435353022623L;
 
-    private final Value[] base;
+    @Component({REG, UNUSED}) private AllocatableValue base;
     private final long displacement;
 
     /**
-     * Creates an {@link PTXAddress} with given base register and no displacement.
+     * Creates an {@link PTXAddressValue} with given base register and no displacement.
      * 
      * @param kind the kind of the value being addressed
      * @param base the base register
      */
-    public PTXAddress(Kind kind, Value base) {
+    public PTXAddressValue(Kind kind, AllocatableValue base) {
         this(kind, base, 0);
     }
 
     /**
-     * Creates an {@link PTXAddress} with given base register and a displacement. This is the most
-     * general constructor.
+     * Creates an {@link PTXAddressValue} with given base register and a displacement. This is the
+     * most general constructor.
      * 
      * @param kind the kind of the value being addressed
      * @param base the base register
      * @param displacement the displacement
      */
-    public PTXAddress(Kind kind, Value base, long displacement) {
+    public PTXAddressValue(Kind kind, AllocatableValue base, long displacement) {
         super(kind);
-        this.base = new Value[1];
-        this.setBase(base);
+        this.base = base;
         this.displacement = displacement;
 
-        assert !isConstant(base) && !isStackSlot(base);
+        assert !isStackSlot(base);
     }
 
-    @Override
-    public Value[] components() {
-        return base;
+    public PTXAddress toAddress() {
+        Register baseReg = base == AllocatableValue.UNUSED ? Register.None : asRegister(base);
+        return new PTXAddress(baseReg, displacement);
     }
 
     @Override
@@ -75,14 +77,14 @@ public final class PTXAddress extends Address {
         StringBuilder s = new StringBuilder();
         s.append(getKind().getJavaName()).append("[");
         String sep = "";
-        if (isLegal(getBase())) {
-            s.append(getBase());
+        if (isLegal(base)) {
+            s.append(base);
             sep = " + ";
         }
-        if (getDisplacement() < 0) {
-            s.append(" - ").append(-getDisplacement());
-        } else if (getDisplacement() > 0) {
-            s.append(sep).append(getDisplacement());
+        if (displacement < 0) {
+            s.append(" - ").append(-displacement);
+        } else if (displacement > 0) {
+            s.append(sep).append(displacement);
         }
         s.append("]");
         return s.toString();
@@ -90,34 +92,15 @@ public final class PTXAddress extends Address {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof PTXAddress) {
-            PTXAddress addr = (PTXAddress) obj;
-            return getKind() == addr.getKind() && getDisplacement() == addr.getDisplacement() && getBase().equals(addr.getBase());
+        if (obj instanceof PTXAddressValue) {
+            PTXAddressValue addr = (PTXAddressValue) obj;
+            return getKind() == addr.getKind() && displacement == addr.displacement && base.equals(addr.base);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return getBase().hashCode() ^ ((int) getDisplacement() << 4) ^ (getKind().ordinal() << 12);
-    }
-
-    /**
-     * @return Base register that defines the start of the address computation. If not present, is
-     *         denoted by {@link Value#ILLEGAL}.
-     */
-    public Value getBase() {
-        return base[0];
-    }
-
-    public void setBase(Value base) {
-        this.base[0] = base;
-    }
-
-    /**
-     * @return Optional additive displacement.
-     */
-    public long getDisplacement() {
-        return displacement;
+        return base.hashCode() ^ ((int) displacement << 4) ^ (getKind().ordinal() << 12);
     }
 }
