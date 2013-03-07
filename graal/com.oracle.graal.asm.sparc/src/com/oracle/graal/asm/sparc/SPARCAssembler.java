@@ -23,7 +23,6 @@
 package com.oracle.graal.asm.sparc;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.sparc.*;
 
@@ -55,7 +54,7 @@ public class SPARCAssembler extends AbstractAssembler {
     }
 
     @Override
-    public AbstractAddress makeAddress(Kind kind, Value base, int displacement) {
+    public AbstractAddress makeAddress(Register base, int displacement) {
         // SPARC: Implement address calculation.
         return null;
     }

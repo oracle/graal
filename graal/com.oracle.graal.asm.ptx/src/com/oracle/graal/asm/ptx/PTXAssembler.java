@@ -22,10 +22,7 @@
  */
 package com.oracle.graal.asm.ptx;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 
 public class PTXAssembler extends AbstractPTXAssembler {
 
@@ -743,9 +740,8 @@ public class PTXAssembler extends AbstractPTXAssembler {
     }
 
     @Override
-    public PTXAddress makeAddress(Kind kind, Value base, int displacement) {
-        assert isRegister(base);
-        return new PTXAddress(asRegister(base), displacement);
+    public PTXAddress makeAddress(Register base, int displacement) {
+        return new PTXAddress(base, displacement);
     }
 
     @Override

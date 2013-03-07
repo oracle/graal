@@ -24,13 +24,11 @@ package com.oracle.graal.asm.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.MemoryBarriers.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.asm.NumUtil.*;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 
 /**
@@ -2365,9 +2363,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     @Override
-    public AMD64Address makeAddress(Kind kind, Value base, int displacement) {
-        assert isRegister(base);
-        return new AMD64Address(asRegister(base), displacement);
+    public AMD64Address makeAddress(Register base, int displacement) {
+        return new AMD64Address(base, displacement);
     }
 
     @Override
