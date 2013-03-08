@@ -20,43 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.ptx;
+package com.oracle.graal.lir;
 
-import com.oracle.graal.api.code.*;
+import java.lang.annotation.*;
+
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.ptx.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
-public class PTXBitManipulationOp extends PTXLIRInstruction {
+/**
+ * Base class to represent values that need to be stored in more than one register.
+ */
+public abstract class CompositeValue extends Value {
 
-    public enum IntrinsicOpcode {
-        IPOPCNT, LPOPCNT, IBSR, LBSR, BSF;
+    private static final long serialVersionUID = -169180052684126180L;
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    public static @interface Component {
+
+        OperandFlag[] value() default OperandFlag.REG;
     }
 
-    @Opcode private final IntrinsicOpcode opcode;
-    @Def protected Value result;
-    @Use({OperandFlag.REG}) protected Value input;
+    private final CompositeValueClass valueClass;
 
-    public PTXBitManipulationOp(IntrinsicOpcode opcode, Value result, Value input) {
-        this.opcode = opcode;
-        this.result = result;
-        this.input = input;
+    public CompositeValue(Kind kind) {
+        super(kind);
+        valueClass = CompositeValueClass.get(getClass());
+    }
+
+    public final void forEachComponent(OperandMode mode, ValueProcedure proc) {
+        valueClass.forEachComponent(this, mode, proc);
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-        Register dst = ValueUtil.asIntReg(result);
-        Register src = ValueUtil.asRegister(input);
-        switch (opcode) {
-            case IPOPCNT:
-                masm.popc_b32(dst, src);
-                break;
-            case LPOPCNT:
-                masm.popc_b64(dst, src);
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
+    public String toString() {
+        return valueClass.toString(this);
     }
 }

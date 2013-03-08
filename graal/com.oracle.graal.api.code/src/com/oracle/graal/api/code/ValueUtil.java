@@ -78,16 +78,6 @@ public final class ValueUtil {
         return (StackSlot) value;
     }
 
-    public static boolean isAddress(Value value) {
-        assert value != null;
-        return value instanceof Address;
-    }
-
-    public static Address asAddress(Value value) {
-        assert value != null;
-        return (Address) value;
-    }
-
     public static boolean isRegister(Value value) {
         assert value != null;
         return value instanceof RegisterValue;

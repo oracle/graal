@@ -20,68 +20,56 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.amd64;
-
-import static com.oracle.graal.api.code.ValueUtil.*;
+package com.oracle.graal.asm.amd64;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 
 /**
  * Represents an address in target machine memory, specified via some combination of a base
  * register, an index register, a displacement and a scale. Note that the base and index registers
  * may be a variable that will get a register assigned later by the register allocator.
  */
-public final class AMD64Address extends Address {
+public final class AMD64Address extends AbstractAddress {
 
-    private static final long serialVersionUID = -4101548147426595051L;
-
-    private final Value[] baseIndex;
+    private final Register base;
+    private final Register index;
     private final Scale scale;
     private final int displacement;
 
     /**
      * Creates an {@link AMD64Address} with given base register, no scaling and no displacement.
      * 
-     * @param kind the kind of the value being addressed
      * @param base the base register
      */
-    public AMD64Address(Kind kind, Value base) {
-        this(kind, base, ILLEGAL, Scale.Times1, 0);
+    public AMD64Address(Register base) {
+        this(base, Register.None, Scale.Times1, 0);
     }
 
     /**
      * Creates an {@link AMD64Address} with given base register, no scaling and a given
      * displacement.
      * 
-     * @param kind the kind of the value being addressed
      * @param base the base register
      * @param displacement the displacement
      */
-    public AMD64Address(Kind kind, Value base, int displacement) {
-        this(kind, base, ILLEGAL, Scale.Times1, displacement);
+    public AMD64Address(Register base, int displacement) {
+        this(base, Register.None, Scale.Times1, displacement);
     }
 
     /**
      * Creates an {@link AMD64Address} with given base and index registers, scaling and
      * displacement. This is the most general constructor.
      * 
-     * @param kind the kind of the value being addressed
      * @param base the base register
      * @param index the index register
      * @param scale the scaling factor
      * @param displacement the displacement
      */
-    public AMD64Address(Kind kind, Value base, Value index, Scale scale, int displacement) {
-        super(kind);
-        this.baseIndex = new Value[2];
-        this.setBase(base);
-        this.setIndex(index);
+    public AMD64Address(Register base, Register index, Scale scale, int displacement) {
+        this.base = base;
+        this.index = index;
         this.scale = scale;
         this.displacement = displacement;
-
-        assert !isConstant(base) && !isStackSlot(base);
-        assert !isConstant(index) && !isStackSlot(index);
     }
 
     /**
@@ -122,20 +110,15 @@ public final class AMD64Address extends Address {
     }
 
     @Override
-    public Value[] components() {
-        return baseIndex;
-    }
-
-    @Override
     public String toString() {
         StringBuilder s = new StringBuilder();
-        s.append(getKind().getJavaName()).append("[");
+        s.append("[");
         String sep = "";
-        if (isLegal(getBase())) {
+        if (getBase() != Register.None) {
             s.append(getBase());
             sep = " + ";
         }
-        if (isLegal(getIndex())) {
+        if (getIndex() != Register.None) {
             s.append(sep).append(getIndex()).append(" * ").append(getScale().value);
             sep = " + ";
         }
@@ -148,43 +131,20 @@ public final class AMD64Address extends Address {
         return s.toString();
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof AMD64Address) {
-            AMD64Address addr = (AMD64Address) obj;
-            return getKind() == addr.getKind() && getDisplacement() == addr.getDisplacement() && getBase().equals(addr.getBase()) && getScale() == addr.getScale() &&
-                            getIndex().equals(addr.getIndex());
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return getBase().hashCode() ^ getIndex().hashCode() ^ (getDisplacement() << 4) ^ (getScale().value << 8) ^ (getKind().ordinal() << 12);
-    }
-
     /**
      * @return Base register that defines the start of the address computation. If not present, is
-     *         denoted by {@link Value#ILLEGAL}.
+     *         denoted by {@link Register#None}.
      */
-    public Value getBase() {
-        return baseIndex[0];
-    }
-
-    public void setBase(Value base) {
-        this.baseIndex[0] = base;
+    public Register getBase() {
+        return base;
     }
 
     /**
-     * @return Index register, the value of which (possibly scaled by {@link #scale}) is added to
-     *         {@link #getBase}. If not present, is denoted by {@link Value#ILLEGAL}.
+     * @return Index register, the value of which (possibly scaled by {@link #getScale}) is added to
+     *         {@link #getBase}. If not present, is denoted by {@link Register#None}.
      */
-    public Value getIndex() {
-        return baseIndex[1];
-    }
-
-    public void setIndex(Value index) {
-        this.baseIndex[1] = index;
+    public Register getIndex() {
+        return index;
     }
 
     /**
