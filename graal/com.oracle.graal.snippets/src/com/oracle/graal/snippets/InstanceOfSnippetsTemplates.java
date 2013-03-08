@@ -95,7 +95,7 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
             } else {
                 KeyAndArguments keyAndArguments = getKeyAndArguments(replacer, tool);
                 SnippetTemplate template = cache.get(keyAndArguments.key, assumptions);
-                template.instantiate(runtime, instanceOf, replacer, tool.lastFixedNode(), keyAndArguments.arguments);
+                template.instantiate(runtime, instanceOf, replacer, tool, keyAndArguments.arguments);
             }
         }
 

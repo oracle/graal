@@ -48,4 +48,9 @@ public interface LoweringTool {
      * Gets the closest fixed node preceding the node currently being lowered.
      */
     FixedWithNextNode lastFixedNode();
+
+    /**
+     * Sets the closest fixed node preceding the next node to be lowered.
+     */
+    void setLastFixedNode(FixedWithNextNode n);
 }
