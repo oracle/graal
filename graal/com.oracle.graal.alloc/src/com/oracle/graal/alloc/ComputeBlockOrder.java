@@ -55,13 +55,6 @@ public final class ComputeBlockOrder {
     private static final int INITIAL_WORKLIST_CAPACITY = 10;
 
     /**
-     * Divisor used for degrading the probability of the current path versus unscheduled paths at a
-     * merge node when calculating the linear scan order. A high value means that predecessors of
-     * merge nodes are more likely to be scheduled before the merge node.
-     */
-    private static final int PENALTY_VERSUS_UNSCHEDULED = 10;
-
-    /**
      * Computes the block order used for the linear scan register allocator.
      * 
      * @return sorted list of blocks
@@ -125,27 +118,7 @@ public final class ComputeBlockOrder {
     private static void addPathToLinearScanOrder(Block block, List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks) {
         block.setLinearScanNumber(order.size());
         order.add(block);
-        Block mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks);
         enqueueSuccessors(block, worklist, visitedBlocks);
-        if (mostLikelySuccessor != null) {
-            if (!mostLikelySuccessor.isLoopHeader() && mostLikelySuccessor.getPredecessorCount() > 1) {
-                // We are at a merge. Check probabilities of predecessors that are not yet
-                // scheduled.
-                double unscheduledSum = 0.0;
-                for (Block pred : mostLikelySuccessor.getPredecessors()) {
-                    if (!visitedBlocks.get(pred.getId())) {
-                        unscheduledSum += pred.getBeginNode().probability();
-                    }
-                }
-
-                if (unscheduledSum > block.getProbability() / PENALTY_VERSUS_UNSCHEDULED) {
-                    // Add this merge only after at least one additional predecessor gets scheduled.
-                    visitedBlocks.clear(mostLikelySuccessor.getId());
-                    return;
-                }
-            }
-            addPathToLinearScanOrder(mostLikelySuccessor, order, worklist, visitedBlocks);
-        }
     }
 
     /**

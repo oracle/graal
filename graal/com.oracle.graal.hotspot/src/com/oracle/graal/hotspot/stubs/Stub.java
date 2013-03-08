@@ -70,8 +70,8 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
     protected InstalledCode stubCode;
 
     /**
-     * Creates a new stub container. The new stub still needs to be
-     * {@linkplain #install(Backend, GraalCompiler) installed}.
+     * Creates a new stub container. The new stub still needs to be {@linkplain #install(Backend)
+     * installed}.
      * 
      * @param descriptor linkage details for a call to the stub
      */
@@ -107,7 +107,7 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
      * Compiles the code for this stub, installs it and initializes the address used for calls to
      * it.
      */
-    public void install(Backend backend, GraalCompiler compiler) {
+    public void install(Backend backend) {
         StructuredGraph graph = (StructuredGraph) stubMethod.getCompilerStorage().get(Graph.class);
 
         Key key = new Key(stubMethod);
@@ -121,7 +121,7 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
         final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), backend, runtime().getTarget(), stubMethod, graph, null, phasePlan, OptimisticOptimizations.ALL);
 
         final CodeInfo[] info = new CodeInfo[1];
-        stubCode = Debug.scope("CodeInstall", new Object[]{compiler, stubMethod}, new Callable<InstalledCode>() {
+        stubCode = Debug.scope("CodeInstall", new Object[]{runtime(), stubMethod}, new Callable<InstalledCode>() {
 
             @Override
             public InstalledCode call() {

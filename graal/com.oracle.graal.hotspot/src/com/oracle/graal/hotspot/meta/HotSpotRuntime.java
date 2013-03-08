@@ -361,8 +361,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
 
         newInstanceStub = new NewInstanceStub(this, assumptions, graalRuntime.getTarget());
         newArrayStub = new NewArrayStub(this, assumptions, graalRuntime.getTarget());
-        newInstanceStub.install(backend, graalRuntime.getCompiler());
-        newArrayStub.install(backend, graalRuntime.getCompiler());
+        newInstanceStub.install(backend);
+        newArrayStub.install(backend);
     }
 
     public HotSpotGraalRuntime getGraalRuntime() {

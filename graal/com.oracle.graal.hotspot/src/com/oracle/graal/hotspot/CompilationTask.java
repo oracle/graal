@@ -177,7 +177,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     }
 
     private void installMethod(final CompilationResult tm) {
-        Debug.scope("CodeInstall", new Object[]{new DebugDumpScope(String.valueOf(id), true), graalRuntime.getCompiler(), method}, new Runnable() {
+        Debug.scope("CodeInstall", new Object[]{new DebugDumpScope(String.valueOf(id), true), graalRuntime.getRuntime(), method}, new Runnable() {
 
             @Override
             public void run() {
