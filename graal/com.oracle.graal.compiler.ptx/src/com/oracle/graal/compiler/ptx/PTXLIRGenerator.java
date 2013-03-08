@@ -350,7 +350,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
-        throw new InternalError("NYI");
+        append(new ReturnOp(Value.ILLEGAL));
     }
 
     @Override
