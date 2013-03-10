@@ -133,7 +133,7 @@ public final class ComputeBlockOrder {
                 // scheduled.
                 double unscheduledSum = 0.0;
                 for (Block pred : mostLikelySuccessor.getPredecessors()) {
-                    if (!visitedBlocks.get(pred.getId())) {
+                    if (pred.getLinearScanNumber() == -1) {
                         unscheduledSum += pred.getBeginNode().probability();
                     }
                 }
