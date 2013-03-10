@@ -447,7 +447,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void bsfq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
+        emitByte(Prefix.REXW);
+        emitByte(0x0F);
         emitByte(0xBC);
         emitOperandHelper(dst, src);
     }
@@ -460,7 +461,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void bsrq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
+        emitByte(Prefix.REXW);
+        emitByte(0x0F);
         emitByte(0xBD);
         emitOperandHelper(dst, src);
     }
@@ -474,6 +476,7 @@ public class AMD64Assembler extends AbstractAssembler {
 
     public final void bsrl(Register dst, AMD64Address src) {
         prefix(src, dst);
+        emitByte(0x0F);
         emitByte(0xBD);
         emitOperandHelper(dst, src);
     }
