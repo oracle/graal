@@ -118,7 +118,20 @@ public final class ComputeBlockOrder {
     private static void addPathToLinearScanOrder(Block block, List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks) {
         block.setLinearScanNumber(order.size());
         order.add(block);
+        Block mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks);
         enqueueSuccessors(block, worklist, visitedBlocks);
+        if (mostLikelySuccessor != null) {
+            if (!mostLikelySuccessor.isLoopHeader() && mostLikelySuccessor.getPredecessorCount() > 1) {
+                // We are at a merge. Check that predecessors are scheduled.
+                for (Block pred : mostLikelySuccessor.getPredecessors()) {
+                    if (pred.getLinearScanNumber() == -1) {
+                        visitedBlocks.clear(mostLikelySuccessor.getId());
+                        return;
+                    }
+                }
+            }
+            addPathToLinearScanOrder(mostLikelySuccessor, order, worklist, visitedBlocks);
+        }
     }
 
     /**
