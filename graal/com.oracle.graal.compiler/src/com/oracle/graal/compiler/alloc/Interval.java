@@ -417,8 +417,8 @@ public final class Interval {
     public final int operandNumber;
 
     /**
-     * The {@linkplain RegisterValue register}, {@linkplain StackSlot spill slot} or
-     * {@linkplain Address address} assigned to this interval.
+     * The {@linkplain RegisterValue register} or {@linkplain StackSlot spill slot} assigned to this
+     * interval.
      */
     private Value location;
 
@@ -515,8 +515,8 @@ public final class Interval {
     }
 
     /**
-     * Gets the {@linkplain RegisterValue register}, {@linkplain StackSlot spill slot} or
-     * {@linkplain Address address} assigned to this interval.
+     * Gets the {@linkplain RegisterValue register} or {@linkplain StackSlot spill slot} assigned to
+     * this interval.
      */
     public Value location() {
         return location;

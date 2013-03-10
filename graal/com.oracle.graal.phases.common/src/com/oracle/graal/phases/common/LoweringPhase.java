@@ -104,6 +104,11 @@ public class LoweringPhase extends Phase {
         public FixedWithNextNode lastFixedNode() {
             return lastFixedNode;
         }
+
+        public void setLastFixedNode(FixedWithNextNode n) {
+            assert n == null || n.isAlive() : n;
+            lastFixedNode = n;
+        }
     }
 
     private final TargetDescription target;
@@ -187,15 +192,15 @@ public class LoweringPhase extends Phase {
         List<ScheduledNode> nodes = schedule.nodesFor(b);
 
         for (Node node : nodes) {
-            FixedNode lastFixedNext = null;
-            if (node instanceof FixedWithNextNode) {
+            FixedNode nextFixedNode = null;
+            if (node instanceof FixedWithNextNode && node.isAlive()) {
                 FixedWithNextNode fixed = (FixedWithNextNode) node;
-                lastFixedNext = fixed.next();
-                loweringTool.lastFixedNode = fixed;
+                nextFixedNode = fixed.next();
+                loweringTool.setLastFixedNode(fixed);
             }
 
             if (node.isAlive() && !processed.isMarked(node) && node instanceof Lowerable) {
-                if (loweringTool.lastFixedNode == null) {
+                if (loweringTool.lastFixedNode() == null) {
                     // We cannot lower the node now because we don't have a fixed node to anchor the
                     // replacements.
                     // This can happen when previous lowerings in this lowering iteration deleted
@@ -209,17 +214,17 @@ public class LoweringPhase extends Phase {
                 }
             }
 
-            if (loweringTool.lastFixedNode == node && !node.isAlive()) {
-                if (lastFixedNext == null) {
-                    loweringTool.lastFixedNode = null;
+            if (loweringTool.lastFixedNode() == node && !node.isAlive()) {
+                if (nextFixedNode == null || !nextFixedNode.isAlive()) {
+                    loweringTool.setLastFixedNode(null);
                 } else {
-                    Node prev = lastFixedNext.predecessor();
+                    Node prev = nextFixedNode.predecessor();
                     if (prev != node && prev instanceof FixedWithNextNode) {
-                        loweringTool.lastFixedNode = (FixedWithNextNode) prev;
-                    } else if (lastFixedNext instanceof FixedWithNextNode) {
-                        loweringTool.lastFixedNode = (FixedWithNextNode) lastFixedNext;
+                        loweringTool.setLastFixedNode((FixedWithNextNode) prev);
+                    } else if (nextFixedNode instanceof FixedWithNextNode) {
+                        loweringTool.setLastFixedNode((FixedWithNextNode) nextFixedNode);
                     } else {
-                        loweringTool.lastFixedNode = null;
+                        loweringTool.setLastFixedNode(null);
                     }
                 }
             }

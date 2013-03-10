@@ -198,7 +198,8 @@ public class SnippetInstaller {
             public StructuredGraph call() throws Exception {
                 StructuredGraph graph = parseGraph(method, policy);
 
-                new SnippetIntrinsificationPhase(runtime, pool, SnippetTemplate.hasConstantParameter(method)).apply(graph);
+                new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+                assert SnippetTemplate.hasConstantParameter(method) || SnippetIntrinsificationVerificationPhase.verify(graph);
 
                 new SnippetFrameStateCleanupPhase().apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
@@ -232,7 +233,7 @@ public class SnippetInstaller {
 
         new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
 
-        new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
+        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
 
         for (Invoke invoke : graph.getInvokes()) {
             MethodCallTargetNode callTarget = invoke.methodCallTarget();
@@ -260,7 +261,7 @@ public class SnippetInstaller {
             }
         }
 
-        new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
+        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
 
         new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
 

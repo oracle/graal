@@ -26,13 +26,13 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.amd64.AMD64Address.Scale;
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Address.Scale;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
@@ -338,11 +338,11 @@ public class AMD64ControlFlow {
 
         // Set scratch to address of jump table
         int leaPos = buf.position();
-        masm.leaq(scratch, new AMD64Address(tasm.target.wordKind, AMD64.rip.asValue(), 0));
+        masm.leaq(scratch, new AMD64Address(AMD64.rip, 0));
         int afterLea = buf.position();
 
         // Load jump table entry into scratch and jump to it
-        masm.movslq(value, new AMD64Address(Kind.Int, scratch.asValue(), value.asValue(), Scale.Times4, 0));
+        masm.movslq(value, new AMD64Address(scratch, value, Scale.Times4, 0));
         masm.addq(scratch, value);
         masm.jmp(scratch);
 
@@ -354,7 +354,7 @@ public class AMD64ControlFlow {
         // Patch LEA instruction above now that we know the position of the jump table
         int jumpTablePos = buf.position();
         buf.setPosition(leaPos);
-        masm.leaq(scratch, new AMD64Address(tasm.target.wordKind, AMD64.rip.asValue(), jumpTablePos - afterLea));
+        masm.leaq(scratch, new AMD64Address(AMD64.rip, jumpTablePos - afterLea));
         buf.setPosition(jumpTablePos);
 
         // Emit jump table entries

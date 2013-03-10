@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.asm.*;

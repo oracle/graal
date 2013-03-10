@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
 
-import com.oracle.graal.api.meta.*;
+package com.oracle.graal.jtt.bytecode;
 
-/**
- * Base class to represent an address in target machine memory. The concrete representation of the
- * address is platform dependent.
+import com.oracle.graal.jtt.*;
+import org.junit.*;
+
+/*
  */
-public abstract class Address extends Value {
+public class BC_d2l03 extends JTTTest {
 
-    private static final long serialVersionUID = -1003772042519945089L;
-
-    public Address(Kind kind) {
-        super(kind);
+    public static long test(double divider) {
+        return (long) (((long) divider) * divider);
     }
 
-    /**
-     * The values that this address is composed of. Used by the register allocator to manipulate
-     * addresses in a platform independent way.
-     */
-    public abstract Value[] components();
+    @Test
+    public void run0() throws Throwable {
+        runTest("test", 34.5D);
+    }
+
 }

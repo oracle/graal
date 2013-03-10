@@ -28,8 +28,6 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
@@ -44,10 +42,15 @@ public enum AMD64Arithmetic {
     INEG, LNEG,
     I2L, L2I, I2B, I2C, I2S,
     F2D, D2F,
-    I2F, I2D, F2I, D2I,
-    L2F, L2D, F2L, D2L,
-    MOV_I2F, MOV_L2D, MOV_F2I, MOV_D2L;
+    I2F, I2D,
+    L2F, L2D,
+    MOV_I2F, MOV_L2D, MOV_F2I, MOV_D2L,
 
+    /*
+     * Converts a float/double to an int/long. The result of the conversion does not comply with Java semantics
+     * when the input is a NaN, infinity or the conversion result is greater than Integer.MAX_VALUE/Long.MAX_VALUE.
+     */
+    F2I, D2I, F2L, D2L;
 
     /**
      * Unary operation with separate source and destination operand. 
@@ -339,19 +342,15 @@ public enum AMD64Arithmetic {
                 case L2D: masm.cvtsi2sdq(asDoubleReg(dst), asLongReg(src)); break;
                 case F2I:
                     masm.cvttss2sil(asIntReg(dst), asFloatReg(src));
-                    emitConvertFixup(tasm, masm, dst, src);
                     break;
                 case D2I:
                     masm.cvttsd2sil(asIntReg(dst), asDoubleReg(src));
-                    emitConvertFixup(tasm, masm, dst, src);
                     break;
                 case F2L:
                     masm.cvttss2siq(asLongReg(dst), asFloatReg(src));
-                    emitConvertFixup(tasm, masm, dst, src);
                     break;
                 case D2L:
                     masm.cvttsd2siq(asLongReg(dst), asDoubleReg(src));
-                    emitConvertFixup(tasm, masm, dst, src);
                     break;
                 case MOV_I2F: masm.movdl(asFloatReg(dst), asIntReg(src)); break;
                 case MOV_L2D: masm.movdq(asDoubleReg(dst), asLongReg(src)); break;
@@ -465,63 +464,6 @@ public enum AMD64Arithmetic {
             tasm.recordImplicitException(exceptionOffset, info);
         }
     }
-
-    private static void emitConvertFixup(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value x) {
-        ConvertSlowPath slowPath = new ConvertSlowPath(result, x);
-        tasm.stubs.add(slowPath);
-        switch (result.getKind()) {
-            case Int:  masm.cmpl(asIntReg(result),  Integer.MIN_VALUE); break;
-            case Long: masm.cmpq(asLongReg(result), (AMD64Address) tasm.asLongConstRef(Constant.forLong(java.lang.Long.MIN_VALUE))); break;
-            default:   throw GraalInternalError.shouldNotReachHere();
-        }
-        masm.jcc(ConditionFlag.Equal, slowPath.start);
-        masm.bind(slowPath.continuation);
-    }
-
-    private static class ConvertSlowPath extends AMD64Code {
-        public final Label start = new Label();
-        public final Label continuation = new Label();
-        private final Value result;
-        private final Value x;
-
-        public ConvertSlowPath(Value result, Value x) {
-            this.result = result;
-            this.x = x;
-        }
-
-        @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            masm.bind(start);
-            switch (x.getKind()) {
-                case Float:  masm.ucomiss(asFloatReg(x),  (AMD64Address) tasm.asFloatConstRef(Constant.FLOAT_0)); break;
-                case Double: masm.ucomisd(asDoubleReg(x), (AMD64Address) tasm.asDoubleConstRef(Constant.DOUBLE_0)); break;
-                default:     throw GraalInternalError.shouldNotReachHere();
-            }
-            Label nan = new Label();
-            masm.jcc(ConditionFlag.Parity, nan);
-            masm.jcc(ConditionFlag.Below, continuation);
-
-            // input is > 0 -> return maxInt
-            // result register already contains 0x80000000, so subtracting 1 gives 0x7fffffff
-            switch (result.getKind()) {
-                case Int:  masm.decrementl(asIntReg(result),  1); break;
-                case Long: masm.decrementq(asLongReg(result), 1); break;
-                default:   throw GraalInternalError.shouldNotReachHere();
-            }
-            masm.jmp(continuation);
-
-            // input is NaN -> return 0
-            masm.bind(nan);
-            masm.xorptr(asRegister(result), asRegister(result));
-            masm.jmp(continuation);
-        }
-
-        @Override
-        public String description() {
-            return "convert " + x + " to " + result;
-        }
-    }
-
 
     private static void verifyKind(AMD64Arithmetic opcode, Value result, Value x, Value y) {
         assert (opcode.name().startsWith("I") && result.getKind() == Kind.Int && x.getKind().getStackKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int)

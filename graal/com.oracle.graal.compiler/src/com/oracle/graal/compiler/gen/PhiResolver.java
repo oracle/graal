@@ -192,10 +192,10 @@ public class PhiResolver {
 
     // Traverse assignment graph in depth first order and generate moves in post order
     // ie. two assignments: b := c, a := b start with node c:
-    // Call graph: move(NULL, c) -> move(c, b) -> move(b, a)
+    // Call graph: move(c, NULL) -> move(b, c) -> move(a, b)
     // Generates moves in this order: move b to a and move c to b
     // ie. cycle a := b, b := a start with node a
-    // Call graph: move(NULL, a) -> move(a, b) -> move(b, a)
+    // Call graph: move(a, NULL) -> move(b, a) -> move(a, b)
     // Generates moves in this order: move b to temp, move a to b, move temp to a
     private void move(PhiResolverNode dest, PhiResolverNode src) {
         if (!dest.visited) {
