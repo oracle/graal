@@ -34,20 +34,20 @@ public class SafepointInsertionPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         if (GraalOptions.GenLoopSafepoints) {
-            for (LoopEndNode loopEnd : graph.getNodes(LoopEndNode.class)) {
-                if (!loopEnd.canSafepoint()) {
+            for (LoopEndNode loopEndNode : graph.getNodes(LoopEndNode.class)) {
+                if (!loopEndNode.canSafepoint()) {
                     continue;
                 }
-                SafepointNode safepoint = graph.add(new SafepointNode());
-                graph.addBeforeFixed(loopEnd, safepoint);
+                SafepointNode safepointNode = graph.add(new SafepointNode());
+                graph.addBeforeFixed(loopEndNode, safepointNode);
             }
         }
 
         if (GraalOptions.GenSafepoints) {
             if (!GraalOptions.OptEliminateSafepoints || graph.getNodes(MethodCallTargetNode.class).isNotEmpty()) {
-                for (ReturnNode loopEnd : graph.getNodes(ReturnNode.class)) {
+                for (ReturnNode returnNode : graph.getNodes(ReturnNode.class)) {
                     SafepointNode safepoint = graph.add(new SafepointNode());
-                    graph.addBeforeFixed(loopEnd, safepoint);
+                    graph.addBeforeFixed(returnNode, safepoint);
                 }
             }
         }
