@@ -44,7 +44,7 @@ public class SafepointInsertionPhase extends Phase {
         }
 
         if (GraalOptions.GenSafepoints) {
-            if (!GraalOptions.OptEliminateSafepoints || graph.getNodes(MethodCallTargetNode.class).first() != null) {
+            if (!GraalOptions.OptEliminateSafepoints || graph.getNodes(MethodCallTargetNode.class).isNotEmpty()) {
                 for (ReturnNode loopEnd : graph.getNodes(ReturnNode.class)) {
                     SafepointNode safepoint = graph.add(new SafepointNode());
                     graph.addBeforeFixed(loopEnd, safepoint);
