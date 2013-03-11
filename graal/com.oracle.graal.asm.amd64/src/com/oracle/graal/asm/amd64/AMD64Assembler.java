@@ -439,7 +439,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void bsfq(Register dst, AMD64Address src) {
-        emitByte(Prefix.REXW);
+        prefixq(src, dst);
         emitByte(0x0F);
         emitByte(0xBC);
         emitOperandHelper(dst, src);
@@ -453,7 +453,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void bsrq(Register dst, AMD64Address src) {
-        emitByte(Prefix.REXW);
+        prefixq(src, dst);
         emitByte(0x0F);
         emitByte(0xBD);
         emitOperandHelper(dst, src);
@@ -539,6 +539,15 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
+    public final void cvtsd2ss(Register dst, AMD64Address src) {
+        assert dst.isFpu();
+        emitByte(0xF2);
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0x5A);
+        emitOperandHelper(dst, src);
+    }
+
     public final void cvtsd2ss(Register dst, Register src) {
         assert dst.isFpu();
         assert src.isFpu();
@@ -547,6 +556,15 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x0F);
         emitByte(0x5A);
         emitByte(0xC0 | encode);
+    }
+
+    public final void cvtsi2sdl(Register dst, AMD64Address src) {
+        assert dst.isFpu();
+        emitByte(0xF2);
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0x2A);
+        emitOperandHelper(dst, src);
     }
 
     public final void cvtsi2sdl(Register dst, Register src) {
@@ -558,6 +576,15 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC0 | encode);
     }
 
+    public final void cvtsi2ssl(Register dst, AMD64Address src) {
+        assert dst.isFpu();
+        emitByte(0xF3);
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0x2A);
+        emitOperandHelper(dst, src);
+    }
+
     public final void cvtsi2ssl(Register dst, Register src) {
         assert dst.isFpu();
         emitByte(0xF3);
@@ -565,6 +592,15 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x0F);
         emitByte(0x2A);
         emitByte(0xC0 | encode);
+    }
+
+    public final void cvtss2sd(Register dst, AMD64Address src) {
+        assert dst.isFpu();
+        emitByte(0xF3);
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0x5A);
+        emitOperandHelper(dst, src);
     }
 
     public final void cvtss2sd(Register dst, Register src) {
@@ -577,6 +613,14 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC0 | encode);
     }
 
+    public final void cvttsd2sil(Register dst, AMD64Address src) {
+        emitByte(0xF2);
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0x2C);
+        emitOperandHelper(dst, src);
+    }
+
     public final void cvttsd2sil(Register dst, Register src) {
         assert src.isFpu();
         emitByte(0xF2);
@@ -584,6 +628,14 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x0F);
         emitByte(0x2C);
         emitByte(0xC0 | encode);
+    }
+
+    public final void cvttss2sil(Register dst, AMD64Address src) {
+        emitByte(0xF3);
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0x2C);
+        emitOperandHelper(dst, src);
     }
 
     public final void cvttss2sil(Register dst, Register src) {
@@ -1053,6 +1105,13 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x0F);
         emitByte(0xBF);
         emitByte(0xC0 | encode);
+    }
+
+    public final void movsxw(Register dst, AMD64Address src) {
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0xBF);
+        emitOperandHelper(dst, src);
     }
 
     public final void movw(AMD64Address dst, int imm16) {
@@ -1954,6 +2013,15 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(reg, adr);
     }
 
+    public final void cvtsi2sdq(Register dst, AMD64Address src) {
+        assert dst.isFpu();
+        emitByte(0xF2);
+        prefixq(src, dst);
+        emitByte(0x0F);
+        emitByte(0x2A);
+        emitOperandHelper(dst, src);
+    }
+
     public final void cvtsi2sdq(Register dst, Register src) {
         assert dst.isFpu();
         emitByte(0xF2);
@@ -1961,6 +2029,15 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x0F);
         emitByte(0x2A);
         emitByte(0xC0 | encode);
+    }
+
+    public final void cvtsi2ssq(Register dst, AMD64Address src) {
+        assert dst.isFpu();
+        emitByte(0xF3);
+        prefixq(src, dst);
+        emitByte(0x0F);
+        emitByte(0x2A);
+        emitOperandHelper(dst, src);
     }
 
     public final void cvtsi2ssq(Register dst, Register src) {
@@ -1972,6 +2049,14 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC0 | encode);
     }
 
+    public final void cvttsd2siq(Register dst, AMD64Address src) {
+        emitByte(0xF2);
+        prefixq(src, dst);
+        emitByte(0x0F);
+        emitByte(0x2C);
+        emitOperandHelper(dst, src);
+    }
+
     public final void cvttsd2siq(Register dst, Register src) {
         assert src.isFpu();
         emitByte(0xF2);
@@ -1979,6 +2064,14 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x0F);
         emitByte(0x2C);
         emitByte(0xC0 | encode);
+    }
+
+    public final void cvttss2siq(Register dst, AMD64Address src) {
+        emitByte(0xF3);
+        prefixq(src, dst);
+        emitByte(0x0F);
+        emitByte(0x2C);
+        emitOperandHelper(dst, src);
     }
 
     public final void cvttss2siq(Register dst, Register src) {

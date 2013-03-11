@@ -58,7 +58,7 @@ public enum AMD64Arithmetic {
     public static class Unary2Op extends AMD64LIRInstruction {
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
-        @Use({REG}) protected AllocatableValue x;
+        @Use({REG, STACK}) protected AllocatableValue x;
 
         public Unary2Op(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x) {
             this.opcode = opcode;
@@ -455,6 +455,33 @@ public enum AMD64Arithmetic {
                 case DSUB: masm.subsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleAddr(src)); break;
                 case DMUL: masm.mulsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleAddr(src)); break;
                 case DDIV: masm.divsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleAddr(src)); break;
+
+                case I2B: masm.movsxb(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
+                case I2S: masm.movsxw(asIntReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
+                case I2L: masm.movslq(asLongReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
+                case F2D: masm.cvtss2sd(asDoubleReg(dst), (AMD64Address) tasm.asFloatAddr(src)); break;
+                case D2F: masm.cvtsd2ss(asFloatReg(dst), (AMD64Address) tasm.asDoubleAddr(src)); break;
+                case I2F: masm.cvtsi2ssl(asFloatReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
+                case I2D: masm.cvtsi2sdl(asDoubleReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
+                case L2F: masm.cvtsi2ssq(asFloatReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
+                case L2D: masm.cvtsi2sdq(asDoubleReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
+                case F2I:
+                    masm.cvttss2sil(asIntReg(dst), (AMD64Address) tasm.asFloatAddr(src));
+                    break;
+                case D2I:
+                    masm.cvttsd2sil(asIntReg(dst), (AMD64Address) tasm.asDoubleAddr(src));
+                    break;
+                case F2L:
+                    masm.cvttss2siq(asLongReg(dst), (AMD64Address) tasm.asFloatAddr(src));
+                    break;
+                case D2L:
+                    masm.cvttsd2siq(asLongReg(dst), (AMD64Address) tasm.asDoubleAddr(src));
+                    break;
+                case MOV_I2F: masm.movss(asFloatReg(dst), (AMD64Address) tasm.asIntAddr(src)); break;
+                case MOV_L2D: masm.movsd(asDoubleReg(dst), (AMD64Address) tasm.asLongAddr(src)); break;
+                case MOV_F2I: masm.movl(asIntReg(dst), (AMD64Address) tasm.asFloatAddr(src)); break;
+                case MOV_D2L: masm.movq(asLongReg(dst), (AMD64Address) tasm.asDoubleAddr(src)); break;
+
                 default:   throw GraalInternalError.shouldNotReachHere();
             }
         }

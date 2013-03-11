@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.compiler.amd64.test;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import org.junit.*;
 
-/**
- * Marks a position in the graph where a safepoint should be emitted.
- */
-public class SafepointNode extends FixedWithNextNode implements LIRLowerable, Node.IterableNodeType {
+import com.oracle.graal.compiler.test.backend.*;
 
-    public SafepointNode() {
-        this(StampFactory.forVoid());
+public class AMD64AllocatorTest extends AllocatorTest {
+
+    @Test
+    public void test1() {
+        test("test1snippet", 2, 1, 0);
     }
 
-    public SafepointNode(Stamp stamp) {
-        super(stamp);
+    public static long test1snippet(long x) {
+        return x + 5;
     }
 
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitSafepointNode(this);
+    @Ignore
+    @Test
+    public void test2() {
+        test("test2snippet", 2, 0, 0);
     }
+
+    public static long test2snippet(long x) {
+        return x * 5;
+    }
+
+    @Ignore
+    @Test
+    public void test3() {
+        test("test3snippet", 4, 1, 0);
+    }
+
+    public static long test3snippet(long x) {
+        return x / 3 + x % 3;
+    }
+
 }
