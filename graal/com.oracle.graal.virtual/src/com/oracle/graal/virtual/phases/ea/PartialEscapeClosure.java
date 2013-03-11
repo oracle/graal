@@ -523,7 +523,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     ObjectState valueObj = exitState.getObjectState(value);
                     if (valueObj == null) {
                         if ((value instanceof PhiNode && ((PhiNode) value).merge() == exitNode.loopBegin()) || initialObj == null || !initialObj.isVirtual() || initialObj.getEntry(i) != value) {
-                            ProxyNode proxy = new ProxyNode(value, exitNode, PhiType.Value);
+                            ProxyNode proxy = new ProxyNode(value, exitNode, PhiType.Value, null);
                             obj.setEntry(i, proxy);
                             effects.addFloatingNode(proxy);
                         }
@@ -533,7 +533,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                 if (initialObj == null || initialObj.isVirtual()) {
                     ProxyNode proxy = proxies.get(obj.virtual);
                     if (proxy == null) {
-                        proxy = new ProxyNode(obj.getMaterializedValue(), exitNode, PhiType.Value);
+                        proxy = new ProxyNode(obj.getMaterializedValue(), exitNode, PhiType.Value, null);
                         effects.addFloatingNode(proxy);
                     } else {
                         effects.replaceFirstInput(proxy, proxy.value(), obj.getMaterializedValue());

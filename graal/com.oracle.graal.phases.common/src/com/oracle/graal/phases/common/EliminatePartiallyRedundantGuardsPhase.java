@@ -139,7 +139,7 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
         }
         Graph graph = merge.graph();
         for (GuardNode guard : hits) {
-            PhiNode phi = graph.add(new PhiNode(PhiType.Guard, merge));
+            PhiNode phi = graph.add(new PhiNode(PhiType.Guard, merge, null));
             for (EndNode otherEnd : merge.forwardEnds()) {
                 phi.addInput(graph.unique(new GuardNode(guard.condition(), BeginNode.prevBegin(otherEnd), guard.reason(), guard.action(), guard.negated())));
             }

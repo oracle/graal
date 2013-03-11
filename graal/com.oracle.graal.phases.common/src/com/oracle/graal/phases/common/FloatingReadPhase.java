@@ -186,7 +186,7 @@ public class FloatingReadPhase extends Phase {
                         } else if (merged == null) {
                             merged = last;
                         } else {
-                            PhiNode phi = merge.graph().add(new PhiNode(PhiType.Memory, merge));
+                            PhiNode phi = merge.graph().add(new PhiNode(PhiType.Memory, merge, key));
                             for (int j = 0; j < mergedStatesCount; j++) {
                                 phi.addInput(merged);
                             }
@@ -232,7 +232,7 @@ public class FloatingReadPhase extends Phase {
 
             Map<Object, PhiNode> phis = new HashMap<>();
             for (Object location : modifiedLocations) {
-                PhiNode phi = loop.graph().add(new PhiNode(PhiType.Memory, loop));
+                PhiNode phi = loop.graph().add(new PhiNode(PhiType.Memory, loop, location));
                 phi.addInput(initialState.getLastLocationAccess(location));
                 phis.put(location, phi);
                 initialState.lastMemorySnapshot.put(location, phi);
@@ -254,7 +254,7 @@ public class FloatingReadPhase extends Phase {
                 for (Object location : modifiedLocations) {
                     ValueNode lastAccessAtExit = state.lastMemorySnapshot.get(location);
                     if (lastAccessAtExit != null) {
-                        state.lastMemorySnapshot.put(location, loop.graph().add(new ProxyNode(lastAccessAtExit, exit, PhiType.Memory)));
+                        state.lastMemorySnapshot.put(location, ProxyNode.forMemory(lastAccessAtExit, exit, location, (StructuredGraph) loop.graph()));
                     }
                 }
             }
