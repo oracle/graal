@@ -53,10 +53,10 @@ import com.oracle.graal.word.phases.*;
  */
 public class SnippetInstaller {
 
-    private final MetaAccessProvider runtime;
-    private final TargetDescription target;
-    private final Assumptions assumptions;
-    private final BoxingMethodPool pool;
+    protected final MetaAccessProvider runtime;
+    protected final TargetDescription target;
+    protected final Assumptions assumptions;
+    protected final BoxingMethodPool pool;
     private final Thread owner;
 
     /**
@@ -191,6 +191,19 @@ public class SnippetInstaller {
         }
     }
 
+    /**
+     * Does final processing of a snippet graph.
+     */
+    protected void finalizeGraph(ResolvedJavaMethod method, StructuredGraph graph) {
+        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+        assert SnippetTemplate.hasConstantParameter(method) || SnippetIntrinsificationVerificationPhase.verify(graph);
+
+        new SnippetFrameStateCleanupPhase().apply(graph);
+        new DeadCodeEliminationPhase().apply(graph);
+
+        new InsertStateAfterPlaceholderPhase().apply(graph);
+    }
+
     public StructuredGraph makeGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
         return Debug.scope("BuildSnippetGraph", new Object[]{method}, new Callable<StructuredGraph>() {
 
@@ -198,13 +211,7 @@ public class SnippetInstaller {
             public StructuredGraph call() throws Exception {
                 StructuredGraph graph = parseGraph(method, policy);
 
-                new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
-                assert SnippetTemplate.hasConstantParameter(method) || SnippetIntrinsificationVerificationPhase.verify(graph);
-
-                new SnippetFrameStateCleanupPhase().apply(graph);
-                new DeadCodeEliminationPhase().apply(graph);
-
-                new InsertStateAfterPlaceholderPhase().apply(graph);
+                finalizeGraph(method, graph);
 
                 Debug.dump(graph, "%s: Final", method.getName());
 
@@ -222,8 +229,10 @@ public class SnippetInstaller {
         return graph;
     }
 
-    private StructuredGraph buildGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
-        assert !Modifier.isAbstract(method.getModifiers()) && !Modifier.isNative(method.getModifiers()) : method;
+    /**
+     * Builds the initial graph for a snippet.
+     */
+    protected StructuredGraph buildInitialGraph(final ResolvedJavaMethod method) {
         final StructuredGraph graph = new StructuredGraph(method);
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
         GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config, OptimisticOptimizations.NONE);
@@ -232,8 +241,41 @@ public class SnippetInstaller {
         Debug.dump(graph, "%s: %s", method.getName(), GraphBuilderPhase.class.getSimpleName());
 
         new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
-
         new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+
+        return graph;
+    }
+
+    /**
+     * Called after a graph is inlined.
+     * 
+     * @param caller the graph into which {@code callee} was inlined
+     * @param callee the graph that was inlined into {@code caller}
+     */
+    protected void afterInline(StructuredGraph caller, StructuredGraph callee) {
+        if (GraalOptions.OptCanonicalizer) {
+            new WordTypeRewriterPhase(runtime, target.wordKind).apply(caller);
+            new CanonicalizerPhase(runtime, assumptions).apply(caller);
+        }
+    }
+
+    /**
+     * Called after all inlining for a given graph is complete.
+     */
+    protected void afterInlining(StructuredGraph graph) {
+        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+
+        new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
+
+        new DeadCodeEliminationPhase().apply(graph);
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(runtime, assumptions).apply(graph);
+        }
+    }
+
+    private StructuredGraph buildGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
+        assert !Modifier.isAbstract(method.getModifiers()) && !Modifier.isNative(method.getModifiers()) : method;
+        final StructuredGraph graph = buildInitialGraph(method);
 
         for (Invoke invoke : graph.getInvokes()) {
             MethodCallTargetNode callTarget = invoke.methodCallTarget();
@@ -244,31 +286,19 @@ public class SnippetInstaller {
                 InliningUtil.inline(invoke, originalGraph, true);
 
                 Debug.dump(graph, "after inlining %s", callee);
-                if (GraalOptions.OptCanonicalizer) {
-                    new CanonicalizerPhase(runtime, assumptions).apply(graph);
-                }
+                afterInline(graph, originalGraph);
                 substituteCallsOriginal = true;
             } else {
                 if ((callTarget.invokeKind() == InvokeKind.Static || callTarget.invokeKind() == InvokeKind.Special) && policy.shouldInline(callee, method)) {
                     StructuredGraph targetGraph = parseGraph(callee, policy);
                     InliningUtil.inline(invoke, targetGraph, true);
                     Debug.dump(graph, "after inlining %s", callee);
-                    if (GraalOptions.OptCanonicalizer) {
-                        new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
-                        new CanonicalizerPhase(runtime, assumptions).apply(graph);
-                    }
+                    afterInline(graph, targetGraph);
                 }
             }
         }
 
-        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
-
-        new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
-
-        new DeadCodeEliminationPhase().apply(graph);
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase(runtime, assumptions).apply(graph);
-        }
+        afterInlining(graph);
 
         for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {
             end.disableSafepoint();

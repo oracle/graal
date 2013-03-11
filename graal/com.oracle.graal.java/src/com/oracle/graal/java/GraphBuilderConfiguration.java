@@ -62,4 +62,13 @@ public class GraphBuilderConfiguration {
     public static GraphBuilderConfiguration getSnippetDefault() {
         return new GraphBuilderConfiguration(true, true);
     }
+
+    /**
+     * Returns {@code true} if it is an error for a class/field/method resolution to fail.
+     * The default is the same result as returned by {@link #eagerResolving()}.
+     * However, it may be overridden to allow failure even when {@link #eagerResolving} is {@code true}.
+     */
+    public boolean unresolvedIsError() {
+        return eagerResolving;
+    }
 }
