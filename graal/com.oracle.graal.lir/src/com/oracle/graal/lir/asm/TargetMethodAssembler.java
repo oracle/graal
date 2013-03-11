@@ -54,11 +54,6 @@ public class TargetMethodAssembler {
     public final FrameMap frameMap;
 
     /**
-     * Out-of-line stubs to be emitted.
-     */
-    public final List<Code> stubs;
-
-    /**
      * The object that emits code for managing a method's frame. If null, no frame is used by the
      * method.
      */
@@ -66,11 +61,10 @@ public class TargetMethodAssembler {
 
     private List<ExceptionInfo> exceptionInfoList;
 
-    public TargetMethodAssembler(TargetDescription target, CodeCacheProvider runtime, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext, List<Code> stubs) {
+    public TargetMethodAssembler(TargetDescription target, CodeCacheProvider runtime, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext) {
         this.target = target;
         this.runtime = runtime;
         this.frameMap = frameMap;
-        this.stubs = stubs;
         this.asm = asm;
         this.compilationResult = new CompilationResult();
         this.frameContext = frameContext;
