@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.amd64.snippets;
 
 import static com.oracle.graal.snippets.SnippetTemplate.*;
 import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
+import static com.oracle.graal.snippets.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -58,6 +59,7 @@ public class AMD64ConvertSnippets implements SnippetsInterface {
     @Snippet
     public static int f2i(@Parameter("input") float input, @Parameter("result") int result) {
         if (result == Integer.MIN_VALUE) {
+            probability(NOT_FREQUENT_PROBABILITY);
             if (Float.isNaN(input)) {
                 // input is NaN -> return 0
                 return 0;
@@ -83,6 +85,7 @@ public class AMD64ConvertSnippets implements SnippetsInterface {
     @Snippet
     public static long f2l(@Parameter("input") float input, @Parameter("result") long result) {
         if (result == Long.MIN_VALUE) {
+            probability(NOT_FREQUENT_PROBABILITY);
             if (Float.isNaN(input)) {
                 // input is NaN -> return 0
                 return 0;
@@ -108,6 +111,7 @@ public class AMD64ConvertSnippets implements SnippetsInterface {
     @Snippet
     public static int d2i(@Parameter("input") double input, @Parameter("result") int result) {
         if (result == Integer.MIN_VALUE) {
+            probability(NOT_FREQUENT_PROBABILITY);
             if (Double.isNaN(input)) {
                 // input is NaN -> return 0
                 return 0;
@@ -133,6 +137,7 @@ public class AMD64ConvertSnippets implements SnippetsInterface {
     @Snippet
     public static long d2l(@Parameter("input") double input, @Parameter("result") long result) {
         if (result == Long.MIN_VALUE) {
+            probability(NOT_FREQUENT_PROBABILITY);
             if (Double.isNaN(input)) {
                 // input is NaN -> return 0
                 return 0;
