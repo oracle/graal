@@ -775,13 +775,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
-        LIRFrameState info = state();
-        LabelRef stubEntry = createDeoptStub(action, reason, info);
-        append(new JumpOp(stubEntry, info));
-    }
-
-    @Override
     public void emitMembar(int barriers) {
         int necessaryBarriers = target.arch.requiredBarriers(barriers);
         if (target.isMP && necessaryBarriers != 0) {
