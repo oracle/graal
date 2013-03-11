@@ -38,10 +38,16 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     private static final long serialVersionUID = 156632908220561612L;
 
     private final HotSpotResolvedJavaMethod method;
+    private final boolean isDefault;
     long nmethod;
 
-    public HotSpotInstalledCode(HotSpotResolvedJavaMethod method) {
+    public HotSpotInstalledCode(HotSpotResolvedJavaMethod method, boolean isDefault) {
         this.method = method;
+        this.isDefault = isDefault;
+    }
+
+    public boolean isDefault() {
+        return isDefault;
     }
 
     @Override
