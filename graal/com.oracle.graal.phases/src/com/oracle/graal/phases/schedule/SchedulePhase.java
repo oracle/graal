@@ -45,7 +45,7 @@ public final class SchedulePhase extends Phase {
 
     /**
      * This closure iterates over all nodes of a scheduled graph (it expects a
-     * {@link SchedulingStrategy#EARLIEST} schedule) and keeps a list of "actuve" reads. Whenever it
+     * {@link SchedulingStrategy#EARLIEST} schedule) and keeps a list of "active" reads. Whenever it
      * encounters a read, it adds it to the active reads. Whenever it encounters a memory
      * checkpoint, it adds all reads that need to be committed before this checkpoint to the
      * "phantom" usages and inputs, so that the read is scheduled before the checkpoint afterwards.
@@ -134,10 +134,6 @@ public final class SchedulePhase extends Phase {
     private BlockMap<List<ScheduledNode>> blockToNodesMap;
     private final Map<FloatingNode, List<FixedNode>> phantomUsages = new IdentityHashMap<>();
     private final Map<FixedNode, List<FloatingNode>> phantomInputs = new IdentityHashMap<>();
-
-    public SchedulePhase() {
-        super("Schedule");
-    }
 
     @Override
     protected void run(StructuredGraph graph) {

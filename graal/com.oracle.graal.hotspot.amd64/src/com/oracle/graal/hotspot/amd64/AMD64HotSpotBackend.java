@@ -182,6 +182,11 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             emitMove(exceptionParameter, exception);
             append(new AMD64HotSpotUnwindOp(exceptionParameter));
         }
+
+        @Override
+        public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
+            append(new AMD64DeoptimizeOp(action, reason, state()));
+        }
     }
 
     /**
