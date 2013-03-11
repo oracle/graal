@@ -56,6 +56,10 @@ public class MacroNode extends AbstractStateSplit implements Lowerable {
         return targetMethod;
     }
 
+    public JavaType getReturnType() {
+        return returnType;
+    }
+
     @SuppressWarnings("unused")
     protected StructuredGraph getSnippetGraph(LoweringTool tool) {
         return null;
@@ -84,5 +88,20 @@ public class MacroNode extends AbstractStateSplit implements Lowerable {
         InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci));
         invoke.setStateAfter(stateAfter());
         return invoke;
+    }
+
+    protected void replaceSnippetInvokes(StructuredGraph snippetGraph) {
+        for (InvokeNode invoke : snippetGraph.getNodes(InvokeNode.class)) {
+            if (invoke.methodCallTarget().targetMethod() != getTargetMethod()) {
+                throw new GraalInternalError("unexpected invoke %s in snippet", getClass().getSimpleName());
+            }
+            if (invoke.stateAfter().bci == FrameState.INVALID_FRAMESTATE_BCI) {
+                InvokeNode newInvoke = snippetGraph.add(new InvokeNode(invoke.methodCallTarget(), getBci()));
+                newInvoke.setStateAfter(snippetGraph.add(new FrameState(FrameState.AFTER_BCI)));
+                snippetGraph.replaceFixedWithFixed(invoke, newInvoke);
+            } else {
+                assert invoke.stateAfter().bci == FrameState.AFTER_BCI : invoke;
+            }
+        }
     }
 }

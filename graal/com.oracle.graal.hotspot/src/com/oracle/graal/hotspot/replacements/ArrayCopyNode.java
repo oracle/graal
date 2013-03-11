@@ -88,21 +88,6 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         new CanonicalizerPhase(tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
     }
 
-    private static void replaceSnippetInvokes(StructuredGraph snippetGraph, ResolvedJavaMethod targetMethod, int bci) {
-        for (InvokeNode invoke : snippetGraph.getNodes(InvokeNode.class)) {
-            if (invoke.methodCallTarget().targetMethod() != targetMethod) {
-                throw new GraalInternalError("unexpected invoke in arraycopy snippet");
-            }
-            if (invoke.stateAfter().bci == FrameState.INVALID_FRAMESTATE_BCI) {
-                InvokeNode newInvoke = snippetGraph.add(new InvokeNode(invoke.methodCallTarget(), bci));
-                newInvoke.setStateAfter(snippetGraph.add(new FrameState(FrameState.AFTER_BCI)));
-                snippetGraph.replaceFixedWithFixed(invoke, newInvoke);
-            } else {
-                assert invoke.stateAfter().bci == FrameState.AFTER_BCI : invoke;
-            }
-        }
-    }
-
     @Override
     protected StructuredGraph getSnippetGraph(LoweringTool tool) {
         if (!GraalOptions.IntrinsifyArrayCopy) {
@@ -115,7 +100,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
             snippetGraph = ((StructuredGraph) snippetMethod.getCompilerStorage().get(Snippet.class)).copy();
             assert snippetGraph != null : "ArrayCopySnippets should be installed";
 
-            replaceSnippetInvokes(snippetGraph, getTargetMethod(), getBci());
+            replaceSnippetInvokes(snippetGraph);
         } else {
             assert snippetGraph != null : "ArrayCopySnippets should be installed";
 
