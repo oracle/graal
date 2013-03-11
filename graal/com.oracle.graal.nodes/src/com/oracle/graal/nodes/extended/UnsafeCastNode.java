@@ -53,6 +53,9 @@ public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIR
         if (kind() != Kind.Object || object().kind() != Kind.Object) {
             return false;
         }
+        if (stamp() == StampFactory.forNodeIntrinsic()) {
+            return false;
+        }
         if (object().objectStamp().alwaysNull() && objectStamp().nonNull()) {
             // a null value flowing into a nonNull UnsafeCastNode should be guarded by a type/isNull
             // guard, but the
