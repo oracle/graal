@@ -175,5 +175,4 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      * Returns the localvariable table of this method.
      */
     LocalVariableTable getLocalVariableTable();
-
 }

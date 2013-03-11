@@ -360,7 +360,8 @@ public abstract class GraalCompilerTest extends GraalTest {
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 editPhasePlan(method, graph, phasePlan);
-                CompilationResult compResult = GraalCompiler.compileMethod(runtime(), backend, runtime().getTarget(), method, graph, null, phasePlan, OptimisticOptimizations.ALL);
+                CompilationResult compResult = GraalCompiler.compileMethod(runtime(), backend, runtime().getTarget(), method, graph, null, phasePlan, OptimisticOptimizations.ALL,
+                                new SpeculationLog());
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
                 }

@@ -146,7 +146,8 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                             graph = graph.copy();
                         }
                         InlinedBytecodes.add(method.getCodeSize());
-                        return GraalCompiler.compileMethod(graalRuntime.getRuntime(), graalRuntime.getBackend(), graalRuntime.getTarget(), method, graph, graalRuntime.getCache(), plan, optimisticOpts);
+                        return GraalCompiler.compileMethod(graalRuntime.getRuntime(), graalRuntime.getBackend(), graalRuntime.getTarget(), method, graph, graalRuntime.getCache(), plan,
+                                        optimisticOpts, method.getSpeculationLog());
                     }
                 });
             } finally {

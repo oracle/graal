@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.bridge;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -37,8 +38,8 @@ public class CompilerToVMImpl implements CompilerToVM {
     private native int installCode0(HotSpotCompilationResult comp, HotSpotInstalledCode code, HotSpotCodeInfo info, boolean[] triggeredDeoptimizations);
 
     @Override
-    public CodeInstallResult installCode(HotSpotCompilationResult comp, HotSpotInstalledCode code, HotSpotCodeInfo info, boolean[] triggeredDeoptimizations) {
-        return CodeInstallResult.values()[installCode0(comp, code, info, triggeredDeoptimizations)];
+    public CodeInstallResult installCode(HotSpotCompilationResult comp, HotSpotInstalledCode code, HotSpotCodeInfo info, SpeculationLog speculationLog) {
+        return CodeInstallResult.values()[installCode0(comp, code, info, (speculationLog == null) ? null : speculationLog.getRawMap())];
     }
 
     @Override

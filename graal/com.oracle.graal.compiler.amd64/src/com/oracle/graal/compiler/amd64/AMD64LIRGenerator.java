@@ -774,7 +774,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason) {
-        LIRFrameState info = state();
+        LIRFrameState info = state(reason);
         LabelRef stubEntry = createDeoptStub(action, reason, info);
         append(new BranchOp(ConditionFlag.Overflow, stubEntry, info));
     }

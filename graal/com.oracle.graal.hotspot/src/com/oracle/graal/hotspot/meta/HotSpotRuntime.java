@@ -818,7 +818,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetP
     public void installMethod(HotSpotResolvedJavaMethod method, int entryBCI, CompilationResult compResult, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, compResult, info);
         HotSpotInstalledCode code = new HotSpotInstalledCode(method, true);
-        graalRuntime.getCompilerToVM().installCode(new HotSpotCompilationResult(method, entryBCI, compResult), code, hsInfo, null);
+        graalRuntime.getCompilerToVM().installCode(new HotSpotCompilationResult(method, entryBCI, compResult), code, hsInfo, method.getSpeculationLog());
     }
 
     @Override

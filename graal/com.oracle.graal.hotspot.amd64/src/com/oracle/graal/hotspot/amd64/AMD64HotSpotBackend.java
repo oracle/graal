@@ -185,7 +185,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
         @Override
         public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
-            append(new AMD64DeoptimizeOp(action, reason, state()));
+            append(new AMD64DeoptimizeOp(action, reason, state(reason)));
         }
     }
 
