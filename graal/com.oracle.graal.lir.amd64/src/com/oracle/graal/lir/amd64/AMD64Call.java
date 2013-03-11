@@ -63,7 +63,10 @@ public class AMD64Call {
             // make sure that the displacement word of the call ends up word aligned
             int offset = masm.codeBuffer.position();
             offset += tasm.target.arch.getMachineCodeCallDisplacementOffset();
-            masm.nop(tasm.target.wordSize - offset % tasm.target.wordSize);
+            int modulus = tasm.target.wordSize;
+            if (offset % modulus != 0) {
+                masm.nop(modulus - offset % modulus);
+            }
         }
     }
 
