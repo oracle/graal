@@ -76,6 +76,12 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitOverflowCheckBranch(LabelRef label, LIRFrameState info, boolean negated) {
+        // SPARC: Auto-generated method stub
+
+    }
+
+    @Override
     public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label, LIRFrameState info) {
         // SPARC: Auto-generated method stub
 

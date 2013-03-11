@@ -641,6 +641,17 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
+    public void emitOverflowCheckBranch(LabelRef noOverflowBlock, LabelRef overflowBlock, LIRFrameState info) {
+        if (overflowBlock != null) {
+            emitOverflowCheckBranch(overflowBlock, info, false);
+            if (noOverflowBlock != null) {
+                emitJump(noOverflowBlock, null);
+            }
+        } else {
+            emitOverflowCheckBranch(noOverflowBlock, info, true);
+        }
+    }
+
     public void emitIntegerTestBranch(IntegerTestNode test, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRFrameState info) {
         if (falseSuccessorBlock != null) {
             emitIntegerTestBranch(operand(test.x()), operand(test.y()), true, falseSuccessorBlock, info);
@@ -686,6 +697,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public abstract void emitJump(LabelRef label, LIRFrameState info);
 
     public abstract void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info);
+
+    public abstract void emitOverflowCheckBranch(LabelRef label, LIRFrameState info, boolean negated);
 
     public abstract void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label, LIRFrameState info);
 

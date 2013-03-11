@@ -200,6 +200,11 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitOverflowCheckBranch(LabelRef label, LIRFrameState info, boolean negated) {
+        throw new InternalError("NYI");
+    }
+
+    @Override
     public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label, LIRFrameState info) {
         throw new InternalError("NYI");
     }
