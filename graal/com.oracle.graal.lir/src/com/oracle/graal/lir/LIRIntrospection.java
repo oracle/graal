@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.lir;
 
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
@@ -37,6 +40,8 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
     private static final Class<Value> VALUE_CLASS = Value.class;
     private static final Class<Constant> CONSTANT_CLASS = Constant.class;
+    private static final Class<RegisterValue> REGISTER_VALUE_CLASS = RegisterValue.class;
+    private static final Class<StackSlot> STACK_SLOT_CLASS = StackSlot.class;
     private static final Class<Value[]> VALUE_ARRAY_CLASS = Value[].class;
 
     public LIRIntrospection(Class<?> clazz) {
@@ -82,17 +87,34 @@ abstract class LIRIntrospection extends FieldIntrospection {
                 OperandModeAnnotation annotation = getOperandModeAnnotation(field);
                 assert annotation != null : "Field must have operand mode annotation: " + field;
                 annotation.scalarOffsets.add(offset);
+                EnumSet<OperandFlag> flags = getFlags(field);
+                assert verifyFlags(field, type, flags);
                 annotation.flags.put(offset, getFlags(field));
             } else if (VALUE_ARRAY_CLASS.isAssignableFrom(type)) {
                 OperandModeAnnotation annotation = getOperandModeAnnotation(field);
                 assert annotation != null : "Field must have operand mode annotation: " + field;
                 annotation.arrayOffsets.add(offset);
+                EnumSet<OperandFlag> flags = getFlags(field);
+                assert verifyFlags(field, type.getComponentType(), flags);
                 annotation.flags.put(offset, getFlags(field));
             } else {
                 assert getOperandModeAnnotation(field) == null : "Field must not have operand mode annotation: " + field;
                 assert field.getAnnotation(LIRInstruction.State.class) == null : "Field must not have state annotation: " + field;
                 dataOffsets.add(offset);
             }
+        }
+
+        private static boolean verifyFlags(Field field, Class<?> type, EnumSet<OperandFlag> flags) {
+            if (flags.contains(REG)) {
+                assert type.isAssignableFrom(REGISTER_VALUE_CLASS) : "Cannot assign RegisterValue to field with REG flag:" + field;
+            }
+            if (flags.contains(STACK)) {
+                assert type.isAssignableFrom(STACK_SLOT_CLASS) : "Cannot assign StackSlot to field with STACK flag:" + field;
+            }
+            if (flags.contains(CONST)) {
+                assert type.isAssignableFrom(CONSTANT_CLASS) : "Cannot assign Constant to field with CONST flag:" + field;
+            }
+            return true;
         }
     }
 
