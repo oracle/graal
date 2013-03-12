@@ -43,7 +43,7 @@ public class AllocatorTest extends GraalCompilerTest {
 
     protected void test(String snippet, final int expectedRegisters, final int expectedRegRegMoves, final int expectedSpillMoves) {
         final StructuredGraph graph = parse(snippet);
-        Debug.scope("AllocatorTest", new Object[]{graph, graph.method(), backend.target}, new Runnable() {
+        Debug.scope("AllocatorTest", new Object[]{graph, graph.method(), runtime}, new Runnable() {
 
             @Override
             public void run() {
