@@ -40,7 +40,8 @@
  * 
  *
  * <ul>
- * <li>How would you generate function nodes for runtime objects? {@link com.oracle.truffle.api.codegen.test.RuntimeString}</li>
+ * <li>What do I need to get started? {@link com.oracle.truffle.api.codegen.test.TypeSystemTest}</li>
+ * <li>How would you generate function nodes for runtime objects? {@link com.oracle.truffle.api.codegen.test.RuntimeStringTest}</li>
  * </ul>
  * </p>
  *

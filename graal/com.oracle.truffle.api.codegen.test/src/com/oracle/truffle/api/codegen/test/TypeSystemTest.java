@@ -23,15 +23,49 @@
 package com.oracle.truffle.api.codegen.test;
 
 import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.api.codegen.test.RuntimeStringTest.RuntimeString;
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
-@TypeSystemReference(SimpleTypes.class)
-abstract class ValueNode extends Node {
+public class TypeSystemTest {
 
-    abstract int executeInt() throws UnexpectedResultException;
+    @TypeSystem({int.class, RuntimeString.class})
+    static class SimpleTypes {
+    }
 
-    abstract RuntimeString executeString() throws UnexpectedResultException;
+    @TypeSystemReference(SimpleTypes.class)
+    abstract static class ValueNode extends Node {
 
-    abstract Object execute();
+        int executeInt() throws UnexpectedResultException {
+            return SimpleTypesGen.SIMPLETYPES.expectInteger(execute());
+        }
+
+        RuntimeString executeString() {
+            return new RuntimeString(execute().toString());
+        }
+
+        @SuppressWarnings("static-method")
+        final long executeSpecial() {
+            return 42L;
+        }
+
+        abstract Object execute();
+
+    }
+
+    @TypeSystemReference(SimpleTypes.class)
+    static class TestRootNode extends RootNode {
+
+        @Child private ValueNode node;
+
+        public TestRootNode(ValueNode node) {
+            this.node = adoptChild(node);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return node.execute();
+        }
+    }
 
 }

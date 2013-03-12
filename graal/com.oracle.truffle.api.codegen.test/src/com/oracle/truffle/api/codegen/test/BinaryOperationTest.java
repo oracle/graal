@@ -23,6 +23,7 @@
 package com.oracle.truffle.api.codegen.test;
 
 import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.api.codegen.test.TypeSystemTest.ValueNode;
 
 public class BinaryOperationTest {
 
