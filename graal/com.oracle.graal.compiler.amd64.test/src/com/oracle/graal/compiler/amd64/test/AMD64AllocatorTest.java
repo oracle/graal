@@ -37,7 +37,6 @@ public class AMD64AllocatorTest extends AllocatorTest {
         return x + 5;
     }
 
-    @Ignore
     @Test
     public void test2() {
         test("test2snippet", 2, 0, 0);
