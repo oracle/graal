@@ -59,12 +59,19 @@ public class GuardLoweringPhase extends Phase {
                 BeginNode trueSuccessor;
                 BeginNode falseSuccessor;
                 DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason()));
+                BeginNode deoptBranch = BeginNode.begin(deopt);
+                Loop loop = block.getLoop();
+                while (loop != null) {
+                    LoopExitNode exit = graph.add(new LoopExitNode(loop.loopBegin()));
+                    graph.addBeforeFixed(deopt, exit);
+                    loop = loop.parent;
+                }
                 if (guard.negated()) {
-                    trueSuccessor = BeginNode.begin(deopt);
+                    trueSuccessor = deoptBranch;
                     falseSuccessor = fastPath;
                 } else {
                     trueSuccessor = fastPath;
-                    falseSuccessor = BeginNode.begin(deopt);
+                    falseSuccessor = deoptBranch;
                 }
                 IfNode ifNode = graph.add(new IfNode(guard.condition(), trueSuccessor, falseSuccessor, trueSuccessor == fastPath ? 1 : 0));
                 guard.replaceAndDelete(fastPath);
