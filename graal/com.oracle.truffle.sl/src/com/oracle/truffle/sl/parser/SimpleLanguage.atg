@@ -131,16 +131,16 @@ Factor<out TypedNode result>
 |
     NumericLiteral<out result>
 |
-	Ternary<out result>  
+    Ternary<out result>  
 |
     "(" Expression<out result> ")"
 ) 
 .
 
-Ternary<out TypedNode result>					(. TypedNode condition, thenPart, elsePart; .)
+Ternary<out TypedNode result>                   (. TypedNode condition, thenPart, elsePart; .)
 =
 "#" Expression<out condition> "?" Expression<out thenPart> ":" Expression<out elsePart>
-												(. result = factory.createTernary(condition, thenPart, elsePart); .)
+                                                (. result = factory.createTernary(condition, thenPart, elsePart); .)
 .
 
 TimeRef<out TypedNode result> 
