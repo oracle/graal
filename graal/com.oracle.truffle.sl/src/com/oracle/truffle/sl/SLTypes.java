@@ -41,7 +41,7 @@ public class SLTypes {
             return (int) value;
         } else {
             int result = ((BigInteger) value).intValue();
-            assert BigInteger.valueOf(result).equals(value) : "Loosing precision";
+            assert BigInteger.valueOf(result).equals(value) : "Losing precision";
             return result;
         }
     }
