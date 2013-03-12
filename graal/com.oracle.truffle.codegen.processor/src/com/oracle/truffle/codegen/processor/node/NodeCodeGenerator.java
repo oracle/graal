@@ -34,7 +34,7 @@ import javax.lang.model.util.*;
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.ast.*;
-import com.oracle.truffle.codegen.processor.node.NodeFieldData.ExecutionKind;
+import com.oracle.truffle.codegen.processor.node.NodeFieldData.*;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
@@ -142,7 +142,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         return getSimpleName(operation.getTemplateType()) + "Gen";
     }
 
-    private static void startCallOperationMethod(CodeTreeBuilder body, TemplateMethod templateMethod, boolean castedValues) {
+    private void startCallOperationMethod(CodeTreeBuilder body, TemplateMethod templateMethod, boolean castedValues) {
         body.startGroup();
         ExecutableElement method = templateMethod.getMethod();
 
@@ -162,7 +162,14 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             } else {
                 ActualParameter parameter = templateMethod.getParameters().get(0);
                 if (castedValues) {
-                    body.string(castValueName(parameter));
+                    NodeFieldData field = node.findField(parameter.getSpecification().getName());
+                    NodeData fieldNode = field.getNodeData();
+                    ExecutableTypeData execType = fieldNode.findExecutableType(parameter.getActualTypeData(node.getTypeSystem()));
+                    if (execType.hasUnexpectedValue(getContext())) {
+                        body.string(castValueName(parameter));
+                    } else {
+                        body.string(valueName(parameter));
+                    }
                 } else {
                     body.string(valueName(parameter));
                 }
@@ -256,8 +263,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         return builder.getRoot();
     }
 
-    private static CodeTree createExplicitGuards(CodeTreeBuilder parent, String conditionPrefix, SpecializationData valueSpecialization, SpecializationData guardedSpecialization,
-                    boolean onSpecialization) {
+    private CodeTree createExplicitGuards(CodeTreeBuilder parent, String conditionPrefix, SpecializationData valueSpecialization, SpecializationData guardedSpecialization, boolean onSpecialization) {
         CodeTreeBuilder builder = new CodeTreeBuilder(parent);
         String andOperator = conditionPrefix != null ? conditionPrefix + " && " : "";
         if (guardedSpecialization.getGuards().length > 0) {
@@ -520,6 +526,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 clazz.add(createCreateNodeSpecializedMethod(node));
                 clazz.add(createGetNodeClassMethod(node));
                 clazz.add(createGetNodeSignaturesMethod(node));
+                clazz.add(createGetChildrenSignatureMethod(node));
                 clazz.add(createGetInstanceMethod(node, createVisibility));
                 clazz.add(createInstanceConstant(node, clazz.asType()));
             }
@@ -570,19 +577,60 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.startStaticCall(getContext().getType(Arrays.class), "asList");
             List<ExecutableElement> constructors = findUserConstructors(node);
             for (ExecutableElement constructor : constructors) {
-                builder.startGroup();
-                builder.type(getContext().getType(Arrays.class));
-                builder.string(".<").type(getContext().getType(Class.class)).string(">");
-                builder.startCall("asList");
-                for (VariableElement param : constructor.getParameters()) {
-                    builder.typeLiteral(param.asType());
-                }
-                builder.end();
-                builder.end();
+                builder.tree(createAsList(builder, Utils.asTypeMirrors(constructor.getParameters()), classType));
             }
             builder.end();
             builder.end();
             return method;
+        }
+
+        private CodeExecutableElement createGetChildrenSignatureMethod(NodeData node) {
+            Types types = getContext().getEnvironment().getTypeUtils();
+            TypeElement listType = Utils.fromTypeMirror(getContext().getType(List.class));
+            TypeMirror classType = getContext().getType(Class.class);
+            TypeMirror nodeType = getContext().getTruffleTypes().getNode();
+            TypeMirror wildcardNodeType = types.getWildcardType(nodeType, null);
+            classType = types.getDeclaredType(Utils.fromTypeMirror(classType), wildcardNodeType);
+            TypeMirror returnType = types.getDeclaredType(listType, classType);
+
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), returnType, "getChildrenSignature");
+            CodeTreeBuilder builder = method.createBuilder();
+
+            List<TypeMirror> signatureTypes = new ArrayList<>();
+            assert !node.getSpecializations().isEmpty();
+            SpecializationData data = node.getSpecializations().get(0);
+            for (ActualParameter parameter : data.getParameters()) {
+                ParameterSpec spec = parameter.getSpecification();
+                NodeFieldData field = node.findField(spec.getName());
+                if (field == null) {
+                    continue;
+                }
+
+                TypeMirror type;
+                if (field.getKind() == FieldKind.CHILDREN && field.getType().getKind() == TypeKind.ARRAY) {
+                    type = ((ArrayType) field.getType()).getComponentType();
+                } else {
+                    type = field.getType();
+                }
+
+                signatureTypes.add(type);
+            }
+
+            builder.startReturn().tree(createAsList(builder, signatureTypes, classType)).end();
+            return method;
+        }
+
+        private CodeTree createAsList(CodeTreeBuilder parent, List<TypeMirror> types, TypeMirror elementClass) {
+            CodeTreeBuilder builder = parent.create();
+            builder.startGroup();
+            builder.type(getContext().getType(Arrays.class));
+            builder.string(".<").type(elementClass).string(">");
+            builder.startCall("asList");
+            for (TypeMirror typeMirror : types) {
+                builder.typeLiteral(typeMirror);
+            }
+            builder.end().end();
+            return builder.getRoot();
         }
 
         private CodeExecutableElement createCreateNodeMethod(NodeData node) {

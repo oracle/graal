@@ -55,7 +55,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         NodeData node = null;
         try {
             parsedNodes = new HashMap<>();
-            node = parseInnerClassHierarchy((TypeElement) element);
+            node = resolveNode((TypeElement) element);
         } finally {
             parsedNodes = null;
         }
@@ -67,49 +67,45 @@ public class NodeParser extends TemplateParser<NodeData> {
         return true;
     }
 
-    private NodeData parseInnerClassHierarchy(TypeElement rootType) {
+    private NodeData resolveNode(TypeElement rootType) {
+        String typeName = Utils.getQualifiedName(rootType);
+        if (parsedNodes.containsKey(typeName)) {
+            return parsedNodes.get(typeName);
+        }
+
         List<? extends TypeElement> types = ElementFilter.typesIn(rootType.getEnclosedElements());
+
         List<NodeData> children = new ArrayList<>();
         for (TypeElement childElement : types) {
-            NodeData childNode = parseInnerClassHierarchy(childElement);
+            NodeData childNode = resolveNode(childElement);
             if (childNode != null) {
                 children.add(childNode);
             }
         }
-        NodeData rootNode = resolveNode(rootType);
+        NodeData rootNode = parseNode(rootType);
         if (rootNode == null && children.size() > 0) {
             rootNode = new NodeData(rootType, null, rootType.getSimpleName().toString());
         }
+
+        parsedNodes.put(typeName, rootNode);
+
         if (rootNode != null) {
             children.addAll(rootNode.getDeclaredChildren());
             rootNode.setDeclaredChildren(children);
         }
 
-        return rootNode;
-    }
-
-    private NodeData resolveNode(TypeElement currentType) {
-        String typeName = Utils.getQualifiedName(currentType);
-        if (!parsedNodes.containsKey(typeName)) {
-            NodeData node = parseNode(currentType);
-            if (node != null) {
-                parsedNodes.put(typeName, node);
+        if (Log.DEBUG) {
+            NodeData parsed = parsedNodes.get(typeName);
+            if (parsed != null) {
+                String dump = parsed.dump();
+                String valid = rootNode != null ? "" : " failed";
+                String msg = String.format("Node parsing %s : %s", valid, dump);
+                log.error(msg);
+                System.out.println(msg);
             }
-
-            if (Log.DEBUG) {
-                NodeData parsed = parsedNodes.get(Utils.getQualifiedName(currentType));
-                if (parsed != null) {
-                    String dump = parsed.dump();
-                    String valid = node != null ? "" : " failed";
-                    String msg = String.format("Node parsing %s : %s", valid, dump);
-                    log.error(msg);
-                    System.out.println(msg);
-                }
-            }
-
-            return node;
         }
-        return parsedNodes.get(typeName);
+
+        return rootNode;
     }
 
     private NodeData parseNode(TypeElement type) {
@@ -128,7 +124,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         boolean needsSplit;
         if (methodNodes != null) {
             needsSplit = methodNodes != null;
-            nodeType = Utils.fromTypeMirror(Utils.getAnnotationValueType(methodNodes, "value"));
+            nodeType = Utils.fromTypeMirror(Utils.getAnnotationValue(TypeMirror.class, methodNodes, "value"));
         } else {
             needsSplit = false;
             nodeType = type;
@@ -173,6 +169,7 @@ public class NodeParser extends TemplateParser<NodeData> {
                 valid = false;
             }
         }
+
         if (!valid) {
             return null;
         }
@@ -213,16 +210,12 @@ public class NodeParser extends TemplateParser<NodeData> {
                 nodeId = nodeId.substring(0, nodeId.length() - 4);
             }
             String newNodeId = nodeId + Utils.firstLetterUpperCase(id);
-            NodeData copy = new NodeData(node, newNodeId);
+            NodeData copy = new NodeData(node, id, newNodeId);
 
             copy.setSpecializations(specializations);
             copy.setSpecializationListeners(listeners);
 
             splitted.add(copy);
-        }
-
-        if (splitted.isEmpty()) {
-            splitted.add(node);
         }
 
         node.setSpecializations(new ArrayList<SpecializationData>());
@@ -460,16 +453,11 @@ public class NodeParser extends TemplateParser<NodeData> {
             return null;
         }
 
-        TypeMirror typeSytemType = Utils.getAnnotationValueType(typeSystemMirror, "value");
+        TypeMirror typeSytemType = Utils.getAnnotationValue(TypeMirror.class, typeSystemMirror, "value");
         final TypeSystemData typeSystem = (TypeSystemData) context.getTemplate(typeSytemType, true);
         if (typeSystem == null) {
             log.error(templateType, "The used type system '%s' is invalid.", Utils.getQualifiedName(typeSytemType));
             return null;
-        }
-
-        String nodeId = templateType.getSimpleName().toString();
-        if (nodeId.endsWith("Node") && !nodeId.equals("Node")) {
-            nodeId = nodeId.substring(0, nodeId.length() - 4);
         }
 
         NodeData nodeData = new NodeData(templateType, typeSystem, templateType.getSimpleName().toString());
@@ -479,18 +467,13 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         nodeData.setExecutableTypes(executableTypes);
 
-        parsedNodes.put(Utils.getQualifiedName(nodeType), nodeData);
+        parsedNodes.put(Utils.getQualifiedName(templateType), nodeData);
 
         List<NodeFieldData> fields = parseFields(nodeData, elements, typeHierarchy);
         if (fields == null) {
             return null;
         }
         nodeData.setFields(fields);
-
-        if (!Utils.isAssignable(templateType.asType(), nodeType.asType())) {
-// nodeData.setInstanceParameterSpec(new ParameterSpec("instance", templateType.asType(), false,
-// true));
-        }
 
         return nodeData;
     }
@@ -626,8 +609,8 @@ public class NodeParser extends TemplateParser<NodeData> {
         List<String> executionDefinition = null;
         if (executionOrderMirror != null) {
             executionDefinition = new ArrayList<>();
-            for (Object object : Utils.getAnnotationValueList(executionOrderMirror, "value")) {
-                executionDefinition.add((String) object);
+            for (String object : Utils.getAnnotationValueList(String.class, executionOrderMirror, "value")) {
+                executionDefinition.add(object);
             }
         }
 
@@ -635,7 +618,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
             AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, ShortCircuit.class);
             if (mirror != null) {
-                shortCircuits.add(Utils.getAnnotationValueString(mirror, "value"));
+                shortCircuits.add(Utils.getAnnotationValue(String.class, mirror, "value"));
             }
         }
 

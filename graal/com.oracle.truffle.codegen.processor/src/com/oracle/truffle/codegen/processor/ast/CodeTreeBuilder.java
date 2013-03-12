@@ -495,7 +495,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder create() {
-        return new CodeTreeBuilder(null);
+        return new CodeTreeBuilder(this);
     }
 
     public CodeTreeBuilder type(TypeMirror type) {

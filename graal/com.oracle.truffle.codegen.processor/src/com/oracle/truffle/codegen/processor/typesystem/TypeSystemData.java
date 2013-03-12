@@ -41,7 +41,7 @@ public class TypeSystemData extends Template {
     private final TypeData voidType;
 
     public TypeSystemData(TypeElement templateType, AnnotationMirror annotation, TypeData[] types, TypeMirror genericType, TypeData voidType) {
-        super(templateType, annotation);
+        super(templateType, null, annotation);
         this.types = types;
         this.genericType = genericType;
         this.voidType = voidType;

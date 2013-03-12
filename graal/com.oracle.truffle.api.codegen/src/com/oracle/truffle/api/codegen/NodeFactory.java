@@ -24,6 +24,8 @@ package com.oracle.truffle.api.codegen;
 
 import java.util.*;
 
+import com.oracle.truffle.api.nodes.*;
+
 /**
  * Enables the dynamic creation of generated nodes. It provides an convenient way to instantiate
  * generated node classes without using reflection.
@@ -62,5 +64,11 @@ public interface NodeFactory<T> {
      * Returns a list of signatures that can be used to invoke {@link #createNode(Object...)}.
      */
     List<List<Class<?>>> getNodeSignatures();
+
+    /**
+     * Returns a list of children that will be executed by the created node. This is useful for base
+     * nodes that can execute a variable amount of nodes.
+     */
+    List<Class<? extends Node>> getChildrenSignature();
 
 }

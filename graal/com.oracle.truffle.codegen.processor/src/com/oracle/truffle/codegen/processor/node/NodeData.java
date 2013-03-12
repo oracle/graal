@@ -51,13 +51,13 @@ public class NodeData extends Template {
     private List<ShortCircuitData> shortCircuits;
 
     public NodeData(TypeElement type, TypeSystemData typeSystem, String id) {
-        super(type, null);
+        super(type, null, null);
         this.nodeId = id;
         this.typeSystem = typeSystem;
     }
 
-    public NodeData(NodeData copy, String nodeId) {
-        super(copy.getTemplateType(), null);
+    public NodeData(NodeData copy, String templateMethodName, String nodeId) {
+        super(copy.getTemplateType(), templateMethodName, null);
         this.nodeId = nodeId;
         this.declaringNode = copy.declaringNode;
         this.declaredChildren = copy.declaredChildren;

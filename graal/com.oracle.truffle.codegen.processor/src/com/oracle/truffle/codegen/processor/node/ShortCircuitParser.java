@@ -48,7 +48,7 @@ public class ShortCircuitParser extends MethodParser<ShortCircuitData> {
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        String shortCircuitValue = Utils.getAnnotationValueString(mirror, "value");
+        String shortCircuitValue = Utils.getAnnotationValue(String.class, mirror, "value");
 
         if (!shortCircuitValues.contains(shortCircuitValue)) {
             getContext().getLog().error(method, mirror, "Invalid short circuit value %s.", shortCircuitValue);
@@ -65,7 +65,7 @@ public class ShortCircuitParser extends MethodParser<ShortCircuitData> {
 
     @Override
     public ShortCircuitData create(TemplateMethod method) {
-        String shortCircuitValue = Utils.getAnnotationValueString(method.getMarkerAnnotation(), "value");
+        String shortCircuitValue = Utils.getAnnotationValue(String.class, method.getMarkerAnnotation(), "value");
         assert shortCircuitValue != null;
         assert shortCircuitValues.contains(shortCircuitValue);
         return new ShortCircuitData(method, shortCircuitValue);

@@ -33,14 +33,14 @@ public class ActualParameter {
     private TemplateMethod method;
     private final String name;
     private final int index;
-    private final boolean hidden;
+    private final boolean implicit;
 
-    public ActualParameter(ParameterSpec specification, TypeMirror actualType, int index, boolean hidden) {
+    public ActualParameter(ParameterSpec specification, TypeMirror actualType, int index, boolean implicit) {
         this.specification = specification;
         this.actualType = actualType;
 
         this.index = index;
-        this.hidden = hidden;
+        this.implicit = implicit;
         String valueName = specification.getName() + "Value";
         if (specification.isIndexed()) {
             valueName = valueName + index;
@@ -49,7 +49,7 @@ public class ActualParameter {
     }
 
     public boolean isHidden() {
-        return hidden;
+        return implicit;
     }
 
     public int getIndex() {

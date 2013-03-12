@@ -55,9 +55,17 @@ public class Utils {
         return boxedType;
     }
 
+    public static List<TypeMirror> asTypeMirrors(List<? extends Element> elements) {
+        List<TypeMirror> types = new ArrayList<>(elements.size());
+        for (Element element : elements) {
+            types.add(element.asType());
+        }
+        return types;
+    }
+
     public static List<AnnotationMirror> collectAnnotations(ProcessorContext context, AnnotationMirror markerAnnotation, String elementName, Element element,
                     Class<? extends Annotation> annotationClass) {
-        List<AnnotationMirror> result = Utils.getAnnotationValueList(markerAnnotation, elementName);
+        List<AnnotationMirror> result = Utils.getAnnotationValueList(AnnotationMirror.class, markerAnnotation, elementName);
         AnnotationMirror explicit = Utils.findAnnotationMirror(context.getEnvironment(), element, annotationClass);
         if (explicit != null) {
             result.add(explicit);
@@ -468,29 +476,32 @@ public class Utils {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> List<T> getAnnotationValueList(AnnotationMirror mirror, String name) {
+    public static <T> List<T> getAnnotationValueList(Class<T> expectedListType, AnnotationMirror mirror, String name) {
+        List<? extends AnnotationValue> values = getAnnotationValue(List.class, mirror, name);
         List<T> result = new ArrayList<>();
-        List<? extends AnnotationValue> values = (List<? extends AnnotationValue>) getAnnotationValue(mirror, name).getValue();
+
         for (AnnotationValue value : values) {
-            result.add((T) value.getValue());
+            result.add(resolveAnnotationValue(expectedListType, value));
         }
         return result;
     }
 
-    public static TypeMirror getAnnotationValueType(AnnotationMirror mirror, String name) {
-        return (TypeMirror) getAnnotationValue(mirror, name).getValue();
+    public static <T> T getAnnotationValue(Class<T> expectedType, AnnotationMirror mirror, String name) {
+        return resolveAnnotationValue(expectedType, getAnnotationValue(mirror, name));
     }
 
-    public static TypeMirror getAnnotationValueTypeMirror(AnnotationMirror mirror, String name) {
-        return (TypeMirror) getAnnotationValue(mirror, name).getValue();
-    }
-
-    public static String getAnnotationValueString(AnnotationMirror mirror, String name) {
-        return (String) getAnnotationValue(mirror, name).getValue();
-    }
-
-    public static int getAnnotationValueInt(AnnotationMirror mirror, String name) {
-        return (int) getAnnotationValue(mirror, name).getValue();
+    @SuppressWarnings({"unchecked"})
+    private static <T> T resolveAnnotationValue(Class<T> expectedType, AnnotationValue value) {
+        Object unboxedValue = value.accept(new AnnotationValueVisitorImpl(), null);
+        if (unboxedValue != null) {
+            if (expectedType == TypeMirror.class && unboxedValue instanceof String) {
+                return null;
+            }
+            if (!expectedType.isAssignableFrom(unboxedValue.getClass())) {
+                throw new ClassCastException(unboxedValue.getClass().getName() + " not assignable from " + expectedType.getName());
+            }
+        }
+        return (T) unboxedValue;
     }
 
     public static AnnotationValue getAnnotationValue(AnnotationMirror mirror, String name) {
@@ -510,7 +521,77 @@ public class Utils {
         if (value == null) {
             value = valueMethod.getDefaultValue();
         }
+
         return value;
+    }
+
+    private static class AnnotationValueVisitorImpl extends AbstractAnnotationValueVisitor7<Object, Void> {
+
+        @Override
+        public Object visitBoolean(boolean b, Void p) {
+            return Boolean.valueOf(b);
+        }
+
+        @Override
+        public Object visitByte(byte b, Void p) {
+            return Byte.valueOf(b);
+        }
+
+        @Override
+        public Object visitChar(char c, Void p) {
+            return c;
+        }
+
+        @Override
+        public Object visitDouble(double d, Void p) {
+            return d;
+        }
+
+        @Override
+        public Object visitFloat(float f, Void p) {
+            return f;
+        }
+
+        @Override
+        public Object visitInt(int i, Void p) {
+            return i;
+        }
+
+        @Override
+        public Object visitLong(long i, Void p) {
+            return i;
+        }
+
+        @Override
+        public Object visitShort(short s, Void p) {
+            return s;
+        }
+
+        @Override
+        public Object visitString(String s, Void p) {
+            return s;
+        }
+
+        @Override
+        public Object visitType(TypeMirror t, Void p) {
+            return t;
+        }
+
+        @Override
+        public Object visitEnumConstant(VariableElement c, Void p) {
+            return c.getConstantValue();
+        }
+
+        @Override
+        public Object visitAnnotation(AnnotationMirror a, Void p) {
+            return a;
+        }
+
+        @Override
+        public Object visitArray(List<? extends AnnotationValue> vals, Void p) {
+            return vals;
+        }
+
     }
 
     public static boolean getAnnotationValueBoolean(AnnotationMirror mirror, String name) {

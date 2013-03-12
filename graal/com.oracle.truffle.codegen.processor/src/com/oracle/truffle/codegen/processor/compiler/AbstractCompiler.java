@@ -39,6 +39,9 @@ public abstract class AbstractCompiler implements Compiler {
     }
 
     protected static Object field(Object o, String fieldName) throws Exception {
+        if (o == null) {
+            return null;
+        }
         Field field = o.getClass().getField(fieldName);
         field.setAccessible(true);
         return field.get(o);

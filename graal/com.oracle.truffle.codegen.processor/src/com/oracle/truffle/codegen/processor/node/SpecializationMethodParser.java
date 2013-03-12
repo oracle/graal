@@ -55,13 +55,13 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
     }
 
     private SpecializationData parseSpecialization(TemplateMethod method) {
-        int order = Utils.getAnnotationValueInt(method.getMarkerAnnotation(), "order");
+        int order = Utils.getAnnotationValue(Integer.class, method.getMarkerAnnotation(), "order");
         if (order < 0 && order != Specialization.DEFAULT_ORDER) {
             getContext().getLog().error(method.getMethod(), method.getMarkerAnnotation(), "Invalid order attribute %d. The value must be >= 0 or the default value.");
             return null;
         }
 
-        List<TypeMirror> exceptionTypes = Utils.getAnnotationValueList(method.getMarkerAnnotation(), "rewriteOn");
+        List<TypeMirror> exceptionTypes = Utils.getAnnotationValueList(TypeMirror.class, method.getMarkerAnnotation(), "rewriteOn");
         List<SpecializationThrowsData> exceptionData = new ArrayList<>();
         for (TypeMirror exceptionType : exceptionTypes) {
             exceptionData.add(new SpecializationThrowsData(method.getMarkerAnnotation(), exceptionType));
@@ -81,7 +81,7 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
         });
         SpecializationData specialization = new SpecializationData(method, order, exceptionData);
         boolean valid = true;
-        List<String> guardDefs = Utils.getAnnotationValueList(specialization.getMarkerAnnotation(), "guards");
+        List<String> guardDefs = Utils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
         SpecializationGuardData[] guardData = new SpecializationGuardData[guardDefs.size()];
         for (int i = 0; i < guardData.length; i++) {
             String guardMethod = guardDefs.get(i);

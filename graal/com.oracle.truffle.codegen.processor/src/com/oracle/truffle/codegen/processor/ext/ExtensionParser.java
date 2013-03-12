@@ -88,7 +88,7 @@ public class ExtensionParser {
         } else {
             AnnotationMirror foundExtension = Utils.findAnnotationMirror(context.getEnvironment(), mirror.getAnnotationType().asElement(), ExtensionAnnotation.class);
             if (foundExtension != null) {
-                String className = Utils.getAnnotationValueString(foundExtension, "processorClassName");
+                String className = Utils.getAnnotationValue(String.class, foundExtension, "processorClassName");
                 Class<?> processorClass;
                 try {
                     processorClass = Class.forName(className);

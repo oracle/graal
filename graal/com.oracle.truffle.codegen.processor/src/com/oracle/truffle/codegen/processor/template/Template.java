@@ -32,13 +32,19 @@ import com.oracle.truffle.codegen.processor.api.element.*;
 public abstract class Template {
 
     private final TypeElement templateType;
+    private final String templateMethodName;
     private final AnnotationMirror annotation;
 
     private List<? extends WritableElement> extensionElements;
 
-    public Template(TypeElement templateType, AnnotationMirror annotation) {
+    public Template(TypeElement templateType, String templateMethodName, AnnotationMirror annotation) {
         this.templateType = templateType;
+        this.templateMethodName = templateMethodName;
         this.annotation = annotation;
+    }
+
+    public String getTemplateMethodName() {
+        return templateMethodName;
     }
 
     public TypeElement getTemplateType() {

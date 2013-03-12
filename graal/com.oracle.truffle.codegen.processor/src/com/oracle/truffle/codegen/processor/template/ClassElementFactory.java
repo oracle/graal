@@ -128,6 +128,10 @@ public abstract class ClassElementFactory<M> extends CodeElementFactory<M> {
 
         CodeAnnotationMirror generatedByAnnotation = new CodeAnnotationMirror((DeclaredType) getContext().getType(GeneratedBy.class));
         generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("value"), new CodeAnnotationValue(templateType.asType()));
+        if (model.getTemplateMethodName() != null) {
+            generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("methodName"), new CodeAnnotationValue(model.getTemplateMethodName()));
+        }
+
         clazz.addAnnotationMirror(generatedByAnnotation);
 
         context.registerType(model.getTemplateType(), clazz.asType());

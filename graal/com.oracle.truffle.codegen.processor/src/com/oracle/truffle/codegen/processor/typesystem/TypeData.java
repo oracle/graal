@@ -40,7 +40,7 @@ public class TypeData extends Template {
     private final List<TypeCheckData> typeChecks = new ArrayList<>();
 
     public TypeData(TypeElement templateType, AnnotationMirror annotation, TypeMirror primitiveType, TypeMirror boxedType) {
-        super(templateType, annotation);
+        super(templateType, null, annotation);
         this.primitiveType = primitiveType;
         this.boxedType = boxedType;
     }

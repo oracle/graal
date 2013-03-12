@@ -145,7 +145,7 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
     }
 
     private TypeData[] parseTypes(TypeElement templateType, AnnotationMirror templateTypeAnnotation) {
-        List<TypeMirror> typeMirrors = Utils.getAnnotationValueList(templateTypeAnnotation, "value");
+        List<TypeMirror> typeMirrors = Utils.getAnnotationValueList(TypeMirror.class, templateTypeAnnotation, "value");
         if (typeMirrors.size() == 0) {
             log.error(templateType, templateTypeAnnotation, "At least one type must be defined.");
             return null;

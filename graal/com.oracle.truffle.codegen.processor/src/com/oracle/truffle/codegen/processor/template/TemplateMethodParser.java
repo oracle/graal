@@ -96,7 +96,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
                 mirror = Utils.findAnnotationMirror(getContext().getEnvironment(), method, annotationType);
             }
 
-            if (method.getModifiers().contains(Modifier.PRIVATE)) {
+            if (method.getModifiers().contains(Modifier.PRIVATE) && emitErrors) {
                 getContext().getLog().error(method, "Method must not be private.");
                 valid = false;
                 continue;
@@ -160,7 +160,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         String id = method.getSimpleName().toString();
         AnnotationMirror idAnnotation = Utils.findAnnotationMirror(context.getEnvironment(), method, NodeId.class);
         if (idAnnotation != null) {
-            id = Utils.getAnnotationValueString(idAnnotation, "value");
+            id = Utils.getAnnotationValue(String.class, idAnnotation, "value");
         }
 
         return create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, parameters));
