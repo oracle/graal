@@ -32,6 +32,7 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -47,6 +48,10 @@ public class JTTTest extends GraalCompilerTest {
      * The arguments which, if non-null, will replace the Locals in the test method's graph.
      */
     Object[] argsToBind;
+
+    public JTTTest() {
+        Assert.assertNotNull(runtime);
+    }
 
     @Override
     protected StructuredGraph parse(Method m) {
@@ -89,10 +94,14 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     protected void runTest(String name, Object... args) {
-        // System.out.println(getClass().getSimpleName() + "." + name);
-        super.test(name, args);
+        Method method = getMethod(name);
+        Object receiver = Modifier.isStatic(method.getModifiers()) ? null : this;
+
+        Result expect = executeExpected(method, receiver, args);
+
+        test(method, expect, receiver, args);
         this.argsToBind = args;
-        super.test(name, args);
+        test(method, expect, receiver, args);
         this.argsToBind = null;
     }
 }

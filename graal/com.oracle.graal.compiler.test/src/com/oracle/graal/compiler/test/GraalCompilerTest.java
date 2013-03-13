@@ -221,7 +221,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return method.invoke(receiver, args);
     }
 
-    static class Result {
+    protected static class Result {
 
         final Object returnValue;
         final Throwable exception;
@@ -296,16 +296,28 @@ public abstract class GraalCompilerTest extends GraalTest {
         Method method = getMethod(name);
         Object receiver = Modifier.isStatic(method.getModifiers()) ? null : this;
 
+        test(method, receiver, args);
+    }
+
+    protected void test(Method method, Object receiver, Object... args) {
         Result expect = executeExpected(method, receiver, args);
         if (runtime == null) {
             return;
         }
+        test(method, expect, receiver, args);
+    }
+
+    protected void test(Method method, Result expect, Object receiver, Object... args) {
         Result actual = executeActual(method, receiver, args);
 
         if (expect.exception != null) {
             Assert.assertTrue("expected " + expect.exception, actual.exception != null);
             Assert.assertEquals(expect.exception.getClass(), actual.exception.getClass());
         } else {
+            if (actual.exception != null) {
+                actual.exception.printStackTrace();
+                Assert.fail("expected " + expect.returnValue + " but got an exception");
+            }
             assertEquals(expect.returnValue, actual.returnValue);
         }
     }
