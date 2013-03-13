@@ -167,8 +167,8 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
 
             CodeTreeBuilder builder = method.createBuilder();
             builder.startReturn();
-            if (typeSystem.getTypes().length > 0) {
-                builder.typeLiteral(typeSystem.getTypes()[0].getBoxedType());
+            if (!typeSystem.getTypes().isEmpty()) {
+                builder.typeLiteral(typeSystem.getTypes().get(0).getBoxedType());
             } else {
                 builder.null_();
             }

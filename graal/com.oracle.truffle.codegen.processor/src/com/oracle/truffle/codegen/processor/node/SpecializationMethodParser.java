@@ -57,19 +57,19 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
     private SpecializationData parseSpecialization(TemplateMethod method) {
         int order = Utils.getAnnotationValue(Integer.class, method.getMarkerAnnotation(), "order");
         if (order < 0 && order != Specialization.DEFAULT_ORDER) {
-            getContext().getLog().error(method.getMethod(), method.getMarkerAnnotation(), "Invalid order attribute %d. The value must be >= 0 or the default value.");
+            method.addError("Invalid order attribute %d. The value must be >= 0 or the default value.");
             return null;
         }
 
+        AnnotationValue rewriteValue = Utils.getAnnotationValue(method.getMarkerAnnotation(), "rewriteOn");
         List<TypeMirror> exceptionTypes = Utils.getAnnotationValueList(TypeMirror.class, method.getMarkerAnnotation(), "rewriteOn");
         List<SpecializationThrowsData> exceptionData = new ArrayList<>();
         for (TypeMirror exceptionType : exceptionTypes) {
-            exceptionData.add(new SpecializationThrowsData(method.getMarkerAnnotation(), exceptionType));
-
+            SpecializationThrowsData throwsData = new SpecializationThrowsData(method.getMarkerAnnotation(), rewriteValue, exceptionType);
             if (!Utils.canThrowType(method.getMethod().getThrownTypes(), exceptionType)) {
-                getContext().getLog().error(method.getMethod(), "Method must specify a throws clause with the exception type '%s'.", Utils.getQualifiedName(exceptionType));
-                return null;
+                throwsData.addError("Method must specify a throws clause with the exception type '%s'.", Utils.getQualifiedName(exceptionType));
             }
+            exceptionData.add(throwsData);
         }
 
         Collections.sort(exceptionData, new Comparator<SpecializationThrowsData>() {
@@ -81,26 +81,19 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
         });
         SpecializationData specialization = new SpecializationData(method, order, exceptionData);
         boolean valid = true;
+        AnnotationValue guardsValue = Utils.getAnnotationValue(method.getMarkerAnnotation(), "guards");
         List<String> guardDefs = Utils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
-        SpecializationGuardData[] guardData = new SpecializationGuardData[guardDefs.size()];
-        for (int i = 0; i < guardData.length; i++) {
+        List<SpecializationGuardData> guardData = new ArrayList<>(guardDefs.size());
+        for (int i = 0; i < guardDefs.size(); i++) {
             String guardMethod = guardDefs.get(i);
 
-            boolean onSpecialization = true;
-            boolean onExecution = true;
+            SpecializationGuardData assignedGuard = new SpecializationGuardData(specialization, guardsValue, guardMethod, true, true);
 
-            if (!onSpecialization && !onExecution) {
-                String message = "Either onSpecialization, onExecution or both must be enabled.";
-                getContext().getLog().error(method.getMethod(), message);
-                valid = false;
-                continue;
-            }
+            guardData.add(assignedGuard);
 
-            guardData[i] = new SpecializationGuardData(guardMethod, onSpecialization, onExecution);
-
-            GuardData compatibleGuard = matchSpecializationGuard(specialization, guardData[i]);
+            GuardData compatibleGuard = matchSpecializationGuard(specialization, assignedGuard);
             if (compatibleGuard != null) {
-                guardData[i].setGuardDeclaration(compatibleGuard);
+                assignedGuard.setGuardDeclaration(compatibleGuard);
             } else {
                 valid = false;
             }
@@ -136,9 +129,7 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
             }
             List<TypeDef> typeDefs = createTypeDefinitions(returnTypeSpec, expectedParameterSpecs);
             String expectedSignature = TemplateMethodParser.createExpectedSignature(specializationGuard.getGuardMethod(), returnTypeSpec, expectedParameterSpecs, typeDefs);
-            AnnotationValue value = Utils.getAnnotationValue(specialization.getMarkerAnnotation(), "guards");
-            getContext().getLog().error(specialization.getMethod(), specialization.getMarkerAnnotation(), value, "No guard with signature '%s' found in type system.", expectedSignature);
-            return null;
+            specializationGuard.addError("No guard with signature '%s' found in type system.", expectedSignature);
         }
 
         return compatibleGuard;

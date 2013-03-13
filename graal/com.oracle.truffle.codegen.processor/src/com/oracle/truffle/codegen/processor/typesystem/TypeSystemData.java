@@ -32,35 +32,42 @@ import com.oracle.truffle.codegen.processor.template.*;
 
 public class TypeSystemData extends Template {
 
-    private final TypeData[] types;
-    private final TypeMirror[] primitiveTypeMirrors;
-    private final TypeMirror[] boxedTypeMirrors;
+    private List<TypeData> types;
+    private List<TypeMirror> primitiveTypeMirrors = new ArrayList<>();
+    private List<TypeMirror> boxedTypeMirrors = new ArrayList<>();
 
-    private final TypeMirror genericType;
+    private TypeMirror genericType;
+    private TypeData voidType;
 
-    private final TypeData voidType;
-
-    public TypeSystemData(TypeElement templateType, AnnotationMirror annotation, TypeData[] types, TypeMirror genericType, TypeData voidType) {
+    public TypeSystemData(TypeElement templateType, AnnotationMirror annotation) {
         super(templateType, null, annotation);
+    }
+
+    void setTypes(List<TypeData> types) {
         this.types = types;
+        if (types != null) {
+            for (TypeData typeData : types) {
+                primitiveTypeMirrors.add(typeData.getPrimitiveType());
+                boxedTypeMirrors.add(typeData.getBoxedType());
+            }
+        }
+    }
+
+    void setGenericType(TypeMirror genericType) {
         this.genericType = genericType;
+    }
+
+    void setVoidType(TypeData voidType) {
         this.voidType = voidType;
-        this.primitiveTypeMirrors = new TypeMirror[types.length];
-        for (int i = 0; i < types.length; i++) {
-            primitiveTypeMirrors[i] = types[i].getPrimitiveType();
-        }
+    }
 
-        this.boxedTypeMirrors = new TypeMirror[types.length];
-        for (int i = 0; i < types.length; i++) {
-            boxedTypeMirrors[i] = types[i].getBoxedType();
+    @Override
+    protected List<MessageContainer> findChildContainers() {
+        List<MessageContainer> sinks = new ArrayList<>();
+        if (types != null) {
+            sinks.addAll(types);
         }
-
-        for (TypeData type : types) {
-            type.typeSystem = this;
-        }
-        if (voidType != null) {
-            voidType.typeSystem = this;
-        }
+        return sinks;
     }
 
     public boolean isGeneric(TypeMirror type) {
@@ -71,16 +78,16 @@ public class TypeSystemData extends Template {
         return voidType;
     }
 
-    public TypeData[] getTypes() {
-        return types;
+    public List<TypeMirror> getBoxedTypeMirrors() {
+        return boxedTypeMirrors;
     }
 
-    public TypeMirror[] getPrimitiveTypeMirrors() {
+    public List<TypeMirror> getPrimitiveTypeMirrors() {
         return primitiveTypeMirrors;
     }
 
-    public TypeMirror[] getBoxedTypeMirrors() {
-        return boxedTypeMirrors;
+    public List<TypeData> getTypes() {
+        return types;
     }
 
     public TypeMirror getGenericType() {
@@ -88,7 +95,7 @@ public class TypeSystemData extends Template {
     }
 
     public TypeData getGenericTypeData() {
-        TypeData result = types[types.length - 1];
+        TypeData result = types.get(types.size() - 1);
         assert result.getBoxedType() == genericType;
         return result;
     }
@@ -111,7 +118,7 @@ public class TypeSystemData extends Template {
         if (index == -1) {
             return null;
         }
-        return types[index];
+        return types.get(index);
     }
 
     public int findType(TypeData typeData) {
@@ -119,8 +126,8 @@ public class TypeSystemData extends Template {
     }
 
     public int findType(TypeMirror type) {
-        for (int i = 0; i < types.length; i++) {
-            if (Utils.typeEquals(types[i].getPrimitiveType(), type)) {
+        for (int i = 0; i < types.size(); i++) {
+            if (Utils.typeEquals(types.get(i).getPrimitiveType(), type)) {
                 return i;
             }
         }
@@ -129,7 +136,7 @@ public class TypeSystemData extends Template {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "[template = " + Utils.getSimpleName(getTemplateType()) + ", types = " + Arrays.toString(types) + "]";
+        return getClass().getSimpleName() + "[template = " + Utils.getSimpleName(getTemplateType()) + ", types = " + types + "]";
     }
 
 }

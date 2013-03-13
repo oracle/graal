@@ -22,20 +22,42 @@
  */
 package com.oracle.truffle.codegen.processor.node;
 
+import javax.lang.model.element.*;
+
+import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
-public class SpecializationGuardData {
+public class SpecializationGuardData extends MessageContainer {
 
+    private final SpecializationData specialization;
+    private final AnnotationValue value;
     private final String guardMethod;
     private final boolean onSpecialization;
     private final boolean onExecution;
 
     private GuardData guardDeclaration;
 
-    public SpecializationGuardData(String guardMethod, boolean onSpecialization, boolean onExecution) {
+    public SpecializationGuardData(SpecializationData specialization, AnnotationValue value, String guardMethod, boolean onSpecialization, boolean onExecution) {
+        this.specialization = specialization;
         this.guardMethod = guardMethod;
         this.onSpecialization = onSpecialization;
         this.onExecution = onExecution;
+        this.value = value;
+    }
+
+    @Override
+    public Element getMessageElement() {
+        return specialization.getMessageElement();
+    }
+
+    @Override
+    public AnnotationMirror getMessageAnnotation() {
+        return specialization.getMessageAnnotation();
+    }
+
+    @Override
+    public AnnotationValue getMessageAnnotationValue() {
+        return value;
     }
 
     public String getGuardMethod() {

@@ -37,12 +37,12 @@ public class ParameterSpec {
     }
 
     private final String name;
-    private final TypeMirror[] allowedTypes;
+    private final List<TypeMirror> allowedTypes;
     private final boolean optional;
     private Cardinality cardinality;
     private boolean indexed;
 
-    public ParameterSpec(String name, TypeMirror[] allowedTypes, boolean optional, Cardinality cardinality) {
+    public ParameterSpec(String name, List<TypeMirror> allowedTypes, boolean optional, Cardinality cardinality) {
         this.allowedTypes = allowedTypes;
         this.name = name;
         this.optional = optional;
@@ -51,7 +51,7 @@ public class ParameterSpec {
 
     /** Type constructor. */
     public ParameterSpec(String name, TypeMirror singleFixedType, boolean optional) {
-        this(name, new TypeMirror[]{singleFixedType}, optional, Cardinality.ONE);
+        this(name, Arrays.asList(singleFixedType), optional, Cardinality.ONE);
     }
 
     /** Type system value constructor. */
@@ -76,7 +76,7 @@ public class ParameterSpec {
         this.cardinality = cardinality;
     }
 
-    private static TypeMirror[] nodeTypeMirrors(NodeData nodeData) {
+    private static List<TypeMirror> nodeTypeMirrors(NodeData nodeData) {
         Set<TypeMirror> typeMirrors = new LinkedHashSet<>();
 
         for (ExecutableTypeData typeData : nodeData.getExecutableTypes()) {
@@ -85,7 +85,7 @@ public class ParameterSpec {
 
         typeMirrors.add(nodeData.getTypeSystem().getGenericType());
 
-        return typeMirrors.toArray(new TypeMirror[typeMirrors.size()]);
+        return new ArrayList<>(typeMirrors);
     }
 
     public final String getName() {
@@ -100,15 +100,13 @@ public class ParameterSpec {
         return cardinality;
     }
 
-    public TypeMirror[] getAllowedTypes() {
+    public List<TypeMirror> getAllowedTypes() {
         return allowedTypes;
     }
 
     public boolean matches(TypeMirror actualType) {
-        for (int i = 0; i < allowedTypes.length; i++) {
-            TypeMirror mirror = allowedTypes[i];
+        for (TypeMirror mirror : allowedTypes) {
             if (Utils.typeEquals(actualType, mirror)) {
-
                 return true;
             }
         }

@@ -39,7 +39,7 @@ public class NodeData extends Template {
     private NodeData declaringNode;
     private List<NodeData> declaredChildren = new ArrayList<>();
 
-    private final TypeSystemData typeSystem;
+    private TypeSystemData typeSystem;
     private List<NodeFieldData> fields;
     private TypeMirror nodeType;
     private ParameterSpec instanceParameterSpec;
@@ -50,25 +50,58 @@ public class NodeData extends Template {
     private List<ExecutableTypeData> executableTypes;
     private List<ShortCircuitData> shortCircuits;
 
-    public NodeData(TypeElement type, TypeSystemData typeSystem, String id) {
+    public NodeData(TypeElement type, String id) {
         super(type, null, null);
         this.nodeId = id;
+    }
+
+    public NodeData(NodeData splitSource, String templateMethodName, String nodeId) {
+        super(splitSource.getTemplateType(), templateMethodName, null);
+        this.nodeId = nodeId;
+        this.declaringNode = splitSource.declaringNode;
+        this.declaredChildren = splitSource.declaredChildren;
+        this.typeSystem = splitSource.typeSystem;
+        this.nodeType = splitSource.nodeType;
+        this.specializations = splitSource.specializations;
+        this.specializationListeners = splitSource.specializationListeners;
+        this.guards = splitSource.guards;
+        this.executableTypes = splitSource.executableTypes;
+        this.shortCircuits = splitSource.shortCircuits;
+        this.fields = splitSource.fields;
+    }
+
+    void setTypeSystem(TypeSystemData typeSystem) {
         this.typeSystem = typeSystem;
     }
 
-    public NodeData(NodeData copy, String templateMethodName, String nodeId) {
-        super(copy.getTemplateType(), templateMethodName, null);
-        this.nodeId = nodeId;
-        this.declaringNode = copy.declaringNode;
-        this.declaredChildren = copy.declaredChildren;
-        this.typeSystem = copy.typeSystem;
-        this.nodeType = copy.nodeType;
-        this.specializations = copy.specializations;
-        this.specializationListeners = copy.specializationListeners;
-        this.guards = copy.guards;
-        this.executableTypes = copy.executableTypes;
-        this.shortCircuits = copy.shortCircuits;
-        this.fields = copy.fields;
+    @Override
+    protected List<MessageContainer> findChildContainers() {
+        List<MessageContainer> sinks = new ArrayList<>();
+        if (declaredChildren != null) {
+            sinks.addAll(declaredChildren);
+        }
+        if (typeSystem != null) {
+            sinks.add(typeSystem);
+        }
+        if (specializations != null) {
+            sinks.addAll(specializations);
+        }
+        if (specializationListeners != null) {
+            sinks.addAll(specializationListeners);
+        }
+        if (guards != null) {
+            sinks.addAll(guards);
+        }
+        if (executableTypes != null) {
+            sinks.addAll(executableTypes);
+        }
+        if (shortCircuits != null) {
+            sinks.addAll(shortCircuits);
+        }
+        if (fields != null) {
+            sinks.addAll(fields);
+        }
+        return sinks;
     }
 
     public ParameterSpec getInstanceParameterSpec() {
@@ -146,9 +179,6 @@ public class NodeData extends Template {
 
         for (SpecializationData specialization : getSpecializations()) {
             methods.add(specialization);
-            if (specialization.getShortCircuits() != null) {
-                methods.addAll(Arrays.asList(specialization.getShortCircuits()));
-            }
         }
 
         methods.addAll(getSpecializationListeners());
@@ -271,24 +301,63 @@ public class NodeData extends Template {
     }
 
     public TypeSystemData getTypeSystem() {
-        if (typeSystem != null) {
-            return typeSystem;
-        } else {
-            return null;
-        }
+        return typeSystem;
     }
 
     public String dump() {
-        StringBuilder b = new StringBuilder();
-        b.append(String.format("[id = %s, name = %s\n  typeSystem = %s\n  fields = %s\n  types = %s\n  specializations = %s\n  guards = %s\n  enclosing = %s\n  enclosed = %s\n]", getNodeId(),
-                        Utils.getQualifiedName(getTemplateType()), getTypeSystem(), dumpList(fields), dumpList(getExecutableTypes()), dumpList(getSpecializations()), dumpList(guards),
-                        dumpList(getDeclaredChildren()), getParent()));
-        return b.toString();
+        return dump(0);
+    }
+
+    private String dump(int level) {
+        String indent = "";
+        for (int i = 0; i < level; i++) {
+            indent += "  ";
+        }
+        StringBuilder builder = new StringBuilder();
+
+        builder.append(String.format("%s%s {", indent, toString()));
+
+        dumpProperty(builder, indent, "templateClass", Utils.getQualifiedName(getTemplateType()));
+        dumpProperty(builder, indent, "typeSystem", getTypeSystem());
+        dumpProperty(builder, indent, "fields", getFields());
+        dumpProperty(builder, indent, "executableTypes", getExecutableTypes());
+        dumpProperty(builder, indent, "specializations", getSpecializations());
+        dumpProperty(builder, indent, "guards", getGuards());
+        dumpProperty(builder, indent, "messages", collectMessages());
+        if (getDeclaredChildren().size() > 0) {
+            builder.append(String.format("\n%s  children = [", indent));
+            for (NodeData node : getDeclaredChildren()) {
+                builder.append("\n");
+                builder.append(node.dump(level + 1));
+            }
+            builder.append(String.format("\n%s  ]", indent));
+        }
+        builder.append(String.format("%s}", indent));
+        return builder.toString();
+    }
+
+    private static void dumpProperty(StringBuilder b, String indent, String propertyName, Object value) {
+        if (value instanceof List) {
+            List<?> list = (List<?>) value;
+            if (!list.isEmpty()) {
+                b.append(String.format("\n%s  %s = %s", indent, propertyName, dumpList((List<?>) value)));
+            }
+        } else {
+            if (value != null) {
+                b.append(String.format("\n%s  %s = %s", indent, propertyName, value));
+            }
+        }
     }
 
     private static String dumpList(List<?> array) {
         if (array == null) {
             return "null";
+        }
+
+        if (array.isEmpty()) {
+            return "[]";
+        } else if (array.size() == 1) {
+            return "[" + array.get(0).toString() + "]";
         }
 
         StringBuilder b = new StringBuilder();

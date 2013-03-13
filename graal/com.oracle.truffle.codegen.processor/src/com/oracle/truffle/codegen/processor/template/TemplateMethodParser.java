@@ -96,13 +96,14 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
                 mirror = Utils.findAnnotationMirror(getContext().getEnvironment(), method, annotationType);
             }
 
+            E parsedMethod = parse(method, mirror);
+
             if (method.getModifiers().contains(Modifier.PRIVATE) && emitErrors) {
-                getContext().getLog().error(method, "Method must not be private.");
+                parsedMethod.addError("Method must not be private.");
                 valid = false;
                 continue;
             }
 
-            E parsedMethod = parse(method, mirror);
             if (parsedMethod != null) {
                 parsedMethods.add(parsedMethod);
             } else {
@@ -121,6 +122,12 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             return null;
         }
 
+        String id = method.getSimpleName().toString();
+        AnnotationMirror idAnnotation = Utils.findAnnotationMirror(context.getEnvironment(), method, NodeId.class);
+        if (idAnnotation != null) {
+            id = Utils.getAnnotationValue(String.class, idAnnotation, "value");
+        }
+
         List<TypeDef> typeDefs = createTypeDefinitions(methodSpecification.getReturnType(), methodSpecification.getParameters());
 
         ParameterSpec returnTypeSpec = methodSpecification.getReturnType();
@@ -129,16 +136,18 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
 
         ActualParameter returnTypeMirror = matchParameter(returnTypeSpec, method.getReturnType(), template, 0, false);
         if (returnTypeMirror == null) {
-            if (isEmitErrors()) {
+            if (emitErrors) {
+                E invalidMethod = create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()));
                 String expectedReturnType = createTypeSignature(returnTypeSpec, typeDefs, true);
                 String actualReturnType = Utils.getSimpleName(method.getReturnType());
 
                 String message = String.format("The provided return type \"%s\" does not match expected return type \"%s\".\nExpected signature: \n %s", actualReturnType, expectedReturnType,
                                 createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs, typeDefs));
-
-                context.getLog().error(method, annotation, message);
+                invalidMethod.addError(message);
+                return invalidMethod;
+            } else {
+                return null;
             }
-            return null;
         }
 
         List<TypeMirror> parameterTypes = new ArrayList<>();
@@ -150,17 +159,14 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         List<ActualParameter> parameters = parseParameters(parameterTypes, parameterSpecs, methodSpecification.getImplicitTypes().size());
         if (parameters == null) {
             if (isEmitErrors()) {
+                E invalidMethod = create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()));
                 String message = String.format("Method signature %s does not match to the expected signature: \n%s", createActualSignature(methodSpecification, method),
                                 createExpectedSignature(method.getSimpleName().toString(), returnTypeSpec, parameterSpecs, typeDefs));
-                context.getLog().error(method, annotation, message);
+                invalidMethod.addError(message);
+                return invalidMethod;
+            } else {
+                return null;
             }
-            return null;
-        }
-
-        String id = method.getSimpleName().toString();
-        AnnotationMirror idAnnotation = Utils.findAnnotationMirror(context.getEnvironment(), method, NodeId.class);
-        if (idAnnotation != null) {
-            id = Utils.getAnnotationValue(String.class, idAnnotation, "value");
         }
 
         return create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, parameters));
@@ -256,12 +262,12 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
 
         int defIndex = 0;
         for (ParameterSpec spec : allParams) {
-            TypeMirror[] allowedTypes = spec.getAllowedTypes();
-            TypeMirror[] types = spec.getAllowedTypes();
-            if (types != null && allowedTypes.length > 1) {
+            List<TypeMirror> allowedTypes = spec.getAllowedTypes();
+            List<TypeMirror> types = spec.getAllowedTypes();
+            if (types != null && allowedTypes.size() > 1) {
                 TypeDef foundDef = null;
                 for (TypeDef def : typeDefs) {
-                    if (Arrays.equals(allowedTypes, def.getTypes())) {
+                    if (allowedTypes.equals(def.getTypes())) {
                         foundDef = def;
                         break;
                     }
@@ -281,11 +287,11 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
 
     protected static class TypeDef {
 
-        private final TypeMirror[] types;
+        private final List<TypeMirror> types;
         private final String name;
         private final List<ParameterSpec> parameters = new ArrayList<>();
 
-        public TypeDef(TypeMirror[] types, String name) {
+        public TypeDef(List<TypeMirror> types, String name) {
             this.types = types;
             this.name = name;
         }
@@ -294,7 +300,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             return parameters;
         }
 
-        public TypeMirror[] getTypes() {
+        public List<TypeMirror> getTypes() {
             return types;
         }
 
@@ -363,7 +369,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
 
     private static String createTypeSignature(ParameterSpec spec, List<TypeDef> typeDefs, boolean typeOnly) {
         StringBuilder builder = new StringBuilder();
-        if (spec.getAllowedTypes().length > 1) {
+        if (spec.getAllowedTypes().size() > 1) {
             TypeDef foundTypeDef = null;
             for (TypeDef typeDef : typeDefs) {
                 if (typeDef.getParameters().contains(spec)) {
@@ -374,8 +380,8 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             if (foundTypeDef != null) {
                 builder.append("<" + foundTypeDef.getName() + ">");
             }
-        } else if (spec.getAllowedTypes().length == 1) {
-            builder.append(Utils.getSimpleName(spec.getAllowedTypes()[0]));
+        } else if (spec.getAllowedTypes().size() == 1) {
+            builder.append(Utils.getSimpleName(spec.getAllowedTypes().get(0)));
         } else {
             builder.append("void");
         }

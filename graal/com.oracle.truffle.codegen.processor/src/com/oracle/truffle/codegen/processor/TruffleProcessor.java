@@ -28,6 +28,7 @@ import java.util.*;
 import javax.annotation.processing.*;
 import javax.lang.model.*;
 import javax.lang.model.element.*;
+import javax.tools.Diagnostic.*;
 
 import com.oracle.truffle.codegen.processor.ProcessorContext.ProcessCallback;
 import com.oracle.truffle.codegen.processor.node.*;
@@ -95,7 +96,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
 
     private static void handleThrowable(AnnotationProcessor generator, Throwable t, Element e) {
         String message = "Uncaught error in " + generator.getClass().getSimpleName() + " while processing " + e;
-        generator.getContext().getLog().error(e, message + ": " + Utils.printException(t));
+        generator.getContext().getLog().message(Kind.ERROR, e, null, null, message + ": " + Utils.printException(t));
     }
 
     @SuppressWarnings("unchecked")

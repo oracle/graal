@@ -58,10 +58,20 @@ public abstract class AbstractParser<M extends Template> {
             if (!context.getTruffleTypes().verify(context, element, mirror)) {
                 return null;
             }
-            return parse(element, mirror);
+            M model = parse(element, mirror);
+            if (model == null) {
+                return null;
+            }
+
+            model.emitMessages((TypeElement) element, log);
+            return filterErrorElements(model);
         } finally {
             this.roundEnv = null;
         }
+    }
+
+    protected M filterErrorElements(M model) {
+        return model.hasErrors() ? null : model;
     }
 
     protected abstract M parse(Element element, AnnotationMirror mirror);

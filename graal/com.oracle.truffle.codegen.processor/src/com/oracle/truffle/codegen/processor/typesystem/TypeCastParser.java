@@ -41,7 +41,7 @@ class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        TypeData targetType = findTypeByMethodName(method, mirror, "as");
+        TypeData targetType = findTypeByMethodName(method.getSimpleName().toString(), "as");
         if (targetType == null) {
             return null;
         }
@@ -54,7 +54,7 @@ class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
 
     @Override
     public TypeCastData create(TemplateMethod method) {
-        TypeData targetType = findTypeByMethodName(method.getMethod(), method.getMarkerAnnotation(), "as");
+        TypeData targetType = findTypeByMethodName(method, "as");
         ActualParameter parameter = method.findParameter("valueValue");
         return new TypeCastData(method, parameter.getActualTypeData(getTypeSystem()), targetType);
     }

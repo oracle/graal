@@ -26,6 +26,7 @@ import java.util.*;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
+import javax.tools.Diagnostic.*;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.intrinsics.*;
@@ -66,7 +67,7 @@ public final class TruffleTypes {
         }
 
         for (String error : errors) {
-            context.getLog().error(element, mirror, error);
+            context.getLog().message(Kind.ERROR, element, mirror, null, error);
         }
 
         return false;

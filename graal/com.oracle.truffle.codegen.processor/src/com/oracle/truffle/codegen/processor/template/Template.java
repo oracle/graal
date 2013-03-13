@@ -29,7 +29,7 @@ import javax.lang.model.element.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.api.element.*;
 
-public abstract class Template {
+public abstract class Template extends MessageContainer {
 
     private final TypeElement templateType;
     private final String templateMethodName;
@@ -41,6 +41,16 @@ public abstract class Template {
         this.templateType = templateType;
         this.templateMethodName = templateMethodName;
         this.annotation = annotation;
+    }
+
+    @Override
+    public Element getMessageElement() {
+        return templateType;
+    }
+
+    @Override
+    protected List<MessageContainer> findChildContainers() {
+        return Collections.emptyList();
     }
 
     public String getTemplateMethodName() {

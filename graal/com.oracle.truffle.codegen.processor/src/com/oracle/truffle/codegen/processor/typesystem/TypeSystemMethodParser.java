@@ -43,18 +43,24 @@ abstract class TypeSystemMethodParser<E extends TemplateMethod> extends Template
         return Utils.findAnnotationMirror(getContext().getEnvironment(), method, getAnnotationType()) != null;
     }
 
-    protected TypeData findTypeByMethodName(ExecutableElement method, AnnotationMirror annotationMirror, String prefix) {
-        String methodName = method.getSimpleName().toString();
+    protected TypeData findTypeByMethodName(String methodName, String prefix) {
+        String typeName = methodName.substring(prefix.length(), methodName.length());
+        TypeData type = getTypeSystem().findType(typeName);
+        return type;
+    }
+
+    protected TypeData findTypeByMethodName(TemplateMethod method, String prefix) {
+        String methodName = method.getMethodName();
         if (!methodName.startsWith(prefix)) {
-            String annotationName = Utils.getSimpleName(annotationMirror.getAnnotationType());
-            getContext().getLog().error(method, "Methods annotated with %s must match the pattern '%s'.", annotationName, String.format("%s${typeName}", prefix));
+            String annotationName = Utils.getSimpleName(method.getMessageAnnotation().getAnnotationType());
+            method.addError("Methods annotated with %s must match the pattern '%s'.", annotationName, String.format("%s${typeName}", prefix));
             return null;
         }
         String typeName = methodName.substring(prefix.length(), methodName.length());
         TypeData type = getTypeSystem().findType(typeName);
         if (type == null) {
             String annotationName = TypeSystem.class.getSimpleName();
-            getContext().getLog().error(method, "Type '%s' is not declared in this @%s.", typeName, annotationName);
+            method.addError("Type '%s' is not declared in this @%s.", typeName, annotationName);
             return null;
         }
 

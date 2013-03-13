@@ -25,7 +25,9 @@ package com.oracle.truffle.codegen.processor.node;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
-public class NodeFieldData {
+import com.oracle.truffle.codegen.processor.template.*;
+
+public class NodeFieldData extends MessageContainer {
 
     public enum FieldKind {
         CHILD, CHILDREN
@@ -43,11 +45,10 @@ public class NodeFieldData {
     private final ExecutionKind executionKind;
     private NodeData nodeData;
 
-    public NodeFieldData(NodeData typeNodeData, VariableElement fieldElement, Element accessElement, AnnotationMirror childAnnotationMirror, FieldKind fieldKind, ExecutionKind executionKind) {
+    public NodeFieldData(VariableElement fieldElement, Element accessElement, AnnotationMirror childAnnotationMirror, FieldKind fieldKind, ExecutionKind executionKind) {
         this.fieldElement = fieldElement;
         this.accessElement = accessElement;
         this.childAnnotationMirror = childAnnotationMirror;
-        this.nodeData = typeNodeData;
         this.fieldKind = fieldKind;
         this.executionKind = executionKind;
     }
@@ -61,12 +62,18 @@ public class NodeFieldData {
         this.nodeData = field.nodeData;
     }
 
+    @Override
+    public Element getMessageElement() {
+        return fieldElement;
+    }
+
     public boolean isShortCircuit() {
         return executionKind == ExecutionKind.SHORT_CIRCUIT;
     }
 
     void setNode(NodeData nodeData) {
         this.nodeData = nodeData;
+        getMessages().addAll(nodeData.collectMessages());
     }
 
     public VariableElement getFieldElement() {

@@ -34,8 +34,8 @@ public class SpecializationData extends TemplateMethod {
     private final boolean generic;
     private final boolean uninitialized;
     private final List<SpecializationThrowsData> exceptions;
-    private SpecializationGuardData[] guards;
-    private ShortCircuitData[] shortCircuits;
+    private List<SpecializationGuardData> guards;
+    private List<ShortCircuitData> shortCircuits;
     private boolean useSpecializationsForGeneric = true;
     private NodeData node;
 
@@ -60,15 +60,27 @@ public class SpecializationData extends TemplateMethod {
         this.generic = generic;
         this.uninitialized = uninitialized;
         this.exceptions = Collections.emptyList();
-        this.guards = new SpecializationGuardData[0];
+        this.guards = new ArrayList<>();
         this.synthetic = synthetic;
     }
 
+    @Override
+    protected List<MessageContainer> findChildContainers() {
+        List<MessageContainer> sinks = new ArrayList<>();
+        if (exceptions != null) {
+            sinks.addAll(exceptions);
+        }
+        if (guards != null) {
+            sinks.addAll(guards);
+        }
+        return sinks;
+    }
+
     public boolean hasRewrite(ProcessorContext context) {
-        if (getExceptions().size() > 0) {
+        if (!getExceptions().isEmpty()) {
             return true;
         }
-        if (getGuards().length > 0) {
+        if (!getGuards().isEmpty()) {
             return true;
         }
         for (ActualParameter parameter : getParameters()) {
@@ -92,7 +104,7 @@ public class SpecializationData extends TemplateMethod {
         this.node = node;
     }
 
-    public void setGuards(SpecializationGuardData[] guards) {
+    public void setGuards(List<SpecializationGuardData> guards) {
         this.guards = guards;
     }
 
@@ -116,15 +128,15 @@ public class SpecializationData extends TemplateMethod {
         return exceptions;
     }
 
-    public SpecializationGuardData[] getGuards() {
+    public List<SpecializationGuardData> getGuards() {
         return guards;
     }
 
-    public void setShortCircuits(ShortCircuitData[] shortCircuits) {
+    public void setShortCircuits(List<ShortCircuitData> shortCircuits) {
         this.shortCircuits = shortCircuits;
     }
 
-    public ShortCircuitData[] getShortCircuits() {
+    public List<ShortCircuitData> getShortCircuits() {
         return shortCircuits;
     }
 
