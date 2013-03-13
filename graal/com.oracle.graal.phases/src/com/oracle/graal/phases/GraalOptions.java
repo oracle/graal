@@ -182,6 +182,7 @@ public final class GraalOptions {
     public static boolean SupportJsrBytecodes                = true;
 
     public static boolean OptAssumptions                     = true;
+    public static boolean OptConvertDeoptsToGuards           = ____;
     public static boolean OptReadElimination                 = true;
     public static boolean OptCanonicalizer                   = true;
     public static boolean OptScheduleOutOfLoops              = true;
