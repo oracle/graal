@@ -25,7 +25,7 @@
  * time as an introduction to the Codegen API for language implementors. Every test gives an example on how to use the construct explained in the class description.</p>
  *
  * <p>
- * This API relies heavily on the concepts described in {@link com.oracle.truffle.api.test}. We assume that the
+ * This API relies heavily on the concepts described in com.oracle.truffle.api.test. We assume that the
  * reader is already familiarized with those concepts.
  * </p>
  *
