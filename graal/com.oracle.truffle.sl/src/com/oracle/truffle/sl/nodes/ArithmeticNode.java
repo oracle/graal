@@ -66,11 +66,6 @@ public abstract class ArithmeticNode extends BinaryNode {
         String add(Object left, Object right) {
             return left.toString() + right.toString();
         }
-
-        @Generic
-        public Object addGeneric(Object left, Object right) {
-            throw new RuntimeException("Arithmetic not defined for types " + left.getClass().getSimpleName() + ", " + right.getClass().getSimpleName());
-        }
     }
 
     public abstract static class SubNode extends ArithmeticNode {
@@ -93,10 +88,6 @@ public abstract class ArithmeticNode extends BinaryNode {
             return left.subtract(right);
         }
 
-        @Generic
-        public Object sub(Object left, Object right) {
-            throw new RuntimeException("Arithmetic not defined for types " + left.getClass().getSimpleName() + ", " + right.getClass().getSimpleName());
-        }
     }
 
     public abstract static class DivNode extends ArithmeticNode {
@@ -117,11 +108,6 @@ public abstract class ArithmeticNode extends BinaryNode {
         @Specialization
         BigInteger div(BigInteger left, BigInteger right) {
             return left.divide(right);
-        }
-
-        @Generic
-        public Object div(Object left, Object right) {
-            throw new RuntimeException("Arithmetic not defined for types " + left.getClass().getSimpleName() + ", " + right.getClass().getSimpleName());
         }
     }
 
@@ -145,10 +131,6 @@ public abstract class ArithmeticNode extends BinaryNode {
             return left.multiply(right);
         }
 
-        @Generic
-        public Object mul(Object left, Object right) {
-            throw new RuntimeException("Arithmetic not defined for types " + left.getClass().getSimpleName() + ", " + right.getClass().getSimpleName());
-        }
     }
 
 }

@@ -27,8 +27,11 @@ import java.math.*;
 import java.util.*;
 
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.sl.nodes.ArithmeticNodeFactory.AddNodeFactory;
+import com.oracle.truffle.sl.nodes.ArithmeticNodeFactory.DivNodeFactory;
+import com.oracle.truffle.sl.nodes.ArithmeticNodeFactory.MulNodeFactory;
+import com.oracle.truffle.sl.nodes.ArithmeticNodeFactory.SubNodeFactory;
 import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.nodes.ArithmeticNodeFactory.*;
 
 public class NodeFactory {
 
