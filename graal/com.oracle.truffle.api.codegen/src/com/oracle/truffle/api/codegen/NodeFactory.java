@@ -69,6 +69,6 @@ public interface NodeFactory<T> {
      * Returns a list of children that will be executed by the created node. This is useful for base
      * nodes that can execute a variable amount of nodes.
      */
-    List<Class<? extends Node>> getChildrenSignature();
+    List<Class<? extends Node>> getExecutionSignature();
 
 }
