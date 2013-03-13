@@ -748,7 +748,7 @@ public class Utils {
             return true;
         }
 
-        // search for any supertypes
+        // search for any super types
         TypeElement exceptionTypeElement = fromTypeMirror(exceptionType);
         List<TypeElement> superTypes = getSuperTypes(exceptionTypeElement);
         for (TypeElement typeElement : superTypes) {
@@ -777,7 +777,7 @@ public class Utils {
         Set<String> typeSuperSet = new HashSet<>(getQualifiedSuperTypeNames(fromTypeMirror(type)));
         String typeName = getQualifiedName(type);
         if (!typeSuperSet.contains(Throwable.class.getCanonicalName()) && !typeName.equals(Throwable.class.getCanonicalName())) {
-            throw new IllegalArgumentException("Given does not extend Throwable.");
+            throw new IllegalArgumentException("Given type does not extend Throwable.");
         }
         return typeSuperSet.contains(RuntimeException.class.getCanonicalName()) || typeName.equals(RuntimeException.class.getCanonicalName());
     }

@@ -120,6 +120,10 @@ public class NodeParser extends TemplateParser<NodeData> {
             return null; // not a node
         }
 
+        if (type.getModifiers().contains(Modifier.PRIVATE)) {
+            return null; // not visible
+        }
+
         TypeElement nodeType;
         boolean needsSplit;
         if (methodNodes != null) {
@@ -128,10 +132,6 @@ public class NodeParser extends TemplateParser<NodeData> {
         } else {
             needsSplit = false;
             nodeType = type;
-        }
-
-        if (type.getModifiers().contains(Modifier.PRIVATE)) {
-            return null; // not visible
         }
 
         NodeData nodeData = parseNodeData(type, nodeType);
@@ -271,28 +271,63 @@ public class NodeParser extends TemplateParser<NodeData> {
             }
         }
 
+        if (generics.size() == 1 && specializations.size() == 1) {
+            for (SpecializationData generic : generics) {
+                log.error(generic.getMethod(), "@%s defined but no @%s.", Generic.class.getSimpleName(), Specialization.class.getSimpleName());
+            }
+        }
+
         SpecializationData genericSpecialization = null;
         if (generics.size() > 1) {
             for (SpecializationData generic : generics) {
-                log.error(generic.getMethod(), "Only one method with @%s is allowed per operation.", Generic.class.getSimpleName());
+                log.error(generic.getMethod(), "Only @%s is allowed per operation.", Generic.class.getSimpleName());
             }
             return false;
         } else if (generics.size() == 1) {
             genericSpecialization = generics.get(0);
-        } else {
-            // TODO support generation of generic if not ambiguous.
-        }
+            if (!node.needsRewrites(context)) {
+                log.error(genericSpecialization.getMethod(), "Generic specialization is not reachable.", Generic.class.getSimpleName());
+                return false;
+            }
+        } else if (node.needsRewrites(context)) {
+            SpecializationData specialization = specializations.get(0);
+            GenericParser parser = new GenericParser(context, node);
+            MethodSpec specification = parser.createDefaultMethodSpec(specialization.getMethod(), null, null);
 
-        if (specializations.size() > 1 && genericSpecialization == null) {
-            log.error(node.getTemplateType(), "Need a @%s method.", Generic.class.getSimpleName());
-            return false;
+            ExecutableTypeData anyGenericReturnType = node.findAnyGenericExecutableType(context);
+            if (anyGenericReturnType == null) {
+                // TODO fail invalid executable type. should be validated by field. (assertion
+// failure!?)
+            }
+
+            ActualParameter returnType = new ActualParameter(specification.getReturnType(), anyGenericReturnType.getType().getPrimitiveType(), 0, false);
+            List<ActualParameter> parameters = new ArrayList<>();
+            for (ActualParameter specializationParameter : specialization.getParameters()) {
+                ParameterSpec parameterSpec = specification.findParameterSpec(specializationParameter.getSpecification().getName());
+                NodeFieldData field = node.findField(parameterSpec.getName());
+                TypeMirror actualType;
+                if (field == null) {
+                    actualType = specializationParameter.getActualType();
+                } else {
+                    ExecutableTypeData paramType = field.getNodeData().findAnyGenericExecutableType(context);
+                    if (paramType == null) {
+                        // TODO fail
+                    }
+                    actualType = paramType.getType().getPrimitiveType();
+                }
+                parameters.add(new ActualParameter(parameterSpec, actualType, specializationParameter.getIndex(), specializationParameter.isHidden()));
+            }
+            TemplateMethod genericMethod = new TemplateMethod("Generic", node, specification, null, null, returnType, parameters);
+            genericSpecialization = new SpecializationData(genericMethod, true, false, true);
+
+            specializations.add(genericSpecialization);
         }
 
         if (genericSpecialization != null) {
             CodeExecutableElement uninitializedMethod = new CodeExecutableElement(Utils.modifiers(Modifier.PUBLIC), context.getType(void.class), "doUninitialized");
-            TemplateMethod uninializedMethod = new TemplateMethod(genericSpecialization.getId(), node, genericSpecialization.getSpecification(), uninitializedMethod,
-                            genericSpecialization.getMarkerAnnotation(), genericSpecialization.getReturnType(), genericSpecialization.getParameters());
-            specializations.add(new SpecializationData(uninializedMethod, false, true));
+            TemplateMethod uninializedMethod = new TemplateMethod("Uninitialized", node, genericSpecialization.getSpecification(), uninitializedMethod, genericSpecialization.getMarkerAnnotation(),
+                            genericSpecialization.getReturnType(), genericSpecialization.getParameters());
+            specializations.add(new SpecializationData(uninializedMethod, false, true, true));
         }
 
         Collections.sort(specializations, new Comparator<SpecializationData>() {

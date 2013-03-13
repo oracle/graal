@@ -103,7 +103,7 @@ public class NodeFieldData {
 
     @Override
     public String toString() {
-        return "NodeFieldData[name=" + getName() + ", kind=" + fieldKind + ", execution=" + executionKind + "]";
+        return "NodeFieldData[name=" + getName() + ", kind=" + fieldKind + ", execution=" + executionKind + ", node=" + getNodeData().toString() + "]";
     }
 
 }

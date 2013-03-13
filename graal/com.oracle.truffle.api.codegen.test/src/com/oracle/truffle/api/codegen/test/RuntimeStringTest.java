@@ -28,6 +28,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.api.codegen.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.codegen.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.nodes.*;
 
 public class RuntimeStringTest {
 
@@ -86,6 +87,7 @@ public class RuntimeStringTest {
         Object execute() {
             return arguments[index];
         }
+
     }
 
     abstract static class BuiltinNode extends ValueNode {

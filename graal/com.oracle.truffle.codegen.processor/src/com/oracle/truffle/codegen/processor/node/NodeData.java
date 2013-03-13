@@ -68,14 +68,7 @@ public class NodeData extends Template {
         this.guards = copy.guards;
         this.executableTypes = copy.executableTypes;
         this.shortCircuits = copy.shortCircuits;
-
-        List<NodeFieldData> fieldsCopy = new ArrayList<>();
-        for (NodeFieldData field : copy.fields) {
-            NodeFieldData newField = new NodeFieldData(field);
-            newField.setNode(this);
-            fieldsCopy.add(newField);
-        }
-        this.fields = fieldsCopy;
+        this.fields = copy.fields;
     }
 
     public ParameterSpec getInstanceParameterSpec() {
@@ -186,6 +179,14 @@ public class NodeData extends Template {
         return null;
     }
 
+    public ExecutableTypeData findAnyGenericExecutableType(ProcessorContext context) {
+        List<ExecutableTypeData> types = findGenericExecutableTypes(context);
+        if (!types.isEmpty()) {
+            return types.get(0);
+        }
+        return null;
+    }
+
     public List<ExecutableTypeData> findGenericExecutableTypes(ProcessorContext context) {
         List<ExecutableTypeData> types = new ArrayList<>();
         for (ExecutableTypeData type : executableTypes) {
@@ -250,18 +251,13 @@ public class NodeData extends Template {
 
     public boolean needsRewrites(ProcessorContext context) {
         boolean needsRewrites = false;
-        for (NodeFieldData field : getFields()) {
-            if (field.getExecutionKind() == ExecutionKind.DEFAULT || field.getExecutionKind() == ExecutionKind.SHORT_CIRCUIT) {
-                if (!field.getNodeData().hasUnexpectedExecutableTypes(context)) {
-                    continue;
-                }
 
+        for (SpecializationData specialization : getSpecializations()) {
+            if (specialization.hasRewrite(context)) {
                 needsRewrites = true;
                 break;
             }
         }
-
-        needsRewrites &= specializations.size() >= 2;
         return needsRewrites;
     }
 

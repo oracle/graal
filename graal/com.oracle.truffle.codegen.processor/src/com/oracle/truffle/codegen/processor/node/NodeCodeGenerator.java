@@ -34,7 +34,8 @@ import javax.lang.model.util.*;
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.ast.*;
-import com.oracle.truffle.codegen.processor.node.NodeFieldData.*;
+import com.oracle.truffle.codegen.processor.node.NodeFieldData.ExecutionKind;
+import com.oracle.truffle.codegen.processor.node.NodeFieldData.FieldKind;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
@@ -145,7 +146,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
     private void startCallOperationMethod(CodeTreeBuilder body, TemplateMethod templateMethod, boolean castedValues) {
         body.startGroup();
         ExecutableElement method = templateMethod.getMethod();
-
+        if (method == null) {
+            throw new IllegalStateException("Cannot call synthtetic operation methods.");
+        }
         TypeElement targetClass = Utils.findNearestEnclosingType(method.getEnclosingElement());
         NodeData node = (NodeData) templateMethod.getTemplate();
 
@@ -417,6 +420,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.end(); // block
         }
         return builder.getRoot();
+    }
+
+    private void emitEncounteredSynthetic(CodeTreeBuilder builder) {
+        builder.startThrow().startNew(getContext().getType(UnsupportedOperationException.class)).end().end();
     }
 
     @Override
@@ -987,11 +994,15 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 builder.startTryBlock();
             }
 
-            builder.startReturn();
-            startCallOperationMethod(builder, specialization, true);
-            addValueParameterNamesWithCasts(builder, specialization.getNode().getGenericSpecialization(), specialization, false);
-            builder.end().end(); // start call operation
-            builder.end(); // return
+            if (specialization.isSynthetic()) {
+                emitEncounteredSynthetic(builder);
+            } else {
+                builder.startReturn();
+                startCallOperationMethod(builder, specialization, true);
+                addValueParameterNamesWithCasts(builder, specialization.getNode().getGenericSpecialization(), specialization, false);
+                builder.end().end(); // start call operation
+                builder.end(); // return
+            }
 
             if (!specialization.getExceptions().isEmpty()) {
                 for (SpecializationThrowsData exception : specialization.getExceptions()) {
@@ -1005,6 +1016,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 builder.end();
             }
         }
+
     }
 
     private class SpecializedNodeFactory extends ClassElementFactory<SpecializationData> {
@@ -1197,7 +1209,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 builder.startTryBlock();
             }
 
-            if ((specialization.isUninitialized() || specialization.isGeneric()) && node.needsRewrites(getContext())) {
+            if (specialization.getMethod() == null) {
+                emitEncounteredSynthetic(builder);
+            } else if (specialization.isUninitialized() || specialization.isGeneric()) {
                 builder.startReturn().startCall(factoryClassName(node), generatedGenericMethodName(null));
                 builder.string("this");
                 addValueParameterNames(builder, specialization, null, true, true);
@@ -1205,12 +1219,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             } else {
                 builder.startReturn();
 
-                if (specialization.isUninitialized()) {
-                    startCallOperationMethod(builder, specialization.getNode().getGenericSpecialization(), false);
-                } else {
-                    startCallOperationMethod(builder, specialization, false);
-                }
+                startCallOperationMethod(builder, specialization, false);
                 addValueParameterNames(builder, specialization, null, false, false);
+
                 builder.end().end(); // operation call
                 builder.end(); // return
             }

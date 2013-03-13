@@ -119,7 +119,11 @@ public class TemplateMethod {
     }
 
     public String getMethodName() {
-        return getMethod().getSimpleName().toString();
+        if (getMethod() != null) {
+            return getMethod().getSimpleName().toString();
+        } else {
+            return "$synthetic";
+        }
     }
 
     public AnnotationMirror getMarkerAnnotation() {
