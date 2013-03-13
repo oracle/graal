@@ -54,7 +54,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
-public final class GraphBuilderPhase extends Phase {
+public class GraphBuilderPhase extends Phase {
 
     public static final class RuntimeCalls {
 
@@ -74,7 +74,7 @@ public final class GraphBuilderPhase extends Phase {
      */
     public static final int TRACELEVEL_STATE = 2;
 
-    private StructuredGraph currentGraph;
+    protected StructuredGraph currentGraph;
 
     private final MetaAccessProvider runtime;
     private ConstantPool constantPool;
@@ -84,7 +84,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private BytecodeStream stream;           // the bytecode stream
 
-    private FrameStateBuilder frameState;          // the current execution state
+    protected FrameStateBuilder frameState;          // the current execution state
     private Block currentBlock;
 
     private ValueNode methodSynchronizedObject;
@@ -827,7 +827,7 @@ public final class GraphBuilderPhase extends Phase {
     /**
      * Gets the kind of array elements for the array type code that appears in a
      * {@link Bytecodes#NEWARRAY} bytecode.
-     * 
+     *
      * @param code the array type code
      * @return the kind from the array type code
      */
@@ -1224,7 +1224,7 @@ public final class GraphBuilderPhase extends Phase {
 
     /**
      * Helper function that sums up the probabilities of all keys that lead to a specific successor.
-     * 
+     *
      * @return an array of size successorCount with the accumulated probability for each successor.
      */
     private static double[] successorProbabilites(int successorCount, int[] keySuccessors, double[] keyProbabilities) {
