@@ -247,15 +247,17 @@ public class WordTypeRewriterPhase extends Phase {
         } else {
             comparison = new IntegerLessThanNode(a, b);
         }
-        ConditionalNode materialize = graph.unique(new ConditionalNode(graph.unique(comparison), ConstantNode.forInt(1, graph), ConstantNode.forInt(0, graph)));
 
-        ValueNode op;
+        ConstantNode trueValue = ConstantNode.forInt(1, graph);
+        ConstantNode falseValue = ConstantNode.forInt(0, graph);
+
         if (condition.canonicalNegate()) {
-            op = (ValueNode) materialize.negate();
-        } else {
-            op = materialize;
+            ConstantNode temp = trueValue;
+            trueValue = falseValue;
+            falseValue = temp;
         }
-        return op;
+        ConditionalNode materialize = graph.unique(new ConditionalNode(graph.unique(comparison), trueValue, falseValue));
+        return materialize;
     }
 
     private static ValueNode readOp(StructuredGraph graph, ValueNode base, ValueNode offset, Invoke invoke, Kind readKind, Object locationIdentity) {
