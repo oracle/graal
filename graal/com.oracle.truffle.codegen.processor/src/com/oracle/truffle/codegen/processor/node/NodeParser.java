@@ -290,10 +290,7 @@ public class NodeParser extends TemplateParser<NodeData> {
             MethodSpec specification = parser.createDefaultMethodSpec(specialization.getMethod(), null, null);
 
             ExecutableTypeData anyGenericReturnType = node.findAnyGenericExecutableType(context);
-            if (anyGenericReturnType == null) {
-                // TODO fail invalid executable type. should be validated by field. (assertion
-// failure!?)
-            }
+            assert anyGenericReturnType != null;
 
             ActualParameter returnType = new ActualParameter(specification.getReturnType(), anyGenericReturnType.getType().getPrimitiveType(), 0, false);
             List<ActualParameter> parameters = new ArrayList<>();
@@ -305,15 +302,13 @@ public class NodeParser extends TemplateParser<NodeData> {
                     actualType = specializationParameter.getActualType();
                 } else {
                     ExecutableTypeData paramType = field.getNodeData().findAnyGenericExecutableType(context);
-                    if (paramType == null) {
-                        // TODO fail
-                    }
+                    assert paramType != null;
                     actualType = paramType.getType().getPrimitiveType();
                 }
                 parameters.add(new ActualParameter(parameterSpec, actualType, specializationParameter.getIndex(), specializationParameter.isHidden()));
             }
             TemplateMethod genericMethod = new TemplateMethod("Generic", node, specification, null, null, returnType, parameters);
-            genericSpecialization = new SpecializationData(genericMethod, true, false, true);
+            genericSpecialization = new SpecializationData(genericMethod, true, false);
 
             specializations.add(genericSpecialization);
         }
@@ -322,7 +317,7 @@ public class NodeParser extends TemplateParser<NodeData> {
             CodeExecutableElement uninitializedMethod = new CodeExecutableElement(Utils.modifiers(Modifier.PUBLIC), context.getType(void.class), "doUninitialized");
             TemplateMethod uninializedMethod = new TemplateMethod("Uninitialized", node, genericSpecialization.getSpecification(), uninitializedMethod, genericSpecialization.getMarkerAnnotation(),
                             genericSpecialization.getReturnType(), genericSpecialization.getParameters());
-            specializations.add(new SpecializationData(uninializedMethod, false, true, true));
+            specializations.add(new SpecializationData(uninializedMethod, false, true));
         }
 
         Collections.sort(specializations, new Comparator<SpecializationData>() {

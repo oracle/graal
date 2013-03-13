@@ -1001,7 +1001,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 builder.startTryBlock();
             }
 
-            if (specialization.isSynthetic()) {
+            if (specialization.getMethod() == null) {
                 emitEncounteredSynthetic(builder);
             } else {
                 builder.startReturn();

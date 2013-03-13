@@ -39,14 +39,11 @@ public class SpecializationData extends TemplateMethod {
     private boolean useSpecializationsForGeneric = true;
     private NodeData node;
 
-    private final boolean synthetic;
-
     public SpecializationData(TemplateMethod template, int order, List<SpecializationThrowsData> exceptions) {
         super(template);
         this.order = order;
         this.generic = false;
         this.uninitialized = false;
-        this.synthetic = false;
         this.exceptions = exceptions;
 
         for (SpecializationThrowsData exception : exceptions) {
@@ -54,14 +51,13 @@ public class SpecializationData extends TemplateMethod {
         }
     }
 
-    public SpecializationData(TemplateMethod template, boolean generic, boolean uninitialized, boolean synthetic) {
+    public SpecializationData(TemplateMethod template, boolean generic, boolean uninitialized) {
         super(template);
         this.order = Specialization.DEFAULT_ORDER;
         this.generic = generic;
         this.uninitialized = uninitialized;
         this.exceptions = Collections.emptyList();
         this.guards = new ArrayList<>();
-        this.synthetic = synthetic;
     }
 
     @Override
@@ -106,10 +102,6 @@ public class SpecializationData extends TemplateMethod {
 
     public void setGuards(List<SpecializationGuardData> guards) {
         this.guards = guards;
-    }
-
-    public boolean isSynthetic() {
-        return synthetic;
     }
 
     public int getOrder() {

@@ -146,7 +146,7 @@ public abstract class MessageContainer {
         return messages;
     }
 
-    public static class Message {
+    public static final class Message {
 
         private final MessageContainer originalContainer;
         private final String text;
