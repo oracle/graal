@@ -157,7 +157,7 @@ public final class GraalOptions {
     public static boolean UseProfilingInformation            = true;
            static boolean RemoveNeverExecutedCode            = true;
            static boolean UseExceptionProbability            = true;
-    public static boolean AllowExplicitExceptionChecks       = true;
+           static boolean UseExceptionProbabilityForOperations = true;
     public static boolean OmitHotExceptionStacktrace         = ____;
     public static boolean GenSafepoints                      = true;
     public static boolean GenLoopSafepoints                  = true;
