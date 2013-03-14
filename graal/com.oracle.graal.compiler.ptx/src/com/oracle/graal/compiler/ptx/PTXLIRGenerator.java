@@ -179,20 +179,20 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitJump(LabelRef label, LIRFrameState info) {
-        append(new JumpOp(label, info));
+    public void emitJump(LabelRef label) {
+        append(new JumpOp(label));
     }
 
     @Override
-    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info) {
+    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label) {
         switch (left.getKind().getStackKind()) {
             case Int:
                 append(new CompareOp(ICMP, cond, left, right));
-                append(new BranchOp(cond, label, info));
+                append(new BranchOp(cond, label));
                 break;
             case Object:
                 append(new CompareOp(ACMP, cond, left, right));
-                append(new BranchOp(cond, label, info));
+                append(new BranchOp(cond, label));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere("" + left.getKind());
@@ -200,12 +200,12 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef label, LIRFrameState info, boolean negated) {
+    public void emitOverflowCheckBranch(LabelRef label, boolean negated) {
         throw new InternalError("NYI");
     }
 
     @Override
-    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label, LIRFrameState info) {
+    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label) {
         throw new InternalError("NYI");
     }
 

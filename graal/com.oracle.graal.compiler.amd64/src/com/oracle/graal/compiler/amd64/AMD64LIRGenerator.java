@@ -254,23 +254,23 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitJump(LabelRef label, LIRFrameState info) {
-        append(new JumpOp(label, info));
+    public void emitJump(LabelRef label) {
+        append(new JumpOp(label));
     }
 
     @Override
-    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info) {
+    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label) {
         boolean mirrored = emitCompare(left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         switch (left.getKind().getStackKind()) {
             case Int:
             case Long:
             case Object:
-                append(new BranchOp(finalCondition, label, info));
+                append(new BranchOp(finalCondition, label));
                 break;
             case Float:
             case Double:
-                append(new FloatBranchOp(finalCondition, unorderedIsTrue, label, info));
+                append(new FloatBranchOp(finalCondition, unorderedIsTrue, label));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere("" + left.getKind());
@@ -278,14 +278,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef destination, LIRFrameState info, boolean negated) {
-        append(new BranchOp(negated ? ConditionFlag.NoOverflow : ConditionFlag.Overflow, destination, info));
+    public void emitOverflowCheckBranch(LabelRef destination, boolean negated) {
+        append(new BranchOp(negated ? ConditionFlag.NoOverflow : ConditionFlag.Overflow, destination));
     }
 
     @Override
-    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label, LIRFrameState info) {
+    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label) {
         emitIntegerTest(left, right);
-        append(new BranchOp(negated ? Condition.NE : Condition.EQ, label, info));
+        append(new BranchOp(negated ? Condition.NE : Condition.EQ, label));
     }
 
     @Override
