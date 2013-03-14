@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.code;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -65,31 +67,48 @@ public final class VirtualObject extends Value {
         this.id = id;
     }
 
+    private static StringBuilder appendValue(StringBuilder buf, Value value, Set<VirtualObject> visited) {
+        if (value instanceof VirtualObject) {
+            VirtualObject vo = (VirtualObject) value;
+            buf.append("vobject:").append(toJavaName(vo.type, false)).append(':').append(vo.id);
+            if (!visited.contains(vo)) {
+                visited.add(vo);
+                buf.append('{');
+                if (vo.values == null) {
+                    buf.append("<uninitialized>");
+                } else {
+                    if (vo.type.isArray()) {
+                        for (int i = 0; i < vo.values.length; i++) {
+                            if (i != 0) {
+                                buf.append(',');
+                            }
+                            buf.append(i).append('=');
+                            appendValue(buf, vo.values[i], visited);
+                        }
+                    } else {
+                        ResolvedJavaField[] fields = vo.type.getInstanceFields(true);
+                        assert fields.length == vo.values.length : vo.type + ", fields=" + Arrays.toString(fields) + ", values=" + vo.values;
+                        for (int i = 0; i < vo.values.length; i++) {
+                            if (i != 0) {
+                                buf.append(',');
+                            }
+                            buf.append(fields[i].getName()).append('=');
+                            appendValue(buf, vo.values[i], visited);
+                        }
+                    }
+                }
+                buf.append('}');
+            }
+        } else {
+            buf.append(value);
+        }
+        return buf;
+    }
+
     @Override
     public String toString() {
-        StringBuilder buf = new StringBuilder("vobject:").append(MetaUtil.toJavaName(type, false)).append(':').append(id).append('{');
-        if (values == null) {
-            buf.append("<uninitialized>");
-        } else {
-            if (type.isArray()) {
-                for (int i = 0; i < values.length; i++) {
-                    if (i != 0) {
-                        buf.append(',');
-                    }
-                    buf.append(i).append('=').append(values[i]);
-                }
-            } else {
-                ResolvedJavaField[] fields = type.getInstanceFields(true);
-                assert fields.length == values.length : type + ", fields=" + Arrays.toString(fields) + ", values=" + values;
-                for (int i = 0; i < values.length; i++) {
-                    if (i != 0) {
-                        buf.append(',');
-                    }
-                    buf.append(fields[i].getName()).append('=').append(values[i]);
-                }
-            }
-        }
-        return buf.append('}').toString();
+        Set<VirtualObject> visited = Collections.newSetFromMap(new IdentityHashMap<VirtualObject, Boolean>());
+        return appendValue(new StringBuilder(), this, visited).toString();
     }
 
     /**
