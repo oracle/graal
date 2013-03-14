@@ -22,31 +22,23 @@
  */
 package com.oracle.graal.test;
 
-import java.lang.reflect.*;
+import java.util.*;
 
 import org.junit.*;
-import org.junit.runner.*;
+import org.junit.runners.*;
+import org.junit.runners.model.*;
 
-/**
- * Base class for Graal tests.
- * <p>
- * This contains common utility methods that are used in multiple test projects.
- */
-@RunWith(GraalLongUnitTest.class)
-public class GraalTest {
+public class GraalLongUnitTest extends BlockJUnit4ClassRunner {
 
-    protected Method getMethod(String methodName) {
-        Method found = null;
-        for (Method m : this.getClass().getMethods()) {
-            if (m.getName().equals(methodName)) {
-                Assert.assertNull(found);
-                found = m;
-            }
-        }
-        if (found != null) {
-            return found;
-        } else {
-            throw new RuntimeException("method not found: " + methodName);
-        }
+    public GraalLongUnitTest(Class<?> klass) throws InitializationError {
+        super(klass);
+    }
+
+    @Override
+    protected List<FrameworkMethod> computeTestMethods() {
+        List<FrameworkMethod> methods = new ArrayList<>(5);
+        methods.addAll(getTestClass().getAnnotatedMethods(Test.class));
+        methods.addAll(getTestClass().getAnnotatedMethods(LongTest.class));
+        return methods;
     }
 }

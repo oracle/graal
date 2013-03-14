@@ -22,31 +22,22 @@
  */
 package com.oracle.graal.test;
 
-import java.lang.reflect.*;
+import java.lang.annotation.*;
 
-import org.junit.*;
-import org.junit.runner.*;
+/* copy of org.junit.Test */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD})
+public @interface LongTest {
 
-/**
- * Base class for Graal tests.
- * <p>
- * This contains common utility methods that are used in multiple test projects.
- */
-@RunWith(GraalLongUnitTest.class)
-public class GraalTest {
+    static final class None extends Throwable {
 
-    protected Method getMethod(String methodName) {
-        Method found = null;
-        for (Method m : this.getClass().getMethods()) {
-            if (m.getName().equals(methodName)) {
-                Assert.assertNull(found);
-                found = m;
-            }
-        }
-        if (found != null) {
-            return found;
-        } else {
-            throw new RuntimeException("method not found: " + methodName);
+        private static final long serialVersionUID = 1L;
+
+        private None() {
         }
     }
+
+    Class<? extends Throwable> expected() default None.class;
+
+    long timeout() default 0L;
 }
