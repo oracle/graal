@@ -349,27 +349,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         List<ScheduledNode> nodes = lir.nodesFor(block);
         for (int i = 0; i < nodes.size(); i++) {
             Node instr = nodes.get(i);
-
-            if (GraalOptions.OptImplicitNullChecks) {
-                Node nextInstr = null;
-                if (i < nodes.size() - 1) {
-                    nextInstr = nodes.get(i + 1);
-                }
-
-                if (instr instanceof GuardNode) {
-                    GuardNode guardNode = (GuardNode) instr;
-                    if (guardNode.condition() instanceof IsNullNode && guardNode.negated()) {
-                        IsNullNode isNullNode = (IsNullNode) guardNode.condition();
-                        if (nextInstr instanceof Access) {
-                            Access access = (Access) nextInstr;
-                            if (isNullNode.object() == access.object() && canBeNullCheck(access.location())) {
-                                access.setNullCheck(true);
-                                continue;
-                            }
-                        }
-                    }
-                }
-            }
             if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
                 TTY.println("LIRGen for " + instr);
             }
@@ -467,10 +446,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected void emitNode(ValueNode node) {
         ((LIRLowerable) node).generate(this);
-    }
-
-    private boolean canBeNullCheck(LocationNode location) {
-        return !(location instanceof IndexedLocationNode) && location.displacement() < this.target().implicitNullCheckLimit;
     }
 
     protected CallingConvention createCallingConvention() {
