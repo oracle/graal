@@ -67,7 +67,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
-import com.oracle.graal.lir.amd64.AMD64Move.NullCheckOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
@@ -773,13 +772,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason) {
-        LIRFrameState info = state(reason);
-        LabelRef stubEntry = createDeoptStub(action, reason, info);
-        append(new BranchOp(ConditionFlag.Overflow, stubEntry, info));
-    }
-
-    @Override
     public void emitMembar(int barriers) {
         int necessaryBarriers = target.arch.requiredBarriers(barriers);
         if (target.isMP && necessaryBarriers != 0) {
@@ -896,29 +888,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         // value
         Variable tmp = emitMove(key);
         append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(target.wordKind)));
-    }
-
-    @Override
-    protected LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info) {
-        assert info.topFrame.getBCI() >= 0 : "invalid bci for deopt framestate";
-        AMD64DeoptimizationStub stub = new AMD64DeoptimizationStub(action, reason, info);
-        lir.stubs.add(stub);
-        return LabelRef.forLabel(stub.label);
-    }
-
-    @Override
-    public void emitGuardCheck(LogicNode comp, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
-        if (comp instanceof IsNullNode && negated) {
-            emitNullCheckGuard(((IsNullNode) comp).object());
-        } else {
-            super.emitGuardCheck(comp, deoptReason, action, negated);
-        }
-    }
-
-    private void emitNullCheckGuard(ValueNode object) {
-        Variable value = load(operand(object));
-        LIRFrameState info = state();
-        append(new NullCheckOp(value, info));
     }
 
     @Override

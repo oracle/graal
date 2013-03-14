@@ -118,12 +118,6 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info) {
-        // SPARC: Auto-generated method stub
-        return null;
-    }
-
-    @Override
     protected void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
         // SPARC: Auto-generated method stub
 
@@ -335,12 +329,6 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitMembar(int barriers) {
-        // SPARC: Auto-generated method stub
-
-    }
-
-    @Override
-    public void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason) {
         // SPARC: Auto-generated method stub
 
     }

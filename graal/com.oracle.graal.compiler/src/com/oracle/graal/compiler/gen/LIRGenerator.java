@@ -592,23 +592,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         emitBranch(x.condition(), getLIRBlock(x.trueSuccessor()), getLIRBlock(x.falseSuccessor()), null);
     }
 
-    @Override
-    public void emitGuardCheck(LogicNode comp, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
-        if (comp instanceof LogicConstantNode && ((LogicConstantNode) comp).getValue() != negated) {
-            // True constant, nothing to emit.
-            // False constants are handled within emitBranch.
-        } else {
-            // Fall back to a normal branch.
-            LIRFrameState info = state(deoptReason);
-            LabelRef stubEntry = createDeoptStub(action, deoptReason, info);
-            if (negated) {
-                emitBranch(comp, stubEntry, null, info);
-            } else {
-                emitBranch(comp, null, stubEntry, info);
-            }
-        }
-    }
-
     public void emitBranch(LogicNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
         if (node instanceof IsNullNode) {
             emitNullCheckBranch((IsNullNode) node, trueSuccessor, falseSuccessor, info);
@@ -775,8 +758,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         return result;
     }
-
-    protected abstract LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info);
 
     @Override
     public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention cc, boolean canTrap, Value... args) {
