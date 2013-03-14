@@ -262,6 +262,8 @@ public class GraalCompiler {
             }
         });
 
+        lirGen.beforeRegisterAllocation();
+
         Debug.scope("Allocator", new Runnable() {
 
             public void run() {

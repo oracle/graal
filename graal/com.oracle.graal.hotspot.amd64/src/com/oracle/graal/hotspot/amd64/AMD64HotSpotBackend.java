@@ -187,6 +187,20 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
             append(new AMD64DeoptimizeOp(action, reason, state(reason)));
         }
+
+        /**
+         * The slot reserved for storing the original return address when a frame is marked for
+         * deoptimization. The return address slot in the callee is overwritten with the address of
+         * a deoptimization stub.
+         */
+        StackSlot deoptimizationRescueSlot;
+
+        @Override
+        public void beforeRegisterAllocation() {
+            if (lir.hasDebugInfo()) {
+                deoptimizationRescueSlot = frameMap.allocateSpillSlot(Kind.Long);
+            }
+        }
     }
 
     /**
@@ -274,7 +288,10 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext();
         TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
-        tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
+        StackSlot deoptimizationRescueSlot = ((HotSpotAMD64LIRGenerator) lirGen).deoptimizationRescueSlot;
+        if (deoptimizationRescueSlot != null) {
+            tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
+        }
         return tasm;
     }
 
