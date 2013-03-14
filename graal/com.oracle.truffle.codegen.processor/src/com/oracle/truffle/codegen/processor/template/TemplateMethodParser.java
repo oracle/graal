@@ -110,6 +110,14 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
                 valid = false;
             }
         }
+        Collections.sort(parsedMethods, new Comparator<TemplateMethod>() {
+
+            @Override
+            public int compare(TemplateMethod o1, TemplateMethod o2) {
+                return o1.getMethodName().compareTo(o2.getMethodName());
+            }
+        });
+
         if (!valid && parseNullOnError) {
             return null;
         }
