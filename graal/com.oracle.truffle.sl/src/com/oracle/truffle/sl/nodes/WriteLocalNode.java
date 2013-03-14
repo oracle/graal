@@ -64,7 +64,7 @@ public abstract class WriteLocalNode extends FrameSlotNode {
         return right;
     }
 
-    @Generic
+    @Generic(useSpecializations = false)
     public Object writeGeneric(VirtualFrame frame, Object right) {
         frame.setObject(slot, right);
         return right;

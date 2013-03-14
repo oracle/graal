@@ -189,7 +189,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return prefix;
         }
 
-        if (!specialization.getNode().getGenericSpecialization().isUseSpecializationsForGeneric() || !specialization.getNode().needsRewrites(context)) {
+        if (!specialization.getNode().needsRewrites(context)) {
             return prefix;
         }
 
@@ -939,7 +939,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
         private List<CodeExecutableElement> createGeneratedGenericMethod(NodeData node) {
             TypeMirror genericReturnType = node.getGenericSpecialization().getReturnType().getActualType();
-            if (node.getGenericSpecialization().isUseSpecializationsForGeneric() && node.needsRewrites(context)) {
+            if (node.needsRewrites(context)) {
                 List<CodeExecutableElement> methods = new ArrayList<>();
 
                 List<SpecializationData> specializations = node.getSpecializations();
@@ -1219,7 +1219,14 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (specialization.getMethod() == null && !node.needsRewrites(context)) {
                 emitEncounteredSynthetic(builder);
             } else if (specialization.isUninitialized() || specialization.isGeneric()) {
-                builder.startReturn().startCall(factoryClassName(node), generatedGenericMethodName(null));
+                String genericMethodName;
+                if (!specialization.isUseSpecializationsForGeneric()) {
+                    genericMethodName = generatedGenericMethodName(specialization);
+                } else {
+                    genericMethodName = generatedGenericMethodName(null);
+                }
+
+                builder.startReturn().startCall(factoryClassName(node), genericMethodName);
                 builder.string("this");
                 addValueParameterNames(builder, specialization, null, true, true);
                 builder.end().end();
