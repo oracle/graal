@@ -38,7 +38,7 @@ import com.oracle.truffle.api.nodes.*;
  * should be speculated on. When the speculation fails and the child node cannot return the
  * appropriate type of value, it can use an {@link UnexpectedResultException} to still pass the
  * result to the caller. In such a case, the caller must rewrite itself to a more general version in
- * oder to avoid future failures of this kind.
+ * order to avoid future failures of this kind.
  * </p>
  */
 public class ReturnTypeSpecializationTest {
