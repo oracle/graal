@@ -31,7 +31,6 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
 
 /**
  * PTX specific backend.
@@ -63,25 +62,22 @@ public class PTXBackend extends Backend {
     }
 
     @Override
-    public TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir) {
+    public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
         // Omit the frame if the method:
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers
         // - has no incoming arguments passed on the stack
         // - has no instructions with debug info
-        boolean omitFrame = GraalOptions.CanOmitFrame && frameMap.frameSize() == frameMap.initialFrameSize && frameMap.registerConfig.getCalleeSaveLayout().registers.length == 0 &&
-                        !lir.hasArgInCallerFrame() && !lir.hasDebugInfo();
-
+        FrameMap frameMap = lirGen.frameMap;
         AbstractAssembler masm = new PTXAssembler(target, frameMap.registerConfig);
-        HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext();
-        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext);
+        HotSpotFrameContext frameContext = new HotSpotFrameContext();
+        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
-        tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
         return tasm;
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIR lir) {
+    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIRGenerator lirGen) {
         // Emit the prologue
         final String name = method.getName();
         Buffer codeBuffer = tasm.asm.codeBuffer;
@@ -103,7 +99,7 @@ public class PTXBackend extends Backend {
         codeBuffer.emitString("  .reg .u32 %r<16>;");
 
         // Emit code for the LIR
-        lir.emitCode(tasm);
+        lirGen.lir.emitCode(tasm);
 
         // Emit the epilogue
         codeBuffer.emitString0("}");
