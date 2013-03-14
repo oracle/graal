@@ -80,7 +80,7 @@ public final class InstanceOfDynamicNode extends LogicNode implements Canonicali
     @Override
     public boolean verify() {
         for (Node usage : usages()) {
-            assertTrue(usage instanceof IfNode || usage instanceof ConditionalNode, "unsupported usage: ", usage);
+            assertTrue(usage instanceof IfNode || usage instanceof ConditionalNode, "unsupported usage: %s", usage);
         }
         return super.verify();
     }

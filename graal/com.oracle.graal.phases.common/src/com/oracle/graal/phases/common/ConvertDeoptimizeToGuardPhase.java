@@ -80,26 +80,24 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
             IfNode ifNode = (IfNode) deoptBegin.predecessor();
             BeginNode otherBegin = ifNode.trueSuccessor();
             LogicNode conditionNode = ifNode.condition();
-            if (conditionNode instanceof InstanceOfNode) {
+            if (conditionNode instanceof InstanceOfNode || conditionNode instanceof InstanceOfDynamicNode) {
                 // TODO The lowering currently does not support a FixedGuard as the usage of an
                 // InstanceOfNode. Relax this restriction.
                 return;
             }
+            FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
             boolean negated = false;
             if (deoptBegin == ifNode.trueSuccessor()) {
                 negated = true;
-                otherBegin = ifNode.falseSuccessor();
+                graph.removeSplitPropagate(ifNode, ifNode.falseSuccessor());
+            } else {
+                graph.removeSplitPropagate(ifNode, ifNode.trueSuccessor());
             }
-            BeginNode ifBlockBegin = findBeginNode(ifNode);
-            Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s. IfBegin=%s", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin,
-                            ifBlockBegin);
+            Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s.", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin);
             FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.reason(), deopt.action(), negated));
-            otherBegin.replaceAtUsages(ifBlockBegin);
-            FixedNode next = otherBegin.next();
-            otherBegin.setNext(null);
+            FixedNode next = pred.next();
+            pred.setNext(guard);
             guard.setNext(next);
-            ifNode.replaceAtPredecessor(guard);
-            GraphUtil.killCFG(ifNode);
         }
     }
 }

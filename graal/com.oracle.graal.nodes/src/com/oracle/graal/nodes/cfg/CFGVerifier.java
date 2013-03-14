@@ -67,6 +67,7 @@ public class CFGVerifier {
                     if (!(block.isLoopHeader() && block.getLoop() == loop)) {
                         for (Block pred : block.getPredecessors()) {
                             if (!loop.blocks.contains(pred)) {
+                                assert false : "Loop " + loop + " does not contain " + pred;
                                 return false;
                             }
                         }
