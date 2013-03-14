@@ -60,6 +60,22 @@ public final class OptimisticOptimizations {
         }
     }
 
+    public OptimisticOptimizations remove(Optimization... optimizations) {
+        Set<Optimization> newOptimizations = new HashSet<>(enabledOpts);
+        for (Optimization o : optimizations) {
+            newOptimizations.remove(o);
+        }
+        return new OptimisticOptimizations(newOptimizations);
+    }
+
+    public OptimisticOptimizations add(Optimization... optimizations) {
+        Set<Optimization> newOptimizations = new HashSet<>(enabledOpts);
+        for (Optimization o : optimizations) {
+            newOptimizations.add(o);
+        }
+        return new OptimisticOptimizations(newOptimizations);
+    }
+
     private OptimisticOptimizations(Set<Optimization> enabledOpts) {
         this.enabledOpts = enabledOpts;
     }
