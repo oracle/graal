@@ -1000,6 +1000,17 @@ public class InliningUtil {
         return count;
     }
 
+    static MonitorExitNode findPrecedingMonitorExit(UnwindNode unwind) {
+        Node pred = unwind.predecessor();
+        while (pred != null) {
+            if (pred instanceof MonitorExitNode) {
+                return (MonitorExitNode) pred;
+            }
+            pred = pred.predecessor();
+        }
+        return null;
+    }
+
     /**
      * Performs an actual inlining, thereby replacing the given invoke with the given inlineGraph.
      * 
@@ -1070,13 +1081,13 @@ public class InliningUtil {
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
+                MonitorExitNode monitorExit = findPrecedingMonitorExit(unwindDuplicate);
                 DeoptimizeNode deoptimizeNode = new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler);
                 unwindDuplicate.replaceAndDelete(graph.add(deoptimizeNode));
                 // move the deopt upwards if there is a monitor exit that tries to use the
                 // "after exception" frame state
                 // (because there is no "after exception" frame state!)
-                if (deoptimizeNode.predecessor() instanceof MonitorExitNode) {
-                    MonitorExitNode monitorExit = (MonitorExitNode) deoptimizeNode.predecessor();
+                if (monitorExit != null) {
                     if (monitorExit.stateAfter() != null && monitorExit.stateAfter().bci == FrameState.AFTER_EXCEPTION_BCI) {
                         FrameState monitorFrameState = monitorExit.stateAfter();
                         graph.removeFixed(monitorExit);

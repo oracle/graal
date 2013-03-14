@@ -221,7 +221,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return method.invoke(receiver, args);
     }
 
-    static class Result {
+    protected static class Result {
 
         final Object returnValue;
         final Throwable exception;
@@ -263,13 +263,35 @@ public abstract class GraalCompilerTest extends GraalTest {
         before();
         Object[] executeArgs = argsWithReceiver(receiver, args);
 
-        InstalledCode compiledMethod = getCode(runtime.lookupJavaMethod(method), parse(method));
+        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
+        checkArgs(javaMethod, executeArgs);
+
+        InstalledCode compiledMethod = getCode(javaMethod, parse(method));
         try {
             return new Result(compiledMethod.executeVarargs(executeArgs), null);
         } catch (Throwable e) {
             return new Result(null, e);
         } finally {
             after();
+        }
+    }
+
+    protected void checkArgs(ResolvedJavaMethod method, Object[] args) {
+        JavaType[] sig = MetaUtil.signatureToTypes(method);
+        Assert.assertEquals(sig.length, args.length);
+        for (int i = 0; i < args.length; i++) {
+            JavaType javaType = sig[i];
+            Kind kind = javaType.getKind();
+            Object arg = args[i];
+            if (kind == Kind.Object) {
+                if (arg != null && javaType instanceof ResolvedJavaType) {
+                    ResolvedJavaType resolvedJavaType = (ResolvedJavaType) javaType;
+                    Assert.assertTrue(resolvedJavaType + " from " + runtime.lookupJavaType(arg.getClass()), resolvedJavaType.isAssignableFrom(runtime.lookupJavaType(arg.getClass())));
+                }
+            } else {
+                Assert.assertNotNull(arg);
+                Assert.assertEquals(kind.toBoxedJavaClass(), arg.getClass());
+            }
         }
     }
 
@@ -296,16 +318,28 @@ public abstract class GraalCompilerTest extends GraalTest {
         Method method = getMethod(name);
         Object receiver = Modifier.isStatic(method.getModifiers()) ? null : this;
 
+        test(method, receiver, args);
+    }
+
+    protected void test(Method method, Object receiver, Object... args) {
         Result expect = executeExpected(method, receiver, args);
         if (runtime == null) {
             return;
         }
+        test(method, expect, receiver, args);
+    }
+
+    protected void test(Method method, Result expect, Object receiver, Object... args) {
         Result actual = executeActual(method, receiver, args);
 
         if (expect.exception != null) {
             Assert.assertTrue("expected " + expect.exception, actual.exception != null);
             Assert.assertEquals(expect.exception.getClass(), actual.exception.getClass());
         } else {
+            if (actual.exception != null) {
+                actual.exception.printStackTrace();
+                Assert.fail("expected " + expect.returnValue + " but got an exception");
+            }
             assertEquals(expect.returnValue, actual.returnValue);
         }
     }
@@ -360,8 +394,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 editPhasePlan(method, graph, phasePlan);
-                CompilationResult compResult = GraalCompiler.compileMethod(runtime(), backend, runtime().getTarget(), method, graph, null, phasePlan, OptimisticOptimizations.ALL,
-                                new SpeculationLog());
+                CompilationResult compResult = GraalCompiler.compileMethod(runtime(), backend, runtime().getTarget(), method, graph, null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog());
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
                 }

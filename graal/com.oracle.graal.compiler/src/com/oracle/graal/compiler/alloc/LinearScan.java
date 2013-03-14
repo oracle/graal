@@ -282,7 +282,6 @@ public final class LinearScan {
      * @return the created interval
      */
     Interval createInterval(Value operand) {
-        assert isProcessed(operand);
         assert isLegal(operand);
         int operandNumber = operandNumber(operand);
         Interval interval = new Interval(operand, operandNumber);
@@ -1947,12 +1946,6 @@ public final class LinearScan {
 
             if (i1.location() == null) {
                 TTY.println("Interval %d has no register assigned", i1.operandNumber);
-                TTY.println(i1.logString(this));
-                throw new GraalInternalError("");
-            }
-
-            if (!isProcessed(i1.location())) {
-                TTY.println("Can not have an Interval for an ignored register " + i1.location());
                 TTY.println(i1.logString(this));
                 throw new GraalInternalError("");
             }

@@ -41,11 +41,6 @@ final class AMD64HotSpotUnwindOp extends AMD64LIRInstruction {
 
     public static final Descriptor UNWIND_EXCEPTION = new Descriptor("unwindException", true, void.class, Object.class);
 
-    /**
-     * Vtable stubs expect the metaspace Method in RBX.
-     */
-    public static final Register METHOD = AMD64.rbx;
-
     @Use({REG}) protected AllocatableValue exception;
     @Temp private RegisterValue framePointer;
 
