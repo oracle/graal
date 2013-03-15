@@ -61,9 +61,9 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
 
         // @formatter:off
         addRuntimeCall(AMD64HotSpotUnwindOp.UNWIND_EXCEPTION, config.unwindExceptionStub,
-                        /*           temps */ null,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0: exception */ javaCallingConvention(Kind.Object));
+               /*           temps */ null,
+               /*             ret */ ret(Kind.Void),
+               /* arg0: exception */ rax.asValue(Kind.Object));
 
         addRuntimeCall(DEOPTIMIZE, config.deoptimizeStub,
                 /*           temps */ null,

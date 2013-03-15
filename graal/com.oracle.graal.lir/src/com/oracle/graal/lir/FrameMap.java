@@ -83,14 +83,9 @@ public final class FrameMap {
     public final RegisterConfig registerConfig;
 
     /**
-     * The initial frame size, not including the size of the return address. This is the constant
-     * space reserved by the runtime for all compiled methods.
-     */
-    public final int initialFrameSize;
-
-    /**
-     * The final frame size, not including the size of the return address. The value is only set
-     * after register allocation is complete, i.e., after all spill slots have been allocated.
+     * The final frame size, not including the size of the
+     * {@link Architecture#getReturnAddressSize() return address slot}. The value is only set after
+     * register allocation is complete, i.e., after all spill slots have been allocated.
      */
     private int frameSize;
 
@@ -127,7 +122,6 @@ public final class FrameMap {
         this.spillSize = returnAddressSize() + calleeSaveAreaSize();
         this.outgoingSize = runtime.getMinimumOutgoingSize();
         this.objectStackBlocks = new ArrayList<>();
-        this.initialFrameSize = currentFrameSize();
     }
 
     private int returnAddressSize() {
@@ -148,7 +142,8 @@ public final class FrameMap {
     }
 
     /**
-     * Gets the frame size of the compiled frame, not including the size of the return address.
+     * Gets the frame size of the compiled frame, not including the size of the
+     * {@link Architecture#getReturnAddressSize() return address slot}.
      * 
      * @return The size of the frame (in bytes).
      */
@@ -158,7 +153,17 @@ public final class FrameMap {
     }
 
     /**
-     * Gets the total frame size of the compiled frame, including the size of the return address.
+     * Determines if any space is used in the frame apart from the
+     * {@link Architecture#getReturnAddressSize() return address slot}.
+     */
+    public boolean frameNeedsAllocating() {
+        int unalignedFrameSize = outgoingSize + spillSize - returnAddressSize();
+        return unalignedFrameSize != 0;
+    }
+
+    /**
+     * Gets the total frame size of the compiled frame, including the size of the
+     * {@link Architecture#getReturnAddressSize() return address slot}.
      * 
      * @return The total size of the frame (in bytes).
      */
@@ -242,9 +247,34 @@ public final class FrameMap {
      */
     public StackSlot allocateSpillSlot(Kind kind) {
         assert frameSize == -1 : "frame size must not yet be fixed";
+        if (freedSlots != null) {
+            for (Iterator<StackSlot> iter = freedSlots.iterator(); iter.hasNext();) {
+                StackSlot s = iter.next();
+                if (s.getKind() == kind) {
+                    iter.remove();
+                    if (freedSlots.isEmpty()) {
+                        freedSlots = null;
+                    }
+                    return s;
+                }
+            }
+        }
         int size = target.sizeInBytes(kind);
         spillSize = NumUtil.roundUp(spillSize + size, size);
         return getSlot(kind, 0);
+    }
+
+    private List<StackSlot> freedSlots;
+
+    /**
+     * Frees a spill slot that was obtained via {@link #allocateSpillSlot(Kind)} such that it can be
+     * reused for the next allocation request for the same kind of slot.
+     */
+    public void freeSpillSlot(StackSlot slot) {
+        if (freedSlots == null) {
+            freedSlots = new ArrayList<>();
+        }
+        freedSlots.add(slot);
     }
 
     /**

@@ -65,7 +65,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     private final DebugInfoBuilder debugInfoBuilder;
 
-    private Block currentBlock;
+    protected Block currentBlock;
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
     private FrameState lastState;
@@ -745,7 +745,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected abstract void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info);
 
-    private static Value toStackKind(Value value) {
+    protected static Value toStackKind(Value value) {
         if (value.getKind().getStackKind() != value.getKind()) {
             // We only have stack-kinds in the LIR, so convert the operand kind for values from the
             // calling convention.

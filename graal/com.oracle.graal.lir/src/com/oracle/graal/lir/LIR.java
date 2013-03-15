@@ -116,7 +116,7 @@ public class LIR {
     }
 
     /**
-     * Determines if any instruction in the LIR has any debug info associated with it.
+     * Determines if any instruction in the LIR has debug info associated with it.
      */
     public boolean hasDebugInfo() {
         for (Block b : linearScanOrder()) {

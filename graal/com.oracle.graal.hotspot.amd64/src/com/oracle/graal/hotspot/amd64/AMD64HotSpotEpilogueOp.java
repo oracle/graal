@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,40 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.amd64.test;
+package com.oracle.graal.hotspot.amd64;
 
-import org.junit.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.compiler.test.backend.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.amd64.*;
 
-public class AMD64AllocatorTest extends AllocatorTest {
+/**
+ * Superclass for operations that use the value of RBP saved in a method's prologue.
+ */
+abstract class AMD64HotSpotEpilogueOp extends AMD64LIRInstruction {
 
-    @Test
-    public void test1() {
-        test("test1snippet", 3, 1, 0);
-    }
+    /**
+     * The type of location (i.e., stack or register) in which RBP is saved is not known until
+     * initial LIR generation is finished. Until then, we use a placeholder variable so that LIR
+     * verification is successful.
+     */
+    private static final Variable PLACEHOLDER = new Variable(Kind.Long, Integer.MAX_VALUE, Register.RegisterFlag.CPU);
 
-    public static long test1snippet(long x) {
-        return x + 5;
-    }
-
-    @Test
-    public void test2() {
-        test("test2snippet", 3, 0, 0);
-    }
-
-    public static long test2snippet(long x) {
-        return x * 5;
-    }
-
-    @Ignore
-    @Test
-    public void test3() {
-        test("test3snippet", 4, 1, 0);
-    }
-
-    public static long test3snippet(long x) {
-        return x / 3 + x % 3;
-    }
-
+    @Use({REG, STACK}) protected AllocatableValue savedRbp = PLACEHOLDER;
 }

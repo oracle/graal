@@ -26,50 +26,38 @@ import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
-import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
  * Performs an unwind to throw an exception.
  */
-@Opcode("UNWIND")
-final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueOp {
+@Opcode("RETURN")
+final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp {
 
-    public static final Descriptor UNWIND_EXCEPTION = new Descriptor("unwindException", true, void.class, Object.class);
+    @Use({REG, ILLEGAL}) protected Value value;
 
-    /**
-     * Unwind stub expects the exception in RAX.
-     */
-    public static final Register EXCEPTION = AMD64.rax;
-
-    @Use({REG}) protected AllocatableValue exception;
-
-    AMD64HotSpotUnwindOp(AllocatableValue exception) {
-        this.exception = exception;
-        assert asRegister(exception) == EXCEPTION;
+    AMD64HotSpotReturnOp(Value value) {
+        this.value = value;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        // Copy the saved RBP value into the slot just below the return address
-        // so that the stub can pick it up from there.
-        AMD64Address rbpSlot;
-        int rbpSlotOffset = tasm.frameMap.frameSize() - 8;
         if (isStackSlot(savedRbp)) {
-            rbpSlot = (AMD64Address) tasm.asAddress(savedRbp);
-            assert rbpSlot.getDisplacement() == rbpSlotOffset;
+            // Restoring RBP from the stack must be done before the frame is removed
+            masm.movq(rbp, (AMD64Address) tasm.asAddress(savedRbp));
         } else {
-            rbpSlot = new AMD64Address(rsp, rbpSlotOffset);
-            masm.movq(rbpSlot, asRegister(savedRbp));
+            Register framePointer = asRegister(savedRbp);
+            if (framePointer != rbp) {
+                masm.movq(rbp, framePointer);
+            }
         }
-
-        // Pass the address of the RBP slot in RBP itself
-        masm.leaq(rbp, rbpSlot);
-        AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(UNWIND_EXCEPTION), null);
+        if (tasm.frameContext != null) {
+            tasm.frameContext.leave(tasm);
+        }
+        masm.ret(0);
     }
 }

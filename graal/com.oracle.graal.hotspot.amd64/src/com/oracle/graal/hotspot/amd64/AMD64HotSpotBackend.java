@@ -25,8 +25,11 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotUnwindOp.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import sun.misc.*;
 
@@ -46,10 +49,12 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.ParametersOp;
 import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
+import com.oracle.graal.lir.amd64.AMD64Move.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.*;
@@ -81,6 +86,69 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
         private HotSpotAMD64LIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
             super(graph, runtime, target, frameMap, method, lir);
+        }
+
+        /**
+         * The slot reserved for storing the original return address when a frame is marked for
+         * deoptimization. The return address slot in the callee is overwritten with the address of
+         * a deoptimization stub.
+         */
+        StackSlot deoptimizationRescueSlot;
+
+        /**
+         * The position at which the instruction for saving RBP should be inserted.
+         */
+        Block saveRbpBlock;
+        int saveRbpIndex;
+
+        /**
+         * The slot reserved for saving RBP.
+         */
+        StackSlot rbpSlot;
+
+        /**
+         * List of epilogue operations that need to restore RBP.
+         */
+        List<AMD64HotSpotEpilogueOp> epilogueOps = new ArrayList<>(2);
+
+        @Override
+        protected void emitPrologue() {
+
+            CallingConvention incomingArguments = createCallingConvention();
+
+            RegisterValue rbpParam = rbp.asValue(Kind.Long);
+            Value[] params = new Value[incomingArguments.getArgumentCount() + 1];
+            for (int i = 0; i < params.length - 1; i++) {
+                params[i] = toStackKind(incomingArguments.getArgument(i));
+                if (isStackSlot(params[i])) {
+                    StackSlot slot = ValueUtil.asStackSlot(params[i]);
+                    if (slot.isInCallerFrame() && !lir.hasArgInCallerFrame()) {
+                        lir.setHasArgInCallerFrame();
+                    }
+                }
+            }
+            params[params.length - 1] = rbpParam;
+
+            ParametersOp paramsOp = new ParametersOp(params);
+            append(paramsOp);
+            saveRbpBlock = currentBlock;
+            saveRbpIndex = lir.lir(saveRbpBlock).size();
+            append(paramsOp); // placeholder
+            rbpSlot = frameMap.allocateSpillSlot(Kind.Long);
+            assert rbpSlot.getRawOffset() == -16 : rbpSlot.getRawOffset();
+
+            for (LocalNode local : graph.getNodes(LocalNode.class)) {
+                Value param = params[local.index()];
+                assert param.getKind() == local.kind().getStackKind();
+                setResult(local, emitMove(param));
+            }
+        }
+
+        @Override
+        protected void emitReturn(Value input) {
+            AMD64HotSpotReturnOp op = new AMD64HotSpotReturnOp(input);
+            epilogueOps.add(op);
+            append(op);
         }
 
         @Override
@@ -178,28 +246,38 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
         @Override
         public void emitUnwind(Value exception) {
-            RegisterValue exceptionParameter = AMD64.rax.asValue();
+            RegisterValue exceptionParameter = EXCEPTION.asValue();
             emitMove(exceptionParameter, exception);
-            append(new AMD64HotSpotUnwindOp(exceptionParameter));
+            AMD64HotSpotUnwindOp op = new AMD64HotSpotUnwindOp(exceptionParameter);
+            epilogueOps.add(op);
+            append(op);
         }
 
         @Override
         public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
-            append(new AMD64DeoptimizeOp(action, reason, state(reason)));
+            append(new AMD64DeoptimizeOp(action, reason, state()));
         }
-
-        /**
-         * The slot reserved for storing the original return address when a frame is marked for
-         * deoptimization. The return address slot in the callee is overwritten with the address of
-         * a deoptimization stub.
-         */
-        StackSlot deoptimizationRescueSlot;
 
         @Override
         public void beforeRegisterAllocation() {
+            assert rbpSlot != null;
+            RegisterValue rbpParam = rbp.asValue(Kind.Long);
+            AllocatableValue savedRbp;
+            LIRInstruction saveRbp;
             if (lir.hasDebugInfo()) {
+                savedRbp = rbpSlot;
                 deoptimizationRescueSlot = frameMap.allocateSpillSlot(Kind.Long);
+            } else {
+                frameMap.freeSpillSlot(rbpSlot);
+                savedRbp = newVariable(Kind.Long);
             }
+
+            for (AMD64HotSpotEpilogueOp op : epilogueOps) {
+                op.savedRbp = savedRbp;
+            }
+
+            saveRbp = new MoveFromRegOp(savedRbp, rbpParam);
+            lir.lir(saveRbpBlock).set(saveRbpIndex, saveRbp);
         }
     }
 
@@ -238,8 +316,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             emitStackOverflowCheck(tasm, false);
-            asm.push(rbp);
-            asm.decrementq(rsp, frameSize - 8); // account for the push of RBP above
+            asm.decrementq(rsp, frameSize);
             if (GraalOptions.ZapStackOnMethodEntry) {
                 final int intSize = 4;
                 for (int i = 0; i < frameSize / intSize; ++i) {
@@ -267,8 +344,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
                 asm.restore(csl, frameToCSA);
             }
 
-            asm.incrementq(rsp, frameSize - 8); // account for the pop of RBP below
-            asm.pop(rbp);
+            asm.incrementq(rsp, frameSize);
         }
     }
 
@@ -279,16 +355,16 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         // - has no callee-saved registers
         // - has no incoming arguments passed on the stack
         // - has no instructions with debug info
-        FrameMap frameMap = lirGen.frameMap;
-        LIR lir = lirGen.lir;
-        boolean omitFrame = GraalOptions.CanOmitFrame && frameMap.frameSize() == frameMap.initialFrameSize && frameMap.registerConfig.getCalleeSaveLayout().registers.length == 0 &&
-                        !lir.hasArgInCallerFrame() && !lir.hasDebugInfo();
+        HotSpotAMD64LIRGenerator gen = (HotSpotAMD64LIRGenerator) lirGen;
+        FrameMap frameMap = gen.frameMap;
+        LIR lir = gen.lir;
+        boolean omitFrame = CanOmitFrame && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
 
         AbstractAssembler masm = new AMD64MacroAssembler(target, frameMap.registerConfig);
         HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext();
         TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
-        StackSlot deoptimizationRescueSlot = ((HotSpotAMD64LIRGenerator) lirGen).deoptimizationRescueSlot;
+        StackSlot deoptimizationRescueSlot = gen.deoptimizationRescueSlot;
         if (deoptimizationRescueSlot != null) {
             tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
         }
