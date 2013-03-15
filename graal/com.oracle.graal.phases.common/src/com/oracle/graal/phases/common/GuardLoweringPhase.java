@@ -124,9 +124,9 @@ public class GuardLoweringPhase extends Phase {
                 Access access = (Access) node;
                 GuardNode guard = nullGuarded.get(access.object());
                 if (guard != null && isImplicitNullCheck(access.location(), target)) {
+                    NodeInputList<ValueNode> dependencies = ((ValueNode) access).dependencies();
+                    dependencies.remove(guard);
                     if (access instanceof FloatingReadNode) {
-                        NodeInputList<ValueNode> dependencies = ((FloatingReadNode) access).dependencies();
-                        dependencies.remove(guard);
                         ReadNode read = graph.add(new ReadNode(access.object(), access.location(), ((FloatingReadNode) access).stamp(), dependencies));
                         node.replaceAndDelete(read);
                         access = read;

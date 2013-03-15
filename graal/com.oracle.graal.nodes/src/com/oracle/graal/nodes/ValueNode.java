@@ -28,7 +28,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.type.GenericStamp.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
@@ -174,9 +173,6 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
 
     @Override
     public boolean verify() {
-        for (ValueNode v : dependencies().nonNull()) {
-            assertTrue(!(v.stamp() instanceof GenericStamp) || ((GenericStamp) v.stamp()).type() == GenericStampType.Dependency, "cannot depend on node with stamp %s", v.stamp());
-        }
         assertTrue(kind() != null, "Should have a valid kind");
         assertTrue(kind() == kind().getStackKind(), "Should have a stack kind : %s", kind());
         return super.verify();
