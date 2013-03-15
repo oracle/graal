@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
 
@@ -137,7 +138,11 @@ public class GuardLoweringPhase extends Phase {
                     }
                     assert access instanceof AccessNode;
                     access.setNullCheck(true);
+                    LogicNode condition = guard.condition();
                     guard.replaceAndDelete(access.node());
+                    if (condition.usages().isEmpty()) {
+                        GraphUtil.killWithUnusedFloatingInputs(condition);
+                    }
                     nullGuarded.remove(access.object());
                 }
             }
