@@ -157,7 +157,7 @@ public final class GraalOptions {
     public static boolean UseProfilingInformation            = true;
            static boolean RemoveNeverExecutedCode            = true;
            static boolean UseExceptionProbability            = true;
-    public static boolean AllowExplicitExceptionChecks       = true;
+           static boolean UseExceptionProbabilityForOperations = true;
     public static boolean OmitHotExceptionStacktrace         = ____;
     public static boolean GenSafepoints                      = true;
     public static boolean GenLoopSafepoints                  = true;
@@ -185,7 +185,7 @@ public final class GraalOptions {
     public static boolean SupportJsrBytecodes                = true;
 
     public static boolean OptAssumptions                     = true;
-    public static boolean OptConvertDeoptsToGuards           = true;
+    public static boolean OptConvertDeoptsToGuards           = ____;
     public static boolean OptReadElimination                 = true;
     public static boolean OptCanonicalizer                   = true;
     public static boolean OptScheduleOutOfLoops              = true;
