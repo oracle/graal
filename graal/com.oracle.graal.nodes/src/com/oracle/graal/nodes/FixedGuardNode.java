@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(nameTemplate = "FixedGuard(!={p#negated}) {p#reason/s}")
-public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, LIRLowerable, Node.IterableNodeType, Negatable {
+public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, Node.IterableNodeType, Negatable {
 
     @Input private LogicNode condition;
     private final DeoptimizationReason reason;
@@ -76,11 +76,6 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
         } else {
             return super.toString(verbosity);
         }
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.emitGuardCheck(condition, reason, action, negated);
     }
 
     @Override

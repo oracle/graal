@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -35,6 +37,10 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
 
     public ReadNode(ValueNode object, ValueNode location, Stamp stamp) {
         super(object, location, stamp);
+    }
+
+    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, List<ValueNode> dependencies) {
+        super(object, location, stamp, dependencies);
     }
 
     private ReadNode(ValueNode object, int displacement, Object locationIdentity, Kind kind) {

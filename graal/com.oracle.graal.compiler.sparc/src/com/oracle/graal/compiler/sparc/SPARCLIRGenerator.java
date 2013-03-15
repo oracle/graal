@@ -62,7 +62,7 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitJump(LabelRef label, LIRFrameState info) {
+    public void emitJump(LabelRef label) {
         @SuppressWarnings("unused")
         SPARCLIRInstruction instruction = null;
         // SPARC: Auto-generated method stub
@@ -70,19 +70,19 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info) {
+    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label) {
         // SPARC: Auto-generated method stub
 
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef label, LIRFrameState info, boolean negated) {
+    public void emitOverflowCheckBranch(LabelRef label, boolean negated) {
         // SPARC: Auto-generated method stub
 
     }
 
     @Override
-    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label, LIRFrameState info) {
+    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label) {
         // SPARC: Auto-generated method stub
 
     }
@@ -115,12 +115,6 @@ public class SPARCLIRGenerator extends LIRGenerator {
     protected void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info) {
         // SPARC: Auto-generated method stub
 
-    }
-
-    @Override
-    protected LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info) {
-        // SPARC: Auto-generated method stub
-        return null;
     }
 
     @Override
@@ -335,12 +329,6 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitMembar(int barriers) {
-        // SPARC: Auto-generated method stub
-
-    }
-
-    @Override
-    public void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason) {
         // SPARC: Auto-generated method stub
 
     }

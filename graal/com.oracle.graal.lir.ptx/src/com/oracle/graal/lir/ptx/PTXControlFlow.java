@@ -54,12 +54,10 @@ public class PTXControlFlow {
 
         protected Condition condition;
         protected LabelRef destination;
-        @State protected LIRFrameState state;
 
-        public BranchOp(Condition condition, LabelRef destination, LIRFrameState state) {
+        public BranchOp(Condition condition, LabelRef destination) {
             this.condition = condition;
             this.destination = destination;
-            this.state = state;
         }
 
         @Override

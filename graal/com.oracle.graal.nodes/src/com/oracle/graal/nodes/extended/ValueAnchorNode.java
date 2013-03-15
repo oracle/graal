@@ -64,7 +64,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
                 return previousAnchor;
             }
         }
-        for (Node node : dependencies().nonNull().and(isNotA(BeginNode.class))) {
+        for (Node node : dependencies().nonNull().and(isNotA(FixedNode.class))) {
             if (node instanceof ConstantNode) {
                 continue;
             }
