@@ -23,14 +23,25 @@
 package com.oracle.graal.phases.common;
 
 import java.util.*;
+import java.util.Map.Entry;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
 
 public class GuardLoweringPhase extends Phase {
+
+    private TargetDescription target;
+
+    public GuardLoweringPhase(TargetDescription target) {
+        this.target = target;
+    }
 
     @Override
     protected void run(StructuredGraph graph) {
@@ -38,15 +49,21 @@ public class GuardLoweringPhase extends Phase {
         schedule.apply(graph);
 
         for (Block block : schedule.getCFG().getBlocks()) {
-            processBlock(block, schedule, graph);
+            processBlock(block, schedule, graph, target);
         }
     }
 
-    private static void processBlock(Block block, SchedulePhase schedule, StructuredGraph graph) {
+    private static void processBlock(Block block, SchedulePhase schedule, StructuredGraph graph, TargetDescription target) {
         List<ScheduledNode> nodes = schedule.nodesFor(block);
+        if (GraalOptions.OptImplicitNullChecks && target.implicitNullCheckLimit > 0) {
+            useImplicitNullChecks(block.getBeginNode(), nodes, graph, target);
+        }
         FixedWithNextNode lastFixed = block.getBeginNode();
         BeginNode lastFastPath = null;
         for (Node node : nodes) {
+            if (!node.isAlive()) {
+                continue;
+            }
             if (lastFastPath != null && node instanceof FixedNode) {
                 lastFastPath.setNext((FixedNode) node);
                 lastFastPath = null;
@@ -80,5 +97,71 @@ public class GuardLoweringPhase extends Phase {
                 lastFastPath = fastPath;
             }
         }
+    }
+
+    private static void useImplicitNullChecks(BeginNode begin, List<ScheduledNode> nodes, StructuredGraph graph, TargetDescription target) {
+        ListIterator<ScheduledNode> iterator = nodes.listIterator();
+        IdentityHashMap<ValueNode, GuardNode> nullGuarded = new IdentityHashMap<>();
+        FixedWithNextNode lastFixed = begin;
+        FixedWithNextNode reconnect = null;
+        while (iterator.hasNext()) {
+            Node node = iterator.next();
+
+            if (reconnect != null && node instanceof FixedNode) {
+                reconnect.setNext((FixedNode) node);
+                reconnect = null;
+            }
+            if (node instanceof FixedWithNextNode) {
+                lastFixed = (FixedWithNextNode) node;
+            }
+
+            if (node instanceof GuardNode) {
+                GuardNode guard = (GuardNode) node;
+                if (guard.negated() && guard.condition() instanceof IsNullNode) {
+                    ValueNode obj = ((IsNullNode) guard.condition()).object();
+                    nullGuarded.put(obj, guard);
+                }
+            } else if (node instanceof Access) {
+                Access access = (Access) node;
+                GuardNode guard = nullGuarded.get(access.object());
+                if (guard != null && isImplicitNullCheck(access.location(), target)) {
+                    NodeInputList<ValueNode> dependencies = ((ValueNode) access).dependencies();
+                    dependencies.remove(guard);
+                    if (access instanceof FloatingReadNode) {
+                        ReadNode read = graph.add(new ReadNode(access.object(), access.location(), ((FloatingReadNode) access).stamp(), dependencies));
+                        node.replaceAndDelete(read);
+                        access = read;
+                        lastFixed.setNext(read);
+                        lastFixed = read;
+                        reconnect = read;
+                        iterator.set(read);
+                    }
+                    assert access instanceof AccessNode;
+                    access.setNullCheck(true);
+                    LogicNode condition = guard.condition();
+                    guard.replaceAndDelete(access.node());
+                    if (condition.usages().isEmpty()) {
+                        GraphUtil.killWithUnusedFloatingInputs(condition);
+                    }
+                    nullGuarded.remove(access.object());
+                }
+            }
+            if (node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {
+                nullGuarded.clear();
+            } else {
+                Iterator<Entry<ValueNode, GuardNode>> it = nullGuarded.entrySet().iterator();
+                while (it.hasNext()) {
+                    Entry<ValueNode, GuardNode> entry = it.next();
+                    GuardNode guard = entry.getValue();
+                    if (guard.usages().contains(node)) {
+                        it.remove();
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean isImplicitNullCheck(LocationNode location, TargetDescription target) {
+        return !(location instanceof IndexedLocationNode) && location.displacement() < target.implicitNullCheckLimit;
     }
 }

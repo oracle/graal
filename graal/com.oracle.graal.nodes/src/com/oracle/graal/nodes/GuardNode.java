@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.type.*;
  * control flow would have reached the guarded node (without taking exceptions into account).
  */
 @NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}")
-public final class GuardNode extends FloatingNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType, Negatable {
+public final class GuardNode extends FloatingNode implements Canonicalizable, Node.IterableNodeType, Negatable {
 
     @Input private LogicNode condition;
     private final DeoptimizationReason reason;
@@ -88,11 +88,6 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         } else {
             return super.toString(verbosity);
         }
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.emitGuardCheck(condition(), reason(), action(), negated());
     }
 
     @Override
