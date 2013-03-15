@@ -186,6 +186,21 @@ public final class FrameMap {
      */
     public void finish() {
         assert this.frameSize == -1 : "must only be set once";
+        if (freedSlots != null) {
+            // If the freed slots cover the complete spill area (except for the return
+            // address slot), then the spill size is reset to its initial value.
+            // Without this, frameNeedsAllocating() would never return true.
+            int total = 0;
+            for (StackSlot s : freedSlots) {
+                total += target.sizeInBytes(s.getKind());
+            }
+            int initialSpillSize = returnAddressSize() + calleeSaveAreaSize();
+            if (total == spillSize - initialSpillSize) {
+                // reset spill area size
+                spillSize = initialSpillSize;
+            }
+            freedSlots = null;
+        }
         frameSize = currentFrameSize();
     }
 
