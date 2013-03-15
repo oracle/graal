@@ -102,7 +102,7 @@ public class TemplateMethod extends MessageContainer {
 
     public ActualParameter findParameter(String valueName) {
         for (ActualParameter param : getParameters()) {
-            if (param.getName().equals(valueName)) {
+            if (param.getLocalName().equals(valueName)) {
                 return param;
             }
         }

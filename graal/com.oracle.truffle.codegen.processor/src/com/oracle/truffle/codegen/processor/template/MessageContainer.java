@@ -67,7 +67,8 @@ public abstract class MessageContainer {
     }
 
     private void emitDefault(TypeElement baseType, Log log, Message message) {
-        if (Utils.typeEquals(baseType.asType(), Utils.findRootEnclosingType(getMessageElement()).asType()) && this == message.getOriginalContainer()) {
+        TypeElement rootEnclosing = Utils.findRootEnclosingType(getMessageElement());
+        if (rootEnclosing != null && Utils.typeEquals(baseType.asType(), rootEnclosing.asType()) && this == message.getOriginalContainer()) {
             log.message(message.getKind(), getMessageElement(), getMessageAnnotation(), getMessageAnnotationValue(), message.getText());
         } else {
             MessageContainer original = message.getOriginalContainer();

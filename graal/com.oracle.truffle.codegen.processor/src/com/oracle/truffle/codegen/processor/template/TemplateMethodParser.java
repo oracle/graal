@@ -159,12 +159,11 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         }
 
         List<TypeMirror> parameterTypes = new ArrayList<>();
-        parameterTypes.addAll(methodSpecification.getImplicitTypes());
         for (VariableElement var : method.getParameters()) {
             parameterTypes.add(var.asType());
         }
 
-        List<ActualParameter> parameters = parseParameters(parameterTypes, parameterSpecs, methodSpecification.getImplicitTypes().size());
+        List<ActualParameter> parameters = parseParameters(parameterTypes, methodSpecification.getImplicitTypes(), parameterSpecs);
         if (parameters == null) {
             if (isEmitErrors()) {
                 E invalidMethod = create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()));
@@ -200,14 +199,15 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         return b.toString();
     }
 
-    private List<ActualParameter> parseParameters(List<TypeMirror> types, List<ParameterSpec> parameterSpecs, int hiddenCount) {
+    private List<ActualParameter> parseParameters(List<TypeMirror> types, List<TypeMirror> implicitTypes, List<ParameterSpec> parameterSpecs) {
         Iterator<? extends TypeMirror> parameterIterator = types.iterator();
+        Iterator<? extends TypeMirror> implicitParametersIterator = implicitTypes.iterator();
         Iterator<? extends ParameterSpec> specificationIterator = parameterSpecs.iterator();
 
         TypeMirror parameter = parameterIterator.hasNext() ? parameterIterator.next() : null;
+        TypeMirror implicitParameter = implicitParametersIterator.hasNext() ? implicitParametersIterator.next() : null;
         ParameterSpec specification = specificationIterator.hasNext() ? specificationIterator.next() : null;
 
-        int globalParameterIndex = 0;
         int specificationParameterIndex = 0;
         List<ActualParameter> resolvedParameters = new ArrayList<>();
         while (parameter != null || specification != null) {
@@ -220,8 +220,20 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
                 return null;
             }
 
-            boolean hidden = globalParameterIndex < hiddenCount;
-            ActualParameter resolvedParameter = matchParameter(specification, parameter, template, specificationParameterIndex, hidden);
+            ActualParameter resolvedParameter = null;
+
+            boolean implicit = false;
+            if (implicitParameter != null) {
+                resolvedParameter = matchParameter(specification, implicitParameter, template, specificationParameterIndex, true);
+                if (resolvedParameter != null) {
+                    implicit = true;
+                }
+            }
+
+            if (resolvedParameter == null) {
+                resolvedParameter = matchParameter(specification, parameter, template, specificationParameterIndex, false);
+            }
+
             if (resolvedParameter == null) {
                 // mismatch
                 if (specification.isOptional()) {
@@ -234,14 +246,16 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
                 resolvedParameters.add(resolvedParameter);
 
                 // match
-                if (specification.getCardinality() == Cardinality.ONE) {
+                if (implicit) {
+                    implicitParameter = implicitParametersIterator.hasNext() ? implicitParametersIterator.next() : null;
+                } else {
                     parameter = parameterIterator.hasNext() ? parameterIterator.next() : null;
+                }
+
+                if (specification.getCardinality() == Cardinality.ONE) {
                     specification = specificationIterator.hasNext() ? specificationIterator.next() : null;
-                    globalParameterIndex++;
                     specificationParameterIndex = 0;
                 } else if (specification.getCardinality() == Cardinality.MULTIPLE) {
-                    parameter = parameterIterator.hasNext() ? parameterIterator.next() : null;
-                    globalParameterIndex++;
                     specificationParameterIndex++;
                 }
             }
@@ -249,7 +263,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         return resolvedParameters;
     }
 
-    private ActualParameter matchParameter(ParameterSpec specification, TypeMirror mirror, Template typeSystem, int index, boolean hidden) {
+    private ActualParameter matchParameter(ParameterSpec specification, TypeMirror mirror, Template typeSystem, int index, boolean implicit) {
         TypeMirror resolvedType = mirror;
         if (hasError(resolvedType)) {
             resolvedType = context.resolveNotYetCompiledType(mirror, typeSystem);
@@ -258,7 +272,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         if (!specification.matches(resolvedType)) {
             return null;
         }
-        return new ActualParameter(specification, resolvedType, index, hidden);
+        return new ActualParameter(specification, resolvedType, index, implicit);
     }
 
     protected List<TypeDef> createTypeDefinitions(ParameterSpec returnType, List<? extends ParameterSpec> parameters) {

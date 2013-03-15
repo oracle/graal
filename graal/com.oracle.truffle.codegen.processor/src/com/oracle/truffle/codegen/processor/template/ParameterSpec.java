@@ -41,6 +41,7 @@ public class ParameterSpec {
     private final boolean optional;
     private Cardinality cardinality;
     private boolean indexed;
+    private boolean local;
 
     public ParameterSpec(String name, List<TypeMirror> allowedTypes, boolean optional, Cardinality cardinality) {
         this.allowedTypes = allowedTypes;
@@ -62,6 +63,14 @@ public class ParameterSpec {
     /** Node value constructor. */
     public ParameterSpec(String name, NodeData nodeData, boolean optional, Cardinality cardinality) {
         this(name, nodeTypeMirrors(nodeData), optional, cardinality);
+    }
+
+    public void setLocal(boolean local) {
+        this.local = local;
+    }
+
+    public boolean isLocal() {
+        return local;
     }
 
     public boolean isIndexed() {

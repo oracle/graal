@@ -31,7 +31,7 @@ public class ActualParameter {
     private final ParameterSpec specification;
     private final TypeMirror actualType;
     private TemplateMethod method;
-    private final String name;
+    private final String localName;
     private final int index;
     private final boolean implicit;
 
@@ -42,13 +42,14 @@ public class ActualParameter {
         this.index = index;
         this.implicit = implicit;
         String valueName = specification.getName() + "Value";
+
         if (specification.isIndexed()) {
-            valueName = valueName + index;
+            valueName += index;
         }
-        this.name = valueName;
+        this.localName = valueName;
     }
 
-    public boolean isHidden() {
+    public boolean isImplicit() {
         return implicit;
     }
 
@@ -56,8 +57,8 @@ public class ActualParameter {
         return index;
     }
 
-    public String getName() {
-        return name;
+    public String getLocalName() {
+        return localName;
     }
 
     void setMethod(TemplateMethod method) {

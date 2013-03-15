@@ -80,7 +80,6 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
             }
         });
         SpecializationData specialization = new SpecializationData(method, order, exceptionData);
-        boolean valid = true;
         AnnotationValue guardsValue = Utils.getAnnotationValue(method.getMarkerAnnotation(), "guards");
         List<String> guardDefs = Utils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
         List<SpecializationGuardData> guardData = new ArrayList<>(guardDefs.size());
@@ -94,13 +93,7 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
             GuardData compatibleGuard = matchSpecializationGuard(specialization, assignedGuard);
             if (compatibleGuard != null) {
                 assignedGuard.setGuardDeclaration(compatibleGuard);
-            } else {
-                valid = false;
             }
-        }
-
-        if (!valid) {
-            return null;
         }
 
         specialization.setGuards(guardData);

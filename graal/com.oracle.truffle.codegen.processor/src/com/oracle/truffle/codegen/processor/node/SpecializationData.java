@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
+import com.oracle.truffle.codegen.processor.node.NodeFieldData.*;
 import com.oracle.truffle.codegen.processor.template.*;
 
 public class SpecializationData extends TemplateMethod {
@@ -81,7 +82,7 @@ public class SpecializationData extends TemplateMethod {
         }
         for (ActualParameter parameter : getParameters()) {
             NodeFieldData field = getNode().findField(parameter.getSpecification().getName());
-            if (field == null) {
+            if (field == null || field.getKind() == FieldKind.FIELD) {
                 continue;
             }
             ExecutableTypeData type = field.getNodeData().findExecutableType(parameter.getActualTypeData(field.getNodeData().getTypeSystem()));

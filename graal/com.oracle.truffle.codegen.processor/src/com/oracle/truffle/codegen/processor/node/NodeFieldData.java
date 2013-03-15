@@ -30,7 +30,7 @@ import com.oracle.truffle.codegen.processor.template.*;
 public class NodeFieldData extends MessageContainer {
 
     public enum FieldKind {
-        CHILD, CHILDREN
+        CHILD, CHILDREN, FIELD
     }
 
     public enum ExecutionKind {

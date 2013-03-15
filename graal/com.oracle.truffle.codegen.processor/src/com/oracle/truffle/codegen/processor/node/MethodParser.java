@@ -72,6 +72,14 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
         }
 
         for (NodeFieldData field : getNode().getFields()) {
+            if (field.getKind() == FieldKind.FIELD) {
+                ParameterSpec spec = new ParameterSpec(field.getName(), field.getType(), true);
+                spec.setLocal(true);
+                defaultParameters.add(spec);
+            }
+        }
+
+        for (NodeFieldData field : getNode().getFields()) {
             if (field.getExecutionKind() == ExecutionKind.IGNORE) {
                 continue;
             }

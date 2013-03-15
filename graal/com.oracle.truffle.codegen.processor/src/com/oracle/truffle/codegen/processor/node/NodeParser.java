@@ -298,14 +298,14 @@ public class NodeParser extends TemplateParser<NodeData> {
                 ParameterSpec parameterSpec = specification.findParameterSpec(specializationParameter.getSpecification().getName());
                 NodeFieldData field = node.findField(parameterSpec.getName());
                 TypeMirror actualType;
-                if (field == null) {
+                if (field == null || field.getKind() == FieldKind.FIELD) {
                     actualType = specializationParameter.getActualType();
                 } else {
                     ExecutableTypeData paramType = field.getNodeData().findAnyGenericExecutableType(context);
                     assert paramType != null;
                     actualType = paramType.getType().getPrimitiveType();
                 }
-                parameters.add(new ActualParameter(parameterSpec, actualType, specializationParameter.getIndex(), specializationParameter.isHidden()));
+                parameters.add(new ActualParameter(parameterSpec, actualType, specializationParameter.getIndex(), specializationParameter.isImplicit()));
             }
             TemplateMethod genericMethod = new TemplateMethod("Generic", node, specification, null, null, returnType, parameters);
             genericSpecialization = new SpecializationData(genericMethod, true, false);
@@ -628,9 +628,7 @@ public class NodeParser extends TemplateParser<NodeData> {
             }
 
             NodeFieldData field = parseField(nodeData, var, shortCircuits);
-            if (field.getExecutionKind() != ExecutionKind.IGNORE) {
-                fields.add(field);
-            }
+            fields.add(field);
         }
         sortByExecutionOrder(fields, executionDefinition == null ? Collections.<String> emptyList() : executionDefinition, typeHierarchy);
         return fields;
@@ -650,32 +648,32 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         AnnotationMirror mirror;
-        TypeMirror nodeType;
+        TypeMirror type;
 
         if (childMirror != null) {
             mirror = childMirror;
-            nodeType = var.asType();
+            type = var.asType();
             kind = FieldKind.CHILD;
         } else if (childrenMirror != null) {
             mirror = childrenMirror;
-            nodeType = getComponentType(var.asType());
+            type = getComponentType(var.asType());
             kind = FieldKind.CHILDREN;
         } else {
             execution = ExecutionKind.IGNORE;
-            nodeType = null;
+            type = var.asType();
             mirror = null;
-            kind = null;
+            kind = FieldKind.FIELD;
         }
 
         NodeFieldData fieldData = new NodeFieldData(var, findAccessElement(var), mirror, kind, execution);
-        if (nodeType != null) {
-            NodeData fieldNodeData = resolveNode(Utils.fromTypeMirror(nodeType));
+        if (type != null && mirror != null) {
+            NodeData fieldNodeData = resolveNode(Utils.fromTypeMirror(type));
             fieldData.setNode(fieldNodeData);
 
             if (fieldNodeData == null) {
-                fieldData.addError("Node type '%s' is invalid.", Utils.getQualifiedName(nodeType));
+                fieldData.addError("Node type '%s' is invalid.", Utils.getQualifiedName(type));
             } else if (fieldNodeData.findGenericExecutableTypes(context).isEmpty()) {
-                fieldData.addError("No executable generic types found for node '%s'.", Utils.getQualifiedName(nodeType));
+                fieldData.addError("No executable generic types found for node '%s'.", Utils.getQualifiedName(type));
             }
 
             // TODO correct handling of access elements
@@ -830,7 +828,7 @@ public class NodeParser extends TemplateParser<NodeData> {
     private boolean isGenericShortCutMethod(NodeData node, TemplateMethod method) {
         for (ActualParameter parameter : method.getParameters()) {
             NodeFieldData field = node.findField(parameter.getSpecification().getName());
-            if (field == null) {
+            if (field == null || field.getKind() == FieldKind.FIELD) {
                 continue;
             }
             ExecutableTypeData found = null;
