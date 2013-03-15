@@ -187,6 +187,20 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
             append(new AMD64DeoptimizeOp(action, reason, state(reason)));
         }
+
+        /**
+         * The slot reserved for storing the original return address when a frame is marked for
+         * deoptimization. The return address slot in the callee is overwritten with the address of
+         * a deoptimization stub.
+         */
+        StackSlot deoptimizationRescueSlot;
+
+        @Override
+        public void beforeRegisterAllocation() {
+            if (lir.hasDebugInfo()) {
+                deoptimizationRescueSlot = frameMap.allocateSpillSlot(Kind.Long);
+            }
+        }
     }
 
     /**
@@ -259,25 +273,30 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir) {
+    public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
         // Omit the frame if the method:
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers
         // - has no incoming arguments passed on the stack
         // - has no instructions with debug info
+        FrameMap frameMap = lirGen.frameMap;
+        LIR lir = lirGen.lir;
         boolean omitFrame = GraalOptions.CanOmitFrame && frameMap.frameSize() == frameMap.initialFrameSize && frameMap.registerConfig.getCalleeSaveLayout().registers.length == 0 &&
                         !lir.hasArgInCallerFrame() && !lir.hasDebugInfo();
 
         AbstractAssembler masm = new AMD64MacroAssembler(target, frameMap.registerConfig);
         HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext();
-        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext);
+        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
-        tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
+        StackSlot deoptimizationRescueSlot = ((HotSpotAMD64LIRGenerator) lirGen).deoptimizationRescueSlot;
+        if (deoptimizationRescueSlot != null) {
+            tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
+        }
         return tasm;
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIR lir) {
+    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIRGenerator lirGen) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
         FrameMap frameMap = tasm.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
@@ -304,7 +323,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         tasm.recordMark(Marks.MARK_VERIFIED_ENTRY);
 
         // Emit code for the LIR
-        lir.emitCode(tasm);
+        lirGen.lir.emitCode(tasm);
 
         boolean frameOmitted = tasm.frameContext == null;
         if (!frameOmitted) {
@@ -316,7 +335,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries
-            assert !frameMap.accessesCallerFrame();
+            assert !frameMap.accessesCallerFrame() : method;
         }
 
         if (unverifiedStub != null) {

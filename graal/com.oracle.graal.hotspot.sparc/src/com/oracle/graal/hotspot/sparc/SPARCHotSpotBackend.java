@@ -47,13 +47,13 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir) {
+    public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
         // SPARC: Create assembler.
         return null;
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIR lir) {
+    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIRGenerator lirGen) {
         // SPARC: Emit code
     }
 }

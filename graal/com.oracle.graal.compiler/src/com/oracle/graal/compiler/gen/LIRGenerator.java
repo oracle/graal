@@ -54,14 +54,15 @@ import com.oracle.graal.phases.util.*;
  */
 public abstract class LIRGenerator extends LIRGeneratorTool {
 
+    public final FrameMap frameMap;
+    public final NodeMap<Value> nodeOperands;
+    public final LIR lir;
+
     protected final StructuredGraph graph;
     protected final CodeCacheProvider runtime;
     protected final TargetDescription target;
     protected final ResolvedJavaMethod method;
-    protected final FrameMap frameMap;
-    public final NodeMap<Value> nodeOperands;
 
-    protected final LIR lir;
     private final DebugInfoBuilder debugInfoBuilder;
 
     private Block currentBlock;
