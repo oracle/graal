@@ -63,16 +63,14 @@ public class AMD64ControlFlow {
     public static class BranchOp extends AMD64LIRInstruction implements StandardOp.BranchOp {
         protected ConditionFlag condition;
         protected LabelRef destination;
-        @State protected LIRFrameState state;
 
-        public BranchOp(Condition condition, LabelRef destination, LIRFrameState info) {
-            this(intCond(condition), destination, info);
+        public BranchOp(Condition condition, LabelRef destination) {
+            this(intCond(condition), destination);
         }
 
-        public BranchOp(ConditionFlag condition, LabelRef destination, LIRFrameState state) {
+        public BranchOp(ConditionFlag condition, LabelRef destination) {
             this.condition = condition;
             this.destination = destination;
-            this.state = state;
         }
 
         @Override
@@ -96,8 +94,8 @@ public class AMD64ControlFlow {
     public static class FloatBranchOp extends BranchOp {
         protected boolean unorderedIsTrue;
 
-        public FloatBranchOp(Condition condition, boolean unorderedIsTrue, LabelRef destination, LIRFrameState info) {
-            super(floatCond(condition), destination, info);
+        public FloatBranchOp(Condition condition, boolean unorderedIsTrue, LabelRef destination) {
+            super(floatCond(condition), destination);
             this.unorderedIsTrue = unorderedIsTrue;
         }
 

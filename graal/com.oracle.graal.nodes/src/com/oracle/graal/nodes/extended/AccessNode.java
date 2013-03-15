@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import java.util.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
@@ -54,6 +56,12 @@ public abstract class AccessNode extends FixedWithNextNode implements Access {
 
     public AccessNode(ValueNode object, ValueNode location, Stamp stamp) {
         super(stamp);
+        this.object = object;
+        this.location = location;
+    }
+
+    public AccessNode(ValueNode object, ValueNode location, Stamp stamp, List<ValueNode> dependencies) {
+        super(stamp, dependencies);
         this.object = object;
         this.location = location;
     }
