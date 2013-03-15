@@ -167,7 +167,7 @@ public final class GraalOptions {
     public static boolean GenAssertionCode                   = ____;
     public static boolean AlignCallsForPatching              = true;
     public static boolean ResolveClassBeforeStaticInvoke     = ____;
-    public static boolean CanOmitFrame                       = false;
+    public static boolean CanOmitFrame                       = true;
     public static int     SafepointPollOffset                = 256;
 
     public static boolean MemoryAwareScheduling              = true;
