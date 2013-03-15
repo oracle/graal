@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.compiler.amd64.AMD64LIRGenerator.*;
 import static com.oracle.graal.hotspot.amd64.AMD64DeoptimizeOp.*;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotUnwindOp.*;
 import static com.oracle.graal.hotspot.nodes.IdentityHashCodeStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
@@ -46,11 +47,11 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.amd64.snippets.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.snippets.*;
+import com.oracle.graal.snippets.amd64.*;
 
 public class AMD64HotSpotRuntime extends HotSpotRuntime {
 
@@ -60,7 +61,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         Kind word = graalRuntime.getTarget().wordKind;
 
         // @formatter:off
-        addRuntimeCall(AMD64HotSpotUnwindOp.UNWIND_EXCEPTION, config.unwindExceptionStub,
+        addRuntimeCall(UNWIND_EXCEPTION, config.unwindExceptionStub,
                /*           temps */ null,
                /*             ret */ ret(Kind.Void),
                /* arg0: exception */ rax.asValue(Kind.Object));
