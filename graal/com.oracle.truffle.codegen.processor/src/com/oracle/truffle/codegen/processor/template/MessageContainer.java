@@ -58,7 +58,7 @@ public abstract class MessageContainer {
 
         for (MessageContainer sink : findChildContainers()) {
             if (visitedSinks.contains(sink)) {
-                return;
+                continue;
             }
 
             visitedSinks.add(sink);
