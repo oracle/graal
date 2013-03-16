@@ -210,7 +210,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
 
         int specificationParameterIndex = 0;
         List<ActualParameter> resolvedParameters = new ArrayList<>();
-        while (parameter != null || specification != null) {
+        while (parameter != null || specification != null || implicitParameter != null) {
             if (parameter == null || specification == null) {
                 if (specification != null && (specification.isOptional() || specification.getCardinality() == Cardinality.MULTIPLE)) {
                     specification = specificationIterator.hasNext() ? specificationIterator.next() : null;
