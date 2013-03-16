@@ -407,6 +407,9 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         // reduce id horizontally
         for (List<String> signature : signatureChunks) {
+            if (signature.isEmpty()) {
+                continue;
+            }
             String prev = null;
             boolean allSame = true;
             for (String arg : signature) {
@@ -430,8 +433,12 @@ public class NodeParser extends TemplateParser<NodeData> {
         List<String> signatures = new ArrayList<>();
         for (List<String> signatureChunk : signatureChunks) {
             StringBuilder b = new StringBuilder();
-            for (String s : signatureChunk) {
-                b.append(s);
+            if (signatureChunk.isEmpty()) {
+                b.append("Default");
+            } else {
+                for (String s : signatureChunk) {
+                    b.append(s);
+                }
             }
             signatures.add(b.toString());
         }
