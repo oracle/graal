@@ -110,7 +110,7 @@ public class NodeFieldData extends MessageContainer {
 
     @Override
     public String toString() {
-        return "NodeFieldData[name=" + getName() + ", kind=" + fieldKind + ", execution=" + executionKind + ", node=" + getNodeData().toString() + "]";
+        return "NodeFieldData[name=" + getName() + ", kind=" + fieldKind + ", execution=" + executionKind + ", node=" + getNodeData() + "]";
     }
 
 }

@@ -76,32 +76,36 @@ public class NodeData extends Template {
 
     @Override
     protected List<MessageContainer> findChildContainers() {
-        List<MessageContainer> sinks = new ArrayList<>();
+        List<MessageContainer> children = new ArrayList<>();
         if (declaredChildren != null) {
-            sinks.addAll(declaredChildren);
+            children.addAll(declaredChildren);
         }
         if (typeSystem != null) {
-            sinks.add(typeSystem);
+            children.add(typeSystem);
         }
         if (specializations != null) {
-            sinks.addAll(specializations);
+            for (MessageContainer specialization : specializations) {
+                if (specialization.getMessageElement() != null) {
+                    children.add(specialization);
+                }
+            }
         }
         if (specializationListeners != null) {
-            sinks.addAll(specializationListeners);
+            children.addAll(specializationListeners);
         }
         if (guards != null) {
-            sinks.addAll(guards);
+            children.addAll(guards);
         }
         if (executableTypes != null) {
-            sinks.addAll(executableTypes);
+            children.addAll(executableTypes);
         }
         if (shortCircuits != null) {
-            sinks.addAll(shortCircuits);
+            children.addAll(shortCircuits);
         }
         if (fields != null) {
-            sinks.addAll(fields);
+            children.addAll(fields);
         }
-        return sinks;
+        return children;
     }
 
     public ParameterSpec getInstanceParameterSpec() {
