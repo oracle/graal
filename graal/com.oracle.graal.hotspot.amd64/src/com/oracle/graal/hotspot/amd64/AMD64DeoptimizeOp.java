@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
