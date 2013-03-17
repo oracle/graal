@@ -135,7 +135,7 @@ public class DebugInfoBuilder {
                 throw new BailoutException("unbalanced monitors: found monitor for unknown frame (%d != %d) at %s", lockDataSlots.size(), numLocks, state);
             }
         }
-        assert state.bci >= 0 || state.bci == FrameState.BEFORE_BCI;
+        assert state.bci >= 0 || state.bci == FrameState.BEFORE_BCI : "bci == " + state.bci;
         return new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, numLocals, numStack, numLocks);
     }
 

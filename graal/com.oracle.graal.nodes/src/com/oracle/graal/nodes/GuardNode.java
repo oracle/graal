@@ -95,15 +95,9 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, No
         if (condition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition();
             if (c.getValue() != negated) {
-                if (!dependencies().isEmpty()) {
-                    for (Node usage : usages()) {
-                        if (usage instanceof ValueNode) {
-                            ((ValueNode) usage).dependencies().addAll(dependencies());
-                        }
-                    }
+                if (dependencies().size() == 1) {
+                    return dependencies().get(0);
                 }
-                this.replaceAtUsages(null);
-                return null;
             }
         }
         return this;

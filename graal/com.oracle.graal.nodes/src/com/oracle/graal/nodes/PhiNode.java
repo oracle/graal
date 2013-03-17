@@ -200,6 +200,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
     public ValueNode singleValue() {
         ValueNode differentValue = null;
         for (ValueNode n : values()) {
+            assert n != null : "Must have input value!";
             if (n != this) {
                 if (differentValue == null) {
                     differentValue = n;

@@ -243,7 +243,8 @@ public final class SchedulePhase extends Phase {
                     // schedule at the latest position possible in the outermost loop possible
                     Block earliestBlock = earliestBlock(node);
                     block = scheduleOutOfLoops(node, block, earliestBlock);
-                    assert earliestBlock.dominates(block) : "Graph can not be scheduled : inconsistent for " + node + " (" + earliestBlock + " needs to dominate " + block + ")";
+                    assert earliestBlock.dominates(block) : "Graph cannot be scheduled : inconsistent for " + node + ", " + node.usages().count() + " usages, (" + earliestBlock +
+                                    " needs to dominate " + block + ")";
                 }
                 break;
             default:
