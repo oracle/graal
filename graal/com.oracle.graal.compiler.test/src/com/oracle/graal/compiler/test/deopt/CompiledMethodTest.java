@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package com.oracle.graal.compiler.test.deopt;
 
 import java.lang.reflect.*;
 
@@ -29,6 +29,7 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.InstalledCode.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
