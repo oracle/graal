@@ -45,7 +45,7 @@ public class GuardLoweringPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST);
+        SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
 
         for (Block block : schedule.getCFG().getBlocks()) {
