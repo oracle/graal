@@ -169,6 +169,11 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int uninitializedIdentityHashCodeValue;
 
     /**
+     * Offset of the pending deoptimization field.
+     */
+    public int pendingDeoptimizationOffset;
+
+    /**
      * Mark word right shift to get identity hash code.
      */
     public int identityHashCodeShift;
