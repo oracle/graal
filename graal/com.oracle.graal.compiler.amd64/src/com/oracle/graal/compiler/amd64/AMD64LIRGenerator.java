@@ -50,8 +50,6 @@ import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegStackConst;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivRemOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary1Op;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary2Op;
-import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
-import com.oracle.graal.lir.amd64.AMD64Call.IndirectCallOp;
 import com.oracle.graal.lir.amd64.AMD64Compare.CompareOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.BranchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
