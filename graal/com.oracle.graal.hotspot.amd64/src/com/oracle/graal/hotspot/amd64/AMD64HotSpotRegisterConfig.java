@@ -210,11 +210,6 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
     }
 
     @Override
-    public Register getScratchRegister() {
-        return r10;
-    }
-
-    @Override
     public Register getFrameRegister() {
         return rsp;
     }
