@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.Opcode;
+import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
@@ -39,17 +40,18 @@ final class AMD64DeoptimizeOp extends AMD64LIRInstruction {
     private DeoptimizationAction action;
     private DeoptimizationReason reason;
     @State private LIRFrameState info;
+    @Temp protected RegisterValue deoptimizationReason;
 
     AMD64DeoptimizeOp(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info) {
         this.action = action;
         this.reason = reason;
         this.info = info;
+        this.deoptimizationReason = AMD64.r10.asValue(Kind.Int);
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        Register scratch = tasm.frameMap.registerConfig.getScratchRegister();
-        masm.movl(scratch, tasm.runtime.encodeDeoptActionAndReason(action, reason));
+        masm.movl(deoptimizationReason.getRegister(), tasm.runtime.encodeDeoptActionAndReason(action, reason));
         AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(DEOPTIMIZE), info);
     }
 }
