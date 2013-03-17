@@ -369,7 +369,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info) {
+    protected void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         throw new InternalError("NYI");
     }
 

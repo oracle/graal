@@ -46,7 +46,7 @@ final class AMD64HotspotDirectStaticCallOp extends DirectCallOp {
     private final Constant metaspaceMethod;
     private final InvokeKind invokeKind;
 
-    AMD64HotspotDirectStaticCallOp(InvokeTarget target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, Constant metaspaceMethod) {
+    AMD64HotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, Constant metaspaceMethod) {
         super(target, result, parameters, temps, state);
         assert invokeKind == InvokeKind.Static || invokeKind == InvokeKind.Special;
         this.metaspaceMethod = metaspaceMethod;

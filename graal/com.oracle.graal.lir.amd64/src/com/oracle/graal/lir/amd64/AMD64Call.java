@@ -31,6 +31,7 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.nodes.spi.*;
 
 public class AMD64Call {
 
@@ -42,9 +43,9 @@ public class AMD64Call {
         @Temp protected Value[] temps;
         @State protected LIRFrameState state;
 
-        protected final InvokeTarget callTarget;
+        protected final ResolvedJavaMethod callTarget;
 
-        public DirectCallOp(InvokeTarget callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        protected DirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
             this.callTarget = callTarget;
             this.result = result;
             this.parameters = parameters;
@@ -55,18 +56,59 @@ public class AMD64Call {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            emitAlignmentForDirectCall(tasm, masm);
-            directCall(tasm, masm, callTarget, state);
+            directCall(tasm, masm, callTarget, null, true, state);
+        }
+    }
+
+    @Opcode("CALL_NEAR_RUNTIME")
+    public static class DirectNearRuntimeCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+
+        @Def({REG, ILLEGAL}) protected Value result;
+        @Use({REG, STACK}) protected Value[] parameters;
+        @Temp protected Value[] temps;
+        @State protected LIRFrameState state;
+
+        protected final RuntimeCallTarget callTarget;
+
+        public DirectNearRuntimeCallOp(RuntimeCallTarget callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            this.callTarget = callTarget;
+            this.result = result;
+            this.parameters = parameters;
+            this.state = state;
+            this.temps = temps;
+            assert temps != null;
         }
 
-        protected void emitAlignmentForDirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            // make sure that the displacement word of the call ends up word aligned
-            int offset = masm.codeBuffer.position();
-            offset += tasm.target.arch.getMachineCodeCallDisplacementOffset();
-            int modulus = tasm.target.wordSize;
-            if (offset % modulus != 0) {
-                masm.nop(modulus - offset % modulus);
-            }
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            directCall(tasm, masm, callTarget, null, false, state);
+        }
+    }
+
+    @Opcode("CALL_FAR_RUNTIME")
+    public static class DirectFarRuntimeCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+
+        @Def({REG, ILLEGAL}) protected Value result;
+        @Use({REG, STACK}) protected Value[] parameters;
+        @Temp protected Value[] temps;
+        @State protected LIRFrameState state;
+        @Temp({REG}) protected AllocatableValue callTemp;
+
+        protected final RuntimeCallTarget callTarget;
+
+        public DirectFarRuntimeCallOp(LIRGeneratorTool gen, RuntimeCallTarget callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            this.callTarget = callTarget;
+            this.result = result;
+            this.parameters = parameters;
+            this.state = state;
+            this.temps = temps;
+            assert temps != null;
+            callTemp = gen.newVariable(Kind.Long);
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            directCall(tasm, masm, callTarget, ((RegisterValue) callTemp).getRegister(), false, state);
         }
     }
 
@@ -81,7 +123,7 @@ public class AMD64Call {
 
         protected final InvokeTarget callTarget;
 
-        public IndirectCallOp(InvokeTarget callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
+        protected IndirectCallOp(InvokeTarget callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
             this.callTarget = callTarget;
             this.result = result;
             this.parameters = parameters;
@@ -103,20 +145,16 @@ public class AMD64Call {
         }
     }
 
-    public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, InvokeTarget callTarget, LIRFrameState info) {
+    public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, InvokeTarget callTarget, Register scratch, boolean align, LIRFrameState info) {
+        if (align) {
+            emitAlignmentForDirectCall(tasm, masm);
+        }
         int before = masm.codeBuffer.position();
-        if (callTarget instanceof RuntimeCallTarget) {
-            long maxOffset = ((RuntimeCallTarget) callTarget).getMaxCallTargetOffset();
-            if (maxOffset != (int) maxOffset) {
-                // offset might not fit a 32-bit immediate, generate an
-                // indirect call with a 64-bit immediate
-                Register scratch = tasm.frameMap.registerConfig.getScratchRegister();
-                masm.movq(scratch, 0L);
-                masm.call(scratch);
-            } else {
-                masm.call();
-            }
-
+        if (scratch != null) {
+            // offset might not fit a 32-bit immediate, generate an
+            // indirect call with a 64-bit immediate
+            masm.movq(scratch, 0L);
+            masm.call(scratch);
         } else {
             masm.call();
         }
@@ -124,6 +162,16 @@ public class AMD64Call {
         tasm.recordDirectCall(before, after, callTarget, info);
         tasm.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
+    }
+
+    protected static void emitAlignmentForDirectCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        // make sure that the displacement word of the call ends up word aligned
+        int offset = masm.codeBuffer.position();
+        offset += tasm.target.arch.getMachineCodeCallDisplacementOffset();
+        int modulus = tasm.target.wordSize;
+        if (offset % modulus != 0) {
+            masm.nop(modulus - offset % modulus);
+        }
     }
 
     public static void directJmp(TargetMethodAssembler tasm, AMD64MacroAssembler masm, InvokeTarget target) {

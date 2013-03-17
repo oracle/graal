@@ -70,6 +70,6 @@ final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueOp {
 
         // Pass the address of the RBP slot in RBP itself
         masm.leaq(rbp, rbpSlot);
-        AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(UNWIND_EXCEPTION), null);
+        AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(UNWIND_EXCEPTION), AMD64.r10, false, null);
     }
 }

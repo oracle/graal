@@ -47,7 +47,7 @@ final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
 
     private final InvokeKind invokeKind;
 
-    AMD64HotspotDirectVirtualCallOp(InvokeTarget target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
+    AMD64HotspotDirectVirtualCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
         super(target, result, parameters, temps, state);
         this.invokeKind = invokeKind;
         assert invokeKind == InvokeKind.Interface || invokeKind == InvokeKind.Virtual;

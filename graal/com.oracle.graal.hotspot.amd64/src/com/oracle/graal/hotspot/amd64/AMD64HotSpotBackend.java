@@ -189,11 +189,8 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
         boolean frameOmitted = tasm.frameContext == null;
         if (!frameOmitted) {
-            tasm.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
-            AMD64Call.directCall(tasm, asm, runtime().lookupRuntimeCall(EXCEPTION_HANDLER), null);
-
             tasm.recordMark(Marks.MARK_DEOPT_HANDLER_ENTRY);
-            AMD64Call.directCall(tasm, asm, runtime().lookupRuntimeCall(DEOPT_HANDLER), null);
+            AMD64Call.directCall(tasm, asm, runtime().lookupRuntimeCall(DEOPT_HANDLER), null, false, null);
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries

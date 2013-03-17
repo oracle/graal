@@ -52,6 +52,6 @@ final class AMD64DeoptimizeOp extends AMD64LIRInstruction {
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         masm.movl(deoptimizationReason.getRegister(), tasm.runtime.encodeDeoptActionAndReason(action, reason));
-        AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(DEOPTIMIZE), info);
+        AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(DEOPTIMIZE), null, false, info);
     }
 }
