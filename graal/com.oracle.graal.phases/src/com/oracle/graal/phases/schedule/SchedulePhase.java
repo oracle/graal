@@ -134,14 +134,14 @@ public final class SchedulePhase extends Phase {
     private BlockMap<List<ScheduledNode>> blockToNodesMap;
     private final Map<FloatingNode, List<FixedNode>> phantomUsages = new IdentityHashMap<>();
     private final Map<FixedNode, List<FloatingNode>> phantomInputs = new IdentityHashMap<>();
-    private final SchedulingStrategy strategy;
+    private final SchedulingStrategy selectedStrategy;
 
     public SchedulePhase() {
         this(GraalOptions.OptScheduleOutOfLoops ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST);
     }
 
     public SchedulePhase(SchedulingStrategy strategy) {
-        this.strategy = strategy;
+        this.selectedStrategy = strategy;
     }
 
     @Override
@@ -150,7 +150,7 @@ public final class SchedulePhase extends Phase {
         earliestCache = graph.createNodeMap();
         blockToNodesMap = new BlockMap<>(cfg);
 
-        if (GraalOptions.MemoryAwareScheduling && strategy != SchedulingStrategy.EARLIEST && graph.getNodes(FloatingReadNode.class).isNotEmpty()) {
+        if (GraalOptions.MemoryAwareScheduling && selectedStrategy != SchedulingStrategy.EARLIEST && graph.getNodes(FloatingReadNode.class).isNotEmpty()) {
 
             assignBlockToNodes(graph, SchedulingStrategy.EARLIEST);
             sortNodesWithinBlocks(graph, SchedulingStrategy.EARLIEST);
@@ -162,8 +162,8 @@ public final class SchedulePhase extends Phase {
             blockToNodesMap = new BlockMap<>(cfg);
         }
 
-        assignBlockToNodes(graph, strategy);
-        sortNodesWithinBlocks(graph, strategy);
+        assignBlockToNodes(graph, selectedStrategy);
+        sortNodesWithinBlocks(graph, selectedStrategy);
     }
 
     /**
