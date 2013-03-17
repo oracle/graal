@@ -324,10 +324,8 @@ public class Graph {
         };
     }
 
-    private static class PlaceHolderNode extends Node {
-    }
-
-    private static final PlaceHolderNode PLACE_HOLDER = new PlaceHolderNode();
+    private static final Node PLACE_HOLDER = new Node() {
+    };
 
     private class TypedNodeIterator<T extends IterableNodeType> implements Iterator<T> {
 
