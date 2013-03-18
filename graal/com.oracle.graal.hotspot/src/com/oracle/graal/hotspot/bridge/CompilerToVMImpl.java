@@ -124,9 +124,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long getMaxCallTargetOffset(long stub);
 
     @Override
-    public native String disassembleNative(byte[] code, long address);
-
-    @Override
     public native String disassembleNMethod(long nmethod);
 
     @Override
@@ -143,9 +140,6 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public native long[] getDeoptedLeafGraphIds();
-
-    @Override
-    public native String decodePC(long pc);
 
     @Override
     public native long[] getLineNumberTable(HotSpotResolvedJavaMethod method);

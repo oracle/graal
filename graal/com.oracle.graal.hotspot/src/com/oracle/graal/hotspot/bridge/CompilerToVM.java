@@ -190,8 +190,6 @@ public interface CompilerToVM {
 
     long getMaxCallTargetOffset(long stub);
 
-    String disassembleNative(byte[] code, long address);
-
     String disassembleNMethod(long nmethod);
 
     StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
@@ -203,8 +201,6 @@ public interface CompilerToVM {
     int getVtableEntryOffset(long metaspaceMethod);
 
     long[] getDeoptedLeafGraphIds();
-
-    String decodePC(long pc);
 
     long[] getLineNumberTable(HotSpotResolvedJavaMethod method);
 
