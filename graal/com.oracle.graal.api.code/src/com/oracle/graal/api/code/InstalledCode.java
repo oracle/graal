@@ -39,9 +39,20 @@ public interface InstalledCode {
     }
 
     /**
-     * Returns the method to which the compiled code belongs.
+     * Returns the method (if any) to which the installed code belongs.
      */
     ResolvedJavaMethod getMethod();
+
+    /**
+     * Returns the start address of this installed code if it is {@linkplain #isValid() valid}, 0
+     * otherwise.
+     */
+    long getStart();
+
+    /**
+     * Returns a copy of this installed code if it is {@linkplain #isValid() valid}, null otherwise.
+     */
+    byte[] getCode();
 
     /**
      * @return true if the code represented by this object is still valid, false otherwise (may

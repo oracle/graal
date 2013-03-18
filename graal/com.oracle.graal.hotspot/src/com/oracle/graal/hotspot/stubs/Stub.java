@@ -121,22 +121,21 @@ public abstract class Stub extends AbstractTemplates implements SnippetsInterfac
         final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), backend, runtime().getTarget(), stubMethod, graph, null, phasePlan, OptimisticOptimizations.ALL,
                         new SpeculationLog());
 
-        final CodeInfo[] info = new CodeInfo[1];
         stubCode = Debug.scope("CodeInstall", new Object[]{runtime(), stubMethod}, new Callable<InstalledCode>() {
 
             @Override
             public InstalledCode call() {
-                InstalledCode installedCode = runtime().addMethod(stubMethod, compResult, info);
+                InstalledCode installedCode = runtime().addMethod(stubMethod, compResult);
                 assert installedCode != null : "error installing stub " + stubMethod;
                 if (Debug.isDumpEnabled()) {
-                    Debug.dump(new Object[]{compResult, info[0]}, "After code installation");
+                    Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                 }
                 return installedCode;
             }
         });
 
         assert stubCode != null : "error installing stub " + stubMethod;
-        linkage.setAddress(info[0].getStart());
+        linkage.setAddress(stubCode.getStart());
     }
 
     /**

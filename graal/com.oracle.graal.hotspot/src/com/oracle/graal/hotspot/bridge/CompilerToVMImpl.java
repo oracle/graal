@@ -35,11 +35,11 @@ import com.oracle.graal.hotspot.meta.*;
  */
 public class CompilerToVMImpl implements CompilerToVM {
 
-    private native int installCode0(HotSpotCompilationResult comp, HotSpotInstalledCode code, HotSpotCodeInfo info, boolean[] triggeredDeoptimizations);
+    private native int installCode0(HotSpotCompilationResult comp, HotSpotInstalledCode code, boolean[] triggeredDeoptimizations);
 
     @Override
-    public CodeInstallResult installCode(HotSpotCompilationResult comp, HotSpotInstalledCode code, HotSpotCodeInfo info, SpeculationLog speculationLog) {
-        return CodeInstallResult.values()[installCode0(comp, code, info, (speculationLog == null) ? null : speculationLog.getRawMap())];
+    public CodeInstallResult installCode(HotSpotCompilationResult comp, HotSpotInstalledCode code, SpeculationLog speculationLog) {
+        return CodeInstallResult.values()[installCode0(comp, code, (speculationLog == null) ? null : speculationLog.getRawMap())];
     }
 
     @Override
@@ -125,6 +125,9 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public native String disassembleNMethod(long nmethod);
+
+    @Override
+    public native byte[] getCode(long nmethod);
 
     @Override
     public native StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);

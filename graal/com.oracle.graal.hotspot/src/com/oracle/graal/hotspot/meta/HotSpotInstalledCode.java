@@ -40,6 +40,7 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     private final HotSpotResolvedJavaMethod method;
     private final boolean isDefault;
     long nmethod;
+    long start;
 
     public HotSpotInstalledCode(HotSpotResolvedJavaMethod method, boolean isDefault) {
         this.method = method;
@@ -92,5 +93,15 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     public Object executeVarargs(Object... args) {
         assert checkArgs(args);
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethodVarargs(method.metaspaceMethod, nmethod, args);
+    }
+
+    @Override
+    public long getStart() {
+        return isValid() ? start : 0;
+    }
+
+    @Override
+    public byte[] getCode() {
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getCode(nmethod);
     }
 }
