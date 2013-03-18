@@ -472,4 +472,9 @@ public class PTXLIRGenerator extends LIRGenerator {
         // TODO Auto-generated method stub
 
     }
+
+    @Override
+    public void emitNullCheck(ValueNode v) {
+        throw new InternalError("NYI");
+    }
 }

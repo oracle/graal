@@ -297,7 +297,7 @@ public class AMD64Move {
 
     public static class NullCheckOp extends AMD64LIRInstruction {
 
-        @Use protected AllocatableValue input;
+        @Use({REG}) protected AllocatableValue input;
         @State protected LIRFrameState state;
 
         public NullCheckOp(Variable input, LIRFrameState state) {
