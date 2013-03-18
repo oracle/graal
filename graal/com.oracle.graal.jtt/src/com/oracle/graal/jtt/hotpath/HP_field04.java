@@ -23,8 +23,8 @@
 // Checkstyle: stop
 package com.oracle.graal.jtt.hotpath;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 /*
  */
@@ -55,12 +55,12 @@ public class HP_field04 extends JTTTest {
         return (int) (b + c + s + i + l + f + d);
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test", 40);
     }
 
-    @Test
+    @LongTest
     public void run1() throws Throwable {
         runTest("test", 1000);
     }

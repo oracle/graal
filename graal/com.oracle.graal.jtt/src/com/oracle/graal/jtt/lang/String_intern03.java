@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 /*
  */
@@ -33,17 +33,17 @@ public class String_intern03 extends JTTTest {
         return ("id" + i).intern().equals("id" + i);
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test", 0);
     }
 
-    @Test
+    @LongTest
     public void run1() throws Throwable {
         runTest("test", 1);
     }
 
-    @Test
+    @LongTest
     public void run2() throws Throwable {
         runTest("test", 2);
     }

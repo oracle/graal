@@ -24,8 +24,8 @@ package com.oracle.graal.jtt.jdk;
 
 import java.io.*;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 /*
  */
@@ -56,7 +56,7 @@ public class System_setOut extends JTTTest {
         System.out.println(test(10000));
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test", 10000);
     }

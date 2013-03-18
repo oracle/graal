@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 /*
  */
@@ -40,7 +40,7 @@ public class NCE_FlowSensitive05 extends JTTTest {
         return (String) arg;
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test", (Object) null);
     }

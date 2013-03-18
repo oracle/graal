@@ -24,8 +24,8 @@ package com.oracle.graal.jtt.jdk;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 import sun.misc.*;
 
@@ -55,7 +55,7 @@ public class UnsafeAccess01 extends JTTTest {
         }
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test");
     }

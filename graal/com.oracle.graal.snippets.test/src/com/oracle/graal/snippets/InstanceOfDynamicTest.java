@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.snippets;
 
-import org.junit.*;
-
+import com.oracle.graal.test.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.java.*;
 
@@ -36,7 +35,7 @@ public class InstanceOfDynamicTest extends GraalCompilerTest {
         return value;
     }
 
-    @Test
+    @LongTest
     public void test100() {
         final Object nul = null;
         test("isStringDynamic", nul);
@@ -44,7 +43,7 @@ public class InstanceOfDynamicTest extends GraalCompilerTest {
         test("isStringDynamic", Object.class);
     }
 
-    @Test
+    @LongTest
     public void test101() {
         final Object nul = null;
         test("isStringIntDynamic", nul);
@@ -52,7 +51,7 @@ public class InstanceOfDynamicTest extends GraalCompilerTest {
         test("isStringIntDynamic", Object.class);
     }
 
-    @Test
+    @LongTest
     public void test103() {
         test("isInstanceDynamic", String.class, null);
         test("isInstanceDynamic", String.class, "object");
@@ -62,7 +61,7 @@ public class InstanceOfDynamicTest extends GraalCompilerTest {
         test("isInstanceDynamic", int.class, Object.class);
     }
 
-    @Test
+    @LongTest
     public void test104() {
         test("isInstanceIntDynamic", String.class, null);
         test("isInstanceIntDynamic", String.class, "object");

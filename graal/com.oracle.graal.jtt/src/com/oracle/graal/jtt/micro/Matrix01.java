@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 /*
  */
@@ -155,32 +155,32 @@ public class Matrix01 extends JTTTest {
         ((Matrix[]) array)[val % array.length] = new Matrix(number);
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test", 0);
     }
 
-    @Test
+    @LongTest
     public void run1() throws Throwable {
         runTest("test", 1);
     }
 
-    @Test
+    @LongTest
     public void run2() throws Throwable {
         runTest("test", 2);
     }
 
-    @Test
+    @LongTest
     public void run3() throws Throwable {
         runTest("test", 3);
     }
 
-    @Test
+    @LongTest
     public void run4() throws Throwable {
         runTest("test", 4);
     }
 
-    @Test
+    @LongTest
     public void run5() throws Throwable {
         runTest("test", 5);
     }

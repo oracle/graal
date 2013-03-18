@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.jtt.hotspot;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 /**
- * @test
+ * @LongTest
  * @bug 6196102
  * @summary Integer seems to be greater than Integer.MAX_VALUE
  * 
@@ -48,7 +48,7 @@ public class Test6196102 extends JTTTest {
         return "ok";
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test");
     }

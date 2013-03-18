@@ -24,12 +24,12 @@ package com.oracle.graal.snippets;
 
 import java.util.*;
 
-import org.junit.*;
 
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.code.CompilationResult.Site;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
@@ -57,7 +57,7 @@ public class InstanceOfTest extends TypeCheckTest {
         }
     }
 
-    @Test
+    @LongTest
     public void test1() {
         test("isString", profile(), "object");
         test("isString", profile(String.class), "object");
@@ -66,7 +66,7 @@ public class InstanceOfTest extends TypeCheckTest {
         test("isString", profile(String.class), Object.class);
     }
 
-    @Test
+    @LongTest
     public void test2() {
         test("isStringInt", profile(), "object");
         test("isStringInt", profile(String.class), "object");
@@ -75,7 +75,7 @@ public class InstanceOfTest extends TypeCheckTest {
         test("isStringInt", profile(String.class), Object.class);
     }
 
-    @Test
+    @LongTest
     public void test2_1() {
         test("isStringIntComplex", profile(), "object");
         test("isStringIntComplex", profile(String.class), "object");
@@ -84,7 +84,7 @@ public class InstanceOfTest extends TypeCheckTest {
         test("isStringIntComplex", profile(String.class), Object.class);
     }
 
-    @Test
+    @LongTest
     public void test3() {
         Throwable throwable = new Exception();
         test("isThrowable", profile(), throwable);
@@ -96,7 +96,7 @@ public class InstanceOfTest extends TypeCheckTest {
         test("isThrowable", profile(Exception.class, Error.class), Object.class);
     }
 
-    @Test
+    @LongTest
     public void test3_1() {
         onlyFirstIsException(new Exception(), new Error());
         test("onlyFirstIsException", profile(), new Exception(), new Error());
@@ -105,7 +105,7 @@ public class InstanceOfTest extends TypeCheckTest {
         test("onlyFirstIsException", profile(), new Error(), new Error());
     }
 
-    @Test
+    @LongTest
     public void test4() {
         Throwable throwable = new Exception();
         test("isThrowableInt", profile(), throwable);
@@ -117,7 +117,7 @@ public class InstanceOfTest extends TypeCheckTest {
         test("isThrowableInt", profile(Exception.class, Error.class), Object.class);
     }
 
-    @Test
+    @LongTest
     public void test5() {
         Map map = new HashMap<>();
         test("isMap", profile(), map);
@@ -129,7 +129,7 @@ public class InstanceOfTest extends TypeCheckTest {
         test("isMap", profile(TreeMap.class, HashMap.class), Object.class);
     }
 
-    @Test
+    @LongTest
     public void test6() {
         Map map = new HashMap<>();
         test("isMapInt", profile(), map);
@@ -141,7 +141,7 @@ public class InstanceOfTest extends TypeCheckTest {
         test("isMapInt", profile(TreeMap.class, HashMap.class), Object.class);
     }
 
-    @Test
+    @LongTest
     public void test7() {
         Object o = new Depth13();
         test("isDepth12", profile(), o);
@@ -154,7 +154,7 @@ public class InstanceOfTest extends TypeCheckTest {
         test("isDepth12", profile(Depth13.class, Depth14.class), o);
     }
 
-    @Test
+    @LongTest
     public void test8() {
         Object o = new Depth13();
         test("isDepth12Int", profile(), o);
@@ -260,7 +260,7 @@ public class InstanceOfTest extends TypeCheckTest {
         }
     }
 
-    @Test
+    @LongTest
     public void test9() {
         MyCall callAt63 = new MyCall(63);
         MyMark markAt63 = new MyMark(63);
@@ -277,7 +277,7 @@ public class InstanceOfTest extends TypeCheckTest {
         return s1.offset - s2.offset;
     }
 
-    @Test
+    @LongTest
     public void test10() {
         Mark[] noMarks = {};
         Call callAt63 = new Call(null, 63, 5, true, null);
@@ -302,7 +302,7 @@ public class InstanceOfTest extends TypeCheckTest {
      * The test exists in this source file as the transformation was originally motivated by the
      * need to remove use of special JumpNodes in the {@code InstanceOfSnippets}.
      */
-    @Test
+    @LongTest
     public void test_removeIntermediateMaterialization() {
         List<String> list = Arrays.asList("1", "2", "3", "4");
         test("removeIntermediateMaterialization", profile(), list, "2", "yes", "no");
@@ -357,7 +357,7 @@ public class InstanceOfTest extends TypeCheckTest {
         return o instanceof D[];
     }
 
-    @Test
+    @LongTest
     public void testArray() {
         Object aArray = new A[10];
         test("isArrayOfA", aArray);

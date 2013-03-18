@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.jtt.loop;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 public class LoopParseLong extends JTTTest {
 
@@ -79,7 +79,7 @@ public class LoopParseLong extends JTTTest {
         return negative ? result : -result;
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test", "7", 10);
         runTest("test", "-100", 10);

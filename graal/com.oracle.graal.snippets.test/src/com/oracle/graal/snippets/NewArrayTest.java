@@ -25,6 +25,7 @@ package com.oracle.graal.snippets;
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.test.*;
 
 /**
  * Tests the implementation of {@code [A]NEWARRAY}.
@@ -57,7 +58,7 @@ public class NewArrayTest extends GraalCompilerTest {
         }
     }
 
-    @Test
+    @LongTest
     public void test1() {
         for (String type : new String[]{"Byte", "Char", "Short", "Int", "Float", "Long", "Double", "String"}) {
             test("new" + type + "Array7");
