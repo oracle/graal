@@ -28,7 +28,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -38,8 +37,15 @@ import com.oracle.graal.nodes.type.*;
 public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType, Virtualizable {
 
     public ValueAnchorNode(ValueNode... values) {
-        super(StampFactory.dependency(), values);
+        this(false, values);
     }
+
+    public ValueAnchorNode(boolean permanent, ValueNode... values) {
+        super(StampFactory.dependency(), values);
+        this.permanent = permanent;
+    }
+
+    private final boolean permanent;
 
     @Override
     public void generate(LIRGeneratorTool gen) {
@@ -54,6 +60,9 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
+        if (permanent) {
+            return this;
+        }
         if (this.predecessor() instanceof ValueAnchorNode) {
             ValueAnchorNode previousAnchor = (ValueAnchorNode) this.predecessor();
             if (previousAnchor.usages().isEmpty()) { // avoid creating cycles
@@ -88,12 +97,8 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        // don't process this node if it is anchoring the return value
-        if (next() instanceof MonitorExitNode) {
-            MonitorExitNode monitorExit = (MonitorExitNode) next();
-            if (monitorExit.stateAfter() != null && monitorExit.stateAfter().bci == FrameState.AFTER_BCI && monitorExit.next() instanceof ReturnNode) {
-                return;
-            }
+        if (permanent) {
+            return;
         }
         for (ValueNode node : dependencies().nonNull().and(isNotA(BeginNode.class))) {
             State state = tool.getObjectState(node);
