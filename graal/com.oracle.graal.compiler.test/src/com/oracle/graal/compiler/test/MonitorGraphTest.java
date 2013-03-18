@@ -54,7 +54,7 @@ public class MonitorGraphTest extends GraalCompilerTest {
         return 1;
     }
 
-    @Test(expected = AssertionError.class)
+    @Test
     public void test1() {
         test("test1Snippet");
     }
