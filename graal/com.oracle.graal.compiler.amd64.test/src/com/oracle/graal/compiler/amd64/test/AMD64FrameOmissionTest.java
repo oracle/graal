@@ -95,8 +95,6 @@ public class AMD64FrameOmissionTest extends GraalCompilerTest {
         });
     }
 
-    private static boolean DEBUG = false;
-
     private void testHelper(String name, CodeGenerator gen) {
         Method method = getMethod(name);
         ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
@@ -117,10 +115,6 @@ public class AMD64FrameOmissionTest extends GraalCompilerTest {
 
         byte[] expectedCode = asm.codeBuffer.close(true);
         byte[] actualCode = installedCode.getCode();
-
-        if (DEBUG) {
-            System.out.println(Graal.getRequiredCapability(DisassemblerProvider.class).disassemble(installedCode));
-        }
 
         Assert.assertArrayEquals(expectedCode, actualCode);
     }
