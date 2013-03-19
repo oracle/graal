@@ -42,7 +42,7 @@ public class HotSpotSnippetInstaller extends SnippetInstaller {
     }
 
     @Override
-    protected void installMethodSubstitution(Method originalMethod, Method substituteMethod) {
+    protected void installMethodSubstitution(Member originalMethod, Method substituteMethod) {
         if (substituteMethod.getDeclaringClass() == IntegerSubstitutions.class || substituteMethod.getDeclaringClass() == LongSubstitutions.class) {
             if (substituteMethod.getName().equals("bitCount")) {
                 if (!config.usePopCountInstruction) {
