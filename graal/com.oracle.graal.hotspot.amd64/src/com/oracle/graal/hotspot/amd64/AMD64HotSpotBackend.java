@@ -203,11 +203,5 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             asm.bind(unverifiedStub);
             AMD64Call.directJmp(tasm, asm, runtime().lookupRuntimeCall(IC_MISS_HANDLER));
         }
-
-        for (int i = 0; i < GraalOptions.MethodEndBreakpointGuards; ++i) {
-            asm.int3();
-        }
-
     }
-
 }
