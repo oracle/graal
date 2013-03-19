@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.amd64.test;
 import static com.oracle.graal.amd64.AMD64.*;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import org.junit.*;
 
@@ -109,12 +110,12 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
         for (int i = 0; i < GraalOptions.MethodEndBreakpointGuards; ++i) {
             asm.int3();
         }
-        while ((asm.codeBuffer.position() % 8) != 0) {
-            asm.hlt();
-        }
 
         byte[] expectedCode = asm.codeBuffer.close(true);
-        byte[] actualCode = installedCode.getCode();
+
+        // Only compare up to expectedCode.length bytes to ignore
+        // padding instructions adding during code installation
+        byte[] actualCode = Arrays.copyOf(installedCode.getCode(), expectedCode.length);
 
         Assert.assertArrayEquals(expectedCode, actualCode);
     }
