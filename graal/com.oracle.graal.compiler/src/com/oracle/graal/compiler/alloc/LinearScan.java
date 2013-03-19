@@ -1051,8 +1051,7 @@ public final class LinearScan {
     static RegisterPriority registerPriorityOfOutputOperand(LIRInstruction op) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
-            if (isStackSlot(move.getInput()) && move.getInput().getKind() != Kind.Object) {
-                // method argument (condition must be equal to handleMethodArguments)
+            if (optimizeMethodArgument(move.getInput())) {
                 return RegisterPriority.None;
             }
         }
@@ -1073,6 +1072,10 @@ public final class LinearScan {
         return RegisterPriority.MustHaveRegister;
     }
 
+    private static boolean optimizeMethodArgument(Value value) {
+        return isStackSlot(value) && asStackSlot(value).isInCallerFrame() && (GraalOptions.IncomingMethodArgumentsGCSafe || value.getKind() != Kind.Object);
+    }
+
     /**
      * Optimizes moves related to incoming stack based arguments. The interval for the destination
      * of such moves is assigned the stack slot (which is in the caller's frame) as its spill slot.
@@ -1080,8 +1083,8 @@ public final class LinearScan {
     void handleMethodArguments(LIRInstruction op) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
-            if (isStackSlot(move.getInput()) && move.getInput().getKind() != Kind.Object) {
-                StackSlot slot = (StackSlot) move.getInput();
+            if (optimizeMethodArgument(move.getInput())) {
+                StackSlot slot = asStackSlot(move.getInput());
                 if (GraalOptions.DetailedAsserts) {
                     assert op.id() > 0 : "invalid id";
                     assert blockForId(op.id()).getPredecessorCount() == 0 : "move from stack must be in first block";
