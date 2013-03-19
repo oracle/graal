@@ -358,8 +358,6 @@ public class SnippetIntrinsificationPhase extends Phase {
                     } else if (checkCastUsage instanceof MethodCallTargetNode) {
                         MethodCallTargetNode checkCastCallTarget = (MethodCallTargetNode) checkCastUsage;
                         if (pool.isUnboxingMethod(checkCastCallTarget.targetMethod())) {
-                            assert pool.isUnboxingMethod(checkCastCallTarget.targetMethod()) : "checkcast at " + sourceLocation(checkCastNode) + " not used by an unboxing method but by a call at " +
-                                            sourceLocation(checkCastCallTarget.usages().first()) + " to " + checkCastCallTarget.targetMethod();
                             Invoke invokeNode = checkCastCallTarget.invoke();
                             invokeNode.node().replaceAtUsages(newInstance);
                             if (invokeNode instanceof InvokeWithExceptionNode) {
