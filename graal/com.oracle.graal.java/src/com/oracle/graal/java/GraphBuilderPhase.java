@@ -962,7 +962,7 @@ public class GraphBuilderPhase extends Phase {
         }
     }
 
-    private void emitExplicitExceptions(ValueNode receiver, ValueNode outOfBoundsIndex) {
+    protected void emitExplicitExceptions(ValueNode receiver, ValueNode outOfBoundsIndex) {
         assert receiver != null;
         if (optimisticOpts.useExceptionProbabilityForOperations() && profilingInfo.getExceptionSeen(bci()) == ExceptionSeen.FALSE) {
             return;
