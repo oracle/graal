@@ -160,14 +160,9 @@ public class SnippetInstaller {
             original = runtime.lookupJavaConstructor((Constructor) originalMethod);
         }
         try {
-            Debug.log("inlinable substitution: " + MetaUtil.format("%H.%n(%p)", original) + " --> " + MetaUtil.format("%H.%n(%p)", substitute));
+            Debug.log("substitution: " + MetaUtil.format("%H.%n(%p)", original) + " --> " + MetaUtil.format("%H.%n(%p)", substitute));
             StructuredGraph graph = makeGraph(substitute, inliningPolicy(substitute));
             Object oldValue = original.getCompilerStorage().put(Graph.class, graph);
-            assert oldValue == null;
-
-            Debug.log("compilable substitution: " + MetaUtil.format("%H.%n(%p)", original) + " --> " + MetaUtil.format("%H.%n(%p)", substitute));
-            graph = makeGraph(substitute, inliningPolicy(substitute));
-            oldValue = original.getCompilerStorage().put(MethodSubstitution.class, graph);
             assert oldValue == null;
         } finally {
             substitute = null;
