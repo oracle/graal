@@ -77,8 +77,8 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
         });
     }
 
-    public static double test3snippet(double x) {
-        return 42.0D / x;
+    public static long test3snippet(long x) {
+        return 1 + x;
     }
 
     @Test
@@ -87,9 +87,8 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
 
             @Override
             public void generateCode(AMD64Assembler asm) {
-                asm.movsd(xmm1, new AMD64Address(rip, -40));
-                asm.divsd(xmm1, xmm0);
-                asm.movapd(xmm0, xmm1);
+                asm.addq(rsi, 1);
+                asm.movq(rax, rsi);
                 asm.ret(0);
             }
         });
