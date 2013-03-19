@@ -64,7 +64,9 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
             Debug.log("Visiting %s followed by %s", mergeNode, deopt);
             List<BeginNode> begins = new ArrayList<>();
             for (EndNode end : mergeNode.forwardEnds()) {
-                begins.add(findBeginNode(end));
+                BeginNode newBeginNode = findBeginNode(end);
+                assert !begins.contains(newBeginNode);
+                begins.add(newBeginNode);
             }
             for (BeginNode begin : begins) {
                 assert !begin.isDeleted();
@@ -97,8 +99,6 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         // We could not convert the control split - at least cut off control flow after the split.
         FixedNode next = deoptBegin.next();
         if (next != deopt) {
-            FixedWithNextNode pred = (FixedWithNextNode) deopt.predecessor();
-            pred.setNext(null);
             DeoptimizeNode newDeoptNode = (DeoptimizeNode) deopt.clone(graph);
             deoptBegin.setNext(newDeoptNode);
             assert deoptBegin == newDeoptNode.predecessor();
