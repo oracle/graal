@@ -105,7 +105,6 @@ public final class GraalOptions {
     public static int     LoopUnswitchUncertaintyBoost       = 5;
 
     // debugging settings
-    public static int     MethodEndBreakpointGuards          = 2;
     public static boolean ZapStackOnMethodEntry              = ____;
     public static boolean DeoptALot                          = ____;
     public static boolean VerifyPhases                       = true;

@@ -20,11 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.amd64.test;
+package com.oracle.graal.hotspot.amd64.test;
 
 import static com.oracle.graal.amd64.AMD64.*;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import org.junit.*;
 
@@ -33,12 +34,11 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.phases.*;
 
 /**
  * Ensures that frame omission works in cases where it is expected to.
  */
-public class AMD64FrameOmissionTest extends GraalCompilerTest {
+public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
 
     interface CodeGenerator {
 
@@ -77,8 +77,8 @@ public class AMD64FrameOmissionTest extends GraalCompilerTest {
         });
     }
 
-    public static double test3snippet(double x) {
-        return 42.0D / x;
+    public static long test3snippet(long x) {
+        return 1 + x;
     }
 
     @Test
@@ -87,9 +87,8 @@ public class AMD64FrameOmissionTest extends GraalCompilerTest {
 
             @Override
             public void generateCode(AMD64Assembler asm) {
-                asm.movsd(xmm1, new AMD64Address(rip, -40));
-                asm.divsd(xmm1, xmm0);
-                asm.movapd(xmm0, xmm1);
+                asm.addq(rsi, 1);
+                asm.movq(rax, rsi);
                 asm.ret(0);
             }
         });
@@ -106,15 +105,11 @@ public class AMD64FrameOmissionTest extends GraalCompilerTest {
         AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
 
         gen.generateCode(asm);
-        for (int i = 0; i < GraalOptions.MethodEndBreakpointGuards; ++i) {
-            asm.int3();
-        }
-        while ((asm.codeBuffer.position() % 8) != 0) {
-            asm.hlt();
-        }
-
         byte[] expectedCode = asm.codeBuffer.close(true);
-        byte[] actualCode = installedCode.getCode();
+
+        // Only compare up to expectedCode.length bytes to ignore
+        // padding instructions adding during code installation
+        byte[] actualCode = Arrays.copyOf(installedCode.getCode(), expectedCode.length);
 
         Assert.assertArrayEquals(expectedCode, actualCode);
     }
