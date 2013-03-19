@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "Deopt", nameTemplate = "Deopt {p#reason/s}")
-public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
+public class DeoptimizeNode extends ControlSinkNode implements Node.IterableNodeType, LIRLowerable {
 
     private final DeoptimizationAction action;
     private final DeoptimizationReason reason;

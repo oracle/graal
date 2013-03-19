@@ -443,11 +443,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                     queueSuccessors(current);
                 } else if (current instanceof EndNode) {
                     queueMerge((EndNode) current);
-                } else if (current instanceof DeoptimizeNode) {
-                    // nothing todo
-                } else if (current instanceof ReturnNode) {
-                    // nothing todo
-                } else if (current instanceof UnwindNode) {
+                } else if (current instanceof ControlSinkNode) {
                     // nothing todo
                 } else if (current instanceof ControlSplitNode) {
                     queueSuccessors(current);

@@ -22,36 +22,11 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-/**
- * Unwind takes an exception object, destroys the current stack frame and passes the exception
- * object to the system's exception dispatch code.
- */
-public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerable, Node.IterableNodeType {
+public abstract class ControlSinkNode extends FixedNode {
 
-    @Input private ValueNode exception;
-
-    public ValueNode exception() {
-        return exception;
-    }
-
-    public UnwindNode(ValueNode exception) {
-        super(StampFactory.forVoid());
-        assert exception == null || exception.kind() == Kind.Object;
-        this.exception = exception;
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.emitUnwind(gen.operand(exception()));
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+    public ControlSinkNode(Stamp stamp) {
+        super(stamp);
     }
 }
