@@ -299,8 +299,18 @@ public class ConditionalEliminationPhase extends Phase {
 
         public ConditionalElimination(FixedNode start, State initialState) {
             super(start, initialState);
-            this.trueConstant = LogicConstantNode.tautology(graph);
-            this.falseConstant = LogicConstantNode.contradiction(graph);
+            trueConstant = LogicConstantNode.tautology(graph);
+            falseConstant = LogicConstantNode.contradiction(graph);
+        }
+
+        @Override
+        public void finished() {
+            if (trueConstant.usages().isEmpty()) {
+                graph.removeFloating(trueConstant);
+            }
+            if (falseConstant.usages().isEmpty()) {
+                graph.removeFloating(falseConstant);
+            }
         }
 
         private void registerCondition(boolean isTrue, LogicNode condition, ValueNode anchor) {
