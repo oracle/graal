@@ -467,13 +467,17 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             }
         }
 
-        append(new ParametersOp(params));
+        emitIncomingValues(params);
 
         for (LocalNode local : graph.getNodes(LocalNode.class)) {
             Value param = params[local.index()];
             assert param.getKind() == local.kind().getStackKind();
             setResult(local, emitMove(param));
         }
+    }
+
+    public void emitIncomingValues(Value[] params) {
+        append(new ParametersOp(params));
     }
 
     /**

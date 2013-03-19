@@ -34,6 +34,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.Snippet.Fold;
+import com.oracle.graal.snippets.nodes.*;
 import com.oracle.graal.word.*;
 
 //JaCoCo Exclude
@@ -338,22 +339,22 @@ public class HotSpotSnippetUtils {
      * Gets the value of the stack pointer register as a Word.
      */
     public static Word stackPointer() {
-        return HotSpotSnippetUtils.registerAsWord(stackPointerRegister());
+        return HotSpotSnippetUtils.registerAsWord(stackPointerRegister(), true, false);
     }
 
     /**
      * Gets the value of the thread register as a Word.
      */
     public static Word thread() {
-        return HotSpotSnippetUtils.registerAsWord(threadRegister());
+        return HotSpotSnippetUtils.registerAsWord(threadRegister(), true, false);
     }
 
     public static Word loadWordFromObject(Object object, int offset) {
         return loadWordFromObjectIntrinsic(object, 0, offset, wordKind());
     }
 
-    @NodeIntrinsic(value = RegisterNode.class, setStampFromReturnType = true)
-    public static native Word registerAsWord(@ConstantNodeParameter Register register);
+    @NodeIntrinsic(value = ReadRegisterNode.class, setStampFromReturnType = true)
+    public static native Word registerAsWord(@ConstantNodeParameter Register register, @ConstantNodeParameter boolean directUse, @ConstantNodeParameter boolean incoming);
 
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
     private static native Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind);

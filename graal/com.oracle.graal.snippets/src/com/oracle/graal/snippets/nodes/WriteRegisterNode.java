@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.snippets.nodes;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -30,35 +30,31 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Access the value of a specific register.
+ * Changes the value of a specific register.
  */
-@NodeInfo(nameTemplate = "Register %{p#register}")
-public final class RegisterNode extends FixedWithNextNode implements LIRLowerable {
+@NodeInfo(nameTemplate = "WriteRegister %{p#register}")
+public final class WriteRegisterNode extends FixedWithNextNode implements LIRLowerable {
 
+    /**
+     * The fixed register to access.
+     */
     private final Register register;
 
-    public RegisterNode(Register register, Kind kind) {
-        super(StampFactory.forKind(kind));
-        this.register = register;
-    }
+    /**
+     * The new value assigned to the register.
+     */
+    @Input private ValueNode value;
 
-    public RegisterNode(Register register) {
-        super(StampFactory.object());
+    public WriteRegisterNode(Register register, ValueNode value) {
+        super(StampFactory.forVoid());
         this.register = register;
+        this.value = value;
     }
 
     @Override
     public void generate(LIRGeneratorTool generator) {
-        Value result;
-        if (generator.attributes(register).isAllocatable()) {
-            // The register allocator would prefer us not to tie up an allocatable
-            // register for the complete lifetime of this node.
-            result = generator.newVariable(kind());
-            generator.emitMove(result, register.asValue(kind()));
-        } else {
-            result = register.asValue(kind());
-        }
-        generator.setResult(this, result);
+        Value val = generator.operand(value);
+        generator.emitMove(val, register.asValue(val.getKind()));
     }
 
     @Override
