@@ -200,7 +200,19 @@ public class FloatingReadPhase extends Phase {
 
         @Override
         protected MemoryMap afterSplit(BeginNode node, MemoryMap oldState) {
-            return new MemoryMap(oldState);
+            MemoryMap result = new MemoryMap(oldState);
+            if (node.predecessor() instanceof InvokeWithExceptionNode) {
+                /*
+                 * InvokeWithException cannot be the lastLocationAccess for a FloatingReadNode.
+                 * Since it is both the invoke and a control flow split, the scheduler cannot
+                 * schedule anything immediately the invoke. It can only schedule in the normal or
+                 * exceptional successor - and we have to tell the scheduler here which side it
+                 * needs to choose by putting in the location identity on both successors.
+                 */
+                InvokeWithExceptionNode checkpoint = (InvokeWithExceptionNode) node.predecessor();
+                result.lastMemorySnapshot.put(checkpoint.getLocationIdentity(), node);
+            }
+            return result;
         }
 
         @Override
