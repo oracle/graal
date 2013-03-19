@@ -151,32 +151,11 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             cfgPrinter.printCFG(message, Arrays.asList(cfgPrinter.cfg.getBlocks()));
 
         } else if (object instanceof CompilationResult) {
-            final CompilationResult tm = (CompilationResult) object;
-            final byte[] code = Arrays.copyOf(tm.getTargetCode(), tm.getTargetCodeSize());
-            CodeInfo info = new CodeInfo() {
-
-                public ResolvedJavaMethod getMethod() {
-                    return curMethod;
-                }
-
-                public long getStart() {
-                    return 0L;
-                }
-
-                public byte[] getCode() {
-                    return code;
-                }
-
-                @Override
-                public String toString() {
-                    int size = code == null ? 0 : code.length;
-                    return getMethod() + " installed code; length = " + size;
-                }
-            };
-            cfgPrinter.printMachineCode(runtime.disassemble(info, tm), message);
-        } else if (isCompilationResultAndCodeInfo(object)) {
+            final CompilationResult compResult = (CompilationResult) object;
+            cfgPrinter.printMachineCode(runtime.disassemble(compResult, null), message);
+        } else if (isCompilationResultAndInstalledCode(object)) {
             Object[] tuple = (Object[]) object;
-            cfgPrinter.printMachineCode(runtime.disassemble((CodeInfo) tuple[1], (CompilationResult) tuple[0]), message);
+            cfgPrinter.printMachineCode(runtime.disassemble((CompilationResult) tuple[0], (InstalledCode) tuple[1]), message);
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);
 
@@ -189,10 +168,10 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         cfgPrinter.flush();
     }
 
-    private static boolean isCompilationResultAndCodeInfo(Object object) {
+    private static boolean isCompilationResultAndInstalledCode(Object object) {
         if (object instanceof Object[]) {
             Object[] tuple = (Object[]) object;
-            if (tuple.length == 2 && tuple[0] instanceof CompilationResult && tuple[1] instanceof CodeInfo) {
+            if (tuple.length == 2 && tuple[0] instanceof CompilationResult && tuple[1] instanceof InstalledCode) {
                 return true;
             }
         }

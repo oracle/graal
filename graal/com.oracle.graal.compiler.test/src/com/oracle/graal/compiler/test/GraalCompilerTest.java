@@ -413,12 +413,12 @@ public abstract class GraalCompilerTest extends GraalTest {
 
             @Override
             public InstalledCode call() throws Exception {
-                final CodeInfo[] info = Debug.isDumpEnabled() ? new CodeInfo[1] : null;
-                InstalledCode installedMethod = runtime.addMethod(method, compResult, info);
-                if (info != null) {
-                    Debug.dump(new Object[]{compResult, info[0]}, "After code installation");
+                InstalledCode installedCode = runtime.addMethod(method, compResult);
+                if (Debug.isDumpEnabled()) {
+                    Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                 }
-                return installedMethod;
+
+                return installedCode;
             }
         });
     }

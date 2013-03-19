@@ -177,15 +177,14 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         stats.finish(method);
     }
 
-    private void installMethod(final CompilationResult tm) {
+    private void installMethod(final CompilationResult compResult) {
         Debug.scope("CodeInstall", new Object[]{new DebugDumpScope(String.valueOf(id), true), graalRuntime.getRuntime(), method}, new Runnable() {
 
             @Override
             public void run() {
-                final CodeInfo[] info = Debug.isDumpEnabled() ? new CodeInfo[1] : null;
-                graalRuntime.getRuntime().installMethod(method, entryBCI, tm, info);
-                if (info != null) {
-                    Debug.dump(new Object[]{tm, info[0]}, "After code installation");
+                HotSpotInstalledCode installedCode = graalRuntime.getRuntime().installMethod(method, entryBCI, compResult);
+                if (Debug.isDumpEnabled()) {
+                    Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                 }
             }
 
