@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
  * Unwind takes an exception object, destroys the current stack frame and passes the exception
  * object to the system's exception dispatch code.
  */
-public final class UnwindNode extends FixedNode implements LIRLowerable, Node.IterableNodeType {
+public final class UnwindNode extends FixedNode implements Lowerable, LIRLowerable, Node.IterableNodeType {
 
     @Input private ValueNode exception;
 
@@ -48,5 +48,10 @@ public final class UnwindNode extends FixedNode implements LIRLowerable, Node.It
     @Override
     public void generate(LIRGeneratorTool gen) {
         gen.emitUnwind(gen.operand(exception()));
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 }

@@ -560,7 +560,7 @@ public class SnippetTemplate {
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      * @return the map of duplicated nodes (original -> duplicate)
      */
-    public Map<Node, Node> instantiate(MetaAccessProvider runtime, FixedWithNextNode replacee, UsageReplacer replacer, SnippetTemplate.Arguments args) {
+    public Map<Node, Node> instantiate(MetaAccessProvider runtime, FixedNode replacee, UsageReplacer replacer, SnippetTemplate.Arguments args) {
 
         // Inline the snippet nodes, replacing parameters with the given args in the process
         String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
@@ -575,8 +575,12 @@ public class SnippetTemplate {
         // Re-wire the control flow graph around the replacee
         FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
         replacee.replaceAtPredecessor(firstCFGNodeDuplicate);
-        FixedNode next = replacee.next();
-        replacee.setNext(null);
+        FixedNode next = null;
+        if (replacee instanceof FixedWithNextNode) {
+            FixedWithNextNode fwn = (FixedWithNextNode) replacee;
+            next = fwn.next();
+            fwn.setNext(null);
+        }
 
         if (replacee instanceof StateSplit) {
             for (StateSplit sideEffectNode : sideEffectNodes) {
