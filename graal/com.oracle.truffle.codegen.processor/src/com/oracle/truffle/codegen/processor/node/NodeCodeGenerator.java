@@ -1193,11 +1193,11 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             builder.tree(createExecuteChildren(builder, specialization));
 
+            CodeTree executeNode;
             if (specialization.isUninitialized()) {
                 builder.tree(createSpecializeCall(builder, specialization));
             }
-
-            CodeTree executeNode = createExecute(builder, specialization);
+            executeNode = createExecute(builder, specialization);
 
             SpecializationData next = specialization.findNextSpecialization();
             CodeTree returnSpecialized = null;
@@ -1243,9 +1243,15 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 builder.startTryBlock();
             }
 
-            if (specialization.getMethod() == null && !node.needsRewrites(context)) {
+            if (specialization.isUninitialized()) {
+                String genericMethodName = generatedGenericMethodName(null);
+                builder.startReturn().startCall(factoryClassName(node), genericMethodName);
+                builder.string("this");
+                addInternalValueParameterNames(builder, specialization, null, true, true);
+                builder.end().end();
+            } else if (specialization.getMethod() == null && !node.needsRewrites(context)) {
                 emitEncounteredSynthetic(builder);
-            } else if (specialization.isUninitialized() || specialization.isGeneric()) {
+            } else if (specialization.isGeneric()) {
                 String genericMethodName;
                 if (!specialization.isUseSpecializationsForGeneric()) {
                     genericMethodName = generatedGenericMethodName(specialization);
