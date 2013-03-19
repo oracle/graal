@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.amd64.test;
+package com.oracle.graal.hotspot.amd64.test;
 
 import static com.oracle.graal.amd64.AMD64.*;
 
@@ -38,7 +38,7 @@ import com.oracle.graal.phases.*;
 /**
  * Ensures that frame omission works in cases where it is expected to.
  */
-public class AMD64FrameOmissionTest extends GraalCompilerTest {
+public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
 
     interface CodeGenerator {
 
