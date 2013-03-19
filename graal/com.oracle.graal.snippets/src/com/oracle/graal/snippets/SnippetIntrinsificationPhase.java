@@ -357,20 +357,25 @@ public class SnippetIntrinsificationPhase extends Phase {
                         graph.removeFixed(valueAnchorNode);
                     } else if (checkCastUsage instanceof MethodCallTargetNode) {
                         MethodCallTargetNode checkCastCallTarget = (MethodCallTargetNode) checkCastUsage;
-                        assert pool.isUnboxingMethod(checkCastCallTarget.targetMethod()) : "checkcast at " + sourceLocation(checkCastNode) + " not used by an unboxing method but by a call at " +
-                                        sourceLocation(checkCastCallTarget.usages().first()) + " to " + checkCastCallTarget.targetMethod();
-                        Invoke invokeNode = checkCastCallTarget.invoke();
-                        invokeNode.node().replaceAtUsages(newInstance);
-                        if (invokeNode instanceof InvokeWithExceptionNode) {
-                            // Destroy exception edge & clear stateAfter.
-                            InvokeWithExceptionNode invokeWithExceptionNode = (InvokeWithExceptionNode) invokeNode;
+                        if (pool.isUnboxingMethod(checkCastCallTarget.targetMethod())) {
+                            Invoke invokeNode = checkCastCallTarget.invoke();
+                            invokeNode.node().replaceAtUsages(newInstance);
+                            if (invokeNode instanceof InvokeWithExceptionNode) {
+                                // Destroy exception edge & clear stateAfter.
+                                InvokeWithExceptionNode invokeWithExceptionNode = (InvokeWithExceptionNode) invokeNode;
 
-                            invokeWithExceptionNode.killExceptionEdge();
-                            graph.removeSplit(invokeWithExceptionNode, invokeWithExceptionNode.next());
+                                invokeWithExceptionNode.killExceptionEdge();
+                                graph.removeSplit(invokeWithExceptionNode, invokeWithExceptionNode.next());
+                            } else {
+                                graph.removeFixed((InvokeNode) invokeNode);
+                            }
+                            checkCastCallTarget.safeDelete();
                         } else {
-                            graph.removeFixed((InvokeNode) invokeNode);
+                            assert checkCastCallTarget.targetMethod().getAnnotation(NodeIntrinsic.class) != null : "checkcast at " + sourceLocation(checkCastNode) +
+                                            " not used by an unboxing method or node intrinsic, but by a call at " + sourceLocation(checkCastCallTarget.usages().first()) + " to " +
+                                            checkCastCallTarget.targetMethod();
+                            checkCastUsage.replaceFirstInput(checkCastNode, checkCastNode.object());
                         }
-                        checkCastCallTarget.safeDelete();
                     } else if (checkCastUsage instanceof FrameState) {
                         checkCastUsage.replaceFirstInput(checkCastNode, null);
                     } else if (checkCastUsage instanceof ReturnNode && checkCastNode.object().stamp() == StampFactory.forNodeIntrinsic()) {

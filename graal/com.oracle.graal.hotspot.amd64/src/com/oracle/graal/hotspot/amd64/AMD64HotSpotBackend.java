@@ -64,7 +64,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
-        return new HotSpotAMD64LIRGenerator(graph, runtime(), target, frameMap, method, lir);
+        return new AMD64HotSpotLIRGenerator(graph, runtime(), target, frameMap, method, lir);
     }
 
     /**
@@ -141,7 +141,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         // - has no callee-saved registers
         // - has no incoming arguments passed on the stack
         // - has no instructions with debug info
-        HotSpotAMD64LIRGenerator gen = (HotSpotAMD64LIRGenerator) lirGen;
+        AMD64HotSpotLIRGenerator gen = (AMD64HotSpotLIRGenerator) lirGen;
         FrameMap frameMap = gen.frameMap;
         LIR lir = gen.lir;
         boolean omitFrame = CanOmitFrame && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
@@ -203,11 +203,5 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             asm.bind(unverifiedStub);
             AMD64Call.directJmp(tasm, asm, runtime().lookupRuntimeCall(IC_MISS_HANDLER));
         }
-
-        for (int i = 0; i < GraalOptions.MethodEndBreakpointGuards; ++i) {
-            asm.int3();
-        }
-
     }
-
 }
