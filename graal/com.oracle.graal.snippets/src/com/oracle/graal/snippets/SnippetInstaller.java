@@ -126,13 +126,17 @@ public class SnippetInstaller {
                 String originalName = originalName(substituteMethod, methodSubstitution.value());
                 Class[] originalParameters = originalParameters(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
                 Member originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
-                installMethodSubstitution(originalMethod, substituteMethod);
+                if (originalMethod != null) {
+                    installMethodSubstitution(originalMethod, substituteMethod);
+                }
             }
             if (macroSubstitution != null) {
                 String originalName = originalName(substituteMethod, macroSubstitution.value());
                 Class[] originalParameters = originalParameters(substituteMethod, macroSubstitution.signature(), macroSubstitution.isStatic());
                 Member originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
-                installMacroSubstitution(originalMethod, macroSubstitution.macro());
+                if (originalMethod != null) {
+                    installMacroSubstitution(originalMethod, macroSubstitution.macro());
+                }
             }
         }
     }
@@ -333,13 +337,23 @@ public class SnippetInstaller {
         }
     }
 
-    private static Class resolveType(String className) {
+    /**
+     * Resolves a name to a class.
+     * 
+     * @param className the name of the class to resolve
+     * @param optional if true, resolution failure returns null
+     * @return the resolved class or null if resolution fails and {@code optional} is true
+     */
+    private static Class resolveType(String className, boolean optional) {
         try {
             // Need to use launcher class path to handle classes
             // that are not on the boot class path
             ClassLoader cl = Launcher.getLauncher().getClassLoader();
             return Class.forName(className, false, cl);
         } catch (ClassNotFoundException e) {
+            if (optional) {
+                return null;
+            }
             throw new GraalInternalError("Could not resolve type " + className);
         }
     }
@@ -352,7 +366,7 @@ public class SnippetInstaller {
             dimensions++;
         }
 
-        Class baseClass = base.getKind() != Kind.Object ? base.getKind().toJavaClass() : resolveType(toJavaName(base));
+        Class baseClass = base.getKind() != Kind.Object ? base.getKind().toJavaClass() : resolveType(toJavaName(base), false);
         return dimensions == 0 ? baseClass : Array.newInstance(baseClass, new int[dimensions]).getClass();
     }
 
@@ -377,7 +391,11 @@ public class SnippetInstaller {
     private static Member originalMethod(ClassSubstitution classSubstitution, String name, Class[] parameters) {
         Class<?> originalClass = classSubstitution.value();
         if (originalClass == ClassSubstitution.class) {
-            originalClass = resolveType(classSubstitution.className());
+            originalClass = resolveType(classSubstitution.className(), classSubstitution.optional());
+            if (originalClass == null) {
+                // optional class was not found
+                return null;
+            }
         }
         try {
             if (name.equals("<init>")) {
