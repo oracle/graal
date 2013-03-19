@@ -45,7 +45,7 @@ public class AMD64Call {
 
         protected final ResolvedJavaMethod callTarget;
 
-        protected DirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        public DirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
             this.callTarget = callTarget;
             this.result = result;
             this.parameters = parameters;
@@ -123,7 +123,7 @@ public class AMD64Call {
 
         protected final InvokeTarget callTarget;
 
-        protected IndirectCallOp(InvokeTarget callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
+        public IndirectCallOp(InvokeTarget callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
             this.callTarget = callTarget;
             this.result = result;
             this.parameters = parameters;
