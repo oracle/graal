@@ -56,7 +56,7 @@ public class GuardLoweringPhase extends Phase {
     private static void processBlock(Block block, SchedulePhase schedule, StructuredGraph graph, TargetDescription target) {
         List<ScheduledNode> nodes = schedule.nodesFor(block);
         if (GraalOptions.OptImplicitNullChecks && target.implicitNullCheckLimit > 0) {
-            useImplicitNullChecks(block.getBeginNode(), nodes, graph, target);
+            useImplicitNullChecks(block.getBeginNode(), nodes, target);
         }
         FixedWithNextNode lastFixed = block.getBeginNode();
         FixedWithNextNode lastFastPath = null;
@@ -108,7 +108,7 @@ public class GuardLoweringPhase extends Phase {
         }
     }
 
-    private static void useImplicitNullChecks(BeginNode begin, List<ScheduledNode> nodes, StructuredGraph graph, TargetDescription target) {
+    private static void useImplicitNullChecks(BeginNode begin, List<ScheduledNode> nodes, TargetDescription target) {
         ListIterator<ScheduledNode> iterator = nodes.listIterator();
         IdentityHashMap<ValueNode, GuardNode> nullGuarded = new IdentityHashMap<>();
         FixedWithNextNode lastFixed = begin;
@@ -136,16 +136,17 @@ public class GuardLoweringPhase extends Phase {
                 if (guard != null && isImplicitNullCheck(access.nullCheckLocation(), target)) {
                     NodeInputList<ValueNode> dependencies = ((ValueNode) access).dependencies();
                     dependencies.remove(guard);
-                    if (access instanceof FloatingReadNode) {
-                        ReadNode read = graph.add(new ReadNode(access.object(), access.nullCheckLocation(), ((FloatingReadNode) access).stamp(), dependencies));
-                        node.replaceAndDelete(read);
-                        access = read;
-                        lastFixed.setNext(read);
-                        lastFixed = read;
-                        reconnect = read;
-                        iterator.set(read);
+                    if (access instanceof FloatingAccessNode) {
+                        Access fixedRead = ((FloatingAccessNode) access).asFixedNode();
+                        node.replaceAndDelete(fixedRead.node());
+                        access = fixedRead;
+                        FixedWithNextNode fixedAccess = (FixedWithNextNode) fixedRead.node();
+                        lastFixed.setNext(fixedAccess);
+                        lastFixed = fixedAccess;
+                        reconnect = fixedAccess;
+                        iterator.set(fixedAccess);
                     }
-                    assert access instanceof AccessNode;
+                    assert access instanceof FixedNode;
                     access.setNullCheck(true);
                     LogicNode condition = guard.condition();
                     guard.replaceAndDelete(access.node());

@@ -60,4 +60,9 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
     public ValueNode canonical(CanonicalizerTool tool) {
         return ReadNode.canonicalizeRead(this, location(), object(), tool);
     }
+
+    @Override
+    public Access asFixedNode() {
+        return graph().add(new ReadNode(object(), nullCheckLocation(), stamp(), dependencies()));
+    }
 }
