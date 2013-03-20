@@ -99,6 +99,8 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason);
 
+    public abstract void emitNullCheck(ValueNode v);
+
     public abstract Value emitCall(RuntimeCallTarget callTarget, CallingConvention cc, boolean canTrap, Value... args);
 
     public abstract void emitIf(IfNode i);

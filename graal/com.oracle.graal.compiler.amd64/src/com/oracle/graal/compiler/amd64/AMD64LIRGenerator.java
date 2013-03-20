@@ -369,6 +369,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitNullCheck(ValueNode v) {
+        assert v.kind() == Kind.Object;
+        Variable obj = newVariable(Kind.Object);
+        emitMove(obj, operand(v));
+        append(new AMD64Move.NullCheckOp(obj, state()));
+    }
+
+    @Override
     public Variable emitNegate(Value inputVal) {
         AllocatableValue input = asAllocatable(inputVal);
         Variable result = newVariable(input.getKind());

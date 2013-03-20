@@ -59,7 +59,7 @@ public class GuardLoweringPhase extends Phase {
             useImplicitNullChecks(block.getBeginNode(), nodes, graph, target);
         }
         FixedWithNextNode lastFixed = block.getBeginNode();
-        BeginNode lastFastPath = null;
+        FixedWithNextNode lastFastPath = null;
         for (Node node : nodes) {
             if (!node.isAlive()) {
                 continue;
@@ -72,29 +72,38 @@ public class GuardLoweringPhase extends Phase {
                 lastFixed = (FixedWithNextNode) node;
             } else if (node instanceof GuardNode) {
                 GuardNode guard = (GuardNode) node;
-                BeginNode fastPath = graph.add(new BeginNode());
-                BeginNode trueSuccessor;
-                BeginNode falseSuccessor;
-                DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason()));
-                BeginNode deoptBranch = BeginNode.begin(deopt);
-                Loop loop = block.getLoop();
-                while (loop != null) {
-                    LoopExitNode exit = graph.add(new LoopExitNode(loop.loopBegin()));
-                    graph.addBeforeFixed(deopt, exit);
-                    loop = loop.parent;
-                }
-                if (guard.negated()) {
-                    trueSuccessor = deoptBranch;
-                    falseSuccessor = fastPath;
+                if (guard.negated() && guard.condition() instanceof IsNullNode) {
+                    IsNullNode isNull = (IsNullNode) guard.condition();
+                    NullCheckNode nullCheck = graph.add(new NullCheckNode(isNull.object()));
+                    guard.replaceAndDelete(nullCheck);
+                    lastFixed.setNext(nullCheck);
+                    lastFixed = nullCheck;
+                    lastFastPath = nullCheck;
                 } else {
-                    trueSuccessor = fastPath;
-                    falseSuccessor = deoptBranch;
+                    BeginNode fastPath = graph.add(new BeginNode());
+                    BeginNode trueSuccessor;
+                    BeginNode falseSuccessor;
+                    DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason()));
+                    BeginNode deoptBranch = BeginNode.begin(deopt);
+                    Loop loop = block.getLoop();
+                    while (loop != null) {
+                        LoopExitNode exit = graph.add(new LoopExitNode(loop.loopBegin()));
+                        graph.addBeforeFixed(deopt, exit);
+                        loop = loop.parent;
+                    }
+                    if (guard.negated()) {
+                        trueSuccessor = deoptBranch;
+                        falseSuccessor = fastPath;
+                    } else {
+                        trueSuccessor = fastPath;
+                        falseSuccessor = deoptBranch;
+                    }
+                    IfNode ifNode = graph.add(new IfNode(guard.condition(), trueSuccessor, falseSuccessor, trueSuccessor == fastPath ? 1 : 0));
+                    guard.replaceAndDelete(fastPath);
+                    lastFixed.setNext(ifNode);
+                    lastFixed = fastPath;
+                    lastFastPath = fastPath;
                 }
-                IfNode ifNode = graph.add(new IfNode(guard.condition(), trueSuccessor, falseSuccessor, trueSuccessor == fastPath ? 1 : 0));
-                guard.replaceAndDelete(fastPath);
-                lastFixed.setNext(ifNode);
-                lastFixed = fastPath;
-                lastFastPath = fastPath;
             }
         }
     }

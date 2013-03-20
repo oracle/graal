@@ -365,7 +365,13 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitUnwind(Value operand) {
-        // TODO Auto-generated method stub
+        // SPARC: Auto-generated method stub
+
+    }
+
+    @Override
+    public void emitNullCheck(ValueNode v) {
+        // SPARC: Auto-generated method stub
 
     }
 }
