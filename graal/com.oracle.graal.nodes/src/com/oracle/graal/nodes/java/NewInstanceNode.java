@@ -95,12 +95,12 @@ public final class NewInstanceNode extends FixedWithNextNode implements Node.Ite
     public void virtualize(VirtualizerTool tool) {
         if (instanceClass != null) {
             assert !instanceClass().isArray();
-            ResolvedJavaField[] fields = instanceClass().getInstanceFields(true);
+            VirtualInstanceNode virtualObject = new VirtualInstanceNode(instanceClass());
+            ResolvedJavaField[] fields = virtualObject.getFields();
             ValueNode[] state = new ValueNode[fields.length];
             for (int i = 0; i < state.length; i++) {
                 state[i] = ConstantNode.defaultForKind(fields[i].getType().getKind(), graph());
             }
-            VirtualObjectNode virtualObject = new VirtualInstanceNode(instanceClass(), fields);
             tool.createVirtualObject(virtualObject, state, 0);
             tool.replaceWithVirtual(virtualObject);
         }
