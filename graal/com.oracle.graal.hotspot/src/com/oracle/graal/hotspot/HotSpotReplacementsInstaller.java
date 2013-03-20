@@ -26,8 +26,8 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.snippets.*;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.replacements.*;
 
 /**
  * Filters certain method substitutions based on whether there is underlying hardware support for them.

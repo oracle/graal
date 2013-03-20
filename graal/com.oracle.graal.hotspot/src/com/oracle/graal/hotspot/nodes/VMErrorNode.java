@@ -31,7 +31,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.replacements.*;
 
 /**
  * Causes the VM to exit with a description of the current Java location and an optional

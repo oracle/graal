@@ -30,11 +30,11 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.snippets.SystemSubstitutions.*;
+import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
-import static com.oracle.graal.snippets.Log.*;
-import static com.oracle.graal.snippets.MathSubstitutionsX86.*;
+import static com.oracle.graal.replacements.Log.*;
+import static com.oracle.graal.replacements.MathSubstitutionsX86.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -57,7 +57,7 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.phases.*;
-import com.oracle.graal.hotspot.snippets.*;
+import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
@@ -69,7 +69,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.printer.*;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
 /**

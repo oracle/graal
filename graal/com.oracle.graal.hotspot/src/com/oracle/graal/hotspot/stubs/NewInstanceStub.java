@@ -24,19 +24,17 @@ package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
-import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
-import static com.oracle.graal.hotspot.snippets.NewObjectSnippets.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
+import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.snippets.*;
-import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.Snippet.ConstantParameter;
-import com.oracle.graal.snippets.Snippet.Fold;
-import com.oracle.graal.snippets.Snippet.Parameter;
-import com.oracle.graal.snippets.SnippetTemplate.Key;
+import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.SnippetTemplate.*;
 import com.oracle.graal.word.*;
 
 /**
