@@ -33,13 +33,8 @@ import com.oracle.graal.snippets.nodes.*;
 import com.oracle.graal.word.*;
 
 /**
- * A snippet is a Graal graph expressed as a Java source method. Graal snippets can be used for:
- * <ul>
- * <li>intrinsifying native JDK methods (see {@link ClassSubstitution})</li>
- * <li>lowering operations that have runtime dependent semantics (e.g. the {@code CHECKCAST}
- * bytecode)</li>
- * <li>replacing a method call with a single graph node (see {@link NodeIntrinsic})</li>
- * </ul>
+ * A snippet is a Graal graph expressed as a Java source method. Snippets are used for lowering
+ * nodes that have runtime dependent semantics (e.g. the {@code CHECKCAST} bytecode).
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

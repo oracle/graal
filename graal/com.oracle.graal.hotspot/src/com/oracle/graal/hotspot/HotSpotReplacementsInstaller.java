@@ -30,13 +30,13 @@ import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.snippets.*;
 
 /**
- * Filters certain intrinsifications based on whether there is underlying hardware support for them.
+ * Filters certain method substitutions based on whether there is underlying hardware support for them.
  */
-public class HotSpotSnippetInstaller extends SnippetInstaller {
+public class HotSpotReplacementsInstaller extends ReplacementsInstaller {
 
     private final HotSpotVMConfig config;
 
-    public HotSpotSnippetInstaller(HotSpotRuntime runtime, Assumptions assumptions, TargetDescription target) {
+    public HotSpotReplacementsInstaller(HotSpotRuntime runtime, Assumptions assumptions, TargetDescription target) {
         super(runtime, assumptions, target);
         this.config = runtime.config;
     }

@@ -27,5 +27,5 @@ import com.oracle.graal.compiler.target.*;
 
 public interface SnippetProvider {
 
-    void installSnippets(Backend backend, SnippetInstaller installer, Assumptions assumptions);
+    void installReplacements(Backend backend, ReplacementsInstaller installer, Assumptions assumptions);
 }

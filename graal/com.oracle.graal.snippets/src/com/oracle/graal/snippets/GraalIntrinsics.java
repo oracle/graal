@@ -29,7 +29,7 @@ import com.oracle.graal.phases.*;
  */
 public class GraalIntrinsics {
 
-    public static void installIntrinsics(SnippetInstaller installer) {
+    public static void installIntrinsics(ReplacementsInstaller installer) {
         if (GraalOptions.Intrinsify) {
             installer.installSubstitutions(MathSubstitutionsX86.class);
             installer.installSubstitutions(DoubleSubstitutions.class);

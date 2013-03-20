@@ -48,10 +48,11 @@ import com.oracle.graal.snippets.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.word.phases.*;
 
 /**
- * Utility for {@linkplain #installSnippets(Class) snippet} and
- * {@linkplain #installSubstitutions(Class) substitution} installation.
+ * Utility for managing the pre-processing and installation of node replacements. Node replacements
+ * are either {@linkplain SnippetsInterface snippets}, {@linkplain MethodSubstitution method
+ * substitutions} or {@link MacroSubstitution macro substitutions}.
  */
-public class SnippetInstaller {
+public class ReplacementsInstaller {
 
     protected final MetaAccessProvider runtime;
     protected final TargetDescription target;
@@ -66,7 +67,7 @@ public class SnippetInstaller {
      */
     private final Map<ResolvedJavaMethod, StructuredGraph> graphCache;
 
-    public SnippetInstaller(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target) {
+    public ReplacementsInstaller(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target) {
         this.runtime = runtime;
         this.target = target;
         this.assumptions = assumptions;
@@ -97,10 +98,12 @@ public class SnippetInstaller {
     }
 
     /**
-     * Finds all the {@linkplain MethodSubstitution substitution} methods in a given class, builds a
-     * graph for them. If the original class is resolvable, then the graph is installed with the key
-     * value of {@code Graph.class} in the {@linkplain ResolvedJavaMethod#getCompilerStorage()
-     * compiler storage} of each original method.
+     * Finds all the methods in a given class annotated with {@link MethodSubstitution} or
+     * {@link MacroSubstitution}. It builds graphs for the former and installs them in the
+     * {@linkplain ResolvedJavaMethod#getCompilerStorage() compiler storage} of the original (i.e.,
+     * substituted) method with a key of {@code Graph.class}. For the latter, the denoted
+     * {@linkplain MacroSubstitution#macro() macro} node type is install in the compiler storage
+     * with a key of {@code Node.class}.
      */
     public void installSubstitutions(Class<?> substitutions) {
         assert owner == Thread.currentThread() : "substitution installation must be single threaded";

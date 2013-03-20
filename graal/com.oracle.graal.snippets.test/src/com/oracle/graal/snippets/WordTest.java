@@ -38,11 +38,11 @@ import com.oracle.graal.word.*;
  */
 public class WordTest extends GraalCompilerTest implements SnippetsInterface {
 
-    private final SnippetInstaller installer;
+    private final ReplacementsInstaller installer;
 
     public WordTest() {
         TargetDescription target = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
-        installer = new SnippetInstaller(runtime, new Assumptions(false), target);
+        installer = new ReplacementsInstaller(runtime, new Assumptions(false), target);
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();

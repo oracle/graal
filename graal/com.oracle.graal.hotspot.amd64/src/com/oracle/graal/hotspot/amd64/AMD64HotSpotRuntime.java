@@ -196,10 +196,10 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
     private AMD64ConvertSnippets.Templates convertSnippets;
 
     @Override
-    public void installSnippets(Backend backend, SnippetInstaller installer, Assumptions assumptions) {
+    public void installReplacements(Backend backend, ReplacementsInstaller installer, Assumptions assumptions) {
         installer.installSnippets(AMD64ConvertSnippets.class);
         convertSnippets = new AMD64ConvertSnippets.Templates(this, assumptions, graalRuntime.getTarget());
-        super.installSnippets(backend, installer, assumptions);
+        super.installReplacements(backend, installer, assumptions);
     }
 
     @Override
