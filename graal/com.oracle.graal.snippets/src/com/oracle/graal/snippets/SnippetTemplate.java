@@ -288,7 +288,7 @@ public class SnippetTemplate {
 
             new CanonicalizerPhase(runtime, assumptions, 0, null).apply(snippetCopy);
         }
-        assert SnippetIntrinsificationVerificationPhase.verify(snippetCopy);
+        assert NodeIntrinsificationVerificationPhase.verify(snippetCopy);
 
         // Gather the template parameters
         parameters = new HashMap<>();

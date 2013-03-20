@@ -212,7 +212,7 @@ public class ReplacementsInstaller {
      */
     protected void finalizeGraph(ResolvedJavaMethod method, StructuredGraph graph) {
         new NodeIntrinsificationPhase(runtime, pool).apply(graph);
-        assert SnippetTemplate.hasConstantParameter(method) || SnippetIntrinsificationVerificationPhase.verify(graph);
+        assert SnippetTemplate.hasConstantParameter(method) || NodeIntrinsificationVerificationPhase.verify(graph);
 
         new SnippetFrameStateCleanupPhase().apply(graph);
         new DeadCodeEliminationPhase().apply(graph);

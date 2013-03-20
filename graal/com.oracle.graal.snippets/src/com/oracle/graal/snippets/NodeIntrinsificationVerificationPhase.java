@@ -33,10 +33,10 @@ import com.oracle.graal.snippets.Snippet.Fold;
 /**
  * Checks that a graph contains no calls to {@link NodeIntrinsic} or {@link Fold} methods.
  */
-public class SnippetIntrinsificationVerificationPhase extends Phase {
+public class NodeIntrinsificationVerificationPhase extends Phase {
 
     public static boolean verify(StructuredGraph graph) {
-        new SnippetIntrinsificationVerificationPhase().apply(graph);
+        new NodeIntrinsificationVerificationPhase().apply(graph);
         return true;
     }
 
