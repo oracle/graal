@@ -84,15 +84,6 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
                 if (receiverStamp.nonNull()) {
                     ResolvedJavaType receiverType = receiverStamp.type();
                     ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(displacement());
-                    // ResolvedJavaField[] instanceFields =
-// tool.runtime().lookupJavaType(java.lang.ref.Reference.class).getInstanceFields(false);
-                    // for (ResolvedJavaField field1 : instanceFields) {
-                    // if (field != null && (field1.getName() == field.getName())) {
-                    // System.out.println("Match field name: " + field.getName());
-                    // } else if (field != null) {
-                    // System.out.println("Non matching field name: " + field.getName());
-                    // }
-                    // }
                     if (field != null) {
                         return this.graph().add(new LoadFieldNode(object(), field));
                     }

@@ -57,8 +57,6 @@ public class GraalCompiler {
      */
     public final GraalCodeCacheProvider runtime;
 
-    public static int counter = 0;
-
     /**
      * The backend that this compiler has been configured for.
      */
@@ -76,7 +74,6 @@ public class GraalCompiler {
         return Debug.scope("GraalCompiler", new Object[]{graph, method, this}, new Callable<CompilationResult>() {
 
             public CompilationResult call() {
-                System.out.println("Start compile of method " + counter);
                 final Assumptions assumptions = new Assumptions(GraalOptions.OptAssumptions);
                 final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
 
@@ -90,8 +87,6 @@ public class GraalCompiler {
                         return emitLIR(lir, graph, method);
                     }
                 });
-                System.out.println("Stop compile of method " + counter);
-                counter++;
                 return Debug.scope("CodeGen", frameMap, new Callable<CompilationResult>() {
 
                     public CompilationResult call() {

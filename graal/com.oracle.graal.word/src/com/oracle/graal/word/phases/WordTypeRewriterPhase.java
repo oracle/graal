@@ -139,26 +139,18 @@ public class WordTypeRewriterPhase extends Phase {
 
                     case READ:
                         assert arguments.size() == 2;
-                        // replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke,
-// LocationNode.ANY_LOCATION));
                         Kind readKind = asKind(callTargetNode.returnType());
                         replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke, readKind, LocationNode.ANY_LOCATION));
-
                         break;
 
                     case READ_FINAL:
                         assert arguments.size() == 2;
-                        // replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke,
-// LocationNode.FINAL_LOCATION));
-                        Kind readKind1 = asKind(callTargetNode.returnType());
-                        replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke, readKind1, LocationNode.ANY_LOCATION));
-
+                        Kind readFinalKind = asKind(callTargetNode.returnType());
+                        replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke, readFinalKind, LocationNode.ANY_LOCATION));
                         break;
 
                     case WRITE:
                         assert arguments.size() == 3;
-                        // replace(invoke, writeOp(graph, arguments.get(0), arguments.get(1),
-// arguments.get(2), invoke, LocationNode.ANY_LOCATION));
                         Kind writeKind = asKind(targetMethod.getSignature().getParameterType(1, null));
                         replace(invoke, writeOp(graph, arguments.get(0), arguments.get(1), arguments.get(2), invoke, writeKind, LocationNode.ANY_LOCATION));
                         break;
@@ -275,15 +267,6 @@ public class WordTypeRewriterPhase extends Phase {
         return op;
     }
 
-    // private static ValueNode readOp(StructuredGraph graph, ValueNode base, ValueNode offset,
-// Invoke invoke, Object locationIdentity) {
-    // IndexedLocationNode location = IndexedLocationNode.create(locationIdentity,
-// invoke.methodCallTarget().returnKind(), 0, offset, graph, false);
-    // Kind resultKind = invoke.node().kind() == Kind.Int ? invoke.methodCallTarget().returnKind() :
-// invoke.node().kind();
-
-    // IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, resultKind, 0,
-// offset, graph, false);
     private static ValueNode readOp(StructuredGraph graph, ValueNode base, ValueNode offset, Invoke invoke, Kind readKind, Object locationIdentity) {
         IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, readKind, 0, offset, graph, false);
         ReadNode read = graph.add(new ReadNode(base, location, invoke.node().stamp()));
@@ -294,10 +277,6 @@ public class WordTypeRewriterPhase extends Phase {
         return read;
     }
 
-    // private static ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode offset,
-// ValueNode value, Invoke invoke, Object locationIdentity) {
-    // IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, value.kind(), 0,
-// offset, graph, false);
     private static ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode offset, ValueNode value, Invoke invoke, Kind writeKind, Object locationIdentity) {
         IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, writeKind, 0, offset, graph, false);
         WriteNode write = graph.add(new WriteNode(base, value, location));

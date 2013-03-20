@@ -221,7 +221,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int g1SATBQueueMarkingOffset;
     public int g1SATBQueueIndexOffset;
     public int g1SATBQueueBufferOffset;
-    public long gcCycleAddress;
 
     /**
      * The offset of the _java_mirror field (of type {@link Class}) in a Klass.
@@ -329,8 +328,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long monitorExitStub;
     public long wbPreCallStub;
     public long wbPostCallStub;
-    public long verOopStub;
-    public long printWriteCardStub;
 
     public long verifyOopStub;
     public long vmErrorStub;

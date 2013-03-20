@@ -115,7 +115,7 @@ public final class GraalOptions {
     public static String  PrintFilter                        = null;
 
     // Debug settings:
-    public static boolean Debug                              = false;
+    public static boolean Debug                              = true;
     public static boolean DebugSnippets                      = false;
     public static boolean PerThreadDebugValues               = ____;
     public static boolean SummarizeDebugValues               = ____;
@@ -190,7 +190,7 @@ public final class GraalOptions {
     public static boolean OptLivenessAnalysis                = true;
     public static boolean OptLoopTransform                   = true;
     public static boolean OptSafepointElimination            = true;
-    public static boolean OptFloatingReads                   = false;
+    public static boolean OptFloatingReads                   = true;
     public static boolean OptTailDuplication                 = true;
     public static boolean OptEliminatePartiallyRedundantGuards = true;
     public static boolean OptFilterProfiledTypes             = true;

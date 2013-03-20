@@ -247,11 +247,6 @@ public class HotSpotSnippetUtils {
     }
 
     @Fold
-    public static long gcCycleAddress() {
-        return config().gcCycleAddress;
-    }
-
-    @Fold
     public static int g1SATBQueueMarkingOffset() {
         return config().g1SATBQueueMarkingOffset;
     }

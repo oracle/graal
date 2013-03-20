@@ -59,11 +59,6 @@ public class NewObjectSnippets implements SnippetsInterface {
 
     // @formatter:off
 
-    private static void trace(boolean enabled, String format, WordBase value) {
-        if (enabled) {
-            Log.printf(format, value.rawValue());
-        }
-    }
     @Snippet
     public static Word allocate(@Parameter("size") int size) {
         Word thread = thread();
