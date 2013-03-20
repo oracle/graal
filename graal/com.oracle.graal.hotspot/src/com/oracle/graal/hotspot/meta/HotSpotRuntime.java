@@ -75,7 +75,7 @@ import com.oracle.graal.word.*;
 /**
  * HotSpot implementation of {@link GraalCodeCacheProvider}.
  */
-public abstract class HotSpotRuntime implements GraalCodeCacheProvider, SnippetProvider, DisassemblerProvider, BytecodeDisassemblerProvider {
+public abstract class HotSpotRuntime implements GraalCodeCacheProvider, DisassemblerProvider, BytecodeDisassemblerProvider {
 
     public final HotSpotVMConfig config;
 
