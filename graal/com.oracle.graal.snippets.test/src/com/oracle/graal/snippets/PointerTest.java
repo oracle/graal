@@ -39,7 +39,7 @@ import com.oracle.graal.word.*;
 /**
  * Tests for the {@link Pointer} read and write operations.
  */
-public class PointerTest extends GraalCompilerTest implements SnippetsInterface {
+public class PointerTest extends GraalCompilerTest implements Snippets {
 
     private static final Object ID = new Object();
     private static final Kind[] KINDS = new Kind[]{Kind.Byte, Kind.Char, Kind.Short, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object};

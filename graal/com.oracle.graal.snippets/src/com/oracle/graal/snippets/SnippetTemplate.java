@@ -186,7 +186,7 @@ public class SnippetTemplate {
         }
     }
 
-    public abstract static class AbstractTemplates<T extends SnippetsInterface> {
+    public abstract static class AbstractTemplates<T extends Snippets> {
 
         protected final Cache cache;
         protected final MetaAccessProvider runtime;
@@ -197,7 +197,7 @@ public class SnippetTemplate {
             this.runtime = runtime;
             this.assumptions = assumptions;
             if (snippetsClass == null) {
-                assert this instanceof SnippetsInterface;
+                assert this instanceof Snippets;
                 this.snippetsClass = getClass();
             } else {
                 this.snippetsClass = snippetsClass;

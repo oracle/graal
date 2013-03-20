@@ -52,7 +52,7 @@ import com.oracle.graal.snippets.SnippetTemplate.Key;
  * Implementation detail: The stub classes re-use some of the functionality for {@link Snippet}s
  * purely for convenience (e.g., can re-use the {@link ReplacementsInstaller}).
  */
-public abstract class Stub extends AbstractTemplates implements SnippetsInterface {
+public abstract class Stub extends AbstractTemplates implements Snippets {
 
     /**
      * The method implementing the stub.

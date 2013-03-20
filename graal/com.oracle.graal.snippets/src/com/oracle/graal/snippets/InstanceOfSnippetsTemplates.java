@@ -46,13 +46,13 @@ import com.oracle.graal.snippets.SnippetTemplate.UsageReplacer;
  * replacing a floating node with control flow is not trivial.
  * <p>
  * The mechanism implemented in this class ensures that the graph for an instanceof snippet is
- * instantiated once per {@link InstanceOfNode} being lowered. The result produced the graph is then
- * re-used by all usages of the node. Additionally, if there is a single usage that is an
- * {@link IfNode}, the control flow in the snippet is connected directly to the true and false
- * successors of the {@link IfNode}. This avoids materializating the instanceof test as a boolean
- * which is then retested by the {@link IfNode}.
+ * instantiated once per {@link InstanceOfNode} being lowered. The result produced is then re-used
+ * by all usages of the node. Additionally, if there is a single usage that is an {@link IfNode},
+ * the control flow in the snippet is connected directly to the true and false successors of the
+ * {@link IfNode}. This avoids materializing the instanceof test as a boolean which is then retested
+ * by the {@link IfNode}.
  */
-public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> extends AbstractTemplates<T> {
+public abstract class InstanceOfSnippetsTemplates<T extends Snippets> extends AbstractTemplates<T> {
 
     public InstanceOfSnippetsTemplates(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target, Class<T> snippetsClass) {
         super(runtime, assumptions, target, snippetsClass);

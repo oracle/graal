@@ -36,7 +36,7 @@ import com.oracle.graal.word.*;
 /**
  * Tests for the {@link Word} type.
  */
-public class WordTest extends GraalCompilerTest implements SnippetsInterface {
+public class WordTest extends GraalCompilerTest implements Snippets {
 
     private final ReplacementsInstaller installer;
 

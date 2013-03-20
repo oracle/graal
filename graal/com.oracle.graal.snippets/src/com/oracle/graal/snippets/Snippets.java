@@ -23,8 +23,7 @@
 package com.oracle.graal.snippets;
 
 /**
- * Tagging interface for interfaces or classes providing snippets.
+ * Marker interface for a class that defines one or more {@link Snippet}s.
  */
-public interface SnippetsInterface {
-
+public interface Snippets {
 }

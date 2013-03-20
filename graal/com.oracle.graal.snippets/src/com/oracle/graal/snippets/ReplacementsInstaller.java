@@ -49,8 +49,8 @@ import com.oracle.graal.word.phases.*;
 
 /**
  * Utility for managing the pre-processing and installation of node replacements. Node replacements
- * are either {@linkplain SnippetsInterface snippets}, {@linkplain MethodSubstitution method
- * substitutions} or {@link MacroSubstitution macro substitutions}.
+ * are either {@linkplain Snippets snippets}, {@linkplain MethodSubstitution method substitutions}
+ * or {@link MacroSubstitution macro substitutions}.
  */
 public class ReplacementsInstaller {
 
@@ -81,8 +81,8 @@ public class ReplacementsInstaller {
      * graph with the key value of {@code Graph.class} in the
      * {@linkplain ResolvedJavaMethod#getCompilerStorage() compiler storage} of each method.
      */
-    public void installSnippets(Class<? extends SnippetsInterface> clazz) {
-        for (Method method : clazz.getDeclaredMethods()) {
+    public void installSnippets(Class<? extends Snippets> snippets) {
+        for (Method method : snippets.getDeclaredMethods()) {
             if (method.getAnnotation(Snippet.class) != null) {
                 int modifiers = method.getModifiers();
                 if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
@@ -109,7 +109,7 @@ public class ReplacementsInstaller {
         assert owner == Thread.currentThread() : "substitution installation must be single threaded";
         ClassSubstitution classSubstitution = substitutions.getAnnotation(ClassSubstitution.class);
         assert classSubstitution != null;
-        assert !SnippetsInterface.class.isAssignableFrom(substitutions);
+        assert !Snippets.class.isAssignableFrom(substitutions);
         for (Method substituteMethod : substitutions.getDeclaredMethods()) {
             MethodSubstitution methodSubstitution = substituteMethod.getAnnotation(MethodSubstitution.class);
             MacroSubstitution macroSubstitution = substituteMethod.getAnnotation(MacroSubstitution.class);

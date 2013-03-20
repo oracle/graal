@@ -36,7 +36,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.word.*;
 
-public class ObjectCloneSnippets implements SnippetsInterface {
+public class ObjectCloneSnippets implements Snippets {
 
     public static final Method instanceCloneMethod = getCloneMethod("instanceClone");
     public static final Method arrayCloneMethod = getCloneMethod("arrayClone");

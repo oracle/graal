@@ -61,7 +61,7 @@ import com.oracle.graal.word.*;
  * atomic operations with biased locking and bulk rebiasing</a> by Kenneth Russell and David
  * Detlefs.
  */
-public class MonitorSnippets implements SnippetsInterface {
+public class MonitorSnippets implements Snippets {
 
     /**
      * Monitor operations on objects whose type contains this substring will be traced.

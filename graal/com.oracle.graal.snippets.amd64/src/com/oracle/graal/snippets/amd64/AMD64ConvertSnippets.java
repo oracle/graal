@@ -43,7 +43,7 @@ import com.oracle.graal.snippets.SnippetTemplate.Key;
  * Snippets used for conversion operations on AMD64 where the AMD64 instruction used does not match
  * the semantics of the JVM specification.
  */
-public class AMD64ConvertSnippets implements SnippetsInterface {
+public class AMD64ConvertSnippets implements Snippets {
 
     /**
      * Converts a float to an int.

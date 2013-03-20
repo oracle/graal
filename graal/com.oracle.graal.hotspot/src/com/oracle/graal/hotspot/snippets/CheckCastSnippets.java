@@ -59,7 +59,7 @@ import com.oracle.graal.word.*;
  * href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a> by
  * Cliff Click and John Rose.
  */
-public class CheckCastSnippets implements SnippetsInterface {
+public class CheckCastSnippets implements Snippets {
 
     @NodeIntrinsic(BreakpointNode.class)
     static native void bkpt(Object object, Word hub, Word objectHub);

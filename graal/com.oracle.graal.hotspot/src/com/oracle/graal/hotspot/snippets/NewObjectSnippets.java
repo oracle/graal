@@ -55,7 +55,7 @@ import com.oracle.graal.word.*;
 /**
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
  */
-public class NewObjectSnippets implements SnippetsInterface {
+public class NewObjectSnippets implements Snippets {
 
     // @formatter:off
 

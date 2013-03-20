@@ -42,7 +42,7 @@ import com.oracle.graal.snippets.nodes.*;
 import com.oracle.graal.word.*;
 
 @SuppressWarnings("unused")
-public class ArrayCopySnippets implements SnippetsInterface {
+public class ArrayCopySnippets implements Snippets {
 
     private static final EnumMap<Kind, Method> arraycopyMethods = new EnumMap<>(Kind.class);
     public static final Method genericArraycopySnippet;

@@ -53,7 +53,7 @@ import com.oracle.graal.word.*;
  * href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a> by
  * Cliff Click and John Rose.
  */
-public class InstanceOfSnippets implements SnippetsInterface {
+public class InstanceOfSnippets implements Snippets {
 
     // @formatter:off
 
