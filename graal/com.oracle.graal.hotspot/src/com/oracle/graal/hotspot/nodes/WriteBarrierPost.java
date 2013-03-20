@@ -27,11 +27,14 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class WriteBarrierPost extends FixedWithNextNode implements Lowerable {
+public final class WriteBarrierPost extends AbstractStateSplit implements Lowerable {
 
     @Input private ValueNode object;
     @Input private ValueNode value;
     @Input private LocationNode location;
+    @Input private ValueNode wbPre;
+    private boolean precise;
+    private boolean profile;
 
     public ValueNode object() {
         return object;
@@ -41,15 +44,40 @@ public final class WriteBarrierPost extends FixedWithNextNode implements Lowerab
         return value;
     }
 
+    public ValueNode getPreBarrier() {
+        return wbPre;
+    }
+
     public LocationNode location() {
         return location;
     }
 
-    public WriteBarrierPost(ValueNode object, ValueNode value, LocationNode location) {
+    public boolean usePrecise() {
+        return precise;
+    }
+
+    public boolean profile() {
+        return profile;
+    }
+
+    public WriteBarrierPost(ValueNode object, ValueNode value, LocationNode location, boolean precise, ValueNode wbPre) {
         super(StampFactory.forVoid());
         this.object = object;
         this.value = value;
         this.location = location;
+        this.precise = precise;
+        this.wbPre = wbPre;
+        this.profile = false;
+    }
+
+    public WriteBarrierPost(ValueNode object, ValueNode value, LocationNode location, boolean precise, ValueNode wbPre, boolean profile) {
+        super(StampFactory.forVoid());
+        this.object = object;
+        this.value = value;
+        this.location = location;
+        this.precise = precise;
+        this.wbPre = wbPre;
+        this.profile = profile;
     }
 
     public void lower(LoweringTool generator) {

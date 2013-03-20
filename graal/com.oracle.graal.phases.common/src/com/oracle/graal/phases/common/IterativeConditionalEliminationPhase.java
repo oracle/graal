@@ -36,6 +36,7 @@ public class IterativeConditionalEliminationPhase extends Phase {
     private final TargetDescription target;
     private final MetaAccessProvider runtime;
     private final Assumptions assumptions;
+    public static boolean ISON = false;
 
     public IterativeConditionalEliminationPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions) {
         this.target = target;
@@ -45,6 +46,7 @@ public class IterativeConditionalEliminationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        ISON = true;
         Set<Node> canonicalizationRoots = new HashSet<>();
         ConditionalEliminationPhase eliminate = new ConditionalEliminationPhase(runtime);
         Listener listener = new Listener(canonicalizationRoots);
@@ -58,6 +60,7 @@ public class IterativeConditionalEliminationPhase extends Phase {
             new CanonicalizerPhase(target, runtime, assumptions, canonicalizationRoots, null).apply(graph);
             canonicalizationRoots.clear();
         }
+        ISON = false;
     }
 
     private static class Listener implements InputChangedListener {

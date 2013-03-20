@@ -137,14 +137,14 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                     @Override
                     public CompilationResult call() throws Exception {
                         graalRuntime.evictDeoptedGraphs();
-                        StructuredGraph graph = (StructuredGraph) method.getCompilerStorage().get(Graph.class);
-                        if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
-                            graph = new StructuredGraph(method, entryBCI);
-                        } else {
-                            // Compiling an intrinsic graph - must clone the graph
-                            graph = graph.copy();
-                            // System.out.println("compiling intrinsic " + method);
-                        }
+// StructuredGraph graph = (StructuredGraph) method.getCompilerStorage().get(Graph.class);
+// if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
+                        StructuredGraph graph = new StructuredGraph(method, entryBCI);
+// } else {
+// // Compiling an intrinsic graph - must clone the graph
+// graph = graph.copy();
+// // System.out.println("compiling intrinsic " + method);
+// }
                         InlinedBytecodes.add(method.getCodeSize());
                         return graalRuntime.getCompiler().compileMethod(method, graph, graalRuntime.getCache(), plan, optimisticOpts);
                     }

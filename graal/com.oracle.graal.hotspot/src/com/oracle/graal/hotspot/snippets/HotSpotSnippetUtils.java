@@ -47,9 +47,13 @@ public class HotSpotSnippetUtils {
     }
 
     @Fold
+    public static boolean useTLAB() {
+        return config().useTLAB;
+    }
+
+    @Fold
     public static boolean verifyOops() {
-        return true;
-        // return config().verifyOops;
+        return config().verifyOops;
     }
 
     @Fold
@@ -240,6 +244,11 @@ public class HotSpotSnippetUtils {
     @Fold
     public static int logOfHRGrainBytes() {
         return config().logOfHRGrainBytes;
+    }
+
+    @Fold
+    public static long gcCycleAddress() {
+        return config().gcCycleAddress;
     }
 
     @Fold
@@ -480,7 +489,6 @@ public class HotSpotSnippetUtils {
 
     @Fold
     public static int layoutHelperElementTypePrimitiveInPlace() {
-        System.out.println(String.format("%x", config().layoutHelperElementTypePrimitiveInPlace));
         return config().layoutHelperElementTypePrimitiveInPlace;
     }
 

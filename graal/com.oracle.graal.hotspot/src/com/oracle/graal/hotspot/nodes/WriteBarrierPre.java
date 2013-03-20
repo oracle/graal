@@ -27,41 +27,61 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class WriteBarrierPre extends FixedWithNextNode implements Lowerable {
+public final class WriteBarrierPre extends AbstractStateSplit implements Lowerable {
 
     @Input private ValueNode object;
     @Input private LocationNode location;
+    @Input private ValueNode expectedObject;
     private boolean doLoad;
+    private boolean profile;
+
     private String name;
 
     public ValueNode object() {
         return object;
     }
 
+    public ValueNode expectedObject() {
+        return expectedObject;
+    }
+
     public boolean doLoad() {
         return doLoad;
     }
 
-    public LocationNode location() {
-        return location;
-    }
-
-    public WriteBarrierPre(ValueNode object, LocationNode location, boolean doLoad) {
-        super(StampFactory.forVoid());
-        this.object = object;
-        this.doLoad = doLoad;
-        this.location = location;
-    }
-
-    public void lower(LoweringTool generator) {
-        generator.getRuntime().lower(this, generator);
+    public boolean profile() {
+        return profile;
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(String name) {
+    public LocationNode location() {
+        return location;
+    }
+
+    public WriteBarrierPre(ValueNode object, ValueNode expectedObject, LocationNode location, String name, boolean doLoad, boolean profile) {
+        super(StampFactory.forVoid());
+        this.object = object;
+        this.doLoad = doLoad;
+        this.location = location;
+        this.expectedObject = expectedObject;
+        this.name = name;
+        this.profile = profile;
+    }
+
+    public WriteBarrierPre(ValueNode object, ValueNode expectedObject, LocationNode location, String name, boolean doLoad) {
+        super(StampFactory.forVoid());
+        this.object = object;
+        this.doLoad = doLoad;
+        this.location = location;
+        this.expectedObject = expectedObject;
         this.name = name;
     }
+
+    public void lower(LoweringTool generator) {
+        generator.getRuntime().lower(this, generator);
+    }
+
 }

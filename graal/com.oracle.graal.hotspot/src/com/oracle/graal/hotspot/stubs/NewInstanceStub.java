@@ -99,6 +99,9 @@ public class NewInstanceStub extends Stub {
         if (useG1GC()) {
             return Word.zero();
         }
+        if (!useTLAB()) {
+            return edenAllocate(Word.unsigned(sizeInBytes), log);
+        }
         Word intArrayMarkWord = Word.unsigned(tlabIntArrayMarkWord());
         int alignmentReserveInBytes = tlabAlignmentReserveInHeapWords() * wordSize();
 

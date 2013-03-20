@@ -34,7 +34,7 @@ public class GraalIntrinsics {
             installer.installSubstitutions(MathSubstitutionsX86.class);
             installer.installSubstitutions(DoubleSubstitutions.class);
             installer.installSubstitutions(FloatSubstitutions.class);
-            installer.installSubstitutions(NodeClassSubstitutions.class);
+            // installer.installSubstitutions(NodeClassSubstitutions.class);
             installer.installSubstitutions(LongSubstitutions.class);
             installer.installSubstitutions(IntegerSubstitutions.class);
             installer.installSubstitutions(UnsignedMathSubstitutions.class);

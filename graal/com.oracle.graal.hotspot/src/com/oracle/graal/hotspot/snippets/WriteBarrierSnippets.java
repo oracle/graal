@@ -26,10 +26,13 @@ import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCallTarget.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.graal.snippets.Snippet.ConstantParameter;
 import com.oracle.graal.snippets.Snippet.Parameter;
@@ -40,100 +43,160 @@ import com.oracle.graal.word.*;
 
 public class WriteBarrierSnippets implements SnippetsInterface {
 
-    private static final boolean TRACE = false;
-    public static final SnippetCounter.Group counters = WriteBarrierSnippets.TRACE ? new SnippetCounter.Group("GC") : null;
-
-    private static final SnippetCounter g1PreCounter = new SnippetCounter(counters, "G1-PRE", "G1-PRE");
-    private static final SnippetCounter g1PostCounter = new SnippetCounter(counters, "G1-POST", "G1-POST");
+    private static boolean TRACE_COND = false;
 
     @Snippet
-    public static void g1PreWriteBarrier(@Parameter("object") Object object, @Parameter("location") Object location, @ConstantParameter("doLoad") boolean doLoad) {
+    public static int g1PreWriteBarrier(@Parameter("object") Object obj, @Parameter("expectedObject") Object expobj, @Parameter("location") Object location,
+                    @ConstantParameter("doLoad") boolean doLoad, @ConstantParameter("name") String name, @ConstantParameter("profile") boolean profile) {
+
+        int gcCycle = Word.unsigned(HotSpotSnippetUtils.gcCycleAddress()).readInt(0);
+        if (obj == null) {
+            return gcCycle;
+
+        }
+        TRACE_COND = profile;
+        // if (!TRACE_COND) {
+        // TRACE_COND = Word.unsigned(HotSpotSnippetUtils.gcCycleAddress()).readInt(0) > 650 ? true
+// : false;
+        // }
+        int cause = 0;
         Word thread = thread();
 
-        trace(WriteBarrierSnippets.TRACE, "---------------G1 PRE Enter: %lu\n", Word.unsigned(g1PreCounter.value()));
+        Object object = FixedValueAnchorNode.getObject(obj);
+        Object expectedObject = FixedValueAnchorNode.getObject(expobj);
+
         Pointer oop = Word.fromObject(object);
         Pointer field = Word.fromArray(object, location);
-        Pointer previousOop = field.readWord(0);
-
-        // VerOopStubCall.call(oop);
-        long oopv = oop.rawValue();
-
+        Pointer previousOop = Word.fromObject(expectedObject);
+        long originalOop = oop.rawValue();
+        long prevOop = field.readWord(0).rawValue();
         byte markingValue = thread.readByte(HotSpotSnippetUtils.g1SATBQueueMarkingOffset());
+
+        if (doLoad) { // We need to generate the load of the previous value
+            if (oop.equal(Word.zero())) {
+                trace(TRACE_COND, "ERROR      Null Object 0x%16lx\n", Word.zero());
+            }
+            if (field.equal(Word.zero())) {
+                trace(TRACE_COND, "ERROR      Null Field 0x%16lx\n", Word.zero());
+            }
+            if (previousOop.notEqual(Word.zero())) {
+                trace(TRACE_COND, "ERROR      Field Loaded already 0x%16lx\n", previousOop);
+            }
+        } else {
+
+            if (previousOop.equal(Word.zero())) {
+                trace(TRACE_COND, "ERROR      Field is not Loaded already 0x%16lx\n", previousOop);
+                trace(TRACE_COND, "ERROR      Field2 is not Loaded already 0x%16lx\n", oop);
+                trace(TRACE_COND, name, oop);
+                trace(TRACE_COND, "\n", oop);
+            }
+
+            if (previousOop.notEqual(field.readWord(0))) {
+                trace(TRACE_COND, "ERROR      Field is not Loaded already in ref.Reference 0x%16lx\n", previousOop);
+            }
+        }
 
         Word bufferAddress = thread.readWord(HotSpotSnippetUtils.g1SATBQueueBufferOffset());
         Word indexAddress = thread.add(HotSpotSnippetUtils.g1SATBQueueIndexOffset());
-        Word indexValue = thread.readWord(HotSpotSnippetUtils.g1SATBQueueIndexOffset());
-
-        trace(WriteBarrierSnippets.TRACE, "      G1 PRE thread address: 0x%16lx\n", thread);
-        trace(WriteBarrierSnippets.TRACE, "      G1 PRE oop: 0x%16lx\n", oop);
-        trace(WriteBarrierSnippets.TRACE, "      G1 PRE field: 0x%16lx\n", field);
-        trace(WriteBarrierSnippets.TRACE, "      G1 PRE previous OOP: 0x%16lx\n", previousOop);
-        trace(WriteBarrierSnippets.TRACE, "      G1 PRE QueueMarkingOffset: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.g1SATBQueueMarkingOffset()));
-        trace(WriteBarrierSnippets.TRACE, "      G1 PRE QueueBufferOffset: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.g1SATBQueueBufferOffset()));
-        trace(WriteBarrierSnippets.TRACE, "      G1 PRE QueueIndexOffset: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.g1SATBQueueIndexOffset()));
-        trace(WriteBarrierSnippets.TRACE, "      G1 PRE markingValue: 0x%016lx\n", Word.signed((int) markingValue));
-        trace(WriteBarrierSnippets.TRACE, "      G1 PRE bufferAddress: 0x%016lx\n", bufferAddress);
-        trace(WriteBarrierSnippets.TRACE, "      G1 PRE indexAddress: 0x%016lx\n", indexAddress);
-        trace(WriteBarrierSnippets.TRACE, "      G1 PRE indexValue: 0x%016lx\n", indexValue);// in
+        Word indexValue = indexAddress.readWord(0);
+        trace(TRACE_COND, "TRACE  PRE     Field oop 0x%16lx prevValue 0x%16lx marking value %d \n", oop, field.readWord(0), Word.unsigned(markingValue));
+        trace(TRACE_COND, "TRACE  PRE     Field oop 0x%16lx field 0x%16lx marking value %d \n", oop, field, Word.unsigned(markingValue));
 
         if (markingValue != (byte) 0) {
             if (doLoad) {
                 previousOop = field.readWord(0);
-                trace(WriteBarrierSnippets.TRACE, "      G1 PRE Do Load previous OOP: 0x%16lx\n", previousOop);
+                prevOop = previousOop.rawValue();
+
             }
             if (previousOop.notEqual(Word.zero())) {
+
                 if (indexValue.notEqual(Word.zero())) {
                     Word nextIndex = indexValue.subtract(HotSpotSnippetUtils.wordSize());
                     Word logAddress = bufferAddress.add(nextIndex);
-                    trace(WriteBarrierSnippets.TRACE, "      G1 PRE logAddress: 0x%016lx\n", logAddress);
-
                     logAddress.writeWord(0, previousOop);
                     indexAddress.writeWord(0, nextIndex);
+                    if (field.readWord(0).rawValue() != prevOop) {
+                        trace(TRACE_COND, "ERROR      field SATB changed 0x%16lx\n", Word.unsigned(prevOop));
+                    }
 
-                    trace(WriteBarrierSnippets.TRACE, "      G1 PRE nextIndex: 0x%016lx\n", indexAddress.readWord(0));
-                    trace(WriteBarrierSnippets.TRACE, "      G1 PRE writtenLogValue: 0x%016lx\n", logAddress.readWord(0));
+                    if (logAddress.readWord(0).rawValue() != prevOop) {
+                        trace(TRACE_COND, "ERROR      field SATB changed in buff 0x%16lx\n", Word.unsigned(prevOop));
+                    }
+
+                    if (indexAddress.readWord(0).rawValue() != nextIndex.rawValue()) {
+                        trace(TRACE_COND, "ERROR      index SATB changed in buff 0x%16lx\n", Word.unsigned(prevOop));
+                    }
 
                 } else {
                     WriteBarrierPreStubCall.call(previousOop);
+                    Word bufferAddress1 = thread.readWord(HotSpotSnippetUtils.g1SATBQueueBufferOffset());
+                    Word indexAddress1 = thread.add(HotSpotSnippetUtils.g1SATBQueueIndexOffset());
+                    Word indexValue1 = indexAddress1.readWord(0);
+                    if (bufferAddress1.add(indexValue1).readWord(0).rawValue() != prevOop) {
+                        trace(TRACE_COND, "ERROR      field SATB changed native 0x%16lx\n", Word.unsigned(prevOop));
+                    }
+
                 }
             }
         }
-        if (oopv != oop.rawValue()) {
-            trace(true, "---------------G1 PRE ERROR: %lu\n", Word.unsigned(oopv));
+
+        if (originalOop != oop.rawValue()) {
+            trace(TRACE_COND, "ERROR      Address changed 0x%16lx\n", Word.unsigned(originalOop));
+            trace(TRACE_COND, "ERROR      Address changed to  0x%16lx\n", oop);
         }
 
-        trace(WriteBarrierSnippets.TRACE, "---------------G1 PRE Exit: %lu\n", Word.unsigned(g1PreCounter.value()));
-        g1PreCounter.inc();
+        if (prevOop != 0L && (prevOop != field.readWord(0).rawValue())) {
+            trace(TRACE_COND, "ERROR      previousOop changed 0x%16lx\n", Word.unsigned(prevOop));
+        }
 
+        if (gcCycle != Word.unsigned(HotSpotSnippetUtils.gcCycleAddress()).readInt(0)) {
+            trace(TRACE_COND, "ERROR      gcCycle within PRE changed %lu %lu\n", Word.unsigned(gcCycle), Word.unsigned(cause));
+        }
+
+        return gcCycle;
     }
 
     @Snippet
-    public static void g1PostWriteBarrier(@Parameter("object") Object object, @Parameter("value") Object value, @Parameter("location") Object location) {
+    public static void g1PostWriteBarrier(@Parameter("object") Object obj, @Parameter("value") Object value, @Parameter("location") Object location, @Parameter("preBarrier") int preBarrier,
+                    @ConstantParameter("usePrecise") boolean usePrecise, @ConstantParameter("profile") boolean profile) {
         Word thread = thread();
-        trace(WriteBarrierSnippets.TRACE, "---------------G1 POST Enter: %lu\n", Word.unsigned(g1PostCounter.value()));
-        Pointer oop = Word.fromObject(object);
-        Pointer field = Word.fromArray(object, location);
-        Pointer writtenValue = Word.fromObject(value);
 
-        // VerOopStubCall.call(oop);
-        long oopv = oop.rawValue();
+        TRACE_COND = profile;
+        int gcCycle = Word.unsigned(HotSpotSnippetUtils.gcCycleAddress()).readInt(0);
+        if (gcCycle != preBarrier) {
+            trace(TRACE_COND, "ERROR      gcCycle from PRE to POST changed %lu %lu\n", Word.unsigned(gcCycle), Word.unsigned(preBarrier));
+        }
+
+        Object object = FixedValueAnchorNode.getObject(obj);
+        Object wrObject = FixedValueAnchorNode.getObject(value);
+
+        Pointer oop = Word.fromObject(object);
+
+        Pointer field1 = Word.fromArray(object, location);
+        Pointer field;
+        if (usePrecise) {
+            field = Word.fromArray(object, location);
+        } else {
+            field = oop;
+        }
+
+        Pointer writtenValue = Word.fromObject(wrObject);
+
+        long originalOop = oop.rawValue();
+        long originalWv = writtenValue.rawValue();
 
         Word bufferAddress = thread.readWord(HotSpotSnippetUtils.g1CardQueueBufferOffset());
         Word indexAddress = thread.add(HotSpotSnippetUtils.g1CardQueueIndexOffset());
         Word indexValue = thread.readWord(HotSpotSnippetUtils.g1CardQueueIndexOffset());
 
-        trace(WriteBarrierSnippets.TRACE, "     G1 POST oop: 0x%16lx\n", oop);
-        trace(WriteBarrierSnippets.TRACE, "     G1 POST field: 0x%16lx\n", field);
+        if (oop.equal(Word.zero())) {
+            trace(TRACE_COND, "ERROR POST     Null Object 0x%16lx\n", Word.zero());
+        }
+        if (field.equal(Word.zero())) {
+            trace(TRACE_COND, "ERROR POST     Null Field 0x%16lx\n", Word.zero());
+        }
 
-        trace(WriteBarrierSnippets.TRACE, "     G1 POST thread address: 0x%16lx\n", thread);
-        trace(WriteBarrierSnippets.TRACE, "     G1 POST bufferAddress: 0x%016lx\n", bufferAddress);
-        trace(WriteBarrierSnippets.TRACE, "     G1 POST indexAddress: 0x%016lx\n", indexAddress);
-        trace(WriteBarrierSnippets.TRACE, "     G1 POST indexValue: 0x%016lx\n", indexValue);
-        trace(WriteBarrierSnippets.TRACE, "     G1 POST existing value: 0x%016lx\n", field.readWord(0));
-        trace(WriteBarrierSnippets.TRACE, "     G1 POST written value: 0x%016lx\n", writtenValue);
-        trace(WriteBarrierSnippets.TRACE, "     G1 POST logHR int: 0x%016lx\n", Word.signed(HotSpotSnippetUtils.logOfHRGrainBytes()));
-        trace(WriteBarrierSnippets.TRACE, "     G1 POST Card Start: 0x%016lx\n", Word.unsigned(cardTableStart()));
-        trace(WriteBarrierSnippets.TRACE, "     G1 POST Word.size 0x%016lx\n", Word.signed(HotSpotSnippetUtils.wordSize()));
+        Word xorResult = ((Word) field.xor(writtenValue)).unsignedShiftRight(HotSpotSnippetUtils.logOfHRGrainBytes());
 
         // Card Table
         Word cardBase = (Word) field.unsignedShiftRight(cardTableShift());
@@ -146,14 +209,18 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         }
         Word cardAddress = cardBase.add(displacement);
 
-        // if (writtenValue.notEqual(Word.zero())) {
-        Word xorResult = ((Word) field.xor(writtenValue)).unsignedShiftRight(HotSpotSnippetUtils.logOfHRGrainBytes());
-        trace(WriteBarrierSnippets.TRACE, "     G1 POST xor result: 0x%016lx\n", xorResult);
+        // trace(TRACE_COND, "      G1 POST from field 0x%016lx to obj 0x%16lx, marking %d\n",
+// field, writtenValue, Word.signed(cardAddress.readByte(0)));
+        // trace(TRACE_COND,
+// "      G1 POST from field 0x%016lx to cardAddress 0x%16lx, xorResults %16lx\n", field,
+// cardAddress, xorResult);
+
+        trace(TRACE_COND, "TRACE  POST     Field oop 0x%16lx writtenValue 0x%16lx card value %d\n", oop, writtenValue, Word.signed(cardAddress.readByte(0)));
+        trace(TRACE_COND, "TRACE  POST     Field oop 0x%16lx fieldRead 0x%16lx fieldAddress  0x%16lx\n", oop, field1.readWord(0), field1);
 
         if (xorResult.notEqual(Word.zero())) {
             if (writtenValue.notEqual(Word.zero())) {
                 byte cardByte = cardAddress.readByte(0);
-
                 if (cardByte != (byte) 0) {
                     cardAddress.writeByte(0, (byte) 0); // smash zero into card
                     if (indexValue.notEqual(Word.zero())) {
@@ -161,13 +228,7 @@ public class WriteBarrierSnippets implements SnippetsInterface {
                         Word logAddress = bufferAddress.add(nextIndex);
                         logAddress.writeWord(0, cardAddress);
                         indexAddress.writeWord(0, nextIndex);
-                        trace(WriteBarrierSnippets.TRACE, "     G1 POST cardAddress: 0x%016lx\n", cardAddress);
-                        trace(WriteBarrierSnippets.TRACE, "     G1 POST cardValue:  %d\n", Word.signed(cardByte));
-
-                        trace(WriteBarrierSnippets.TRACE, "     G1 POST nextIndex: 0x%016lx\n", nextIndex);
-                        trace(WriteBarrierSnippets.TRACE, "     G1 POST logAddress: 0x%016lx\n", logAddress);
                     } else {
-                        trace(WriteBarrierSnippets.TRACE, "     G1 POST Card Address: 0x%016lx\n", cardAddress);
                         WriteBarrierPostStubCall.call(object, cardAddress);
                     }
                 }
@@ -175,16 +236,38 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         }
         // } else { Object clone intrinsic(?!)
         // }
-        trace(WriteBarrierSnippets.TRACE, "---------------G1 POST EXIT: %lu\n", Word.unsigned(g1PostCounter.value()));
-        g1PostCounter.inc();
-        if (oopv != oop.rawValue()) {
-            trace(true, "---------------G1 POST ERROR: %lu\n", Word.unsigned(oopv));
+        // trace(WriteBarrierSnippets.TRACE, "---------------G1 POST EXIT: %lu\n",
+        if (originalOop != oop.rawValue()) {
+            trace(TRACE_COND, "ERROR      Address changed 0x%16lx\n", Word.unsigned(originalOop));
+            trace(TRACE_COND, "ERROR      Address changed to  0x%16lx\n", oop);
         }
+
+        if (originalWv != writtenValue.rawValue()) {
+            trace(TRACE_COND, "ERROR      Written Value  changed 0x%16lx\n", Word.unsigned(originalWv));
+            trace(TRACE_COND, "ERROR      Written Value changed to  0x%16lx\n", writtenValue);
+        }
+
+        if (gcCycle != Word.unsigned(HotSpotSnippetUtils.gcCycleAddress()).readInt(0)) {
+            trace(TRACE_COND, "ERROR      gcCycle within POST changed %lu\n", Word.unsigned(gcCycle));
+        }
+
     }
 
     private static void trace(boolean enabled, String format, WordBase value) {
         if (enabled) {
             Log.printf(format, value.rawValue());
+        }
+    }
+
+    private static void trace(boolean enabled, String format, WordBase value, WordBase value2) {
+        if (enabled) {
+            Log.printf(format, value.rawValue(), value2.rawValue());
+        }
+    }
+
+    private static void trace(boolean enabled, String format, WordBase value, WordBase value2, WordBase value3) {
+        if (enabled) {
+            Log.printf(format, value.rawValue(), value2.rawValue(), value3.rawValue());
         }
     }
 
@@ -222,15 +305,13 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         private final ResolvedJavaMethod serialArrayWriteBarrier;
         private final ResolvedJavaMethod g1PreWriteBarrier;
         private final ResolvedJavaMethod g1PostWriteBarrier;
-        private final boolean useG1GC;
 
         public Templates(CodeCacheProvider runtime, Assumptions assumptions, TargetDescription target, boolean useG1GC) {
             super(runtime, assumptions, target, WriteBarrierSnippets.class);
             serialFieldWriteBarrier = snippet("serialFieldWriteBarrier", Object.class);
             serialArrayWriteBarrier = snippet("serialArrayWriteBarrier", Object.class, Object.class);
-            g1PreWriteBarrier = snippet("g1PreWriteBarrier", Object.class, Object.class, boolean.class);
-            g1PostWriteBarrier = snippet("g1PostWriteBarrier", Object.class, Object.class, Object.class);
-            this.useG1GC = useG1GC;
+            g1PreWriteBarrier = snippet("g1PreWriteBarrier", Object.class, Object.class, Object.class, boolean.class, String.class, boolean.class);
+            g1PostWriteBarrier = snippet("g1PostWriteBarrier", Object.class, Object.class, Object.class, int.class, boolean.class, boolean.class);
             System.out.println("  useG1GC? " + (useG1GC ? "true" : "false"));
         }
 
@@ -257,11 +338,12 @@ public class WriteBarrierSnippets implements SnippetsInterface {
             ResolvedJavaMethod method = g1PreWriteBarrier;
             Key key = new Key(method);
             key.add("doLoad", writeBarrierPre.doLoad());
-
+            key.add("name", writeBarrierPre.getName());
+            key.add("profile", writeBarrierPre.profile());
             Arguments arguments = new Arguments();
             arguments.add("object", writeBarrierPre.object());
+            arguments.add("expectedObject", writeBarrierPre.expectedObject());
             arguments.add("location", writeBarrierPre.location());
-
             SnippetTemplate template = cache.get(key, assumptions);
             template.instantiate(runtime, writeBarrierPre, DEFAULT_REPLACER, arguments);
         }
@@ -269,10 +351,13 @@ public class WriteBarrierSnippets implements SnippetsInterface {
         public void lower(WriteBarrierPost writeBarrierPost, @SuppressWarnings("unused") LoweringTool tool) {
             ResolvedJavaMethod method = g1PostWriteBarrier;
             Key key = new Key(method);
+            key.add("usePrecise", writeBarrierPost.usePrecise());
+            key.add("profile", writeBarrierPost.profile());
             Arguments arguments = new Arguments();
             arguments.add("object", writeBarrierPost.object());
             arguments.add("location", writeBarrierPost.location());
             arguments.add("value", writeBarrierPost.value());
+            arguments.add("preBarrier", writeBarrierPost.getPreBarrier());
             SnippetTemplate template = cache.get(key, assumptions);
             template.instantiate(runtime, writeBarrierPost, DEFAULT_REPLACER, arguments);
         }

@@ -24,6 +24,8 @@ package com.oracle.graal.phases.graph;
 
 import java.util.*;
 
+import sun.misc.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
@@ -69,6 +71,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
                 state.loopBegin((LoopBeginNode) current);
                 nodeStates.put(current, state);
                 state = state.clone();
+                System.out.println("State: " + state.hashCode());
                 loopBegin((LoopBeginNode) current);
                 current = ((LoopBeginNode) current).next();
                 assert current != null;
