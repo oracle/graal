@@ -22,32 +22,35 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-/**
- * Node implementing a call to HotSpot's {@code graal_monitorenter} stub.
- */
-public class VerOopStubCall extends FixedWithNextNode implements LIRGenLowerable {
+public final class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private final ValueNode object;
-    public static final Descriptor VEROOPCALL = new Descriptor("veroopcall", true, void.class, Object.class);
+    @Input private ValueNode object;
 
-    public VerOopStubCall(ValueNode object) {
-        super(StampFactory.forVoid());
+    public ValueNode object() {
+        return object;
+    }
+
+    public FixedValueAnchorNode(ValueNode object) {
+        super(StampFactory.forNodeIntrinsic());
         this.object = object;
+
     }
 
     @Override
-    public void generate(LIRGenerator gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(VerOopStubCall.VEROOPCALL);
-        gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object));
+    public boolean inferStamp() {
+        return updateStamp(object.stamp());
     }
 
     @NodeIntrinsic
-    public static native void call(Object hub);
+    public static native <T> T getObject(Object object);
+
+    @Override
+    public void generate(LIRGeneratorTool generator) {
+        generator.setResult(this, generator.operand(object));
+    }
+
 }
