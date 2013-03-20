@@ -39,12 +39,16 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.snippets.Snippet.Fold;
 
-public class SnippetIntrinsificationPhase extends Phase {
+/**
+ * Replaces calls to {@link NodeIntrinsic}s with nodes and calls to methods annotated with
+ * {@link Fold} with the result of invoking the annotated method via reflection.
+ */
+public class NodeIntrinsificationPhase extends Phase {
 
     private final MetaAccessProvider runtime;
     private final BoxingMethodPool pool;
 
-    public SnippetIntrinsificationPhase(MetaAccessProvider runtime, BoxingMethodPool pool) {
+    public NodeIntrinsificationPhase(MetaAccessProvider runtime, BoxingMethodPool pool) {
         this.runtime = runtime;
         this.pool = pool;
     }
@@ -73,7 +77,6 @@ public class SnippetIntrinsificationPhase extends Phase {
         ResolvedJavaType declaringClass = target.getDeclaringClass();
         if (intrinsic != null) {
             assert target.getAnnotation(Fold.class) == null;
-            assert Modifier.isNative(target.getModifiers()) : "node intrinsic " + target + " should be native";
 
             Class<?>[] parameterTypes = signatureToTypes(target.getSignature(), declaringClass);
             ResolvedJavaType returnType = target.getSignature().getReturnType(declaringClass).resolve(declaringClass);

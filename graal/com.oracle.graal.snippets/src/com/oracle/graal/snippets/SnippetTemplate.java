@@ -283,7 +283,7 @@ public class SnippetTemplate {
         Debug.dump(snippetCopy, "Before specialization");
         if (!replacements.isEmpty()) {
             // Do deferred intrinsification of node intrinsics
-            new SnippetIntrinsificationPhase(runtime, new BoxingMethodPool(runtime)).apply(snippetCopy);
+            new NodeIntrinsificationPhase(runtime, new BoxingMethodPool(runtime)).apply(snippetCopy);
             new WordTypeRewriterPhase(runtime, target.wordKind).apply(snippetCopy);
 
             new CanonicalizerPhase(runtime, assumptions, 0, null).apply(snippetCopy);

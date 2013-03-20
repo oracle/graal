@@ -208,7 +208,7 @@ public class SnippetInstaller {
      * Does final processing of a snippet graph.
      */
     protected void finalizeGraph(ResolvedJavaMethod method, StructuredGraph graph) {
-        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+        new NodeIntrinsificationPhase(runtime, pool).apply(graph);
         assert SnippetTemplate.hasConstantParameter(method) || SnippetIntrinsificationVerificationPhase.verify(graph);
 
         new SnippetFrameStateCleanupPhase().apply(graph);
@@ -254,7 +254,7 @@ public class SnippetInstaller {
         Debug.dump(graph, "%s: %s", method.getName(), GraphBuilderPhase.class.getSimpleName());
 
         new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
-        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+        new NodeIntrinsificationPhase(runtime, pool).apply(graph);
 
         return graph;
     }
@@ -276,7 +276,7 @@ public class SnippetInstaller {
      * Called after all inlining for a given graph is complete.
      */
     protected void afterInlining(StructuredGraph graph) {
-        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+        new NodeIntrinsificationPhase(runtime, pool).apply(graph);
 
         new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
 
