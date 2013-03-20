@@ -84,7 +84,9 @@ public class FloatingReadPhase extends Phase {
         @Override
         protected void processNode(FixedNode node, Set<Object> currentState) {
             if (node instanceof MemoryCheckpoint) {
-                currentState.add(((MemoryCheckpoint) node).getLocationIdentity());
+                for (Object identity : ((MemoryCheckpoint) node).getLocationIdentities()) {
+                    currentState.add(identity);
+                }
             }
         }
 
@@ -132,10 +134,12 @@ public class FloatingReadPhase extends Phase {
         }
 
         private void processCheckpoint(MemoryCheckpoint checkpoint, MemoryMap state) {
-            if (checkpoint.getLocationIdentity() == LocationNode.ANY_LOCATION) {
-                state.lastMemorySnapshot.clear();
+            for (Object identity : checkpoint.getLocationIdentities()) {
+                if (identity == LocationNode.ANY_LOCATION) {
+                    state.lastMemorySnapshot.clear();
+                }
+                state.lastMemorySnapshot.put(identity, (ValueNode) checkpoint);
             }
-            state.lastMemorySnapshot.put(checkpoint.getLocationIdentity(), (ValueNode) checkpoint);
         }
 
         private void processRead(ReadNode readNode, MemoryMap state) {
@@ -210,7 +214,9 @@ public class FloatingReadPhase extends Phase {
                  * needs to choose by putting in the location identity on both successors.
                  */
                 InvokeWithExceptionNode checkpoint = (InvokeWithExceptionNode) node.predecessor();
-                result.lastMemorySnapshot.put(checkpoint.getLocationIdentity(), node);
+                for (Object identity : checkpoint.getLocationIdentities()) {
+                    result.lastMemorySnapshot.put(identity, node);
+                }
             }
             return result;
         }

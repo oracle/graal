@@ -42,8 +42,8 @@ public class ExceptionObjectNode extends AbstractStateSplit implements StateSpli
     }
 
     @Override
-    public Object getLocationIdentity() {
-        return LocationNode.ANY_LOCATION;
+    public Object[] getLocationIdentities() {
+        return new Object[]{LocationNode.ANY_LOCATION};
     }
 
     @Override

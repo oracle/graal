@@ -42,8 +42,8 @@ public final class MonitorExitNode extends AccessMonitorNode implements Lowerabl
     }
 
     @Override
-    public Object getLocationIdentity() {
-        return LocationNode.ANY_LOCATION;
+    public Object[] getLocationIdentities() {
+        return new Object[]{LocationNode.ANY_LOCATION};
     }
 
     public void lower(LoweringTool tool) {

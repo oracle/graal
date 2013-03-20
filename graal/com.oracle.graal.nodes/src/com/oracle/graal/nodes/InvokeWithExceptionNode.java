@@ -162,8 +162,8 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     }
 
     @Override
-    public Object getLocationIdentity() {
-        return LocationNode.ANY_LOCATION;
+    public Object[] getLocationIdentities() {
+        return new Object[]{LocationNode.ANY_LOCATION};
     }
 
     public FrameState stateDuring() {

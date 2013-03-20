@@ -72,8 +72,8 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
     }
 
     @Override
-    public Object getLocationIdentity() {
-        return LocationNode.ANY_LOCATION;
+    public Object[] getLocationIdentities() {
+        return new Object[]{LocationNode.ANY_LOCATION};
     }
 
     @Override

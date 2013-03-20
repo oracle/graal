@@ -66,7 +66,7 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     public static native void writeMemory(Object object, Object value, Object location);
 
     @Override
-    public Object getLocationIdentity() {
-        return location().locationIdentity();
+    public Object[] getLocationIdentities() {
+        return new Object[]{location().locationIdentity()};
     }
 }

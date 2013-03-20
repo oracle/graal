@@ -70,8 +70,8 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGe
     }
 
     @Override
-    public Object getLocationIdentity() {
-        return locationIdentity;
+    public Object[] getLocationIdentities() {
+        return new Object[]{locationIdentity};
     }
 
     @Override
