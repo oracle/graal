@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.jtt.lang;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 /*
  */
@@ -46,6 +47,9 @@ public class System_identityHashCode01 extends JTTTest {
         }
         if (i == 2) {
             return hash2 == System.identityHashCode(object2);
+        }
+        if (i == 3) {
+            return 0 == System.identityHashCode(null);
         }
         return false;
     }
@@ -70,4 +74,8 @@ public class System_identityHashCode01 extends JTTTest {
         runTest("test", 3);
     }
 
+    @Test
+    public void run4() throws Throwable {
+        runTest("test", 4);
+    }
 }
