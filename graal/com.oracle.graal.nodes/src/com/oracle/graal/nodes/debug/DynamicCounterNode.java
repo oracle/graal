@@ -46,11 +46,13 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
     private static final long[] COUNTERS = new long[MAX_COUNTERS];
     private static final HashMap<String, Integer> INDEXES = new HashMap<>();
     private final String name;
+    private final long increment;
     private final boolean addContext;
 
-    public DynamicCounterNode(String name, boolean addContext) {
+    public DynamicCounterNode(String name, long increment, boolean addContext) {
         super(StampFactory.forVoid());
         this.name = name;
+        this.increment = increment;
         this.addContext = addContext;
     }
 
@@ -104,7 +106,7 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
         ConstantNode arrayConstant = ConstantNode.forObject(COUNTERS, tool.getRuntime(), graph);
         ConstantNode indexConstant = ConstantNode.forInt(index, graph);
         LoadIndexedNode load = graph.add(new LoadIndexedNode(arrayConstant, indexConstant, Kind.Long));
-        IntegerAddNode add = graph.add(new IntegerAddNode(Kind.Long, load, ConstantNode.forLong(1, graph)));
+        IntegerAddNode add = graph.add(new IntegerAddNode(Kind.Long, load, ConstantNode.forLong(increment, graph)));
         StoreIndexedNode store = graph.add(new StoreIndexedNode(arrayConstant, indexConstant, Kind.Long, add));
 
         graph.addBeforeFixed(this, load);
@@ -112,9 +114,9 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
         graph.removeFixed(this);
     }
 
-    public static void createCounter(String name, FixedNode before, boolean addContext) {
+    public static void createCounter(String name, FixedNode before, long increment, boolean addContext) {
         StructuredGraph graph = (StructuredGraph) before.graph();
-        DynamicCounterNode counter = graph.add(new DynamicCounterNode(name, addContext));
+        DynamicCounterNode counter = graph.add(new DynamicCounterNode(name, increment, addContext));
         graph.addBeforeFixed(before, counter);
     }
 }
