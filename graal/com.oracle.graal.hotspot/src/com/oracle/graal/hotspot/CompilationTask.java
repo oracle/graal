@@ -30,9 +30,11 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
+import static com.oracle.graal.nodes.StructuredGraph.*;
 
 public final class CompilationTask implements Runnable, Comparable<CompilationTask> {
 
@@ -135,14 +137,14 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                     @Override
                     public CompilationResult call() throws Exception {
                         graalRuntime.evictDeoptedGraphs();
-// StructuredGraph graph = (StructuredGraph) method.getCompilerStorage().get(Graph.class);
-// if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
-                        StructuredGraph graph = new StructuredGraph(method, entryBCI);
-// } else {
-// // Compiling an intrinsic graph - must clone the graph
-// graph = graph.copy();
-// // System.out.println("compiling intrinsic " + method);
-// }
+                        StructuredGraph graph = (StructuredGraph) method.getCompilerStorage().get(Graph.class);
+                        if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
+                            graph = new StructuredGraph(method, entryBCI);
+                        } else {
+                            // Compiling an intrinsic graph - must clone the graph
+                            graph = graph.copy();
+                            // System.out.println("compiling intrinsic " + method);
+                        }
                         InlinedBytecodes.add(method.getCodeSize());
                         return graalRuntime.getCompiler().compileMethod(method, graph, graalRuntime.getCache(), plan, optimisticOpts);
                     }
