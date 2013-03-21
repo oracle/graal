@@ -27,8 +27,8 @@ import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
 /**

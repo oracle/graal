@@ -27,6 +27,7 @@ import static com.oracle.graal.nodes.calc.Condition.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.calc.*;
 
 /**

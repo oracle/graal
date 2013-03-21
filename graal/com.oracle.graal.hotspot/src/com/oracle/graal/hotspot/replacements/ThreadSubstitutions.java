@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
 /**

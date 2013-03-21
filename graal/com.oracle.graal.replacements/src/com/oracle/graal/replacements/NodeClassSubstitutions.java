@@ -23,6 +23,7 @@
 package com.oracle.graal.replacements;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 
