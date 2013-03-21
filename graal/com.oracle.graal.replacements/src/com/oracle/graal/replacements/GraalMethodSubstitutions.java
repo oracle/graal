@@ -25,9 +25,9 @@ package com.oracle.graal.replacements;
 import com.oracle.graal.phases.*;
 
 /**
- * Definition of the snippets that are VM-independent and can be intrinsified by Graal in any VM.
+ * Method substitutions that are VM-independent.
  */
-public class GraalIntrinsics {
+public class GraalMethodSubstitutions {
 
     public static void installIntrinsics(ReplacementsInstaller installer) {
         if (GraalOptions.Intrinsify) {
