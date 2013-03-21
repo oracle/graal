@@ -529,8 +529,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         Kind wordKind = graalRuntime.getTarget().wordKind;
         if (n instanceof ArrayLengthNode) {
             ArrayLengthNode arrayLengthNode = (ArrayLengthNode) n;
-            SafeReadNode safeReadArrayLength = safeReadArrayLength(arrayLengthNode.array());
-            graph.replaceFixedWithFixed(arrayLengthNode, safeReadArrayLength);
+            ValueNode array = arrayLengthNode.array();
+            ReadNode arrayLengthRead = graph.add(new ReadNode(array, LocationNode.create(LocationNode.FINAL_LOCATION, Kind.Int, config.arrayLengthOffset, graph), StampFactory.positiveInt()));
+            arrayLengthRead.dependencies().add(tool.createNullCheckGuard(array));
+            graph.replaceFixedWithFixed(arrayLengthNode, arrayLengthRead);
         } else if (n instanceof Invoke) {
             Invoke invoke = (Invoke) n;
             if (invoke.callTarget() instanceof MethodCallTargetNode) {
@@ -809,10 +811,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, getArrayBaseOffset(elementKind), index, graph, scale);
     }
 
-    private SafeReadNode safeReadArrayLength(ValueNode array) {
-        return safeRead(array.graph(), Kind.Int, array, config.arrayLengthOffset, StampFactory.positiveInt());
-    }
-
     private static ValueNode createBoundsCheck(AccessIndexedNode n, LoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) n.graph();
         ArrayLengthNode arrayLength = graph.add(new ArrayLengthNode(n.array()));
@@ -820,10 +818,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
         graph.addBeforeFixed(n, arrayLength);
         return guard;
-    }
-
-    private static SafeReadNode safeRead(Graph graph, Kind kind, ValueNode value, int offset, Stamp stamp) {
-        return graph.add(new SafeReadNode(value, LocationNode.create(LocationNode.FINAL_LOCATION, kind, offset, graph), stamp));
     }
 
     public ResolvedJavaType lookupJavaType(Class<?> clazz) {
