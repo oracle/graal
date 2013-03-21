@@ -77,7 +77,7 @@ public class ReplacementsInstaller {
 
     /**
      * Finds all the snippet methods in a given class, builds a graph for them and installs the
-     * graph with the key value of {@code Graph.class} in the
+     * graph with the key value of {@code Snippet.class} in the
      * {@linkplain ResolvedJavaMethod#getCompilerStorage() compiler storage} of each method.
      */
     public void installSnippets(Class<? extends Snippets> snippets) {
@@ -100,9 +100,9 @@ public class ReplacementsInstaller {
      * Finds all the methods in a given class annotated with {@link MethodSubstitution} or
      * {@link MacroSubstitution}. It builds graphs for the former and installs them in the
      * {@linkplain ResolvedJavaMethod#getCompilerStorage() compiler storage} of the original (i.e.,
-     * substituted) method with a key of {@code Graph.class}. For the latter, the denoted
-     * {@linkplain MacroSubstitution#macro() macro} node type is install in the compiler storage
-     * with a key of {@code Node.class}.
+     * substituted) method with a key of {@code MethodSubstitution.class}. For the latter, the
+     * denoted {@linkplain MacroSubstitution#macro() macro} node type is install in the compiler
+     * storage with a key of {@code Node.class}.
      */
     public void installSubstitutions(Class<?> substitutions) {
         assert owner == Thread.currentThread() : "substitution installation must be single threaded";
