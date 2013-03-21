@@ -236,7 +236,7 @@ public class SnippetTemplate {
         Signature signature = method.getSignature();
 
         // Copy snippet graph, replacing constant parameters with given arguments
-        StructuredGraph snippetGraph = (StructuredGraph) method.getCompilerStorage().get(Graph.class);
+        StructuredGraph snippetGraph = (StructuredGraph) method.getCompilerStorage().get(Snippet.class);
         StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
         replacements.put(snippetGraph.start(), snippetCopy.start());

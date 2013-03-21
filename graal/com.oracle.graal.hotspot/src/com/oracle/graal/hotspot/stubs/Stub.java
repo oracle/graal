@@ -33,7 +33,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
@@ -41,8 +40,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.*;
-import com.oracle.graal.replacements.SnippetTemplate.*;
+import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
+import com.oracle.graal.replacements.SnippetTemplate.Key;
 
 /**
  * Base class for implementing some low level code providing the out-of-line slow path for a
@@ -107,7 +107,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      * it.
      */
     public void install(Backend backend) {
-        StructuredGraph graph = (StructuredGraph) stubMethod.getCompilerStorage().get(Graph.class);
+        StructuredGraph graph = (StructuredGraph) stubMethod.getCompilerStorage().get(Snippet.class);
 
         Key key = new Key(stubMethod);
         populateKey(key);

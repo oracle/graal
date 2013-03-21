@@ -520,7 +520,7 @@ public class MonitorSnippets implements Snippets {
                     InvokeNode invoke = graph.add(new InvokeNode(callTarget, 0));
                     invoke.setStateAfter(graph.start().stateAfter());
                     graph.addAfterFixed(graph.start(), invoke);
-                    StructuredGraph inlineeGraph = (StructuredGraph) initCounter.getCompilerStorage().get(Graph.class);
+                    StructuredGraph inlineeGraph = (StructuredGraph) initCounter.getCompilerStorage().get(Snippet.class);
                     InliningUtil.inline(invoke, inlineeGraph, false);
 
                     List<ReturnNode> rets = graph.getNodes().filter(ReturnNode.class).snapshot();
@@ -534,7 +534,7 @@ public class MonitorSnippets implements Snippets {
                         FrameState stateAfter = new FrameState(graph.method(), FrameState.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], false, false);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
-                        inlineeGraph = (StructuredGraph) checkCounter.getCompilerStorage().get(Graph.class);
+                        inlineeGraph = (StructuredGraph) checkCounter.getCompilerStorage().get(Snippet.class);
                         InliningUtil.inline(invoke, inlineeGraph, false);
                     }
                 }

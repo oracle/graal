@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 
 public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableNodeType, Lowerable {
@@ -72,7 +73,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         }
         Kind componentKind = srcType.getComponentType().getKind();
         ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(componentKind));
-        return (StructuredGraph) snippetMethod.getCompilerStorage().get(Graph.class);
+        return (StructuredGraph) snippetMethod.getCompilerStorage().get(Snippet.class);
     }
 
     private static void unrollFixedLengthLoop(StructuredGraph snippetGraph, int length, LoweringTool tool) {
@@ -111,7 +112,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         StructuredGraph snippetGraph = selectSnippet(tool);
         if (snippetGraph == null) {
             ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.genericArraycopySnippet);
-            snippetGraph = ((StructuredGraph) snippetMethod.getCompilerStorage().get(Graph.class)).copy();
+            snippetGraph = ((StructuredGraph) snippetMethod.getCompilerStorage().get(Snippet.class)).copy();
             assert snippetGraph != null : "ArrayCopySnippets should be installed";
 
             replaceSnippetInvokes(snippetGraph, getTargetMethod(), getBci());

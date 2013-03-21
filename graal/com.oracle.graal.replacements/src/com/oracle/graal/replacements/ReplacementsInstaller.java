@@ -88,10 +88,10 @@ public class ReplacementsInstaller {
                     throw new RuntimeException("Snippet must not be abstract or native");
                 }
                 ResolvedJavaMethod snippet = runtime.lookupJavaMethod(method);
-                assert snippet.getCompilerStorage().get(Graph.class) == null : method;
+                assert snippet.getCompilerStorage().get(Snippet.class) == null : method;
                 StructuredGraph graph = makeGraph(snippet, inliningPolicy(snippet));
                 // System.out.println("snippet: " + graph);
-                snippet.getCompilerStorage().put(Graph.class, graph);
+                snippet.getCompilerStorage().put(Snippet.class, graph);
             }
         }
     }
