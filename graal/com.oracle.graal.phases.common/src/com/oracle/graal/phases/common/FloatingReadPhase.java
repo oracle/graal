@@ -126,8 +126,8 @@ public class FloatingReadPhase extends Phase {
 
         @Override
         protected void processNode(FixedNode node, MemoryMap state) {
-            if (node instanceof ReadNode) {
-                processRead((ReadNode) node, state);
+            if (node instanceof FloatableAccessNode) {
+                processFloatable((FloatableAccessNode) node, state);
             } else if (node instanceof MemoryCheckpoint) {
                 processCheckpoint((MemoryCheckpoint) node, state);
             }
@@ -142,23 +142,23 @@ public class FloatingReadPhase extends Phase {
             }
         }
 
-        private void processRead(ReadNode readNode, MemoryMap state) {
-            StructuredGraph graph = (StructuredGraph) readNode.graph();
-            assert readNode.getNullCheck() == false;
-            Object locationIdentity = readNode.location().locationIdentity();
+        private void processFloatable(FloatableAccessNode accessNode, MemoryMap state) {
+            StructuredGraph graph = (StructuredGraph) accessNode.graph();
+            assert accessNode.getNullCheck() == false;
+            Object locationIdentity = accessNode.location().locationIdentity();
             if (locationIdentity != LocationNode.UNKNOWN_LOCATION) {
                 ValueNode lastLocationAccess = state.getLastLocationAccess(locationIdentity);
-                FloatingReadNode floatingRead = graph.unique(new FloatingReadNode(readNode.object(), readNode.location(), lastLocationAccess, readNode.stamp(), readNode.dependencies()));
-                floatingRead.setNullCheck(readNode.getNullCheck());
+                FloatingAccessNode floatingNode = accessNode.asFloatingNode(lastLocationAccess);
+                floatingNode.setNullCheck(accessNode.getNullCheck());
                 ValueAnchorNode anchor = null;
-                for (GuardNode guard : readNode.dependencies().filter(GuardNode.class)) {
+                for (GuardNode guard : accessNode.dependencies().filter(GuardNode.class)) {
                     if (anchor == null) {
                         anchor = graph.add(new ValueAnchorNode());
-                        graph.addAfterFixed(readNode, anchor);
+                        graph.addAfterFixed(accessNode, anchor);
                     }
                     anchor.addAnchoredNode(guard);
                 }
-                graph.replaceFixedWithFloating(readNode, floatingRead);
+                graph.replaceFixedWithFloating(accessNode, floatingNode);
             }
         }
 
