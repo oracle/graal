@@ -49,106 +49,6 @@ import com.oracle.graal.replacements.nodes.*;
 public class MethodSubstitutionTest extends GraalCompilerTest {
 
     @Test
-    public void testObjectSubstitutions() {
-        test("getClass_");
-        test("objectHashCode");
-    }
-
-    @SuppressWarnings("all")
-    public static boolean getClass_(Object obj, Class<?> clazz) {
-        return obj.getClass() == clazz;
-    }
-
-    @SuppressWarnings("all")
-    public static int objectHashCode(TestClassA obj) {
-        return obj.hashCode();
-    }
-
-    @Test
-    public void testClassSubstitutions() {
-        test("getModifiers");
-        test("isInstance");
-        test("isInterface");
-        test("isArray");
-        test("isPrimitive");
-        test("getSuperClass");
-        test("getComponentType");
-    }
-
-    @SuppressWarnings("all")
-    public static int getModifiers(Class<?> clazz) {
-        return clazz.getModifiers();
-    }
-
-    @SuppressWarnings("all")
-    public static boolean isInstance(Class<?> clazz) {
-        return clazz.isInstance(Number.class);
-    }
-
-    @SuppressWarnings("all")
-    public static boolean isInterface(Class<?> clazz) {
-        return clazz.isInterface();
-    }
-
-    @SuppressWarnings("all")
-    public static boolean isArray(Class<?> clazz) {
-        return clazz.isArray();
-    }
-
-    @SuppressWarnings("all")
-    public static boolean isPrimitive(Class<?> clazz) {
-        return clazz.isPrimitive();
-    }
-
-    @SuppressWarnings("all")
-    public static Class<?> getSuperClass(Class<?> clazz) {
-        return clazz.getSuperclass();
-    }
-
-    @SuppressWarnings("all")
-    public static Class<?> getComponentType(Class<?> clazz) {
-        return clazz.getComponentType();
-    }
-
-    @Test
-    public void testThreadSubstitutions() {
-        test("currentThread");
-        test("threadIsInterrupted");
-        test("threadInterrupted");
-    }
-
-    @SuppressWarnings("all")
-    public static Thread currentThread() {
-        return Thread.currentThread();
-    }
-
-    @SuppressWarnings("all")
-    public static boolean threadIsInterrupted(Thread thread) {
-        return thread.isInterrupted();
-    }
-
-    @SuppressWarnings("all")
-    public static boolean threadInterrupted() {
-        return Thread.interrupted();
-    }
-
-    @Test
-    public void testSystemSubstitutions() {
-        test("systemTime");
-        test("systemIdentityHashCode");
-    }
-
-    @SuppressWarnings("all")
-    public static long systemTime() {
-        return System.currentTimeMillis() + System.nanoTime();
-    }
-
-    @SuppressWarnings("all")
-    public static int systemIdentityHashCode(Object obj) {
-        return System.identityHashCode(obj);
-    }
-
-    @Test
     public void testUnsafeSubstitutions() {
         test("unsafeCompareAndSwapInt");
         test("unsafeCompareAndSwapLong");
@@ -417,7 +317,7 @@ public class MethodSubstitutionTest extends GraalCompilerTest {
         return Double.longBitsToDouble(value);
     }
 
-    private StructuredGraph test(final String snippet) {
+    protected StructuredGraph test(final String snippet) {
         return Debug.scope("MethodSubstitutionTest", runtime.lookupJavaMethod(getMethod(snippet)), new Callable<StructuredGraph>() {
 
             @Override
@@ -438,7 +338,7 @@ public class MethodSubstitutionTest extends GraalCompilerTest {
         });
     }
 
-    private static StructuredGraph assertNotInGraph(StructuredGraph graph, Class<?> clazz) {
+    protected static StructuredGraph assertNotInGraph(StructuredGraph graph, Class<?> clazz) {
         for (Node node : graph.getNodes()) {
             if (clazz.isInstance(node)) {
                 fail(node.toString());
@@ -447,7 +347,7 @@ public class MethodSubstitutionTest extends GraalCompilerTest {
         return graph;
     }
 
-    private static StructuredGraph assertInGraph(StructuredGraph graph, Class<?> clazz) {
+    protected static StructuredGraph assertInGraph(StructuredGraph graph, Class<?> clazz) {
         for (Node node : graph.getNodes()) {
             if (clazz.isInstance(node)) {
                 return graph;
@@ -455,8 +355,5 @@ public class MethodSubstitutionTest extends GraalCompilerTest {
         }
         fail("Graph does not contain a node of class " + clazz.getName());
         return graph;
-    }
-
-    private static class TestClassA {
     }
 }
