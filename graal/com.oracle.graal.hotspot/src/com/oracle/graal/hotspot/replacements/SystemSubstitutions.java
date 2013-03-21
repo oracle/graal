@@ -30,7 +30,6 @@ import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.ClassSubstitution.*;
 
 /**
  * Substitutions for {@link java.lang.System} methods.

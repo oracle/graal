@@ -23,7 +23,6 @@
 package com.oracle.graal.replacements;
 
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.replacements.ClassSubstitution.*;
 
 /**
  * Substitutions for {@link java.lang.Double} methods.

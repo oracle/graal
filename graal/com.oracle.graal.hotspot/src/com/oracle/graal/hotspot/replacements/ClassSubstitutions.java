@@ -29,7 +29,6 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.ClassSubstitution.*;
 import com.oracle.graal.word.*;
 
 /**

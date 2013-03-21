@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,36 +24,34 @@ package com.oracle.graal.replacements;
 
 import java.lang.annotation.*;
 
+import com.oracle.graal.api.meta.*;
+
 /**
- * Denotes a class that substitutes methods of another specified class. The substitute methods are
- * exactly those annotated by {@link MethodSubstitution}.
+ * Denotes a substitute method. A substitute method can call the original/substituted method by
+ * making a recursive call to itself.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-public @interface ClassSubstitution {
+@Target(ElementType.METHOD)
+public @interface MethodSubstitution {
 
     /**
-     * Specifies the original class.
+     * Gets the name of the original method.
      * <p>
-     * If the default value is specified for this element, then a non-default value must be given
-     * for the {@link #className()} element.
+     * If the default value is specified for this element, then the name of the original method is
+     * same as the substitute method.
      */
-    Class<?> value() default ClassSubstitution.class;
+    String value() default "";
 
     /**
-     * Specifies the original class.
-     * <p>
-     * This method is provided for cases where the original class is not accessible (according to
-     * Java language access control rules).
-     * <p>
-     * If the default value is specified for this element, then a non-default value must be given
-     * for the {@link #value()} element.
+     * Determines if the original method is static.
      */
-    String className() default "";
+    boolean isStatic() default true;
 
     /**
-     * Determines if the substitutions are for classes that may not be part of the runtime.
-     * Substitutions for such classes are omitted if the original classes cannot be found.
+     * Gets the {@linkplain MetaUtil#signatureToMethodDescriptor signature} of the original method.
+     * <p>
+     * If the default value is specified for this element, then the signature of the original method
+     * is the same as the substitute method.
      */
-    boolean optional() default false;
+    String signature() default "";
 }

@@ -38,7 +38,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.replacements.ClassSubstitution.*;
 import com.oracle.graal.replacements.nodes.*;
 
 /**

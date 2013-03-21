@@ -35,7 +35,6 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.ClassSubstitution.*;
 import com.oracle.graal.word.*;
 
 /**

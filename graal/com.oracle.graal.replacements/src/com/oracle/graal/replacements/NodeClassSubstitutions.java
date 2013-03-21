@@ -25,7 +25,6 @@ package com.oracle.graal.replacements;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.replacements.ClassSubstitution.*;
 
 /**
  * Substitutions for improving the performance of some critical methods in {@link NodeClass}

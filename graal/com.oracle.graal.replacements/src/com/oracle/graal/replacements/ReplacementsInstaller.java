@@ -41,8 +41,8 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.replacements.ClassSubstitution.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.DefaultSnippetInliningPolicy;
+import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.word.phases.*;
 
 /**
@@ -212,10 +212,13 @@ public class ReplacementsInstaller {
         new NodeIntrinsificationPhase(runtime, pool).apply(graph);
         assert SnippetTemplate.hasConstantParameter(method) || NodeIntrinsificationVerificationPhase.verify(graph);
 
-        new SnippetFrameStateCleanupPhase().apply(graph);
-        new DeadCodeEliminationPhase().apply(graph);
-
-        new InsertStateAfterPlaceholderPhase().apply(graph);
+        if (substitute == null) {
+            new SnippetFrameStateCleanupPhase().apply(graph);
+            new DeadCodeEliminationPhase().apply(graph);
+            new InsertStateAfterPlaceholderPhase().apply(graph);
+        } else {
+            new DeadCodeEliminationPhase().apply(graph);
+        }
     }
 
     public StructuredGraph makeGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
