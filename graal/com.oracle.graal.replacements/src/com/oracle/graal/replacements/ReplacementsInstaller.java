@@ -151,15 +151,15 @@ public class ReplacementsInstaller {
     /**
      * Installs a method substitution.
      * 
-     * @param originalMethod a method or constructor being substituted
+     * @param originalMember a method or constructor being substituted
      * @param substituteMethod the substitute method
      */
-    protected void installMethodSubstitution(Member originalMethod, Method substituteMethod) {
+    protected void installMethodSubstitution(Member originalMember, Method substituteMethod) {
         substitute = runtime.lookupJavaMethod(substituteMethod);
-        if (originalMethod instanceof Method) {
-            original = runtime.lookupJavaMethod((Method) originalMethod);
+        if (originalMember instanceof Method) {
+            original = runtime.lookupJavaMethod((Method) originalMember);
         } else {
-            original = runtime.lookupJavaConstructor((Constructor) originalMethod);
+            original = runtime.lookupJavaConstructor((Constructor) originalMember);
         }
         try {
             Debug.log("substitution: " + MetaUtil.format("%H.%n(%p)", original) + " --> " + MetaUtil.format("%H.%n(%p)", substitute));
