@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.Assumptions.Assumption;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -1181,7 +1182,7 @@ public class InliningUtil {
     }
 
     public static StructuredGraph getIntrinsicGraph(ResolvedJavaMethod target) {
-        return (StructuredGraph) target.getCompilerStorage().get(Graph.class);
+        return (StructuredGraph) target.getCompilerStorage().get(MethodSubstitution.class);
     }
 
     public static Class<? extends FixedWithNextNode> getMacroNodeClass(ResolvedJavaMethod target) {

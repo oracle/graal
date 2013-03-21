@@ -29,10 +29,10 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -138,7 +138,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                     @Override
                     public CompilationResult call() throws Exception {
                         graalRuntime.evictDeoptedGraphs();
-                        StructuredGraph graph = (StructuredGraph) method.getCompilerStorage().get(Graph.class);
+                        StructuredGraph graph = (StructuredGraph) method.getCompilerStorage().get(MethodSubstitution.class);
                         if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
                             graph = new StructuredGraph(method, entryBCI);
                         } else {

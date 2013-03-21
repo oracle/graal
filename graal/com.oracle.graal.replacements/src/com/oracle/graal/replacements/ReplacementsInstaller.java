@@ -164,7 +164,7 @@ public class ReplacementsInstaller {
         try {
             Debug.log("substitution: " + MetaUtil.format("%H.%n(%p)", original) + " --> " + MetaUtil.format("%H.%n(%p)", substitute));
             StructuredGraph graph = makeGraph(substitute, inliningPolicy(substitute));
-            Object oldValue = original.getCompilerStorage().put(Graph.class, graph);
+            Object oldValue = original.getCompilerStorage().put(MethodSubstitution.class, graph);
             assert oldValue == null;
         } finally {
             substitute = null;
