@@ -79,7 +79,7 @@ public final class Block {
     }
 
     public boolean isExceptionEntry() {
-        return getBeginNode().next() instanceof ExceptionObjectNode;
+        return getBeginNode() instanceof ExceptionObjectNode;
     }
 
     public Block getFirstPredecessor() {
