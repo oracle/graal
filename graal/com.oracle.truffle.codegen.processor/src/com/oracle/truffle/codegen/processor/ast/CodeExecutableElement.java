@@ -221,6 +221,7 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
             copy.add(element);
         }
         copy.getModifiers().addAll(method.getModifiers());
+        copy.setVarArgs(method.isVarArgs());
         return copy;
     }
 
