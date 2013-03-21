@@ -33,17 +33,17 @@ public class RuntimeStringTest {
 
     @Test
     public void testSubstr() {
-        assertExecute(new RuntimeString("es"), "substr", new RuntimeString("test"), 1, 3);
+        executeAndAssert(new RuntimeString("es"), "substr", new RuntimeString("test"), 1, 3);
     }
 
     @Test
     public void testConcat() {
-        assertExecute(new RuntimeString("concatconcat"), "concat", new RuntimeString("concat"), new RuntimeString("concat"));
+        executeAndAssert(new RuntimeString("concatconcat"), "concat", new RuntimeString("concat"), new RuntimeString("concat"));
     }
 
     @Test(expected = ArrayIndexOutOfBoundsException.class)
     public void testConcatFail() {
-        assertExecute(new RuntimeString("concatconcat"), "concat", new RuntimeString("concat"));
+        executeAndAssert(new RuntimeString("concatconcat"), "concat", new RuntimeString("concat"));
     }
 
     @Test
@@ -51,7 +51,7 @@ public class RuntimeStringTest {
         // TODO
     }
 
-    private static void assertExecute(Object expectedResult, String name, Object... argumentsArray) {
+    private static void executeAndAssert(Object expectedResult, String name, Object... argumentsArray) {
         ArgNode[] args = new ArgNode[argumentsArray.length];
         for (int i = 0; i < args.length; i++) {
             args[i] = new ArgNode(argumentsArray, i);
