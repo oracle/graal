@@ -1073,7 +1073,11 @@ public final class LinearScan {
     }
 
     private static boolean optimizeMethodArgument(Value value) {
-        return isStackSlot(value) && asStackSlot(value).isInCallerFrame() && (GraalOptions.IncomingMethodArgumentsGCSafe || value.getKind() != Kind.Object);
+        /*
+         * Object method arguments that are passed on the stack are currently not optimized because
+         * this requires that the runtime visits method arguments during stack walking.
+         */
+        return isStackSlot(value) && asStackSlot(value).isInCallerFrame() && value.getKind() != Kind.Object;
     }
 
     /**

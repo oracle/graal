@@ -77,4 +77,6 @@ public abstract class FloatingAccessNode extends FloatingNode implements Access 
     public Node node() {
         return this;
     }
+
+    public abstract Access asFixedNode();
 }

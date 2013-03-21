@@ -211,12 +211,6 @@ public final class GraalOptions {
     public static boolean IntrinsifyAESMethods               = true;
 
     /**
-     * Method arguments that are passed on the stack can be optimized by the register allocator to avoid spilling 
-     * and reloading. However, this requires that the runtime visits method arguments during stack walking.  
-     */
-    public static boolean IncomingMethodArgumentsGCSafe      = true;
-
-    /**
      * Counts the various paths taken through snippets.
      */
     public static boolean SnippetCounters = false;
