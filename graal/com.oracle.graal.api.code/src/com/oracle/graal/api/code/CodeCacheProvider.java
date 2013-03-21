@@ -37,12 +37,10 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      * 
      * @param method a method to which the executable code is begin added
      * @param compResult the compilation result to be added
-     * @param info the object into which details of the installed code will be written. Ignored if
-     *            null, otherwise the info is written to index 0 of this array.
      * @return a reference to the compiled and ready-to-run code or null if the code installation
      *         failed
      */
-    InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, CodeInfo[] info);
+    InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult);
 
     /**
      * Returns the size in bytes for locking information on the stack.
@@ -50,20 +48,21 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     int getSizeOfLockData();
 
     /**
-     * Returns a disassembly of the given installed code.
+     * Returns a disassembly of some compiled code.
      * 
-     * @param code the code that should be disassembled
+     * @param compResult some compiled code
+     * @param installedCode the result of installing the code in {@code compResult} or null if the
+     *            code has not yet been installed
+     * 
      * @return a disassembly. This will be of length 0 if the runtime does not support
      *         disassembling.
      */
-    String disassemble(CodeInfo code, CompilationResult tm);
+    String disassemble(CompilationResult compResult, InstalledCode installedCode);
 
     /**
      * Gets the register configuration to use when compiling a given method.
-     * 
-     * @param method the top level method of a compilation
      */
-    RegisterConfig lookupRegisterConfig(ResolvedJavaMethod method);
+    RegisterConfig lookupRegisterConfig();
 
     /**
      * Custom area on the stack of each compiled method that the VM can use for its own purposes.
@@ -79,11 +78,6 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      * @return the minimum size of the outgoing parameter area in bytes
      */
     int getMinimumOutgoingSize();
-
-    /**
-     * Performs any runtime-specific conversion on the object used to describe the target of a call.
-     */
-    Object lookupCallTarget(Object callTarget);
 
     /**
      * Gets the signature and linkage information for a runtime call.

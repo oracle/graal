@@ -29,10 +29,14 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Marks a position in the graph where a safepoint should be emitted.
  */
-public final class SafepointNode extends FixedWithNextNode implements LIRLowerable, Node.IterableNodeType {
+public class SafepointNode extends FixedWithNextNode implements LIRLowerable, Node.IterableNodeType {
 
     public SafepointNode() {
-        super(StampFactory.forVoid());
+        this(StampFactory.forVoid());
+    }
+
+    public SafepointNode(Stamp stamp) {
+        super(stamp);
     }
 
     @Override

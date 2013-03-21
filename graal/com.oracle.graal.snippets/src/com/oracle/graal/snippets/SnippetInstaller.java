@@ -53,10 +53,10 @@ import com.oracle.graal.word.phases.*;
  */
 public class SnippetInstaller {
 
-    private final MetaAccessProvider runtime;
-    private final TargetDescription target;
-    private final Assumptions assumptions;
-    private final BoxingMethodPool pool;
+    protected final MetaAccessProvider runtime;
+    protected final TargetDescription target;
+    protected final Assumptions assumptions;
+    protected final BoxingMethodPool pool;
     private final Thread owner;
 
     /**
@@ -89,7 +89,7 @@ public class SnippetInstaller {
                 }
                 ResolvedJavaMethod snippet = runtime.lookupJavaMethod(method);
                 assert snippet.getCompilerStorage().get(Graph.class) == null : method;
-                StructuredGraph graph = makeGraph(snippet, inliningPolicy(snippet), false);
+                StructuredGraph graph = makeGraph(snippet, inliningPolicy(snippet));
                 // System.out.println("snippet: " + graph);
                 snippet.getCompilerStorage().put(Graph.class, graph);
             }
@@ -125,14 +125,18 @@ public class SnippetInstaller {
                 }
                 String originalName = originalName(substituteMethod, methodSubstitution.value());
                 Class[] originalParameters = originalParameters(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
-                Method originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
-                installMethodSubstitution(originalMethod, substituteMethod);
+                Member originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
+                if (originalMethod != null) {
+                    installMethodSubstitution(originalMethod, substituteMethod);
+                }
             }
             if (macroSubstitution != null) {
                 String originalName = originalName(substituteMethod, macroSubstitution.value());
                 Class[] originalParameters = originalParameters(substituteMethod, macroSubstitution.signature(), macroSubstitution.isStatic());
-                Method originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
-                installMacroSubstitution(originalMethod, macroSubstitution.macro());
+                Member originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
+                if (originalMethod != null) {
+                    installMacroSubstitution(originalMethod, macroSubstitution.macro());
+                }
             }
         }
     }
@@ -145,16 +149,19 @@ public class SnippetInstaller {
     /**
      * Installs a method substitution.
      * 
-     * @param originalMethod a method being substituted
+     * @param originalMethod a method or constructor being substituted
      * @param substituteMethod the substitute method
      */
-    protected void installMethodSubstitution(Method originalMethod, Method substituteMethod) {
+    protected void installMethodSubstitution(Member originalMethod, Method substituteMethod) {
         substitute = runtime.lookupJavaMethod(substituteMethod);
-        original = runtime.lookupJavaMethod(originalMethod);
+        if (originalMethod instanceof Method) {
+            original = runtime.lookupJavaMethod((Method) originalMethod);
+        } else {
+            original = runtime.lookupJavaConstructor((Constructor) originalMethod);
+        }
         try {
-            // System.out.println("substitution: " + MetaUtil.format("%H.%n(%p)", original) +
-            // " --> " + MetaUtil.format("%H.%n(%p)", substitute));
-            StructuredGraph graph = makeGraph(substitute, inliningPolicy(substitute), true);
+            Debug.log("substitution: " + MetaUtil.format("%H.%n(%p)", original) + " --> " + MetaUtil.format("%H.%n(%p)", substitute));
+            StructuredGraph graph = makeGraph(substitute, inliningPolicy(substitute));
             Object oldValue = original.getCompilerStorage().put(Graph.class, graph);
             assert oldValue == null;
         } finally {
@@ -167,11 +174,16 @@ public class SnippetInstaller {
     /**
      * Installs a macro substitution.
      * 
-     * @param originalMethod a method being substituted
+     * @param originalMethod a method or constructor being substituted
      * @param macro the substitute macro node class
      */
-    protected void installMacroSubstitution(Method originalMethod, Class<? extends FixedWithNextNode> macro) {
-        ResolvedJavaMethod originalJavaMethod = runtime.lookupJavaMethod(originalMethod);
+    protected void installMacroSubstitution(Member originalMethod, Class<? extends FixedWithNextNode> macro) {
+        ResolvedJavaMethod originalJavaMethod;
+        if (originalMethod instanceof Method) {
+            originalJavaMethod = runtime.lookupJavaMethod((Method) originalMethod);
+        } else {
+            originalJavaMethod = runtime.lookupJavaConstructor((Constructor) originalMethod);
+        }
         Object oldValue = originalJavaMethod.getCompilerStorage().put(Node.class, macro);
         assert oldValue == null;
     }
@@ -192,23 +204,27 @@ public class SnippetInstaller {
         }
     }
 
-    public StructuredGraph makeGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy, final boolean isSubstitution) {
+    /**
+     * Does final processing of a snippet graph.
+     */
+    protected void finalizeGraph(ResolvedJavaMethod method, StructuredGraph graph) {
+        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+        assert SnippetTemplate.hasConstantParameter(method) || SnippetIntrinsificationVerificationPhase.verify(graph);
+
+        new SnippetFrameStateCleanupPhase().apply(graph);
+        new DeadCodeEliminationPhase().apply(graph);
+
+        new InsertStateAfterPlaceholderPhase().apply(graph);
+    }
+
+    public StructuredGraph makeGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
         return Debug.scope("BuildSnippetGraph", new Object[]{method}, new Callable<StructuredGraph>() {
 
             @Override
             public StructuredGraph call() throws Exception {
                 StructuredGraph graph = parseGraph(method, policy);
 
-                new SnippetIntrinsificationPhase(runtime, pool, SnippetTemplate.hasConstantParameter(method)).apply(graph);
-
-                if (isSubstitution && !substituteCallsOriginal) {
-                    // TODO (ds) remove the constraint of only processing substitutions
-                    // once issues with the arraycopy snippets have been resolved
-                    new SnippetFrameStateCleanupPhase().apply(graph);
-                    new DeadCodeEliminationPhase().apply(graph);
-                }
-
-                new InsertStateAfterPlaceholderPhase().apply(graph);
+                finalizeGraph(method, graph);
 
                 Debug.dump(graph, "%s: Final", method.getName());
 
@@ -221,14 +237,15 @@ public class SnippetInstaller {
         StructuredGraph graph = graphCache.get(method);
         if (graph == null) {
             graph = buildGraph(method, policy == null ? inliningPolicy(method) : policy);
-            // System.out.println("built " + graph);
             graphCache.put(method, graph);
         }
         return graph;
     }
 
-    private StructuredGraph buildGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
-        assert !Modifier.isAbstract(method.getModifiers()) && !Modifier.isNative(method.getModifiers()) : method;
+    /**
+     * Builds the initial graph for a snippet.
+     */
+    protected StructuredGraph buildInitialGraph(final ResolvedJavaMethod method) {
         final StructuredGraph graph = new StructuredGraph(method);
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
         GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config, OptimisticOptimizations.NONE);
@@ -237,8 +254,41 @@ public class SnippetInstaller {
         Debug.dump(graph, "%s: %s", method.getName(), GraphBuilderPhase.class.getSimpleName());
 
         new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
+        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
 
-        new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
+        return graph;
+    }
+
+    /**
+     * Called after a graph is inlined.
+     * 
+     * @param caller the graph into which {@code callee} was inlined
+     * @param callee the graph that was inlined into {@code caller}
+     */
+    protected void afterInline(StructuredGraph caller, StructuredGraph callee) {
+        if (GraalOptions.OptCanonicalizer) {
+            new WordTypeRewriterPhase(runtime, target.wordKind).apply(caller);
+            new CanonicalizerPhase(runtime, assumptions).apply(caller);
+        }
+    }
+
+    /**
+     * Called after all inlining for a given graph is complete.
+     */
+    protected void afterInlining(StructuredGraph graph) {
+        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+
+        new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
+
+        new DeadCodeEliminationPhase().apply(graph);
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(runtime, assumptions).apply(graph);
+        }
+    }
+
+    private StructuredGraph buildGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
+        assert !Modifier.isAbstract(method.getModifiers()) && !Modifier.isNative(method.getModifiers()) : method;
+        final StructuredGraph graph = buildInitialGraph(method);
 
         for (Invoke invoke : graph.getInvokes()) {
             MethodCallTargetNode callTarget = invoke.methodCallTarget();
@@ -248,36 +298,20 @@ public class SnippetInstaller {
                 new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(originalGraph);
                 InliningUtil.inline(invoke, originalGraph, true);
 
-                // TODO the inlined frame states still show the call from the substitute to the
-                // original.
-                // If this poses a problem, a phase should added to fix up these frame states.
-
                 Debug.dump(graph, "after inlining %s", callee);
-                if (GraalOptions.OptCanonicalizer) {
-                    new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-                }
+                afterInline(graph, originalGraph);
                 substituteCallsOriginal = true;
             } else {
                 if ((callTarget.invokeKind() == InvokeKind.Static || callTarget.invokeKind() == InvokeKind.Special) && policy.shouldInline(callee, method)) {
                     StructuredGraph targetGraph = parseGraph(callee, policy);
                     InliningUtil.inline(invoke, targetGraph, true);
                     Debug.dump(graph, "after inlining %s", callee);
-                    if (GraalOptions.OptCanonicalizer) {
-                        new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
-                        new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-                    }
+                    afterInline(graph, targetGraph);
                 }
             }
         }
 
-        new SnippetIntrinsificationPhase(runtime, pool, true).apply(graph);
-
-        new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
-
-        new DeadCodeEliminationPhase().apply(graph);
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-        }
+        afterInlining(graph);
 
         for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {
             end.disableSafepoint();
@@ -298,13 +332,23 @@ public class SnippetInstaller {
         }
     }
 
-    private static Class resolveType(String className) {
+    /**
+     * Resolves a name to a class.
+     * 
+     * @param className the name of the class to resolve
+     * @param optional if true, resolution failure returns null
+     * @return the resolved class or null if resolution fails and {@code optional} is true
+     */
+    private static Class resolveType(String className, boolean optional) {
         try {
             // Need to use launcher class path to handle classes
             // that are not on the boot class path
             ClassLoader cl = Launcher.getLauncher().getClassLoader();
             return Class.forName(className, false, cl);
         } catch (ClassNotFoundException e) {
+            if (optional) {
+                return null;
+            }
             throw new GraalInternalError("Could not resolve type " + className);
         }
     }
@@ -317,7 +361,7 @@ public class SnippetInstaller {
             dimensions++;
         }
 
-        Class baseClass = base.getKind() != Kind.Object ? base.getKind().toJavaClass() : resolveType(toJavaName(base));
+        Class baseClass = base.getKind() != Kind.Object ? base.getKind().toJavaClass() : resolveType(toJavaName(base), false);
         return dimensions == 0 ? baseClass : Array.newInstance(baseClass, new int[dimensions]).getClass();
     }
 
@@ -339,13 +383,21 @@ public class SnippetInstaller {
         return parameters;
     }
 
-    private static Method originalMethod(ClassSubstitution classSubstitution, String name, Class[] parameters) {
+    private static Member originalMethod(ClassSubstitution classSubstitution, String name, Class[] parameters) {
         Class<?> originalClass = classSubstitution.value();
         if (originalClass == ClassSubstitution.class) {
-            originalClass = resolveType(classSubstitution.className());
+            originalClass = resolveType(classSubstitution.className(), classSubstitution.optional());
+            if (originalClass == null) {
+                // optional class was not found
+                return null;
+            }
         }
         try {
-            return originalClass.getDeclaredMethod(name, parameters);
+            if (name.equals("<init>")) {
+                return originalClass.getDeclaredConstructor(parameters);
+            } else {
+                return originalClass.getDeclaredMethod(name, parameters);
+            }
         } catch (NoSuchMethodException | SecurityException e) {
             throw new GraalInternalError(e);
         }

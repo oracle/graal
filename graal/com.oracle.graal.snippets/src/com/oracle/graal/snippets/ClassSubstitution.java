@@ -56,6 +56,12 @@ public @interface ClassSubstitution {
     String className() default "";
 
     /**
+     * Determines if the substitutions are for classes that may not be part of the runtime.
+     * Substitutions for such classes are omitted if the original classes cannot be found.
+     */
+    boolean optional() default false;
+
+    /**
      * Denotes a substitute method. A substitute method can call the original/substituted method by
      * making a recursive call to itself.
      */

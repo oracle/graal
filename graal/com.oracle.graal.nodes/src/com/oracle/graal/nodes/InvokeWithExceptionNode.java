@@ -161,6 +161,11 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         return true;
     }
 
+    @Override
+    public Object[] getLocationIdentities() {
+        return new Object[]{LocationNode.ANY_LOCATION};
+    }
+
     public FrameState stateDuring() {
         FrameState tempStateAfter = stateAfter();
         FrameState stateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), kind());

@@ -32,12 +32,29 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code ConvertNode} class represents a conversion between primitive types.
  */
-public final class ConvertNode extends FloatingNode implements Canonicalizable, LIRLowerable {
+public final class ConvertNode extends FloatingNode implements Canonicalizable, LIRLowerable, Lowerable {
 
     public enum Op {
-        I2L(Int, Long), L2I(Long, Int), I2B(Int, Byte), I2C(Int, Char), I2S(Int, Short), F2D(Float, Double), D2F(Double, Float), I2F(Int, Float), I2D(Int, Double), F2I(Float, Int), D2I(Double, Int), L2F(
-                        Long, Float), L2D(Long, Double), F2L(Float, Long), D2L(Double, Long), UNSIGNED_I2L(Int, Long), MOV_I2F(Int, Float), MOV_L2D(Long, Double), MOV_F2I(Float, Int), MOV_D2L(Double,
-                        Long);
+        I2L(Int, Long),
+        L2I(Long, Int),
+        I2B(Int, Byte),
+        I2C(Int, Char),
+        I2S(Int, Short),
+        F2D(Float, Double),
+        D2F(Double, Float),
+        I2F(Int, Float),
+        I2D(Int, Double),
+        F2I(Float, Int),
+        D2I(Double, Int),
+        L2F(Long, Float),
+        L2D(Long, Double),
+        F2L(Float, Long),
+        D2L(Double, Long),
+        UNSIGNED_I2L(Int, Long),
+        MOV_I2F(Int, Float),
+        MOV_L2D(Long, Double),
+        MOV_F2I(Float, Int),
+        MOV_D2L(Double, Long);
 
         public final Kind from;
         public final Kind to;
@@ -142,6 +159,11 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
                 return false;
         }
         return updateStamp(newStamp);
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 
     @Override

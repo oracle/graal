@@ -109,6 +109,11 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     }
 
     @Override
+    public Object[] getLocationIdentities() {
+        return new Object[]{LocationNode.ANY_LOCATION};
+    }
+
+    @Override
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }

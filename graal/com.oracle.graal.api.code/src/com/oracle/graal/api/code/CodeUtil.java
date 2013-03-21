@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.api.code;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -309,5 +310,20 @@ public class CodeUtil {
             append(sb, info.getBytecodePosition());
         }
         return sb;
+    }
+
+    /**
+     * Create a calling convention from a {@link ResolvedJavaMethod}.
+     */
+    public static CallingConvention getCallingConvention(CodeCacheProvider codeCache, CallingConvention.Type type, ResolvedJavaMethod method, boolean stackOnly) {
+        Signature sig = method.getSignature();
+        JavaType retType = sig.getReturnType(null);
+        JavaType[] argTypes = new JavaType[sig.getParameterCount(!Modifier.isStatic(method.getModifiers()))];
+        for (int i = 0; i < argTypes.length; i++) {
+            argTypes[i] = sig.getParameterType(i, null);
+        }
+
+        RegisterConfig registerConfig = codeCache.lookupRegisterConfig();
+        return registerConfig.getCallingConvention(type, retType, argTypes, codeCache.getTarget(), stackOnly);
     }
 }

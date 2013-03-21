@@ -95,7 +95,7 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
             } else {
                 KeyAndArguments keyAndArguments = getKeyAndArguments(replacer, tool);
                 SnippetTemplate template = cache.get(keyAndArguments.key, assumptions);
-                template.instantiate(runtime, instanceOf, replacer, tool.lastFixedNode(), keyAndArguments.arguments);
+                template.instantiate(runtime, instanceOf, replacer, tool, keyAndArguments.arguments);
             }
         }
 
@@ -223,11 +223,15 @@ public abstract class InstanceOfSnippetsTemplates<T extends SnippetsInterface> e
             usage.replaceFirstInput(instanceOf, instantiation.asCondition(trueValue));
         }
 
+        private boolean usageFollowsInstantiation() {
+            return instantiation.result != null && instantiation.result.merge().next() == usage;
+        }
+
         @Override
         public void replace(ValueNode oldNode, ValueNode newNode) {
             assert newNode instanceof PhiNode;
             assert oldNode == instanceOf;
-            if (sameBlock && solitaryUsage) {
+            if (sameBlock && solitaryUsage && usageFollowsInstantiation()) {
                 removeIntermediateMaterialization(newNode);
             } else {
                 newNode.inferStamp();

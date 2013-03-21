@@ -59,8 +59,8 @@ public class ReadEliminationPhase extends Phase {
         if (visited.isMarked(lastLocationAccess)) {
             return true; // dataflow loops must come from Phis assume them ok until proven wrong
         }
-        if (lastLocationAccess instanceof ValueProxyNode) {
-            return isWrites(n, ((ValueProxyNode) lastLocationAccess).value(), visited);
+        if (lastLocationAccess instanceof ProxyNode) {
+            return isWrites(n, ((ProxyNode) lastLocationAccess).value(), visited);
         }
         if (lastLocationAccess instanceof WriteNode) {
             WriteNode other = (WriteNode) lastLocationAccess;
@@ -83,10 +83,10 @@ public class ReadEliminationPhase extends Phase {
         if (exisiting != null) {
             return exisiting;
         }
-        if (lastLocationAccess instanceof ValueProxyNode) {
-            ValueProxyNode proxy = (ValueProxyNode) lastLocationAccess;
+        if (lastLocationAccess instanceof ProxyNode) {
+            ProxyNode proxy = (ProxyNode) lastLocationAccess;
             ValueNode value = getValue(n, proxy.value(), nodeMap);
-            return lastLocationAccess.graph().add(new ValueProxyNode(value, proxy.proxyPoint(), PhiType.Value));
+            return lastLocationAccess.graph().add(new ProxyNode(value, proxy.proxyPoint(), PhiType.Value));
         }
         if (lastLocationAccess instanceof WriteNode) {
             return ((WriteNode) lastLocationAccess).value();

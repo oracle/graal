@@ -140,18 +140,18 @@ public class GraphUtil {
         ValueNode singleValue = phiNode.singleValue();
         if (singleValue != null) {
             Collection<PhiNode> phiUsages = phiNode.usages().filter(PhiNode.class).snapshot();
-            Collection<ValueProxyNode> proxyUsages = phiNode.usages().filter(ValueProxyNode.class).snapshot();
+            Collection<ProxyNode> proxyUsages = phiNode.usages().filter(ProxyNode.class).snapshot();
             ((StructuredGraph) phiNode.graph()).replaceFloating(phiNode, singleValue);
             for (PhiNode phi : phiUsages) {
                 checkRedundantPhi(phi);
             }
-            for (ValueProxyNode proxy : proxyUsages) {
+            for (ProxyNode proxy : proxyUsages) {
                 checkRedundantProxy(proxy);
             }
         }
     }
 
-    public static void checkRedundantProxy(ValueProxyNode vpn) {
+    public static void checkRedundantProxy(ProxyNode vpn) {
         BeginNode proxyPoint = vpn.proxyPoint();
         if (proxyPoint instanceof LoopExitNode) {
             LoopExitNode exit = (LoopExitNode) proxyPoint;
@@ -164,12 +164,12 @@ public class GraphUtil {
                 }
                 if (vpnValue == v2) {
                     Collection<PhiNode> phiUsages = vpn.usages().filter(PhiNode.class).snapshot();
-                    Collection<ValueProxyNode> proxyUsages = vpn.usages().filter(ValueProxyNode.class).snapshot();
+                    Collection<ProxyNode> proxyUsages = vpn.usages().filter(ProxyNode.class).snapshot();
                     ((StructuredGraph) vpn.graph()).replaceFloating(vpn, vpnValue);
                     for (PhiNode phi : phiUsages) {
                         checkRedundantPhi(phi);
                     }
-                    for (ValueProxyNode proxy : proxyUsages) {
+                    for (ProxyNode proxy : proxyUsages) {
                         checkRedundantProxy(proxy);
                     }
                     return;
@@ -185,7 +185,7 @@ public class GraphUtil {
             GraphUtil.checkRedundantPhi(phi);
         }
         for (LoopExitNode exit : begin.loopExits()) {
-            for (ValueProxyNode vpn : exit.proxies().snapshot()) {
+            for (ProxyNode vpn : exit.proxies().snapshot()) {
                 GraphUtil.checkRedundantProxy(vpn);
             }
         }
@@ -259,8 +259,8 @@ public class GraphUtil {
 
     public static ValueNode unProxify(ValueNode proxy) {
         ValueNode v = proxy;
-        while (v instanceof ValueProxyNode) {
-            v = ((ValueProxyNode) v).value();
+        while (v instanceof ProxyNode) {
+            v = ((ProxyNode) v).value();
         }
         return v;
     }
@@ -293,8 +293,8 @@ public class GraphUtil {
     public static ValueNode originalValue(ValueNode proxy) {
         ValueNode v = proxy;
         do {
-            if (v instanceof ValueProxyNode) {
-                v = ((ValueProxyNode) v).value();
+            if (v instanceof ProxyNode) {
+                v = ((ProxyNode) v).value();
             } else if (v instanceof PhiNode) {
                 v = ((PhiNode) v).singleValue();
             } else {
@@ -308,8 +308,8 @@ public class GraphUtil {
             NodeWorkList worklist = proxy.graph().createNodeWorkList();
             worklist.add(proxy);
             for (Node node : worklist) {
-                if (node instanceof ValueProxyNode) {
-                    worklist.add(((ValueProxyNode) node).value());
+                if (node instanceof ProxyNode) {
+                    worklist.add(((ProxyNode) node).value());
                 } else if (node instanceof PhiNode) {
                     worklist.addAll(((PhiNode) node).values());
                 } else {

@@ -29,25 +29,23 @@ import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
 
+import sun.misc.*;
+
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.compiler.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 
 /**
@@ -55,110 +53,43 @@ import com.oracle.graal.phases.*;
  */
 public class AMD64HotSpotBackend extends HotSpotBackend {
 
+    private static final Unsafe unsafe = Unsafe.getUnsafe();
+    public static final Descriptor EXCEPTION_HANDLER = new Descriptor("exceptionHandler", true, void.class);
+    public static final Descriptor DEOPT_HANDLER = new Descriptor("deoptHandler", true, void.class);
+    public static final Descriptor IC_MISS_HANDLER = new Descriptor("icMissHandler", true, void.class);
+
     public AMD64HotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
         super(runtime, target);
     }
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
-        return new HotSpotAMD64LIRGenerator(graph, runtime(), target, frameMap, method, lir);
+        return new AMD64HotSpotLIRGenerator(graph, runtime(), target, frameMap, method, lir);
     }
 
-    static final class HotSpotAMD64LIRGenerator extends AMD64LIRGenerator implements HotSpotLIRGenerator {
+    /**
+     * Emits code to do stack overflow checking.
+     * 
+     * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate
+     *            the current frame
+     */
+    protected static void emitStackOverflowCheck(TargetMethodAssembler tasm, boolean afterFrameInit) {
+        if (GraalOptions.StackShadowPages > 0) {
 
-        private HotSpotRuntime runtime() {
-            return (HotSpotRuntime) runtime;
-        }
-
-        private HotSpotAMD64LIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
-            super(graph, runtime, target, frameMap, method, lir);
-        }
-
-        @Override
-        protected boolean needOnlyOopMaps() {
-            // Stubs only need oop maps
-            return runtime().asStub(method) != null;
-        }
-
-        @Override
-        protected CallingConvention createCallingConvention() {
-            Stub stub = runtime().asStub(method);
-            if (stub != null) {
-                return stub.getLinkage().getCallingConvention();
+            AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
+            int frameSize = tasm.frameMap.frameSize();
+            if (frameSize > 0) {
+                int lastFramePage = frameSize / unsafe.pageSize();
+                // emit multiple stack bangs for methods with frames larger than a page
+                for (int i = 0; i <= lastFramePage; i++) {
+                    int disp = (i + GraalOptions.StackShadowPages) * unsafe.pageSize();
+                    if (afterFrameInit) {
+                        disp -= frameSize;
+                    }
+                    tasm.blockComment("[stack overflow check]");
+                    asm.movq(new AMD64Address(rsp, -disp), AMD64.rax);
+                }
             }
-
-            if (graph.getEntryBCI() == StructuredGraph.INVOCATION_ENTRY_BCI) {
-                return super.createCallingConvention();
-            } else {
-                return frameMap.registerConfig.getCallingConvention(JavaCallee, method.getSignature().getReturnType(null), new JavaType[]{runtime.lookupJavaType(long.class)}, target, false);
-            }
-        }
-
-        @Override
-        public void visitSafepointNode(SafepointNode i) {
-            LIRFrameState info = state();
-            append(new AMD64SafepointOp(info, runtime().config));
-        }
-
-        @Override
-        public void visitExceptionObject(ExceptionObjectNode x) {
-            HotSpotVMConfig config = runtime().config;
-            RegisterValue thread = runtime().threadRegister().asValue();
-            Address exceptionAddress = new Address(Kind.Object, thread, config.threadExceptionOopOffset);
-            Address pcAddress = new Address(Kind.Long, thread, config.threadExceptionPcOffset);
-            Value exception = emitLoad(exceptionAddress, false);
-            emitStore(exceptionAddress, Constant.NULL_OBJECT, false);
-            emitStore(pcAddress, Constant.LONG_0, false);
-            setResult(x, exception);
-        }
-
-        @SuppressWarnings("hiding")
-        @Override
-        public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {
-            Kind kind = x.newValue().kind();
-            assert kind == x.expectedValue().kind();
-
-            Value expected = loadNonConst(operand(x.expectedValue()));
-            Variable newVal = load(operand(x.newValue()));
-
-            int disp = 0;
-            Address address;
-            Value index = operand(x.offset());
-            if (ValueUtil.isConstant(index) && NumUtil.isInt(ValueUtil.asConstant(index).asLong() + disp)) {
-                assert !runtime.needsDataPatch(asConstant(index));
-                disp += (int) ValueUtil.asConstant(index).asLong();
-                address = new Address(kind, load(operand(x.object())), disp);
-            } else {
-                address = new Address(kind, load(operand(x.object())), load(index), Address.Scale.Times1, disp);
-            }
-
-            RegisterValue rax = AMD64.rax.asValue(kind);
-            emitMove(expected, rax);
-            append(new CompareAndSwapOp(rax, address, rax, newVal));
-
-            Variable result = newVariable(x.kind());
-            emitMove(rax, result);
-            setResult(x, result);
-        }
-
-        @Override
-        public void emitTailcall(Value[] args, Value address) {
-            append(new AMD64TailcallOp(args, address));
-
-        }
-
-        @Override
-        protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-            append(new AMD64DirectCallOp(callTarget.target(), result, parameters, temps, callState, ((HotSpotDirectCallTargetNode) callTarget).invokeKind(), lir));
-        }
-
-        @Override
-        protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-            Value metaspaceMethod = AMD64.rbx.asValue();
-            emitMove(operand(((HotSpotIndirectCallTargetNode) callTarget).metaspaceMethod()), metaspaceMethod);
-            Value targetAddress = AMD64.rax.asValue();
-            emitMove(operand(callTarget.computedAddress()), targetAddress);
-            append(new AMD64IndirectCallOp(callTarget.target(), result, parameters, temps, metaspaceMethod, targetAddress, callState));
         }
     }
 
@@ -171,13 +102,11 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             emitStackOverflowCheck(tasm, false);
-            asm.push(rbp);
-            asm.movq(rbp, rsp);
-            asm.decrementq(rsp, frameSize - 8); // account for the push of RBP above
+            asm.decrementq(rsp, frameSize);
             if (GraalOptions.ZapStackOnMethodEntry) {
                 final int intSize = 4;
                 for (int i = 0; i < frameSize / intSize; ++i) {
-                    asm.movl(new Address(Kind.Int, rsp.asValue(), i * intSize), 0xC1C1C1C1);
+                    asm.movl(new AMD64Address(rsp, i * intSize), 0xC1C1C1C1);
                 }
             }
             CalleeSaveLayout csl = frameMap.registerConfig.getCalleeSaveLayout();
@@ -193,61 +122,43 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             int frameSize = tasm.frameMap.frameSize();
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             CalleeSaveLayout csl = tasm.frameMap.registerConfig.getCalleeSaveLayout();
-            RegisterConfig regConfig = tasm.frameMap.registerConfig;
 
             if (csl != null && csl.size != 0) {
-                tasm.targetMethod.setRegisterRestoreEpilogueOffset(asm.codeBuffer.position());
+                tasm.compilationResult.setRegisterRestoreEpilogueOffset(asm.codeBuffer.position());
                 // saved all registers, restore all registers
                 int frameToCSA = tasm.frameMap.offsetToCalleeSaveArea();
                 asm.restore(csl, frameToCSA);
             }
 
-            asm.incrementq(rsp, frameSize - 8); // account for the pop of RBP below
-            asm.pop(rbp);
-
-            if (GraalOptions.GenSafepoints) {
-                HotSpotVMConfig config = runtime().config;
-
-                // If at the return point, then the frame has already been popped
-                // so deoptimization cannot be performed here. The HotSpot runtime
-                // detects this case - see the definition of frame::should_be_deoptimized()
-
-                Register scratch = regConfig.getScratchRegister();
-                int offset = SafepointPollOffset % target.pageSize;
-                if (config.isPollingPageFar) {
-                    asm.movq(scratch, config.safepointPollingAddress + offset);
-                    tasm.recordMark(Marks.MARK_POLL_RETURN_FAR);
-                    asm.movq(scratch, new Address(tasm.target.wordKind, scratch.asValue()));
-                } else {
-                    tasm.recordMark(Marks.MARK_POLL_RETURN_NEAR);
-                    // The C++ code transforms the polling page offset into an RIP displacement
-                    // to the real address at that offset in the polling page.
-                    asm.movq(scratch, new Address(tasm.target.wordKind, rip.asValue(), offset));
-                }
-            }
+            asm.incrementq(rsp, frameSize);
         }
     }
 
     @Override
-    public TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir) {
+    public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
         // Omit the frame if the method:
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers
         // - has no incoming arguments passed on the stack
         // - has no instructions with debug info
-        boolean omitFrame = GraalOptions.CanOmitFrame && frameMap.frameSize() == frameMap.initialFrameSize && frameMap.registerConfig.getCalleeSaveLayout().registers.length == 0 &&
-                        !lir.hasArgInCallerFrame() && !lir.hasDebugInfo();
+        AMD64HotSpotLIRGenerator gen = (AMD64HotSpotLIRGenerator) lirGen;
+        FrameMap frameMap = gen.frameMap;
+        LIR lir = gen.lir;
+        boolean omitFrame = CanOmitFrame && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
 
         AbstractAssembler masm = new AMD64MacroAssembler(target, frameMap.registerConfig);
         HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext();
-        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, lir.stubs);
+        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
-        tasm.targetMethod.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
+        StackSlot deoptimizationRescueSlot = gen.deoptimizationRescueSlot;
+        if (deoptimizationRescueSlot != null) {
+            tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
+        }
         return tasm;
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIR lir) {
+    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIRGenerator lirGen) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
         FrameMap frameMap = tasm.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
@@ -263,10 +174,10 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             Register inlineCacheKlass = rax; // see definition of IC_Klass in
                                              // c1_LIRAssembler_x86.cpp
             Register receiver = asRegister(cc.getArgument(0));
-            Address src = new Address(target.wordKind, receiver.asValue(), config.hubOffset);
+            AMD64Address src = new AMD64Address(receiver, config.hubOffset);
 
             asm.cmpq(inlineCacheKlass, src);
-            asm.jcc(ConditionFlag.notEqual, unverifiedStub);
+            asm.jcc(ConditionFlag.NotEqual, unverifiedStub);
         }
 
         asm.align(config.codeEntryAlignment);
@@ -274,31 +185,23 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         tasm.recordMark(Marks.MARK_VERIFIED_ENTRY);
 
         // Emit code for the LIR
-        lir.emitCode(tasm);
+        lirGen.lir.emitCode(tasm);
 
         boolean frameOmitted = tasm.frameContext == null;
         if (!frameOmitted) {
             tasm.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
-            AMD64Call.directCall(tasm, asm, config.handleExceptionStub, null);
-            AMD64Call.shouldNotReachHere(tasm, asm);
-
+            AMD64Call.directCall(tasm, asm, runtime().lookupRuntimeCall(EXCEPTION_HANDLER), null, false, null);
             tasm.recordMark(Marks.MARK_DEOPT_HANDLER_ENTRY);
-            AMD64Call.directCall(tasm, asm, config.handleDeoptStub, null);
-            AMD64Call.shouldNotReachHere(tasm, asm);
+            AMD64Call.directCall(tasm, asm, runtime().lookupRuntimeCall(DEOPT_HANDLER), null, false, null);
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries
-            assert !frameMap.accessesCallerFrame();
+            assert !frameMap.accessesCallerFrame() : method;
         }
 
         if (unverifiedStub != null) {
             asm.bind(unverifiedStub);
-            AMD64Call.directJmp(tasm, asm, config.inlineCacheMissStub);
+            AMD64Call.directJmp(tasm, asm, runtime().lookupRuntimeCall(IC_MISS_HANDLER));
         }
-
-        for (int i = 0; i < GraalOptions.MethodEndBreakpointGuards; ++i) {
-            asm.int3();
-        }
-
     }
 }

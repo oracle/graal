@@ -282,7 +282,6 @@ public final class LinearScan {
      * @return the created interval
      */
     Interval createInterval(Value operand) {
-        assert isProcessed(operand);
         assert isLegal(operand);
         int operandNumber = operandNumber(operand);
         Interval interval = new Interval(operand, operandNumber);
@@ -345,6 +344,15 @@ public final class LinearScan {
         int operandNumber = operandNumber(operand);
         assert operandNumber < intervalsSize;
         return intervals[operandNumber];
+    }
+
+    Interval getOrCreateInterval(Value operand) {
+        Interval ret = intervalFor(operand);
+        if (ret == null) {
+            return createInterval(operand);
+        } else {
+            return ret;
+        }
     }
 
     /**
@@ -968,11 +976,7 @@ public final class LinearScan {
             TTY.println(" use %s from %d to %d (%s)", operand, from, to, registerPriority.name());
         }
 
-        Interval interval = intervalFor(operand);
-        if (interval == null) {
-            interval = createInterval(operand);
-        }
-
+        Interval interval = getOrCreateInterval(operand);
         if (kind != Kind.Illegal) {
             interval.setKind(kind);
         }
@@ -990,11 +994,8 @@ public final class LinearScan {
         if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println(" temp %s tempPos %d (%s)", operand, tempPos, RegisterPriority.MustHaveRegister.name());
         }
-        Interval interval = intervalFor(operand);
-        if (interval == null) {
-            interval = createInterval(operand);
-        }
 
+        Interval interval = getOrCreateInterval(operand);
         if (kind != Kind.Illegal) {
             interval.setKind(kind);
         }
@@ -1014,42 +1015,26 @@ public final class LinearScan {
         if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println(" def %s defPos %d (%s)", operand, defPos, registerPriority.name());
         }
-        Interval interval = intervalFor(operand);
-        if (interval != null) {
 
-            if (kind != Kind.Illegal) {
-                interval.setKind(kind);
-            }
+        Interval interval = getOrCreateInterval(operand);
+        if (kind != Kind.Illegal) {
+            interval.setKind(kind);
+        }
 
-            Range r = interval.first();
-            if (r.from <= defPos) {
-                // Update the starting point (when a range is first created for a use, its
-                // start is the beginning of the current block until a def is encountered.)
-                r.from = defPos;
-                interval.addUsePos(defPos, registerPriority);
-
-            } else {
-                // Dead value - make vacuous interval
-                // also add register priority for dead intervals
-                interval.addRange(defPos, defPos + 1);
-                interval.addUsePos(defPos, registerPriority);
-                if (GraalOptions.TraceLinearScanLevel >= 2) {
-                    TTY.println("Warning: def of operand %s at %d occurs without use", operand, defPos);
-                }
-            }
+        Range r = interval.first();
+        if (r.from <= defPos) {
+            // Update the starting point (when a range is first created for a use, its
+            // start is the beginning of the current block until a def is encountered.)
+            r.from = defPos;
+            interval.addUsePos(defPos, registerPriority);
 
         } else {
             // Dead value - make vacuous interval
             // also add register priority for dead intervals
-            interval = createInterval(operand);
-            if (kind != Kind.Illegal) {
-                interval.setKind(kind);
-            }
-
             interval.addRange(defPos, defPos + 1);
             interval.addUsePos(defPos, registerPriority);
             if (GraalOptions.TraceLinearScanLevel >= 2) {
-                TTY.println("Warning: dead value %s at %d in live intervals", operand, defPos);
+                TTY.println("Warning: def of operand %s at %d occurs without use", operand, defPos);
             }
         }
 
@@ -1066,8 +1051,7 @@ public final class LinearScan {
     static RegisterPriority registerPriorityOfOutputOperand(LIRInstruction op) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
-            if (isStackSlot(move.getInput()) && move.getInput().getKind() != Kind.Object) {
-                // method argument (condition must be equal to handleMethodArguments)
+            if (optimizeMethodArgument(move.getInput())) {
                 return RegisterPriority.None;
             }
         }
@@ -1088,6 +1072,14 @@ public final class LinearScan {
         return RegisterPriority.MustHaveRegister;
     }
 
+    private static boolean optimizeMethodArgument(Value value) {
+        /*
+         * Object method arguments that are passed on the stack are currently not optimized because
+         * this requires that the runtime visits method arguments during stack walking.
+         */
+        return isStackSlot(value) && asStackSlot(value).isInCallerFrame() && value.getKind() != Kind.Object;
+    }
+
     /**
      * Optimizes moves related to incoming stack based arguments. The interval for the destination
      * of such moves is assigned the stack slot (which is in the caller's frame) as its spill slot.
@@ -1095,8 +1087,8 @@ public final class LinearScan {
     void handleMethodArguments(LIRInstruction op) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
-            if (isStackSlot(move.getInput()) && move.getInput().getKind() != Kind.Object) {
-                StackSlot slot = (StackSlot) move.getInput();
+            if (optimizeMethodArgument(move.getInput())) {
+                StackSlot slot = asStackSlot(move.getInput());
                 if (GraalOptions.DetailedAsserts) {
                     assert op.id() > 0 : "invalid id";
                     assert blockForId(op.id()).getPredecessorCount() == 0 : "move from stack must be in first block";
@@ -1114,7 +1106,7 @@ public final class LinearScan {
         }
     }
 
-    void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags) {
+    void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
         if (flags.contains(OperandFlag.HINT) && isVariableOrRegister(targetValue)) {
 
             op.forEachRegisterHint(targetValue, mode, new ValueProcedure() {
@@ -1122,15 +1114,20 @@ public final class LinearScan {
                 @Override
                 protected Value doValue(Value registerHint) {
                     if (isVariableOrRegister(registerHint)) {
-                        Interval from = intervalFor(registerHint);
-                        Interval to = intervalFor(targetValue);
-                        if (from != null && to != null) {
+                        Interval from = getOrCreateInterval(registerHint);
+                        Interval to = getOrCreateInterval(targetValue);
+
+                        // hints always point from def to use
+                        if (hintAtDef) {
                             to.setLocationHint(from);
-                            if (GraalOptions.TraceLinearScanLevel >= 4) {
-                                TTY.println("operation at opId %d: added hint from interval %d to %d", op.id(), from.operandNumber, to.operandNumber);
-                            }
-                            return registerHint;
+                        } else {
+                            from.setLocationHint(to);
                         }
+
+                        if (GraalOptions.TraceLinearScanLevel >= 4) {
+                            TTY.println("operation at opId %d: added hint from interval %d to %d", op.id(), from.operandNumber, to.operandNumber);
+                        }
+                        return registerHint;
                     }
                     return null;
                 }
@@ -1201,7 +1198,7 @@ public final class LinearScan {
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             addDef(operand, opId, registerPriorityOfOutputOperand(op), operand.getKind().getStackKind());
-                            addRegisterHint(op, operand, mode, flags);
+                            addRegisterHint(op, operand, mode, flags, true);
                         }
                         return operand;
                     }
@@ -1212,7 +1209,7 @@ public final class LinearScan {
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             addTemp(operand, opId, RegisterPriority.MustHaveRegister, operand.getKind().getStackKind());
-                            addRegisterHint(op, operand, mode, flags);
+                            addRegisterHint(op, operand, mode, flags, false);
                         }
                         return operand;
                     }
@@ -1224,7 +1221,7 @@ public final class LinearScan {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
                             addUse(operand, blockFrom, opId + 1, p, operand.getKind().getStackKind());
-                            addRegisterHint(op, operand, mode, flags);
+                            addRegisterHint(op, operand, mode, flags, false);
                         }
                         return operand;
                     }
@@ -1236,7 +1233,7 @@ public final class LinearScan {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
                             addUse(operand, blockFrom, opId, p, operand.getKind().getStackKind());
-                            addRegisterHint(op, operand, mode, flags);
+                            addRegisterHint(op, operand, mode, flags, false);
                         }
                         return operand;
                     }
@@ -1956,12 +1953,6 @@ public final class LinearScan {
 
             if (i1.location() == null) {
                 TTY.println("Interval %d has no register assigned", i1.operandNumber);
-                TTY.println(i1.logString(this));
-                throw new GraalInternalError("");
-            }
-
-            if (!isProcessed(i1.location())) {
-                TTY.println("Can not have an Interval for an ignored register " + i1.location());
                 TTY.println(i1.logString(this));
                 throw new GraalInternalError("");
             }

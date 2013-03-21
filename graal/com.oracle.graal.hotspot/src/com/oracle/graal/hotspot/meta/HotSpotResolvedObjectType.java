@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static java.lang.reflect.Modifier.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
+import java.net.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -496,5 +497,27 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             }
         }
         return null;
+    }
+
+    @Override
+    public URL getClassFilePath() {
+        Class<?> cls = mirror();
+        return cls.getResource(MetaUtil.getSimpleName(cls, true).replace('.', '$') + ".class");
+    }
+
+    @Override
+    public boolean isLocal() {
+        return mirror().isLocalClass();
+    }
+
+    @Override
+    public boolean isMember() {
+        return mirror().isMemberClass();
+    }
+
+    @Override
+    public ResolvedJavaType getEnclosingType() {
+        final Class<?> encl = mirror().getEnclosingClass();
+        return encl == null ? null : fromClass(encl);
     }
 }

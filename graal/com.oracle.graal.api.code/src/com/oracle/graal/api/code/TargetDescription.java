@@ -33,11 +33,6 @@ public class TargetDescription {
     public final Architecture arch;
 
     /**
-     * The OS page size.
-     */
-    public final int pageSize;
-
-    /**
      * Specifies if this is a multi-processor system.
      */
     public final boolean isMP;
@@ -72,44 +67,19 @@ public class TargetDescription {
     public final int stackAlignment;
 
     /**
-     * @see "http://docs.oracle.com/cd/E19455-01/806-0477/overview-4/index.html"
-     */
-    public final int stackBias;
-
-    /**
-     * The cache alignment.
-     */
-    public final int cacheAlignment;
-
-    /**
      * Maximum constant displacement at which a memory access can no longer be an implicit null
      * check.
      */
     public final int implicitNullCheckLimit;
 
-    /**
-     * Specifies how {@code long} and {@code double} constants are to be stored in
-     * {@linkplain BytecodeFrame frames}. This is useful for VMs such as HotSpot where convention
-     * the interpreter uses is that the second local holds the first raw word of the native long or
-     * double representation. This is actually reasonable, since locals and stack arrays grow
-     * downwards in all implementations. If, on some machine, the interpreter's Java locals or stack
-     * were to grow upwards, the embedded doubles would be word-swapped.)
-     */
-    public final boolean debugInfoDoubleWordsInSecondSlot;
-
-    public TargetDescription(Architecture arch, boolean isMP, int stackAlignment, int stackBias, int implicitNullCheckLimit, int pageSize, int cacheAlignment, boolean inlineObjects,
-                    boolean debugInfoDoubleWordsInSecondSlot) {
+    public TargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, boolean inlineObjects) {
         this.arch = arch;
-        this.pageSize = pageSize;
         this.isMP = isMP;
         this.wordSize = arch.getWordSize();
         this.wordKind = Kind.fromWordSize(wordSize);
         this.stackAlignment = stackAlignment;
-        this.stackBias = stackBias;
         this.implicitNullCheckLimit = implicitNullCheckLimit;
-        this.cacheAlignment = cacheAlignment;
         this.inlineObjects = inlineObjects;
-        this.debugInfoDoubleWordsInSecondSlot = debugInfoDoubleWordsInSecondSlot;
     }
 
     /**
@@ -139,8 +109,6 @@ public class TargetDescription {
                 return 8;
             case Object:
                 return wordSize;
-            case Jsr:
-                return 4;
             default:
                 return 0;
         }

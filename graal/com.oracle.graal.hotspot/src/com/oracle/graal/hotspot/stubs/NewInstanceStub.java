@@ -67,16 +67,15 @@ public class NewInstanceStub extends Stub {
      */
     @Snippet
     private static Object newInstance(@Parameter("hub") Word hub, @ConstantParameter("intArrayHub") Word intArrayHub, @ConstantParameter("log") boolean log) {
-        int sizeInBytes = hub.readInt(klassInstanceSizeOffset());
+        int sizeInBytes = hub.readInt(klassInstanceSizeOffset(), FINAL_LOCATION);
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
-            if (hub.readInt(klassStateOffset()) == klassStateFullyInitialized()) {
+            if (hub.readInt(klassStateOffset(), CLASS_STATE_LOCATION) == klassStateFullyInitialized()) {
                 Word memory = refillAllocate(intArrayHub, sizeInBytes, log);
                 if (memory.notEqual(0)) {
-                    Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset());
-                    memory.writeWord(markOffset(), prototypeMarkWord);
-                    memory.writeWord(hubOffset(), hub);
+                    Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
+                    initializeObjectHeader(memory, prototypeMarkWord, hub);
                     for (int offset = 2 * wordSize(); offset < sizeInBytes; offset += wordSize()) {
-                        memory.writeWord(offset, Word.zero());
+                        memory.writeWord(offset, Word.zero(), ANY_LOCATION);
                     }
                     return verifyOop(memory.toObject());
                 }
@@ -105,8 +104,8 @@ public class NewInstanceStub extends Stub {
         int alignmentReserveInBytes = tlabAlignmentReserveInHeapWords() * wordSize();
 
         Word thread = thread();
-        Word top = thread.readWord(threadTlabTopOffset());
-        Word end = thread.readWord(threadTlabEndOffset());
+        Word top = readTlabTop(thread);
+        Word end = readTlabEnd(thread);
 
         // calculate amount of free space
         Word tlabFreeSpaceInBytes = end.subtract(top);
@@ -120,16 +119,16 @@ public class NewInstanceStub extends Stub {
 
         // Retain TLAB and allocate object in shared space if
         // the amount free in the TLAB is too large to discard.
-        Word refillWasteLimit = thread.readWord(tlabRefillWasteLimitOffset());
+        Word refillWasteLimit = thread.readWord(tlabRefillWasteLimitOffset(), TLAB_REFILL_WASTE_LIMIT_LOCATION);
         if (tlabFreeSpaceInWords.belowOrEqual(refillWasteLimit)) {
             if (tlabStats()) {
                 // increment number of refills
-                thread.writeInt(tlabNumberOfRefillsOffset(), thread.readInt(tlabNumberOfRefillsOffset()) + 1);
-                log(log, "thread: %p -- number_of_refills %d\n", thread, thread.readInt(tlabNumberOfRefillsOffset()));
+                thread.writeInt(tlabNumberOfRefillsOffset(), thread.readInt(tlabNumberOfRefillsOffset(), TLAB_NOF_REFILLS_LOCATION) + 1, TLAB_NOF_REFILLS_LOCATION);
+                log(log, "thread: %p -- number_of_refills %d\n", thread, thread.readInt(tlabNumberOfRefillsOffset(), TLAB_NOF_REFILLS_LOCATION));
                 // accumulate wastage
-                Word wastage = thread.readWord(tlabFastRefillWasteOffset()).add(tlabFreeSpaceInWords);
+                Word wastage = thread.readWord(tlabFastRefillWasteOffset(), TLAB_FAST_REFILL_WASTE_LOCATION).add(tlabFreeSpaceInWords);
                 log(log, "thread: %p -- accumulated wastage %d\n", thread, wastage);
-                thread.writeWord(tlabFastRefillWasteOffset(), wastage);
+                thread.writeWord(tlabFastRefillWasteOffset(), wastage, TLAB_FAST_REFILL_WASTE_LOCATION);
             }
 
             // if TLAB is currently allocated (top or end != null) then
@@ -142,22 +141,19 @@ public class NewInstanceStub extends Stub {
                 int length = ((alignmentReserveInBytes - headerSize) >>> 2) + tlabFreeSpaceInInts;
                 NewObjectSnippets.formatArray(intArrayHub, -1, length, headerSize, top, intArrayMarkWord, false);
 
-                Word allocated = thread.readWord(threadAllocatedBytesOffset());
-                allocated = allocated.add(top.subtract(thread.readWord(threadTlabStartOffset())));
-                thread.writeWord(threadAllocatedBytesOffset(), allocated);
+                Word allocated = thread.readWord(threadAllocatedBytesOffset(), TLAB_THREAD_ALLOCATED_BYTES_LOCATION);
+                allocated = allocated.add(top.subtract(readTlabStart(thread)));
+                thread.writeWord(threadAllocatedBytesOffset(), allocated, TLAB_THREAD_ALLOCATED_BYTES_LOCATION);
             }
 
             // refill the TLAB with an eden allocation
-            Word tlabRefillSizeInWords = thread.readWord(threadTlabSizeOffset());
+            Word tlabRefillSizeInWords = thread.readWord(threadTlabSizeOffset(), TLAB_SIZE_LOCATION);
             Word tlabRefillSizeInBytes = tlabRefillSizeInWords.multiply(wordSize());
             // allocate new TLAB, address returned in top
             top = edenAllocate(tlabRefillSizeInBytes, log);
             if (top.notEqual(0)) {
-                thread.writeWord(threadTlabStartOffset(), top);
-                thread.writeWord(threadTlabTopOffset(), top);
-
                 end = top.add(tlabRefillSizeInBytes.subtract(alignmentReserveInBytes));
-                thread.writeWord(threadTlabEndOffset(), end);
+                initializeTlab(thread, top, end);
 
                 return allocate(sizeInBytes);
             } else {
@@ -166,11 +162,11 @@ public class NewInstanceStub extends Stub {
         } else {
             // Retain TLAB
             Word newRefillWasteLimit = refillWasteLimit.add(tlabRefillWasteIncrement());
-            thread.writeWord(tlabRefillWasteLimitOffset(), newRefillWasteLimit);
+            thread.writeWord(tlabRefillWasteLimitOffset(), newRefillWasteLimit, TLAB_REFILL_WASTE_LIMIT_LOCATION);
             log(log, "refillTLAB: retaining TLAB - newRefillWasteLimit=%p\n", newRefillWasteLimit);
 
             if (tlabStats()) {
-                thread.writeInt(tlabSlowAllocationsOffset(), thread.readInt(tlabSlowAllocationsOffset()) + 1);
+                thread.writeInt(tlabSlowAllocationsOffset(), thread.readInt(tlabSlowAllocationsOffset(), TLAB_SLOW_ALLOCATIONS_LOCATION) + 1, TLAB_SLOW_ALLOCATIONS_LOCATION);
             }
 
             return edenAllocate(Word.unsigned(sizeInBytes), log);
@@ -189,18 +185,18 @@ public class NewInstanceStub extends Stub {
         Word heapEndAddress = Word.unsigned(heapEndAddress());
 
         while (true) {
-            Word heapTop = heapTopAddress.readWord(0);
+            Word heapTop = heapTopAddress.readWord(0, HEAP_TOP_LOCATION);
             Word newHeapTop = heapTop.add(sizeInBytes);
             if (newHeapTop.belowOrEqual(heapTop)) {
                 return Word.zero();
             }
 
-            Word heapEnd = heapEndAddress.readWord(0);
+            Word heapEnd = heapEndAddress.readWord(0, HEAP_END_LOCATION);
             if (newHeapTop.aboveThan(heapEnd)) {
                 return Word.zero();
             }
 
-            if (compareAndSwap(heapTopAddress, 0, heapTop, newHeapTop).equal(heapTop)) {
+            if (compareAndSwap(heapTopAddress, 0, heapTop, newHeapTop, HEAP_TOP_LOCATION).equal(heapTop)) {
                 return heapTop;
             }
         }

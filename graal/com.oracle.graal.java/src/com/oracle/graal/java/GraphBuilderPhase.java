@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.java;
 
+import static com.oracle.graal.api.code.DeoptimizationAction.*;
+import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static java.lang.reflect.Modifier.*;
 
@@ -52,7 +54,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
-public final class GraphBuilderPhase extends Phase {
+public class GraphBuilderPhase extends Phase {
 
     public static final class RuntimeCalls {
 
@@ -72,7 +74,7 @@ public final class GraphBuilderPhase extends Phase {
      */
     public static final int TRACELEVEL_STATE = 2;
 
-    private StructuredGraph currentGraph;
+    protected StructuredGraph currentGraph;
 
     private final MetaAccessProvider runtime;
     private ConstantPool constantPool;
@@ -82,7 +84,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private BytecodeStream stream;           // the bytecode stream
 
-    private FrameStateBuilder frameState;          // the current execution state
+    protected FrameStateBuilder frameState;          // the current execution state
     private Block currentBlock;
 
     private ValueNode methodSynchronizedObject;
@@ -113,6 +115,20 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private Block[] loopHeaders;
+
+    /**
+     * Gets the current frame state being processed by this builder.
+     */
+    protected FrameStateBuilder getCurrentFrameState() {
+        return frameState;
+    }
+
+    /**
+     * Gets the graph being processed by this builder.
+     */
+    protected StructuredGraph getGraph() {
+        return currentGraph;
+    }
 
     public GraphBuilderPhase(MetaAccessProvider runtime, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
         this.graphBuilderConfig = graphBuilderConfig;
@@ -182,11 +198,12 @@ public final class GraphBuilderPhase extends Phase {
         currentBlock = blockMap.startBlock;
         blockMap.startBlock.entryState = frameState;
         if (blockMap.startBlock.isLoopHeader) {
-            // TODO(lstadler,gduboscq) createTarget might not be safe at this position, since it
-            // expects currentBlock,
-            // etc. to be set up correctly. A better solution to this problem of start blocks that
-            // are loop headers
-            // would be to create a dummy block in BciBlockMapping.
+            /*
+             * TODO(lstadler,gduboscq) createTarget might not be safe at this position, since it
+             * expects currentBlock, etc. to be set up correctly. A better solution to this problem
+             * of start blocks that are loop headers would be to create a dummy block in
+             * BciBlockMapping.
+             */
             appendGoto(createTarget(blockMap.startBlock, frameState));
         } else {
             blockMap.startBlock.firstInstruction = lastInstr;
@@ -260,6 +277,99 @@ public final class GraphBuilderPhase extends Phase {
         return handler.catchTypeCPI() == 0;
     }
 
+    /**
+     * @param type the unresolved type of the constant
+     */
+    protected void handleUnresolvedLoadConstant(JavaType type) {
+        append(currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved)));
+        frameState.push(Kind.Object, append(ConstantNode.forObject(null, runtime, currentGraph)));
+    }
+
+    /**
+     * @param type the unresolved type of the type check
+     * @param object the object value whose type is being checked against {@code type}
+     */
+    protected void handleUnresolvedCheckCast(JavaType type, ValueNode object) {
+        append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new IsNullNode(object)), Unresolved, InvalidateRecompile)));
+        frameState.apush(appendConstant(Constant.NULL_OBJECT));
+    }
+
+    /**
+     * @param type the unresolved type of the type check
+     * @param object the object value whose type is being checked against {@code type}
+     */
+    protected void handleUnresolvedInstanceOf(JavaType type, ValueNode object) {
+        BlockPlaceholderNode successor = currentGraph.add(new BlockPlaceholderNode());
+        DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new IsNullNode(object)), successor, deopt, 1));
+        append(ifNode);
+        lastInstr = successor;
+        frameState.ipush(appendConstant(Constant.INT_0));
+    }
+
+    /**
+     * @param type the type being instantiated
+     */
+    protected void handleUnresolvedNewInstance(JavaType type) {
+        append(currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved)));
+        frameState.apush(appendConstant(Constant.NULL_OBJECT));
+    }
+
+    /**
+     * @param type the type of the array being instantiated
+     * @param length the length of the array
+     */
+    protected void handleUnresolvedNewObjectArray(JavaType type, ValueNode length) {
+        append(currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved)));
+        frameState.apush(appendConstant(Constant.NULL_OBJECT));
+    }
+
+    /**
+     * @param type the type being instantiated
+     * @param dims the dimensions for the multi-array
+     */
+    protected void handleUnresolvedNewMultiArray(JavaType type, ValueNode[] dims) {
+        append(currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved)));
+        frameState.apush(appendConstant(Constant.NULL_OBJECT));
+    }
+
+    /**
+     * @param field the unresolved field
+     * @param receiver the object containing the field or {@code null} if {@code field} is static
+     */
+    protected void handleUnresolvedLoadField(JavaField field, ValueNode receiver) {
+        Kind kind = field.getKind();
+        append(currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved)));
+        frameState.push(kind.getStackKind(), append(ConstantNode.defaultForKind(kind, currentGraph)));
+    }
+
+    /**
+     * @param field the unresolved field
+     * @param value the value being stored to the field
+     * @param receiver the object containing the field or {@code null} if {@code field} is static
+     */
+    protected void handleUnresolvedStoreField(JavaField field, ValueNode value, ValueNode receiver) {
+        append(currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved)));
+    }
+
+    /**
+     * @param representation
+     * @param type
+     */
+    protected void handleUnresolvedExceptionType(Representation representation, JavaType type) {
+        append(currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved)));
+    }
+
+    protected void handleUnresolvedInvoke(JavaMethod javaMethod, InvokeKind invokeKind) {
+        boolean withReceiver = invokeKind != InvokeKind.Static;
+        append(currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved)));
+        frameState.popArguments(javaMethod.getSignature().getParameterSlots(withReceiver), javaMethod.getSignature().getParameterCount(withReceiver));
+        Kind kind = javaMethod.getSignature().getReturnKind();
+        if (kind != Kind.Void) {
+            frameState.push(kind.getStackKind(), append(ConstantNode.defaultForKind(kind, currentGraph)));
+        }
+    }
+
     private DispatchBeginNode handleException(ValueNode exceptionObject, int bci) {
         assert bci == FrameState.BEFORE_BCI || bci == bci() : "invalid bci";
         Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, profilingInfo.getExceptionSeen(bci));
@@ -306,8 +416,7 @@ public final class GraphBuilderPhase extends Phase {
             if (type instanceof ResolvedJavaType) {
                 frameState.push(Kind.Object, append(ConstantNode.forConstant(((ResolvedJavaType) type).getEncoding(Representation.JavaClass), runtime, currentGraph)));
             } else {
-                append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved)));
-                frameState.push(Kind.Object, append(ConstantNode.forObject(null, runtime, currentGraph)));
+                handleUnresolvedLoadConstant(type);
             }
         } else if (con instanceof Constant) {
             Constant constant = (Constant) con;
@@ -626,8 +735,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genThrow() {
         ValueNode exception = frameState.apop();
-        FixedGuardNode node = currentGraph.add(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile,
-                        true));
+        FixedGuardNode node = currentGraph.add(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
         append(node);
         append(handleException(exception, bci()));
     }
@@ -635,21 +743,21 @@ public final class GraphBuilderPhase extends Phase {
     private JavaType lookupType(int cpi, int bytecode) {
         eagerResolvingForSnippets(cpi, bytecode);
         JavaType result = constantPool.lookupType(cpi, bytecode);
-        assert !graphBuilderConfig.eagerResolvingForSnippets() || result instanceof ResolvedJavaType;
+        assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaType;
         return result;
     }
 
     private JavaMethod lookupMethod(int cpi, int opcode) {
         eagerResolvingForSnippets(cpi, opcode);
         JavaMethod result = constantPool.lookupMethod(cpi, opcode);
-        assert !graphBuilderConfig.eagerResolvingForSnippets() || ((result instanceof ResolvedJavaMethod) && ((ResolvedJavaMethod) result).getDeclaringClass().isInitialized()) : result;
+        assert !graphBuilderConfig.unresolvedIsError() || ((result instanceof ResolvedJavaMethod) && ((ResolvedJavaMethod) result).getDeclaringClass().isInitialized()) : result;
         return result;
     }
 
     private JavaField lookupField(int cpi, int opcode) {
         eagerResolvingForSnippets(cpi, opcode);
         JavaField result = constantPool.lookupField(cpi, opcode);
-        assert !graphBuilderConfig.eagerResolvingForSnippets() || (result instanceof ResolvedJavaField && ((ResolvedJavaField) result).getDeclaringClass().isInitialized()) : result;
+        assert !graphBuilderConfig.unresolvedIsError() || (result instanceof ResolvedJavaField && ((ResolvedJavaField) result).getDeclaringClass().isInitialized()) : result;
         return result;
     }
 
@@ -660,14 +768,8 @@ public final class GraphBuilderPhase extends Phase {
         return result;
     }
 
-    // private void eagerResolving(int cpi, int bytecode) {
-    // if (graphBuilderConfig.eagerResolving()) {
-    // constantPool.loadReferencedType(cpi, bytecode);
-    // }
-    // }
-
     private void eagerResolvingForSnippets(int cpi, int bytecode) {
-        if (graphBuilderConfig.eagerResolvingForSnippets()) {
+        if (graphBuilderConfig.eagerResolving()) {
             constantPool.loadReferencedType(cpi, bytecode);
         }
     }
@@ -688,16 +790,13 @@ public final class GraphBuilderPhase extends Phase {
     private void genCheckCast() {
         int cpi = stream().readCPI();
         JavaType type = lookupType(cpi, CHECKCAST);
-        boolean initialized = type instanceof ResolvedJavaType;
-        if (initialized) {
-            ValueNode object = frameState.apop();
+        ValueNode object = frameState.apop();
+        if (type instanceof ResolvedJavaType) {
             CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) type, object, getProfileForTypeCheck((ResolvedJavaType) type)));
             append(checkCast);
             frameState.apush(checkCast);
         } else {
-            ValueNode object = frameState.apop();
-            append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new IsNullNode(object)), DeoptimizationReason.Unresolved, DeoptimizationAction.InvalidateRecompile)));
-            frameState.apush(appendConstant(Constant.NULL_OBJECT));
+            handleUnresolvedCheckCast(type, object);
         }
     }
 
@@ -711,12 +810,7 @@ public final class GraphBuilderPhase extends Phase {
             ConditionalNode conditional = currentGraph.unique(new ConditionalNode(currentGraph.unique(instanceOfNode), ConstantNode.forInt(1, currentGraph), ConstantNode.forInt(0, currentGraph)));
             frameState.ipush(append(conditional));
         } else {
-            BlockPlaceholderNode successor = currentGraph.add(new BlockPlaceholderNode());
-            DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved));
-            IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new IsNullNode(object)), successor, deopt, 1));
-            append(ifNode);
-            lastInstr = successor;
-            frameState.ipush(appendConstant(Constant.INT_0));
+            handleUnresolvedInstanceOf(type, object);
         }
     }
 
@@ -726,8 +820,7 @@ public final class GraphBuilderPhase extends Phase {
             NewInstanceNode n = currentGraph.add(new NewInstanceNode((ResolvedJavaType) type, true, false));
             frameState.apush(append(n));
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved)));
-            frameState.apush(appendConstant(Constant.NULL_OBJECT));
+            handleUnresolvedNewInstance(type);
         }
     }
 
@@ -777,8 +870,7 @@ public final class GraphBuilderPhase extends Phase {
             NewArrayNode n = currentGraph.add(new NewArrayNode((ResolvedJavaType) type, length, true, false));
             frameState.apush(append(n));
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved)));
-            frameState.apush(appendConstant(Constant.NULL_OBJECT));
+            handleUnresolvedNewObjectArray(type, length);
         }
 
     }
@@ -794,8 +886,7 @@ public final class GraphBuilderPhase extends Phase {
             FixedWithNextNode n = currentGraph.add(new NewMultiArrayNode((ResolvedJavaType) type, dims));
             frameState.apush(append(n));
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved)));
-            frameState.apush(appendConstant(Constant.NULL_OBJECT));
+            handleUnresolvedNewMultiArray(type, dims);
         }
     }
 
@@ -808,8 +899,7 @@ public final class GraphBuilderPhase extends Phase {
             LoadFieldNode load = currentGraph.add(new LoadFieldNode(receiver, (ResolvedJavaField) field));
             appendOptimizedLoadField(kind, load);
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved)));
-            frameState.push(kind.getStackKind(), append(ConstantNode.defaultForKind(kind, currentGraph)));
+            handleUnresolvedLoadField(field, receiver);
         }
     }
 
@@ -872,9 +962,9 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private void emitExplicitExceptions(ValueNode receiver, ValueNode outOfBoundsIndex) {
+    protected void emitExplicitExceptions(ValueNode receiver, ValueNode outOfBoundsIndex) {
         assert receiver != null;
-        if (!GraalOptions.AllowExplicitExceptionChecks || (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == ExceptionSeen.FALSE)) {
+        if (optimisticOpts.useExceptionProbabilityForOperations() && profilingInfo.getExceptionSeen(bci()) == ExceptionSeen.FALSE) {
             return;
         }
 
@@ -895,7 +985,7 @@ public final class GraphBuilderPhase extends Phase {
             StoreFieldNode store = currentGraph.add(new StoreFieldNode(receiver, (ResolvedJavaField) field, value));
             appendOptimizedStoreField(store);
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved)));
+            handleUnresolvedStoreField(field, value, receiver);
         }
     }
 
@@ -910,8 +1000,7 @@ public final class GraphBuilderPhase extends Phase {
                 appendOptimizedLoadField(kind, load);
             }
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved)));
-            frameState.push(kind.getStackKind(), append(ConstantNode.defaultForKind(kind, currentGraph)));
+            handleUnresolvedLoadField(field, null);
         }
     }
 
@@ -921,15 +1010,15 @@ public final class GraphBuilderPhase extends Phase {
             StoreFieldNode store = currentGraph.add(new StoreFieldNode(null, (ResolvedJavaField) field, value));
             appendOptimizedStoreField(store);
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved)));
+            handleUnresolvedStoreField(field, value, null);
         }
     }
 
-    private ConstantNode genTypeOrDeopt(Representation representation, JavaType holder, boolean initialized) {
+    private ConstantNode genTypeOrDeopt(Representation representation, JavaType type, boolean initialized) {
         if (initialized) {
-            return appendConstant(((ResolvedJavaType) holder).getEncoding(representation));
+            return appendConstant(((ResolvedJavaType) type).getEncoding(representation));
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved)));
+            handleUnresolvedExceptionType(representation, type);
             return null;
         }
     }
@@ -949,13 +1038,13 @@ public final class GraphBuilderPhase extends Phase {
             ResolvedJavaMethod resolvedTarget = (ResolvedJavaMethod) target;
             ResolvedJavaType holder = resolvedTarget.getDeclaringClass();
             if (!holder.isInitialized() && GraalOptions.ResolveClassBeforeStaticInvoke) {
-                genInvokeDeopt(target, false);
+                handleUnresolvedInvoke(target, InvokeKind.Static);
             } else {
                 ValueNode[] args = frameState.popArguments(resolvedTarget.getSignature().getParameterSlots(false), resolvedTarget.getSignature().getParameterCount(false));
                 appendInvoke(InvokeKind.Static, resolvedTarget, args);
             }
         } else {
-            genInvokeDeopt(target, false);
+            handleUnresolvedInvoke(target, InvokeKind.Static);
         }
     }
 
@@ -964,7 +1053,7 @@ public final class GraphBuilderPhase extends Phase {
             ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
             genInvokeIndirect(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
         } else {
-            genInvokeDeopt(target, true);
+            handleUnresolvedInvoke(target, InvokeKind.Interface);
         }
     }
 
@@ -973,7 +1062,7 @@ public final class GraphBuilderPhase extends Phase {
             ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
             genInvokeIndirect(InvokeKind.Virtual, (ResolvedJavaMethod) target, args);
         } else {
-            genInvokeDeopt(target, true);
+            handleUnresolvedInvoke(target, InvokeKind.Virtual);
         }
 
     }
@@ -985,16 +1074,7 @@ public final class GraphBuilderPhase extends Phase {
             ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
             invokeDirect((ResolvedJavaMethod) target, args);
         } else {
-            genInvokeDeopt(target, true);
-        }
-    }
-
-    private void genInvokeDeopt(JavaMethod unresolvedTarget, boolean withReceiver) {
-        append(currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved)));
-        frameState.popArguments(unresolvedTarget.getSignature().getParameterSlots(withReceiver), unresolvedTarget.getSignature().getParameterCount(withReceiver));
-        Kind kind = unresolvedTarget.getSignature().getReturnKind();
-        if (kind != Kind.Void) {
-            frameState.push(kind.getStackKind(), append(ConstantNode.defaultForKind(kind, currentGraph)));
+            handleUnresolvedInvoke(target, InvokeKind.Special);
         }
     }
 
@@ -1030,21 +1110,20 @@ public final class GraphBuilderPhase extends Phase {
     private void appendInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args) {
         Kind resultType = targetMethod.getSignature().getReturnKind();
         if (GraalOptions.DeoptALot) {
-            DeoptimizeNode deoptimize = currentGraph.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint));
-            deoptimize.setMessage(targetMethod.getName());
+            DeoptimizeNode deoptimize = currentGraph.add(new DeoptimizeNode(DeoptimizationAction.None, RuntimeConstraint));
             append(deoptimize);
             frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, currentGraph));
             return;
         }
 
         JavaType returnType = targetMethod.getSignature().getReturnType(method.getDeclaringClass());
-        if (graphBuilderConfig.eagerResolvingForSnippets()) {
+        if (graphBuilderConfig.eagerResolving()) {
             returnType = returnType.resolve(targetMethod.getDeclaringClass());
         }
         MethodCallTargetNode callTarget = currentGraph.add(new MethodCallTargetNode(invokeKind, targetMethod, args, returnType));
         // be conservative if information was not recorded (could result in endless recompiles
         // otherwise)
-        if (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == ExceptionSeen.FALSE) {
+        if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == ExceptionSeen.FALSE)) {
             ValueNode result = appendWithBCI(currentGraph.add(new InvokeNode(callTarget, bci())));
             frameState.pushReturn(resultType, result);
 
@@ -1103,7 +1182,7 @@ public final class GraphBuilderPhase extends Phase {
         if (successor.jsrScope.nextReturnAddress() != stream().nextBCI()) {
             throw new JsrNotSupportedBailout("unstructured control flow (internal limitation)");
         }
-        frameState.push(Kind.Jsr, ConstantNode.forJsr(stream().nextBCI(), currentGraph));
+        frameState.push(Kind.Int, ConstantNode.forInt(stream().nextBCI(), currentGraph));
         appendGoto(createTarget(successor, frameState));
     }
 
@@ -1112,8 +1191,7 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode local = frameState.loadLocal(localIndex);
         JsrScope scope = currentBlock.jsrScope;
         int retAddress = scope.nextReturnAddress();
-        append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new IntegerEqualsNode(local, ConstantNode.forJsr(retAddress, currentGraph))), DeoptimizationReason.JavaSubroutineMismatch,
-                        DeoptimizationAction.InvalidateReprofile)));
+        append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new IntegerEqualsNode(local, ConstantNode.forInt(retAddress, currentGraph))), JavaSubroutineMismatch, InvalidateReprofile)));
         if (!successor.jsrScope.equals(scope.pop())) {
             throw new JsrNotSupportedBailout("unstructured control flow (ret leaves more than one scope)");
         }
@@ -1219,7 +1297,7 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private ConstantNode appendConstant(Constant constant) {
+    protected ConstantNode appendConstant(Constant constant) {
         assert constant != null;
         return ConstantNode.forConstant(constant, runtime, currentGraph);
     }
@@ -1230,7 +1308,7 @@ public final class GraphBuilderPhase extends Phase {
         return fixed;
     }
 
-    private ValueNode append(FixedWithNextNode x) {
+    protected ValueNode append(FixedWithNextNode x) {
         return appendWithBCI(x);
     }
 
@@ -1238,7 +1316,7 @@ public final class GraphBuilderPhase extends Phase {
         return v;
     }
 
-    private ValueNode appendWithBCI(FixedWithNextNode x) {
+    protected ValueNode appendWithBCI(FixedWithNextNode x) {
         assert x.predecessor() == null : "instruction should not have been appended yet";
         assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
         lastInstr.setNext(x);
@@ -1313,7 +1391,7 @@ public final class GraphBuilderPhase extends Phase {
     private FixedNode createTarget(double probability, Block block, FrameStateBuilder stateAfter) {
         assert probability >= 0 && probability <= 1.01 : probability;
         if (isNeverExecutedCode(probability)) {
-            return currentGraph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.UnreachedCode));
+            return currentGraph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
         } else {
             assert block != null;
             return createTarget(block, stateAfter);
@@ -1474,8 +1552,11 @@ public final class GraphBuilderPhase extends Phase {
 
     private void createUnwind() {
         assert frameState.stackSize() == 1 : frameState;
+        ValueNode exception = frameState.apop();
+        FixedGuardNode guard = currentGraph.add(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
+        append(guard);
         synchronizedEpilogue(FrameState.AFTER_EXCEPTION_BCI);
-        UnwindNode unwindNode = currentGraph.add(new UnwindNode(frameState.apop()));
+        UnwindNode unwindNode = currentGraph.add(new UnwindNode(exception));
         append(unwindNode);
     }
 
@@ -1487,9 +1568,8 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode x = returnKind == Kind.Void ? null : frameState.pop(returnKind);
         assert frameState.stackSize() == 0;
 
-        // TODO (gdub) remove this when FloatingRead can handle this case
         if (Modifier.isSynchronized(method.getModifiers())) {
-            append(currentGraph.add(new ValueAnchorNode(x)));
+            append(currentGraph.add(new ValueAnchorNode(true, x)));
             assert !frameState.rethrowException();
         }
 

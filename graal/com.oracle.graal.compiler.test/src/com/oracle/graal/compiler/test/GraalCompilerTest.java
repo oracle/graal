@@ -32,6 +32,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
@@ -67,12 +68,12 @@ import com.oracle.graal.test.*;
 public abstract class GraalCompilerTest extends GraalTest {
 
     protected final GraalCodeCacheProvider runtime;
-    protected final GraalCompiler graalCompiler;
+    protected final Backend backend;
 
     public GraalCompilerTest() {
         DebugEnvironment.initialize(System.out);
         this.runtime = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
-        this.graalCompiler = Graal.getRequiredCapability(GraalCompiler.class);
+        this.backend = Graal.getRequiredCapability(Backend.class);
     }
 
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph) {
@@ -220,7 +221,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return method.invoke(receiver, args);
     }
 
-    static class Result {
+    protected static class Result {
 
         final Object returnValue;
         final Throwable exception;
@@ -262,13 +263,35 @@ public abstract class GraalCompilerTest extends GraalTest {
         before();
         Object[] executeArgs = argsWithReceiver(receiver, args);
 
-        InstalledCode compiledMethod = getCode(runtime.lookupJavaMethod(method), parse(method));
+        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
+        checkArgs(javaMethod, executeArgs);
+
+        InstalledCode compiledMethod = getCode(javaMethod, parse(method));
         try {
             return new Result(compiledMethod.executeVarargs(executeArgs), null);
         } catch (Throwable e) {
             return new Result(null, e);
         } finally {
             after();
+        }
+    }
+
+    protected void checkArgs(ResolvedJavaMethod method, Object[] args) {
+        JavaType[] sig = MetaUtil.signatureToTypes(method);
+        Assert.assertEquals(sig.length, args.length);
+        for (int i = 0; i < args.length; i++) {
+            JavaType javaType = sig[i];
+            Kind kind = javaType.getKind();
+            Object arg = args[i];
+            if (kind == Kind.Object) {
+                if (arg != null && javaType instanceof ResolvedJavaType) {
+                    ResolvedJavaType resolvedJavaType = (ResolvedJavaType) javaType;
+                    Assert.assertTrue(resolvedJavaType + " from " + runtime.lookupJavaType(arg.getClass()), resolvedJavaType.isAssignableFrom(runtime.lookupJavaType(arg.getClass())));
+                }
+            } else {
+                Assert.assertNotNull(arg);
+                Assert.assertEquals(kind.toBoxedJavaClass(), arg.getClass());
+            }
         }
     }
 
@@ -295,18 +318,28 @@ public abstract class GraalCompilerTest extends GraalTest {
         Method method = getMethod(name);
         Object receiver = Modifier.isStatic(method.getModifiers()) ? null : this;
 
+        test(method, receiver, args);
+    }
+
+    protected void test(Method method, Object receiver, Object... args) {
         Result expect = executeExpected(method, receiver, args);
         if (runtime == null) {
             return;
         }
+        test(method, expect, receiver, args);
+    }
+
+    protected void test(Method method, Result expect, Object receiver, Object... args) {
         Result actual = executeActual(method, receiver, args);
 
         if (expect.exception != null) {
             Assert.assertTrue("expected " + expect.exception, actual.exception != null);
             Assert.assertEquals(expect.exception.getClass(), actual.exception.getClass());
         } else {
-            // System.out.println(name + "(" + Arrays.toString(args) + "): expected=" +
-            // expect.returnValue + ", actual=" + actual.returnValue);
+            if (actual.exception != null) {
+                actual.exception.printStackTrace();
+                Assert.fail("expected " + expect.returnValue + " but got an exception");
+            }
             assertEquals(expect.returnValue, actual.returnValue);
         }
     }
@@ -342,8 +375,6 @@ public abstract class GraalCompilerTest extends GraalTest {
             if (cached != null) {
                 if (cached.isValid()) {
                     return cached;
-                } else {
-                    // System.out.println(cached.getMethod() + " was invalidated");
                 }
 
             }
@@ -351,7 +382,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
         final int id = compilationId++;
 
-        InstalledCode installedCode = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true), new Callable<InstalledCode>() {
+        InstalledCode installedCode = Debug.scope("Compiling", new Object[]{runtime, new DebugDumpScope(String.valueOf(id), true)}, new Callable<InstalledCode>() {
 
             public InstalledCode call() throws Exception {
                 final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
@@ -363,7 +394,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 editPhasePlan(method, graph, phasePlan);
-                CompilationResult compResult = graalCompiler.compileMethod(method, graph, null, phasePlan, OptimisticOptimizations.ALL);
+                CompilationResult compResult = GraalCompiler.compileMethod(runtime(), backend, runtime().getTarget(), method, graph, null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog());
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
                 }
@@ -378,17 +409,16 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult) {
-        assert graalCompiler != null;
-        return Debug.scope("CodeInstall", new Object[]{graalCompiler, method}, new Callable<InstalledCode>() {
+        return Debug.scope("CodeInstall", new Object[]{runtime, method}, new Callable<InstalledCode>() {
 
             @Override
             public InstalledCode call() throws Exception {
-                final CodeInfo[] info = Debug.isDumpEnabled() ? new CodeInfo[1] : null;
-                InstalledCode installedMethod = runtime.addMethod(method, compResult, info);
-                if (info != null) {
-                    Debug.dump(new Object[]{compResult, info[0]}, "After code installation");
+                InstalledCode installedCode = runtime.addMethod(method, compResult);
+                if (Debug.isDumpEnabled()) {
+                    Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                 }
-                return installedMethod;
+
+                return installedCode;
             }
         });
     }
@@ -408,7 +438,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected StructuredGraph parse(Method m) {
         ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(m);
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;
     }
 
@@ -424,7 +454,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected PhasePlan getDefaultPhasePlan() {
         PhasePlan plan = new PhasePlan();
-        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.ALL));
+        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL));
         return plan;
     }
 }

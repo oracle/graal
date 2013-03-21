@@ -345,7 +345,8 @@ public final class BciBlockMapping {
                 case INVOKEINTERFACE:
                 case INVOKESPECIAL:
                 case INVOKESTATIC:
-                case INVOKEVIRTUAL: {
+                case INVOKEVIRTUAL:
+                case INVOKEDYNAMIC: {
                     current = null;
                     addSuccessor(bci, makeBlock(stream.nextBCI()));
                     ExceptionDispatchBlock handler = handleExceptions(bci);
@@ -757,7 +758,7 @@ public final class BciBlockMapping {
                 if (blockChanged) {
                     block.localsLiveIn.clear();
                     block.localsLiveIn.or(block.localsLiveOut);
-                    block.localsLiveIn.xor(block.localsLiveKill);
+                    block.localsLiveIn.andNot(block.localsLiveKill);
                     block.localsLiveIn.or(block.localsLiveGen);
                     Debug.log("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, block.localsLiveIn, block.localsLiveOut, block.localsLiveGen,
                                     block.localsLiveKill);

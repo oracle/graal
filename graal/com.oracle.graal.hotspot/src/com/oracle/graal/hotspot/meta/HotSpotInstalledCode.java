@@ -38,10 +38,17 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     private static final long serialVersionUID = 156632908220561612L;
 
     private final HotSpotResolvedJavaMethod method;
+    private final boolean isDefault;
     long nmethod;
+    long start;
 
-    public HotSpotInstalledCode(HotSpotResolvedJavaMethod method) {
+    public HotSpotInstalledCode(HotSpotResolvedJavaMethod method, boolean isDefault) {
         this.method = method;
+        this.isDefault = isDefault;
+    }
+
+    public boolean isDefault() {
+        return isDefault;
     }
 
     @Override
@@ -86,5 +93,15 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     public Object executeVarargs(Object... args) {
         assert checkArgs(args);
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethodVarargs(method.metaspaceMethod, nmethod, args);
+    }
+
+    @Override
+    public long getStart() {
+        return isValid() ? start : 0;
+    }
+
+    @Override
+    public byte[] getCode() {
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getCode(nmethod);
     }
 }

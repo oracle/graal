@@ -31,7 +31,6 @@ import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.ConvertNode.Op;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 
 /**
@@ -63,13 +62,7 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitNullCheckGuard(ValueNode object) {
-        // SPARC: Auto-generated method stub
-
-    }
-
-    @Override
-    public void emitJump(LabelRef label, LIRFrameState info) {
+    public void emitJump(LabelRef label) {
         @SuppressWarnings("unused")
         SPARCLIRInstruction instruction = null;
         // SPARC: Auto-generated method stub
@@ -77,13 +70,19 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info) {
+    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label) {
         // SPARC: Auto-generated method stub
 
     }
 
     @Override
-    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label, LIRFrameState info) {
+    public void emitOverflowCheckBranch(LabelRef label, boolean negated) {
+        // SPARC: Auto-generated method stub
+
+    }
+
+    @Override
+    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label) {
         // SPARC: Auto-generated method stub
 
     }
@@ -113,15 +112,9 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info) {
+    protected void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         // SPARC: Auto-generated method stub
 
-    }
-
-    @Override
-    protected LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info, Object deoptInfo) {
-        // SPARC: Auto-generated method stub
-        return null;
     }
 
     @Override
@@ -215,31 +208,31 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Address makeAddress(LocationNode location, ValueNode object) {
+    public void emitMove(Value dst, Value src) {
+        // SPARC: Auto-generated method stub
+
+    }
+
+    @Override
+    public Value emitLoad(Kind kind, Value base, int displacement, Value index, int scale, boolean canTrap) {
         // SPARC: Auto-generated method stub
         return null;
     }
 
     @Override
-    public void emitMove(Value src, Value dst) {
+    public void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value input, boolean canTrap) {
         // SPARC: Auto-generated method stub
 
     }
 
     @Override
-    public Value emitLoad(Value loadAddress, boolean canTrap) {
+    public Value emitLea(Value base, int displacement, Value index, int scale) {
         // SPARC: Auto-generated method stub
         return null;
     }
 
     @Override
-    public void emitStore(Value storeAddress, Value input, boolean canTrap) {
-        // SPARC: Auto-generated method stub
-
-    }
-
-    @Override
-    public Value emitLea(Value address) {
+    public Value emitLea(StackSlot address) {
         // SPARC: Auto-generated method stub
         return null;
     }
@@ -341,13 +334,7 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimizeOnOverflow(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo) {
-        // SPARC: Auto-generated method stub
-
-    }
-
-    @Override
-    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, Object deoptInfo) {
+    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
         // SPARC: Auto-generated method stub
 
     }
@@ -372,6 +359,18 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void visitBreakpointNode(BreakpointNode i) {
+        // SPARC: Auto-generated method stub
+
+    }
+
+    @Override
+    public void emitUnwind(Value operand) {
+        // SPARC: Auto-generated method stub
+
+    }
+
+    @Override
+    public void emitNullCheck(ValueNode v) {
         // SPARC: Auto-generated method stub
 
     }

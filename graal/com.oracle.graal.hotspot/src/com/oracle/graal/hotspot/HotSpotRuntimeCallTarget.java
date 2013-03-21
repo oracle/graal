@@ -30,7 +30,7 @@ import com.oracle.graal.hotspot.stubs.*;
 /**
  * The details required to link a HotSpot runtime or stub call.
  */
-public class HotSpotRuntimeCallTarget implements RuntimeCallTarget {
+public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget {
 
     /**
      * The descriptor of the stub. This is for informational purposes only.

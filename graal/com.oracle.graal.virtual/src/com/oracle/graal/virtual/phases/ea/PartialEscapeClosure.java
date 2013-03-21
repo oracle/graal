@@ -457,9 +457,9 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
     }
 
     private void processLoopExit(LoopExitNode exitNode, BlockState initialState, BlockState exitState) {
-        HashMap<VirtualObjectNode, ValueProxyNode> proxies = new HashMap<>();
+        HashMap<VirtualObjectNode, ProxyNode> proxies = new HashMap<>();
 
-        for (ValueProxyNode proxy : exitNode.proxies()) {
+        for (ProxyNode proxy : exitNode.proxies()) {
             ObjectState obj = exitState.getObjectState(proxy.value());
             if (obj != null) {
                 proxies.put(obj.virtual, proxy);
@@ -473,7 +473,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     ObjectState valueObj = exitState.getObjectState(value);
                     if (valueObj == null) {
                         if ((value instanceof PhiNode && ((PhiNode) value).merge() == exitNode.loopBegin()) || initialObj == null || !initialObj.isVirtual() || initialObj.getEntry(i) != value) {
-                            ValueProxyNode proxy = new ValueProxyNode(value, exitNode, PhiType.Value);
+                            ProxyNode proxy = new ProxyNode(value, exitNode, PhiType.Value);
                             obj.setEntry(i, proxy);
                             effects.addFloatingNode(proxy);
                         }
@@ -481,9 +481,9 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                 }
             } else {
                 if (initialObj == null || initialObj.isVirtual()) {
-                    ValueProxyNode proxy = proxies.get(obj.virtual);
+                    ProxyNode proxy = proxies.get(obj.virtual);
                     if (proxy == null) {
-                        proxy = new ValueProxyNode(obj.getMaterializedValue(), exitNode, PhiType.Value);
+                        proxy = new ProxyNode(obj.getMaterializedValue(), exitNode, PhiType.Value);
                         effects.addFloatingNode(proxy);
                     } else {
                         effects.replaceFirstInput(proxy, proxy.value(), obj.getMaterializedValue());

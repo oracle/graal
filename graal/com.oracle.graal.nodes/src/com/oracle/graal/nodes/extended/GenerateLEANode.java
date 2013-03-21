@@ -57,7 +57,7 @@ public class GenerateLEANode extends FloatingNode implements Canonicalizable, LI
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        Value addr = gen.emitLea(gen.makeAddress(location(), object()));
+        Value addr = location().generateLea(gen, object());
         gen.setResult(this, addr);
     }
 }

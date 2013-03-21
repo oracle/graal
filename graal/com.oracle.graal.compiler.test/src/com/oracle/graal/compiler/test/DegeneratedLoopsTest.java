@@ -84,7 +84,7 @@ public class DegeneratedLoopsTest extends GraalCompilerTest {
                 for (Invoke invoke : graph.getInvokes()) {
                     invoke.intrinsify(null);
                 }
-                new CanonicalizerPhase(null, runtime(), new Assumptions(false)).apply(graph);
+                new CanonicalizerPhase(runtime(), new Assumptions(false)).apply(graph);
                 StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
                 Debug.dump(referenceGraph, "Graph");
                 assertEquals(referenceGraph, graph);

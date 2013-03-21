@@ -51,6 +51,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         }
 
         for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.class)) {
+            assert d.isAlive();
             visitDeoptBegin(findBeginNode(d), d, graph);
         }
 
@@ -61,45 +62,53 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         if (deoptBegin instanceof MergeNode) {
             MergeNode mergeNode = (MergeNode) deoptBegin;
             Debug.log("Visiting %s followed by %s", mergeNode, deopt);
-            List<EndNode> ends = mergeNode.forwardEnds().snapshot();
-            for (EndNode end : ends) {
-                if (!end.isDeleted()) {
-                    BeginNode beginNode = findBeginNode(end);
-                    if (!(beginNode instanceof MergeNode)) {
-                        visitDeoptBegin(beginNode, deopt, graph);
-                    }
-                }
+            List<BeginNode> begins = new ArrayList<>();
+            for (EndNode end : mergeNode.forwardEnds()) {
+                BeginNode newBeginNode = findBeginNode(end);
+                assert !begins.contains(newBeginNode);
+                begins.add(newBeginNode);
             }
-            if (mergeNode.isDeleted()) {
-                if (!deopt.isDeleted()) {
-                    Debug.log("Merge deleted, deopt moved to %s", findBeginNode(deopt));
-                    visitDeoptBegin(findBeginNode(deopt), deopt, graph);
-                }
+            for (BeginNode begin : begins) {
+                assert !begin.isDeleted();
+                visitDeoptBegin(begin, deopt, graph);
             }
+            assert mergeNode.isDeleted();
+            return;
         } else if (deoptBegin.predecessor() instanceof IfNode) {
             IfNode ifNode = (IfNode) deoptBegin.predecessor();
             BeginNode otherBegin = ifNode.trueSuccessor();
             LogicNode conditionNode = ifNode.condition();
-            if (conditionNode instanceof InstanceOfNode) {
+            if (!(conditionNode instanceof InstanceOfNode) && !(conditionNode instanceof InstanceOfDynamicNode)) {
                 // TODO The lowering currently does not support a FixedGuard as the usage of an
                 // InstanceOfNode. Relax this restriction.
+                FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.reason(), deopt.action(), deoptBegin == ifNode.trueSuccessor()));
+                FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
+                if (deoptBegin == ifNode.trueSuccessor()) {
+                    graph.removeSplitPropagate(ifNode, ifNode.falseSuccessor());
+                } else {
+                    graph.removeSplitPropagate(ifNode, ifNode.trueSuccessor());
+                }
+                Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s.", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin);
+                FixedNode next = pred.next();
+                pred.setNext(guard);
+                guard.setNext(next);
                 return;
             }
-            boolean negated = false;
-            if (deoptBegin == ifNode.trueSuccessor()) {
-                negated = true;
-                otherBegin = ifNode.falseSuccessor();
-            }
-            BeginNode ifBlockBegin = findBeginNode(ifNode);
-            Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s. IfBegin=%s", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin,
-                            ifBlockBegin);
-            FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.reason(), deopt.action(), negated));
-            otherBegin.replaceAtUsages(ifBlockBegin);
-            FixedNode next = otherBegin.next();
-            otherBegin.setNext(null);
-            guard.setNext(next);
-            ifNode.replaceAtPredecessor(guard);
-            GraphUtil.killCFG(ifNode);
+        }
+
+        // We could not convert the control split - at least cut off control flow after the split.
+        FixedWithNextNode deoptPred = deoptBegin;
+        FixedNode next = deoptPred.next();
+        if (next instanceof ExceptionObjectNode) {
+            deoptPred = (FixedWithNextNode) next;
+            next = deoptPred.next();
+        }
+
+        if (next != deopt) {
+            DeoptimizeNode newDeoptNode = (DeoptimizeNode) deopt.clone(graph);
+            deoptPred.setNext(newDeoptNode);
+            assert deoptPred == newDeoptNode.predecessor();
+            GraphUtil.killCFG(next);
         }
     }
 }

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.jtt.except;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 /*
  */
@@ -56,17 +56,17 @@ public class Catch_Two03 extends JTTTest {
         }
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test", 0);
     }
 
-    @Test
+    @LongTest
     public void run1() throws Throwable {
         runTest("test", 1);
     }
 
-    @Test
+    @LongTest
     public void run2() throws Throwable {
         runTest("test", 2);
     }

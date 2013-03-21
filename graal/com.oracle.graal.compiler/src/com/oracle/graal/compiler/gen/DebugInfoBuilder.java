@@ -45,7 +45,7 @@ public class DebugInfoBuilder {
     private HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
     private IdentityHashMap<VirtualObjectNode, EscapeObjectState> objectStates = new IdentityHashMap<>();
 
-    public LIRFrameState build(FrameState topState, List<StackSlot> lockData, LabelRef exceptionEdge) {
+    public LIRFrameState build(FrameState topState, List<StackSlot> lockData, short reason, LabelRef exceptionEdge) {
         assert virtualObjects.size() == 0;
         assert objectStates.size() == 0;
 
@@ -103,7 +103,7 @@ public class DebugInfoBuilder {
         }
         objectStates.clear();
 
-        return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge);
+        return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge, reason);
     }
 
     private BytecodeFrame computeFrameForState(FrameState state, List<StackSlot> lockDataSlots) {
@@ -135,7 +135,7 @@ public class DebugInfoBuilder {
                 throw new BailoutException("unbalanced monitors: found monitor for unknown frame (%d != %d) at %s", lockDataSlots.size(), numLocks, state);
             }
         }
-        assert state.bci >= 0 || state.bci == FrameState.BEFORE_BCI;
+        assert state.bci >= 0 || state.bci == FrameState.BEFORE_BCI : "bci == " + state.bci;
         return new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, numLocals, numStack, numLocks);
     }
 

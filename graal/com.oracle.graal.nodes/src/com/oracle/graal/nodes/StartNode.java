@@ -29,4 +29,8 @@ import com.oracle.graal.nodes.extended.*;
  */
 public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint {
 
+    @Override
+    public Object[] getLocationIdentities() {
+        return new Object[]{LocationNode.ANY_LOCATION};
+    }
 }

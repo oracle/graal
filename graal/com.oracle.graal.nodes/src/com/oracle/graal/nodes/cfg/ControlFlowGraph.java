@@ -108,8 +108,37 @@ public class ControlFlowGraph {
         return loops;
     }
 
+    public void clearNodeToBlock() {
+        nodeToBlock.clear();
+        for (Block block : reversePostOrder) {
+            identifyBlock(block, block.beginNode);
+        }
+    }
+
     protected static final int BLOCK_ID_INITIAL = -1;
     protected static final int BLOCK_ID_VISITED = -2;
+
+    private void identifyBlock(Block block, BeginNode begin) {
+        block.beginNode = begin;
+        Node cur = begin;
+        Node last;
+        do {
+            assert !cur.isDeleted();
+
+            assert nodeToBlock.get(cur) == null;
+            nodeToBlock.set(cur, block);
+            if (cur instanceof MergeNode) {
+                for (PhiNode phi : ((MergeNode) cur).phis()) {
+                    nodeToBlock.set(phi, block);
+                }
+            }
+
+            last = cur;
+            cur = cur.successors().first();
+        } while (cur != null && !(cur instanceof BeginNode));
+
+        block.endNode = (FixedNode) last;
+    }
 
     private void identifyBlocks() {
         // Find all block headers
@@ -118,26 +147,7 @@ public class ControlFlowGraph {
             if (node instanceof BeginNode) {
                 Block block = new Block();
                 numBlocks++;
-
-                block.beginNode = (BeginNode) node;
-                Node cur = node;
-                Node last;
-                do {
-                    assert !cur.isDeleted();
-
-                    assert nodeToBlock.get(cur) == null;
-                    nodeToBlock.set(cur, block);
-                    if (cur instanceof MergeNode) {
-                        for (PhiNode phi : ((MergeNode) cur).phis()) {
-                            nodeToBlock.set(phi, block);
-                        }
-                    }
-
-                    last = cur;
-                    cur = cur.successors().first();
-                } while (cur != null && !(cur instanceof BeginNode));
-
-                block.endNode = (FixedNode) last;
+                identifyBlock(block, (BeginNode) node);
             }
         }
 

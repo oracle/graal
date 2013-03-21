@@ -372,7 +372,7 @@ public class HP_idea extends JTTTest {
 
     /*
      * private int mul(int a, int b) throws ArithmeticException { long p; // Large enough to catch 16-bit multiply //
-     * without hitting sign bit. if (a != 0) { if(b != 0) { p = (long) a * b; b = (int) p & 0xFFFF; // Lower 16 bits. a
+     * without hitting sign bit. if (a != 0) { if (b != 0) { p = (long) a * b; b = (int) p & 0xFFFF; // Lower 16 bits. a
      * = (int) p >>> 16; // Upper 16 bits.
      *
      * return (b - a + (b < a ? 1 : 0) & 0xFFFF); } else return ((1 - a) & 0xFFFF); // If b = 0, then same as // 0x10001

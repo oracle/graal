@@ -40,6 +40,11 @@ public final class MonitorEnterNode extends AccessMonitorNode implements Lowerab
         super(object);
     }
 
+    @Override
+    public Object[] getLocationIdentities() {
+        return new Object[]{LocationNode.ANY_LOCATION};
+    }
+
     public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }

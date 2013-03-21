@@ -45,7 +45,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public boolean useG1GC;
 
     // offsets, ...
-    public int vmPageSize;
     public int stackShadowPages;
 
     /**
@@ -169,6 +168,11 @@ public final class HotSpotVMConfig extends CompilerObject {
      * Identity hash code value when uninitialized.
      */
     public int uninitializedIdentityHashCodeValue;
+
+    /**
+     * Offset of the pending deoptimization field.
+     */
+    public int pendingDeoptimizationOffset;
 
     /**
      * Mark word right shift to get identity hash code.
@@ -316,8 +320,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int typeProfileWidth;
 
     // runtime stubs
-    public long debugStub;
-    public long instanceofStub;
     public long newInstanceStub;
     public long newArrayStub;
     public long newMultiArrayStub;
@@ -335,7 +337,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long unwindExceptionStub;
     public long osrMigrationEndStub;
     public long registerFinalizerStub;
-    public long setDeoptInfoStub;
     public long createNullPointerExceptionStub;
     public long createOutOfBoundsExceptionStub;
     public long javaTimeMillisStub;
@@ -376,7 +377,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int deoptActionMakeNotCompilable;
 
     public void check() {
-        assert vmPageSize >= 16;
         assert codeEntryAlignment > 0;
         assert stackShadowPages > 0;
     }

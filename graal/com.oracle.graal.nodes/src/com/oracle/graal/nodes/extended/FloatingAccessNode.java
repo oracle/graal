@@ -43,6 +43,10 @@ public abstract class FloatingAccessNode extends FloatingNode implements Access 
         return location;
     }
 
+    public LocationNode nullCheckLocation() {
+        return location;
+    }
+
     public boolean getNullCheck() {
         return nullCheck;
     }
@@ -73,4 +77,6 @@ public abstract class FloatingAccessNode extends FloatingNode implements Access 
     public Node node() {
         return this;
     }
+
+    public abstract Access asFixedNode();
 }

@@ -24,8 +24,8 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 public class Object_toString01 extends JTTTest {
 
@@ -47,17 +47,17 @@ public class Object_toString01 extends JTTTest {
         return string;
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test", 0);
     }
 
-    @Test
+    @LongTest
     public void run1() throws Throwable {
         runTest("test", 1);
     }
 
-    @Test
+    @LongTest
     public void run2() throws Throwable {
         runTest("test", 2);
     }

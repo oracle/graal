@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.api.meta;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
+import java.net.*;
 
 /**
  * Represents a resolved Java type. Types include primitives, objects, {@code void}, and arrays
@@ -253,4 +254,24 @@ public interface ResolvedJavaType extends JavaType {
      * Returns name of source file of this type.
      */
     String getSourceFileName();
+
+    /**
+     * Returns the class file path - if available - of this type, or {@code null}.
+     */
+    URL getClassFilePath();
+
+    /**
+     * Returns {@code true} if the type is a local type.
+     */
+    boolean isLocal();
+
+    /**
+     * Returns {@code true} if the type is a member type.
+     */
+    boolean isMember();
+
+    /**
+     * Returns the enclosing type of this type, if it exists, or {@code null}.
+     */
+    ResolvedJavaType getEnclosingType();
 }

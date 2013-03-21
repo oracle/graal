@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.bridge;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -34,11 +35,11 @@ import com.oracle.graal.hotspot.meta.*;
  */
 public class CompilerToVMImpl implements CompilerToVM {
 
-    private native int installCode0(HotSpotCompilationResult comp, HotSpotInstalledCode code, HotSpotCodeInfo info);
+    private native int installCode0(HotSpotCompilationResult comp, HotSpotInstalledCode code, boolean[] triggeredDeoptimizations);
 
     @Override
-    public CodeInstallResult installCode(HotSpotCompilationResult comp, HotSpotInstalledCode code, HotSpotCodeInfo info) {
-        return CodeInstallResult.values()[installCode0(comp, code, info)];
+    public CodeInstallResult installCode(HotSpotCompilationResult comp, HotSpotInstalledCode code, SpeculationLog speculationLog) {
+        return CodeInstallResult.values()[installCode0(comp, code, (speculationLog == null) ? null : speculationLog.getRawMap())];
     }
 
     @Override
@@ -123,10 +124,10 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long getMaxCallTargetOffset(long stub);
 
     @Override
-    public native String disassembleNative(byte[] code, long address);
+    public native String disassembleNMethod(long nmethod);
 
     @Override
-    public native String disassembleNMethod(long nmethod);
+    public native byte[] getCode(long nmethod);
 
     @Override
     public native StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
@@ -142,9 +143,6 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public native long[] getDeoptedLeafGraphIds();
-
-    @Override
-    public native String decodePC(long pc);
 
     @Override
     public native long[] getLineNumberTable(HotSpotResolvedJavaMethod method);

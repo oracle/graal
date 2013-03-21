@@ -696,7 +696,8 @@ public class InliningUtil {
                 ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
                 ResolvedJavaType leastCommonType = getLeastCommonType();
                 // check if we have a common base type that implements the interface -> in that case
-// we have a vtable entry for the interface method and can use a less expensive virtual call
+                // we have a vtable entry for the interface method and can use a less expensive
+                // virtual call
                 if (!leastCommonType.isInterface() && targetMethod.getDeclaringClass().isAssignableFrom(leastCommonType)) {
                     ResolvedJavaMethod baseClassTargetMethod = leastCommonType.resolveMethod(targetMethod);
                     if (baseClassTargetMethod != null) {
@@ -966,8 +967,6 @@ public class InliningUtil {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "the method's class is not initialized");
         } else if (!method.canBeInlined()) {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "it is marked non-inlinable");
-        } else if (computeInliningLevel(invoke) > GraalOptions.MaximumInlineLevel) {
-            return logNotInlinedMethodAndReturnFalse(invoke, method, "it exceeds the maximum inlining depth");
         } else if (computeRecursiveInliningLevel(invoke.stateAfter(), method) > GraalOptions.MaximumRecursiveInlining) {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "it exceeds the maximum recursive inlining depth");
         } else if (new OptimisticOptimizations(method).lessOptimisticThan(optimisticOpts)) {
@@ -999,6 +998,17 @@ public class InliningUtil {
             curState = curState.outerFrameState();
         }
         return count;
+    }
+
+    static MonitorExitNode findPrecedingMonitorExit(UnwindNode unwind) {
+        Node pred = unwind.predecessor();
+        while (pred != null) {
+            if (pred instanceof MonitorExitNode) {
+                return (MonitorExitNode) pred;
+            }
+            pred = pred.predecessor();
+        }
+        return null;
     }
 
     /**
@@ -1071,13 +1081,13 @@ public class InliningUtil {
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
+                MonitorExitNode monitorExit = findPrecedingMonitorExit(unwindDuplicate);
                 DeoptimizeNode deoptimizeNode = new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler);
                 unwindDuplicate.replaceAndDelete(graph.add(deoptimizeNode));
                 // move the deopt upwards if there is a monitor exit that tries to use the
                 // "after exception" frame state
                 // (because there is no "after exception" frame state!)
-                if (deoptimizeNode.predecessor() instanceof MonitorExitNode) {
-                    MonitorExitNode monitorExit = (MonitorExitNode) deoptimizeNode.predecessor();
+                if (monitorExit != null) {
                     if (monitorExit.stateAfter() != null && monitorExit.stateAfter().bci == FrameState.AFTER_EXCEPTION_BCI) {
                         FrameState monitorFrameState = monitorExit.stateAfter();
                         graph.removeFixed(monitorExit);
@@ -1123,7 +1133,7 @@ public class InliningUtil {
                 } else {
                     // only handle the outermost frame states
                     if (frameState.outerFrameState() == null) {
-                        assert frameState.method() == inlineGraph.method();
+                        assert frameState.bci == FrameState.INVALID_FRAMESTATE_BCI || frameState.method() == inlineGraph.method();
                         if (outerFrameState == null) {
                             outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invoke.node().kind());
                             outerFrameState.setDuringCall(true);

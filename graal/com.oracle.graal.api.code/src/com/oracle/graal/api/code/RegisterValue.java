@@ -30,7 +30,7 @@ import com.oracle.graal.api.meta.*;
  * {@link Register#asValue(Kind)} to retrieve the canonical {@link RegisterValue} instance for a
  * given (register,kind) pair.
  */
-public final class RegisterValue extends Value {
+public final class RegisterValue extends AllocatableValue {
 
     private static final long serialVersionUID = 7999341472196897163L;
 

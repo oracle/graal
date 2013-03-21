@@ -33,12 +33,10 @@ import com.oracle.graal.phases.*;
 
 public class IterativeConditionalEliminationPhase extends Phase {
 
-    private final TargetDescription target;
     private final MetaAccessProvider runtime;
     private final Assumptions assumptions;
 
-    public IterativeConditionalEliminationPhase(TargetDescription target, MetaAccessProvider runtime, Assumptions assumptions) {
-        this.target = target;
+    public IterativeConditionalEliminationPhase(MetaAccessProvider runtime, Assumptions assumptions) {
         this.runtime = runtime;
         this.assumptions = assumptions;
     }
@@ -55,7 +53,7 @@ public class IterativeConditionalEliminationPhase extends Phase {
             if (canonicalizationRoots.isEmpty()) {
                 break;
             }
-            new CanonicalizerPhase(target, runtime, assumptions, canonicalizationRoots, null).apply(graph);
+            new CanonicalizerPhase(runtime, assumptions, canonicalizationRoots, null).apply(graph);
             canonicalizationRoots.clear();
         }
     }

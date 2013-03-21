@@ -57,7 +57,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
                 AMD64MacroAssembler asm = new AMD64MacroAssembler(target, registerConfig);
                 Register ret = registerConfig.getReturnRegister(Kind.Double);
                 compResult.recordDataReference(asm.codeBuffer.position(), Constant.forDouble(84.72), 8, false);
-                asm.movdbl(ret, Address.Placeholder);
+                asm.movdbl(ret, asm.getPlaceholder());
                 asm.ret(0);
                 return asm.codeBuffer;
             }

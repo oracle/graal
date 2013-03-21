@@ -23,21 +23,16 @@
 package com.oracle.graal.java;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.phases.*;
 
 public class GraphBuilderConfiguration {
 
-    public static enum ResolvePolicy {
-        Default, EagerForSnippets, Eager,
-    }
-
-    private final ResolvePolicy resolving;
-    private final PhasePlan plan;
+    private final boolean eagerResolving;
+    private final boolean omitAllExceptionEdges;
     private ResolvedJavaType[] skippedExceptionTypes;
 
-    public GraphBuilderConfiguration(ResolvePolicy resolving, PhasePlan plan) {
-        this.resolving = resolving;
-        this.plan = plan;
+    protected GraphBuilderConfiguration(boolean eagerResolving, boolean omitAllExceptionEdges) {
+        this.eagerResolving = eagerResolving;
+        this.omitAllExceptionEdges = omitAllExceptionEdges;
     }
 
     public void setSkippedExceptionTypes(ResolvedJavaType[] skippedExceptionTypes) {
@@ -48,31 +43,32 @@ public class GraphBuilderConfiguration {
         return skippedExceptionTypes;
     }
 
-    public boolean eagerResolvingForSnippets() {
-        return (resolving == ResolvePolicy.EagerForSnippets || resolving == ResolvePolicy.Eager);
-    }
-
     public boolean eagerResolving() {
-        return (resolving == ResolvePolicy.Eager);
+        return eagerResolving;
     }
 
-    public PhasePlan plan() {
-        return plan;
+    public boolean omitAllExceptionEdges() {
+        return omitAllExceptionEdges;
     }
 
     public static GraphBuilderConfiguration getDefault() {
-        return getDefault(null);
+        return new GraphBuilderConfiguration(false, false);
     }
 
-    public static GraphBuilderConfiguration getDefault(PhasePlan plan) {
-        return new GraphBuilderConfiguration(ResolvePolicy.Default, plan);
+    public static GraphBuilderConfiguration getEagerDefault() {
+        return new GraphBuilderConfiguration(true, false);
     }
 
     public static GraphBuilderConfiguration getSnippetDefault() {
-        return getSnippetDefault(null);
+        return new GraphBuilderConfiguration(true, true);
     }
 
-    public static GraphBuilderConfiguration getSnippetDefault(PhasePlan plan) {
-        return new GraphBuilderConfiguration(ResolvePolicy.EagerForSnippets, plan);
+    /**
+     * Returns {@code true} if it is an error for a class/field/method resolution to fail.
+     * The default is the same result as returned by {@link #eagerResolving()}.
+     * However, it may be overridden to allow failure even when {@link #eagerResolving} is {@code true}.
+     */
+    public boolean unresolvedIsError() {
+        return eagerResolving;
     }
 }

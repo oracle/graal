@@ -203,16 +203,16 @@ public class FrameStateBuilder {
     }
 
     private void propagateDelete(FloatingNode node) {
-        assert node instanceof PhiNode || node instanceof ValueProxyNode;
+        assert node instanceof PhiNode || node instanceof ProxyNode;
         if (node.isDeleted()) {
             return;
         }
         // Collect all phi functions that use this phi so that we can delete them recursively (after
         // we delete ourselves to avoid circles).
-        List<FloatingNode> propagateUsages = node.usages().filter(FloatingNode.class).filter(isA(PhiNode.class).or(ValueProxyNode.class)).snapshot();
+        List<FloatingNode> propagateUsages = node.usages().filter(FloatingNode.class).filter(isA(PhiNode.class).or(ProxyNode.class)).snapshot();
 
         // Remove the phi function from all FrameStates where it is used and then delete it.
-        assert node.usages().filter(isNotA(FrameState.class).nor(PhiNode.class).nor(ValueProxyNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
+        assert node.usages().filter(isNotA(FrameState.class).nor(PhiNode.class).nor(ProxyNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
         node.replaceAtUsages(null);
         node.safeDelete();
 
@@ -235,21 +235,21 @@ public class FrameStateBuilder {
             ValueNode value = localAt(i);
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 Debug.log(" inserting proxy for %s", value);
-                storeLocal(i, graph.unique(new ValueProxyNode(value, loopExit, PhiType.Value)));
+                storeLocal(i, graph.unique(new ProxyNode(value, loopExit, PhiType.Value)));
             }
         }
         for (int i = 0; i < stackSize(); i++) {
             ValueNode value = stackAt(i);
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 Debug.log(" inserting proxy for %s", value);
-                storeStack(i, graph.unique(new ValueProxyNode(value, loopExit, PhiType.Value)));
+                storeStack(i, graph.unique(new ProxyNode(value, loopExit, PhiType.Value)));
             }
         }
         for (int i = 0; i < locks.length; i++) {
             ValueNode value = locks[i];
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 Debug.log(" inserting proxy for %s", value);
-                locks[i] = graph.unique(new ValueProxyNode(value, loopExit, PhiType.Value));
+                locks[i] = graph.unique(new ProxyNode(value, loopExit, PhiType.Value));
             }
         }
     }
@@ -259,21 +259,21 @@ public class FrameStateBuilder {
             ValueNode value = localAt(i);
             if (value != null) {
                 Debug.log(" inserting proxy for %s", value);
-                storeLocal(i, graph.unique(new ValueProxyNode(value, begin, PhiType.Value)));
+                storeLocal(i, graph.unique(new ProxyNode(value, begin, PhiType.Value)));
             }
         }
         for (int i = 0; i < stackSize(); i++) {
             ValueNode value = stackAt(i);
             if (value != null) {
                 Debug.log(" inserting proxy for %s", value);
-                storeStack(i, graph.unique(new ValueProxyNode(value, begin, PhiType.Value)));
+                storeStack(i, graph.unique(new ProxyNode(value, begin, PhiType.Value)));
             }
         }
         for (int i = 0; i < locks.length; i++) {
             ValueNode value = locks[i];
             if (value != null) {
                 Debug.log(" inserting proxy for %s", value);
-                locks[i] = graph.unique(new ValueProxyNode(value, begin, PhiType.Value));
+                locks[i] = graph.unique(new ProxyNode(value, begin, PhiType.Value));
             }
         }
     }
@@ -292,7 +292,7 @@ public class FrameStateBuilder {
     public void cleanupDeletedPhis() {
         for (int i = 0; i < localsSize(); i++) {
             if (localAt(i) != null && localAt(i).isDeleted()) {
-                assert localAt(i) instanceof PhiNode || localAt(i) instanceof ValueProxyNode : "Only phi and value proxies can be deleted during parsing: " + localAt(i);
+                assert localAt(i) instanceof PhiNode || localAt(i) instanceof ProxyNode : "Only phi and value proxies can be deleted during parsing: " + localAt(i);
                 storeLocal(i, null);
             }
         }
@@ -479,15 +479,6 @@ public class FrameStateBuilder {
     }
 
     /**
-     * Pushes a value onto the stack and checks that it is a JSR return address.
-     * 
-     * @param x the instruction to push onto the stack
-     */
-    public void jpush(ValueNode x) {
-        xpush(assertJsr(x));
-    }
-
-    /**
      * Pushes a value onto the stack and checks that it is a long.
      * 
      * @param x the instruction to push onto the stack
@@ -563,15 +554,6 @@ public class FrameStateBuilder {
      */
     public ValueNode apop() {
         return assertObject(xpop());
-    }
-
-    /**
-     * Pops a value off of the stack and checks that it is a JSR return address.
-     * 
-     * @return x the instruction popped off the stack
-     */
-    public ValueNode jpop() {
-        return assertJsr(xpop());
     }
 
     /**

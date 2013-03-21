@@ -24,13 +24,11 @@ package com.oracle.graal.snippets;
 
 import java.lang.reflect.*;
 
-import org.junit.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.snippets.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.word.*;
@@ -43,7 +41,7 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
     private final SnippetInstaller installer;
 
     public WordTest() {
-        TargetDescription target = Graal.getRequiredCapability(GraalCompiler.class).target;
+        TargetDescription target = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
         installer = new SnippetInstaller(runtime, new Assumptions(false), target);
     }
 
@@ -52,10 +50,10 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
     @Override
     protected StructuredGraph parse(Method m) {
         ResolvedJavaMethod resolvedMethod = runtime.lookupJavaMethod(m);
-        return installer.makeGraph(resolvedMethod, inliningPolicy.get(), false);
+        return installer.makeGraph(resolvedMethod, inliningPolicy.get());
     }
 
-    @Test
+    @LongTest
     public void construction() {
         long[] words = new long[]{Long.MIN_VALUE, Long.MIN_VALUE + 1, -1L, 0L, 1L, Long.MAX_VALUE - 1, Long.MAX_VALUE, Integer.MAX_VALUE - 1L, Integer.MAX_VALUE, Integer.MAX_VALUE + 1L,
                         Integer.MIN_VALUE - 1L, Integer.MIN_VALUE, Integer.MIN_VALUE + 1L};
@@ -67,7 +65,7 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
         }
     }
 
-    @Test
+    @LongTest
     public void test_arithmetic() {
         long[] words = new long[]{Long.MIN_VALUE, Long.MIN_VALUE + 1, -1L, 0L, 1L, Long.MAX_VALUE - 1, Long.MAX_VALUE, Integer.MAX_VALUE - 1L, Integer.MAX_VALUE, Integer.MAX_VALUE + 1L,
                         Integer.MIN_VALUE - 1L, Integer.MIN_VALUE, Integer.MIN_VALUE + 1L};
@@ -104,7 +102,7 @@ public class WordTest extends GraalCompilerTest implements SnippetsInterface {
         }
     }
 
-    @Test
+    @LongTest
     public void test_compare() {
         long[] words = new long[]{Long.MIN_VALUE, Long.MIN_VALUE + 1, -1L, 0L, 1L, Long.MAX_VALUE - 1, Long.MAX_VALUE};
         for (long word1 : words) {

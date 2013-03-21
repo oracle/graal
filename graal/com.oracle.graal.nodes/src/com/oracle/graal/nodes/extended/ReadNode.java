@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -35,6 +37,10 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
 
     public ReadNode(ValueNode object, ValueNode location, Stamp stamp) {
         super(object, location, stamp);
+    }
+
+    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, List<ValueNode> dependencies) {
+        super(object, location, stamp, dependencies);
     }
 
     private ReadNode(ValueNode object, int displacement, Object locationIdentity, Kind kind) {
@@ -51,40 +57,40 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.setResult(this, gen.emitLoad(gen.makeAddress(location(), object()), getNullCheck()));
+        gen.setResult(this, location().generateLoad(gen, object(), getNullCheck()));
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        return canonicalizeRead(this, tool);
+        return canonicalizeRead(this, location(), object(), tool);
     }
 
-    public static ValueNode canonicalizeRead(Access read, CanonicalizerTool tool) {
+    public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
-        if (runtime != null && read.object() != null && read.object().isConstant()) {
-            if (read.location().locationIdentity() == LocationNode.FINAL_LOCATION && read.location().getClass() == LocationNode.class) {
-                long displacement = read.location().displacement();
-                Kind kind = read.location().getValueKind();
-                if (read.object().kind() == Kind.Object) {
-                    Object base = read.object().asConstant().asObject();
+        if (runtime != null && object != null && object.isConstant()) {
+            if (location.locationIdentity() == LocationNode.FINAL_LOCATION && location.getClass() == LocationNode.class) {
+                long displacement = location.displacement();
+                Kind kind = location.getValueKind();
+                if (object.kind() == Kind.Object) {
+                    Object base = object.asConstant().asObject();
                     if (base != null) {
                         Constant constant = tool.runtime().readUnsafeConstant(kind, base, displacement);
                         if (constant != null) {
-                            return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                            return ConstantNode.forConstant(constant, runtime, read.graph());
                         }
                     }
-                } else if (read.object().kind() == Kind.Long || read.object().kind().getStackKind() == Kind.Int) {
-                    long base = read.object().asConstant().asLong();
+                } else if (object.kind() == Kind.Long || object.kind().getStackKind() == Kind.Int) {
+                    long base = object.asConstant().asLong();
                     if (base != 0L) {
                         Constant constant = tool.runtime().readUnsafeConstant(kind, null, base + displacement);
                         if (constant != null) {
-                            return ConstantNode.forConstant(constant, runtime, read.node().graph());
+                            return ConstantNode.forConstant(constant, runtime, read.graph());
                         }
                     }
                 }
             }
         }
-        return (ValueNode) read;
+        return read;
     }
 
     /**

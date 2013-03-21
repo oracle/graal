@@ -42,11 +42,13 @@ public class LIRFrameState {
     private final VirtualObject[] virtualObjects;
     public final LabelRef exceptionEdge;
     private DebugInfo debugInfo;
+    private final short deoptimizationReason;
 
-    public LIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, LabelRef exceptionEdge) {
+    public LIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, LabelRef exceptionEdge, short deoptimizationReason) {
         this.topFrame = topFrame;
         this.virtualObjects = virtualObjects;
         this.exceptionEdge = exceptionEdge;
+        this.deoptimizationReason = deoptimizationReason;
     }
 
     public boolean hasDebugInfo() {
@@ -111,7 +113,7 @@ public class LIRFrameState {
     }
 
     public void finish(BitSet registerRefMap, BitSet frameRefMap) {
-        debugInfo = new DebugInfo(topFrame, registerRefMap, frameRefMap);
+        debugInfo = new DebugInfo(topFrame, registerRefMap, frameRefMap, deoptimizationReason);
     }
 
     @Override

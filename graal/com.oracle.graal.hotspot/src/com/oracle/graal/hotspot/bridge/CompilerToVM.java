@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.bridge;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -148,11 +149,9 @@ public interface CompilerToVM {
      * @param compResult the result of a compilation
      * @param code if not null, then the code is installed as the non-default compiled code for the
      *            associated method and the details of the installation are written to this object
-     * @param info additional information about the installation are written to this object if it is
-     *            not null
      * @return the outcome of the installation as a {@link CodeInstallResult}.
      */
-    CodeInstallResult installCode(HotSpotCompilationResult compResult, HotSpotInstalledCode code, HotSpotCodeInfo info);
+    CodeInstallResult installCode(HotSpotCompilationResult compResult, HotSpotInstalledCode code, SpeculationLog cache);
 
     void initializeConfiguration(HotSpotVMConfig config);
 
@@ -189,9 +188,14 @@ public interface CompilerToVM {
 
     long getMaxCallTargetOffset(long stub);
 
-    String disassembleNative(byte[] code, long address);
-
     String disassembleNMethod(long nmethod);
+
+    /**
+     * Gets a copy of the machine code for an nmethod.
+     * 
+     * @return the machine code for {@code nmethod} if it is valid, null otherwise
+     */
+    byte[] getCode(long nmethod);
 
     StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
@@ -202,8 +206,6 @@ public interface CompilerToVM {
     int getVtableEntryOffset(long metaspaceMethod);
 
     long[] getDeoptedLeafGraphIds();
-
-    String decodePC(long pc);
 
     long[] getLineNumberTable(HotSpotResolvedJavaMethod method);
 

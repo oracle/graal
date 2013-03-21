@@ -70,17 +70,11 @@ import com.oracle.graal.asm.*;
  * The spill slot area also includes stack allocated memory blocks (ALLOCA blocks). The size of such
  * a block may be greater than the size of a normal spill slot or the word size.
  * <p>
- * A runtime has two ways to reserve space in the stack frame for its own use:
- * <ul>
- * <li>A memory block somewhere in the frame of size
- * {@link CodeCacheProvider#getCustomStackAreaSize()}. The offset to this block is returned in
- * {@link CompilationResult#getCustomStackAreaOffset()}.
- * <li>At the beginning of the overflow argument area: The calling convention can specify that the
- * first overflow stack argument is not at offset 0, but at a specified offset o. Use
- * {@link CodeCacheProvider#getMinimumOutgoingSize()} to make sure that call-free methods also have
- * this space reserved. Then the VM can use memory the memory at offset 0 relative to the stack
- * pointer.
- * </ul>
+ * A runtime can reserve space at the beginning of the overflow argument area. The calling
+ * convention can specify that the first overflow stack argument is not at offset 0, but at a
+ * specified offset. Use {@link CodeCacheProvider#getMinimumOutgoingSize()} to make sure that
+ * call-free methods also have this space reserved. Then the VM can use the memory at offset 0
+ * relative to the stack pointer.
  */
 public final class FrameMap {
 
@@ -89,14 +83,9 @@ public final class FrameMap {
     public final RegisterConfig registerConfig;
 
     /**
-     * The initial frame size, not including the size of the return address. This is the constant
-     * space reserved by the runtime for all compiled methods.
-     */
-    public final int initialFrameSize;
-
-    /**
-     * The final frame size, not including the size of the return address. The value is only set
-     * after register allocation is complete, i.e., after all spill slots have been allocated.
+     * The final frame size, not including the size of the
+     * {@link Architecture#getReturnAddressSize() return address slot}. The value is only set after
+     * register allocation is complete, i.e., after all spill slots have been allocated.
      */
     private int frameSize;
 
@@ -117,12 +106,6 @@ public final class FrameMap {
     private final List<StackSlot> objectStackBlocks;
 
     /**
-     * The stack area reserved for use by the VM, or {@code null} if the VM does not request stack
-     * space.
-     */
-    private final StackSlot customArea;
-
-    /**
      * Records whether an offset to an incoming stack argument was ever returned by
      * {@link #offsetForStackSlot(StackSlot)}.
      */
@@ -139,8 +122,6 @@ public final class FrameMap {
         this.spillSize = returnAddressSize() + calleeSaveAreaSize();
         this.outgoingSize = runtime.getMinimumOutgoingSize();
         this.objectStackBlocks = new ArrayList<>();
-        this.customArea = allocateStackBlock(runtime.getCustomStackAreaSize(), false);
-        this.initialFrameSize = currentFrameSize();
     }
 
     private int returnAddressSize() {
@@ -161,7 +142,8 @@ public final class FrameMap {
     }
 
     /**
-     * Gets the frame size of the compiled frame, not including the size of the return address.
+     * Gets the frame size of the compiled frame, not including the size of the
+     * {@link Architecture#getReturnAddressSize() return address slot}.
      * 
      * @return The size of the frame (in bytes).
      */
@@ -171,7 +153,17 @@ public final class FrameMap {
     }
 
     /**
-     * Gets the total frame size of the compiled frame, including the size of the return address.
+     * Determines if any space is used in the frame apart from the
+     * {@link Architecture#getReturnAddressSize() return address slot}.
+     */
+    public boolean frameNeedsAllocating() {
+        int unalignedFrameSize = outgoingSize + spillSize - returnAddressSize();
+        return unalignedFrameSize != 0;
+    }
+
+    /**
+     * Gets the total frame size of the compiled frame, including the size of the
+     * {@link Architecture#getReturnAddressSize() return address slot}.
      * 
      * @return The total size of the frame (in bytes).
      */
@@ -194,6 +186,21 @@ public final class FrameMap {
      */
     public void finish() {
         assert this.frameSize == -1 : "must only be set once";
+        if (freedSlots != null) {
+            // If the freed slots cover the complete spill area (except for the return
+            // address slot), then the spill size is reset to its initial value.
+            // Without this, frameNeedsAllocating() would never return true.
+            int total = 0;
+            for (StackSlot s : freedSlots) {
+                total += target.sizeInBytes(s.getKind());
+            }
+            int initialSpillSize = returnAddressSize() + calleeSaveAreaSize();
+            if (total == spillSize - initialSpillSize) {
+                // reset spill area size
+                spillSize = initialSpillSize;
+            }
+            freedSlots = null;
+        }
         frameSize = currentFrameSize();
     }
 
@@ -220,16 +227,6 @@ public final class FrameMap {
      */
     public int offsetToCalleeSaveArea() {
         return frameSize() - calleeSaveAreaSize();
-    }
-
-    /**
-     * Gets the offset of the stack area stack block reserved for use by the VM, or -1 if the VM
-     * does not request stack space.
-     * 
-     * @return The offset to the custom area (in bytes).
-     */
-    public int offsetToCustomArea() {
-        return customArea == null ? -1 : offsetForStackSlot(customArea);
     }
 
     /**
@@ -265,9 +262,34 @@ public final class FrameMap {
      */
     public StackSlot allocateSpillSlot(Kind kind) {
         assert frameSize == -1 : "frame size must not yet be fixed";
+        if (freedSlots != null) {
+            for (Iterator<StackSlot> iter = freedSlots.iterator(); iter.hasNext();) {
+                StackSlot s = iter.next();
+                if (s.getKind() == kind) {
+                    iter.remove();
+                    if (freedSlots.isEmpty()) {
+                        freedSlots = null;
+                    }
+                    return s;
+                }
+            }
+        }
         int size = target.sizeInBytes(kind);
         spillSize = NumUtil.roundUp(spillSize + size, size);
         return getSlot(kind, 0);
+    }
+
+    private List<StackSlot> freedSlots;
+
+    /**
+     * Frees a spill slot that was obtained via {@link #allocateSpillSlot(Kind)} such that it can be
+     * reused for the next allocation request for the same kind of slot.
+     */
+    public void freeSpillSlot(StackSlot slot) {
+        if (freedSlots == null) {
+            freedSlots = new ArrayList<>();
+        }
+        freedSlots.add(slot);
     }
 
     /**
@@ -342,30 +364,6 @@ public final class FrameMap {
             } else if (isStackSlot(location)) {
                 int index = frameRefMapIndex(asStackSlot(location));
                 frameRefMap.set(index);
-            } else {
-                assert isConstant(location);
-            }
-        }
-    }
-
-    /**
-     * Clears the specified location as a reference in the reference map of the debug information.
-     * The tracked location can be a {@link RegisterValue} or a {@link StackSlot}. Note that a
-     * {@link Constant} is automatically tracked.
-     * 
-     * @param location The location to be removed from the reference map.
-     * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
-     * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
-     */
-    public void clearReference(Value location, BitSet registerRefMap, BitSet frameRefMap) {
-        if (location.getKind() == Kind.Object) {
-            if (location instanceof RegisterValue) {
-                registerRefMap.clear(asRegister(location).number);
-            } else if (isStackSlot(location)) {
-                int index = frameRefMapIndex(asStackSlot(location));
-                if (index < frameRefMap.size()) {
-                    frameRefMap.clear(index);
-                }
             } else {
                 assert isConstant(location);
             }

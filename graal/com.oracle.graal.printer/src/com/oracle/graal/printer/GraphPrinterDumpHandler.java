@@ -33,6 +33,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.schedule.*;
 
 /**
  * Observes compilation events and uses {@link IdealGraphPrinter} to generate a graph representation
@@ -81,16 +82,22 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         if (sdf == null) {
             sdf = new SimpleDateFormat("YYYY-MM-dd-HHmm");
         }
-        String fileName = "Graphs-" + Thread.currentThread().getName() + "-" + sdf.format(new Date()) + ext;
+        String prefix = "Graphs-" + Thread.currentThread().getName() + "-" + sdf.format(new Date());
+        String num = "";
+        File file;
+        int i = 0;
+        while ((file = new File(prefix + num + ext)).exists()) {
+            num = "-" + Integer.toString(++i);
+        }
         try {
             if (GraalOptions.PrintBinaryGraphs) {
-                printer = new BinaryGraphPrinter(FileChannel.open(new File(fileName).toPath(), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW));
+                printer = new BinaryGraphPrinter(FileChannel.open(file.toPath(), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW));
             } else {
-                printer = new IdealGraphPrinter(new FileOutputStream(fileName));
+                printer = new IdealGraphPrinter(new FileOutputStream(file));
             }
-            TTY.println("Dumping IGV graphs to %s", fileName);
+            TTY.println("Dumping IGV graphs to %s", file.getName());
         } catch (IOException e) {
-            TTY.println("Failed to open %s to dump IGV graphs : %s", fileName, e);
+            TTY.println("Failed to open %s to dump IGV graphs : %s", file.getName(), e);
             failuresCount++;
             printer = null;
         }
@@ -153,13 +160,14 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 // Save inline context for next dump.
                 previousInlineContext = inlineContext;
 
+                final SchedulePhase predefinedSchedule = getPredefinedSchedule();
                 Debug.sandbox("PrintingGraph", new Runnable() {
 
                     @Override
                     public void run() {
                         // Finally, output the graph.
                         try {
-                            printer.print(graph, message, null);
+                            printer.print(graph, message, predefinedSchedule);
                         } catch (IOException e) {
                             failuresCount++;
                             printer = null;
@@ -187,6 +195,16 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         }
         if (result.isEmpty()) {
             result.add("Top Scope");
+        }
+        return result;
+    }
+
+    private static SchedulePhase getPredefinedSchedule() {
+        SchedulePhase result = null;
+        for (Object o : Debug.context()) {
+            if (o instanceof SchedulePhase) {
+                result = (SchedulePhase) o;
+            }
         }
         return result;
     }

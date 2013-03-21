@@ -23,9 +23,6 @@
 package com.oracle.graal.api.code;
 
 import java.nio.*;
-import java.util.*;
-
-import com.oracle.graal.api.code.Register.RegisterFlag;
 
 /**
  * Represents a CPU architecture, including information such as its endianness, CPU registers, word
@@ -79,22 +76,6 @@ public abstract class Architecture {
      */
     private final int returnAddressSize;
 
-    private final EnumMap<RegisterFlag, Register[]> registersByTypeAndEncoding;
-
-    /**
-     * Gets the register for a given {@linkplain Register#encoding encoding} and type.
-     * 
-     * @param encoding a register value as used in a machine instruction
-     * @param type the type of the register
-     */
-    public Register registerFor(int encoding, RegisterFlag type) {
-        Register[] regs = registersByTypeAndEncoding.get(type);
-        assert encoding >= 0 && encoding < regs.length;
-        Register reg = regs[encoding];
-        assert reg != null;
-        return reg;
-    }
-
     protected Architecture(String name, int wordSize, ByteOrder byteOrder, Register[] registers, int implicitMemoryBarriers, int nativeCallDisplacementOffset, int registerReferenceMapBitCount,
                     int returnAddressSize) {
         this.name = name;
@@ -105,18 +86,6 @@ public abstract class Architecture {
         this.machineCodeCallDisplacementOffset = nativeCallDisplacementOffset;
         this.registerReferenceMapBitCount = registerReferenceMapBitCount;
         this.returnAddressSize = returnAddressSize;
-
-        registersByTypeAndEncoding = new EnumMap<>(RegisterFlag.class);
-        EnumMap<RegisterFlag, Register[]> categorizedRegs = Register.categorize(registers);
-        for (RegisterFlag type : RegisterFlag.values()) {
-            Register[] regs = categorizedRegs.get(type);
-            int max = Register.maxRegisterEncoding(regs);
-            Register[] regsByEnc = new Register[max + 1];
-            for (Register reg : regs) {
-                regsByEnc[reg.encoding] = reg;
-            }
-            registersByTypeAndEncoding.put(type, regsByEnc);
-        }
     }
 
     /**
@@ -158,14 +127,6 @@ public abstract class Architecture {
 
     public ByteOrder getByteOrder() {
         return byteOrder;
-    }
-
-    /**
-     * Gets a mask of the barrier constants denoting the barriers that are not required to be
-     * explicitly inserted under this architecture.
-     */
-    public int getImplicitMemoryBarriers() {
-        return implicitMemoryBarriers;
     }
 
     /**

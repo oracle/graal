@@ -54,7 +54,6 @@ public enum AMD64Compare {
         protected void verify() {
             super.verify();
             assert (name().startsWith("I") && x.getKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int)
-                || (name().startsWith("I") && x.getKind() == Kind.Jsr && y.getKind() == Kind.Jsr)
                 || (name().startsWith("L") && x.getKind() == Kind.Long && y.getKind() == Kind.Long)
                 || (name().startsWith("A") && x.getKind() == Kind.Object && y.getKind() == Kind.Object)
                 || (name().startsWith("F") && x.getKind() == Kind.Float && y.getKind() == Kind.Float)
@@ -82,17 +81,17 @@ public enum AMD64Compare {
                     } else {
                         throw GraalInternalError.shouldNotReachHere("Only null object constants are allowed in comparisons");
                     }
-                case FCMP: masm.ucomiss(asFloatReg(x), tasm.asFloatConstRef(y)); break;
-                case DCMP: masm.ucomisd(asDoubleReg(x), tasm.asDoubleConstRef(y)); break;
+                case FCMP: masm.ucomiss(asFloatReg(x), (AMD64Address) tasm.asFloatConstRef(y)); break;
+                case DCMP: masm.ucomisd(asDoubleReg(x), (AMD64Address) tasm.asDoubleConstRef(y)); break;
                 default:   throw GraalInternalError.shouldNotReachHere();
             }
         } else {
             switch (opcode) {
-                case ICMP: masm.cmpl(asIntReg(x), tasm.asIntAddr(y)); break;
-                case LCMP: masm.cmpq(asLongReg(x), tasm.asLongAddr(y)); break;
-                case ACMP: masm.cmpptr(asObjectReg(x), tasm.asObjectAddr(y)); break;
-                case FCMP: masm.ucomiss(asFloatReg(x), tasm.asFloatAddr(y)); break;
-                case DCMP: masm.ucomisd(asDoubleReg(x), tasm.asDoubleAddr(y)); break;
+                case ICMP: masm.cmpl(asIntReg(x), (AMD64Address) tasm.asIntAddr(y)); break;
+                case LCMP: masm.cmpq(asLongReg(x), (AMD64Address) tasm.asLongAddr(y)); break;
+                case ACMP: masm.cmpptr(asObjectReg(x), (AMD64Address) tasm.asObjectAddr(y)); break;
+                case FCMP: masm.ucomiss(asFloatReg(x), (AMD64Address) tasm.asFloatAddr(y)); break;
+                case DCMP: masm.ucomisd(asDoubleReg(x), (AMD64Address) tasm.asDoubleAddr(y)); break;
                 default:  throw GraalInternalError.shouldNotReachHere();
             }
         }

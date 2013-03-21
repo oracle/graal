@@ -25,12 +25,14 @@ package com.oracle.graal.test;
 import java.lang.reflect.*;
 
 import org.junit.*;
+import org.junit.runner.*;
 
 /**
  * Base class for Graal tests.
  * <p>
  * This contains common utility methods that are used in multiple test projects.
  */
+@RunWith(GraalLongUnitTest.class)
 public class GraalTest {
 
     protected Method getMethod(String methodName) {

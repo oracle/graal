@@ -24,8 +24,8 @@ package com.oracle.graal.jtt.reflect;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 /*
  */
@@ -44,12 +44,12 @@ public class Invoke_main01 extends JTTTest {
         field = args[0];
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test", "test1");
     }
 
-    @Test
+    @LongTest
     public void run1() throws Throwable {
         runTest("test", "test2");
     }

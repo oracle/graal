@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 /*
  * Tests value numbering of instanceof operations.
@@ -76,17 +76,17 @@ public class VN_InstanceOf02 extends JTTTest {
         return false;
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test", 0);
     }
 
-    @Test
+    @LongTest
     public void run1() throws Throwable {
         runTest("test", 1);
     }
 
-    @Test
+    @LongTest
     public void run2() throws Throwable {
         runTest("test", 2);
     }

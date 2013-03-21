@@ -47,22 +47,21 @@ public abstract class AssemblerTest extends GraalTest {
 
     protected InstalledCode assembleMethod(Method m, CodeGenTest test) {
         ResolvedJavaMethod method = codeCache.lookupJavaMethod(m);
-        RegisterConfig registerConfig = codeCache.lookupRegisterConfig(method);
+        RegisterConfig registerConfig = codeCache.lookupRegisterConfig();
+        CallingConvention cc = CodeUtil.getCallingConvention(codeCache, CallingConvention.Type.JavaCallee, method, false);
 
         CompilationResult compResult = new CompilationResult();
-
-        Signature sig = method.getSignature();
-        JavaType retType = sig.getReturnType(null);
-        JavaType[] argTypes = new JavaType[sig.getParameterCount(false)];
-        for (int i = 0; i < argTypes.length; i++) {
-            argTypes[i] = sig.getParameterType(i, null);
-        }
-        CallingConvention cc = registerConfig.getCallingConvention(CallingConvention.Type.JavaCallee, retType, argTypes, codeCache.getTarget(), false);
-
         Buffer codeBuffer = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);
         compResult.setTargetCode(codeBuffer.close(true), codeBuffer.position());
 
-        return codeCache.addMethod(method, compResult, null);
+        InstalledCode code = codeCache.addMethod(method, compResult);
+
+        DisassemblerProvider dis = Graal.getRuntime().getCapability(DisassemblerProvider.class);
+        if (dis != null) {
+            String disasm = dis.disassemble(code);
+            Assert.assertTrue(String.valueOf(code.getMethod()), disasm == null || disasm.length() > 0);
+        }
+        return code;
     }
 
     protected Object runTest(String methodName, CodeGenTest test, Object... args) {
@@ -73,6 +72,6 @@ public abstract class AssemblerTest extends GraalTest {
 
     protected void assertReturn(String methodName, CodeGenTest test, Object expected, Object... args) {
         Object actual = runTest(methodName, test, args);
-        Assert.assertEquals("unexpected return value: " + actual, actual, expected);
+        Assert.assertEquals("unexpected return value", expected, actual);
     }
 }

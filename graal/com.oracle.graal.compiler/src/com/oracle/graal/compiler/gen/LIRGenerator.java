@@ -54,17 +54,18 @@ import com.oracle.graal.phases.util.*;
  */
 public abstract class LIRGenerator extends LIRGeneratorTool {
 
+    public final FrameMap frameMap;
+    public final NodeMap<Value> nodeOperands;
+    public final LIR lir;
+
     protected final StructuredGraph graph;
     protected final CodeCacheProvider runtime;
     protected final TargetDescription target;
     protected final ResolvedJavaMethod method;
-    protected final FrameMap frameMap;
-    public final NodeMap<Value> nodeOperands;
 
-    protected final LIR lir;
     private final DebugInfoBuilder debugInfoBuilder;
 
-    private Block currentBlock;
+    protected Block currentBlock;
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
     private FrameState lastState;
@@ -89,6 +90,16 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      * method).
      */
     private final ArrayList<StackSlot> lockDataSlots;
+
+    /**
+     * Checks whether the supplied constant can be used without loading it into a register for store
+     * operations, i.e., on the right hand side of a memory access.
+     * 
+     * @param c The constant to check.
+     * @return True if the constant can be used directly, false if the constant needs to be in a
+     *         register.
+     */
+    public abstract boolean canStoreConstant(Constant c);
 
     public LIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
         this.graph = graph;
@@ -151,7 +162,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public Variable newVariable(Kind kind) {
         Kind stackKind = kind.getStackKind();
         switch (stackKind) {
-            case Jsr:
             case Int:
             case Long:
             case Object:
@@ -184,6 +194,14 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     @Override
     public abstract Variable emitMove(Value input);
 
+    public AllocatableValue asAllocatable(Value value) {
+        if (isAllocatableValue(value)) {
+            return asAllocatableValue(value);
+        } else {
+            return emitMove(value);
+        }
+    }
+
     public Variable load(Value value) {
         if (!isVariable(value)) {
             return emitMove(value);
@@ -196,18 +214,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             return emitMove(value);
         }
         return value;
-    }
-
-    public Value loadForStore(Value value, Kind storeKind) {
-        if (isConstant(value) && canStoreConstant((Constant) value)) {
-            return value;
-        }
-        if (storeKind == Kind.Byte || storeKind == Kind.Boolean) {
-            Variable tempVar = new Variable(value.getKind(), lir.nextVariable(), Register.RegisterFlag.Byte);
-            emitMove(value, tempVar);
-            return tempVar;
-        }
-        return load(value);
     }
 
     protected LabelRef getLIRBlock(FixedNode b) {
@@ -226,19 +232,23 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     public LIRFrameState state() {
+        return state(null);
+    }
+
+    public LIRFrameState state(DeoptimizationReason reason) {
         assert lastState != null || needOnlyOopMaps() : "must have state before instruction";
-        return stateFor(lastState);
+        return stateFor(lastState, reason);
     }
 
-    public LIRFrameState stateFor(FrameState state) {
-        return stateFor(state, null);
+    public LIRFrameState stateFor(FrameState state, DeoptimizationReason reason) {
+        return stateForWithExceptionEdge(state, reason, null);
     }
 
-    public LIRFrameState stateFor(FrameState state, LabelRef exceptionEdge) {
+    public LIRFrameState stateForWithExceptionEdge(FrameState state, DeoptimizationReason reason, LabelRef exceptionEdge) {
         if (needOnlyOopMaps()) {
-            return new LIRFrameState(null, null, null);
+            return new LIRFrameState(null, null, null, (short) -1);
         }
-        return debugInfoBuilder.build(state, lockDataSlots.subList(0, currentLockCount), exceptionEdge);
+        return debugInfoBuilder.build(state, lockDataSlots.subList(0, currentLockCount), lir.getDeoptimizationReasons().addSpeculation(reason), exceptionEdge);
     }
 
     /**
@@ -340,28 +350,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         List<ScheduledNode> nodes = lir.nodesFor(block);
         for (int i = 0; i < nodes.size(); i++) {
             Node instr = nodes.get(i);
-
-            if (GraalOptions.OptImplicitNullChecks) {
-                Node nextInstr = null;
-                if (i < nodes.size() - 1) {
-                    nextInstr = nodes.get(i + 1);
-                }
-
-                if (instr instanceof GuardNode) {
-                    GuardNode guardNode = (GuardNode) instr;
-                    if (guardNode.condition() instanceof IsNullNode && guardNode.negated()) {
-                        IsNullNode isNullNode = (IsNullNode) guardNode.condition();
-                        if (nextInstr instanceof Access) {
-                            Access access = (Access) nextInstr;
-                            if (isNullNode.object() == access.object() && canBeNullCheck(access.location())) {
-                                // TTY.println("implicit null check");
-                                access.setNullCheck(true);
-                                continue;
-                            }
-                        }
-                    }
-                }
-            }
             if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
                 TTY.println("LIRGen for " + instr);
             }
@@ -402,7 +390,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             NodeClassIterable successors = block.getEndNode().successors();
             assert successors.isNotEmpty() : "should have at least one successor : " + block.getEndNode();
 
-            emitJump(getLIRBlock((FixedNode) successors.first()), null);
+            emitJump(getLIRBlock((FixedNode) successors.first()));
         }
 
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
@@ -461,10 +449,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         ((LIRLowerable) node).generate(this);
     }
 
-    private boolean canBeNullCheck(LocationNode location) {
-        return !(location instanceof IndexedLocationNode) && location.displacement() < this.target().implicitNullCheckLimit;
-    }
-
     protected CallingConvention createCallingConvention() {
         return frameMap.registerConfig.getCallingConvention(JavaCallee, method.getSignature().getReturnType(null), MetaUtil.signatureToTypes(method), target, false);
     }
@@ -483,13 +467,17 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             }
         }
 
-        append(new ParametersOp(params));
+        emitIncomingValues(params);
 
         for (LocalNode local : graph.getNodes(LocalNode.class)) {
             Value param = params[local.index()];
             assert param.getKind() == local.kind().getStackKind();
             setResult(local, emitMove(param));
         }
+    }
+
+    public void emitIncomingValues(Value[] params) {
+        append(new ParametersOp(params));
     }
 
     /**
@@ -527,7 +515,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         Value operand = Value.ILLEGAL;
         if (x.result() != null) {
             operand = resultOperandFor(x.result().kind());
-            emitMove(operand(x.result()), operand);
+            emitMove(operand, operand(x.result()));
         }
         emitReturn(operand);
     }
@@ -558,12 +546,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         for (PhiNode phi : merge.phis()) {
             if (phi.type() == PhiType.Value) {
                 ValueNode curVal = phi.valueAt(pred);
-                resolver.move(operand(curVal), operandForPhi(phi));
+                resolver.move(operandForPhi(phi), operand(curVal));
             }
         }
         resolver.dispose();
 
-        append(new JumpOp(getLIRBlock(merge), null));
+        append(new JumpOp(getLIRBlock(merge)));
     }
 
     private Value operandForPhi(PhiNode phi) {
@@ -581,82 +569,46 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void emitIf(IfNode x) {
-        emitBranch(x.condition(), getLIRBlock(x.trueSuccessor()), getLIRBlock(x.falseSuccessor()), null);
+        emitBranch(x.condition(), getLIRBlock(x.trueSuccessor()), getLIRBlock(x.falseSuccessor()));
     }
 
-    @Override
-    public void emitGuardCheck(LogicNode comp, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
-        if (comp instanceof IsNullNode && negated) {
-            emitNullCheckGuard(((IsNullNode) comp).object());
-        } else if (comp instanceof LogicConstantNode && ((LogicConstantNode) comp).getValue() != negated) {
-            // True constant, nothing to emit.
-            // False constants are handled within emitBranch.
-        } else {
-            // Fall back to a normal branch.
-            LIRFrameState info = state();
-            LabelRef stubEntry = createDeoptStub(action, deoptReason, info, comp);
-            if (negated) {
-                emitBranch(comp, stubEntry, null, info);
-            } else {
-                emitBranch(comp, null, stubEntry, info);
-            }
-        }
-    }
-
-    protected abstract void emitNullCheckGuard(ValueNode object);
-
-    public void emitBranch(LogicNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
+    public void emitBranch(LogicNode node, LabelRef trueSuccessor, LabelRef falseSuccessor) {
         if (node instanceof IsNullNode) {
-            emitNullCheckBranch((IsNullNode) node, trueSuccessor, falseSuccessor, info);
+            emitNullCheckBranch((IsNullNode) node, trueSuccessor, falseSuccessor);
         } else if (node instanceof CompareNode) {
-            emitCompareBranch((CompareNode) node, trueSuccessor, falseSuccessor, info);
+            emitCompareBranch((CompareNode) node, trueSuccessor, falseSuccessor);
         } else if (node instanceof LogicConstantNode) {
-            emitConstantBranch(((LogicConstantNode) node).getValue(), trueSuccessor, falseSuccessor, info);
+            emitConstantBranch(((LogicConstantNode) node).getValue(), trueSuccessor, falseSuccessor);
         } else if (node instanceof IntegerTestNode) {
-            emitIntegerTestBranch((IntegerTestNode) node, trueSuccessor, falseSuccessor, info);
+            emitIntegerTestBranch((IntegerTestNode) node, trueSuccessor, falseSuccessor);
         } else {
             throw GraalInternalError.unimplemented(node.toString());
         }
     }
 
-    private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRFrameState info) {
-        if (falseSuccessor != null) {
-            emitCompareBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.NE, false, falseSuccessor, info);
-            if (trueSuccessor != null) {
-                emitJump(trueSuccessor, null);
-            }
-        } else {
-            emitCompareBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueSuccessor, info);
-        }
+    private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor) {
+        emitCompareBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.NE, false, falseSuccessor);
+        emitJump(trueSuccessor);
     }
 
-    public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRFrameState info) {
-        if (falseSuccessorBlock != null) {
-            emitCompareBranch(operand(compare.x()), operand(compare.y()), compare.condition().negate(), !compare.unorderedIsTrue(), falseSuccessorBlock, info);
-            if (trueSuccessorBlock != null) {
-                emitJump(trueSuccessorBlock, null);
-            }
-        } else {
-            emitCompareBranch(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueSuccessorBlock, info);
-        }
+    public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock) {
+        emitCompareBranch(operand(compare.x()), operand(compare.y()), compare.condition().negate(), !compare.unorderedIsTrue(), falseSuccessorBlock);
+        emitJump(trueSuccessorBlock);
     }
 
-    public void emitIntegerTestBranch(IntegerTestNode test, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRFrameState info) {
-        if (falseSuccessorBlock != null) {
-            emitIntegerTestBranch(operand(test.x()), operand(test.y()), true, falseSuccessorBlock, info);
-            if (trueSuccessorBlock != null) {
-                emitJump(trueSuccessorBlock, null);
-            }
-        } else {
-            emitIntegerTestBranch(operand(test.x()), operand(test.y()), false, trueSuccessorBlock, info);
-        }
+    public void emitOverflowCheckBranch(LabelRef noOverflowBlock, LabelRef overflowBlock) {
+        emitOverflowCheckBranch(overflowBlock, false);
+        emitJump(noOverflowBlock);
     }
 
-    public void emitConstantBranch(boolean value, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRFrameState info) {
+    public void emitIntegerTestBranch(IntegerTestNode test, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock) {
+        emitIntegerTestBranch(operand(test.x()), operand(test.y()), true, falseSuccessorBlock);
+        emitJump(trueSuccessorBlock);
+    }
+
+    public void emitConstantBranch(boolean value, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock) {
         LabelRef block = value ? trueSuccessorBlock : falseSuccessorBlock;
-        if (block != null) {
-            emitJump(block, info);
-        }
+        emitJump(block);
     }
 
     @Override
@@ -683,11 +635,13 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    public abstract void emitJump(LabelRef label, LIRFrameState info);
+    public abstract void emitJump(LabelRef label);
 
-    public abstract void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRFrameState info);
+    public abstract void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label);
 
-    public abstract void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label, LIRFrameState info);
+    public abstract void emitOverflowCheckBranch(LabelRef label, boolean negated);
+
+    public abstract void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label);
 
     public abstract Variable emitConditionalMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
 
@@ -703,7 +657,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         LIRFrameState callState = null;
         if (x.stateAfter() != null) {
-            callState = stateFor(x.stateDuring(), x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null);
+            callState = stateForWithExceptionEdge(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null);
         }
 
         Value result = cc.getReturn();
@@ -725,9 +679,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
-    protected abstract void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, Value targetAddress, LIRFrameState info);
+    protected abstract void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
 
-    private static Value toStackKind(Value value) {
+    protected static Value toStackKind(Value value) {
         if (value.getKind().getStackKind() != value.getKind()) {
             // We only have stack-kinds in the LIR, so convert the operand kind for values from the
             // calling convention.
@@ -749,7 +703,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         for (ValueNode arg : arguments) {
             if (arg != null) {
                 Value operand = toStackKind(cc.getArgument(j));
-                emitMove(operand(arg), operand);
+                emitMove(operand, operand(arg));
                 result[j] = operand;
                 j++;
             } else {
@@ -758,8 +712,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         return result;
     }
-
-    protected abstract LabelRef createDeoptStub(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info, Object deoptInfo);
 
     @Override
     public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention cc, boolean canTrap, Value... args) {
@@ -772,10 +724,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         for (int i = 0; i < args.length; i++) {
             Value arg = args[i];
             Value loc = cc.getArgument(i);
-            emitMove(arg, loc);
+            emitMove(loc, arg);
             argLocations[i] = loc;
         }
-        emitCall(callTarget, cc.getReturn(), argLocations, cc.getTemporaries(), Constant.forLong(0), info);
+        emitCall(callTarget, cc.getReturn(), argLocations, cc.getTemporaries(), info);
 
         if (isLegal(cc.getReturn())) {
             return emitMove(cc.getReturn());
@@ -805,12 +757,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             if ((stateAfter.stackSize() > 0 && stateAfter.stackAt(stateAfter.stackSize() - 1) == x) || (stateAfter.stackSize() > 1 && stateAfter.stackAt(stateAfter.stackSize() - 2) == x)) {
                 stateBeforeReturn = stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), x.kind());
             }
-            info = stateFor(stateBeforeReturn);
+            info = stateFor(stateBeforeReturn, null);
         } else {
             info = state();
         }
 
-        emitCall(call, resultOperand, args, cc.getTemporaries(), Constant.forLong(0), info);
+        emitCall(call, resultOperand, args, cc.getTemporaries(), info);
 
         if (isLegal(resultOperand)) {
             setResult(x, emitMove(resultOperand));
@@ -829,7 +781,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public void emitSwitch(SwitchNode x) {
         int keyCount = x.keyCount();
         if (keyCount == 0) {
-            emitJump(getLIRBlock(x.defaultSuccessor()), null);
+            emitJump(getLIRBlock(x.defaultSuccessor()));
         } else {
             Variable value = load(operand(x.value()));
             LabelRef defaultTarget = x.defaultSuccessor() == null ? null : getLIRBlock(x.defaultSuccessor());
@@ -841,7 +793,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 long valueRange = x.keyAt(keyCount - 1).asLong() - x.keyAt(0).asLong() + 1;
                 int switchRangeCount = switchRangeCount(x);
                 if (switchRangeCount == 0) {
-                    emitJump(getLIRBlock(x.defaultSuccessor()), null);
+                    emitJump(getLIRBlock(x.defaultSuccessor()));
                 } else if (switchRangeCount >= GraalOptions.MinimumJumpTableSize && keyCount / (double) valueRange >= GraalOptions.MinTableSwitchDensity) {
                     int minValue = x.keyAt(0).asInt();
                     assert valueRange < Integer.MAX_VALUE;

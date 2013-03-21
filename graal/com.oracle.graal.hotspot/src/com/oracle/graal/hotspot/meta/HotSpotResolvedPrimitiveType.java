@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
+import java.net.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -188,5 +189,25 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     @Override
     public Class<?> mirror() {
         return javaMirror;
+    }
+
+    @Override
+    public URL getClassFilePath() {
+        return null;
+    }
+
+    @Override
+    public boolean isLocal() {
+        return false;
+    }
+
+    @Override
+    public boolean isMember() {
+        return false;
+    }
+
+    @Override
+    public ResolvedJavaType getEnclosingType() {
+        return null;
     }
 }

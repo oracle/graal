@@ -108,7 +108,7 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
     }
 
     public void removeProxies() {
-        for (ValueProxyNode vpn : proxies().snapshot()) {
+        for (ProxyNode vpn : proxies().snapshot()) {
             // can not use graph.replaceFloating because vpn.value may be null during killCFG
             vpn.replaceAtUsages(vpn.value());
             vpn.safeDelete();
@@ -131,11 +131,11 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
     }
 
     public NodeIterable<Node> anchored() {
-        return usages().filter(isNotA(ValueProxyNode.class));
+        return usages().filter(isNotA(ProxyNode.class));
     }
 
-    public NodeIterable<ValueProxyNode> proxies() {
-        return usages().filter(ValueProxyNode.class);
+    public NodeIterable<ProxyNode> proxies() {
+        return usages().filter(ProxyNode.class);
     }
 
     public NodeIterable<FixedNode> getBlockNodes() {

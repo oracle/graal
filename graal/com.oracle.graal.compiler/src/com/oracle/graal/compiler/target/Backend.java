@@ -28,7 +28,6 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
 
 /**
  * The {@code Backend} class represents a compiler backend for Graal.
@@ -47,46 +46,19 @@ public abstract class Backend {
         return runtime;
     }
 
-    public FrameMap newFrameMap(RegisterConfig registerConfig) {
-        return new FrameMap(runtime, target, registerConfig);
+    public FrameMap newFrameMap() {
+        return new FrameMap(runtime, target, runtime.lookupRegisterConfig());
     }
 
     public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir);
 
-    public abstract TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir);
-
-    /**
-     * Emits code to do stack overflow checking.
-     * 
-     * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate
-     *            the current frame
-     */
-    protected static void emitStackOverflowCheck(TargetMethodAssembler tasm, boolean afterFrameInit) {
-        if (GraalOptions.StackShadowPages > 0) {
-            int frameSize = tasm.frameMap.frameSize();
-            if (frameSize > 0) {
-                int lastFramePage = frameSize / tasm.target.pageSize;
-                // emit multiple stack bangs for methods with frames larger than a page
-                for (int i = 0; i <= lastFramePage; i++) {
-                    int disp = (i + GraalOptions.StackShadowPages) * tasm.target.pageSize;
-                    if (afterFrameInit) {
-                        disp -= frameSize;
-                    }
-                    tasm.blockComment("[stack overflow check]");
-                    tasm.asm.bangStack(disp);
-                }
-            }
-        }
-    }
+    public abstract TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult);
 
     /**
      * Emits the code for a given method. This includes any architecture/runtime specific
      * prefix/suffix. A prefix typically contains the code for setting up the frame, spilling
      * callee-save registers, stack overflow checking, handling multiple entry points etc. A suffix
      * may contain out-of-line stubs and method end guard instructions.
-     * 
-     * @param method the method associated with {@code lir}
-     * @param lir the LIR of {@code method}
      */
-    public abstract void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIR lir);
+    public abstract void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIRGenerator lirGen);
 }

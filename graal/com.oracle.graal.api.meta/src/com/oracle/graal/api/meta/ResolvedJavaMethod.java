@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,21 +31,21 @@ import java.util.*;
  * Represents a resolved Java method. Methods, like fields and types, are resolved through
  * {@link ConstantPool constant pools}.
  */
-public interface ResolvedJavaMethod extends JavaMethod {
+public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
 
     /**
-     * Returns the bytecodes of this method, if the method has code. The returned byte array does
-     * not contain breakpoints or non-Java bytecodes.
+     * Returns the bytecode of this method, if the method has code. The returned byte array does not
+     * contain breakpoints or non-Java bytecodes.
      * 
-     * @return the bytecodes of the method, or {@code null} if none is available
+     * @return the bytecode of the method, or {@code null} if {@code getCodeSize() == 0}
      */
     byte[] getCode();
 
     /**
-     * Returns the size of the bytecodes of this method, if the method has code. This is equivalent
+     * Returns the size of the bytecode of this method, if the method has code. This is equivalent
      * to {@link #getCode()}. {@code length} if the method has code.
      * 
-     * @return the size of the bytecodes in bytes, or 0 if no bytecodes is available
+     * @return the size of the bytecode in bytes, or 0 if no bytecode is available
      */
     int getCodeSize();
 
@@ -175,5 +175,4 @@ public interface ResolvedJavaMethod extends JavaMethod {
      * Returns the localvariable table of this method.
      */
     LocalVariableTable getLocalVariableTable();
-
 }

@@ -24,12 +24,11 @@ package com.oracle.graal.amd64;
 
 import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.code.Register.RegisterFlag.*;
-import static com.oracle.graal.api.meta.Kind.*;
 
 import java.nio.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Register.*;
+import com.oracle.graal.api.code.Register.RegisterFlag;
 
 /**
  * Represents the AMD64 architecture.
@@ -105,8 +104,6 @@ public class AMD64 extends Architecture {
         xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15,
         rip
     };
-
-    public static final RegisterValue RSP = rsp.asValue(Long);
 
     public AMD64() {
         super("AMD64",

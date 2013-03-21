@@ -24,6 +24,7 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -55,12 +56,6 @@ public class LIR {
      */
     private final List<Block> codeEmittingOrder;
 
-    /**
-     * Various out-of-line stubs to be emitted near the end of the method after all other LIR code
-     * has been emitted.
-     */
-    public final List<Code> stubs;
-
     private int numVariables;
 
     public SpillMoveFactory spillMoveFactory;
@@ -74,30 +69,22 @@ public class LIR {
 
     private boolean hasArgInCallerFrame;
 
-    /**
-     * An opaque chunk of machine code.
-     */
-    public interface Code {
-
-        void emitCode(TargetMethodAssembler tasm);
-
-        /**
-         * A description of this code stub useful for commenting the code in a disassembly.
-         */
-        String description();
-    }
+    private final SpeculationLog speculationLog;
 
     /**
      * Creates a new LIR instance for the specified compilation.
      */
-    public LIR(ControlFlowGraph cfg, BlockMap<List<ScheduledNode>> blockToNodesMap, List<Block> linearScanOrder, List<Block> codeEmittingOrder) {
+    public LIR(ControlFlowGraph cfg, BlockMap<List<ScheduledNode>> blockToNodesMap, List<Block> linearScanOrder, List<Block> codeEmittingOrder, SpeculationLog speculationLog) {
         this.cfg = cfg;
         this.blockToNodesMap = blockToNodesMap;
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
         this.lirInstructions = new BlockMap<>(cfg);
+        this.speculationLog = speculationLog;
+    }
 
-        stubs = new ArrayList<>();
+    public SpeculationLog getDeoptimizationReasons() {
+        return speculationLog;
     }
 
     /**
@@ -108,7 +95,7 @@ public class LIR {
     }
 
     /**
-     * Determines if any instruction in the LIR has any debug info associated with it.
+     * Determines if any instruction in the LIR has debug info associated with it.
      */
     public boolean hasDebugInfo() {
         for (Block b : linearScanOrder()) {
@@ -159,11 +146,6 @@ public class LIR {
         for (Block b : codeEmittingOrder()) {
             emitBlock(tasm, b);
         }
-
-        // generate code stubs
-        for (Code c : stubs) {
-            emitCodeStub(tasm, c);
-        }
     }
 
     private void emitBlock(TargetMethodAssembler tasm, Block block) {
@@ -192,13 +174,6 @@ public class LIR {
         } catch (GraalInternalError e) {
             throw e.addContext("lir instruction", op);
         }
-    }
-
-    private static void emitCodeStub(TargetMethodAssembler tasm, Code code) {
-        if (Debug.isDumpEnabled()) {
-            tasm.blockComment(String.format("code stub: %s", code.description()));
-        }
-        code.emitCode(tasm);
     }
 
     public void setHasArgInCallerFrame() {

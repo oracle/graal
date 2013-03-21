@@ -54,7 +54,14 @@ public class SPARCAssembler extends AbstractAssembler {
     }
 
     @Override
-    public void bangStack(int disp) {
-        // SPARC: Implement stack banging.
+    public AbstractAddress makeAddress(Register base, int displacement) {
+        // SPARC: Implement address calculation.
+        return null;
+    }
+
+    @Override
+    public AbstractAddress getPlaceholder() {
+        // SPARC: Implement address patching.
+        return null;
     }
 }

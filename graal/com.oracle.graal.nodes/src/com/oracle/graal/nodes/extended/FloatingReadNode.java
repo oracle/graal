@@ -53,11 +53,16 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.setResult(this, gen.emitLoad(gen.makeAddress(location(), object()), getNullCheck()));
+        gen.setResult(this, location().generateLoad(gen, object(), getNullCheck()));
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        return ReadNode.canonicalizeRead(this, tool);
+        return ReadNode.canonicalizeRead(this, location(), object(), tool);
+    }
+
+    @Override
+    public Access asFixedNode() {
+        return graph().add(new ReadNode(object(), nullCheckLocation(), stamp(), dependencies()));
     }
 }

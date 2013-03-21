@@ -30,6 +30,7 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.ExceptionSeen;
 import com.oracle.graal.bytecode.*;
@@ -58,8 +59,8 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private HotSpotMethodData methodData;
     private byte[] code;
     private int compilationComplexity;
-
     private CompilationTask currentTask;
+    private SpeculationLog speculationLog;
 
     HotSpotResolvedJavaMethod(HotSpotResolvedObjectType holder, long metaspaceMethod) {
         this.metaspaceMethod = metaspaceMethod;
@@ -70,6 +71,13 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public ResolvedJavaType getDeclaringClass() {
         return holder;
+    }
+
+    /**
+     * Gets the address of the C++ Method object for this method.
+     */
+    public Constant getMetaspaceMethodConstant() {
+        return Constant.forIntegerKind(HotSpotGraalRuntime.getInstance().getTarget().wordKind, metaspaceMethod, this);
     }
 
     @Override
@@ -86,6 +94,9 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public byte[] getCode() {
+        if (codeSize == 0) {
+            return null;
+        }
         if (code == null) {
             code = HotSpotGraalRuntime.getInstance().getCompilerToVM().initializeBytecode(metaspaceMethod, new byte[codeSize]);
             assert code.length == codeSize : "expected: " + codeSize + ", actual: " + code.length;
@@ -335,4 +346,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return currentTask;
     }
 
+    public SpeculationLog getSpeculationLog() {
+        if (speculationLog == null) {
+            speculationLog = new SpeculationLog();
+        }
+        return speculationLog;
+    }
 }

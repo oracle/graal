@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
-import org.junit.*;
 
 /*
  */
@@ -33,7 +33,7 @@ public class BigObjectParams02 extends JTTTest {
         return p0 + p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
     }
 
-    @Test
+    @LongTest
     public void run0() throws Throwable {
         runTest("test", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
     }

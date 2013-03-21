@@ -23,14 +23,17 @@
 package com.oracle.graal.phases.common;
 
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.PhiNode.*;
 import com.oracle.graal.phases.*;
 
 public class RemoveValueProxyPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (ValueProxyNode vpn : graph.getNodes(ValueProxyNode.class)) {
-            graph.replaceFloating(vpn, vpn.value());
+        for (ProxyNode vpn : graph.getNodes(ProxyNode.class)) {
+            if (vpn.type() == PhiType.Value) {
+                graph.replaceFloating(vpn, vpn.value());
+            }
         }
         for (LoopExitNode exit : graph.getNodes(LoopExitNode.class)) {
             FrameState stateAfter = exit.stateAfter();

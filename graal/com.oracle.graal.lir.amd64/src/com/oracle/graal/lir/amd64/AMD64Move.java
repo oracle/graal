@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+
 import static java.lang.Double.*;
 import static java.lang.Float.*;
 
@@ -38,37 +39,11 @@ import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.*;
 
-// @formatter:off
 public class AMD64Move {
 
     @Opcode("MOVE")
-    public static class SpillMoveOp extends AMD64LIRInstruction implements MoveOp {
-        @Def({REG, STACK}) protected Value result;
-        @Use({REG, STACK, CONST}) protected Value input;
-
-        public SpillMoveOp(Value result, Value input) {
-            this.result = result;
-            this.input = input;
-        }
-
-        @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            move(tasm, masm, getResult(), getInput());
-        }
-
-        @Override
-        public Value getInput() {
-            return input;
-        }
-        @Override
-        public Value getResult() {
-            return result;
-        }
-    }
-
-
-    @Opcode("MOVE")
     public static class MoveToRegOp extends AMD64LIRInstruction implements MoveOp {
+
         @Def({REG, HINT}) protected Value result;
         @Use({REG, STACK, CONST}) protected Value input;
 
@@ -86,15 +61,16 @@ public class AMD64Move {
         public Value getInput() {
             return input;
         }
+
         @Override
         public Value getResult() {
             return result;
         }
     }
 
-
     @Opcode("MOVE")
     public static class MoveFromRegOp extends AMD64LIRInstruction implements MoveOp {
+
         @Def({REG, STACK}) protected Value result;
         @Use({REG, CONST, HINT}) protected Value input;
 
@@ -112,66 +88,201 @@ public class AMD64Move {
         public Value getInput() {
             return input;
         }
+
         @Override
         public Value getResult() {
             return result;
         }
     }
 
+    public abstract static class MemOp extends AMD64LIRInstruction {
 
-    public static class LoadOp extends AMD64LIRInstruction {
-        @Def({REG}) protected Value result;
-        @Use({ADDR}) protected Value address;
+        @Use({COMPOSITE}) protected AMD64AddressValue address;
         @State protected LIRFrameState state;
 
-        public LoadOp(Value result, Value address, LIRFrameState state) {
+        public MemOp(AMD64AddressValue address, LIRFrameState state) {
+            this.address = address;
+            this.state = state;
+        }
+
+        protected abstract void emitMemAccess(AMD64MacroAssembler masm);
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            if (state != null) {
+                tasm.recordImplicitException(masm.codeBuffer.position(), state);
+            }
+            emitMemAccess(masm);
+        }
+    }
+
+    public static class LoadOp extends MemOp {
+
+        @Def({REG}) protected AllocatableValue result;
+
+        public LoadOp(AllocatableValue result, AMD64AddressValue address, LIRFrameState state) {
+            super(address, state);
             this.result = result;
-            this.address = address;
-            this.state = state;
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            load(tasm, masm, result, (Address) address, state);
+        public void emitMemAccess(AMD64MacroAssembler masm) {
+            switch (address.getKind()) {
+                case Boolean:
+                case Byte:
+                    masm.movsxb(asRegister(result), address.toAddress());
+                    break;
+                case Char:
+                    masm.movzxl(asRegister(result), address.toAddress());
+                    break;
+                case Short:
+                    masm.movswl(asRegister(result), address.toAddress());
+                    break;
+                case Int:
+                    masm.movslq(asRegister(result), address.toAddress());
+                    break;
+                case Long:
+                    masm.movq(asRegister(result), address.toAddress());
+                    break;
+                case Float:
+                    masm.movflt(asFloatReg(result), address.toAddress());
+                    break;
+                case Double:
+                    masm.movdbl(asDoubleReg(result), address.toAddress());
+                    break;
+                case Object:
+                    masm.movq(asRegister(result), address.toAddress());
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
         }
     }
 
+    public static class StoreOp extends MemOp {
 
-    public static class StoreOp extends AMD64LIRInstruction {
-        @Use({ADDR}) protected Value address;
-        @Use({REG, CONST}) protected Value input;
-        @State protected LIRFrameState state;
+        @Use({REG}) protected AllocatableValue input;
 
-        public StoreOp(Value address, Value input, LIRFrameState state) {
-            this.address = address;
+        public StoreOp(AMD64AddressValue address, AllocatableValue input, LIRFrameState state) {
+            super(address, state);
             this.input = input;
-            this.state = state;
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            store(tasm, masm, (Address) address, input, state);
+        public void emitMemAccess(AMD64MacroAssembler masm) {
+            assert isRegister(input);
+            switch (address.getKind()) {
+                case Boolean:
+                case Byte:
+                    masm.movb(address.toAddress(), asRegister(input));
+                    break;
+                case Char:
+                case Short:
+                    masm.movw(address.toAddress(), asRegister(input));
+                    break;
+                case Int:
+                    masm.movl(address.toAddress(), asRegister(input));
+                    break;
+                case Long:
+                    masm.movq(address.toAddress(), asRegister(input));
+                    break;
+                case Float:
+                    masm.movflt(address.toAddress(), asFloatReg(input));
+                    break;
+                case Double:
+                    masm.movsd(address.toAddress(), asDoubleReg(input));
+                    break;
+                case Object:
+                    masm.movq(address.toAddress(), asRegister(input));
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
         }
     }
 
+    public static class StoreConstantOp extends MemOp {
+
+        protected final Constant input;
+
+        public StoreConstantOp(AMD64AddressValue address, Constant input, LIRFrameState state) {
+            super(address, state);
+            this.input = input;
+        }
+
+        @Override
+        public void emitMemAccess(AMD64MacroAssembler masm) {
+            switch (address.getKind()) {
+                case Boolean:
+                case Byte:
+                    masm.movb(address.toAddress(), input.asInt() & 0xFF);
+                    break;
+                case Char:
+                case Short:
+                    masm.movw(address.toAddress(), input.asInt() & 0xFFFF);
+                    break;
+                case Int:
+                    masm.movl(address.toAddress(), input.asInt());
+                    break;
+                case Long:
+                    if (NumUtil.isInt(input.asLong())) {
+                        masm.movslq(address.toAddress(), (int) input.asLong());
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                    }
+                    break;
+                case Float:
+                    masm.movl(address.toAddress(), floatToRawIntBits(input.asFloat()));
+                    break;
+                case Double:
+                    throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                case Object:
+                    if (input.isNull()) {
+                        masm.movptr(address.toAddress(), 0);
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                    }
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
 
     public static class LeaOp extends AMD64LIRInstruction {
-        @Def({REG}) protected Value result;
-        @Use({ADDR, STACK, UNINITIALIZED}) protected Value address;
 
-        public LeaOp(Value result, Value address) {
+        @Def({REG}) protected AllocatableValue result;
+        @Use({COMPOSITE, UNINITIALIZED}) protected AMD64AddressValue address;
+
+        public LeaOp(AllocatableValue result, AMD64AddressValue address) {
             this.result = result;
             this.address = address;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            masm.leaq(asLongReg(result), tasm.asAddress(address));
+            masm.leaq(asLongReg(result), address.toAddress());
         }
     }
 
+    public static class StackLeaOp extends AMD64LIRInstruction {
+
+        @Def({REG}) protected AllocatableValue result;
+        @Use({STACK, UNINITIALIZED}) protected StackSlot slot;
+
+        public StackLeaOp(AllocatableValue result, StackSlot slot) {
+            this.result = result;
+            this.slot = slot;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            masm.leaq(asLongReg(result), (AMD64Address) tasm.asAddress(slot));
+        }
+    }
 
     public static class MembarOp extends AMD64LIRInstruction {
+
         private final int barriers;
 
         public MembarOp(final int barriers) {
@@ -184,9 +295,9 @@ public class AMD64Move {
         }
     }
 
-
     public static class NullCheckOp extends AMD64LIRInstruction {
-        @Use protected Value input;
+
+        @Use({REG}) protected AllocatableValue input;
         @State protected LIRFrameState state;
 
         public NullCheckOp(Variable input, LIRFrameState state) {
@@ -201,15 +312,15 @@ public class AMD64Move {
         }
     }
 
-
     @Opcode("CAS")
     public static class CompareAndSwapOp extends AMD64LIRInstruction {
-        @Def protected Value result;
-        @Use({ADDR}) protected Value address;
-        @Use protected Value cmpValue;
-        @Use protected Value newValue;
 
-        public CompareAndSwapOp(Value result, Address address, Value cmpValue, Value newValue) {
+        @Def protected AllocatableValue result;
+        @Use({COMPOSITE}) protected AMD64AddressValue address;
+        @Use protected AllocatableValue cmpValue;
+        @Use protected AllocatableValue newValue;
+
+        public CompareAndSwapOp(AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
             this.result = result;
             this.address = address;
             this.cmpValue = cmpValue;
@@ -218,10 +329,9 @@ public class AMD64Move {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            compareAndSwap(tasm, masm, result, (Address) address, cmpValue, newValue);
+            compareAndSwap(tasm, masm, result, address, cmpValue, newValue);
         }
     }
-
 
     public static void move(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value input) {
         if (isRegister(input)) {
@@ -256,46 +366,80 @@ public class AMD64Move {
             return;
         }
         switch (input.getKind()) {
-            case Jsr:
-            case Int:    masm.movl(asRegister(result),    asRegister(input)); break;
-            case Long:   masm.movq(asRegister(result),    asRegister(input)); break;
-            case Float:  masm.movflt(asFloatReg(result),  asFloatReg(input)); break;
-            case Double: masm.movdbl(asDoubleReg(result), asDoubleReg(input)); break;
-            case Object: masm.movq(asRegister(result),    asRegister(input)); break;
-            default:     throw GraalInternalError.shouldNotReachHere("kind=" + result.getKind());
+            case Int:
+                masm.movl(asRegister(result), asRegister(input));
+                break;
+            case Long:
+                masm.movq(asRegister(result), asRegister(input));
+                break;
+            case Float:
+                masm.movflt(asFloatReg(result), asFloatReg(input));
+                break;
+            case Double:
+                masm.movdbl(asDoubleReg(result), asDoubleReg(input));
+                break;
+            case Object:
+                masm.movq(asRegister(result), asRegister(input));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("kind=" + result.getKind());
         }
     }
 
     private static void reg2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value input) {
+        AMD64Address dest = (AMD64Address) tasm.asAddress(result);
         switch (input.getKind()) {
-            case Jsr:
-            case Int:    masm.movl(tasm.asAddress(result),   asRegister(input)); break;
-            case Long:   masm.movq(tasm.asAddress(result),   asRegister(input)); break;
-            case Float:  masm.movflt(tasm.asAddress(result), asFloatReg(input)); break;
-            case Double: masm.movsd(tasm.asAddress(result),  asDoubleReg(input)); break;
-            case Object: masm.movq(tasm.asAddress(result),   asRegister(input)); break;
-            default:     throw GraalInternalError.shouldNotReachHere();
+            case Int:
+                masm.movl(dest, asRegister(input));
+                break;
+            case Long:
+                masm.movq(dest, asRegister(input));
+                break;
+            case Float:
+                masm.movflt(dest, asFloatReg(input));
+                break;
+            case Double:
+                masm.movsd(dest, asDoubleReg(input));
+                break;
+            case Object:
+                masm.movq(dest, asRegister(input));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     private static void stack2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value input) {
+        AMD64Address src = (AMD64Address) tasm.asAddress(input);
         switch (input.getKind()) {
-            case Jsr:
-            case Int:    masm.movl(asRegister(result),    tasm.asAddress(input)); break;
-            case Long:   masm.movq(asRegister(result),    tasm.asAddress(input)); break;
-            case Float:  masm.movflt(asFloatReg(result),  tasm.asAddress(input)); break;
-            case Double: masm.movdbl(asDoubleReg(result), tasm.asAddress(input)); break;
-            case Object: masm.movq(asRegister(result),    tasm.asAddress(input)); break;
-            default:     throw GraalInternalError.shouldNotReachHere();
+            case Int:
+                masm.movl(asRegister(result), src);
+                break;
+            case Long:
+                masm.movq(asRegister(result), src);
+                break;
+            case Float:
+                masm.movflt(asFloatReg(result), src);
+                break;
+            case Double:
+                masm.movdbl(asDoubleReg(result), src);
+                break;
+            case Object:
+                masm.movq(asRegister(result), src);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     private static void const2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Constant input) {
-        // Note: we use the kind of the input operand (and not the kind of the result operand) because they don't match
-        // in all cases. For example, an object constant can be loaded to a long register when unsafe casts occurred (e.g.,
-        // for a write barrier where arithmetic operations are then performed on the pointer).
+        /*
+         * Note: we use the kind of the input operand (and not the kind of the result operand)
+         * because they don't match in all cases. For example, an object constant can be loaded to a
+         * long register when unsafe casts occurred (e.g., for a write barrier where arithmetic
+         * operations are then performed on the pointer).
+         */
         switch (input.getKind().getStackKind()) {
-            case Jsr:
             case Int:
                 if (tasm.runtime.needsDataPatch(input)) {
                     tasm.recordDataReferenceInCode(input, 0, true);
@@ -321,7 +465,7 @@ public class AMD64Move {
                     assert !tasm.runtime.needsDataPatch(input);
                     masm.xorps(asFloatReg(result), asFloatReg(result));
                 } else {
-                    masm.movflt(asFloatReg(result), tasm.asFloatConstRef(input));
+                    masm.movflt(asFloatReg(result), (AMD64Address) tasm.asFloatConstRef(input));
                 }
                 break;
             case Double:
@@ -330,7 +474,7 @@ public class AMD64Move {
                     assert !tasm.runtime.needsDataPatch(input);
                     masm.xorpd(asDoubleReg(result), asDoubleReg(result));
                 } else {
-                    masm.movdbl(asDoubleReg(result), tasm.asDoubleConstRef(input));
+                    masm.movdbl(asDoubleReg(result), (AMD64Address) tasm.asDoubleConstRef(input));
                 }
                 break;
             case Object:
@@ -343,7 +487,7 @@ public class AMD64Move {
                     tasm.recordDataReferenceInCode(input, 0, true);
                     masm.movq(asRegister(result), 0xDEADDEADDEADDEADL);
                 } else {
-                    masm.movq(asRegister(result), tasm.recordDataReferenceInCode(input, 0, false));
+                    masm.movq(asRegister(result), (AMD64Address) tasm.recordDataReferenceInCode(input, 0, false));
                 }
                 break;
             default:
@@ -353,15 +497,23 @@ public class AMD64Move {
 
     private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Constant input) {
         assert !tasm.runtime.needsDataPatch(input);
+        AMD64Address dest = (AMD64Address) tasm.asAddress(result);
         switch (input.getKind().getStackKind()) {
-            case Jsr:
-            case Int:    masm.movl(tasm.asAddress(result), input.asInt()); break;
-            case Long:   masm.movlong(tasm.asAddress(result), input.asLong()); break;
-            case Float:  masm.movl(tasm.asAddress(result), floatToRawIntBits(input.asFloat())); break;
-            case Double: masm.movlong(tasm.asAddress(result), doubleToRawLongBits(input.asDouble())); break;
+            case Int:
+                masm.movl(dest, input.asInt());
+                break;
+            case Long:
+                masm.movlong(dest, input.asLong());
+                break;
+            case Float:
+                masm.movl(dest, floatToRawIntBits(input.asFloat()));
+                break;
+            case Double:
+                masm.movlong(dest, doubleToRawLongBits(input.asDouble()));
+                break;
             case Object:
                 if (input.isNull()) {
-                    masm.movlong(tasm.asAddress(result), 0L);
+                    masm.movlong(dest, 0L);
                 } else {
                     throw GraalInternalError.shouldNotReachHere("Non-null object constants must be in register");
                 }
@@ -371,88 +523,22 @@ public class AMD64Move {
         }
     }
 
-
-    public static void load(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Address loadAddr, LIRFrameState info) {
-        if (info != null) {
-            tasm.recordImplicitException(masm.codeBuffer.position(), info);
-        }
-        switch (loadAddr.getKind()) {
-            case Boolean:
-            case Byte:   masm.movsxb(asRegister(result),  loadAddr); break;
-            case Char:   masm.movzxl(asRegister(result),  loadAddr); break;
-            case Short:  masm.movswl(asRegister(result),  loadAddr); break;
-            case Int:    masm.movslq(asRegister(result),  loadAddr); break;
-            case Long:   masm.movq(asRegister(result),    loadAddr); break;
-            case Float:  masm.movflt(asFloatReg(result),  loadAddr); break;
-            case Double: masm.movdbl(asDoubleReg(result), loadAddr); break;
-            case Object: masm.movq(asRegister(result),    loadAddr); break;
-            default:     throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    public static void store(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Address storeAddr, Value input, LIRFrameState info) {
-        if (info != null) {
-            tasm.recordImplicitException(masm.codeBuffer.position(), info);
-        }
-
-        if (isRegister(input)) {
-            switch (storeAddr.getKind()) {
-                case Boolean:
-                case Byte:   masm.movb(storeAddr,   asRegister(input)); break;
-                case Char:
-                case Short:  masm.movw(storeAddr,   asRegister(input)); break;
-                case Int:    masm.movl(storeAddr,   asRegister(input)); break;
-                case Long:   masm.movq(storeAddr,   asRegister(input)); break;
-                case Float:  masm.movflt(storeAddr, asFloatReg(input)); break;
-                case Double: masm.movsd(storeAddr,  asDoubleReg(input)); break;
-                case Object: masm.movq(storeAddr,   asRegister(input)); break;
-                default:     throw GraalInternalError.shouldNotReachHere();
-            }
-        } else if (isConstant(input)) {
-            Constant c = (Constant) input;
-            switch (storeAddr.getKind()) {
-                case Boolean:
-                case Byte:   masm.movb(storeAddr, c.asInt() & 0xFF); break;
-                case Char:
-                case Short:  masm.movw(storeAddr, c.asInt() & 0xFFFF); break;
-                case Jsr:
-                case Int:    masm.movl(storeAddr, c.asInt()); break;
-                case Long:
-                    if (NumUtil.isInt(c.asLong())) {
-                        masm.movslq(storeAddr, (int) c.asLong());
-                    } else {
-                        throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
-                    }
-                    break;
-                case Float:  masm.movl(storeAddr, floatToRawIntBits(c.asFloat())); break;
-                case Double: throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
-                case Object:
-                    if (c.isNull()) {
-                        masm.movptr(storeAddr, 0);
-                    } else {
-                        throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
-                    }
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
-
-        } else {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    protected static void compareAndSwap(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Address address, Value cmpValue, Value newValue) {
+    protected static void compareAndSwap(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
         assert asRegister(cmpValue) == AMD64.rax && asRegister(result) == AMD64.rax;
 
         if (tasm.target.isMP) {
             masm.lock();
         }
         switch (cmpValue.getKind()) {
-            case Int:    masm.cmpxchgl(asRegister(newValue), address); break;
+            case Int:
+                masm.cmpxchgl(asRegister(newValue), address.toAddress());
+                break;
             case Long:
-            case Object: masm.cmpxchgq(asRegister(newValue), address); break;
-            default:     throw GraalInternalError.shouldNotReachHere();
+            case Object:
+                masm.cmpxchgq(asRegister(newValue), address.toAddress());
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 }

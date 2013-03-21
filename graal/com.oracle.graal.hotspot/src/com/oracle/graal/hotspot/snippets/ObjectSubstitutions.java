@@ -25,8 +25,10 @@ package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.hotspot.snippets.HotSpotSnippetUtils.*;
 import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.ClassSubstitution.*;
+import com.oracle.graal.snippets.ClassSubstitution.MacroSubstitution;
+import com.oracle.graal.snippets.ClassSubstitution.MethodSubstitution;
 import com.oracle.graal.word.*;
 
 /**
@@ -38,7 +40,7 @@ public class ObjectSubstitutions {
     @MethodSubstitution(isStatic = false)
     public static Class<?> getClass(final Object thisObj) {
         Word hub = loadHub(thisObj);
-        return unsafeCast(hub.readFinalObject(Word.signed(classMirrorOffset())), Class.class, true, true);
+        return unsafeCast(hub.readObject(Word.signed(classMirrorOffset()), LocationNode.FINAL_LOCATION), Class.class, true, true);
     }
 
     @MethodSubstitution(isStatic = false)

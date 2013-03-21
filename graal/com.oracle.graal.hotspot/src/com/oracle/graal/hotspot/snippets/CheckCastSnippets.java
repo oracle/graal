@@ -108,7 +108,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             isNull.inc();
         } else {
             Word objectHub = loadHub(object);
-            if (objectHub.readWord(superCheckOffset).notEqual(hub)) {
+            if (objectHub.readWord(superCheckOffset, FINAL_LOCATION).notEqual(hub)) {
                 probability(DEOPT_PATH_PROBABILITY);
                 displayMiss.inc();
                 DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);

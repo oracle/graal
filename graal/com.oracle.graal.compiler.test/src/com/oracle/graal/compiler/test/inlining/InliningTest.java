@@ -136,9 +136,9 @@ public class InliningTest extends GraalCompilerTest {
                 Assumptions assumptions = new Assumptions(true);
                 new ComputeProbabilityPhase().apply(graph);
                 Debug.dump(graph, "Graph");
-                new InliningPhase(null, runtime(), null, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
+                new InliningPhase(runtime(), null, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
                 Debug.dump(graph, "Graph");
-                new CanonicalizerPhase(null, runtime(), assumptions).apply(graph);
+                new CanonicalizerPhase(runtime(), assumptions).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
                 return graph;
             }

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.snippets.nodes;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -49,7 +48,7 @@ public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
     @Override
     public void generate(LIRGeneratorTool gen) {
         Value v = gen.operand(value);
-        gen.emitStore(new Address(kind, gen.operand(address)), v, false);
+        gen.emitStore(kind, gen.operand(address), 0, Value.ILLEGAL, 0, v, false);
     }
 
     /*

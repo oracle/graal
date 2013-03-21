@@ -44,8 +44,6 @@ public interface RegisterConfig {
      */
     Register getFrameRegister();
 
-    Register getScratchRegister();
-
     /**
      * Gets the calling convention describing how arguments are passed.
      * 

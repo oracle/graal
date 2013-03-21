@@ -30,18 +30,12 @@ import com.oracle.graal.nodes.type.*;
 
 public class DirectCallTargetNode extends AbstractCallTargetNode {
 
-    public DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, Object target, CallingConvention.Type callType) {
+    public DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType) {
         super(arguments, returnStamp, signature, target, callType);
     }
 
     @Override
     public String targetName() {
-        if (target() instanceof JavaMethod) {
-            return "Direct#" + ((JavaMethod) target()).getName();
-        } else if (target() != null) {
-            return "Direct#" + target().getClass().getSimpleName();
-        } else {
-            return "Direct#null";
-        }
+        return "Direct#" + ((JavaMethod) target()).getName();
     }
 }

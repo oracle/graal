@@ -25,11 +25,10 @@ package com.oracle.graal.snippets;
 import java.lang.reflect.*;
 import java.util.*;
 
-import org.junit.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 
@@ -87,7 +86,7 @@ public class NewMultiArrayTest extends GraalCompilerTest {
     Class bottomClass;
     int[] dimensions;
 
-    @Test
+    @LongTest
     public void test1() {
         for (Class clazz : new Class[]{byte.class, char.class, short.class, int.class, float.class, long.class, double.class, String.class}) {
             bottomClass = clazz;
@@ -118,7 +117,7 @@ public class NewMultiArrayTest extends GraalCompilerTest {
         return new Object[10][9][8];
     }
 
-    @Test
+    @LongTest
     public void test2() {
         test("newMultiArrayException");
     }

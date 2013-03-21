@@ -43,7 +43,6 @@ public final class GraalOptions {
            static boolean InlineMonomorphicCalls             = true;
            static boolean InlinePolymorphicCalls             = true;
            static boolean InlineMegamorphicCalls             = ____;
-    public static int     MaximumInlineLevel                 = 30;
     public static int     MaximumDesiredSize                 = 5000;
     public static int     MaximumRecursiveInlining           = 1;
     public static boolean LimitInlinedProbability            = ____;
@@ -106,11 +105,9 @@ public final class GraalOptions {
     public static int     LoopUnswitchUncertaintyBoost       = 5;
 
     // debugging settings
-    public static int     MethodEndBreakpointGuards          = 2;
     public static boolean ZapStackOnMethodEntry              = ____;
     public static boolean DeoptALot                          = ____;
     public static boolean VerifyPhases                       = true;
-    public static boolean CreateDeoptInfo                    = ____;
 
     public static String  PrintFilter                        = null;
 
@@ -150,13 +147,16 @@ public final class GraalOptions {
     public static boolean ExitVMOnBailout                    = ____;
     public static boolean ExitVMOnException                  = true;
 
+    // Register allocator debugging
+    public static String  RegisterPressure                   = null;
+
     // Code generator settings
-    public static boolean CheckCastElimination               = true;
+    public static boolean ConditionalElimination             = true;
     public static boolean CullFrameStates                    = ____;
     public static boolean UseProfilingInformation            = true;
            static boolean RemoveNeverExecutedCode            = true;
            static boolean UseExceptionProbability            = true;
-    public static boolean AllowExplicitExceptionChecks       = true;
+           static boolean UseExceptionProbabilityForOperations = true;
     public static boolean OmitHotExceptionStacktrace         = ____;
     public static boolean GenSafepoints                      = true;
     public static boolean GenLoopSafepoints                  = true;
@@ -168,6 +168,8 @@ public final class GraalOptions {
     public static boolean ResolveClassBeforeStaticInvoke     = ____;
     public static boolean CanOmitFrame                       = true;
     public static int     SafepointPollOffset                = 256;
+
+    public static boolean MemoryAwareScheduling              = true;
 
     // Translating tableswitch instructions
     public static int     MinimumJumpTableSize               = 5;
@@ -182,14 +184,15 @@ public final class GraalOptions {
     public static boolean SupportJsrBytecodes                = true;
 
     public static boolean OptAssumptions                     = true;
+    public static boolean OptConvertDeoptsToGuards           = true;
     public static boolean OptReadElimination                 = true;
     public static boolean OptCanonicalizer                   = true;
     public static boolean OptScheduleOutOfLoops              = true;
     public static boolean OptEliminateGuards                 = true;
+    public static boolean OptEliminateSafepoints             = true;
     public static boolean OptImplicitNullChecks              = true;
     public static boolean OptLivenessAnalysis                = true;
     public static boolean OptLoopTransform                   = true;
-    public static boolean OptSafepointElimination            = true;
     public static boolean OptFloatingReads                   = true;
     public static boolean OptTailDuplication                 = true;
     public static boolean OptEliminatePartiallyRedundantGuards = true;

@@ -32,7 +32,6 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIR.Code;
 
 public class TargetMethodAssembler {
 
@@ -48,15 +47,10 @@ public class TargetMethodAssembler {
     }
 
     public final AbstractAssembler asm;
-    public final CompilationResult targetMethod;
+    public final CompilationResult compilationResult;
     public final TargetDescription target;
     public final CodeCacheProvider runtime;
     public final FrameMap frameMap;
-
-    /**
-     * Out-of-line stubs to be emitted.
-     */
-    public final List<Code> stubs;
 
     /**
      * The object that emits code for managing a method's frame. If null, no frame is used by the
@@ -65,60 +59,53 @@ public class TargetMethodAssembler {
     public final FrameContext frameContext;
 
     private List<ExceptionInfo> exceptionInfoList;
-    private int lastSafepointPos;
 
-    public TargetMethodAssembler(TargetDescription target, CodeCacheProvider runtime, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext, List<Code> stubs) {
+    public TargetMethodAssembler(TargetDescription target, CodeCacheProvider runtime, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext, CompilationResult compilationResult) {
         this.target = target;
         this.runtime = runtime;
         this.frameMap = frameMap;
-        this.stubs = stubs;
         this.asm = asm;
-        this.targetMethod = new CompilationResult();
+        this.compilationResult = compilationResult;
         this.frameContext = frameContext;
-        // 0 is a valid pc for safepoints in template methods
-        this.lastSafepointPos = -1;
     }
 
     public void setFrameSize(int frameSize) {
-        targetMethod.setFrameSize(frameSize);
+        compilationResult.setFrameSize(frameSize);
     }
 
     private static final CompilationResult.Mark[] NO_REFS = {};
 
     public CompilationResult.Mark recordMark(Object id) {
-        return targetMethod.recordMark(asm.codeBuffer.position(), id, NO_REFS);
+        return compilationResult.recordMark(asm.codeBuffer.position(), id, NO_REFS);
     }
 
     public CompilationResult.Mark recordMark(Object id, CompilationResult.Mark... references) {
-        return targetMethod.recordMark(asm.codeBuffer.position(), id, references);
+        return compilationResult.recordMark(asm.codeBuffer.position(), id, references);
     }
 
     public void blockComment(String s) {
-        targetMethod.addAnnotation(new CompilationResult.CodeComment(asm.codeBuffer.position(), s));
+        compilationResult.addAnnotation(new CompilationResult.CodeComment(asm.codeBuffer.position(), s));
     }
 
     public CompilationResult finishTargetMethod(Object name, boolean isStub) {
         // Install code, data and frame size
-        targetMethod.setTargetCode(asm.codeBuffer.close(false), asm.codeBuffer.position());
+        compilationResult.setTargetCode(asm.codeBuffer.close(false), asm.codeBuffer.position());
 
         // Record exception handlers if they exist
         if (exceptionInfoList != null) {
             for (ExceptionInfo ei : exceptionInfoList) {
                 int codeOffset = ei.codeOffset;
-                targetMethod.recordExceptionHandler(codeOffset, ei.exceptionEdge.label().position());
+                compilationResult.recordExceptionHandler(codeOffset, ei.exceptionEdge.label().position());
             }
         }
 
-        // Set the info on callee-saved registers
-        targetMethod.setCalleeSaveLayout(frameMap.registerConfig.getCalleeSaveLayout());
-
         Debug.metric("TargetMethods").increment();
-        Debug.metric("CodeBytesEmitted").add(targetMethod.getTargetCodeSize());
-        Debug.metric("SafepointsEmitted").add(targetMethod.getSafepoints().size());
-        Debug.metric("DataPatches").add(targetMethod.getDataReferences().size());
-        Debug.metric("ExceptionHandlersEmitted").add(targetMethod.getExceptionHandlers().size());
+        Debug.metric("CodeBytesEmitted").add(compilationResult.getTargetCodeSize());
+        Debug.metric("SafepointsEmitted").add(compilationResult.getSafepoints().size());
+        Debug.metric("DataPatches").add(compilationResult.getDataReferences().size());
+        Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
         Debug.log("Finished target method %s, isStub %b", name, isStub);
-        return targetMethod;
+        return compilationResult;
     }
 
     public void recordExceptionHandlers(int pcOffset, LIRFrameState info) {
@@ -135,45 +122,33 @@ public class TargetMethodAssembler {
     public void recordImplicitException(int pcOffset, LIRFrameState info) {
         // record an implicit exception point
         if (info != null) {
-            assert lastSafepointPos < pcOffset : lastSafepointPos + "<" + pcOffset;
-            lastSafepointPos = pcOffset;
-            targetMethod.recordSafepoint(pcOffset, info.debugInfo());
+            compilationResult.recordSafepoint(pcOffset, info.debugInfo());
             assert info.exceptionEdge == null;
         }
     }
 
-    public void recordDirectCall(int posBefore, int posAfter, Object callTarget, LIRFrameState info) {
+    public void recordDirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
-        assert lastSafepointPos < posAfter;
-        lastSafepointPos = posAfter;
-        targetMethod.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
+        compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
     }
 
-    public void recordIndirectCall(int posBefore, int posAfter, Object callTarget, LIRFrameState info) {
+    public void recordIndirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
-        assert lastSafepointPos < posAfter;
-        lastSafepointPos = posAfter;
-        targetMethod.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
+        compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
     }
 
     public void recordSafepoint(int pos, LIRFrameState info) {
         // safepoints always need debug info
         DebugInfo debugInfo = info.debugInfo();
-        assert lastSafepointPos < pos;
-        lastSafepointPos = pos;
-        targetMethod.recordSafepoint(pos, debugInfo);
+        compilationResult.recordSafepoint(pos, debugInfo);
     }
 
-    public Address recordDataReferenceInCode(Constant data, int alignment, boolean inlined) {
+    public AbstractAddress recordDataReferenceInCode(Constant data, int alignment, boolean inlined) {
         assert data != null;
         int pos = asm.codeBuffer.position();
         Debug.log("Data reference in code: pos = %d, data = %s", pos, data.toString());
-        targetMethod.recordDataReference(pos, data, alignment, inlined);
-        return Address.Placeholder;
-    }
-
-    public int lastSafepointPos() {
-        return lastSafepointPos;
+        compilationResult.recordDataReference(pos, data, alignment, inlined);
+        return asm.getPlaceholder();
     }
 
     /**
@@ -181,7 +156,7 @@ public class TargetMethodAssembler {
      * including long constants that fit into the 32-bit range.
      */
     public int asIntConst(Value value) {
-        assert (value.getKind().getStackKind() == Kind.Int || value.getKind() == Kind.Jsr || value.getKind() == Kind.Long) && isConstant(value);
+        assert (value.getKind().getStackKind() == Kind.Int || value.getKind() == Kind.Long) && isConstant(value);
         Constant constant = (Constant) value;
         assert !runtime.needsDataPatch(constant) : constant + " should be in a DataPatch";
         long c = constant.asLong();
@@ -194,11 +169,11 @@ public class TargetMethodAssembler {
     /**
      * Returns the address of a float constant that is embedded as a data references into the code.
      */
-    public Address asFloatConstRef(Value value) {
+    public AbstractAddress asFloatConstRef(Value value) {
         return asFloatConstRef(value, 4);
     }
 
-    public Address asFloatConstRef(Value value, int alignment) {
+    public AbstractAddress asFloatConstRef(Value value, int alignment) {
         assert value.getKind() == Kind.Float && isConstant(value);
         return recordDataReferenceInCode((Constant) value, alignment, false);
     }
@@ -206,11 +181,11 @@ public class TargetMethodAssembler {
     /**
      * Returns the address of a double constant that is embedded as a data references into the code.
      */
-    public Address asDoubleConstRef(Value value) {
+    public AbstractAddress asDoubleConstRef(Value value) {
         return asDoubleConstRef(value, 8);
     }
 
-    public Address asDoubleConstRef(Value value, int alignment) {
+    public AbstractAddress asDoubleConstRef(Value value, int alignment) {
         assert value.getKind() == Kind.Double && isConstant(value);
         return recordDataReferenceInCode((Constant) value, alignment, false);
     }
@@ -218,41 +193,39 @@ public class TargetMethodAssembler {
     /**
      * Returns the address of a long constant that is embedded as a data references into the code.
      */
-    public Address asLongConstRef(Value value) {
+    public AbstractAddress asLongConstRef(Value value) {
         assert value.getKind() == Kind.Long && isConstant(value);
         return recordDataReferenceInCode((Constant) value, 8, false);
     }
 
-    public Address asIntAddr(Value value) {
+    public AbstractAddress asIntAddr(Value value) {
         assert value.getKind() == Kind.Int;
         return asAddress(value);
     }
 
-    public Address asLongAddr(Value value) {
+    public AbstractAddress asLongAddr(Value value) {
         assert value.getKind() == Kind.Long;
         return asAddress(value);
     }
 
-    public Address asObjectAddr(Value value) {
+    public AbstractAddress asObjectAddr(Value value) {
         assert value.getKind() == Kind.Object;
         return asAddress(value);
     }
 
-    public Address asFloatAddr(Value value) {
+    public AbstractAddress asFloatAddr(Value value) {
         assert value.getKind() == Kind.Float;
         return asAddress(value);
     }
 
-    public Address asDoubleAddr(Value value) {
+    public AbstractAddress asDoubleAddr(Value value) {
         assert value.getKind() == Kind.Double;
         return asAddress(value);
     }
 
-    public Address asAddress(Value value) {
-        if (isStackSlot(value)) {
-            StackSlot slot = (StackSlot) value;
-            return new Address(slot.getKind(), frameMap.registerConfig.getFrameRegister().asValue(), frameMap.offsetForStackSlot(slot));
-        }
-        return (Address) value;
+    public AbstractAddress asAddress(Value value) {
+        assert isStackSlot(value);
+        StackSlot slot = asStackSlot(value);
+        return asm.makeAddress(frameMap.registerConfig.getFrameRegister(), frameMap.offsetForStackSlot(slot));
     }
 }

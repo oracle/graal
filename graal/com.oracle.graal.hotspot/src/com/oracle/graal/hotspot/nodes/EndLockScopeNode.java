@@ -44,6 +44,11 @@ public final class EndLockScopeNode extends AbstractStateSplit implements LIRGen
     }
 
     @Override
+    public Object[] getLocationIdentities() {
+        return new Object[]{LocationNode.ANY_LOCATION};
+    }
+
+    @Override
     public void generate(LIRGenerator gen) {
         gen.unlock();
     }

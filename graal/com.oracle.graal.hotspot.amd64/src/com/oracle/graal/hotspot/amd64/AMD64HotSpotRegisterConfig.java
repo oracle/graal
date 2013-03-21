@@ -33,16 +33,12 @@ import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.phases.*;
 
 // @formatter:off
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
-    // be careful - the contents of this array are duplicated in graal_CodeInstaller.cpp
-    private final Register[] allocatable = {
-        rax, rbx, rcx, rdx, rsi, rdi, r8, r9, /* r10, */r11, r12, r13, r14, /*r15*/
-        xmm0, xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7,
-        xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
-    };
+    private final Register[] allocatable = initAllocatable();
 
     private final EnumMap<RegisterFlag, Register[]> categorized = Register.categorize(allocatable);
 
@@ -69,6 +65,34 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     private final CalleeSaveLayout csl;
 
+    private static Register findRegister(String name, Register[] all) {
+        for (Register reg : all) {
+            if (reg.name.equals(name)) {
+                return reg;
+            }
+        }
+        throw new IllegalArgumentException("register " + name + " is not allocatable");
+    }
+
+    private static Register[] initAllocatable() {
+        Register[] allocatable = {
+                        rax, rbx, rcx, rdx, /*rsp,*/ rbp, rsi, rdi, r8, r9,  r10, r11, r12, r13, r14, /*r15, */
+                        xmm0, xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7,
+                        xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
+                    };
+
+        if (GraalOptions.RegisterPressure != null) {
+            String[] names = GraalOptions.RegisterPressure.split(",");
+            Register[] regs = new Register[names.length];
+            for (int i = 0; i < names.length; i++) {
+                regs[i] = findRegister(names[i], allocatable);
+            }
+            return regs;
+        }
+
+        return allocatable;
+    }
+
     public AMD64HotSpotRegisterConfig(HotSpotVMConfig config, boolean globalStubConfig) {
         if (config.windowsOs) {
             javaGeneralParameterRegisters = new Register[] {rdx, r8, r9, rdi, rsi, rcx};
@@ -87,12 +111,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
             };
             csl = new CalleeSaveLayout(0, -1, 8, regs);
         } else {
-            // We reserve space for saving RBP but don't explicitly specify
-            // it as a callee save register since we explicitly do the saving
-            // with push and pop in HotSpotFrameContext
-            final int size = 8;
-            final Register[] regs = {};
-            csl = new CalleeSaveLayout(0, size, 8, regs);
+            csl = null;
         }
 
         attributesMap = RegisterAttributes.createMap(this, AMD64.allRegisters);
@@ -191,11 +210,6 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
     }
 
     @Override
-    public Register getScratchRegister() {
-        return r10;
-    }
-
-    @Override
     public Register getFrameRegister() {
         return rsp;
     }
@@ -209,8 +223,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         String res = String.format(
              "Allocatable: " + Arrays.toString(getAllocatableRegisters()) + "%n" +
              "CallerSave:  " + Arrays.toString(getCallerSaveRegisters()) + "%n" +
-             "CalleeSave:  " + getCalleeSaveLayout() + "%n" +
-             "Scratch:     " + getScratchRegister() + "%n");
+             "CalleeSave:  " + getCalleeSaveLayout() + "%n");
         return res;
     }
 }

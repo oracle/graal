@@ -94,7 +94,7 @@ public class CompilationResult implements Serializable {
         /**
          * The target of the call.
          */
-        public final Object target;
+        public final InvokeTarget target;
 
         /**
          * The size of the call instruction.
@@ -108,7 +108,7 @@ public class CompilationResult implements Serializable {
          */
         public final boolean direct;
 
-        public Call(Object target, int pcOffset, int size, boolean direct, DebugInfo debugInfo) {
+        public Call(InvokeTarget target, int pcOffset, int size, boolean direct, DebugInfo debugInfo) {
             super(pcOffset, debugInfo);
             this.size = size;
             this.target = target;
@@ -196,25 +196,6 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Labels some inline data in the code.
-     */
-    public static final class InlineData extends CodeAnnotation {
-
-        private static final long serialVersionUID = 305997507263827108L;
-        public final int size;
-
-        public InlineData(int position, int size) {
-            super(position);
-            this.size = size;
-        }
-
-        @Override
-        public String toString() {
-            return getClass().getSimpleName() + "@" + position + ": size=" + size;
-        }
-    }
-
-    /**
      * Describes a table of signed offsets embedded in the code. The offsets are relative to the
      * starting address of the table. This type of table maybe generated when translating a
      * multi-way branch based on a key value from a dense value set (e.g. the {@code tableswitch}
@@ -252,43 +233,6 @@ public class CompilationResult implements Serializable {
         @Override
         public String toString() {
             return getClass().getSimpleName() + "@" + position + ": [" + low + " .. " + high + "]";
-        }
-    }
-
-    /**
-     * Describes a table of key and offset pairs. The offset in each table entry is relative to the
-     * address of the table. This type of table maybe generated when translating a multi-way branch
-     * based on a key value from a sparse value set (e.g. the {@code lookupswitch} JVM instruction).
-     */
-    public static final class LookupTable extends CodeAnnotation {
-
-        private static final long serialVersionUID = 8367952567559116160L;
-
-        /**
-         * The number of entries in the table.
-         */
-        public final int npairs;
-
-        /**
-         * The size (in bytes) of entry's key.
-         */
-        public final int keySize;
-
-        /**
-         * The size (in bytes) of entry's offset value.
-         */
-        public final int offsetSize;
-
-        public LookupTable(int position, int npairs, int keySize, int offsetSize) {
-            super(position);
-            this.npairs = npairs;
-            this.keySize = keySize;
-            this.offsetSize = offsetSize;
-        }
-
-        @Override
-        public String toString() {
-            return getClass().getSimpleName() + "@" + position + ": [npairs=" + npairs + ", keySize=" + keySize + ", offsetSize=" + offsetSize + "]";
         }
     }
 
@@ -349,8 +293,6 @@ public class CompilationResult implements Serializable {
     private int customStackAreaOffset = -1;
     private int registerRestoreEpilogueOffset = -1;
 
-    private CalleeSaveLayout calleeSaveLayout;
-
     /**
      * The buffer containing the emitted machine code.
      */
@@ -410,15 +352,6 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Sets the info on callee-saved registers used by this method.
-     * 
-     * @param csl the register-saving info.
-     */
-    public void setCalleeSaveLayout(CalleeSaveLayout csl) {
-        calleeSaveLayout = csl;
-    }
-
-    /**
      * Records a reference to the data section in the code section (e.g. to load an integer or
      * floating point constant).
      * 
@@ -438,11 +371,11 @@ public class CompilationResult implements Serializable {
      * 
      * @param codePos the position of the call in the code array
      * @param size the size of the call instruction
-     * @param target the {@link CodeCacheProvider#lookupCallTarget(Object) target} being called
+     * @param target the being called
      * @param debugInfo the debug info for the call
      * @param direct specifies if this is a {@linkplain Call#direct direct} call
      */
-    public void recordCall(int codePos, int size, Object target, DebugInfo debugInfo, boolean direct) {
+    public void recordCall(int codePos, int size, InvokeTarget target, DebugInfo debugInfo, boolean direct) {
         final Call call = new Call(target, codePos, size, direct, debugInfo);
         addSafepoint(call);
     }
@@ -534,13 +467,6 @@ public class CompilationResult implements Serializable {
      */
     public void setCustomStackAreaOffset(int offset) {
         customStackAreaOffset = offset;
-    }
-
-    /**
-     * @return the layout information for callee-saved registers used by this method.
-     */
-    public CalleeSaveLayout getCalleeSaveLayout() {
-        return calleeSaveLayout;
     }
 
     /**

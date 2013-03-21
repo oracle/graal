@@ -40,6 +40,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
@@ -109,7 +110,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 // The bias pattern is present in the object's mark word. Need to check
                 // whether the bias owner and the epoch are both still current.
                 Word hub = loadHub(object);
-                final Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset());
+                final Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
                 final Word thread = thread();
                 final Word tmp = prototypeMarkWord.or(thread).xor(mark).and(~ageMaskInPlace());
                 trace(trace, "prototypeMarkWord: 0x%016lx\n", prototypeMarkWord);
@@ -154,7 +155,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         Word biasedMark = unbiasedMark.or(thread);
                         trace(trace, "     unbiasedMark: 0x%016lx\n", unbiasedMark);
                         trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
-                        if (compareAndSwap(object, markOffset(), unbiasedMark, biasedMark).equal(unbiasedMark)) {
+                        if (compareAndSwap(object, markOffset(), unbiasedMark, biasedMark, MARK_WORD_LOCATION).equal(unbiasedMark)) {
                             // Object is now biased to current thread -> done
                             traceObject(trace, "+lock{bias:acquired}", object);
                             return;
@@ -175,7 +176,7 @@ public class MonitorSnippets implements SnippetsInterface {
                         // the bias from one thread to another directly in this situation.
                         Word biasedMark = prototypeMarkWord.or(thread);
                         trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
-                        if (compareAndSwap(object, markOffset(), mark, biasedMark).equal(mark)) {
+                        if (compareAndSwap(object, markOffset(), mark, biasedMark, MARK_WORD_LOCATION).equal(mark)) {
                             // Object is now biased to current thread -> done
                             traceObject(trace, "+lock{bias:transfer}", object);
                             return;
@@ -197,7 +198,7 @@ public class MonitorSnippets implements SnippetsInterface {
                     // that another thread raced us for the privilege of revoking the
                     // bias of this particular object, so it's okay to continue in the
                     // normal locking code.
-                    Word result = compareAndSwap(object, markOffset(), mark, prototypeMarkWord);
+                    Word result = compareAndSwap(object, markOffset(), mark, prototypeMarkWord, MARK_WORD_LOCATION);
 
                     // Fall through to the normal CAS-based lock, because no matter what
                     // the result of the above CAS, some thread must have succeeded in
@@ -215,11 +216,11 @@ public class MonitorSnippets implements SnippetsInterface {
         trace(trace, "     unlockedMark: 0x%016lx\n", unlockedMark);
 
         // Copy this unlocked mark word into the lock slot on the stack
-        lock.writeWord(lockDisplacedMarkOffset(), unlockedMark);
+        lock.writeWord(lockDisplacedMarkOffset(), unlockedMark, DISPLACED_MARK_WORD_LOCATION);
 
         // Test if the object's mark word is unlocked, and if so, store the
         // (address of) the lock slot into the object's mark word.
-        Word currentMark = compareAndSwap(object, markOffset(), unlockedMark, lock);
+        Word currentMark = compareAndSwap(object, markOffset(), unlockedMark, lock, MARK_WORD_LOCATION);
         if (currentMark.notEqual(unlockedMark)) {
             trace(trace, "      currentMark: 0x%016lx\n", currentMark);
             // The mark word in the object header was not the same.
@@ -247,7 +248,7 @@ public class MonitorSnippets implements SnippetsInterface {
                 return;
             } else {
                 // Recursively locked => write 0 to the lock slot
-                lock.writeWord(lockDisplacedMarkOffset(), Word.zero());
+                lock.writeWord(lockDisplacedMarkOffset(), Word.zero(), DISPLACED_MARK_WORD_LOCATION);
                 traceObject(trace, "+lock{recursive}", object);
             }
         } else {
@@ -302,7 +303,7 @@ public class MonitorSnippets implements SnippetsInterface {
         final Word lock = CurrentLockNode.currentLock();
 
         // Load displaced mark
-        final Word displacedMark = lock.readWord(lockDisplacedMarkOffset());
+        final Word displacedMark = lock.readWord(lockDisplacedMarkOffset(), DISPLACED_MARK_WORD_LOCATION);
         trace(trace, "    displacedMark: 0x%016lx\n", displacedMark);
 
         if (displacedMark.equal(0)) {
@@ -313,7 +314,7 @@ public class MonitorSnippets implements SnippetsInterface {
             // Test if object's mark word is pointing to the displaced mark word, and if so, restore
             // the displaced mark in the object - if the object's mark word is not pointing to
             // the displaced mark word, do unlocking via runtime call.
-            if (DirectCompareAndSwapNode.compareAndSwap(object, markOffset(), lock, displacedMark).notEqual(lock)) {
+            if (DirectCompareAndSwapNode.compareAndSwap(object, markOffset(), lock, displacedMark, MARK_WORD_LOCATION).notEqual(lock)) {
                 // The object's mark word was not pointing to the displaced header,
                 // we do unlocking via runtime call.
                 probability(DEOPT_PATH_PROBABILITY);
@@ -365,35 +366,37 @@ public class MonitorSnippets implements SnippetsInterface {
      */
     private static final boolean ENABLE_BREAKPOINT = false;
 
+    private static final Object MONITOR_COUNTER_LOCATION = LocationNode.createLocation("MonitorCounter");
+
     @NodeIntrinsic(BreakpointNode.class)
     static native void bkpt(Object object, Word mark, Word tmp, Word value);
 
     private static void incCounter() {
         if (CHECK_BALANCED_MONITORS) {
             final Word counter = MonitorCounterNode.counter();
-            final int count = counter.readInt(0);
-            counter.writeInt(0, count + 1);
+            final int count = counter.readInt(0, MONITOR_COUNTER_LOCATION);
+            counter.writeInt(0, count + 1, MONITOR_COUNTER_LOCATION);
         }
     }
 
     private static void decCounter() {
         if (CHECK_BALANCED_MONITORS) {
             final Word counter = MonitorCounterNode.counter();
-            final int count = counter.readInt(0);
-            counter.writeInt(0, count - 1);
+            final int count = counter.readInt(0, MONITOR_COUNTER_LOCATION);
+            counter.writeInt(0, count - 1, MONITOR_COUNTER_LOCATION);
         }
     }
 
     @Snippet
     private static void initCounter() {
         final Word counter = MonitorCounterNode.counter();
-        counter.writeInt(0, 0);
+        counter.writeInt(0, 0, MONITOR_COUNTER_LOCATION);
     }
 
     @Snippet
     private static void checkCounter(String errMsg) {
         final Word counter = MonitorCounterNode.counter();
-        final int count = counter.readInt(0);
+        final int count = counter.readInt(0, MONITOR_COUNTER_LOCATION);
         if (count != 0) {
             vmError(errMsg, count);
         }
