@@ -186,16 +186,21 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
         return originalMethod;
     }
 
-    private static boolean isTypeCompatible(TypeMirror originalType, TypeMirror substitutionType) {
-        /*
-         * TypeMirrors may contain generic types which deny the types to be equal. So if both types
-         * are declared we erase the generic types by comparing their corresponding declared
-         * element.
-         */
-        if (originalType.getKind() == TypeKind.DECLARED && substitutionType.getKind() == TypeKind.DECLARED) {
-            return ((DeclaredType) originalType).asElement().equals(((DeclaredType) substitutionType).asElement());
+    private boolean isTypeCompatible(TypeMirror originalType, TypeMirror substitutionType) {
+        TypeMirror original = originalType;
+        TypeMirror substitution = substitutionType;
+        if (needsErasure(original)) {
+            original = env.getTypeUtils().erasure(original);
         }
-        return originalType.equals(substitutionType);
+        if (needsErasure(substitution)) {
+            substitution = env.getTypeUtils().erasure(substitution);
+        }
+        return env.getTypeUtils().isSameType(original, substitution);
+    }
+
+    private static boolean needsErasure(TypeMirror typeMirror) {
+        return typeMirror.getKind() != TypeKind.NONE && typeMirror.getKind() != TypeKind.VOID && !typeMirror.getKind().isPrimitive() && typeMirror.getKind() != TypeKind.OTHER &&
+                        typeMirror.getKind() != TypeKind.NULL;
     }
 
     private static TypeElement findEnclosingClass(Element element) {

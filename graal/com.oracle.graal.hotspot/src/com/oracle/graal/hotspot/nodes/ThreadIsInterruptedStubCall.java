@@ -27,7 +27,6 @@ import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
@@ -55,11 +54,5 @@ public class ThreadIsInterruptedStubCall extends FixedWithNextNode implements LI
     }
 
     @NodeIntrinsic
-    public static int call(Thread thread, boolean clearIsInterrupted) {
-        try {
-            return (Integer) Thread.class.getDeclaredMethod("isInterrupted", boolean.class).invoke(thread, clearIsInterrupted);
-        } catch (Exception e) {
-            throw new GraalInternalError(e);
-        }
-    }
+    public static native int call(Thread thread, boolean clearIsInterrupted);
 }

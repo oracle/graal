@@ -75,9 +75,7 @@ public class BranchProbabilityNode extends FixedWithNextNode implements Simplifi
         GraphUtil.killCFG(this);
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void probability(@ConstantNodeParameter double probability) {
-    }
+    public static native void probability(@ConstantNodeParameter double probability);
 
 }

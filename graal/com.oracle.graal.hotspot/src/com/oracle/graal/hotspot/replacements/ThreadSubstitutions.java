@@ -40,10 +40,11 @@ public class ThreadSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static boolean isInterrupted(final Thread thisObject, boolean clearInterrupted) {
-        Thread thread = CurrentThread.get();
+    private static boolean isInterrupted(final Thread thisObject, boolean clearInterrupted) {
+        Word rawThread = HotSpotCurrentRawThreadNode.get();
+        Thread thread = (Thread) rawThread.readObject(threadObjectOffset(), FINAL_LOCATION);
         if (thisObject == thread) {
-            Word osThread = loadWordFromObject(thread, osThreadOffset());
+            Word osThread = rawThread.readWord(osThreadOffset(), FINAL_LOCATION);
             boolean interrupted = osThread.readInt(osThreadInterruptedOffset(), UNKNOWN_LOCATION) != 0;
             if (!interrupted || !clearInterrupted) {
                 return interrupted;
