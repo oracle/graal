@@ -47,7 +47,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.printer.*;
-import com.oracle.graal.snippets.*;
+import com.oracle.graal.replacements.*;
 
 /**
  * Exits from the HotSpot VM into Java code.
@@ -136,7 +136,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         if (GraalOptions.Debug) {
             Debug.enable();
-            if (GraalOptions.DebugSnippets) {
+            if (GraalOptions.DebugReplacements) {
                 DebugEnvironment.initialize(log);
             }
         }
@@ -144,23 +144,23 @@ public class VMToCompilerImpl implements VMToCompiler {
         // Install intrinsics.
         final HotSpotRuntime runtime = graalRuntime.getCapability(HotSpotRuntime.class);
         if (GraalOptions.Intrinsify) {
-            Debug.scope("InstallSnippets", new Object[]{new DebugDumpScope("InstallSnippets")}, new Runnable() {
+            Debug.scope("InstallReplacements", new Object[]{new DebugDumpScope("InstallReplacements")}, new Runnable() {
 
                 @Override
                 public void run() {
-                    // Snippets cannot have speculative optimizations since they have to be valid
-                    // for the entire run of the VM.
+                    // Replacements cannot have speculative optimizations since they have
+                    // to be valid for the entire run of the VM.
                     Assumptions assumptions = new Assumptions(false);
-                    SnippetInstaller installer = new HotSpotSnippetInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
+                    ReplacementsInstaller installer = new HotSpotReplacementsInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
                     GraalIntrinsics.installIntrinsics(installer);
-                    runtime.installSnippets(graalRuntime.getBackend(), installer, assumptions);
+                    runtime.installReplacements(graalRuntime.getBackend(), installer, assumptions);
                 }
             });
 
         }
 
-        if (GraalOptions.DebugSnippets) {
-            phaseTransition("snippets");
+        if (GraalOptions.DebugReplacements) {
+            phaseTransition("replacements");
         }
 
         // Create compilation queue.
