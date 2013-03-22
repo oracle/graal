@@ -53,6 +53,10 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
         super(StampFactory.dependency());
     }
 
+    protected BeginNode(Stamp stamp) {
+        super(stamp);
+    }
+
     public static BeginNode begin(FixedNode with) {
         if (with instanceof BeginNode) {
             return (BeginNode) with;

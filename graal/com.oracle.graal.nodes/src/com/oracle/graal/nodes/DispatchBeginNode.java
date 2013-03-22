@@ -22,9 +22,17 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.nodes.type.*;
+
 /**
  * The entry node of an exception dispatcher block.
  */
 public class DispatchBeginNode extends BeginStateSplitNode {
 
+    public DispatchBeginNode() {
+    }
+
+    protected DispatchBeginNode(Stamp stamp) {
+        super(stamp);
+    }
 }
