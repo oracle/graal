@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -89,17 +87,11 @@ public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
     @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, Object expected, Object newValue) {
-        return unsafe.compareAndSwapObject(object, displacement + offset, expected, newValue);
-    }
+    public static native boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, Object expected, Object newValue);
 
     @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, long expected, long newValue) {
-        return unsafe.compareAndSwapLong(object, displacement + offset, expected, newValue);
-    }
+    public static native boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, long expected, long newValue);
 
     @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, int expected, int newValue) {
-        return unsafe.compareAndSwapInt(object, displacement + offset, expected, newValue);
-    }
+    public static native boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, int expected, int newValue);
 }

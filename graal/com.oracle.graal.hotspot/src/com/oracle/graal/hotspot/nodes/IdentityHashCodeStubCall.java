@@ -52,7 +52,5 @@ public class IdentityHashCodeStubCall extends FixedWithNextNode implements LIRGe
     }
 
     @NodeIntrinsic
-    public static int call(Object object) {
-        return System.identityHashCode(object);
-    }
+    public static native int call(Object object);
 }

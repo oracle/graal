@@ -31,9 +31,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-/**
- * Searches a value for the least-significant set bit.
- */
 public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable, Canonicalizable {
 
     @Input private ValueNode value;
@@ -57,16 +54,7 @@ public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable,
     }
 
     @NodeIntrinsic
-    public static int scan(long v) {
-        if (v == 0) {
-            return -1;
-        }
-        int index = 0;
-        while (((1L << index) & v) == 0) {
-            ++index;
-        }
-        return index;
-    }
+    public static native int scan(long v);
 
     @Override
     public void generate(LIRGenerator gen) {
