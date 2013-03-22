@@ -187,9 +187,20 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
     }
 
     private boolean isTypeCompatible(TypeMirror originalType, TypeMirror substitutionType) {
-        TypeMirror original = env.getTypeUtils().erasure(originalType);
-        TypeMirror substitution = env.getTypeUtils().erasure(substitutionType);
+        TypeMirror original = originalType;
+        TypeMirror substitution = substitutionType;
+        if (needsErasure(original)) {
+            original = env.getTypeUtils().erasure(original);
+        }
+        if (needsErasure(substitution)) {
+            substitution = env.getTypeUtils().erasure(substitution);
+        }
         return env.getTypeUtils().isSameType(original, substitution);
+    }
+
+    private static boolean needsErasure(TypeMirror typeMirror) {
+        return typeMirror.getKind() != TypeKind.NONE && typeMirror.getKind() != TypeKind.VOID && !typeMirror.getKind().isPrimitive() && typeMirror.getKind() != TypeKind.OTHER &&
+                        typeMirror.getKind() != TypeKind.NULL;
     }
 
     private static TypeElement findEnclosingClass(Element element) {
