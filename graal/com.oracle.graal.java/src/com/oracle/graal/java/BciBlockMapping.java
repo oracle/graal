@@ -782,6 +782,14 @@ public final class BciBlockMapping {
         stream.setBCI(block.startBci);
         while (stream.currentBCI() <= block.endBci) {
             switch (stream.currentBC()) {
+                case RETURN:
+                    if (method.isConstructor() && MetaUtil.isJavaLangObject(method.getDeclaringClass())) {
+                        // return from Object.init implicitly registers a finalizer
+                        // for the receiver if needed, so keep it alive.
+                        loadOne(block, 0);
+                    }
+                    break;
+
                 case LLOAD:
                 case DLOAD:
                     loadTwo(block, stream.readLocalIndex());

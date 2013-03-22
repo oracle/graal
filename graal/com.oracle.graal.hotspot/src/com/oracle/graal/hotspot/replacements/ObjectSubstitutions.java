@@ -27,7 +27,6 @@ import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
@@ -46,11 +45,6 @@ public class ObjectSubstitutions {
     @MethodSubstitution(isStatic = false)
     public static int hashCode(final Object thisObj) {
         return computeHashCode(thisObj);
-    }
-
-    @MethodSubstitution(value = "<init>", isStatic = false)
-    public static void init(Object thisObj) {
-        RegisterFinalizerNode.register(thisObj);
     }
 
     @MacroSubstitution(macro = ObjectCloneNode.class, isStatic = false)
