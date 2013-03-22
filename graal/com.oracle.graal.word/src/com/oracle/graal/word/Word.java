@@ -69,11 +69,17 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     }
      // @formatter:on
 
-    private static Word box(long val) {
-        return HostedWord.box(val);
+    public static Word box(long val) {
+        return HostedWord.boxLong(val);
+    }
+
+    public static Word boxObj(Object obj) {
+        return new HostedWord(obj);
     }
 
     protected abstract long unbox();
+
+    protected abstract Object unboxObj();
 
     private static Word intParam(int val) {
         return box(val);
@@ -1052,13 +1058,22 @@ final class HostedWord extends Word {
         }
     }
 
+    private static final Object NULL = new Object();
+
     private final long rawValue;
+    private final Object obj;
 
     private HostedWord(long rawValue) {
         this.rawValue = rawValue;
+        this.obj = null;
     }
 
-    protected static Word box(long val) {
+    public HostedWord(Object obj) {
+        this.rawValue = 0L;
+        this.obj = obj == null ? NULL : obj;
+    }
+
+    protected static Word boxLong(long val) {
         if (val >= SMALL_FROM && val <= SMALL_TO) {
             return smallCache[(int) val - SMALL_FROM];
         }
@@ -1067,11 +1082,27 @@ final class HostedWord extends Word {
 
     @Override
     protected long unbox() {
+        assert obj == null;
         return rawValue;
+    }
+
+    @Override
+    protected Object unboxObj() {
+        assert obj != null;
+        return obj == NULL ? null : obj;
     }
 
     @Override
     public String toString() {
         return "Word<" + rawValue + ">";
+    }
+
+    @Override
+    public Object readObject(WordBase offset, Object locationIdentity) {
+        if (obj != null) {
+            return unsafe.getObject(unboxObj(), ((Word) offset).unbox());
+        } else {
+            return unsafe.getObject(null, add((Word) offset).unbox());
+        }
     }
 }

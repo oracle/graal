@@ -113,5 +113,23 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
     }
 
     @NodeIntrinsic
-    public static native double compute(double x, @ConstantNodeParameter Operation op);
+    public static double compute(double value, @ConstantNodeParameter Operation op) {
+        switch (op) {
+            case ABS:
+                return Math.abs(value);
+            case SQRT:
+                return Math.sqrt(value);
+            case LOG:
+                return Math.log(value);
+            case LOG10:
+                return Math.log10(value);
+            case SIN:
+                return Math.sin(value);
+            case COS:
+                return Math.cos(value);
+            case TAN:
+                return Math.tan(value);
+        }
+        throw new GraalInternalError("unknown op %s", op);
+    }
 }

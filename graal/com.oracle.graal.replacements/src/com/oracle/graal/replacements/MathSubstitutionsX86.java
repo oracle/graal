@@ -96,5 +96,14 @@ public class MathSubstitutionsX86 {
     public static final Descriptor ARITHMETIC_TAN = new Descriptor("arithmeticTan", false, double.class, double.class);
 
     @NodeIntrinsic(value = RuntimeCallNode.class, setStampFromReturnType = true)
-    public static native double callDouble(@ConstantNodeParameter Descriptor descriptor, double value);
+    public static double callDouble(@ConstantNodeParameter Descriptor descriptor, double value) {
+        if (descriptor == ARITHMETIC_SIN) {
+            return Math.sin(value);
+        }
+        if (descriptor == ARITHMETIC_COS) {
+            return Math.cos(value);
+        }
+        assert descriptor == ARITHMETIC_TAN;
+        return Math.tan(value);
+    }
 }

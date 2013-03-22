@@ -152,7 +152,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                     // to be valid for the entire run of the VM.
                     Assumptions assumptions = new Assumptions(false);
                     ReplacementsInstaller installer = new HotSpotReplacementsInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
-                    GraalIntrinsics.installIntrinsics(installer);
+                    GraalMethodSubstitutions.installIntrinsics(installer);
                     runtime.installReplacements(graalRuntime.getBackend(), installer, assumptions);
                 }
             });

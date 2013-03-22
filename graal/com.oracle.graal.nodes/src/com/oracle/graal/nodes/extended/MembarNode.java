@@ -52,6 +52,8 @@ public class MembarNode extends FixedWithNextNode implements LIRLowerable, Memor
         generator.emitMembar(barriers);
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void memoryBarrier(@ConstantNodeParameter int barriers);
+    public static void memoryBarrier(@ConstantNodeParameter int barriers) {
+    }
 }
