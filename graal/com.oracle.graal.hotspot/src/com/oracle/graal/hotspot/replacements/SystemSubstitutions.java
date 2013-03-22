@@ -65,11 +65,5 @@ public class SystemSubstitutions {
     }
 
     @NodeIntrinsic(value = RuntimeCallNode.class, setStampFromReturnType = true)
-    public static long callLong(@ConstantNodeParameter Descriptor descriptor) {
-        if (descriptor == JAVA_TIME_MILLIS) {
-            return System.currentTimeMillis();
-        }
-        assert descriptor == JAVA_TIME_NANOS;
-        return System.nanoTime();
-    }
+    public static native long callLong(@ConstantNodeParameter Descriptor descriptor);
 }

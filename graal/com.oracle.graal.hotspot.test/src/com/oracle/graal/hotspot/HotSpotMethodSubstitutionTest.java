@@ -25,23 +25,17 @@ package com.oracle.graal.hotspot;
 import org.junit.*;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.replacements.*;
 
 /**
  * Tests HotSpot specific {@link MethodSubstitution}s.
  */
-public class HotSpotMethodSubstitutionsTest extends MethodSubstitutionTest {
+public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
 
     @Test
     public void testObjectSubstitutions() {
         test("getClass_");
         test("objectHashCode");
-
-        Object obj = new Object();
-
-        assertEquals("a string".getClass(), ObjectSubstitutions.getClass("a string"));
-        assertEquals(obj.hashCode(), ObjectSubstitutions.hashCode(obj));
     }
 
     @SuppressWarnings("all")
@@ -63,18 +57,6 @@ public class HotSpotMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("isPrimitive");
         test("getSuperClass");
         test("getComponentType");
-
-        for (Class c : new Class[]{getClass(), Cloneable.class, int[].class, String[][].class}) {
-            assertEquals(c.getModifiers(), ClassSubstitutions.getModifiers(c));
-            assertEquals(c.isInterface(), ClassSubstitutions.isInterface(c));
-            assertEquals(c.isArray(), ClassSubstitutions.isArray(c));
-            assertEquals(c.isPrimitive(), ClassSubstitutions.isPrimitive(c));
-            assertEquals(c.getSuperclass(), ClassSubstitutions.getSuperclass(c));
-            assertEquals(c.getComponentType(), ClassSubstitutions.getComponentType(c));
-            for (Object o : new Object[]{this, new int[5], new String[2][], new Object()}) {
-                assertEquals(c.isInstance(o), ClassSubstitutions.isInstance(c, o));
-            }
-        }
     }
 
     @SuppressWarnings("all")
@@ -117,10 +99,6 @@ public class HotSpotMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("currentThread");
         test("threadIsInterrupted");
         test("threadInterrupted");
-
-        Thread currentThread = Thread.currentThread();
-        assertEquals(currentThread, ThreadSubstitutions.currentThread());
-        assertEquals(currentThread.isInterrupted(), ThreadSubstitutions.isInterrupted(currentThread, false));
     }
 
     @SuppressWarnings("all")
@@ -142,12 +120,6 @@ public class HotSpotMethodSubstitutionsTest extends MethodSubstitutionTest {
     public void testSystemSubstitutions() {
         test("systemTime");
         test("systemIdentityHashCode");
-
-        SystemSubstitutions.currentTimeMillis();
-        SystemSubstitutions.nanoTime();
-        for (Object o : new Object[]{this, new int[5], new String[2][], new Object()}) {
-            assertEquals(System.identityHashCode(o), SystemSubstitutions.identityHashCode(o));
-        }
     }
 
     @SuppressWarnings("all")
