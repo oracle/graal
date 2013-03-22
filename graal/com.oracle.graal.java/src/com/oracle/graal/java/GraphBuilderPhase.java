@@ -1116,12 +1116,17 @@ public class GraphBuilderPhase extends Phase {
             returnType = returnType.resolve(targetMethod.getDeclaringClass());
         }
         MethodCallTargetNode callTarget = currentGraph.add(new MethodCallTargetNode(invokeKind, targetMethod, args, returnType));
+        createInvokeNode(callTarget, resultType);
+    }
+
+    protected Invoke createInvokeNode(MethodCallTargetNode callTarget, Kind resultType) {
         // be conservative if information was not recorded (could result in endless recompiles
         // otherwise)
         if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == ExceptionSeen.FALSE)) {
-            ValueNode result = appendWithBCI(currentGraph.add(new InvokeNode(callTarget, bci())));
+            InvokeNode invoke = new InvokeNode(callTarget, bci());
+            ValueNode result = appendWithBCI(currentGraph.add(invoke));
             frameState.pushReturn(resultType, result);
-
+            return invoke;
         } else {
             ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) handleException(null, bci());
             InvokeWithExceptionNode invoke = currentGraph.add(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
@@ -1134,6 +1139,7 @@ public class GraphBuilderPhase extends Phase {
 
             invoke.setNext(createTarget(nextBlock, frameState));
             invoke.setStateAfter(frameState.create(nextBlock.startBci));
+            return invoke;
         }
     }
 
