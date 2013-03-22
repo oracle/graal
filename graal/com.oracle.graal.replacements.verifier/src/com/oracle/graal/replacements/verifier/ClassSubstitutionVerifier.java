@@ -71,16 +71,19 @@ public final class ClassSubstitutionVerifier extends AbstractVerifier {
         TypeMirror type = resolveAnnotationValue(TypeMirror.class, typeValue);
         String className = resolveAnnotationValue(String.class, stringValue);
         boolean optional = resolveAnnotationValue(Boolean.class, optionalValue);
-        if (!classSubstition.getAnnotationType().equals(type)) {
+
+        if (type.getKind() != TypeKind.DECLARED) {
+            env.getMessager().printMessage(Kind.ERROR, "The provided class must be a declared type.", sourceElement, classSubstition, typeValue);
+            return null;
+        }
+
+        if (!classSubstition.getAnnotationType().asElement().equals(((DeclaredType) type).asElement())) {
             if (!className.equals(STRING_VALUE_DEFAULT)) {
                 String msg = "The usage of value and className is exclusive.";
                 env.getMessager().printMessage(Kind.ERROR, msg, sourceElement, classSubstition, stringValue);
                 env.getMessager().printMessage(Kind.ERROR, msg, sourceElement, classSubstition, typeValue);
             }
-            if (type.getKind() != TypeKind.DECLARED) {
-                env.getMessager().printMessage(Kind.ERROR, "The provided class must be a declared type.", sourceElement, classSubstition, typeValue);
-                return null;
-            }
+
             return (TypeElement) ((DeclaredType) type).asElement();
         }
 
