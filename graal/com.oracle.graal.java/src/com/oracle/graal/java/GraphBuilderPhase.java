@@ -385,25 +385,20 @@ public class GraphBuilderPhase extends Phase {
         FrameStateBuilder dispatchState = frameState.copy();
         dispatchState.clearStack();
 
-        DispatchBeginNode dispatchBegin = currentGraph.add(new DispatchBeginNode());
-        dispatchBegin.setStateAfter(dispatchState.create(bci));
-
+        DispatchBeginNode dispatchBegin;
         if (exceptionObject == null) {
-            ExceptionObjectNode newExceptionObject = currentGraph.add(new ExceptionObjectNode(runtime));
-            dispatchState.apush(newExceptionObject);
+            dispatchBegin = currentGraph.add(new ExceptionObjectNode(runtime));
+            dispatchState.apush(dispatchBegin);
             dispatchState.setRethrowException(true);
-            newExceptionObject.setStateAfter(dispatchState.create(bci));
-
-            FixedNode target = createTarget(dispatchBlock, dispatchState);
-            dispatchBegin.setNext(newExceptionObject);
-            newExceptionObject.setNext(target);
+            dispatchBegin.setStateAfter(dispatchState.create(bci));
         } else {
+            dispatchBegin = currentGraph.add(new DispatchBeginNode());
+            dispatchBegin.setStateAfter(dispatchState.create(bci));
             dispatchState.apush(exceptionObject);
             dispatchState.setRethrowException(true);
-
-            FixedNode target = createTarget(dispatchBlock, dispatchState);
-            dispatchBegin.setNext(target);
         }
+        FixedNode target = createTarget(dispatchBlock, dispatchState);
+        dispatchBegin.setNext(target);
         return dispatchBegin;
     }
 
@@ -1128,7 +1123,7 @@ public class GraphBuilderPhase extends Phase {
             frameState.pushReturn(resultType, result);
 
         } else {
-            DispatchBeginNode exceptionEdge = handleException(null, bci());
+            ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) handleException(null, bci());
             InvokeWithExceptionNode invoke = currentGraph.add(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
             ValueNode result = append(invoke);
             frameState.pushReturn(resultType, result);

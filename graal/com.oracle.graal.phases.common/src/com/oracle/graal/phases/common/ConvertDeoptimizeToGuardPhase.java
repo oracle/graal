@@ -99,10 +99,6 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         // We could not convert the control split - at least cut off control flow after the split.
         FixedWithNextNode deoptPred = deoptBegin;
         FixedNode next = deoptPred.next();
-        if (next instanceof ExceptionObjectNode) {
-            deoptPred = (FixedWithNextNode) next;
-            next = deoptPred.next();
-        }
 
         if (next != deopt) {
             DeoptimizeNode newDeoptNode = (DeoptimizeNode) deopt.clone(graph);
