@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.util.*;
 public class InvokeWithExceptionNode extends ControlSplitNode implements Node.IterableNodeType, Invoke, MemoryCheckpoint, LIRLowerable {
 
     @Successor private BeginNode next;
-    @Successor private DispatchBeginNode exceptionEdge;
+    @Successor private ExceptionObjectNode exceptionEdge;
     @Input private final CallTargetNode callTarget;
     @Input private FrameState stateAfter;
     private final int bci;
@@ -43,7 +43,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     private boolean useForInlining;
     private double inliningRelevance;
 
-    public InvokeWithExceptionNode(CallTargetNode callTarget, DispatchBeginNode exceptionEdge, int bci) {
+    public InvokeWithExceptionNode(CallTargetNode callTarget, ExceptionObjectNode exceptionEdge, int bci) {
         super(callTarget.returnStamp());
         this.exceptionEdge = exceptionEdge;
         this.bci = bci;
@@ -53,11 +53,11 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         this.inliningRelevance = Double.NaN;
     }
 
-    public DispatchBeginNode exceptionEdge() {
+    public ExceptionObjectNode exceptionEdge() {
         return exceptionEdge;
     }
 
-    public void setExceptionEdge(DispatchBeginNode x) {
+    public void setExceptionEdge(ExceptionObjectNode x) {
         updatePredecessor(exceptionEdge, x);
         exceptionEdge = x;
     }
