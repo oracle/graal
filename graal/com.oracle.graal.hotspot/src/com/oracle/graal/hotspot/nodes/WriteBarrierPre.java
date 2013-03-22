@@ -32,13 +32,13 @@ public final class WriteBarrierPre extends FixedWithNextNode implements Lowerabl
     @Input private ValueNode object;
     @Input private LocationNode location;
     @Input private ValueNode expectedObject;
-    private boolean doLoad;
+    private final boolean doLoad;
 
-    public ValueNode object() {
+    public ValueNode getObject() {
         return object;
     }
 
-    public ValueNode expectedObject() {
+    public ValueNode getExpectedObject() {
         return expectedObject;
     }
 
@@ -46,7 +46,7 @@ public final class WriteBarrierPre extends FixedWithNextNode implements Lowerabl
         return doLoad;
     }
 
-    public LocationNode location() {
+    public LocationNode getLocation() {
         return location;
     }
 

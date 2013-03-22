@@ -32,17 +32,17 @@ public final class WriteBarrierPost extends FixedWithNextNode implements Lowerab
     @Input private ValueNode object;
     @Input private ValueNode value;
     @Input private LocationNode location;
-    private boolean precise;
+    private final boolean precise;
 
-    public ValueNode object() {
+    public ValueNode getObject() {
         return object;
     }
 
-    public ValueNode value() {
+    public ValueNode getValue() {
         return value;
     }
 
-    public LocationNode location() {
+    public LocationNode getLocation() {
         return location;
     }
 

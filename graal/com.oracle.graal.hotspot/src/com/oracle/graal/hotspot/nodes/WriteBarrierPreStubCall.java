@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public class WriteBarrierPreStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
-    @Input private final ValueNode object;
+    @Input private ValueNode object;
     public static final Descriptor WBPRECALL = new Descriptor("wbprecall", true, void.class, Object.class);
 
     public WriteBarrierPreStubCall(ValueNode object) {

@@ -185,9 +185,9 @@ public class WriteBarrierSnippets implements SnippetsInterface {
             Key key = new Key(method);
             key.add("doLoad", writeBarrierPre.doLoad());
             Arguments arguments = new Arguments();
-            arguments.add("object", writeBarrierPre.object());
-            arguments.add("expectedObject", writeBarrierPre.expectedObject());
-            arguments.add("location", writeBarrierPre.location());
+            arguments.add("object", writeBarrierPre.getObject());
+            arguments.add("expectedObject", writeBarrierPre.getExpectedObject());
+            arguments.add("location", writeBarrierPre.getLocation());
             SnippetTemplate template = cache.get(key, assumptions);
             template.instantiate(runtime, writeBarrierPre, DEFAULT_REPLACER, arguments);
         }
@@ -197,9 +197,9 @@ public class WriteBarrierSnippets implements SnippetsInterface {
             Key key = new Key(method);
             key.add("usePrecise", writeBarrierPost.usePrecise());
             Arguments arguments = new Arguments();
-            arguments.add("object", writeBarrierPost.object());
-            arguments.add("location", writeBarrierPost.location());
-            arguments.add("value", writeBarrierPost.value());
+            arguments.add("object", writeBarrierPost.getObject());
+            arguments.add("location", writeBarrierPost.getLocation());
+            arguments.add("value", writeBarrierPost.getValue());
             SnippetTemplate template = cache.get(key, assumptions);
             template.instantiate(runtime, writeBarrierPost, DEFAULT_REPLACER, arguments);
         }

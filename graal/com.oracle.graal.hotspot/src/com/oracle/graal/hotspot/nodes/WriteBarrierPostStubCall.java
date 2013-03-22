@@ -35,8 +35,8 @@ import com.oracle.graal.word.*;
  */
 public class WriteBarrierPostStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
-    @Input private final ValueNode object;
-    @Input private final ValueNode card;
+    @Input private ValueNode object;
+    @Input private ValueNode card;
     public static final Descriptor WBPOSTCALL = new Descriptor("wbpostcall", true, void.class, Object.class, Word.class);
 
     public WriteBarrierPostStubCall(ValueNode object, ValueNode card) {
