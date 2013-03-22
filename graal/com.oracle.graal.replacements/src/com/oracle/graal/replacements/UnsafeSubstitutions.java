@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.api.code.*;
+import static com.oracle.graal.api.code.MemoryBarriers.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.extended.*;
@@ -57,9 +58,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static Object getObjectVolatile(final Object thisObj, Object o, long offset) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_READ);
         Object result = getObject(thisObj, o, offset);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_READ);
         return result;
     }
 
@@ -70,16 +71,16 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static void putObjectVolatile(final Object thisObj, Object o, long offset, Object x) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_WRITE);
         putObject(thisObj, o, offset, x);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
     public static void putOrderedObject(final Object thisObj, Object o, long offset, Object x) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_WRITE);
         putObject(thisObj, o, offset, x);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
@@ -90,9 +91,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static int getIntVolatile(final Object thisObj, Object o, long offset) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_READ);
         int result = getInt(thisObj, o, offset);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_READ);
         return result;
     }
 
@@ -103,16 +104,16 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static void putIntVolatile(final Object thisObj, Object o, long offset, int x) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_WRITE);
         putInt(thisObj, o, offset, x);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
     public static void putOrderedInt(final Object thisObj, Object o, long offset, int x) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_WRITE);
         putInt(thisObj, o, offset, x);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
@@ -124,9 +125,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static boolean getBooleanVolatile(final Object thisObj, Object o, long offset) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_READ);
         boolean result = getBoolean(thisObj, o, offset);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_READ);
         return result;
     }
 
@@ -137,9 +138,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static void putBooleanVolatile(final Object thisObj, Object o, long offset, boolean x) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_WRITE);
         putBoolean(thisObj, o, offset, x);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
@@ -151,9 +152,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static byte getByteVolatile(final Object thisObj, Object o, long offset) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_READ);
         byte result = getByte(thisObj, o, offset);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_READ);
         return result;
     }
 
@@ -164,9 +165,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static void putByteVolatile(final Object thisObj, Object o, long offset, byte x) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_WRITE);
         putByte(thisObj, o, offset, x);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
@@ -178,9 +179,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static short getShortVolatile(final Object thisObj, Object o, long offset) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_READ);
         short result = getShort(thisObj, o, offset);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_READ);
         return result;
     }
 
@@ -191,9 +192,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static void putShortVolatile(final Object thisObj, Object o, long offset, short x) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_WRITE);
         putShort(thisObj, o, offset, x);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
@@ -205,9 +206,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static char getCharVolatile(final Object thisObj, Object o, long offset) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_READ);
         char result = getChar(thisObj, o, offset);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_READ);
         return result;
     }
 
@@ -218,9 +219,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static void putCharVolatile(final Object thisObj, Object o, long offset, char x) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_WRITE);
         putChar(thisObj, o, offset, x);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
@@ -232,9 +233,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static long getLongVolatile(final Object thisObj, Object o, long offset) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_READ);
         long result = getLong(thisObj, o, offset);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_READ);
         return result;
     }
 
@@ -245,16 +246,16 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static void putLongVolatile(final Object thisObj, Object o, long offset, long x) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_WRITE);
         putLong(thisObj, o, offset, x);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
     public static void putOrderedLong(final Object thisObj, Object o, long offset, long x) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_WRITE);
         putLong(thisObj, o, offset, x);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
@@ -266,9 +267,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static float getFloatVolatile(final Object thisObj, Object o, long offset) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_READ);
         float result = getFloat(thisObj, o, offset);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_READ);
         return result;
     }
 
@@ -279,9 +280,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static void putFloatVolatile(final Object thisObj, Object o, long offset, float x) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_WRITE);
         putFloat(thisObj, o, offset, x);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
@@ -293,9 +294,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static double getDoubleVolatile(final Object thisObj, Object o, long offset) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_READ);
         double result = getDouble(thisObj, o, offset);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_READ);
         return result;
     }
 
@@ -306,9 +307,9 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static void putDoubleVolatile(final Object thisObj, Object o, long offset, double x) {
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_PRE_VOLATILE_WRITE);
         putDouble(thisObj, o, offset, x);
-        MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_WRITE);
+        MembarNode.memoryBarrier(JMM_POST_VOLATILE_WRITE);
     }
 
     @MethodSubstitution(isStatic = false)
