@@ -86,9 +86,6 @@ public abstract class Node implements Cloneable, Formattable {
      * annotated method can be replaced with an instance of the node class denoted by
      * {@link #value()}. For this reason, the signature of the annotated method must match the
      * signature of a constructor in the node class.
-     * <p>
-     * All methods annotated with this annotation must be declared native to ensure they throw a
-     * {@link UnsatisfiedLinkError} if called by non-Graal compiled code.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)

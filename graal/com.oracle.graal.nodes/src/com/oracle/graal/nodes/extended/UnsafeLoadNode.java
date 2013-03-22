@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import static com.oracle.graal.graph.UnsafeAccess.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -93,6 +95,34 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
         return this;
     }
 
+    @SuppressWarnings("unchecked")
     @NodeIntrinsic
-    public static native <T> T load(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind kind);
+    public static <T> T load(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind kind) {
+        if (kind == Kind.Boolean) {
+            return (T) (Boolean) unsafe.getBoolean(object, displacement + offset);
+        }
+        if (kind == Kind.Byte) {
+            return (T) (Byte) unsafe.getByte(object, displacement + offset);
+        }
+        if (kind == Kind.Short) {
+            return (T) (Short) unsafe.getShort(object, displacement + offset);
+        }
+        if (kind == Kind.Char) {
+            return (T) (Character) unsafe.getChar(object, displacement + offset);
+        }
+        if (kind == Kind.Int) {
+            return (T) (Integer) unsafe.getInt(object, displacement + offset);
+        }
+        if (kind == Kind.Float) {
+            return (T) (Float) unsafe.getFloat(object, displacement + offset);
+        }
+        if (kind == Kind.Long) {
+            return (T) (Long) unsafe.getLong(object, displacement + offset);
+        }
+        if (kind == Kind.Double) {
+            return (T) (Double) unsafe.getDouble(object, displacement + offset);
+        }
+        assert kind == Kind.Object;
+        return (T) unsafe.getObject(object, displacement + offset);
+    }
 }

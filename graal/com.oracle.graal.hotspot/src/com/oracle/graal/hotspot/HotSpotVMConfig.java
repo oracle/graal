@@ -129,11 +129,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int threadObjectOffset;
 
     /**
-     * The value of JavaThread::osthread_offset().
-     */
-    public int osThreadOffset;
-
-    /**
      * The value of OSThread::interrupted_offset().
      */
     public int osThreadInterruptedOffset;

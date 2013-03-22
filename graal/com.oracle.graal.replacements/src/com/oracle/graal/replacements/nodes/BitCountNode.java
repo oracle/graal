@@ -54,10 +54,14 @@ public class BitCountNode extends FloatingNode implements LIRGenLowerable, Canon
     }
 
     @NodeIntrinsic
-    public static native int bitCount(int v);
+    public static int bitCount(int v) {
+        return Integer.bitCount(v);
+    }
 
     @NodeIntrinsic
-    public static native int bitCount(long v);
+    public static int bitCount(long v) {
+        return Long.bitCount(v);
+    }
 
     @Override
     public void generate(LIRGenerator gen) {

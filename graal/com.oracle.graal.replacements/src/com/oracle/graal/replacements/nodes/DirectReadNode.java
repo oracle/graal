@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import static com.oracle.graal.graph.UnsafeAccess.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -48,6 +50,31 @@ public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
         gen.setResult(this, gen.emitLoad(readKind, gen.operand(address), 0, Value.ILLEGAL, 0, false));
     }
 
+    @SuppressWarnings("unchecked")
     @NodeIntrinsic
-    public static native <T> T read(long address, @ConstantNodeParameter Kind kind);
+    public static <T> T read(long address, @ConstantNodeParameter Kind kind) {
+        if (kind == Kind.Boolean) {
+            return (T) Boolean.valueOf(unsafe.getByte(address) != 0);
+        }
+        if (kind == Kind.Byte) {
+            return (T) (Byte) unsafe.getByte(address);
+        }
+        if (kind == Kind.Short) {
+            return (T) (Short) unsafe.getShort(address);
+        }
+        if (kind == Kind.Char) {
+            return (T) (Character) unsafe.getChar(address);
+        }
+        if (kind == Kind.Int) {
+            return (T) (Integer) unsafe.getInt(address);
+        }
+        if (kind == Kind.Float) {
+            return (T) (Float) unsafe.getFloat(address);
+        }
+        if (kind == Kind.Long) {
+            return (T) (Long) unsafe.getLong(address);
+        }
+        assert kind == Kind.Double;
+        return (T) (Double) unsafe.getDouble(address);
+    }
 }
