@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Reads an {@linkplain AccessNode accessed} value.
  */
-public final class ReadNode extends AccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
+public final class ReadNode extends FloatableAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
 
     public ReadNode(ValueNode object, ValueNode location, Stamp stamp) {
         super(object, location, stamp);
@@ -63,6 +63,11 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         return canonicalizeRead(this, location(), object(), tool);
+    }
+
+    @Override
+    public FloatingAccessNode asFloatingNode(ValueNode lastLocationAccess) {
+        return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), dependencies()));
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool) {
