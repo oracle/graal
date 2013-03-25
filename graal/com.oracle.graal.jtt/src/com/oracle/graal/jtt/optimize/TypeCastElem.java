@@ -135,10 +135,6 @@ public class TypeCastElem extends JTTTest {
         return result;
     }
 
-    public static void main(String[] args) {
-        System.out.println(test(10, 13, 25));
-    }
-
     @Test
     public void run0() throws Throwable {
         runTest("test", 10, 13, 25);

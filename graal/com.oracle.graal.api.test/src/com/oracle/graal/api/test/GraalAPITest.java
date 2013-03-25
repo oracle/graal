@@ -33,12 +33,10 @@ public class GraalAPITest {
     @Test
     public void testRuntimeAvailable() {
         assertNotNull(Graal.getRuntime());
-        System.out.println(Graal.getRuntime().getClass());
     }
 
     @Test
     public void testRuntimeNamed() {
         assertNotNull(Graal.getRuntime().getName());
-        System.out.println(Graal.getRuntime().getName());
     }
 }

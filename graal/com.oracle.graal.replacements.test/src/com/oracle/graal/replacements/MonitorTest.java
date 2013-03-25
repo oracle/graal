@@ -174,8 +174,6 @@ public class MonitorTest extends GraalCompilerTest {
     }
 
     public static String copyObj(Chars src, Chars dst, int n) {
-        System.out.println(Thread.currentThread().getName() + " reps=" + n + ", src.length=" + src.data.length);
-        int total = 0;
         for (int j = 0; j < n; j++) {
             for (int i = 0; i < src.data.length; i++) {
                 synchronized (src) {
@@ -183,20 +181,16 @@ public class MonitorTest extends GraalCompilerTest {
                         synchronized (src) {
                             synchronized (dst) {
                                 dst.data[i] = src.data[i];
-                                total++;
                             }
                         }
                     }
                 }
             }
         }
-        System.out.println(Thread.currentThread().getName() + " total " + total);
         return new String(dst.data);
     }
 
     public static String copyArr(char[] src, char[] dst, int n) {
-        System.out.println(Thread.currentThread().getName() + " reps=" + n + ", src.length=" + src.length);
-        int total = 0;
         for (int j = 0; j < n; j++) {
             for (int i = 0; i < src.length; i++) {
                 synchronized (src) {
@@ -204,14 +198,12 @@ public class MonitorTest extends GraalCompilerTest {
                         synchronized (src) {
                             synchronized (dst) {
                                 dst[i] = src[i];
-                                total++;
                             }
                         }
                     }
                 }
             }
         }
-        System.out.println(Thread.currentThread().getName() + " total " + total);
         return new String(dst);
     }
 }

@@ -86,7 +86,6 @@ public class PTXBackend extends Backend {
 
         Signature signature = method.getSignature();
         for (int i = 0; i < signature.getParameterCount(false); i++) {
-            System.err.println(i + ": " + signature.getParameterKind(i));
             String param = ".param .u32 param" + i;
             codeBuffer.emitString(param);
         }
@@ -104,8 +103,5 @@ public class PTXBackend extends Backend {
         // Emit the epilogue
         codeBuffer.emitString0("}");
         codeBuffer.emitString("");
-
-        byte[] data = codeBuffer.copyData(0, codeBuffer.position());
-        System.err.println(new String(data));
     }
 }
