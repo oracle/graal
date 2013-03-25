@@ -43,6 +43,6 @@ public class LoopTest extends AbstractTest {
 
     @Test
     public void test() {
-        executeSL(INPUT, OUTPUT, true);
+        executeSL(INPUT, OUTPUT, false);
     }
 }

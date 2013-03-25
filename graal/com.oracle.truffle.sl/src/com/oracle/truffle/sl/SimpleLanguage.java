@@ -36,7 +36,9 @@ public class SimpleLanguage {
     }
 
     public static void run(InputStream input, PrintStream printOutput, int repeats, boolean log) {
-        System.out.printf("== running on %s\n", Truffle.getRuntime().getName());
+        if (log) {
+            System.out.printf("== running on %s\n", Truffle.getRuntime().getName());
+        }
 
         NodeFactory factory = new NodeFactory(printOutput);
 

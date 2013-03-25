@@ -57,7 +57,7 @@ public class AbstractTest {
         PrintStream origErr = System.err;
         System.setErr(printer);
 
-        SimpleLanguage.run(in, printer, REPEATS, true);
+        SimpleLanguage.run(in, printer, REPEATS, false);
 
         System.setErr(origErr);
         Assert.assertEquals(repeat(concat(expectedOutput), REPEATS), new String(out.toByteArray()));
