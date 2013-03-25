@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,10 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.phases.*;
-
 /**
- * Method substitutions that are VM-independent.
+ * Interface for service providers that install replacements into the compiler.
  */
-public class GraalMethodSubstitutions implements ReplacementsProvider {
+public interface ReplacementsProvider {
 
-    public void installReplacements(ReplacementsInstaller installer) {
-        if (GraalOptions.Intrinsify) {
-            installer.installSubstitutions(MathSubstitutionsX86.class);
-            installer.installSubstitutions(DoubleSubstitutions.class);
-            installer.installSubstitutions(FloatSubstitutions.class);
-            installer.installSubstitutions(NodeClassSubstitutions.class);
-            installer.installSubstitutions(LongSubstitutions.class);
-            installer.installSubstitutions(IntegerSubstitutions.class);
-            installer.installSubstitutions(UnsignedMathSubstitutions.class);
-        }
-    }
+    void installReplacements(ReplacementsInstaller installer);
 }
