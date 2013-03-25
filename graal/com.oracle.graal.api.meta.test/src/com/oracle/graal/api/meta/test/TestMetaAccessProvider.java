@@ -116,10 +116,6 @@ public class TestMetaAccessProvider {
         }
     }
 
-    static {
-        System.out.println(classes.size() + " classes");
-    }
-
     public static final List<Constant> constants = new ArrayList<>();
     static {
         for (Field f : Constant.class.getDeclaredFields()) {
@@ -147,10 +143,6 @@ public class TestMetaAccessProvider {
         constants.add(Constant.forObject(new LinkedList<>()));
         constants.add(Constant.forObject("a string"));
         constants.add(Constant.forObject(42));
-    }
-
-    static {
-        System.out.println(constants.size() + " constants");
     }
 
     @Test

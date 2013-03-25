@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import java.io.*;
+
 import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
 
@@ -29,11 +31,13 @@ import com.oracle.graal.jtt.*;
  */
 public class NCE_FlowSensitive05 extends JTTTest {
 
+    private static PrintStream ps = new PrintStream(new ByteArrayOutputStream());
+
     public static String test(Object arg) {
 
         // An artificial loop to trigger iterative NCE.
         while (arg != null) {
-            System.out.println(arg);
+            ps.println(arg);
         }
 
         // The upcast must still include the null check.

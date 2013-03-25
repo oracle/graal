@@ -37,10 +37,6 @@ public class Thread_setName extends JTTTest {
         return name2;
     }
 
-    public static void main(String[] args) throws Exception {
-        System.out.println(test("abc"));
-    }
-
     @Test
     public void run0() throws Throwable {
         runTest("test", "abc");
