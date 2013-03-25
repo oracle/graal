@@ -1128,7 +1128,7 @@ public class GraphBuilderPhase extends Phase {
             frameState.pushReturn(resultType, result);
             return invoke;
         } else {
-            ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) handleException(null, bci());
+            DispatchBeginNode exceptionEdge = handleException(null, bci());
             InvokeWithExceptionNode invoke = currentGraph.add(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
             ValueNode result = append(invoke);
             frameState.pushReturn(resultType, result);
