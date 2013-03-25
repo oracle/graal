@@ -166,13 +166,11 @@ public class Test6823354 {
     }
 
     static void check(int value, int result, int expected) {
-        //System.out.println(value + ": " + result + ", " + expected);
         if (result != expected)
             throw new InternalError(value + " failed: " + result + " != " + expected);
     }
 
     static void check(long value, long result, long expected) {
-        //System.out.println(value + ": " + result + ", " + expected);
         if (result != expected)
             throw new InternalError(value + " failed: " + result + " != " + expected);
     }

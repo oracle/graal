@@ -57,7 +57,7 @@ public class WriteBarrierSnippets implements Snippets {
             if (doLoad) {
                 previousOop = field.readWord(0);
             }
-            if (((Word) previousOop).notEqual(Word.zero())) {
+            if (previousOop.notEqual(Word.zero())) {
                 if (indexValue.notEqual(Word.zero())) {
                     Word nextIndex = indexValue.subtract(HotSpotSnippetUtils.wordSize());
                     Word logAddress = bufferAddress.add(nextIndex);
@@ -87,10 +87,10 @@ public class WriteBarrierSnippets implements Snippets {
         Word bufferAddress = thread.readWord(HotSpotSnippetUtils.g1CardQueueBufferOffset());
         Word indexAddress = thread.add(HotSpotSnippetUtils.g1CardQueueIndexOffset());
         Word indexValue = thread.readWord(HotSpotSnippetUtils.g1CardQueueIndexOffset());
-        Word xorResult = (((Word) field).xor((Word) writtenValue)).unsignedShiftRight(HotSpotSnippetUtils.logOfHRGrainBytes());
+        Word xorResult = (field.xor(writtenValue)).unsignedShiftRight(HotSpotSnippetUtils.logOfHRGrainBytes());
 
         // Card Table
-        Word cardBase = ((Word) field).unsignedShiftRight(cardTableShift());
+        Word cardBase = field.unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
         int displacement = 0;
         if (((int) startAddress) == startAddress) {

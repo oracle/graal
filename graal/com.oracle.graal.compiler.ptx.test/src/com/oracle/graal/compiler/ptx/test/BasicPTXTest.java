@@ -61,7 +61,7 @@ public class BasicPTXTest extends GraalCompilerTest {
         return array[0];
     }
 
-    private void test(String snippet) {
+    private CompilationResult test(String snippet) {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
         TargetDescription target = new TargetDescription(new PTX(), true, 1, 0, true);
@@ -72,14 +72,13 @@ public class BasicPTXTest extends GraalCompilerTest {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new PTXPhase());
         new PTXPhase().apply(graph);
         CompilationResult result = GraalCompiler.compileMethod(runtime, ptxBackend, target, graph.method(), graph, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog());
-        System.out.println("result=" + result);
+        return result;
     }
 
     private static class PTXPhase extends Phase {
 
         @Override
         protected void run(StructuredGraph graph) {
-            System.out.println("PTX phase");
             for (LocalNode local : graph.getNodes(LocalNode.class)) {
                 if (local.kind() == Kind.Object) {
                     local.setStamp(StampFactory.declaredNonNull(local.objectStamp().type()));
@@ -87,5 +86,11 @@ public class BasicPTXTest extends GraalCompilerTest {
             }
         }
 
+    }
+
+    public static void main(String[] args) {
+        BasicPTXTest basicPTXTest = new BasicPTXTest();
+        System.out.println("testAddSnippet: \n" + new String(basicPTXTest.test("testAddSnippet").getTargetCode()));
+        System.out.println("testArraySnippet: \n" + new String(basicPTXTest.test("testArraySnippet").getTargetCode()));
     }
 }

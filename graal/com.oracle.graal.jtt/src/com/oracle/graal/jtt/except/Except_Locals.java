@@ -37,7 +37,6 @@ public class Except_Locals extends JTTTest {
             x = 2;
             b.toString();
         } catch (NullPointerException e) {
-            // System.out.println(x);
             return x;
         }
         return -1;

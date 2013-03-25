@@ -634,7 +634,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             // Separate out GC barrier semantics
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
             ValueNode expected = cas.expected();
-            LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
+            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
             if (expected.kind() == Kind.Object && !cas.newValue().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = cas.object().objectStamp().type();
                 if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
@@ -655,7 +655,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         graph.addBeforeFixed(cas, writeBarrierPre);
                         graph.addAfterFixed(cas, graph.add(new WriteBarrierPost(cas.object(), cas.newValue(), location, true)));
                     } else {
-                        graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), (IndexedLocationNode) location)));
+                        graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location)));
                     }
                 }
             }
@@ -670,9 +670,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof StoreIndexedNode) {
             StoreIndexedNode storeIndexed = (StoreIndexedNode) n;
             ValueNode boundsCheck = createBoundsCheck(storeIndexed, tool);
-
             Kind elementKind = storeIndexed.elementKind();
-            LocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index());
+            IndexedLocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index());
             ValueNode value = storeIndexed.value();
             ValueNode array = storeIndexed.array();
             if (elementKind == Kind.Object && !value.objectStamp().alwaysNull()) {
@@ -707,7 +706,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                     WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(array, value, arrayLocation, true));
                     graph.addAfterFixed(memoryWrite, writeBarrierPost);
                 } else {
-                    graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, (IndexedLocationNode) arrayLocation)));
+                    graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation)));
                 }
             }
         } else if (n instanceof UnsafeLoadNode) {
