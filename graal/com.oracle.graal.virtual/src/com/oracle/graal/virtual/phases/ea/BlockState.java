@@ -83,11 +83,35 @@ class BlockState {
     }
 
     public void addReadCache(ValueNode object, Object identity, ValueNode value) {
-        readCache.put(new ReadCacheEntry(identity, object), value);
+        ValueNode cacheValue;
+        ObjectState obj = getObjectState(value);
+        if (obj != null) {
+            assert !obj.isVirtual();
+            cacheValue = obj.getMaterializedValue();
+        } else {
+            cacheValue = getScalarAlias(value);
+        }
+        ValueNode cacheObject;
+        obj = getObjectState(object);
+        if (obj != null) {
+            assert !obj.isVirtual();
+            cacheObject = obj.getMaterializedValue();
+        } else {
+            cacheObject = object;
+        }
+        readCache.put(new ReadCacheEntry(identity, cacheObject), cacheValue);
     }
 
     public ValueNode getReadCache(ValueNode object, Object identity) {
-        return readCache.get(new ReadCacheEntry(identity, object));
+        ValueNode cacheObject;
+        ObjectState obj = getObjectState(object);
+        if (obj != null) {
+            assert !obj.isVirtual();
+            cacheObject = obj.getMaterializedValue();
+        } else {
+            cacheObject = object;
+        }
+        return readCache.get(new ReadCacheEntry(identity, cacheObject));
     }
 
     public void killReadCache(Object identity) {
@@ -175,6 +199,13 @@ class BlockState {
         }
         deferred.remove(virtual);
 
+        if (virtual instanceof VirtualInstanceNode) {
+            VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
+            for (int i = 0; i < fieldState.length; i++) {
+                readCache.put(new ReadCacheEntry(instance.field(i), materialize), fieldState[i]);
+            }
+        }
+
         materializeEffects.addMaterialization(materialize, fixed, values);
     }
 
@@ -224,7 +255,64 @@ class BlockState {
         return objectStates.toString();
     }
 
-    public static BlockState meetAliasesAndCache(List<BlockState> states) {
+    public void mergeReadCache(List<BlockState> states, MergeNode merge, GraphEffectList effects) {
+        for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
+            ReadCacheEntry key = entry.getKey();
+            ValueNode value = entry.getValue();
+            boolean phi = false;
+            for (int i = 1; i < states.size(); i++) {
+                ValueNode otherValue = states.get(i).readCache.get(key);
+                if (otherValue == null) {
+                    value = null;
+                    phi = false;
+                    break;
+                }
+                if (!phi && otherValue != value) {
+                    phi = true;
+                }
+            }
+            if (phi) {
+                PhiNode phiNode = new PhiNode(value.kind(), merge);
+                effects.addFloatingNode(phiNode);
+                for (int i = 0; i < states.size(); i++) {
+                    effects.addPhiInput(phiNode, states.get(i).readCache.get(key));
+                }
+                readCache.put(key, phiNode);
+            } else if (value != null) {
+                readCache.put(key, value);
+            }
+        }
+        for (PhiNode phi : merge.phis()) {
+            if (phi.kind() == Kind.Object) {
+                for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
+                    if (entry.getKey().object == phi.valueAt(0)) {
+                        mergeReadCachePhi(phi, entry.getKey().identity, states, merge, effects);
+                    }
+                }
+
+            }
+        }
+    }
+
+    private void mergeReadCachePhi(PhiNode phi, Object identity, List<BlockState> states, MergeNode merge, GraphEffectList effects) {
+        ValueNode[] values = new ValueNode[phi.valueCount()];
+        for (int i = 0; i < phi.valueCount(); i++) {
+            ValueNode value = states.get(i).readCache.get(new ReadCacheEntry(identity, phi.valueAt(i)));
+            if (value == null) {
+                return;
+            }
+            values[i] = value;
+        }
+
+        PhiNode phiNode = new PhiNode(values[0].kind(), merge);
+        effects.addFloatingNode(phiNode);
+        for (int i = 0; i < values.length; i++) {
+            effects.addPhiInput(phiNode, values[i]);
+        }
+        readCache.put(new ReadCacheEntry(identity, phi), phiNode);
+    }
+
+    public static BlockState meetAliases(List<BlockState> states) {
         BlockState newState = new BlockState();
 
         newState.objectAliases.putAll(states.get(0).objectAliases);
@@ -251,21 +339,7 @@ class BlockState {
             }
         }
 
-        for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
-            ReadCacheEntry key = entry.getKey();
-            ValueNode value = entry.getValue();
-            for (int i = 1; i < states.size(); i++) {
-                ValueNode otherValue = states.get(i).readCache.get(key);
-                if (otherValue == null || otherValue != value) {
-                    value = null;
-                    break;
-                }
-            }
-            if (value != null) {
-                newState.readCache.put(key, value);
-            }
-        }
-
         return newState;
     }
+
 }

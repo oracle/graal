@@ -30,6 +30,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -73,15 +74,17 @@ public class PartialEscapeAnalysisPhase extends Phase {
             return;
         }
 
-        boolean analyzableNodes = false;
-        for (Node node : graph.getNodes()) {
-            if (node instanceof VirtualizableAllocation) {
-                analyzableNodes = true;
-                break;
+        if (!GraalOptions.PEAReadCache) {
+            boolean analyzableNodes = false;
+            for (Node node : graph.getNodes()) {
+                if (node instanceof VirtualizableAllocation) {
+                    analyzableNodes = true;
+                    break;
+                }
             }
-        }
-        if (!analyzableNodes) {
-            return;
+            if (!analyzableNodes) {
+                return;
+            }
         }
 
         Boolean continueIteration = true;
@@ -119,6 +122,12 @@ public class PartialEscapeAnalysisPhase extends Phase {
                     return true;
                 }
             });
+        }
+
+        for (Node node : graph.getNodes()) {
+            if (node instanceof LoadFieldNode) {
+                DynamicCounterNode.addCounterBefore("load non-elim", 1, false, (FixedNode) node);
+            }
         }
     }
 

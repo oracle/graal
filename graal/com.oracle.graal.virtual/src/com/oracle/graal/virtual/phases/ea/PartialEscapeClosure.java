@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.spi.Virtualizable.*;
+import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
@@ -108,19 +108,19 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     if (node instanceof StoreFieldNode) {
                         METRIC_STOREFIELD_RECORDED.increment();
                         StoreFieldNode store = (StoreFieldNode) node;
-                        ValueNode value = store.value();
-                        ObjectState obj = state.getObjectState(value);
-                        if (obj != null) {
-                            assert !obj.isVirtual();
-                            value = obj.getMaterializedValue();
+                        ValueNode cachedValue = state.getReadCache(store.object(), store.field());
+                        if (cachedValue == store.value()) {
+                            effects.addCounterBefore("store elim", 1, false, lastFixedNode.next());
+                            effects.deleteFixedNode(store);
+                        } else {
+                            state.addReadCache(store.object(), store.field(), store.value());
                         }
-                        value = state.getScalarAlias(value);
-                        state.addReadCache(store.object(), store.field(), value);
                     } else if (node instanceof LoadFieldNode) {
                         LoadFieldNode load = (LoadFieldNode) node;
                         ValueNode cachedValue = state.getReadCache(load.object(), load.field());
                         if (cachedValue != null) {
                             METRIC_LOADFIELD_ELIMINATED.increment();
+                            effects.addCounterBefore("load elim", 1, false, lastFixedNode.next());
                             effects.replaceAtUsages(load, cachedValue);
                             state.addScalarAlias(load, cachedValue);
                         } else {
@@ -260,7 +260,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
     @Override
     protected BlockState merge(MergeNode merge, List<BlockState> states) {
-        BlockState newState = BlockState.meetAliasesAndCache(states);
+        BlockState newState = BlockState.meetAliases(states);
 
         // Iterative processing:
         // Merging the materialized/virtual state of virtual objects can lead to new
@@ -352,12 +352,14 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                 }
             }
 
-            for (PhiNode phi : merge.phis().snapshot()) {
+            for (PhiNode phi : merge.phis()) {
                 if (usages.isMarked(phi) && phi.type() == PhiType.Value) {
                     materialized |= processPhi(newState, merge, phi, states);
                 }
             }
         } while (materialized);
+
+        newState.mergeReadCache(states, merge, effects);
 
         return newState;
     }
@@ -625,7 +627,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     }
                 }
             }
-            for (PhiNode phi : loopBegin.phis().snapshot()) {
+            for (PhiNode phi : loopBegin.phis()) {
                 if (usages.isMarked(phi) && phi.type() == PhiType.Value) {
                     ObjectState initialObj = initialState.getObjectState(phi.valueAt(0));
                     boolean initialMaterialized = initialObj == null || !initialObj.isVirtual();
