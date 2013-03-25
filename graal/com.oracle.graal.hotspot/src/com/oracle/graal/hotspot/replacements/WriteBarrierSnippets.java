@@ -45,8 +45,8 @@ public class WriteBarrierSnippets implements Snippets {
         Word thread = thread();
         Object object = FixedValueAnchorNode.getObject(obj);
         Object expectedObject = FixedValueAnchorNode.getObject(expobj);
-        Pointer field = Word.fromArray(object, location);
-        Pointer previousOop = Word.fromObject(expectedObject);
+        Word field = (Word) Word.fromArray(object, location);
+        Word previousOop = (Word) Word.fromObject(expectedObject);
         byte markingValue = thread.readByte(HotSpotSnippetUtils.g1SATBQueueMarkingOffset());
 
         Word bufferAddress = thread.readWord(HotSpotSnippetUtils.g1SATBQueueBufferOffset());
@@ -57,7 +57,7 @@ public class WriteBarrierSnippets implements Snippets {
             if (doLoad) {
                 previousOop = field.readWord(0);
             }
-            if (previousOop.notEqual(Word.zero())) {
+            if (((Word) previousOop).notEqual(Word.zero())) {
                 if (indexValue.notEqual(Word.zero())) {
                     Word nextIndex = indexValue.subtract(HotSpotSnippetUtils.wordSize());
                     Word logAddress = bufferAddress.add(nextIndex);
@@ -76,21 +76,21 @@ public class WriteBarrierSnippets implements Snippets {
         Word thread = thread();
         Object object = FixedValueAnchorNode.getObject(obj);
         Object wrObject = FixedValueAnchorNode.getObject(value);
-        Pointer oop = Word.fromObject(object);
-        Pointer field;
+        Word oop = (Word) Word.fromObject(object);
+        Word field;
         if (usePrecise) {
-            field = Word.fromArray(object, location);
+            field = (Word) Word.fromArray(object, location);
         } else {
             field = oop;
         }
-        Pointer writtenValue = Word.fromObject(wrObject);
+        Word writtenValue = (Word) Word.fromObject(wrObject);
         Word bufferAddress = thread.readWord(HotSpotSnippetUtils.g1CardQueueBufferOffset());
         Word indexAddress = thread.add(HotSpotSnippetUtils.g1CardQueueIndexOffset());
         Word indexValue = thread.readWord(HotSpotSnippetUtils.g1CardQueueIndexOffset());
-        Word xorResult = ((Word) field.xor(writtenValue)).unsignedShiftRight(HotSpotSnippetUtils.logOfHRGrainBytes());
+        Word xorResult = (((Word) field).xor((Word) writtenValue)).unsignedShiftRight(HotSpotSnippetUtils.logOfHRGrainBytes());
 
         // Card Table
-        Word cardBase = (Word) field.unsignedShiftRight(cardTableShift());
+        Word cardBase = ((Word) field).unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
         int displacement = 0;
         if (((int) startAddress) == startAddress) {
@@ -121,7 +121,7 @@ public class WriteBarrierSnippets implements Snippets {
     @Snippet
     public static void serialFieldWriteBarrier(@Parameter("object") Object object) {
         Pointer oop = Word.fromObject(object);
-        Word base = (Word) oop.unsignedShiftRight(cardTableShift());
+        Word base = ((Word) oop).unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
         int displacement = 0;
         if (((int) startAddress) == startAddress) {
@@ -135,7 +135,7 @@ public class WriteBarrierSnippets implements Snippets {
     @Snippet
     public static void serialArrayWriteBarrier(@Parameter("object") Object object, @Parameter("location") Object location) {
         Pointer oop = Word.fromArray(object, location);
-        Word base = (Word) oop.unsignedShiftRight(cardTableShift());
+        Word base = ((Word) oop).unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
         int displacement = 0;
         if (((int) startAddress) == startAddress) {
