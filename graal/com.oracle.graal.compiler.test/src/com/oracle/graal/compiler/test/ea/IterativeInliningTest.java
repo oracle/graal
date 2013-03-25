@@ -85,7 +85,6 @@ public class IterativeInliningTest extends GraalCompilerTest {
         return a.callable.call();
     }
 
-    @Ignore
     @Test
     public void testSimpleRead() {
         ValueNode result = getReturn("testSimpleReadSnippet").result();
