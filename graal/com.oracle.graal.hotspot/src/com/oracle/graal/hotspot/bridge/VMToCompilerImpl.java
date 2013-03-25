@@ -44,6 +44,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.printer.*;
@@ -75,6 +76,8 @@ public class VMToCompilerImpl implements VMToCompiler {
     private PrintStream log = System.out;
 
     private boolean quietMeterAndTime;
+
+    private long compilerStartTime;
 
     public VMToCompilerImpl(HotSpotGraalRuntime compiler) {
         this.graalRuntime = compiler;
@@ -196,6 +199,95 @@ public class VMToCompilerImpl implements VMToCompiler {
             t.setDaemon(true);
             t.start();
         }
+
+        if (GraalOptions.BenchmarkDynamicCounters) {
+            System.setErr(new PrintStream(new BenchmarkCountersOutputStream(System.err, " starting =====", " PASSED in ", "\n")));
+            System.setOut(new PrintStream(new BenchmarkCountersOutputStream(System.out, "Iteration ~ (~s) begins: ", "Iteration ~ (~s) ends:   ", "\n")));
+            DynamicCounterNode.excludedClassPrefix = "Lcom/oracle/graal/";
+            DynamicCounterNode.enabled = true;
+        }
+        if (GraalOptions.GenericDynamicCounters) {
+            DynamicCounterNode.enabled = true;
+        }
+        compilerStartTime = System.nanoTime();
+    }
+
+    private final class BenchmarkCountersOutputStream extends CallbackOutputStream {
+
+        private long startTime;
+        private boolean waitingForEnd;
+
+        private BenchmarkCountersOutputStream(PrintStream delegate, String... patterns) {
+            super(delegate, patterns);
+        }
+
+        @Override
+        protected void patternFound(int index) {
+            switch (index) {
+                case 0:
+                    startTime = System.nanoTime();
+                    DynamicCounterNode.clear();
+                    break;
+                case 1:
+                    waitingForEnd = true;
+                    break;
+                case 2:
+                    if (waitingForEnd) {
+                        waitingForEnd = false;
+                        DynamicCounterNode.dump(delegate, (System.nanoTime() - startTime) / 1000000000d);
+                    }
+                    break;
+            }
+        }
+    }
+
+    public abstract static class CallbackOutputStream extends OutputStream {
+
+        protected final PrintStream delegate;
+        private final byte[][] patterns;
+        private final int[] positions;
+
+        public CallbackOutputStream(PrintStream delegate, String... patterns) {
+            this.delegate = delegate;
+            this.positions = new int[patterns.length];
+            this.patterns = new byte[patterns.length][];
+            for (int i = 0; i < patterns.length; i++) {
+                this.patterns[i] = patterns[i].getBytes();
+            }
+        }
+
+        protected abstract void patternFound(int index);
+
+        @Override
+        public void write(int b) throws IOException {
+            try {
+                delegate.write(b);
+                for (int i = 0; i < patterns.length; i++) {
+                    int j = positions[i];
+                    byte[] cs = patterns[i];
+                    byte patternChar = cs[j];
+                    if (patternChar == '~' && Character.isDigit(b)) {
+                        // nothing to do...
+                    } else {
+                        if (patternChar == '~') {
+                            patternChar = cs[++positions[i]];
+                        }
+                        if (b == patternChar) {
+                            positions[i]++;
+                        } else {
+                            positions[i] = 0;
+                        }
+                    }
+                    if (positions[i] == patterns[i].length) {
+                        positions[i] = 0;
+                        patternFound(i);
+                    }
+                }
+            } catch (RuntimeException e) {
+                e.printStackTrace(delegate);
+                throw e;
+            }
+        }
     }
 
     /**
@@ -281,6 +373,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         }
         System.gc();
         phaseTransition("bootstrap2");
+
     }
 
     private MetricRateInPhase parsedBytecodesPerSecond;
@@ -353,6 +446,9 @@ public class VMToCompilerImpl implements VMToCompiler {
         }
 
         SnippetCounter.printGroups(TTY.out().out());
+        if (GraalOptions.GenericDynamicCounters) {
+            DynamicCounterNode.dump(System.out, (System.nanoTime() - compilerStartTime) / 1000000000d);
+        }
     }
 
     private void flattenChildren(DebugValueMap map, DebugValueMap globalMap) {
