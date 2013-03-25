@@ -87,7 +87,7 @@ public class IterativeInliningPhase extends Phase {
                     PartialEscapeClosure closure = new PartialEscapeClosure(graph.createNodeBitMap(), schedule, runtime, assumptions);
                     ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock(), new BlockState(), null);
 
-                    if (closure.getNewVirtualObjectCount() != 0) {
+                    if (!closure.getEffects().isEmpty()) {
                         // apply the effects collected during the escape analysis iteration
                         ArrayList<Node> obsoleteNodes = new ArrayList<>();
                         for (Effect effect : closure.getEffects()) {
@@ -103,11 +103,10 @@ public class IterativeInliningPhase extends Phase {
                             new CanonicalizerPhase(runtime, assumptions, null, customCanonicalizer).apply(graph);
                         }
                     }
+                    Map<Invoke, Double> hints = GraalOptions.PEAInliningHints ? PartialEscapeAnalysisPhase.getHints(graph) : null;
 
-                    InliningPhase inlining = new InliningPhase(runtime, GraalOptions.PEAInliningHints ? closure.getHints() : null, assumptions, cache, plan, optimisticOpts);
-                    if (simple) {
-                        inlining.setMaxMethodsPerInlining(1);
-                    }
+                    InliningPhase inlining = new InliningPhase(runtime, hints, assumptions, cache, plan, optimisticOpts);
+                    inlining.setMaxMethodsPerInlining(simple ? 1 : Integer.MAX_VALUE);
                     inlining.apply(graph);
                     new DeadCodeEliminationPhase().apply(graph);
 
@@ -116,7 +115,7 @@ public class IterativeInliningPhase extends Phase {
                         new IterativeConditionalEliminationPhase(runtime, assumptions).apply(graph);
                     }
 
-                    if (!simple && closure.getNewVirtualObjectCount() == 0 && inlining.getInliningCount() == 0) {
+                    if (closure.getEffects().isEmpty() && inlining.getInliningCount() == 0) {
                         return false;
                     }
                     return true;

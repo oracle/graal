@@ -30,12 +30,14 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.virtual.nodes.*;
 import com.oracle.graal.virtual.phases.ea.EffectList.Effect;
 
 public class PartialEscapeAnalysisPhase extends Phase {
@@ -93,7 +95,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
                     PartialEscapeClosure closure = new PartialEscapeClosure(graph.createNodeBitMap(), schedule, runtime, assumptions);
                     ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock(), new BlockState(), null);
 
-                    if (closure.getNewVirtualObjectCount() == 0) {
+                    if (closure.getEffects().isEmpty()) {
                         return false;
                     }
 
@@ -195,5 +197,40 @@ public class PartialEscapeAnalysisPhase extends Phase {
             }
         }
         return success;
+    }
+
+    public static Map<Invoke, Double> getHints(StructuredGraph graph) {
+        Map<Invoke, Double> hints = null;
+        for (MaterializeObjectNode materialize : graph.getNodes(MaterializeObjectNode.class)) {
+            double sum = 0;
+            double invokeSum = 0;
+            for (Node usage : materialize.usages()) {
+                if (usage instanceof FixedNode) {
+                    sum += ((FixedNode) usage).probability();
+                } else {
+                    if (usage instanceof MethodCallTargetNode) {
+                        invokeSum += ((MethodCallTargetNode) usage).invoke().probability();
+                    }
+                    for (Node secondLevelUage : materialize.usages()) {
+                        if (secondLevelUage instanceof FixedNode) {
+                            sum += ((FixedNode) secondLevelUage).probability();
+                        }
+                    }
+                }
+            }
+            // TODO(lstadler) get rid of this magic number
+            if (sum > 100 && invokeSum > 0) {
+                for (Node usage : materialize.usages()) {
+                    if (usage instanceof MethodCallTargetNode) {
+                        if (hints == null) {
+                            hints = new HashMap<>();
+                        }
+                        Invoke invoke = ((MethodCallTargetNode) usage).invoke();
+                        hints.put(invoke, sum / invokeSum);
+                    }
+                }
+            }
+        }
+        return hints;
     }
 }
