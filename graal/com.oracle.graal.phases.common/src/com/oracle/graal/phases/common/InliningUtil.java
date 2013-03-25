@@ -448,7 +448,7 @@ public class InliningUtil {
             PhiNode exceptionObjectPhi = null;
             if (invoke instanceof InvokeWithExceptionNode) {
                 InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
-                ExceptionObjectNode exceptionEdge = invokeWithException.exceptionEdge();
+                ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) invokeWithException.exceptionEdge();
 
                 exceptionMerge = graph.add(new MergeNode());
                 exceptionMerge.setProbability(exceptionEdge.probability());
@@ -484,7 +484,7 @@ public class InliningUtil {
             // replace the invoke exception edge
             if (invoke instanceof InvokeWithExceptionNode) {
                 InvokeWithExceptionNode invokeWithExceptionNode = (InvokeWithExceptionNode) invoke;
-                ExceptionObjectNode exceptionEdge = invokeWithExceptionNode.exceptionEdge();
+                ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) invokeWithExceptionNode.exceptionEdge();
                 exceptionEdge.replaceAtUsages(exceptionObjectPhi);
                 exceptionEdge.setNext(null);
                 GraphUtil.killCFG(invokeWithExceptionNode.exceptionEdge());
@@ -656,7 +656,7 @@ public class InliningUtil {
                 assert exceptionMerge != null && exceptionObjectPhi != null;
 
                 InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
-                ExceptionObjectNode exceptionEdge = invokeWithException.exceptionEdge();
+                ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) invokeWithException.exceptionEdge();
                 FrameState stateAfterException = exceptionEdge.stateAfter();
 
                 ExceptionObjectNode newExceptionEdge = (ExceptionObjectNode) exceptionEdge.copyWithInputs();
@@ -1063,7 +1063,7 @@ public class InliningUtil {
             if (unwindNode != null) {
                 assert unwindNode.predecessor() != null;
                 assert invokeWithException.exceptionEdge().successors().count() == 1;
-                ExceptionObjectNode obj = invokeWithException.exceptionEdge();
+                ExceptionObjectNode obj = (ExceptionObjectNode) invokeWithException.exceptionEdge();
                 stateAtExceptionEdge = obj.stateAfter();
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
                 obj.replaceAtUsages(unwindDuplicate.exception());
