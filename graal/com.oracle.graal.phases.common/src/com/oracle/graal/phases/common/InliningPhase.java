@@ -50,7 +50,7 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     private final PhasePlan plan;
 
-    private final GraalCodeCacheProvider runtime;
+    private final MetaAccessProvider runtime;
     private final Assumptions assumptions;
     private final GraphCache cache;
     private final InliningPolicy inliningPolicy;
@@ -63,7 +63,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
     private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
 
-    public InliningPhase(GraalCodeCacheProvider runtime, Collection<Invoke> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public InliningPhase(MetaAccessProvider runtime, Collection<Invoke> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this(runtime, assumptions, cache, plan, createInliningPolicy(runtime, assumptions, optimisticOpts, hints), optimisticOpts);
     }
 
@@ -71,7 +71,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         this.customCanonicalizer = customCanonicalizer;
     }
 
-    public InliningPhase(GraalCodeCacheProvider runtime, Assumptions assumptions, GraphCache cache, PhasePlan plan, InliningPolicy inliningPolicy, OptimisticOptimizations optimisticOpts) {
+    public InliningPhase(MetaAccessProvider runtime, Assumptions assumptions, GraphCache cache, PhasePlan plan, InliningPolicy inliningPolicy, OptimisticOptimizations optimisticOpts) {
         this.runtime = runtime;
         this.assumptions = assumptions;
         this.cache = cache;
@@ -163,10 +163,10 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     private static class GreedySizeBasedInliningDecision implements InliningDecision {
 
-        private final GraalCodeCacheProvider runtime;
+        private final MetaAccessProvider runtime;
         private final Collection<Invoke> hints;
 
-        public GreedySizeBasedInliningDecision(GraalCodeCacheProvider runtime, Collection<Invoke> hints) {
+        public GreedySizeBasedInliningDecision(MetaAccessProvider runtime, Collection<Invoke> hints) {
             this.runtime = runtime;
             this.hints = hints;
         }
@@ -500,7 +500,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
-    private static InliningPolicy createInliningPolicy(GraalCodeCacheProvider runtime, Assumptions assumptions, OptimisticOptimizations optimisticOpts, Collection<Invoke> hints) {
+    private static InliningPolicy createInliningPolicy(MetaAccessProvider runtime, Assumptions assumptions, OptimisticOptimizations optimisticOpts, Collection<Invoke> hints) {
         InliningDecision inliningDecision = new GreedySizeBasedInliningDecision(runtime, hints);
         return new CFInliningPolicy(inliningDecision, hints, assumptions, optimisticOpts);
     }

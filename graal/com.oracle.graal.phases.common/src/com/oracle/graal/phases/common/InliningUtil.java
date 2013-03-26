@@ -39,7 +39,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
@@ -194,12 +193,12 @@ public class InliningUtil {
          * return value of the inlined method (or null for void methods and methods that have no
          * non-exceptional exit).
          **/
-        void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback, Assumptions assumptions);
+        void inline(StructuredGraph graph, MetaAccessProvider runtime, InliningCallback callback, Assumptions assumptions);
 
         /**
          * Try to make the call static bindable to avoid interface and virtual method calls.
          */
-        void tryToDevirtualizeInvoke(StructuredGraph graph, GraalCodeCacheProvider runtime, Assumptions assumptions);
+        void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions);
     }
 
     public abstract static class AbstractInlineInfo implements InlineInfo {
@@ -287,12 +286,12 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph compilerGraph, GraalCodeCacheProvider runtime, InliningCallback callback, Assumptions assumptions) {
+        public void inline(StructuredGraph compilerGraph, MetaAccessProvider runtime, InliningCallback callback, Assumptions assumptions) {
             inline(invoke, concrete, callback, assumptions, true);
         }
 
         @Override
-        public void tryToDevirtualizeInvoke(StructuredGraph graph, GraalCodeCacheProvider runtime, Assumptions assumptions) {
+        public void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
             // nothing todo, can already be bound statically
         }
 
@@ -341,18 +340,18 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback, Assumptions assumptions) {
+        public void inline(StructuredGraph graph, MetaAccessProvider runtime, InliningCallback callback, Assumptions assumptions) {
             createGuard(graph, runtime);
             inline(invoke, concrete, callback, assumptions, false);
         }
 
         @Override
-        public void tryToDevirtualizeInvoke(StructuredGraph graph, GraalCodeCacheProvider runtime, Assumptions assumptions) {
+        public void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
             createGuard(graph, runtime);
             replaceInvokeCallTarget(graph, InvokeKind.Special, concrete);
         }
 
-        private void createGuard(StructuredGraph graph, GraalCodeCacheProvider runtime) {
+        private void createGuard(StructuredGraph graph, MetaAccessProvider runtime) {
             InliningUtil.receiverNullCheck(invoke);
             ValueNode receiver = invoke.methodCallTarget().receiver();
             ConstantNode typeHub = ConstantNode.forConstant(type.getEncoding(Representation.ObjectHub), runtime, graph);
@@ -411,7 +410,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback, Assumptions assumptions) {
+        public void inline(StructuredGraph graph, MetaAccessProvider runtime, InliningCallback callback, Assumptions assumptions) {
             // receiver null check must be the first node
             InliningUtil.receiverNullCheck(invoke);
             if (hasSingleMethod()) {
@@ -674,7 +673,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void tryToDevirtualizeInvoke(StructuredGraph graph, GraalCodeCacheProvider runtime, Assumptions assumptions) {
+        public void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
             if (hasSingleMethod()) {
                 tryToDevirtualizeSingleMethod(graph);
             } else {
@@ -760,7 +759,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, GraalCodeCacheProvider runtime, InliningCallback callback, Assumptions assumptions) {
+        public void inline(StructuredGraph graph, MetaAccessProvider runtime, InliningCallback callback, Assumptions assumptions) {
             assumptions.record(takenAssumption);
             Debug.log("recording assumption: %s", takenAssumption);
 
@@ -768,7 +767,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void tryToDevirtualizeInvoke(StructuredGraph graph, GraalCodeCacheProvider runtime, Assumptions assumptions) {
+        public void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
             assumptions.record(takenAssumption);
             replaceInvokeCallTarget(graph, InvokeKind.Special, concrete);
         }
