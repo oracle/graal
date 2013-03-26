@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
-import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.word.*;
 
 /**
@@ -42,12 +44,20 @@ public class ThreadSubstitutions {
 
     @Alias(declaringClass = Thread.class) private long eetop;
 
+    @Fold
+    private static int eetopOffset() {
+        try {
+            return (int) unsafe.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
+        } catch (Exception e) {
+            throw new GraalInternalError(e);
+        }
+    }
+
     @MethodSubstitution(isStatic = false)
     public static boolean isInterrupted(final Thread thisObject, boolean clearInterrupted) {
         Thread thread = CurrentThread.get();
         if (thisObject == thread) {
-            ThreadSubstitutions threadAlias = unsafeCast(thread, ThreadSubstitutions.class, false, true);
-            Word rawThread = Word.unsigned(threadAlias.eetop);
+            Word rawThread = loadWordFromObject(thread, eetopOffset());
             Word osThread = rawThread.readWord(osThreadOffset(), FINAL_LOCATION);
             int int0 = osThread.readInt(osThreadInterruptedOffset(), UNKNOWN_LOCATION);
             boolean interrupted = int0 != 0;
