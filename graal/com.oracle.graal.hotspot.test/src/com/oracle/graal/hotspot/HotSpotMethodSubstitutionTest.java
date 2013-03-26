@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import org.junit.*;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.replacements.*;
 
 /**
@@ -99,6 +100,10 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
         test("currentThread");
         test("threadIsInterrupted");
         test("threadInterrupted");
+
+        Thread currentThread = Thread.currentThread();
+        assertEquals(currentThread, ThreadSubstitutions.currentThread());
+        assertEquals(currentThread.isInterrupted(), ThreadSubstitutions.isInterrupted(currentThread, false));
     }
 
     @SuppressWarnings("all")
