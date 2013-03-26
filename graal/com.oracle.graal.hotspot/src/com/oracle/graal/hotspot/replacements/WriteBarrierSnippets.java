@@ -130,7 +130,7 @@ public class WriteBarrierSnippets implements Snippets {
         } else {
             base = base.add(Word.unsigned(cardTableStart()));
         }
-        base.writeWord(displacement, Word.zero());
+        base.writeByte(displacement, (byte) 0);
     }
 
     @Snippet
@@ -145,7 +145,7 @@ public class WriteBarrierSnippets implements Snippets {
         } else {
             base = base.add(Word.unsigned(cardTableStart()));
         }
-        base.writeWord(displacement, Word.zero());
+        base.writeByte(displacement, (byte) 0);
     }
 
     public static class Templates extends AbstractTemplates<WriteBarrierSnippets> {
