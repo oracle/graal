@@ -125,6 +125,12 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
     public void testSystemSubstitutions() {
         test("systemTime");
         test("systemIdentityHashCode");
+
+        SystemSubstitutions.currentTimeMillis();
+        SystemSubstitutions.nanoTime();
+        for (Object o : new Object[]{this, new int[5], new String[2][], new Object()}) {
+            assertEquals(System.identityHashCode(o), SystemSubstitutions.identityHashCode(o));
+        }
     }
 
     @SuppressWarnings("all")
