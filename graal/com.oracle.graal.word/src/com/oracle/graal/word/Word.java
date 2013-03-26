@@ -645,7 +645,9 @@ public abstract class Word implements Signed, Unsigned, Pointer {
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public native Object readObject(WordBase offset, Object locationIdentity);
+    public Object readObject(WordBase offset, Object locationIdentity) {
+        return unsafe.getObject(null, add((Word) offset).unbox());
+    }
 
     @Override
     @Operation(opcode = Opcode.READ)

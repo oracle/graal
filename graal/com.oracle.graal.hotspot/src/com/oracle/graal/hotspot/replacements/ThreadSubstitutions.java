@@ -22,13 +22,10 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.word.*;
 
 /**
@@ -39,26 +36,15 @@ public class ThreadSubstitutions {
 
     @MethodSubstitution
     public static Thread currentThread() {
-        return CurrentThread.get();
-    }
-
-    @Alias(declaringClass = Thread.class) private long eetop;
-
-    @Fold
-    private static int eetopOffset() {
-        try {
-            return (int) unsafe.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
-        } catch (Exception e) {
-            throw new GraalInternalError(e);
-        }
+        return (Thread) CurrentJavaThreadNode.get().readObject(threadObjectOffset(), FINAL_LOCATION);
     }
 
     @MethodSubstitution(isStatic = false)
     public static boolean isInterrupted(final Thread thisObject, boolean clearInterrupted) {
-        Thread thread = CurrentThread.get();
+        Word javaThread = CurrentJavaThreadNode.get();
+        Object thread = javaThread.readObject(threadObjectOffset(), FINAL_LOCATION);
         if (thisObject == thread) {
-            Word rawThread = loadWordFromObject(thread, eetopOffset());
-            Word osThread = rawThread.readWord(osThreadOffset(), FINAL_LOCATION);
+            Word osThread = javaThread.readWord(osThreadOffset(), FINAL_LOCATION);
             boolean interrupted = osThread.readInt(osThreadInterruptedOffset(), UNKNOWN_LOCATION) != 0;
             if (!interrupted || !clearInterrupted) {
                 return interrupted;
