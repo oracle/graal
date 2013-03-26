@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -44,6 +47,16 @@ public class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable 
         gen.setResult(this, rawThread.asValue(this.kind()));
     }
 
+    private static int eetopOffset() {
+        try {
+            return (int) UnsafeAccess.unsafe.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
+        } catch (Exception e) {
+            throw new GraalInternalError(e);
+        }
+    }
+
     @NodeIntrinsic
-    public static native Word get();
+    public static Word get() {
+        return Word.box(unsafeReadWord(Thread.currentThread(), eetopOffset()));
+    }
 }
