@@ -29,9 +29,12 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
-public class HotSpotCurrentRawThreadNode extends FloatingNode implements LIRLowerable {
+/**
+ * Gets the address of the C++ JavaThread object for the current thread.
+ */
+public class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable {
 
-    public HotSpotCurrentRawThreadNode() {
+    public CurrentJavaThreadNode() {
         super(StampFactory.forWord());
     }
 
