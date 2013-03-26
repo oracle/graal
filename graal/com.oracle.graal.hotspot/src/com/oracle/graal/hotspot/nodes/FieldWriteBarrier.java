@@ -24,16 +24,18 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-public final class FieldWriteBarrier extends WriteBarrier implements Lowerable {
+public final class FieldWriteBarrier extends FixedWithNextNode implements Lowerable {
 
     @Input private ValueNode object;
 
-    public ValueNode object() {
+    public ValueNode getObject() {
         return object;
     }
 
     public FieldWriteBarrier(ValueNode object) {
+        super(StampFactory.forVoid());
         this.object = object;
     }
 

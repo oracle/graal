@@ -634,7 +634,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             // Separate out GC barrier semantics
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
             ValueNode expected = cas.expected();
-            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
+            LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
             if (expected.kind() == Kind.Object && !cas.newValue().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = cas.object().objectStamp().type();
                 if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
@@ -645,8 +645,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         graph.addBeforeFixed(cas, writeBarrierPre);
                         graph.addAfterFixed(cas, writeBarrierPost);
                     } else {
-                        FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(cas.object()));
-                        graph.addAfterFixed(cas, writeBarrier);
+                        graph.addAfterFixed(cas, graph.add(new FieldWriteBarrier(cas.object())));
                     }
                 } else {
                     // This may be an array store so use an array write barrier
@@ -671,7 +670,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             StoreIndexedNode storeIndexed = (StoreIndexedNode) n;
             ValueNode boundsCheck = createBoundsCheck(storeIndexed, tool);
             Kind elementKind = storeIndexed.elementKind();
-            IndexedLocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index());
+            LocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index());
             ValueNode value = storeIndexed.value();
             ValueNode array = storeIndexed.array();
             if (elementKind == Kind.Object && !value.objectStamp().alwaysNull()) {
@@ -735,8 +734,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         graph.addBeforeFixed(write, graph.add(writeBarrierPre));
                         graph.addAfterFixed(write, graph.add(new WriteBarrierPost(object, write.value(), location, false)));
                     } else {
-                        FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(object));
-                        graph.addAfterFixed(write, writeBarrier);
+                        graph.addAfterFixed(write, graph.add(new FieldWriteBarrier(object)));
                     }
                 } else {
                     // This may be an array store so use an array write barrier
@@ -745,8 +743,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         graph.addBeforeFixed(write, writeBarrierPre);
                         graph.addAfterFixed(write, graph.add(new WriteBarrierPost(object, write.value(), location, true)));
                     } else {
-                        ArrayWriteBarrier writeBarrier = graph.add(new ArrayWriteBarrier(object, location));
-                        graph.addAfterFixed(write, writeBarrier);
+                        graph.addAfterFixed(write, graph.add(new ArrayWriteBarrier(object, location)));
                     }
                 }
             }

@@ -167,8 +167,8 @@ public class WriteBarrierSnippets implements Snippets {
             ResolvedJavaMethod method = serialArrayWriteBarrier;
             Key key = new Key(method);
             Arguments arguments = new Arguments();
-            arguments.add("object", arrayWriteBarrier.object());
-            arguments.add("location", arrayWriteBarrier.location());
+            arguments.add("object", arrayWriteBarrier.getObject());
+            arguments.add("location", arrayWriteBarrier.getLocation());
             SnippetTemplate template = cache.get(key, assumptions);
             template.instantiate(runtime, arrayWriteBarrier, DEFAULT_REPLACER, arguments);
         }
@@ -177,7 +177,7 @@ public class WriteBarrierSnippets implements Snippets {
             ResolvedJavaMethod method = serialFieldWriteBarrier;
             Key key = new Key(method);
             Arguments arguments = new Arguments();
-            arguments.add("object", fieldWriteBarrier.object());
+            arguments.add("object", fieldWriteBarrier.getObject());
             SnippetTemplate template = cache.get(key, assumptions);
             template.instantiate(runtime, fieldWriteBarrier, DEFAULT_REPLACER, arguments);
         }

@@ -25,21 +25,23 @@ package com.oracle.graal.hotspot.nodes;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-public final class ArrayWriteBarrier extends WriteBarrier implements Lowerable {
+public final class ArrayWriteBarrier extends FixedWithNextNode implements Lowerable {
 
     @Input private ValueNode object;
     @Input private LocationNode location;
 
-    public ValueNode object() {
+    public ValueNode getObject() {
         return object;
     }
 
-    public LocationNode location() {
+    public LocationNode getLocation() {
         return location;
     }
 
     public ArrayWriteBarrier(ValueNode object, LocationNode location) {
+        super(StampFactory.forVoid());
         this.object = object;
         this.location = location;
     }
