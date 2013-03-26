@@ -210,13 +210,16 @@ public class ReplacementsInstaller {
      * Does final processing of a snippet graph.
      */
     protected void finalizeGraph(ResolvedJavaMethod method, StructuredGraph graph) {
-        new AliasResolutionPhase(runtime).apply(graph);
         new NodeIntrinsificationPhase(runtime, pool).apply(graph);
         assert SnippetTemplate.hasConstantParameter(method) || NodeIntrinsificationVerificationPhase.verify(graph);
 
-        new SnippetFrameStateCleanupPhase().apply(graph);
-        new DeadCodeEliminationPhase().apply(graph);
-        new InsertStateAfterPlaceholderPhase().apply(graph);
+        if (substitute == null) {
+            new SnippetFrameStateCleanupPhase().apply(graph);
+            new DeadCodeEliminationPhase().apply(graph);
+            new InsertStateAfterPlaceholderPhase().apply(graph);
+        } else {
+            new DeadCodeEliminationPhase().apply(graph);
+        }
     }
 
     public StructuredGraph makeGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
@@ -256,7 +259,6 @@ public class ReplacementsInstaller {
         Debug.dump(graph, "%s: %s", method.getName(), GraphBuilderPhase.class.getSimpleName());
 
         new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
-        new AliasResolutionPhase(runtime).apply(graph);
         new NodeIntrinsificationPhase(runtime, pool).apply(graph);
 
         return graph;
@@ -279,7 +281,6 @@ public class ReplacementsInstaller {
      * Called after all inlining for a given graph is complete.
      */
     protected void afterInlining(StructuredGraph graph) {
-        new AliasResolutionPhase(runtime).apply(graph);
         new NodeIntrinsificationPhase(runtime, pool).apply(graph);
 
         new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);

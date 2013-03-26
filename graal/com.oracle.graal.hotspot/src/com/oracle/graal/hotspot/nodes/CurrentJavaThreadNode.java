@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,41 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.word.*;
 
 /**
- * A node that loads the {@link Thread} object for the current thread.
+ * Gets the address of the C++ JavaThread object for the current thread.
  */
-public final class CurrentThread extends FloatingNode implements LIRLowerable {
+public class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable {
 
-    public CurrentThread() {
-        super(StampFactory.declaredNonNull(HotSpotGraalRuntime.getInstance().getRuntime().lookupJavaType(Thread.class)));
+    public CurrentJavaThreadNode() {
+        super(StampFactory.forWord());
     }
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        HotSpotGraalRuntime runtime = HotSpotGraalRuntime.getInstance();
-        Register thread = runtime.getRuntime().threadRegister();
-        gen.setResult(this, gen.emitLoad(Kind.Object, thread.asValue(gen.target().wordKind), runtime.getConfig().threadObjectOffset, Value.ILLEGAL, 0, false));
+        Register rawThread = HotSpotGraalRuntime.getInstance().getRuntime().threadRegister();
+        gen.setResult(this, rawThread.asValue(this.kind()));
+    }
+
+    private static int eetopOffset() {
+        try {
+            return (int) UnsafeAccess.unsafe.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
+        } catch (Exception e) {
+            throw new GraalInternalError(e);
+        }
     }
 
     @NodeIntrinsic
-    public static native Thread get();
+    public static Word get() {
+        return Word.box(unsafeReadWord(Thread.currentThread(), eetopOffset()));
+    }
 }

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import static com.oracle.graal.graph.UnsafeAccess.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -119,31 +121,58 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
     }
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
-    @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, Object value, @ConstantNodeParameter Kind kind);
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, boolean value, @ConstantNodeParameter Kind kind);
+    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, Object value, @ConstantNodeParameter Kind kind) {
+        unsafe.putObject(object, offset + displacement, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, byte value, @ConstantNodeParameter Kind kind);
+    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, boolean value, @ConstantNodeParameter Kind kind) {
+        unsafe.putBoolean(object, offset + displacement, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, char value, @ConstantNodeParameter Kind kind);
+    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, byte value, @ConstantNodeParameter Kind kind) {
+        unsafe.putByte(object, offset + displacement, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, double value, @ConstantNodeParameter Kind kind);
+    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, char value, @ConstantNodeParameter Kind kind) {
+        unsafe.putChar(object, offset + displacement, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, float value, @ConstantNodeParameter Kind kind);
+    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, double value, @ConstantNodeParameter Kind kind) {
+        unsafe.putDouble(object, offset + displacement, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, int value, @ConstantNodeParameter Kind kind);
+    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, float value, @ConstantNodeParameter Kind kind) {
+        unsafe.putFloat(object, offset + displacement, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, long value, @ConstantNodeParameter Kind kind);
+    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, int value, @ConstantNodeParameter Kind kind) {
+        unsafe.putInt(object, offset + displacement, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(Object object, @ConstantNodeParameter int displacement, long offset, short value, @ConstantNodeParameter Kind kind);
+    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, long value, @ConstantNodeParameter Kind kind) {
+        unsafe.putLong(object, offset + displacement, value);
+    }
 
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, short value, @ConstantNodeParameter Kind kind) {
+        unsafe.putShort(object, offset + displacement, value);
+    }
 }

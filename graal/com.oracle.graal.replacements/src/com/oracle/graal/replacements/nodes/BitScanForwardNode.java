@@ -54,7 +54,16 @@ public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable,
     }
 
     @NodeIntrinsic
-    public static native int scan(long v);
+    public static int scan(long v) {
+        if (v == 0) {
+            return -1;
+        }
+        int index = 0;
+        while (((1L << index) & v) == 0) {
+            ++index;
+        }
+        return index;
+    }
 
     @Override
     public void generate(LIRGenerator gen) {

@@ -55,10 +55,14 @@ public class ReverseBytesNode extends FloatingNode implements LIRGenLowerable, C
     }
 
     @NodeIntrinsic
-    public static native int reverse(int v);
+    public static int reverse(int v) {
+        return Integer.reverseBytes(v);
+    }
 
     @NodeIntrinsic
-    public static native long reverse(long v);
+    public static long reverse(long v) {
+        return Long.reverseBytes(v);
+    }
 
     @Override
     public void generate(LIRGenerator gen) {

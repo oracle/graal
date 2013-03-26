@@ -1144,11 +1144,6 @@ public class GraphBuilderPhase extends Phase {
         }
     }
 
-    private void callRegisterFinalizer() {
-        // append a call to the finalizer registration
-        append(currentGraph.add(new RegisterFinalizerNode(frameState.loadLocal(0))));
-    }
-
     private void genReturn(ValueNode x) {
         frameState.clearStack();
         if (x != null) {
@@ -1563,9 +1558,6 @@ public class GraphBuilderPhase extends Phase {
     }
 
     private void createReturn() {
-        if (method.isConstructor() && MetaUtil.isJavaLangObject(method.getDeclaringClass())) {
-            callRegisterFinalizer();
-        }
         Kind returnKind = method.getSignature().getReturnKind().getStackKind();
         ValueNode x = returnKind == Kind.Void ? null : frameState.pop(returnKind);
         assert frameState.stackSize() == 0;

@@ -69,8 +69,8 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     }
      // @formatter:on
 
-    private static Word box(long val) {
-        return HostedWord.box(val);
+    public static Word box(long val) {
+        return HostedWord.boxLong(val);
     }
 
     protected abstract long unbox();
@@ -649,7 +649,9 @@ public abstract class Word implements Signed, Unsigned, Pointer {
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public native Object readObject(WordBase offset, Object locationIdentity);
+    public Object readObject(WordBase offset, Object locationIdentity) {
+        return unsafe.getObject(null, add((Word) offset).unbox());
+    }
 
     @Override
     @Operation(opcode = Opcode.READ)
@@ -1058,7 +1060,7 @@ final class HostedWord extends Word {
         this.rawValue = rawValue;
     }
 
-    protected static Word box(long val) {
+    protected static Word boxLong(long val) {
         if (val >= SMALL_FROM && val <= SMALL_TO) {
             return smallCache[(int) val - SMALL_FROM];
         }
