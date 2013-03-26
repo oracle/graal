@@ -363,8 +363,11 @@ public class HotSpotSnippetUtils {
         return Word.box(unsafeReadWord(object, offset + displacement));
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
-    static native Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word);
+    static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word) {
+        return Word.box(unsafeReadWord(object, hubOffset()));
+    }
 
     @Fold
     public static int log2WordSize() {
