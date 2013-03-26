@@ -63,6 +63,18 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
         test("isPrimitive");
         test("getSuperClass");
         test("getComponentType");
+
+        for (Class c : new Class[]{getClass(), Cloneable.class, int[].class, String[][].class}) {
+            assertEquals(c.getModifiers(), ClassSubstitutions.getModifiers(c));
+            assertEquals(c.isInterface(), ClassSubstitutions.isInterface(c));
+            assertEquals(c.isArray(), ClassSubstitutions.isArray(c));
+            assertEquals(c.isPrimitive(), ClassSubstitutions.isPrimitive(c));
+            assertEquals(c.getSuperclass(), ClassSubstitutions.getSuperclass(c));
+            assertEquals(c.getComponentType(), ClassSubstitutions.getComponentType(c));
+            for (Object o : new Object[]{this, new int[5], new String[2][], new Object()}) {
+                assertEquals(c.isInstance(o), ClassSubstitutions.isInstance(c, o));
+            }
+        }
     }
 
     @SuppressWarnings("all")

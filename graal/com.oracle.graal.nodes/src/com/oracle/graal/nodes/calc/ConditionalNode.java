@@ -115,5 +115,7 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
     public static native boolean materializeCondition(@ConstantNodeParameter Condition condition, long x, long y);
 
     @NodeIntrinsic
-    public static native boolean materializeIsInstance(Class mirror, Object object);
+    public static boolean materializeIsInstance(Class mirror, Object object) {
+        return mirror.isInstance(object);
+    }
 }
