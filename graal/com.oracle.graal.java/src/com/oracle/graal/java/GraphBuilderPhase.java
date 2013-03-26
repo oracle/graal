@@ -745,7 +745,8 @@ public class GraphBuilderPhase extends Phase {
     private JavaMethod lookupMethod(int cpi, int opcode) {
         eagerResolvingForSnippets(cpi, opcode);
         JavaMethod result = constantPool.lookupMethod(cpi, opcode);
-        assert !graphBuilderConfig.unresolvedIsError() || ((result instanceof ResolvedJavaMethod) && ((ResolvedJavaMethod) result).getDeclaringClass().isInitialized()) : result;
+        // assert !graphBuilderConfig.unresolvedIsError() || ((result instanceof ResolvedJavaMethod)
+// && ((ResolvedJavaMethod) result).getDeclaringClass().isInitialized()) : result;
         return result;
     }
 
