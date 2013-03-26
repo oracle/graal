@@ -61,8 +61,8 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements S
         if (stamp.isExactType()) {
             needsCheck = stamp.type().hasFinalizer();
         } else if (stamp.type() != null && !stamp.type().hasFinalizableSubclass()) {
-            // if either the declared type of receiver or the holder can be assumed to have no
-            // finalizers
+            // if either the declared type of receiver or the holder
+            // can be assumed to have no finalizers
             if (tool.assumptions().useOptimisticAssumptions() && tool.assumptions().recordNoFinalizableSubclassAssumption(stamp.type())) {
                 needsCheck = false;
             }
@@ -81,5 +81,10 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements S
         if (state != null && !state.getVirtualObject().type().hasFinalizer()) {
             tool.delete();
         }
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    public static void register(Object thisObj) {
     }
 }
