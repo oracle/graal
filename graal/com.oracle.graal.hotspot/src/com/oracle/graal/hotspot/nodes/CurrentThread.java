@@ -46,5 +46,7 @@ public final class CurrentThread extends FloatingNode implements LIRLowerable {
     }
 
     @NodeIntrinsic
-    public static native Thread get();
+    public static Thread get() {
+        return Thread.currentThread();
+    }
 }

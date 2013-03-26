@@ -59,13 +59,12 @@ public class ThreadSubstitutions {
         if (thisObject == thread) {
             Word rawThread = loadWordFromObject(thread, eetopOffset());
             Word osThread = rawThread.readWord(osThreadOffset(), FINAL_LOCATION);
-            int int0 = osThread.readInt(osThreadInterruptedOffset(), UNKNOWN_LOCATION);
-            boolean interrupted = int0 != 0;
+            boolean interrupted = osThread.readInt(osThreadInterruptedOffset(), UNKNOWN_LOCATION) != 0;
             if (!interrupted || !clearInterrupted) {
                 return interrupted;
             }
         }
 
-        return ThreadIsInterruptedStubCall.call(thisObject, clearInterrupted) != 0;
+        return ThreadIsInterruptedStubCall.call(thisObject, clearInterrupted);
     }
 }

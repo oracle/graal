@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import java.lang.reflect.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
@@ -38,7 +41,7 @@ public class ThreadIsInterruptedStubCall extends FixedWithNextNode implements LI
 
     @Input private final ValueNode thread;
     @Input private final ValueNode clearIsInterrupted;
-    public static final Descriptor THREAD_IS_INTERRUPTED = new Descriptor("thread_is_interrupted", false, int.class, Object.class, boolean.class);
+    public static final Descriptor THREAD_IS_INTERRUPTED = new Descriptor("thread_is_interrupted", false, boolean.class, Object.class, boolean.class);
 
     public ThreadIsInterruptedStubCall(ValueNode thread, ValueNode clearIsInterrupted) {
         super(StampFactory.forInteger(Kind.Int, 0, 1));
@@ -54,5 +57,13 @@ public class ThreadIsInterruptedStubCall extends FixedWithNextNode implements LI
     }
 
     @NodeIntrinsic
-    public static native int call(Thread thread, boolean clearIsInterrupted);
+    public static boolean call(Thread thread, boolean clearIsInterrupted) {
+        try {
+            Method isInterrupted = Thread.class.getDeclaredMethod("isInterrupted", boolean.class);
+            isInterrupted.setAccessible(true);
+            return (Boolean) isInterrupted.invoke(thread, clearIsInterrupted);
+        } catch (Exception e) {
+            throw new GraalInternalError(e);
+        }
+    }
 }
