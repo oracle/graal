@@ -61,6 +61,7 @@ public final class G1WriteBarrierPre extends WriteBarrierPre implements Lowerabl
         this.expectedObject = expectedObject;
     }
 
+    @Override
     public void lower(LoweringTool generator) {
         generator.getRuntime().lower(this, generator);
     }

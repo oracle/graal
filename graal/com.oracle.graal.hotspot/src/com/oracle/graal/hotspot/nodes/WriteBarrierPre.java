@@ -27,7 +27,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 public class WriteBarrierPre extends WriteBarrier implements Lowerable {
 
