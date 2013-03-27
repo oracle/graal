@@ -33,10 +33,10 @@ public interface ProfilingInfo {
     /**
      * Represents the three possibilities that an exception was seen at a specific BCI.
      */
-    public enum ExceptionSeen {
-        TRUE, FALSE, NOT_SUPPORTED;
+    public enum TriState {
+        TRUE, FALSE, UNKNOWN;
 
-        public static ExceptionSeen get(boolean value) {
+        public static TriState get(boolean value) {
             return value ? TRUE : FALSE;
         }
     }
@@ -73,11 +73,20 @@ public interface ProfilingInfo {
     /**
      * Returns information if the given BCI did ever throw an exception.
      * 
-     * @return {@link ExceptionSeen#TRUE} if the instruction has thrown an exception at least once,
-     *         {@link ExceptionSeen#FALSE} if it never threw an exception, and
-     *         {@link ExceptionSeen#NOT_SUPPORTED} if this information was not recorded.
+     * @return {@link TriState#TRUE} if the instruction has thrown an exception at least once,
+     *         {@link TriState#FALSE} if it never threw an exception, and
+     *         {@link TriState#UNKNOWN} if this information was not recorded.
      */
-    ExceptionSeen getExceptionSeen(int bci);
+    TriState getExceptionSeen(int bci);
+
+    /**
+     * Returns information if null was ever seen for the given BCI.
+     * 
+     * @return {@link TriState#TRUE} if null was seen for the instruction,
+     *         {@link TriState#FALSE} if null was NOT seen, and
+     *         {@link TriState#UNKNOWN} if this information was not recorded.
+     */
+    TriState getNullSeen(int bci);
 
     /**
      * Returns an estimate how often the current BCI was executed. Avoid comparing execution counts

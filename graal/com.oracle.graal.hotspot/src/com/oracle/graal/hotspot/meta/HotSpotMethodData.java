@@ -29,7 +29,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
-import com.oracle.graal.api.meta.ProfilingInfo.ExceptionSeen;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.phases.*;
 
@@ -41,8 +41,8 @@ public final class HotSpotMethodData extends CompilerObject {
     private static final long serialVersionUID = -8873133496591225071L;
 
     private static final HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-    private static final HotSpotMethodDataAccessor NO_DATA_NO_EXCEPTION_ACCESSOR = new NoMethodData(ExceptionSeen.FALSE);
-    private static final HotSpotMethodDataAccessor NO_DATA_EXCEPTION_POSSIBLY_NOT_RECORDED_ACCESSOR = new NoMethodData(ExceptionSeen.NOT_SUPPORTED);
+    private static final HotSpotMethodDataAccessor NO_DATA_NO_EXCEPTION_ACCESSOR = new NoMethodData(TriState.FALSE);
+    private static final HotSpotMethodDataAccessor NO_DATA_EXCEPTION_POSSIBLY_NOT_RECORDED_ACCESSOR = new NoMethodData(TriState.UNKNOWN);
 
     // sorted by tag
     private static final HotSpotMethodDataAccessor[] PROFILE_DATA_ACCESSORS = {null, new BitData(), new CounterData(), new JumpData(), new TypeCheckData(), new VirtualCallData(), new RetData(),
@@ -194,8 +194,8 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public ExceptionSeen getExceptionSeen(HotSpotMethodData data, int position) {
-            return ExceptionSeen.get((getFlags(data, position) & EXCEPTIONS_MASK) != 0);
+        public TriState getExceptionSeen(HotSpotMethodData data, int position) {
+            return TriState.get((getFlags(data, position) & EXCEPTIONS_MASK) != 0);
         }
 
         @Override
@@ -218,6 +218,11 @@ public final class HotSpotMethodData extends CompilerObject {
             return -1;
         }
 
+        @Override
+        public TriState getNullSeen(HotSpotMethodData data, int position) {
+            return TriState.UNKNOWN;
+        }
+
         protected int getFlags(HotSpotMethodData data, int position) {
             return data.readUnsignedByte(position, config.dataLayoutFlagsOffset);
         }
@@ -232,9 +237,9 @@ public final class HotSpotMethodData extends CompilerObject {
         private static final int NO_DATA_TAG = 0;
         private static final int NO_DATA_SIZE = cellIndexToOffset(0);
 
-        private final ExceptionSeen exceptionSeen;
+        private final TriState exceptionSeen;
 
-        protected NoMethodData(ExceptionSeen exceptionSeen) {
+        protected NoMethodData(TriState exceptionSeen) {
             super(NO_DATA_TAG, NO_DATA_SIZE);
             this.exceptionSeen = exceptionSeen;
         }
@@ -245,7 +250,7 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public ExceptionSeen getExceptionSeen(HotSpotMethodData data, int position) {
+        public TriState getExceptionSeen(HotSpotMethodData data, int position) {
             return exceptionSeen;
         }
     }
@@ -264,9 +269,9 @@ public final class HotSpotMethodData extends CompilerObject {
             super(tag, staticSize);
         }
 
-        @SuppressWarnings("unused")
-        public boolean getNullSeen(HotSpotMethodData data, int position) {
-            return (getFlags(data, position) & BIT_DATA_NULL_SEEN_FLAG) != 0;
+        @Override
+        public TriState getNullSeen(HotSpotMethodData data, int position) {
+            return TriState.get((getFlags(data, position) & BIT_DATA_NULL_SEEN_FLAG) != 0);
         }
     }
 

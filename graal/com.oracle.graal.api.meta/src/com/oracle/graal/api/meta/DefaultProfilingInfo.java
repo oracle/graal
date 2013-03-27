@@ -28,12 +28,12 @@ package com.oracle.graal.api.meta;
  */
 public final class DefaultProfilingInfo implements ProfilingInfo {
 
-    private static final ProfilingInfo[] NO_PROFILING_INFO = new ProfilingInfo[]{new DefaultProfilingInfo(ExceptionSeen.TRUE), new DefaultProfilingInfo(ExceptionSeen.FALSE),
-                    new DefaultProfilingInfo(ExceptionSeen.NOT_SUPPORTED)};
+    private static final ProfilingInfo[] NO_PROFILING_INFO = new ProfilingInfo[]{new DefaultProfilingInfo(TriState.TRUE), new DefaultProfilingInfo(TriState.FALSE),
+                    new DefaultProfilingInfo(TriState.UNKNOWN)};
 
-    private final ExceptionSeen exceptionSeen;
+    private final TriState exceptionSeen;
 
-    DefaultProfilingInfo(ExceptionSeen exceptionSeen) {
+    DefaultProfilingInfo(TriState exceptionSeen) {
         this.exceptionSeen = exceptionSeen;
     }
 
@@ -58,8 +58,13 @@ public final class DefaultProfilingInfo implements ProfilingInfo {
     }
 
     @Override
-    public ExceptionSeen getExceptionSeen(int bci) {
+    public TriState getExceptionSeen(int bci) {
         return exceptionSeen;
+    }
+
+    @Override
+    public TriState getNullSeen(int bci) {
+        return TriState.UNKNOWN;
     }
 
     @Override
@@ -67,7 +72,7 @@ public final class DefaultProfilingInfo implements ProfilingInfo {
         return -1;
     }
 
-    public static ProfilingInfo get(ExceptionSeen exceptionSeen) {
+    public static ProfilingInfo get(TriState exceptionSeen) {
         return NO_PROFILING_INFO[exceptionSeen.ordinal()];
     }
 

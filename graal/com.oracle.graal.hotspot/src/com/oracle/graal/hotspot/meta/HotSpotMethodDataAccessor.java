@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.ExceptionSeen;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 
 /**
  * Interface for accessor objects that encapsulate the logic for accessing the different kinds of
@@ -59,7 +59,9 @@ public interface HotSpotMethodDataAccessor {
 
     double[] getSwitchProbabilities(HotSpotMethodData data, int position);
 
-    ExceptionSeen getExceptionSeen(HotSpotMethodData data, int position);
+    TriState getExceptionSeen(HotSpotMethodData data, int position);
+
+    TriState getNullSeen(HotSpotMethodData data, int position);
 
     int getExecutionCount(HotSpotMethodData data, int position);
 }

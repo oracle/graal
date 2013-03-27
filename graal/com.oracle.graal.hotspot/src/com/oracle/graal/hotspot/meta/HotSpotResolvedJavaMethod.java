@@ -32,7 +32,7 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.ExceptionSeen;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
@@ -223,7 +223,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         if (methodData == null || (!methodData.hasNormalData() && !methodData.hasExtraData())) {
             // Be optimistic and return false for exceptionSeen. A methodDataOop is allocated in
             // case of a deoptimization.
-            info = DefaultProfilingInfo.get(ExceptionSeen.FALSE);
+            info = DefaultProfilingInfo.get(TriState.FALSE);
         } else {
             info = new HotSpotProfilingInfo(methodData, codeSize);
         }
