@@ -152,4 +152,7 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public native String getFileName(HotSpotResolvedJavaType method);
+
+    @Override
+    public native void reprofile(long metaspaceMethod);
 }

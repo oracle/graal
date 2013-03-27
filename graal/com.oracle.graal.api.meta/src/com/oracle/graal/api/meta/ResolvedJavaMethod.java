@@ -125,6 +125,11 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
     ProfilingInfo getProfilingInfo();
 
     /**
+     * Invalidates the profiling information and restarts profiling upon the next invocation.
+     */
+    void reprofile();
+
+    /**
      * Returns a map that the compiler can use to store objects that should survive the current
      * compilation.
      */
