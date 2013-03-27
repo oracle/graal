@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
@@ -250,7 +250,7 @@ public class ArrayCopySnippets implements Snippets {
             for (long i = start; i >= 0; i -= scale) {
                 Object a = UnsafeLoadNode.load(src, header, i + (long) srcPos * scale, Kind.Object);
                 DirectObjectStoreNode.storeObject(dest, header, i + (long) destPos * scale, a);
-                WriteBarrierPost.arrayCopyWriteBarrier(dest, a, j, length);
+                WriteBarrierPost.arrayCopyWriteBarrier(dest, a, j);
                 j--;
             }
         } else {
@@ -259,7 +259,7 @@ public class ArrayCopySnippets implements Snippets {
             for (long i = 0; i < end; i += scale) {
                 Object a = UnsafeLoadNode.load(src, header, i + (long) srcPos * scale, Kind.Object);
                 DirectObjectStoreNode.storeObject(dest, header, i + (long) destPos * scale, a);
-                WriteBarrierPost.arrayCopyWriteBarrier(dest, a, j, length);
+                WriteBarrierPost.arrayCopyWriteBarrier(dest, a, j);
                 j++;
             }
         }

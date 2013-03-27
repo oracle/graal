@@ -20,57 +20,50 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
+package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-public class WriteBarrierPre extends WriteBarrier implements Lowerable {
+public class G1WriteBarrierPost extends WriteBarrierPost implements Lowerable {
 
     @Input private ValueNode object;
+    @Input private ValueNode value;
     @Input private LocationNode location;
-    @Input private ValueNode expectedObject;
-    private final boolean doLoad;
+    private final boolean precise;
 
+    @Override
     public ValueNode getObject() {
         return object;
     }
 
-    public ValueNode getExpectedObject() {
-        return expectedObject;
+    @Override
+    public ValueNode getValue() {
+        return value;
     }
 
-    public boolean doLoad() {
-        return doLoad;
-    }
-
+    @Override
     public LocationNode getLocation() {
         return location;
     }
 
-    public WriteBarrierPre() {
-        this.doLoad = false;
+    @Override
+    public boolean usePrecise() {
+        return precise;
     }
 
-    public WriteBarrierPre(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
+    public G1WriteBarrierPost(ValueNode object, ValueNode value, LocationNode location, boolean precise) {
         this.object = object;
-        this.doLoad = doLoad;
+        this.value = value;
         this.location = location;
-        this.expectedObject = expectedObject;
+        this.precise = precise;
     }
 
     @Override
     public void lower(LoweringTool generator) {
-        StructuredGraph graph = (StructuredGraph) this.graph();
-        if (useG1GC()) {
-            graph.replaceFixedWithFixed(this, graph().add(new G1WriteBarrierPre(getObject(), getExpectedObject(), getLocation(), doLoad())));
-        } else {
-            graph.removeFixed(this);
-        }
+        generator.getRuntime().lower(this, generator);
     }
 
 }
