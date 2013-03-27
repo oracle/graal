@@ -1688,6 +1688,9 @@ public class GraphBuilderPhase extends Phase {
             traceState();
             traceInstruction(bci, opcode, bci == block.startBci);
             if (bci == entryBCI) {
+                if (block.jsrScope != JsrScope.EMPTY_SCOPE) {
+                    throw new BailoutException("OSR into a JSR scope is not supported");
+                }
                 EntryMarkerNode x = currentGraph.add(new EntryMarkerNode());
                 append(x);
                 frameState.insertProxies(x);
