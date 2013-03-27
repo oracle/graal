@@ -439,7 +439,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         if (osrCompilation && bootstrapRunning) {
             // no OSR compilations during bootstrap - the compiler is just too slow at this point,
             // and we know that there are no endless loops
-            return current != null;
+            return current != null && (current.isInProgress() || !current.isCancelled());
         }
 
         if (CompilationTask.withinEnqueue.get()) {
@@ -447,7 +447,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             // java.util.concurrent.BlockingQueue is used to implement the compilation worker
             // queues. If a compiler thread triggers a compilation, then it may be blocked trying
             // to add something to its own queue.
-            return current != null;
+            return current != null && (current.isInProgress() || !current.isCancelled());
         }
         CompilationTask.withinEnqueue.set(Boolean.TRUE);
 
@@ -464,7 +464,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                         // normally compilation tasks will only be re-queued when they get a
                         // priority boost, so cancel the old task and add a new one
                         current.cancel();
-                    } else {
+                    } else if (!current.isCancelled()) {
                         // without a prioritizing compile queue it makes no sense to re-queue the
                         // compilation task
                         return true;

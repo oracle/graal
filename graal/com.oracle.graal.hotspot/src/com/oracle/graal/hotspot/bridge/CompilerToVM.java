@@ -212,4 +212,6 @@ public interface CompilerToVM {
     Local[] getLocalVariableTable(HotSpotResolvedJavaMethod method);
 
     String getFileName(HotSpotResolvedJavaType method);
+
+    void clearQueuedForCompilation(HotSpotResolvedJavaMethod method);
 }
