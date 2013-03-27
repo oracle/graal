@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.replacements;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;

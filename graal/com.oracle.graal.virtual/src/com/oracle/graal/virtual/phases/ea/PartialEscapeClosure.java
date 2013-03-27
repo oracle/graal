@@ -373,7 +373,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
     }
 
     @Override
-    protected BlockState afterSplit(FixedNode node, BlockState oldState) {
+    protected BlockState cloneState(BlockState oldState) {
         return oldState.cloneState();
     }
 
