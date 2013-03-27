@@ -47,11 +47,11 @@ public class GraphScheduleTest extends GraalCompilerTest {
             Block block = bBlock;
             while (block != null) {
                 if (block == aBlock) {
-                    break;
+                    return;
                 }
                 block = block.getDominator();
             }
-            Assert.assertSame(block, aBlock);
+            Assert.fail("block of A doesn't dominate the block of B");
         }
     }
 }
