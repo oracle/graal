@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.replacements;
 
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.phases.*;
 
 /**
  * Method substitutions that are VM-independent.
  */
+@ServiceProvider(ReplacementsProvider.class)
 public class GraalMethodSubstitutions implements ReplacementsProvider {
 
     public void installReplacements(ReplacementsInstaller installer) {
