@@ -165,7 +165,7 @@ public final class HotSpotMethodData extends CompilerObject {
         /**
          * Corresponds to DS_RECOMPILE_BIT defined in deoptimization.cpp.
          */
-        private static final int EXCEPTIONS_MASK = 0x80;
+        private static final int EXCEPTIONS_MASK = 0x2;
 
         private final int tag;
         private final int staticSize;
