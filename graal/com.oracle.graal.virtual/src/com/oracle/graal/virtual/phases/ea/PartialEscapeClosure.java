@@ -34,14 +34,18 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.virtual.nodes.*;
+import com.oracle.graal.virtual.phases.ea.BlockState.ReadCacheEntry;
 
 class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
@@ -53,6 +57,11 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
     public static final DebugMetric METRIC_MATERIALIZATIONS_LOOP_END = Debug.metric("MaterializationsLoopEnd");
     public static final DebugMetric METRIC_ALLOCATION_REMOVED = Debug.metric("AllocationsRemoved");
 
+    public static final DebugMetric METRIC_STOREFIELD_RECORDED = Debug.metric("StoreFieldRecorded");
+    public static final DebugMetric METRIC_LOADFIELD_ELIMINATED = Debug.metric("LoadFieldEliminated");
+    public static final DebugMetric METRIC_LOADFIELD_NOT_ELIMINATED = Debug.metric("LoadFieldNotEliminated");
+    public static final DebugMetric METRIC_MEMORYCHECKOINT = Debug.metric("MemoryCheckpoint");
+
     private final NodeBitMap usages;
     private final SchedulePhase schedule;
 
@@ -60,10 +69,18 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
     private final VirtualizerToolImpl tool;
 
+    private final Map<Invoke, Double> hints = new IdentityHashMap<>();
+
+    private boolean changed;
+
     public PartialEscapeClosure(NodeBitMap usages, SchedulePhase schedule, MetaAccessProvider metaAccess, Assumptions assumptions) {
         this.usages = usages;
         this.schedule = schedule;
         tool = new VirtualizerToolImpl(effects, usages, metaAccess, assumptions);
+    }
+
+    public boolean hasChanged() {
+        return changed;
     }
 
     public GraphEffectList getEffects() {
@@ -74,6 +91,10 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         return tool.getNewVirtualObjectCount();
     }
 
+    public Map<Invoke, Double> getHints() {
+        return hints;
+    }
+
     @Override
     protected void processBlock(Block block, BlockState state) {
         trace("\nBlock: %s (", block);
@@ -81,27 +102,68 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
         FixedWithNextNode lastFixedNode = null;
         for (Node node : nodeList) {
+            boolean deleted;
             if (usages.isMarked(node) || node instanceof VirtualizableAllocation) {
                 trace("[[%s]] ", node);
-                processNode((ValueNode) node, lastFixedNode == null ? null : lastFixedNode.next(), state);
+                deleted = processNode((ValueNode) node, lastFixedNode == null ? null : lastFixedNode.next(), state);
             } else {
                 trace("%s ", node);
+                deleted = false;
             }
+            if (GraalOptions.PEAReadCache) {
+                if (!deleted) {
+                    if (node instanceof StoreFieldNode) {
+                        METRIC_STOREFIELD_RECORDED.increment();
+                        StoreFieldNode store = (StoreFieldNode) node;
+                        ValueNode cachedValue = state.getReadCache(store.object(), store.field());
+                        state.killReadCache(store.field());
 
-            if (node instanceof FixedWithNextNode && node.isAlive()) {
+                        if (cachedValue == store.value()) {
+                            effects.addCounterBefore("store elim", 1, false, lastFixedNode.next());
+                            effects.deleteFixedNode(store);
+                            changed = true;
+                        } else {
+                            state.addReadCache(store.object(), store.field(), store.value());
+                        }
+                    } else if (node instanceof LoadFieldNode) {
+                        LoadFieldNode load = (LoadFieldNode) node;
+                        ValueNode cachedValue = state.getReadCache(load.object(), load.field());
+                        if (cachedValue != null) {
+                            METRIC_LOADFIELD_ELIMINATED.increment();
+                            effects.addCounterBefore("load elim", 1, false, lastFixedNode.next());
+                            effects.replaceAtUsages(load, cachedValue);
+                            state.addScalarAlias(load, cachedValue);
+                            changed = true;
+                        } else {
+                            METRIC_LOADFIELD_NOT_ELIMINATED.increment();
+                            state.addReadCache(load.object(), load.field(), load);
+                        }
+                    } else if (node instanceof MemoryCheckpoint) {
+                        METRIC_MEMORYCHECKOINT.increment();
+                        MemoryCheckpoint checkpoint = (MemoryCheckpoint) node;
+                        for (Object identity : checkpoint.getLocationIdentities()) {
+                            state.killReadCache(identity);
+                        }
+                    }
+                }
+            }
+            if (node instanceof FixedWithNextNode) {
                 lastFixedNode = (FixedWithNextNode) node;
             }
         }
         trace(")\n    end state: %s\n", state);
     }
 
-    private void processNode(final ValueNode node, FixedNode insertBefore, final BlockState state) {
+    private boolean processNode(final ValueNode node, FixedNode insertBefore, final BlockState state) {
         tool.reset(state, node);
         if (node instanceof Virtualizable) {
             ((Virtualizable) node).virtualize(tool);
         }
         if (tool.isDeleted()) {
-            return;
+            if (tool.isCustomAction() || !(node instanceof VirtualizableAllocation || node instanceof CyclicMaterializeStoreNode)) {
+                changed = true;
+            }
+            return true;
         }
         if (node instanceof StateSplit) {
             StateSplit split = (StateSplit) node;
@@ -178,15 +240,20 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         }
         if (tool.isCustomAction()) {
-            return;
+            return false;
         }
         for (ValueNode input : node.inputs().filter(ValueNode.class)) {
             ObjectState obj = state.getObjectState(input);
             if (obj != null) {
+                if (obj.isVirtual() && node instanceof MethodCallTargetNode) {
+                    Invoke invoke = ((MethodCallTargetNode) node).invoke();
+                    hints.put(invoke, 5d);
+                }
                 trace("replacing input %s at %s: %s", input, node, obj);
                 replaceWithMaterialized(input, node, insertBefore, state, obj, METRIC_MATERIALIZATIONS_UNHANDLED);
             }
         }
+        return false;
     }
 
     private void ensureMaterialized(BlockState state, ObjectState obj, FixedNode materializeBefore, DebugMetric metric) {
@@ -207,7 +274,6 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
     @Override
     protected BlockState merge(MergeNode merge, List<BlockState> states) {
-
         BlockState newState = BlockState.meetAliases(states);
 
         // Iterative processing:
@@ -300,12 +366,14 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                 }
             }
 
-            for (PhiNode phi : merge.phis().snapshot()) {
+            for (PhiNode phi : merge.phis()) {
                 if (usages.isMarked(phi) && phi.type() == PhiType.Value) {
                     materialized |= processPhi(newState, merge, phi, states);
                 }
             }
         } while (materialized);
+
+        newState.mergeReadCache(states, merge, effects);
 
         return newState;
     }
@@ -373,7 +441,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
     }
 
     @Override
-    protected BlockState afterSplit(FixedNode node, BlockState oldState) {
+    protected BlockState cloneState(BlockState oldState) {
         return oldState.cloneState();
     }
 
@@ -421,11 +489,13 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             List<BlockState> loopEndStates = info.endStates;
             List<Block> predecessors = loop.header.getPredecessors();
             HashSet<VirtualObjectNode> additionalMaterializations = new HashSet<>();
+            HashSet<ReadCacheEntry> additionalKilledReads = new HashSet<>();
             int oldPhiCount = phis.size();
             for (int i = 1; i < predecessors.size(); i++) {
-                processLoopEnd(loop.loopBegin(), (LoopEndNode) predecessors.get(i).getEndNode(), state, loopEndStates.get(i - 1), successEffects, additionalMaterializations, phis);
+                processLoopEnd(loop.loopBegin(), (LoopEndNode) predecessors.get(i).getEndNode(), state, loopEndStates.get(i - 1), successEffects, additionalMaterializations, additionalKilledReads,
+                                phis);
             }
-            if (additionalMaterializations.isEmpty() && oldPhiCount == phis.size()) {
+            if (additionalMaterializations.isEmpty() && additionalKilledReads.isEmpty() && oldPhiCount == phis.size()) {
                 effects.addAll(successEffects);
 
                 assert info.exitStates.size() == loop.exits.size();
@@ -450,6 +520,9 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                         assert obj.getState() == EscapeState.Global;
                     }
                 }
+                for (ReadCacheEntry entry : additionalKilledReads) {
+                    initialState.getReadCache().remove(entry);
+                }
             }
         }
 
@@ -473,7 +546,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     ObjectState valueObj = exitState.getObjectState(value);
                     if (valueObj == null) {
                         if ((value instanceof PhiNode && ((PhiNode) value).merge() == exitNode.loopBegin()) || initialObj == null || !initialObj.isVirtual() || initialObj.getEntry(i) != value) {
-                            ProxyNode proxy = new ProxyNode(value, exitNode, PhiType.Value);
+                            ProxyNode proxy = new ProxyNode(value, exitNode, PhiType.Value, null);
                             obj.setEntry(i, proxy);
                             effects.addFloatingNode(proxy);
                         }
@@ -483,7 +556,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                 if (initialObj == null || initialObj.isVirtual()) {
                     ProxyNode proxy = proxies.get(obj.virtual);
                     if (proxy == null) {
-                        proxy = new ProxyNode(obj.getMaterializedValue(), exitNode, PhiType.Value);
+                        proxy = new ProxyNode(obj.getMaterializedValue(), exitNode, PhiType.Value, null);
                         effects.addFloatingNode(proxy);
                     } else {
                         effects.replaceFirstInput(proxy, proxy.value(), obj.getMaterializedValue());
@@ -492,8 +565,16 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     obj.updateMaterializedValue(proxy);
                 } else {
                     assert initialObj.getMaterializedValue() == obj.getMaterializedValue() : "materialized value is not allowed to change within loops: " + initialObj.getMaterializedValue() +
-                                    " vs. " + obj.getMaterializedValue();
+                                    " vs. " + obj.getMaterializedValue() + " at " + exitNode;
                 }
+            }
+        }
+
+        for (Map.Entry<ReadCacheEntry, ValueNode> entry : exitState.getReadCache().entrySet()) {
+            if (initialState.getReadCache().get(entry.getKey()) != entry.getValue()) {
+                ProxyNode proxy = new ProxyNode(exitState.getReadCache(entry.getKey().object, entry.getKey().identity), exitNode, PhiType.Value, null);
+                effects.addFloatingNode(proxy);
+                entry.setValue(proxy);
             }
         }
     }
@@ -530,7 +611,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
     }
 
     private void processLoopEnd(LoopBeginNode loopBegin, LoopEndNode loopEnd, BlockState initialState, BlockState loopEndState, GraphEffectList successEffects,
-                    Set<VirtualObjectNode> additionalMaterializations, HashSet<PhiDesc> phis) {
+                    Set<VirtualObjectNode> additionalMaterializations, HashSet<ReadCacheEntry> additionalKilledReads, HashSet<PhiDesc> phis) {
         assert loopEnd.loopBegin() == loopBegin;
         boolean materialized;
         do {
@@ -573,7 +654,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     }
                 }
             }
-            for (PhiNode phi : loopBegin.phis().snapshot()) {
+            for (PhiNode phi : loopBegin.phis()) {
                 if (usages.isMarked(phi) && phi.type() == PhiType.Value) {
                     ObjectState initialObj = initialState.getObjectState(phi.valueAt(0));
                     boolean initialMaterialized = initialObj == null || !initialObj.isVirtual();
@@ -660,6 +741,12 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                         // state.materializedValue, endState.materializedValue);
                     }
                 }
+            }
+        }
+
+        for (Map.Entry<ReadCacheEntry, ValueNode> entry : initialState.getReadCache().entrySet()) {
+            if (loopEndState.getReadCache().get(entry.getKey()) != entry.getValue()) {
+                additionalKilledReads.add(entry.getKey());
             }
         }
     }

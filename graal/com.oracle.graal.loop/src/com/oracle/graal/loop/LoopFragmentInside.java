@@ -30,7 +30,6 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 public class LoopFragmentInside extends LoopFragment {
@@ -162,8 +161,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
             // create a new phi (we don't patch the old one since some usages of the old one may
             // still be valid)
-            PhiNode newPhi = graph.add(phi.type() == PhiType.Value ? phi.stamp() == StampFactory.virtual() ? new PhiNode(phi.stamp(), loopBegin) : new PhiNode(phi.kind(), loopBegin) : new PhiNode(
-                            phi.type(), loopBegin));
+            PhiNode newPhi = graph.add(phi.type() == PhiType.Value ? new PhiNode(phi.kind(), loopBegin) : new PhiNode(phi.type(), loopBegin, phi.getIdentity()));
             newPhi.addInput(first);
             for (LoopEndNode end : loopBegin.orderedLoopEnds()) {
                 newPhi.addInput(phi.valueAt(end));
@@ -253,8 +251,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
 
             for (final PhiNode phi : loopBegin.phis().snapshot()) {
-                final PhiNode firstPhi = graph.add(phi.type() == PhiType.Value ? phi.stamp() == StampFactory.virtual() ? new PhiNode(phi.stamp(), newExitMerge) : new PhiNode(phi.kind(), newExitMerge)
-                                : new PhiNode(phi.type(), newExitMerge));
+                final PhiNode firstPhi = graph.add(phi.type() == PhiType.Value ? new PhiNode(phi.kind(), newExitMerge) : new PhiNode(phi.type(), newExitMerge, phi.getIdentity()));
                 for (EndNode end : newExitMerge.forwardEnds()) {
                     LoopEndNode loopEnd = reverseEnds.get(end);
                     ValueNode prim = prim(phi.valueAt(loopEnd));
