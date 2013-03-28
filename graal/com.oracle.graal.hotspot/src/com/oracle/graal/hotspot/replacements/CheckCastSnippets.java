@@ -81,7 +81,11 @@ public class CheckCastSnippets implements Snippets {
             }
             exactHit.inc();
         }
-        return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic());
+        /**
+         * make sure that the unsafeCast is done *after* the check above,
+         * cf. {@link ReadAfterCheckCast}*/
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
     /**
@@ -109,7 +113,8 @@ public class CheckCastSnippets implements Snippets {
             }
             displayHit.inc();
         }
-        return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
     /**
@@ -132,14 +137,16 @@ public class CheckCastSnippets implements Snippets {
                 Word hintHub = hints[i];
                 if (hintHub.equal(objectHub)) {
                     hintsHit.inc();
-                    return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic());
+                    BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+                    return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic(), anchorNode);
                 }
             }
             if (!checkSecondarySubType(hub, objectHub)) {
                 DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
             }
         }
-        return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
     /**
@@ -160,7 +167,8 @@ public class CheckCastSnippets implements Snippets {
                 DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
             }
         }
-        return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
     // @formatter:on
