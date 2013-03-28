@@ -204,6 +204,10 @@ public class GraalCompiler {
             new EliminatePartiallyRedundantGuardsPhase(true, true).apply(graph);
         }
 
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(runtime, assumptions).apply(graph);
+        }
+
         plan.runPhases(PhasePosition.MID_LEVEL, graph);
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);

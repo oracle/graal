@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.api.runtime;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import java.lang.annotation.*;
 
-public final class FieldWriteBarrier extends FixedWithNextNode implements Lowerable {
+@Retention(RetentionPolicy.SOURCE)
+@Target(ElementType.TYPE)
+public @interface ServiceProvider {
 
-    @Input private ValueNode object;
-
-    public ValueNode getObject() {
-        return object;
-    }
-
-    public FieldWriteBarrier(ValueNode object) {
-        super(StampFactory.forVoid());
-        this.object = object;
-    }
-
-    public void lower(LoweringTool generator) {
-        generator.getRuntime().lower(this, generator);
-    }
+    Class<?> value();
 }

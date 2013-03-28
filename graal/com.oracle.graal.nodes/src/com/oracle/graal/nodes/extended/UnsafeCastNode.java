@@ -44,6 +44,11 @@ public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIR
         this.object = object;
     }
 
+    public UnsafeCastNode(ValueNode object, Stamp stamp, ValueNode anchor) {
+        super(stamp, anchor);
+        this.object = object;
+    }
+
     public UnsafeCastNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
         this(object, toType.getKind() == Kind.Object ? StampFactory.object(toType, exactType, nonNull || object.stamp().nonNull()) : StampFactory.forKind(toType.getKind()));
     }
@@ -108,6 +113,9 @@ public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIR
 
     @NodeIntrinsic
     public static native <T> T unsafeCast(Object object, @ConstantNodeParameter Stamp stamp);
+
+    @NodeIntrinsic
+    public static native <T> T unsafeCast(Object object, @ConstantNodeParameter Stamp stamp, ValueNode anchor);
 
     @SuppressWarnings("unused")
     @NodeIntrinsic

@@ -184,4 +184,7 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
             throw new UnsupportedOperationException();
         }
     }
+
+    @NodeIntrinsic
+    public static native <T> T anchor(@ConstantNodeParameter Stamp stamp);
 }

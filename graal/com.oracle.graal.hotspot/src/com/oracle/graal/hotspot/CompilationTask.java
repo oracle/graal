@@ -88,6 +88,10 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         return inProgress;
     }
 
+    public boolean isCancelled() {
+        return cancelled;
+    }
+
     public int getEntryBCI() {
         return entryBCI;
     }
@@ -106,10 +110,11 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                 }
             }
             runCompilation();
-            if (method.currentTask() == this && entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI) {
+        } finally {
+            if (method.currentTask() == this) {
                 method.setCurrentTask(null);
             }
-        } finally {
+            graalRuntime.getCompilerToVM().clearQueuedForCompilation(method);
             inProgress = false;
             withinEnqueue.set(Boolean.TRUE);
         }

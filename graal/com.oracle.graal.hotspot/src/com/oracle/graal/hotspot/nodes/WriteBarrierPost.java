@@ -22,15 +22,18 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
+
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-public final class WriteBarrierPost extends FixedWithNextNode implements Lowerable {
+public class WriteBarrierPost extends WriteBarrier implements Lowerable {
 
     @Input private ValueNode object;
     @Input private ValueNode value;
+    @Input private ValueNode index;
     @Input private LocationNode location;
     private final boolean precise;
 
@@ -50,15 +53,45 @@ public final class WriteBarrierPost extends FixedWithNextNode implements Lowerab
         return precise;
     }
 
+    public WriteBarrierPost() {
+        this.precise = false;
+    }
+
+    public WriteBarrierPost(ValueNode object, ValueNode value, ValueNode index) {
+        this.object = object;
+        this.value = value;
+        this.index = index;
+        this.precise = true;
+        this.location = null;
+    }
+
     public WriteBarrierPost(ValueNode object, ValueNode value, LocationNode location, boolean precise) {
-        super(StampFactory.forVoid());
         this.object = object;
         this.value = value;
         this.location = location;
         this.precise = precise;
     }
 
+    @Override
     public void lower(LoweringTool generator) {
-        generator.getRuntime().lower(this, generator);
+        StructuredGraph graph = (StructuredGraph) this.graph();
+        if (location == null) { // Come from array copy intrinsic
+            LocationNode arrayLocation = IndexedLocationNode.create(LocationNode.getArrayLocation(Kind.Object), Kind.Object, arrayBaseOffset(Kind.Object), index, graph, arrayIndexScale(Kind.Object));
+            if (useG1GC()) {
+                graph.replaceFixedWithFixed(this, graph().add(new G1WriteBarrierPost(object, value, arrayLocation, true)));
+            } else {
+                graph.replaceFixedWithFixed(this, graph().add(new SerialWriteBarrierPost(object, arrayLocation, true)));
+            }
+        } else { // Normal WriteBarrier
+            assert location != null;
+            if (useG1GC()) {
+                graph.replaceFixedWithFixed(this, graph().add(new G1WriteBarrierPost(object, value, location, precise)));
+            } else {
+                graph.replaceFixedWithFixed(this, graph().add(new SerialWriteBarrierPost(object, location, precise)));
+            }
+        }
     }
+
+    @NodeIntrinsic
+    public static native void arrayCopyWriteBarrier(Object array, Object value, long index);
 }
