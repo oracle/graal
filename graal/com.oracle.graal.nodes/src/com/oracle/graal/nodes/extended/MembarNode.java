@@ -22,7 +22,14 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import static com.oracle.graal.graph.UnsafeAccess.*;
+
+import java.lang.reflect.*;
+
+import sun.misc.*;
+
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -52,6 +59,28 @@ public class MembarNode extends FixedWithNextNode implements LIRLowerable, Memor
         generator.emitMembar(barriers);
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void memoryBarrier(@ConstantNodeParameter int barriers);
+    public static void memoryBarrier(@ConstantNodeParameter int barriers) {
+        // Overly conservative but it doesn't matter in the interpreter
+        unsafe.putIntVolatile(dummyBase, dummyOffset, 0);
+        unsafe.getIntVolatile(dummyBase, dummyOffset);
+    }
+
+    /**
+     * An unused field that it used to exercise barriers in the interpreter. This can be replaced
+     * with direct support for barriers in {@link Unsafe} if/when they become available.
+     */
+    @SuppressWarnings("unused") private static int dummy;
+    private static Object dummyBase;
+    private static long dummyOffset;
+    static {
+        try {
+            Field dummyField = MembarNode.class.getDeclaredField("dummy");
+            dummyBase = unsafe.staticFieldBase(dummyField);
+            dummyOffset = unsafe.staticFieldOffset(dummyField);
+        } catch (Exception e) {
+            throw new GraalInternalError(e);
+        }
+    }
 }

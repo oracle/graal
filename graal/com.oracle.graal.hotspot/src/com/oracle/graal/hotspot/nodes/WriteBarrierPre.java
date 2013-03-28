@@ -22,32 +22,54 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.meta.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
-public final class ArrayWriteBarrier extends WriteBarrier implements LIRLowerable {
+public class WriteBarrierPre extends WriteBarrier implements Lowerable {
 
     @Input private ValueNode object;
     @Input private LocationNode location;
+    @Input private ValueNode expectedObject;
+    private final boolean doLoad;
 
-    public ValueNode object() {
+    public ValueNode getObject() {
         return object;
     }
 
-    public LocationNode location() {
+    public ValueNode getExpectedObject() {
+        return expectedObject;
+    }
+
+    public boolean doLoad() {
+        return doLoad;
+    }
+
+    public LocationNode getLocation() {
         return location;
     }
 
-    public ArrayWriteBarrier(ValueNode object, LocationNode location) {
+    public WriteBarrierPre() {
+        this.doLoad = false;
+    }
+
+    public WriteBarrierPre(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
         this.object = object;
+        this.doLoad = doLoad;
         this.location = location;
+        this.expectedObject = expectedObject;
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        Value addr = location().generateLea(gen, object());
-        generateBarrier(addr, gen);
+    public void lower(LoweringTool generator) {
+        StructuredGraph graph = (StructuredGraph) this.graph();
+        if (useG1GC()) {
+            graph.replaceFixedWithFixed(this, graph().add(new G1WriteBarrierPre(getObject(), getExpectedObject(), getLocation(), doLoad())));
+        } else {
+            graph.removeFixed(this);
+        }
     }
+
 }

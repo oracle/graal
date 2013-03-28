@@ -89,7 +89,7 @@ public class NodeIntrinsificationPhase extends Phase {
 
             // Create the new node instance.
             Class<?> c = getNodeClass(target, intrinsic);
-            Node newInstance = createNodeInstance(c, parameterTypes, returnType, intrinsic.setStampFromReturnType(), nodeConstructorArguments);
+            Node newInstance = createNodeInstance(runtime, c, parameterTypes, returnType, intrinsic.setStampFromReturnType(), nodeConstructorArguments);
 
             // Replace the invoke with the new node.
             invoke.node().graph().add(newInstance);
@@ -260,11 +260,19 @@ public class NodeIntrinsificationPhase extends Phase {
 
     static final int VARARGS = 0x00000080;
 
-    private static Node createNodeInstance(Class<?> nodeClass, Class<?>[] parameterTypes, ResolvedJavaType returnType, boolean setStampFromReturnType, Object[] nodeConstructorArguments) {
+    private static Node createNodeInstance(MetaAccessProvider runtime, Class<?> nodeClass, Class<?>[] parameterTypes, ResolvedJavaType returnType, boolean setStampFromReturnType,
+                    Object[] nodeConstructorArguments) {
         Object[] arguments = null;
         Constructor<?> constructor = null;
+        boolean needsMetaAccessProviderArgument = false;
         nextConstructor: for (Constructor c : nodeClass.getDeclaredConstructors()) {
+            needsMetaAccessProviderArgument = false;
             Class[] signature = c.getParameterTypes();
+            if (signature.length != 0 && signature[0] == MetaAccessProvider.class) {
+                // Chop off the MetaAccessProvider first parameter
+                signature = Arrays.copyOfRange(signature, 1, signature.length);
+                needsMetaAccessProviderArgument = true;
+            }
             if ((c.getModifiers() & VARARGS) != 0) {
                 int fixedArgs = signature.length - 1;
                 if (parameterTypes.length < fixedArgs) {
@@ -285,7 +293,6 @@ public class NodeIntrinsificationPhase extends Phase {
                         continue nextConstructor;
                     }
                 }
-
                 arguments = Arrays.copyOf(nodeConstructorArguments, fixedArgs + 1);
                 int varargsLength = nodeConstructorArguments.length - fixedArgs;
                 Object varargs = Array.newInstance(componentType, varargsLength);
@@ -303,6 +310,12 @@ public class NodeIntrinsificationPhase extends Phase {
         }
         if (constructor == null) {
             throw new GraalInternalError("Could not find constructor in " + nodeClass + " compatible with signature " + Arrays.toString(parameterTypes));
+        }
+        if (needsMetaAccessProviderArgument) {
+            Object[] copy = new Object[arguments.length + 1];
+            System.arraycopy(arguments, 0, copy, 1, arguments.length);
+            copy[0] = runtime;
+            arguments = copy;
         }
         constructor.setAccessible(true);
         try {

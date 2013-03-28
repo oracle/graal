@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.word.*;
 
-public class HotSpotCurrentRawThreadNode extends FloatingNode implements LIRLowerable {
+public class ComputeAddressNode extends FloatingNode implements LIRLowerable {
 
-    public HotSpotCurrentRawThreadNode() {
-        super(StampFactory.forWord());
+    @Input private ValueNode object;
+    @Input private ValueNode location;
+
+    public ValueNode getObject() {
+        return object;
+    }
+
+    public LocationNode getLocation() {
+        return (LocationNode) location;
+    }
+
+    public ComputeAddressNode(ValueNode object, ValueNode location, Stamp stamp) {
+        super(stamp);
+        this.object = object;
+        this.location = location;
     }
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        Register rawThread = HotSpotGraalRuntime.getInstance().getRuntime().threadRegister();
-        gen.setResult(this, rawThread.asValue(this.kind()));
+        Value addr = getLocation().generateLea(gen, getObject());
+        gen.setResult(this, addr);
     }
-
-    @NodeIntrinsic
-    public static native Word get();
 }

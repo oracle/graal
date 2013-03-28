@@ -745,7 +745,8 @@ public class GraphBuilderPhase extends Phase {
     private JavaMethod lookupMethod(int cpi, int opcode) {
         eagerResolvingForSnippets(cpi, opcode);
         JavaMethod result = constantPool.lookupMethod(cpi, opcode);
-        assert !graphBuilderConfig.unresolvedIsError() || ((result instanceof ResolvedJavaMethod) && ((ResolvedJavaMethod) result).getDeclaringClass().isInitialized()) : result;
+        // assert !graphBuilderConfig.unresolvedIsError() || ((result instanceof ResolvedJavaMethod)
+// && ((ResolvedJavaMethod) result).getDeclaringClass().isInitialized()) : result;
         return result;
     }
 
@@ -1141,11 +1142,6 @@ public class GraphBuilderPhase extends Phase {
             invoke.setStateAfter(frameState.create(nextBlock.startBci));
             return invoke;
         }
-    }
-
-    private void callRegisterFinalizer() {
-        // append a call to the finalizer registration
-        append(currentGraph.add(new RegisterFinalizerNode(frameState.loadLocal(0))));
     }
 
     private void genReturn(ValueNode x) {
@@ -1562,9 +1558,6 @@ public class GraphBuilderPhase extends Phase {
     }
 
     private void createReturn() {
-        if (method.isConstructor() && MetaUtil.isJavaLangObject(method.getDeclaringClass())) {
-            callRegisterFinalizer();
-        }
         Kind returnKind = method.getSignature().getReturnKind().getStackKind();
         ValueNode x = returnKind == Kind.Void ? null : frameState.pop(returnKind);
         assert frameState.stackSize() == 0;
@@ -1695,6 +1688,9 @@ public class GraphBuilderPhase extends Phase {
             traceState();
             traceInstruction(bci, opcode, bci == block.startBci);
             if (bci == entryBCI) {
+                if (block.jsrScope != JsrScope.EMPTY_SCOPE) {
+                    throw new BailoutException("OSR into a JSR scope is not supported");
+                }
                 EntryMarkerNode x = currentGraph.add(new EntryMarkerNode());
                 append(x);
                 frameState.insertProxies(x);

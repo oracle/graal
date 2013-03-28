@@ -176,6 +176,11 @@ public class WordTypeRewriterPhase extends Phase {
                         replace(invoke, graph.unique(new UnsafeCastNode(arguments.get(0), StampFactory.forKind(wordKind))));
                         break;
 
+                    case FROM_ARRAY:
+                        assert arguments.size() == 2;
+                        replace(invoke, graph.unique(new ComputeAddressNode(arguments.get(0), arguments.get(1), StampFactory.forKind(wordKind))));
+                        break;
+
                     case TO_OBJECT:
                         assert arguments.size() == 1;
                         replace(invoke, graph.unique(new UnsafeCastNode(arguments.get(0), invoke.node().stamp())));

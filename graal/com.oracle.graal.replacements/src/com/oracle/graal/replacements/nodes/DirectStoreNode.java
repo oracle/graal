@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import static com.oracle.graal.graph.UnsafeAccess.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -57,27 +59,52 @@ public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
      * are used).
      */
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(long address, boolean value, @ConstantNodeParameter Kind kind);
+    public static void store(long address, boolean value, @ConstantNodeParameter Kind kind) {
+        int b = value ? 1 : 0;
+        unsafe.putByte(address, (byte) b);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(long address, byte value, @ConstantNodeParameter Kind kind);
+    public static void store(long address, byte value, @ConstantNodeParameter Kind kind) {
+        unsafe.putByte(address, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(long address, short value, @ConstantNodeParameter Kind kind);
+    public static void store(long address, short value, @ConstantNodeParameter Kind kind) {
+        unsafe.putShort(address, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(long address, char value, @ConstantNodeParameter Kind kind);
+    public static void store(long address, char value, @ConstantNodeParameter Kind kind) {
+        unsafe.putChar(address, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(long address, int value, @ConstantNodeParameter Kind kind);
+    public static void store(long address, int value, @ConstantNodeParameter Kind kind) {
+        unsafe.putInt(address, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(long address, long value, @ConstantNodeParameter Kind kind);
+    public static void store(long address, long value, @ConstantNodeParameter Kind kind) {
+        unsafe.putLong(address, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(long address, float value, @ConstantNodeParameter Kind kind);
+    public static void store(long address, float value, @ConstantNodeParameter Kind kind) {
+        unsafe.putFloat(address, value);
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static native void store(long address, double value, @ConstantNodeParameter Kind kind);
+    public static void store(long address, double value, @ConstantNodeParameter Kind kind) {
+        unsafe.putDouble(address, value);
+    }
 }

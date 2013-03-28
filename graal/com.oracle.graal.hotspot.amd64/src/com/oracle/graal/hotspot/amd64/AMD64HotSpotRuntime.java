@@ -41,6 +41,8 @@ import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.Decryp
 import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.EncryptBlockStubCall.*;
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.DecryptAESCryptStubCall.*;
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.EncryptAESCryptStubCall.*;
+import static com.oracle.graal.hotspot.nodes.WriteBarrierPostStubCall.*;
+import static com.oracle.graal.hotspot.nodes.WriteBarrierPreStubCall.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -50,8 +52,8 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.amd64.*;
+import com.oracle.graal.replacements.*;
 
 public class AMD64HotSpotRuntime extends HotSpotRuntime {
 
@@ -87,6 +89,16 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /*          ret */ ret(Kind.Void),
                 /* arg0: object */ javaCallingConvention(Kind.Object,
                 /* arg1:   lock */                       word));
+
+       addRuntimeCall(WBPRECALL, config.wbPreCallStub,
+                /*        temps */ null,
+                /*          ret */ ret(Kind.Void),
+                /* arg0: object */ javaCallingConvention(Kind.Object));
+
+       addRuntimeCall(WBPOSTCALL, config.wbPostCallStub,
+                /*        temps */ null,
+                /*          ret */ ret(Kind.Void),
+                /* arg0: object */ javaCallingConvention(Kind.Object, word));
 
         addRuntimeCall(MONITOREXIT, config.monitorExitStub,
                 /*        temps */ null,
@@ -142,7 +154,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
 
         addRuntimeCall(THREAD_IS_INTERRUPTED, config.threadIsInterruptedStub,
                 /*        temps */ null,
-                /*          ret */ rax.asValue(Kind.Int),
+                /*          ret */ rax.asValue(Kind.Boolean),
                 /* arg0: thread */ javaCallingConvention(Kind.Object,
       /* arg1: clearInterrupted */                       Kind.Boolean));
 

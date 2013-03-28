@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.api.runtime;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import java.lang.annotation.*;
 
-public final class FieldWriteBarrier extends WriteBarrier implements LIRLowerable {
+@Retention(RetentionPolicy.SOURCE)
+@Target(ElementType.TYPE)
+public @interface ServiceProvider {
 
-    @Input private ValueNode object;
-
-    public ValueNode object() {
-        return object;
-    }
-
-    public FieldWriteBarrier(ValueNode object) {
-        this.object = object;
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool generator) {
-        Value obj = generator.newVariable(generator.target().wordKind);
-        generator.emitMove(obj, generator.operand(object()));
-        generateBarrier(obj, generator);
-    }
+    Class<?> value();
 }

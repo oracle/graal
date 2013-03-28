@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-/**
- * A node that loads the {@link Thread} object for the current thread.
- */
-public final class CurrentThread extends FloatingNode implements LIRLowerable {
+public class SerialWriteBarrierPost extends WriteBarrierPost implements Lowerable {
 
-    public CurrentThread() {
-        super(StampFactory.declaredNonNull(HotSpotGraalRuntime.getInstance().getRuntime().lookupJavaType(Thread.class)));
+    @Input private ValueNode object;
+    @Input private LocationNode location;
+    private final boolean usePrecise;
+
+    public SerialWriteBarrierPost(ValueNode object, LocationNode location, boolean usePrecise) {
+        this.object = object;
+        this.location = location;
+        this.usePrecise = usePrecise;
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        HotSpotGraalRuntime runtime = HotSpotGraalRuntime.getInstance();
-        Register thread = runtime.getRuntime().threadRegister();
-        gen.setResult(this, gen.emitLoad(Kind.Object, thread.asValue(gen.target().wordKind), runtime.getConfig().threadObjectOffset, Value.ILLEGAL, 0, false));
+    public ValueNode getObject() {
+        return object;
     }
 
-    @NodeIntrinsic
-    public static native Thread get();
+    @Override
+    public LocationNode getLocation() {
+        return location;
+    }
+
+    @Override
+    public boolean usePrecise() {
+        return usePrecise;
+    }
+
+    @Override
+    public void lower(LoweringTool generator) {
+        generator.getRuntime().lower(this, generator);
+    }
+
 }

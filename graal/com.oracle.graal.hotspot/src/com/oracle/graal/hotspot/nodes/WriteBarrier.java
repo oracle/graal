@@ -22,10 +22,7 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 public abstract class WriteBarrier extends FixedWithNextNode {
@@ -34,17 +31,4 @@ public abstract class WriteBarrier extends FixedWithNextNode {
         super(StampFactory.forVoid());
     }
 
-    protected void generateBarrier(Value adr, LIRGeneratorTool gen) {
-        HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-        Value base = gen.emitUShr(adr, Constant.forInt(config.cardtableShift));
-
-        long startAddress = config.cardtableStartAddress;
-        int displacement = 0;
-        if (((int) startAddress) == startAddress) {
-            displacement = (int) startAddress;
-        } else {
-            base = gen.emitAdd(base, Constant.forLong(config.cardtableStartAddress));
-        }
-        gen.emitStore(Kind.Boolean, base, displacement, Value.ILLEGAL, 0, Constant.FALSE, false);
-    }
 }

@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 import sun.misc.*;
 
@@ -33,7 +34,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
@@ -50,6 +51,11 @@ public class HotSpotSnippetUtils {
 
     public static HotSpotVMConfig config() {
         return HotSpotGraalRuntime.getInstance().getConfig();
+    }
+
+    @Fold
+    public static boolean useTLAB() {
+        return config().useTLAB;
     }
 
     @Fold
@@ -281,6 +287,36 @@ public class HotSpotSnippetUtils {
     }
 
     @Fold
+    public static int g1CardQueueIndexOffset() {
+        return config().g1CardQueueIndexOffset;
+    }
+
+    @Fold
+    public static int g1CardQueueBufferOffset() {
+        return config().g1CardQueueBufferOffset;
+    }
+
+    @Fold
+    public static int logOfHRGrainBytes() {
+        return config().logOfHRGrainBytes;
+    }
+
+    @Fold
+    public static int g1SATBQueueMarkingOffset() {
+        return config().g1SATBQueueMarkingOffset;
+    }
+
+    @Fold
+    public static int g1SATBQueueIndexOffset() {
+        return config().g1SATBQueueIndexOffset;
+    }
+
+    @Fold
+    public static int g1SATBQueueBufferOffset() {
+        return config().g1SATBQueueBufferOffset;
+    }
+
+    @Fold
     public static int superCheckOffsetOffset() {
         return config().superCheckOffsetOffset;
     }
@@ -309,6 +345,11 @@ public class HotSpotSnippetUtils {
     @Fold
     public static boolean useBiasedLocking() {
         return config().useBiasedLocking;
+    }
+
+    @Fold
+    public static boolean useG1GC() {
+        return config().useG1GC;
     }
 
     @Fold
@@ -356,11 +397,17 @@ public class HotSpotSnippetUtils {
     @NodeIntrinsic(value = ReadRegisterNode.class, setStampFromReturnType = true)
     public static native Word registerAsWord(@ConstantNodeParameter Register register, @ConstantNodeParameter boolean directUse, @ConstantNodeParameter boolean incoming);
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
-    private static native Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind);
+    private static Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind) {
+        return Word.box(unsafeReadWord(object, offset + displacement));
+    }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
-    static native Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word);
+    static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word) {
+        return Word.box(unsafeReadWord(object, hubOffset()));
+    }
 
     @Fold
     public static int log2WordSize() {

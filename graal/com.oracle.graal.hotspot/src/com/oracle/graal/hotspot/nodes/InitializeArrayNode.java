@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -72,7 +73,9 @@ public final class InitializeArrayNode extends FixedWithNextNode implements Lowe
     }
 
     public boolean fillContents() {
-        return fillContents;
+        // We fill contents when G1 GC is used since we want to record
+        // the original field values prior to stores
+        return HotSpotSnippetUtils.useG1GC() ? true : fillContents;
     }
 
     public boolean locked() {
