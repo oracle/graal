@@ -193,7 +193,7 @@ public class EffectList implements Iterable<EffectList.Effect> {
                 for (int i2 = 0; i2 < levelAt(i); i2++) {
                     str.append("    ");
                 }
-                str.append(effect).toString();
+                str.append(effect).append('\n');
             }
         }
         return str.toString();

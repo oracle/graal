@@ -136,6 +136,7 @@ public class NewObjectSnippets implements Snippets {
                     @ConstantParameter("alignment") int alignment,
                     @ConstantParameter("headerSize") int headerSize,
                     @ConstantParameter("log2ElementSize") int log2ElementSize,
+                    @ConstantParameter("fillContents") boolean fillContents,
                     @ConstantParameter("type") ResolvedJavaType type) {
         if (!belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
             probability(DEOPT_PATH_PROBABILITY);
@@ -144,7 +145,7 @@ public class NewObjectSnippets implements Snippets {
         }
         int allocationSize = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
         Word memory = TLABAllocateNode.allocateVariableSize(allocationSize);
-        return InitializeArrayNode.initialize(memory, length, allocationSize, type, true, false);
+        return InitializeArrayNode.initialize(memory, length, allocationSize, type, fillContents, false);
     }
 
     /**
@@ -240,7 +241,7 @@ public class NewObjectSnippets implements Snippets {
             allocate = snippet("allocate", int.class);
             initializeObject = snippet("initializeObject", Word.class, Word.class, Word.class, int.class, boolean.class, boolean.class);
             initializeArray = snippet("initializeArray", Word.class, Word.class, int.class, int.class, Word.class, int.class, boolean.class, boolean.class);
-            allocateArrayAndInitialize = snippet("allocateArrayAndInitialize", int.class, int.class, int.class, int.class, ResolvedJavaType.class);
+            allocateArrayAndInitialize = snippet("allocateArrayAndInitialize", int.class, int.class, int.class, int.class, boolean.class, ResolvedJavaType.class);
             newmultiarray = snippet("newmultiarray", Word.class, int.class, int[].class);
         }
 
@@ -299,7 +300,8 @@ public class NewObjectSnippets implements Snippets {
                 InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(tlabAllocateNode, lengthNode, sizeNode, arrayType, newArrayNode.fillContents(), newArrayNode.locked()));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
             } else {
-                Key key = new Key(allocateArrayAndInitialize).add("alignment", alignment).add("headerSize", headerSize).add("log2ElementSize", log2ElementSize).add("type", arrayType);
+                Key key = new Key(allocateArrayAndInitialize).add("alignment", alignment).add("headerSize", headerSize).add("log2ElementSize", log2ElementSize).add("fillContents",
+                                newArrayNode.fillContents()).add("type", arrayType);
                 Arguments arguments = new Arguments().add("length", lengthNode);
                 SnippetTemplate template = cache.get(key, assumptions);
                 Debug.log("Lowering allocateArrayAndInitialize in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, arguments);

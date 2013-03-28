@@ -30,12 +30,15 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.debug.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.virtual.nodes.*;
 import com.oracle.graal.virtual.phases.ea.EffectList.Effect;
 
 public class PartialEscapeAnalysisPhase extends Phase {
@@ -45,10 +48,16 @@ public class PartialEscapeAnalysisPhase extends Phase {
     private CustomCanonicalizer customCanonicalizer;
     private final boolean iterative;
 
+    private boolean changed;
+
     public PartialEscapeAnalysisPhase(MetaAccessProvider runtime, Assumptions assumptions, boolean iterative) {
         this.runtime = runtime;
         this.assumptions = assumptions;
         this.iterative = iterative;
+    }
+
+    public boolean hasChanged() {
+        return changed;
     }
 
     public void setCustomCanonicalizer(CustomCanonicalizer customCanonicalizer) {
@@ -61,25 +70,23 @@ public class PartialEscapeAnalysisPhase extends Phase {
         }
     }
 
-    public static final void error(String format, Object... obj) {
-        System.out.print(String.format(format, obj));
-    }
-
     @Override
     protected void run(final StructuredGraph graph) {
         if (!matches(graph, GraalOptions.EscapeAnalyzeOnly)) {
             return;
         }
 
-        boolean analyzableNodes = false;
-        for (Node node : graph.getNodes()) {
-            if (node instanceof VirtualizableAllocation) {
-                analyzableNodes = true;
-                break;
+        if (!GraalOptions.PEAReadCache) {
+            boolean analyzableNodes = false;
+            for (Node node : graph.getNodes()) {
+                if (node instanceof VirtualizableAllocation) {
+                    analyzableNodes = true;
+                    break;
+                }
             }
-        }
-        if (!analyzableNodes) {
-            return;
+            if (!analyzableNodes) {
+                return;
+            }
         }
 
         Boolean continueIteration = true;
@@ -88,14 +95,16 @@ public class PartialEscapeAnalysisPhase extends Phase {
 
                 @Override
                 public Boolean call() {
+
                     SchedulePhase schedule = new SchedulePhase();
                     schedule.apply(graph, false);
                     PartialEscapeClosure closure = new PartialEscapeClosure(graph.createNodeBitMap(), schedule, runtime, assumptions);
                     ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock(), new BlockState(), null);
 
-                    if (closure.getNewVirtualObjectCount() == 0) {
+                    if (!closure.hasChanged()) {
                         return false;
                     }
+                    changed = true;
 
                     // apply the effects collected during the escape analysis iteration
                     ArrayList<Node> obsoleteNodes = new ArrayList<>();
@@ -104,19 +113,24 @@ public class PartialEscapeAnalysisPhase extends Phase {
                     }
                     trace("%s\n", closure.getEffects());
 
-                    Debug.dump(graph, "after PartialEscapeAnalysis");
+                    Debug.dump(graph, "after PartialEscapeAnalysis iteration");
                     assert noObsoleteNodes(graph, obsoleteNodes);
 
                     new DeadCodeEliminationPhase().apply(graph);
-                    if (!iterative) {
-                        return false;
-                    }
+
                     if (GraalOptions.OptCanonicalizer) {
                         new CanonicalizerPhase(runtime, assumptions, null, customCanonicalizer).apply(graph);
                     }
-                    return true;
+
+                    return iterative;
                 }
             });
+        }
+
+        for (Node node : graph.getNodes()) {
+            if (node instanceof LoadFieldNode) {
+                DynamicCounterNode.addCounterBefore("load non-elim", 1, false, (FixedNode) node);
+            }
         }
     }
 
@@ -128,7 +142,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
         return true;
     }
 
-    private static boolean noObsoleteNodes(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+    static boolean noObsoleteNodes(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
         // helper code that determines the paths that keep obsolete nodes alive:
 
         NodeFlood flood = graph.createNodeFlood();
@@ -153,7 +167,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
 
         for (Node node : obsoleteNodes) {
             if (node instanceof FixedNode) {
-                assert !flood.isMarked(node);
+                assert !flood.isMarked(node) : node;
             }
         }
 
@@ -182,10 +196,10 @@ public class PartialEscapeAnalysisPhase extends Phase {
         boolean success = true;
         for (Node node : obsoleteNodes) {
             if (flood.isMarked(node)) {
-                error("offending node path:");
+                System.out.print("offending node path:");
                 Node current = node;
                 while (current != null) {
-                    error(current.toString());
+                    System.out.println(current.toString());
                     current = path.get(current);
                     if (current != null && current instanceof FixedNode && !obsoleteNodes.contains(current)) {
                         break;
@@ -195,5 +209,40 @@ public class PartialEscapeAnalysisPhase extends Phase {
             }
         }
         return success;
+    }
+
+    public static Map<Invoke, Double> getHints(StructuredGraph graph) {
+        Map<Invoke, Double> hints = null;
+        for (MaterializeObjectNode materialize : graph.getNodes(MaterializeObjectNode.class)) {
+            double sum = 0;
+            double invokeSum = 0;
+            for (Node usage : materialize.usages()) {
+                if (usage instanceof FixedNode) {
+                    sum += ((FixedNode) usage).probability();
+                } else {
+                    if (usage instanceof MethodCallTargetNode) {
+                        invokeSum += ((MethodCallTargetNode) usage).invoke().probability();
+                    }
+                    for (Node secondLevelUage : materialize.usages()) {
+                        if (secondLevelUage instanceof FixedNode) {
+                            sum += ((FixedNode) secondLevelUage).probability();
+                        }
+                    }
+                }
+            }
+            // TODO(lstadler) get rid of this magic number
+            if (sum > 100 && invokeSum > 0) {
+                for (Node usage : materialize.usages()) {
+                    if (usage instanceof MethodCallTargetNode) {
+                        if (hints == null) {
+                            hints = new HashMap<>();
+                        }
+                        Invoke invoke = ((MethodCallTargetNode) usage).invoke();
+                        hints.put(invoke, sum / invokeSum);
+                    }
+                }
+            }
+        }
+        return hints;
     }
 }

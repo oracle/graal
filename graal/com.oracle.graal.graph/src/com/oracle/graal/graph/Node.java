@@ -197,6 +197,7 @@ public abstract class Node implements Cloneable, Formattable {
                 if (inputChanged != null) {
                     inputChanged.inputChanged(this);
                 }
+                assert newInput.usages != null : "not yet added? " + newInput;
                 newInput.usages.add(this);
             }
         }
