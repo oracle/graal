@@ -128,13 +128,21 @@ public class TailDuplicationPhase extends Phase {
         }
     };
 
+    private int tailDuplicationCount;
+
+    public int getTailDuplicationCount() {
+        return tailDuplicationCount;
+    }
+
     @Override
     protected void run(StructuredGraph graph) {
         // A snapshot is taken here, so that new MergeNode instances aren't considered for tail
         // duplication.
         for (MergeNode merge : graph.getNodes(MergeNode.class).snapshot()) {
             if (!(merge instanceof LoopBeginNode) && merge.probability() >= GraalOptions.TailDuplicationProbability) {
-                tailDuplicate(merge, DEFAULT_DECISION, null);
+                if (tailDuplicate(merge, DEFAULT_DECISION, null)) {
+                    tailDuplicationCount++;
+                }
             }
         }
     }
@@ -155,7 +163,7 @@ public class TailDuplicationPhase extends Phase {
      *            {@link PiNode}, and is used to replace {@link PiNode#object()} with the
      *            {@link PiNode} in the duplicated branch that corresponds to the entry.
      */
-    public static void tailDuplicate(MergeNode merge, TailDuplicationDecision decision, List<PiNode> replacements) {
+    public static boolean tailDuplicate(MergeNode merge, TailDuplicationDecision decision, List<PiNode> replacements) {
         assert !(merge instanceof LoopBeginNode);
         assert replacements == null || replacements.size() == merge.forwardEndCount();
         FixedNode fixed = merge;
@@ -179,15 +187,18 @@ public class TailDuplicationPhase extends Phase {
                 if (decision.doTransform(merge, fixedCount)) {
                     metricDuplicationEndPerformed.increment();
                     new DuplicationOperation(merge, replacements).duplicate();
+                    return true;
                 }
             } else if (merge.stateAfter() != null) {
                 metricDuplicationOther.increment();
                 if (decision.doTransform(merge, fixedCount)) {
                     metricDuplicationOtherPerformed.increment();
                     new DuplicationOperation(merge, replacements).duplicate();
+                    return true;
                 }
             }
         }
+        return false;
     }
 
     /**

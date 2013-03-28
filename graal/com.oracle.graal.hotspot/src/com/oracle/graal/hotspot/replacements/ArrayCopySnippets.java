@@ -246,7 +246,7 @@ public class ArrayCopySnippets implements Snippets {
         int header = arrayBaseOffset(Kind.Object);
         if (src == dest && srcPos < destPos) { // bad aliased case
             long start = (long) (length - 1) * scale;
-            int j = length - 1;
+            long j = (long) (length) - 1;
             for (long i = start; i >= 0; i -= scale) {
                 Object a = UnsafeLoadNode.load(src, header, i + (long) srcPos * scale, Kind.Object);
                 DirectObjectStoreNode.storeObject(dest, header, i + (long) destPos * scale, a);
@@ -255,7 +255,7 @@ public class ArrayCopySnippets implements Snippets {
             }
         } else {
             long end = (long) length * scale;
-            int j = 0;
+            long j = srcPos;
             for (long i = 0; i < end; i += scale) {
                 Object a = UnsafeLoadNode.load(src, header, i + (long) srcPos * scale, Kind.Object);
                 DirectObjectStoreNode.storeObject(dest, header, i + (long) destPos * scale, a);

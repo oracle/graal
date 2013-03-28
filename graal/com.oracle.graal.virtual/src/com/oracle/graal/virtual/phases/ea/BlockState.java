@@ -30,28 +30,104 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.virtual.nodes.*;
 
 class BlockState {
 
-    private final HashMap<VirtualObjectNode, ObjectState> objectStates = new HashMap<>();
-    private final HashMap<ValueNode, VirtualObjectNode> objectAliases = new HashMap<>();
-    private final HashMap<ValueNode, ValueNode> scalarAliases = new HashMap<>();
+    private final IdentityHashMap<VirtualObjectNode, ObjectState> objectStates = new IdentityHashMap<>();
+    private final IdentityHashMap<ValueNode, VirtualObjectNode> objectAliases;
+    private final IdentityHashMap<ValueNode, ValueNode> scalarAliases;
+    private final HashMap<ReadCacheEntry, ValueNode> readCache;
+
+    static class ReadCacheEntry {
+
+        public final Object identity;
+        public final ValueNode object;
+
+        public ReadCacheEntry(Object identity, ValueNode object) {
+            this.identity = identity;
+            this.object = object;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = 31 + ((identity == null) ? 0 : identity.hashCode());
+            return 31 * result + ((object == null) ? 0 : object.hashCode());
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            ReadCacheEntry other = (ReadCacheEntry) obj;
+            return identity == other.identity && object == other.object;
+        }
+
+        @Override
+        public String toString() {
+            return object + ":" + identity;
+        }
+    }
 
     public BlockState() {
+        objectAliases = new IdentityHashMap<>();
+        scalarAliases = new IdentityHashMap<>();
+        readCache = new HashMap<>();
     }
 
     public BlockState(BlockState other) {
         for (Map.Entry<VirtualObjectNode, ObjectState> entry : other.objectStates.entrySet()) {
             objectStates.put(entry.getKey(), entry.getValue().cloneState());
         }
-        for (Map.Entry<ValueNode, VirtualObjectNode> entry : other.objectAliases.entrySet()) {
-            objectAliases.put(entry.getKey(), entry.getValue());
+        objectAliases = new IdentityHashMap<>(other.objectAliases);
+        scalarAliases = new IdentityHashMap<>(other.scalarAliases);
+        readCache = new HashMap<>(other.readCache);
+    }
+
+    public void addReadCache(ValueNode object, Object identity, ValueNode value) {
+        ValueNode cacheObject;
+        ObjectState obj = getObjectState(object);
+        if (obj != null) {
+            assert !obj.isVirtual();
+            cacheObject = obj.getMaterializedValue();
+        } else {
+            cacheObject = object;
         }
-        for (Map.Entry<ValueNode, ValueNode> entry : other.scalarAliases.entrySet()) {
-            scalarAliases.put(entry.getKey(), entry.getValue());
+        readCache.put(new ReadCacheEntry(identity, cacheObject), value);
+    }
+
+    public ValueNode getReadCache(ValueNode object, Object identity) {
+        ValueNode cacheObject;
+        ObjectState obj = getObjectState(object);
+        if (obj != null) {
+            assert !obj.isVirtual();
+            cacheObject = obj.getMaterializedValue();
+        } else {
+            cacheObject = object;
+        }
+        ValueNode cacheValue = readCache.get(new ReadCacheEntry(identity, cacheObject));
+        obj = getObjectState(cacheValue);
+        if (obj != null) {
+            assert !obj.isVirtual();
+            cacheValue = obj.getMaterializedValue();
+        } else {
+            cacheValue = getScalarAlias(cacheValue);
+        }
+        return cacheValue;
+    }
+
+    public void killReadCache(Object identity) {
+        if (identity == LocationNode.ANY_LOCATION) {
+            readCache.clear();
+        } else {
+            Iterator<Map.Entry<ReadCacheEntry, ValueNode>> iter = readCache.entrySet().iterator();
+            while (iter.hasNext()) {
+                Map.Entry<ReadCacheEntry, ValueNode> entry = iter.next();
+                if (entry.getKey().identity == identity) {
+                    iter.remove();
+                }
+            }
         }
     }
 
@@ -126,6 +202,13 @@ class BlockState {
         }
         deferred.remove(virtual);
 
+        if (virtual instanceof VirtualInstanceNode) {
+            VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
+            for (int i = 0; i < fieldState.length; i++) {
+                readCache.put(new ReadCacheEntry(instance.field(i), materialize), fieldState[i]);
+            }
+        }
+
         materializeEffects.addMaterialization(materialize, fixed, values);
     }
 
@@ -175,6 +258,63 @@ class BlockState {
         return objectStates.toString();
     }
 
+    public void mergeReadCache(List<BlockState> states, MergeNode merge, GraphEffectList effects) {
+        for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
+            ReadCacheEntry key = entry.getKey();
+            ValueNode value = entry.getValue();
+            boolean phi = false;
+            for (int i = 1; i < states.size(); i++) {
+                ValueNode otherValue = states.get(i).readCache.get(key);
+                if (otherValue == null) {
+                    value = null;
+                    phi = false;
+                    break;
+                }
+                if (!phi && otherValue != value) {
+                    phi = true;
+                }
+            }
+            if (phi) {
+                PhiNode phiNode = new PhiNode(value.kind(), merge);
+                effects.addFloatingNode(phiNode);
+                for (int i = 0; i < states.size(); i++) {
+                    effects.addPhiInput(phiNode, states.get(i).getReadCache(key.object, key.identity));
+                }
+                readCache.put(key, phiNode);
+            } else if (value != null) {
+                readCache.put(key, value);
+            }
+        }
+        for (PhiNode phi : merge.phis()) {
+            if (phi.kind() == Kind.Object) {
+                for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
+                    if (entry.getKey().object == phi.valueAt(0)) {
+                        mergeReadCachePhi(phi, entry.getKey().identity, states, merge, effects);
+                    }
+                }
+
+            }
+        }
+    }
+
+    private void mergeReadCachePhi(PhiNode phi, Object identity, List<BlockState> states, MergeNode merge, GraphEffectList effects) {
+        ValueNode[] values = new ValueNode[phi.valueCount()];
+        for (int i = 0; i < phi.valueCount(); i++) {
+            ValueNode value = states.get(i).getReadCache(phi.valueAt(i), identity);
+            if (value == null) {
+                return;
+            }
+            values[i] = value;
+        }
+
+        PhiNode phiNode = new PhiNode(values[0].kind(), merge);
+        effects.addFloatingNode(phiNode);
+        for (int i = 0; i < values.length; i++) {
+            effects.addPhiInput(phiNode, values[i]);
+        }
+        readCache.put(new ReadCacheEntry(identity, phi), phiNode);
+    }
+
     public static BlockState meetAliases(List<BlockState> states) {
         BlockState newState = new BlockState();
 
@@ -201,6 +341,12 @@ class BlockState {
                 }
             }
         }
+
         return newState;
     }
+
+    public Map<ReadCacheEntry, ValueNode> getReadCache() {
+        return readCache;
+    }
+
 }

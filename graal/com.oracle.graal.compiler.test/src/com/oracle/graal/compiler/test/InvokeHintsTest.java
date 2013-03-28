@@ -70,9 +70,9 @@ public class InvokeHintsTest extends GraalCompilerTest {
 
     private void test(String snippet) {
         StructuredGraph graph = parse(snippet);
-        Collection<Invoke> hints = new ArrayList<>();
+        Map<Invoke, Double> hints = new HashMap<>();
         for (Invoke invoke : graph.getInvokes()) {
-            hints.add(invoke);
+            hints.put(invoke, 1000d);
         }
 
         Assumptions assumptions = new Assumptions(false);

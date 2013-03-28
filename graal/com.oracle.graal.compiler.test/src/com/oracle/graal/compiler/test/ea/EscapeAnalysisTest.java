@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.test.ea;
 
 import junit.framework.*;
+import junit.framework.Assert;
 
 import org.junit.Test;
 
@@ -30,7 +31,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -183,12 +183,7 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
 
     @Test
     public void testInstanceOf() {
-        ReturnNode returnNode = testEscapeAnalysis("testInstanceOfSnippet", null, false);
-        ValueNode result = returnNode.result();
-        Assert.assertTrue(result instanceof ConditionalNode);
-        ConditionalNode conditional = (ConditionalNode) result;
-        Assert.assertTrue(conditional.condition() instanceof LogicConstantNode);
-        Assert.assertEquals(true, ((LogicConstantNode) conditional.condition()).getValue());
+        testEscapeAnalysis("testInstanceOfSnippet", Constant.forInt(1), false);
     }
 
     public boolean testInstanceOfSnippet() {

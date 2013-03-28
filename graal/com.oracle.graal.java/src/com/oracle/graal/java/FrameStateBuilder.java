@@ -33,7 +33,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
@@ -235,21 +234,21 @@ public class FrameStateBuilder {
             ValueNode value = localAt(i);
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 Debug.log(" inserting proxy for %s", value);
-                storeLocal(i, graph.unique(new ProxyNode(value, loopExit, PhiType.Value)));
+                storeLocal(i, ProxyNode.forValue(value, loopExit, graph));
             }
         }
         for (int i = 0; i < stackSize(); i++) {
             ValueNode value = stackAt(i);
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 Debug.log(" inserting proxy for %s", value);
-                storeStack(i, graph.unique(new ProxyNode(value, loopExit, PhiType.Value)));
+                storeStack(i, ProxyNode.forValue(value, loopExit, graph));
             }
         }
         for (int i = 0; i < locks.length; i++) {
             ValueNode value = locks[i];
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 Debug.log(" inserting proxy for %s", value);
-                locks[i] = graph.unique(new ProxyNode(value, loopExit, PhiType.Value));
+                locks[i] = ProxyNode.forValue(value, loopExit, graph);
             }
         }
     }
@@ -259,21 +258,21 @@ public class FrameStateBuilder {
             ValueNode value = localAt(i);
             if (value != null) {
                 Debug.log(" inserting proxy for %s", value);
-                storeLocal(i, graph.unique(new ProxyNode(value, begin, PhiType.Value)));
+                storeLocal(i, ProxyNode.forValue(value, begin, graph));
             }
         }
         for (int i = 0; i < stackSize(); i++) {
             ValueNode value = stackAt(i);
             if (value != null) {
                 Debug.log(" inserting proxy for %s", value);
-                storeStack(i, graph.unique(new ProxyNode(value, begin, PhiType.Value)));
+                storeStack(i, ProxyNode.forValue(value, begin, graph));
             }
         }
         for (int i = 0; i < locks.length; i++) {
             ValueNode value = locks[i];
             if (value != null) {
                 Debug.log(" inserting proxy for %s", value);
-                locks[i] = graph.unique(new ProxyNode(value, begin, PhiType.Value));
+                locks[i] = ProxyNode.forValue(value, begin, graph);
             }
         }
     }
