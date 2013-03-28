@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+<<<<<<< local
+=======
 import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 
 import com.oracle.graal.api.meta.*;
+>>>>>>> other
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -70,7 +73,16 @@ public class WriteBarrierPost extends WriteBarrier implements Lowerable {
         this.value = value;
         this.location = location;
         this.precise = precise;
+<<<<<<< local
     }
+
+    public void lower(LoweringTool generator) {
+        generator.getRuntime().lower(this, generator);
+=======
+>>>>>>> other
+    }
+<<<<<<< local
+=======
 
     @Override
     public void lower(LoweringTool generator) {
@@ -94,4 +106,5 @@ public class WriteBarrierPost extends WriteBarrier implements Lowerable {
 
     @NodeIntrinsic
     public static native void arrayCopyWriteBarrier(Object array, Object value, long index);
+>>>>>>> other
 }
