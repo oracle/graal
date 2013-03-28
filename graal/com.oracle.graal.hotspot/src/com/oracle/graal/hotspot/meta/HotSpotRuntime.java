@@ -566,9 +566,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                             graph.addAfterFixed(metaspaceMethod, compiledEntry);
                         }
                     }
-                } else if (callTarget.invokeKind() == InvokeKind.Special || callTarget.invokeKind() == InvokeKind.Static) {
-                    loweredCallTarget = graph.add(new HotSpotDirectCallTargetNode(parameters, invoke.node().stamp(), signature, callTarget.targetMethod(), CallingConvention.Type.JavaCall,
-                                    callTarget.invokeKind()));
                 }
 
                 if (loweredCallTarget == null) {
