@@ -45,6 +45,7 @@ import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.virtual.nodes.*;
+import com.oracle.graal.virtual.phases.ea.BlockState.ReadCacheEntry;
 
 class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
@@ -70,10 +71,16 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
     private final Map<Invoke, Double> hints = new IdentityHashMap<>();
 
+    private boolean changed;
+
     public PartialEscapeClosure(NodeBitMap usages, SchedulePhase schedule, MetaAccessProvider metaAccess, Assumptions assumptions) {
         this.usages = usages;
         this.schedule = schedule;
         tool = new VirtualizerToolImpl(effects, usages, metaAccess, assumptions);
+    }
+
+    public boolean hasChanged() {
+        return changed;
     }
 
     public GraphEffectList getEffects() {
@@ -109,9 +116,12 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                         METRIC_STOREFIELD_RECORDED.increment();
                         StoreFieldNode store = (StoreFieldNode) node;
                         ValueNode cachedValue = state.getReadCache(store.object(), store.field());
+                        state.killReadCache(store.field());
+
                         if (cachedValue == store.value()) {
                             effects.addCounterBefore("store elim", 1, false, lastFixedNode.next());
                             effects.deleteFixedNode(store);
+                            changed = true;
                         } else {
                             state.addReadCache(store.object(), store.field(), store.value());
                         }
@@ -123,6 +133,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                             effects.addCounterBefore("load elim", 1, false, lastFixedNode.next());
                             effects.replaceAtUsages(load, cachedValue);
                             state.addScalarAlias(load, cachedValue);
+                            changed = true;
                         } else {
                             METRIC_LOADFIELD_NOT_ELIMINATED.increment();
                             state.addReadCache(load.object(), load.field(), load);
@@ -149,6 +160,9 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             ((Virtualizable) node).virtualize(tool);
         }
         if (tool.isDeleted()) {
+            if (tool.isCustomAction() || !(node instanceof VirtualizableAllocation || node instanceof CyclicMaterializeStoreNode)) {
+                changed = true;
+            }
             return true;
         }
         if (node instanceof StateSplit) {
@@ -475,11 +489,13 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             List<BlockState> loopEndStates = info.endStates;
             List<Block> predecessors = loop.header.getPredecessors();
             HashSet<VirtualObjectNode> additionalMaterializations = new HashSet<>();
+            HashSet<ReadCacheEntry> additionalKilledReads = new HashSet<>();
             int oldPhiCount = phis.size();
             for (int i = 1; i < predecessors.size(); i++) {
-                processLoopEnd(loop.loopBegin(), (LoopEndNode) predecessors.get(i).getEndNode(), state, loopEndStates.get(i - 1), successEffects, additionalMaterializations, phis);
+                processLoopEnd(loop.loopBegin(), (LoopEndNode) predecessors.get(i).getEndNode(), state, loopEndStates.get(i - 1), successEffects, additionalMaterializations, additionalKilledReads,
+                                phis);
             }
-            if (additionalMaterializations.isEmpty() && oldPhiCount == phis.size()) {
+            if (additionalMaterializations.isEmpty() && additionalKilledReads.isEmpty() && oldPhiCount == phis.size()) {
                 effects.addAll(successEffects);
 
                 assert info.exitStates.size() == loop.exits.size();
@@ -503,6 +519,9 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     } else {
                         assert obj.getState() == EscapeState.Global;
                     }
+                }
+                for (ReadCacheEntry entry : additionalKilledReads) {
+                    initialState.getReadCache().remove(entry);
                 }
             }
         }
@@ -546,8 +565,16 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     obj.updateMaterializedValue(proxy);
                 } else {
                     assert initialObj.getMaterializedValue() == obj.getMaterializedValue() : "materialized value is not allowed to change within loops: " + initialObj.getMaterializedValue() +
-                                    " vs. " + obj.getMaterializedValue();
+                                    " vs. " + obj.getMaterializedValue() + " at " + exitNode;
                 }
+            }
+        }
+
+        for (Map.Entry<ReadCacheEntry, ValueNode> entry : exitState.getReadCache().entrySet()) {
+            if (initialState.getReadCache().get(entry.getKey()) != entry.getValue()) {
+                ProxyNode proxy = new ProxyNode(exitState.getReadCache(entry.getKey().object, entry.getKey().identity), exitNode, PhiType.Value, null);
+                effects.addFloatingNode(proxy);
+                entry.setValue(proxy);
             }
         }
     }
@@ -584,7 +611,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
     }
 
     private void processLoopEnd(LoopBeginNode loopBegin, LoopEndNode loopEnd, BlockState initialState, BlockState loopEndState, GraphEffectList successEffects,
-                    Set<VirtualObjectNode> additionalMaterializations, HashSet<PhiDesc> phis) {
+                    Set<VirtualObjectNode> additionalMaterializations, HashSet<ReadCacheEntry> additionalKilledReads, HashSet<PhiDesc> phis) {
         assert loopEnd.loopBegin() == loopBegin;
         boolean materialized;
         do {
@@ -714,6 +741,12 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                         // state.materializedValue, endState.materializedValue);
                     }
                 }
+            }
+        }
+
+        for (Map.Entry<ReadCacheEntry, ValueNode> entry : initialState.getReadCache().entrySet()) {
+            if (loopEndState.getReadCache().get(entry.getKey()) != entry.getValue()) {
+                additionalKilledReads.add(entry.getKey());
             }
         }
     }

@@ -125,12 +125,12 @@ public class GraalCompiler {
                 new IterativeInliningPhase(runtime, assumptions, cache, plan, optimisticOpts).apply(graph);
             } else {
                 new InliningPhase(runtime, null, assumptions, cache, plan, optimisticOpts).apply(graph);
-            }
-            new DeadCodeEliminationPhase().apply(graph);
+                new DeadCodeEliminationPhase().apply(graph);
 
-            if (GraalOptions.ConditionalElimination && GraalOptions.OptCanonicalizer) {
-                new CanonicalizerPhase(runtime, assumptions).apply(graph);
-                new IterativeConditionalEliminationPhase(runtime, assumptions).apply(graph);
+                if (GraalOptions.ConditionalElimination && GraalOptions.OptCanonicalizer) {
+                    new CanonicalizerPhase(runtime, assumptions).apply(graph);
+                    new IterativeConditionalEliminationPhase(runtime, assumptions).apply(graph);
+                }
             }
         }
 

@@ -48,10 +48,16 @@ public class PartialEscapeAnalysisPhase extends Phase {
     private CustomCanonicalizer customCanonicalizer;
     private final boolean iterative;
 
+    private boolean changed;
+
     public PartialEscapeAnalysisPhase(MetaAccessProvider runtime, Assumptions assumptions, boolean iterative) {
         this.runtime = runtime;
         this.assumptions = assumptions;
         this.iterative = iterative;
+    }
+
+    public boolean hasChanged() {
+        return changed;
     }
 
     public void setCustomCanonicalizer(CustomCanonicalizer customCanonicalizer) {
@@ -62,10 +68,6 @@ public class PartialEscapeAnalysisPhase extends Phase {
         if (GraalOptions.TraceEscapeAnalysis) {
             Debug.log(format, obj);
         }
-    }
-
-    public static final void error(String format, Object... obj) {
-        System.out.print(String.format(format, obj));
     }
 
     @Override
@@ -93,14 +95,16 @@ public class PartialEscapeAnalysisPhase extends Phase {
 
                 @Override
                 public Boolean call() {
+
                     SchedulePhase schedule = new SchedulePhase();
                     schedule.apply(graph, false);
                     PartialEscapeClosure closure = new PartialEscapeClosure(graph.createNodeBitMap(), schedule, runtime, assumptions);
                     ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock(), new BlockState(), null);
 
-                    if (closure.getEffects().isEmpty()) {
+                    if (!closure.hasChanged()) {
                         return false;
                     }
+                    changed = true;
 
                     // apply the effects collected during the escape analysis iteration
                     ArrayList<Node> obsoleteNodes = new ArrayList<>();
@@ -109,17 +113,16 @@ public class PartialEscapeAnalysisPhase extends Phase {
                     }
                     trace("%s\n", closure.getEffects());
 
-                    Debug.dump(graph, "after PartialEscapeAnalysis");
+                    Debug.dump(graph, "after PartialEscapeAnalysis iteration");
                     assert noObsoleteNodes(graph, obsoleteNodes);
 
                     new DeadCodeEliminationPhase().apply(graph);
-                    if (!iterative) {
-                        return false;
-                    }
+
                     if (GraalOptions.OptCanonicalizer) {
                         new CanonicalizerPhase(runtime, assumptions, null, customCanonicalizer).apply(graph);
                     }
-                    return true;
+
+                    return iterative;
                 }
             });
         }
@@ -193,10 +196,10 @@ public class PartialEscapeAnalysisPhase extends Phase {
         boolean success = true;
         for (Node node : obsoleteNodes) {
             if (flood.isMarked(node)) {
-                error("offending node path:");
+                System.out.print("offending node path:");
                 Node current = node;
                 while (current != null) {
-                    error(current.toString());
+                    System.out.println(current.toString());
                     current = path.get(current);
                     if (current != null && current instanceof FixedNode && !obsoleteNodes.contains(current)) {
                         break;

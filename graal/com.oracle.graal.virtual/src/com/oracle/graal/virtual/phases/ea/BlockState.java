@@ -37,11 +37,12 @@ import com.oracle.graal.virtual.nodes.*;
 
 class BlockState {
 
-    private final HashMap<VirtualObjectNode, ObjectState> objectStates = new HashMap<>();
-    private final HashMap<ValueNode, VirtualObjectNode> objectAliases = new HashMap<>();
-    private final HashMap<ValueNode, ValueNode> scalarAliases = new HashMap<>();
+    private final IdentityHashMap<VirtualObjectNode, ObjectState> objectStates = new IdentityHashMap<>();
+    private final IdentityHashMap<ValueNode, VirtualObjectNode> objectAliases;
+    private final IdentityHashMap<ValueNode, ValueNode> scalarAliases;
+    private final HashMap<ReadCacheEntry, ValueNode> readCache;
 
-    private static class ReadCacheEntry {
+    static class ReadCacheEntry {
 
         public final Object identity;
         public final ValueNode object;
@@ -63,43 +64,37 @@ class BlockState {
             return identity == other.identity && object == other.object;
         }
 
+        @Override
+        public String toString() {
+            return object + ":" + identity;
+        }
     }
 
-    private final HashMap<ReadCacheEntry, ValueNode> readCache = new HashMap<>();
-
     public BlockState() {
+        objectAliases = new IdentityHashMap<>();
+        scalarAliases = new IdentityHashMap<>();
+        readCache = new HashMap<>();
     }
 
     public BlockState(BlockState other) {
         for (Map.Entry<VirtualObjectNode, ObjectState> entry : other.objectStates.entrySet()) {
             objectStates.put(entry.getKey(), entry.getValue().cloneState());
         }
-        for (Map.Entry<ValueNode, VirtualObjectNode> entry : other.objectAliases.entrySet()) {
-            objectAliases.put(entry.getKey(), entry.getValue());
-        }
-        for (Map.Entry<ValueNode, ValueNode> entry : other.scalarAliases.entrySet()) {
-            scalarAliases.put(entry.getKey(), entry.getValue());
-        }
+        objectAliases = new IdentityHashMap<>(other.objectAliases);
+        scalarAliases = new IdentityHashMap<>(other.scalarAliases);
+        readCache = new HashMap<>(other.readCache);
     }
 
     public void addReadCache(ValueNode object, Object identity, ValueNode value) {
-        ValueNode cacheValue;
-        ObjectState obj = getObjectState(value);
-        if (obj != null) {
-            assert !obj.isVirtual();
-            cacheValue = obj.getMaterializedValue();
-        } else {
-            cacheValue = getScalarAlias(value);
-        }
         ValueNode cacheObject;
-        obj = getObjectState(object);
+        ObjectState obj = getObjectState(object);
         if (obj != null) {
             assert !obj.isVirtual();
             cacheObject = obj.getMaterializedValue();
         } else {
             cacheObject = object;
         }
-        readCache.put(new ReadCacheEntry(identity, cacheObject), cacheValue);
+        readCache.put(new ReadCacheEntry(identity, cacheObject), value);
     }
 
     public ValueNode getReadCache(ValueNode object, Object identity) {
@@ -111,7 +106,15 @@ class BlockState {
         } else {
             cacheObject = object;
         }
-        return readCache.get(new ReadCacheEntry(identity, cacheObject));
+        ValueNode cacheValue = readCache.get(new ReadCacheEntry(identity, cacheObject));
+        obj = getObjectState(cacheValue);
+        if (obj != null) {
+            assert !obj.isVirtual();
+            cacheValue = obj.getMaterializedValue();
+        } else {
+            cacheValue = getScalarAlias(cacheValue);
+        }
+        return cacheValue;
     }
 
     public void killReadCache(Object identity) {
@@ -275,7 +278,7 @@ class BlockState {
                 PhiNode phiNode = new PhiNode(value.kind(), merge);
                 effects.addFloatingNode(phiNode);
                 for (int i = 0; i < states.size(); i++) {
-                    effects.addPhiInput(phiNode, states.get(i).readCache.get(key));
+                    effects.addPhiInput(phiNode, states.get(i).getReadCache(key.object, key.identity));
                 }
                 readCache.put(key, phiNode);
             } else if (value != null) {
@@ -297,7 +300,7 @@ class BlockState {
     private void mergeReadCachePhi(PhiNode phi, Object identity, List<BlockState> states, MergeNode merge, GraphEffectList effects) {
         ValueNode[] values = new ValueNode[phi.valueCount()];
         for (int i = 0; i < phi.valueCount(); i++) {
-            ValueNode value = states.get(i).readCache.get(new ReadCacheEntry(identity, phi.valueAt(i)));
+            ValueNode value = states.get(i).getReadCache(phi.valueAt(i), identity);
             if (value == null) {
                 return;
             }
@@ -340,6 +343,10 @@ class BlockState {
         }
 
         return newState;
+    }
+
+    public Map<ReadCacheEntry, ValueNode> getReadCache() {
+        return readCache;
     }
 
 }

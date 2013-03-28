@@ -72,6 +72,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @SuppressWarnings("all")
     public static int testSimpleSnippet(TestObject a) {
         a.x = 2;
+        staticField = a;
         return a.x;
     }
 
@@ -81,6 +82,21 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
         assertTrue(graph.getNodes(LoadFieldNode.class).isEmpty());
         assertTrue(result.isConstant());
         assertEquals(2, result.asConstant().asInt());
+    }
+
+    @SuppressWarnings("all")
+    public static int testSimpleConflictSnippet(TestObject a, TestObject b) {
+        a.x = 2;
+        b.x = 3;
+        staticField = a;
+        return a.x;
+    }
+
+    @Test
+    public void testSimpleConflict() {
+        ValueNode result = getReturn("testSimpleConflictSnippet").result();
+        assertFalse(result.isConstant());
+        assertTrue(result instanceof LoadFieldNode);
     }
 
     @SuppressWarnings("all")
@@ -108,6 +124,39 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
         ValueNode result = getReturn("testMaterializedSnippet").result();
         assertTrue(graph.getNodes(LoadFieldNode.class).isEmpty());
         assertEquals(graph.getLocal(0), result);
+    }
+
+    @SuppressWarnings("all")
+    public static int testSimpleLoopSnippet(TestObject obj, int a, int b) {
+        obj.x = a;
+        for (int i = 0; i < 10; i++) {
+            staticField = obj;
+        }
+        return obj.x;
+    }
+
+    @Test
+    public void testSimpleLoop() {
+        ValueNode result = getReturn("testSimpleLoopSnippet").result();
+        assertTrue(graph.getNodes(LoadFieldNode.class).isEmpty());
+        assertEquals(graph.getLocal(1), result);
+    }
+
+    @SuppressWarnings("all")
+    public static int testBadLoopSnippet(TestObject obj, int a, int b) {
+        obj.x = a;
+        for (int i = 0; i < 10; i++) {
+            staticField = obj;
+            obj.x = 0;
+        }
+        return obj.x;
+    }
+
+    @Test
+    public void testBadLoop() {
+        ValueNode result = getReturn("testBadLoopSnippet").result();
+        assertEquals(1, graph.getNodes(LoadFieldNode.class).count());
+        assertTrue(result instanceof LoadFieldNode);
     }
 
     @SuppressWarnings("all")
