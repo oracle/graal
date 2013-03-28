@@ -155,7 +155,7 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public native void clearQueuedForCompilation(HotSpotResolvedJavaMethod method);
-    
+
     @Override
     public native void reprofile(long metaspaceMethod);
 }
