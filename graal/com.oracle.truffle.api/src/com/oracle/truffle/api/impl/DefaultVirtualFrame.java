@@ -86,12 +86,12 @@ public final class DefaultVirtualFrame implements VirtualFrame {
 
     @Override
     public boolean getBoolean(FrameSlot slot) {
-        return (Boolean) get(slot, Float.class, UNDEFINED_BOOLEAN);
+        return (Boolean) get(slot, Boolean.class, UNDEFINED_BOOLEAN);
     }
 
     @Override
     public void setBoolean(FrameSlot slot, boolean value) {
-        set(slot, Float.class, value);
+        set(slot, Boolean.class, value);
     }
 
     @Override
