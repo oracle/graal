@@ -93,5 +93,5 @@ public class WriteBarrierPost extends WriteBarrier implements Lowerable {
     }
 
     @NodeIntrinsic
-    public static native void arrayCopyWriteBarrier(Object array, Object value, int index);
+    public static native void arrayCopyWriteBarrier(Object array, Object value, long index);
 }
