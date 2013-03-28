@@ -76,7 +76,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
             return;
         }
 
-        if (!GraalOptions.PEAReadCache) {
+        if (!GraalOptions.OptEarlyReadElimination) {
             boolean analyzableNodes = false;
             for (Node node : graph.getNodes()) {
                 if (node instanceof VirtualizableAllocation) {

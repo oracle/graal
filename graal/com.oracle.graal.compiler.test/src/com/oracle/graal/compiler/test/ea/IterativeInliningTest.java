@@ -101,7 +101,7 @@ public class IterativeInliningTest extends GraalCompilerTest {
     private void processMethod(final String snippet) {
         graph = parse(snippet);
         new ComputeProbabilityPhase().apply(graph);
-        GraalOptions.PEAReadCache = true;
+        GraalOptions.OptEarlyReadElimination = true;
         new IterativeInliningPhase(runtime(), new Assumptions(false), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
     }
 }
