@@ -594,4 +594,9 @@ public class HotSpotSnippetUtils {
 
         return IdentityHashCodeStubCall.call(x);
     }
+
+    @Fold
+    public static int verifiedEntryPointOffset() {
+        return config().nmethodEntryOffset;
+    }
 }
