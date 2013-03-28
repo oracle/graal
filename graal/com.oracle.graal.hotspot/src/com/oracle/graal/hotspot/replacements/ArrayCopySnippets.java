@@ -247,29 +247,15 @@ public class ArrayCopySnippets implements Snippets {
         int header = arrayBaseOffset(Kind.Object);
         if (src == dest && srcPos < destPos) { // bad aliased case
             long start = (long) (length - 1) * scale;
-<<<<<<< local
-=======
-            long j = (long) (length) - 1;
->>>>>>> other
             for (long i = start; i >= 0; i -= scale) {
                 Object a = UnsafeLoadNode.load(src, header, i + (long) srcPos * scale, Kind.Object);
                 DirectObjectStoreNode.storeObject(dest, header, i + (long) destPos * scale, a);
-<<<<<<< local
-=======
-                WriteBarrierPost.arrayCopyWriteBarrier(dest, a, j);
-                j--;
->>>>>>> other
             }
         } else {
             long end = (long) length * scale;
-<<<<<<< local
-=======
-            long j = srcPos;
->>>>>>> other
             for (long i = 0; i < end; i += scale) {
                 Object a = UnsafeLoadNode.load(src, header, i + (long) srcPos * scale, Kind.Object);
                 DirectObjectStoreNode.storeObject(dest, header, i + (long) destPos * scale, a);
-<<<<<<< local
             }
         }
         if (length > 0) {
@@ -281,10 +267,6 @@ public class ArrayCopySnippets implements Snippets {
             long count = end - start + 1;
             while (count-- > 0) {
                 DirectStoreNode.store((start + cardStart) + count, false, Kind.Boolean);
-=======
-                WriteBarrierPost.arrayCopyWriteBarrier(dest, a, j);
-                j++;
->>>>>>> other
             }
         }
     }
