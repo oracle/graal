@@ -26,6 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.virtual.*;
@@ -56,7 +57,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
         ValueNode lock = state.lockAt(i);
         Value object = toValue(lock);
         boolean eliminated = lock instanceof VirtualObjectNode;
-        return new MonitorValue(object, slot, eliminated);
+        return new HotSpotMonitorValue(object, slot, eliminated);
     }
 
     @Override
