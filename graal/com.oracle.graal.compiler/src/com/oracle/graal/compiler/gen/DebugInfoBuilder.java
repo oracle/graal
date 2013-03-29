@@ -34,18 +34,21 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.virtual.nodes.*;
 
+/**
+ * Builds {@link LIRFrameState}s from {@link FrameState}s.
+ */
 public class DebugInfoBuilder {
 
-    private final NodeMap<Value> nodeOperands;
+    protected final NodeMap<Value> nodeOperands;
 
     public DebugInfoBuilder(NodeMap<Value> nodeOperands) {
         this.nodeOperands = nodeOperands;
     }
 
-    private HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
-    private IdentityHashMap<VirtualObjectNode, EscapeObjectState> objectStates = new IdentityHashMap<>();
+    protected HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
+    protected IdentityHashMap<VirtualObjectNode, EscapeObjectState> objectStates = new IdentityHashMap<>();
 
-    public LIRFrameState build(FrameState topState, List<StackSlot> lockData, short reason, LabelRef exceptionEdge) {
+    public LIRFrameState build(FrameState topState, short reason, LabelRef exceptionEdge) {
         assert virtualObjects.size() == 0;
         assert objectStates.size() == 0;
 
@@ -65,7 +68,7 @@ public class DebugInfoBuilder {
             current = current.outerFrameState();
         } while (current != null);
 
-        BytecodeFrame frame = computeFrameForState(topState, lockData);
+        BytecodeFrame frame = computeFrameForState(topState);
 
         VirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
@@ -106,40 +109,55 @@ public class DebugInfoBuilder {
         return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge, reason);
     }
 
-    private BytecodeFrame computeFrameForState(FrameState state, List<StackSlot> lockDataSlots) {
+    protected BytecodeFrame computeFrameForState(FrameState state) {
         int numLocals = state.localsSize();
         int numStack = state.stackSize();
         int numLocks = state.locksSize();
 
         Value[] values = new Value[numLocals + numStack + numLocks];
-        for (int i = 0; i < numLocals; i++) {
-            values[i] = toValue(state.localAt(i));
-        }
-        for (int i = 0; i < numStack; i++) {
-            values[numLocals + i] = toValue(state.stackAt(i));
-        }
-        for (int i = 0; i < numLocks; i++) {
-            // frames are traversed from the outside in, so the locks for the current frame are at
-            // the end of the lockDataSlots list
-            StackSlot lockData = lockDataSlots.get(lockDataSlots.size() - numLocks + i);
-            values[numLocals + numStack + i] = new MonitorValue(toValue(state.lockAt(i)), lockData, state.lockAt(i) instanceof VirtualObjectNode);
-        }
+        computeLocals(state, numLocals, values);
+        computeStack(state, numLocals, numStack, values);
+        computeLocks(state, values);
 
         BytecodeFrame caller = null;
         if (state.outerFrameState() != null) {
-            // remove the locks that were used for this frame from the lockDataSlots list
-            List<StackSlot> nextLockDataSlots = lockDataSlots.subList(0, lockDataSlots.size() - numLocks);
-            caller = computeFrameForState(state.outerFrameState(), nextLockDataSlots);
-        } else {
-            if (lockDataSlots.size() != numLocks) {
-                throw new BailoutException("unbalanced monitors: found monitor for unknown frame (%d != %d) at %s", lockDataSlots.size(), numLocks, state);
-            }
+            caller = computeFrameForState(state.outerFrameState());
         }
         assert state.bci >= 0 || state.bci == FrameState.BEFORE_BCI : "bci == " + state.bci;
         return new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, numLocals, numStack, numLocks);
     }
 
-    private Value toValue(ValueNode value) {
+    protected void computeLocals(FrameState state, int numLocals, Value[] values) {
+        for (int i = 0; i < numLocals; i++) {
+            values[i] = computeLocalValue(state, i);
+        }
+    }
+
+    protected Value computeLocalValue(FrameState state, int i) {
+        return toValue(state.localAt(i));
+    }
+
+    protected void computeStack(FrameState state, int numLocals, int numStack, Value[] values) {
+        for (int i = 0; i < numStack; i++) {
+            values[numLocals + i] = computeStackValue(state, i);
+        }
+    }
+
+    protected Value computeStackValue(FrameState state, int i) {
+        return toValue(state.stackAt(i));
+    }
+
+    protected void computeLocks(FrameState state, Value[] values) {
+        for (int i = 0; i < state.locksSize(); i++) {
+            values[state.localsSize() + state.stackSize() + i] = computeLockValue(state, i);
+        }
+    }
+
+    protected Value computeLockValue(FrameState state, int i) {
+        return toValue(state.lockAt(i));
+    }
+
+    protected Value toValue(ValueNode value) {
         if (value instanceof VirtualObjectNode) {
             VirtualObjectNode obj = (VirtualObjectNode) value;
             EscapeObjectState state = objectStates.get(obj);

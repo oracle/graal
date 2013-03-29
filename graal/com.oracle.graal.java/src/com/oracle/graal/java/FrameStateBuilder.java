@@ -376,10 +376,10 @@ public class FrameStateBuilder {
     }
 
     /**
-     * @return true if there are no locks within this frame state.
+     * @return the current lock depth
      */
-    public boolean locksEmpty() {
-        return locks.length == 0;
+    public int lockDepth() {
+        return locks.length;
     }
 
     /**

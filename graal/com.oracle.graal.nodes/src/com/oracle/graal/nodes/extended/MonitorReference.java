@@ -20,32 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+package com.oracle.graal.nodes.extended;
 
 /**
- * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition
- * to abstract methods from {@link LIRGenerator} and {@link LIRGeneratorTool}.
+ * Denotes an instruction that references a monitor and wants to know its lock nesting depth.
  */
-public interface HotSpotLIRGenerator {
+public interface MonitorReference {
 
     /**
-     * Emits an operation to make a tail call.
-     * 
-     * @param args the arguments of the call
-     * @param address the target address of the call
+     * Sets the depth of the lock referenced by this operation.
      */
-    void emitTailcall(Value[] args, Value address);
-
-    void visitDirectCompareAndSwap(DirectCompareAndSwapNode x);
+    void setLockDepth(int lockDepth);
 
     /**
-     * Gets a stack slot for a lock at a given lock nesting depth.
+     * Gets the depth of the lock referenced by this operation.
      */
-    StackSlot getLockSlot(int lockDepth);
+    int getLockDepth();
 }

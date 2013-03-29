@@ -26,6 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
@@ -37,13 +38,23 @@ import com.oracle.graal.word.*;
  * is locked (ensuring the GC sees and updates the object) so it must come after any null pointer
  * check on the object.
  */
-public final class BeginLockScopeNode extends AbstractStateSplit implements LIRGenLowerable, MonitorEnter {
+public final class BeginLockScopeNode extends AbstractStateSplit implements LIRGenLowerable, MonitorEnter, MonitorReference {
 
     private final boolean eliminated;
+
+    private int lockDepth = -1;
 
     public BeginLockScopeNode(boolean eliminated) {
         super(StampFactory.forWord());
         this.eliminated = eliminated;
+    }
+
+    public int getLockDepth() {
+        return lockDepth;
+    }
+
+    public void setLockDepth(int lockDepth) {
+        this.lockDepth = lockDepth;
     }
 
     @Override
@@ -58,11 +69,12 @@ public final class BeginLockScopeNode extends AbstractStateSplit implements LIRG
 
     @Override
     public void generate(LIRGenerator gen) {
-        gen.lock();
-        StackSlot lockData = gen.peekLock();
+        assert lockDepth != -1;
         assert stateAfter() != null;
+        HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen;
+        StackSlot slot = hsGen.getLockSlot(lockDepth);
         if (!eliminated) {
-            Value result = gen.emitLea(lockData);
+            Value result = gen.emitLea(slot);
             gen.setResult(this, result);
         }
     }
