@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.rawnativecall.replacements;
+package com.oracle.graal.replacements.installedcode;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.phases.*;

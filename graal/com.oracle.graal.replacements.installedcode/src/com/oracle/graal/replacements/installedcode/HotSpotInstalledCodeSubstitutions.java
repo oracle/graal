@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.rawnativecall.replacements;
+package com.oracle.graal.replacements.installedcode;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
-import com.oracle.graal.rawnativecall.nodes.*;
 import com.oracle.graal.replacements.Snippet.Fold;
+import com.oracle.graal.replacements.installedcode.nodes.*;
 import com.oracle.graal.word.*;
 
 @ClassSubstitution(HotSpotInstalledCode.class)

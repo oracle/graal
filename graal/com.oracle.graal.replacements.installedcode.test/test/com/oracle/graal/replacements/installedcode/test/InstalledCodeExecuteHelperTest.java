@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.rawnativecall.test;
+package com.oracle.graal.replacements.installedcode.test;
 
 import java.lang.reflect.*;
 
@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 
 public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
-    private static final int ITERATIONS = 10000000;
+    private static final int ITERATIONS = 100000000;
 
     @Ignore
     @Test
