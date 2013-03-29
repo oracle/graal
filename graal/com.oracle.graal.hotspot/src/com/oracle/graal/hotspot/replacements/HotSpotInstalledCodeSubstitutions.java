@@ -20,19 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.installedcode;
+package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.replacements.Snippet.Fold;
+import com.oracle.graal.word.*;
 
-@ServiceProvider(ReplacementsProvider.class)
-public class HotSpotInstalledCodeIntrinsics implements ReplacementsProvider {
+@ClassSubstitution(HotSpotInstalledCode.class)
+public class HotSpotInstalledCodeSubstitutions {
 
-    @Override
-    public void installReplacements(ReplacementsInstaller installer) {
-        if (GraalOptions.IntrinsifyInstalledCodeMethods) {
-            installer.installSubstitutions(HotSpotInstalledCodeSubstitutions.class);
-        }
+    @MethodSubstitution
+    public static Object executeHelper(long nmethod, long metaspaceMethod, final Object arg1, final Object arg2, final Object arg3) {
+        final int verifiedEntryPointOffset = HotSpotSnippetUtils.verifiedEntryPointOffset();
+        final Word callTarget = Word.unsigned(nmethod).readWord(verifiedEntryPointOffset);
+        return HotSpotInstalledCodeExecuteNode.call(Kind.Object, callTarget, metaspaceMethod, getSignature(), arg1, arg2, arg3);
+    }
+
+    @Fold
+    private static Class[] getSignature() {
+        return new Class[]{Object.class, Object.class, Object.class};
     }
 }

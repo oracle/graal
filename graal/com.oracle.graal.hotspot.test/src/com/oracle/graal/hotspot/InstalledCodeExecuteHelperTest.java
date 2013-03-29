@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.installedcode.test;
+package com.oracle.graal.hotspot;
 
 import java.lang.reflect.*;
 
