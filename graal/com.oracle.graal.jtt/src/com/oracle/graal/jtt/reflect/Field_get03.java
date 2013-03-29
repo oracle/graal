@@ -50,10 +50,8 @@ public class Field_get03 extends JTTTest {
             FloatField = Field_get03.class.getField("floatField");
             DoubleField = Field_get03.class.getField("doubleField");
             BooleanField = Field_get03.class.getField("booleanField");
-        } catch (SecurityException e) {
-            e.printStackTrace();
-        } catch (NoSuchFieldException e) {
-            e.printStackTrace();
+        } catch (SecurityException | NoSuchFieldException e) {
+            throw new RuntimeException(e);
         }
     }
 

@@ -36,26 +36,38 @@ public class Graal {
         try {
             runtime = initializeRuntime();
         } catch (UnsatisfiedLinkError e) {
-            runtime = new GraalRuntime() {
-
-                @Override
-                public String getName() {
-                    return "";
-                }
-
-                @Override
-                public <T> T getCapability(Class<T> clazz) {
-                    return null;
-                }
-            };
+            runtime = new InvalidGraalRuntime();
         }
     }
 
     public static <T> T getRequiredCapability(Class<T> clazz) {
         T t = getRuntime().getCapability(clazz);
         if (t == null) {
-            throw new IllegalAccessError("Runtime does not expose required capability " + clazz.getName());
+            String javaHome = System.getProperty("java.home");
+            String vmName = System.getProperty("java.vm.name");
+            StringBuilder errorMessage = new StringBuilder();
+            if (runtime.getClass() == InvalidGraalRuntime.class) {
+                errorMessage.append(String.format("The VM does not support the Graal API.\n"));
+            } else {
+                errorMessage.append(String.format("The VM does not expose required Graal capability %s.\n", clazz.getName()));
+            }
+            errorMessage.append(String.format("Currently used Java home directory is %s.\n", javaHome));
+            errorMessage.append(String.format("Currently used VM configuration is: %s", vmName));
+            throw new UnsupportedOperationException(errorMessage.toString());
         }
         return t;
+    }
+
+    private static final class InvalidGraalRuntime implements GraalRuntime {
+
+        @Override
+        public String getName() {
+            return "";
+        }
+
+        @Override
+        public <T> T getCapability(Class<T> clazz) {
+            return null;
+        }
     }
 }
