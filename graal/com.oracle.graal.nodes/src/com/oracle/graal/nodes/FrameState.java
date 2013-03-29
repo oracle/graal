@@ -273,6 +273,18 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
     }
 
     /**
+     * Gets the number of locked monitors in this frame state and all
+     * {@linkplain #outerFrameState() outer} frame states.
+     */
+    public int nestedLockDepth() {
+        int depth = locksSize();
+        for (FrameState outer = outerFrameState(); outer != null; outer = outer.outerFrameState()) {
+            depth += outer.locksSize();
+        }
+        return depth;
+    }
+
+    /**
      * Gets the value in the local variables at the specified index.
      * 
      * @param i the index into the locals

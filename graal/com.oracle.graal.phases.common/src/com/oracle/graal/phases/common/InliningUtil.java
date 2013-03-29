@@ -1095,7 +1095,7 @@ public class InliningUtil {
 
         FrameState outerFrameState = null;
         double invokeProbability = invoke.node().probability();
-        int callerLockDepth = stateAfter.locksSize();
+        int callerLockDepth = stateAfter.nestedLockDepth();
         for (Node node : duplicates.values()) {
             if (GraalOptions.ProbabilityAnalysis) {
                 if (node instanceof FixedNode) {
