@@ -62,11 +62,16 @@ public class NodeIntrinsificationPhase extends Phase {
         }
     }
 
-    public static Class<?>[] signatureToTypes(Signature signature, ResolvedJavaType accessingClass) {
-        int count = signature.getParameterCount(false);
+    public static Class<?>[] signatureToTypes(Signature signature, JavaType receiverType, ResolvedJavaType accessingClass) {
+        int count = signature.getParameterCount(receiverType != null);
         Class<?>[] result = new Class<?>[count];
-        for (int i = 0; i < result.length; ++i) {
-            result[i] = getMirrorOrFail(signature.getParameterType(i, accessingClass).resolve(accessingClass), Thread.currentThread().getContextClassLoader());
+        int j = 0;
+        if (receiverType != null) {
+            result[0] = getMirrorOrFail(receiverType.resolve(accessingClass), Thread.currentThread().getContextClassLoader());
+            j = 1;
+        }
+        for (int i = 0; i + j < result.length; ++i) {
+            result[i + j] = getMirrorOrFail(signature.getParameterType(i, accessingClass).resolve(accessingClass), Thread.currentThread().getContextClassLoader());
         }
         return result;
     }
@@ -75,10 +80,12 @@ public class NodeIntrinsificationPhase extends Phase {
         ResolvedJavaMethod target = invoke.methodCallTarget().targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         ResolvedJavaType declaringClass = target.getDeclaringClass();
+        JavaType receiverType = invoke.methodCallTarget().isStatic() ? null : declaringClass;
         if (intrinsic != null) {
             assert target.getAnnotation(Fold.class) == null;
 
-            Class<?>[] parameterTypes = signatureToTypes(target.getSignature(), declaringClass);
+            // TODO mjj non-static intrinsic?
+            Class<?>[] parameterTypes = signatureToTypes(target.getSignature(), null, declaringClass);
             ResolvedJavaType returnType = target.getSignature().getReturnType(declaringClass).resolve(declaringClass);
 
             // Prepare the arguments for the reflective constructor call on the node class.
@@ -98,7 +105,7 @@ public class NodeIntrinsificationPhase extends Phase {
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnCheckCast(newInstance);
         } else if (target.getAnnotation(Fold.class) != null) {
-            Class<?>[] parameterTypes = signatureToTypes(target.getSignature(), declaringClass);
+            Class<?>[] parameterTypes = signatureToTypes(target.getSignature(), receiverType, declaringClass);
 
             // Prepare the arguments for the reflective method call
             Object[] arguments = prepareArguments(invoke, parameterTypes, target, true);
@@ -109,6 +116,7 @@ public class NodeIntrinsificationPhase extends Phase {
             if (!invoke.methodCallTarget().isStatic()) {
                 receiver = arguments[0];
                 arguments = Arrays.asList(arguments).subList(1, arguments.length).toArray();
+                parameterTypes = Arrays.asList(parameterTypes).subList(1, parameterTypes.length).toArray(new Class<?>[parameterTypes.length - 1]);
             }
 
             // Call the method
