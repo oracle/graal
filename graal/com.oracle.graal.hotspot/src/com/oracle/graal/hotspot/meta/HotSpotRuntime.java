@@ -487,11 +487,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     @Override
-    public int getSizeOfLockData() {
-        return config.basicLockSize;
-    }
-
-    @Override
     public boolean constantEquals(Constant x, Constant y) {
         return x.equals(y);
     }
