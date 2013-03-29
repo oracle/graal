@@ -20,50 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-public class G1WriteBarrierPost extends WriteBarrierPost implements Lowerable {
+public final class ArrayWriteBarrier extends FixedWithNextNode implements Lowerable {
 
     @Input private ValueNode object;
-    @Input private ValueNode value;
     @Input private LocationNode location;
-    private final boolean precise;
 
-    @Override
     public ValueNode getObject() {
         return object;
     }
 
-    @Override
-    public ValueNode getValue() {
-        return value;
-    }
-
-    @Override
     public LocationNode getLocation() {
         return location;
     }
 
-    @Override
-    public boolean usePrecise() {
-        return precise;
-    }
-
-    public G1WriteBarrierPost(ValueNode object, ValueNode value, LocationNode location, boolean precise) {
+    public ArrayWriteBarrier(ValueNode object, LocationNode location) {
+        super(StampFactory.forVoid());
         this.object = object;
-        this.value = value;
         this.location = location;
-        this.precise = precise;
     }
 
-    @Override
     public void lower(LoweringTool generator) {
         generator.getRuntime().lower(this, generator);
     }
-
 }
