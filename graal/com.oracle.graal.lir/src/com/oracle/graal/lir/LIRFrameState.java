@@ -80,24 +80,23 @@ public class LIRFrameState {
      * We filter out constant and illegal values ourself before calling the procedure, so
      * {@link OperandFlag#CONST} and {@link OperandFlag#ILLEGAL} need not be set.
      */
-    private static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.REG, OperandFlag.STACK);
+    protected static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.REG, OperandFlag.STACK);
 
-    private void processValues(Value[] values, ValueProcedure proc) {
+    protected void processValues(Value[] values, ValueProcedure proc) {
         for (int i = 0; i < values.length; i++) {
             Value value = values[i];
-            if (value instanceof MonitorValue) {
-                MonitorValue monitor = (MonitorValue) value;
-                if (processed(monitor.getOwner())) {
-                    monitor.setOwner(proc.doValue(monitor.getOwner(), OperandMode.ALIVE, STATE_FLAGS));
-                }
-
-            } else if (processed(value)) {
-                values[i] = proc.doValue(value, OperandMode.ALIVE, STATE_FLAGS);
-            }
+            values[i] = processValue(proc, value);
         }
     }
 
-    private boolean processed(Value value) {
+    protected Value processValue(ValueProcedure proc, Value value) {
+        if (processed(value)) {
+            return proc.doValue(value, OperandMode.ALIVE, STATE_FLAGS);
+        }
+        return value;
+    }
+
+    protected boolean processed(Value value) {
         if (isIllegal(value)) {
             // Ignore dead local variables.
             return false;

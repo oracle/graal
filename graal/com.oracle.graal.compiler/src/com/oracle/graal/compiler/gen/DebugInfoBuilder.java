@@ -106,6 +106,10 @@ public class DebugInfoBuilder {
         }
         objectStates.clear();
 
+        return newLIRFrameState(reason, exceptionEdge, frame, virtualObjectsArray);
+    }
+
+    protected LIRFrameState newLIRFrameState(short reason, LabelRef exceptionEdge, BytecodeFrame frame, VirtualObject[] virtualObjectsArray) {
         return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge, reason);
     }
 

@@ -26,6 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.virtual.*;
 
@@ -56,5 +57,10 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
         Value object = toValue(lock);
         boolean eliminated = lock instanceof VirtualObjectNode;
         return new MonitorValue(object, slot, eliminated);
+    }
+
+    @Override
+    protected LIRFrameState newLIRFrameState(short reason, LabelRef exceptionEdge, BytecodeFrame frame, VirtualObject[] virtualObjectsArray) {
+        return new HotSpotLIRFrameState(frame, virtualObjectsArray, exceptionEdge, reason);
     }
 }
