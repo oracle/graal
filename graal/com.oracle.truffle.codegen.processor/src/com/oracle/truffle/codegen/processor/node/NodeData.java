@@ -187,20 +187,9 @@ public class NodeData extends Template {
 
         methods.addAll(getSpecializationListeners());
         methods.addAll(getExecutableTypes());
-        methods.addAll(getGuards());
         methods.addAll(getShortCircuits());
 
         return methods;
-    }
-
-    public List<GuardData> findGuards(String name) {
-        List<GuardData> foundGuards = new ArrayList<>();
-        for (GuardData guardData : getGuards()) {
-            if (guardData.getMethodName().equals(name)) {
-                foundGuards.add(guardData);
-            }
-        }
-        return foundGuards;
     }
 
     public ExecutableTypeData findGenericExecutableType(ProcessorContext context, TypeData type) {
@@ -312,6 +301,7 @@ public class NodeData extends Template {
         return null;
     }
 
+    @Override
     public TypeSystemData getTypeSystem() {
         return typeSystem;
     }
@@ -334,7 +324,6 @@ public class NodeData extends Template {
         dumpProperty(builder, indent, "fields", getFields());
         dumpProperty(builder, indent, "executableTypes", getExecutableTypes());
         dumpProperty(builder, indent, "specializations", getSpecializations());
-        dumpProperty(builder, indent, "guards", getGuards());
         dumpProperty(builder, indent, "messages", collectMessages());
         if (getDeclaredChildren().size() > 0) {
             builder.append(String.format("\n%s  children = [", indent));

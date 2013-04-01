@@ -83,7 +83,7 @@ public class RuntimeStringTest {
         }
 
         @Override
-        Object execute() {
+        public Object execute() {
             return arguments[index];
         }
 

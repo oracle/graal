@@ -28,6 +28,7 @@ import javax.lang.model.element.*;
 
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.api.element.*;
+import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public abstract class Template extends MessageContainer {
 
@@ -42,6 +43,8 @@ public abstract class Template extends MessageContainer {
         this.templateMethodName = templateMethodName;
         this.annotation = annotation;
     }
+
+    public abstract TypeSystemData getTypeSystem();
 
     @Override
     public Element getMessageElement() {

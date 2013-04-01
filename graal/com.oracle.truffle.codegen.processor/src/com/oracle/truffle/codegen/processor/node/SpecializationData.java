@@ -28,6 +28,7 @@ import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.node.NodeFieldData.*;
 import com.oracle.truffle.codegen.processor.template.*;
+import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class SpecializationData extends TemplateMethod {
 
@@ -35,7 +36,8 @@ public class SpecializationData extends TemplateMethod {
     private final boolean generic;
     private final boolean uninitialized;
     private final List<SpecializationThrowsData> exceptions;
-    private List<SpecializationGuardData> guards;
+    private List<String> guardDefinitions = Collections.emptyList();
+    private List<GuardData> guards;
     private List<ShortCircuitData> shortCircuits;
     private boolean useSpecializationsForGeneric = true;
     private NodeData node;
@@ -101,8 +103,12 @@ public class SpecializationData extends TemplateMethod {
         this.node = node;
     }
 
-    public void setGuards(List<SpecializationGuardData> guards) {
+    public void setGuards(List<GuardData> guards) {
         this.guards = guards;
+    }
+
+    public void setGuardDefinitions(List<String> guardDefinitions) {
+        this.guardDefinitions = guardDefinitions;
     }
 
     public int getOrder() {
@@ -121,7 +127,11 @@ public class SpecializationData extends TemplateMethod {
         return exceptions;
     }
 
-    public List<SpecializationGuardData> getGuards() {
+    public List<String> getGuardDefinitions() {
+        return guardDefinitions;
+    }
+
+    public List<GuardData> getGuards() {
         return guards;
     }
 
@@ -152,12 +162,7 @@ public class SpecializationData extends TemplateMethod {
     }
 
     public boolean hasDynamicGuards() {
-        for (SpecializationGuardData guard : getGuards()) {
-            if (guard.isOnExecution()) {
-                return true;
-            }
-        }
-        return false;
+        return !getGuards().isEmpty();
     }
 
 }

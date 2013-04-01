@@ -54,7 +54,7 @@ public class ShortCircuitParser extends MethodParser<ShortCircuitData> {
 
     @Override
     protected ParameterSpec createReturnParameterSpec() {
-        return new ParameterSpec("has", getContext().getType(boolean.class), false);
+        return new ParameterSpec("has", getContext().getType(boolean.class), false, false);
     }
 
     @Override

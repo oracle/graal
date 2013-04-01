@@ -43,6 +43,11 @@ public class TypeSystemData extends Template {
         super(templateType, null, annotation);
     }
 
+    @Override
+    public TypeSystemData getTypeSystem() {
+        return this;
+    }
+
     void setTypes(List<TypeData> types) {
         this.types = types;
         if (types != null) {

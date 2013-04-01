@@ -38,35 +38,41 @@ public class ParameterSpec {
 
     private final String name;
     private final List<TypeMirror> allowedTypes;
-    private final boolean optional;
     private Cardinality cardinality;
+    private final boolean optional;
+    private final boolean signature;
     private boolean indexed;
     private boolean local;
 
-    public ParameterSpec(String name, List<TypeMirror> allowedTypes, boolean optional, Cardinality cardinality) {
+    public ParameterSpec(String name, List<TypeMirror> allowedTypes, boolean optional, Cardinality cardinality, boolean signature) {
         this.allowedTypes = allowedTypes;
         this.name = name;
         this.optional = optional;
         this.cardinality = cardinality;
+        this.signature = signature;
     }
 
     /** Type constructor. */
-    public ParameterSpec(String name, TypeMirror singleFixedType, boolean optional) {
-        this(name, Arrays.asList(singleFixedType), optional, Cardinality.ONE);
+    public ParameterSpec(String name, TypeMirror singleFixedType, boolean optional, boolean signature) {
+        this(name, Arrays.asList(singleFixedType), optional, Cardinality.ONE, signature);
     }
 
     /** Type system value constructor. */
-    public ParameterSpec(String name, TypeSystemData typeSystem, boolean optional, Cardinality cardinality) {
-        this(name, typeSystem.getPrimitiveTypeMirrors(), optional, cardinality);
+    public ParameterSpec(String name, TypeSystemData typeSystem, boolean optional, Cardinality cardinality, boolean signature) {
+        this(name, typeSystem.getPrimitiveTypeMirrors(), optional, cardinality, signature);
     }
 
     /** Node value constructor. */
-    public ParameterSpec(String name, NodeData nodeData, boolean optional, Cardinality cardinality) {
-        this(name, nodeTypeMirrors(nodeData), optional, cardinality);
+    public ParameterSpec(String name, NodeData nodeData, boolean optional, Cardinality cardinality, boolean signature) {
+        this(name, nodeTypeMirrors(nodeData), optional, cardinality, signature);
     }
 
     public void setLocal(boolean local) {
         this.local = local;
+    }
+
+    public boolean isSignature() {
+        return signature;
     }
 
     public boolean isLocal() {

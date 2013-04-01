@@ -43,7 +43,7 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
     }
 
     protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData, boolean optional) {
-        return new ParameterSpec(valueName, nodeData, optional, Cardinality.ONE);
+        return new ParameterSpec(valueName, nodeData, optional, Cardinality.ONE, true);
     }
 
     protected ParameterSpec createReturnParameterSpec() {
@@ -60,7 +60,7 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
         List<ParameterSpec> defaultParameters = new ArrayList<>();
 
         if (getNode().supportsFrame()) {
-            defaultParameters.add(new ParameterSpec("frame", getContext().getTruffleTypes().getFrame(), true));
+            defaultParameters.add(new ParameterSpec("frame", getContext().getTruffleTypes().getFrame(), true, false));
         }
 
         TypeMirror declaredType = Utils.findNearestEnclosingType(method).asType();
@@ -73,7 +73,7 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
 
         for (NodeFieldData field : getNode().getFields()) {
             if (field.getKind() == FieldKind.FIELD) {
-                ParameterSpec spec = new ParameterSpec(field.getName(), field.getType(), true);
+                ParameterSpec spec = new ParameterSpec(field.getName(), field.getType(), true, false);
                 spec.setLocal(true);
                 defaultParameters.add(spec);
             }
@@ -97,7 +97,7 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
                     break;
                 }
 
-                defaultParameters.add(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class), false));
+                defaultParameters.add(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class), false, false));
                 defaultParameters.add(createValueParameterSpec(valueName, field.getNodeData(), false));
             } else {
                 assert false;

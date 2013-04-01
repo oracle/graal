@@ -46,8 +46,8 @@ class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
             return null;
         }
         List<ParameterSpec> specs = new ArrayList<>();
-        specs.add(new ParameterSpec("value", getTypeSystem(), false, Cardinality.ONE));
-        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", targetType.getPrimitiveType(), false);
+        specs.add(new ParameterSpec("value", getTypeSystem(), false, Cardinality.ONE, true));
+        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", targetType.getPrimitiveType(), false, true);
         MethodSpec spec = new MethodSpec(Collections.<TypeMirror> emptyList(), returnTypeSpec, specs);
         return spec;
     }

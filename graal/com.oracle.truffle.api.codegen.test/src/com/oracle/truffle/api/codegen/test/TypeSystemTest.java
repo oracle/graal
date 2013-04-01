@@ -50,7 +50,6 @@ public class TypeSystemTest {
         }
 
         abstract Object execute();
-
     }
 
     @TypeSystemReference(SimpleTypes.class)

@@ -46,8 +46,8 @@ class TypeCheckParser extends TypeSystemMethodParser<TypeCheckData> {
             return null;
         }
         List<ParameterSpec> specs = new ArrayList<>();
-        specs.add(new ParameterSpec("value", getTypeSystem(), false, Cardinality.ONE));
-        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", getContext().getType(boolean.class), false);
+        specs.add(new ParameterSpec("value", getTypeSystem(), false, Cardinality.ONE, true));
+        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", getContext().getType(boolean.class), false, true);
         MethodSpec spec = new MethodSpec(Collections.<TypeMirror> emptyList(), returnTypeSpec, specs);
         return spec;
     }

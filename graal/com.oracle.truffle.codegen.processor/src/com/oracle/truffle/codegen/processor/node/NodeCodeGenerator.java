@@ -262,7 +262,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
         CodeTreeBuilder builder = new CodeTreeBuilder(parent);
         CodeTree implicitGuards = createImplicitGuards(parent, conditionPrefix, valueSpecialization, guardedSpecialization);
-        CodeTree explicitGuards = createExplicitGuards(parent, implicitGuards == null ? conditionPrefix : null, valueSpecialization, guardedSpecialization, onSpecialization);
+        CodeTree explicitGuards = createExplicitGuards(parent, implicitGuards == null ? conditionPrefix : null, valueSpecialization, guardedSpecialization);
 
         int ifCount = 0;
 
@@ -302,17 +302,15 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         return builder.getRoot();
     }
 
-    private CodeTree createExplicitGuards(CodeTreeBuilder parent, String conditionPrefix, SpecializationData valueSpecialization, SpecializationData guardedSpecialization, boolean onSpecialization) {
+    private CodeTree createExplicitGuards(CodeTreeBuilder parent, String conditionPrefix, SpecializationData valueSpecialization, SpecializationData guardedSpecialization) {
         CodeTreeBuilder builder = new CodeTreeBuilder(parent);
         String andOperator = conditionPrefix != null ? conditionPrefix + " && " : "";
         if (guardedSpecialization.getGuards().size() > 0) {
             // Explicitly specified guards
-            for (SpecializationGuardData guard : guardedSpecialization.getGuards()) {
-                if ((guard.isOnSpecialization() && onSpecialization) || (guard.isOnExecution() && !onSpecialization)) {
-                    builder.string(andOperator);
-                    builder.tree(createTemplateMethodCall(parent, guard.getGuardDeclaration(), valueSpecialization, guardedSpecialization, null));
-                    andOperator = " && ";
-                }
+            for (GuardData guard : guardedSpecialization.getGuards()) {
+                builder.string(andOperator);
+                builder.tree(createTemplateMethodCall(parent, guard, valueSpecialization, guardedSpecialization, null));
+                andOperator = " && ";
             }
         }
 

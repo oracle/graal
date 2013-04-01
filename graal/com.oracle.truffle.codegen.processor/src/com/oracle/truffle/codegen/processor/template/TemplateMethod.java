@@ -28,6 +28,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
+import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class TemplateMethod extends MessageContainer {
 
@@ -161,4 +162,51 @@ public class TemplateMethod extends MessageContainer {
         }
         return prev;
     }
+
+    public List<TypeData> getSignature(TypeSystemData typeSystem) {
+        List<TypeData> types = new ArrayList<>();
+        for (ActualParameter parameter : getReturnTypeAndParameters()) {
+            if (!parameter.getSpecification().isSignature()) {
+                continue;
+            }
+            TypeData typeData = parameter.getActualTypeData(typeSystem);
+            if (typeData != null) {
+                types.add(typeData);
+            }
+        }
+        return types;
+    }
+
+    public int compareBySignature(TemplateMethod compareMethod) {
+        TypeSystemData typeSystem = getTemplate().getTypeSystem();
+        if (typeSystem != compareMethod.getTemplate().getTypeSystem()) {
+            throw new IllegalStateException("Cannot compare two methods with different type systems.");
+        }
+
+        List<TypeData> signature1 = getSignature(typeSystem);
+        List<TypeData> signature2 = compareMethod.getSignature(typeSystem);
+        if (signature1.size() != signature2.size()) {
+            return signature1.size() - signature2.size();
+        }
+
+        int result = 0;
+        for (int i = 0; i < signature1.size(); i++) {
+            int typeResult = compareActualParameter(typeSystem, signature1.get(i), signature2.get(i));
+            if (result == 0) {
+                result = typeResult;
+            } else if (Math.signum(result) != Math.signum(typeResult)) {
+                // We cannot define an order.
+                return 0;
+            }
+        }
+
+        return result;
+    }
+
+    private static int compareActualParameter(TypeSystemData typeSystem, TypeData t1, TypeData t2) {
+        int index1 = typeSystem.findType(t1);
+        int index2 = typeSystem.findType(t2);
+        return index1 - index2;
+    }
+
 }

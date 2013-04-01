@@ -186,7 +186,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         for (NodeData splittedNode : nodes) {
-            finalizeSpecializations(splittedNode);
+            finalizeSpecializations(elements, splittedNode);
             verifyNode(splittedNode);
         }
 
@@ -254,7 +254,6 @@ public class NodeParser extends TemplateParser<NodeData> {
     }
 
     private void parseMethods(final NodeData node, List<Element> elements) {
-        node.setGuards(new GuardParser(context, node, node.getTypeSystem()).parse(elements));
         node.setShortCircuits(new ShortCircuitParser(context, node).parse(elements));
         node.setSpecializationListeners(new SpecializationListenerParser(context, node).parse(elements));
         List<SpecializationData> generics = new GenericParser(context, node).parse(elements);
@@ -267,11 +266,15 @@ public class NodeParser extends TemplateParser<NodeData> {
         node.setSpecializations(allSpecializations);
     }
 
-    private void finalizeSpecializations(final NodeData node) {
+    private void finalizeSpecializations(List<Element> elements, final NodeData node) {
         List<SpecializationData> specializations = new ArrayList<>(node.getSpecializations());
 
         if (specializations.isEmpty()) {
             return;
+        }
+
+        for (SpecializationData specialization : specializations) {
+            matchGuards(elements, specialization);
         }
 
         List<SpecializationData> generics = new ArrayList<>();
@@ -336,7 +339,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
             @Override
             public int compare(SpecializationData o1, SpecializationData o2) {
-                return compareSpecialization(node.getTypeSystem(), o1, o2);
+                return compareSpecialization(o1, o2);
             }
         });
 
@@ -356,6 +359,45 @@ public class NodeParser extends TemplateParser<NodeData> {
         for (int i = 0; i < ids.size(); i++) {
             needsId.get(i).setId(ids.get(i));
         }
+    }
+
+    private void matchGuards(List<Element> elements, SpecializationData specialization) {
+        if (specialization.getGuardDefinitions().isEmpty()) {
+            specialization.setGuards(Collections.<GuardData> emptyList());
+            return;
+        }
+
+        List<GuardData> foundGuards = new ArrayList<>();
+        List<ExecutableElement> methods = ElementFilter.methodsIn(elements);
+        for (String guardDefinition : specialization.getGuardDefinitions()) {
+            GuardParser parser = new GuardParser(context, specialization, guardDefinition);
+            List<GuardData> guards = parser.parse(methods);
+            Collections.sort(guards, new Comparator<GuardData>() {
+
+                @Override
+                public int compare(GuardData o1, GuardData o2) {
+                    int compare = o1.compareBySignature(o2);
+                    if (compare == 0) {
+                        compare = o1.getId().compareTo(o2.getId());
+                    }
+                    if (compare == 0) {
+                        TypeElement enclosingType1 = Utils.findNearestEnclosingType(o1.getMethod());
+                        TypeElement enclosingType2 = Utils.findNearestEnclosingType(o2.getMethod());
+                        compare = enclosingType1.getQualifiedName().toString().compareTo(enclosingType2.getQualifiedName().toString());
+                    }
+                    return compare;
+                }
+            });
+            if (!guards.isEmpty()) {
+                foundGuards.add(guards.get(0));
+            } else {
+                // error no guard found
+                specialization.addError("No guard found with with name '%s'.", guardDefinition);
+            }
+        }
+
+        specialization.setGuards(foundGuards);
+
     }
 
     private static List<String> calculateSpecializationIds(List<SpecializationData> specializations) {
@@ -927,14 +969,12 @@ public class NodeParser extends TemplateParser<NodeData> {
     }
 
     private static void verifySpecializationOrder(NodeData node) {
-        TypeSystemData typeSystem = node.getTypeSystem();
         List<SpecializationData> specializations = node.getSpecializations();
-
         for (int i = 0; i < specializations.size(); i++) {
             SpecializationData m1 = specializations.get(i);
             for (int j = i + 1; j < specializations.size(); j++) {
                 SpecializationData m2 = specializations.get(j);
-                int inferredOrder = compareSpecializationWithoutOrder(typeSystem, m1, m2);
+                int inferredOrder = compareSpecialization(m1, m2);
 
                 if (m1.getOrder() != Specialization.DEFAULT_ORDER && m2.getOrder() != Specialization.DEFAULT_ORDER) {
                     int specOrder = m1.getOrder() - m2.getOrder();
@@ -974,70 +1014,24 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
     }
 
-    private static int compareSpecialization(TypeSystemData typeSystem, SpecializationData m1, SpecializationData m2) {
-        if (m1 == m2) {
-            return 0;
-        }
-        int result = compareSpecializationWithoutOrder(typeSystem, m1, m2);
-        if (result == 0) {
-            if (m1.getOrder() != Specialization.DEFAULT_ORDER && m2.getOrder() != Specialization.DEFAULT_ORDER) {
-                return m1.getOrder() - m2.getOrder();
-            }
-        }
-        return result;
-    }
-
-    private static int compareSpecializationWithoutOrder(TypeSystemData typeSystem, SpecializationData m1, SpecializationData m2) {
+    private static int compareSpecialization(SpecializationData m1, SpecializationData m2) {
         if (m1 == m2) {
             return 0;
         }
 
         if (m1.getOrder() != Specialization.DEFAULT_ORDER && m2.getOrder() != Specialization.DEFAULT_ORDER) {
             return m1.getOrder() - m2.getOrder();
-        } else if (m1.isUninitialized() && !m2.isUninitialized()) {
-            return -1;
-        } else if (!m1.isUninitialized() && m2.isUninitialized()) {
-            return 1;
-        } else if (m1.isGeneric() && !m2.isGeneric()) {
-            return 1;
-        } else if (!m1.isGeneric() && m2.isGeneric()) {
-            return -1;
+        } else if (m1.isUninitialized() ^ m2.isUninitialized()) {
+            return m1.isUninitialized() ? -1 : 1;
+        } else if (m1.isGeneric() ^ m2.isGeneric()) {
+            return m1.isGeneric() ? 1 : -1;
         }
 
         if (m1.getTemplate() != m2.getTemplate()) {
             throw new UnsupportedOperationException("Cannot compare two specializations with different templates.");
         }
 
-        int result = compareActualParameter(typeSystem, m1.getReturnType(), m2.getReturnType());
-
-        for (ActualParameter p1 : m1.getParameters()) {
-            NodeFieldData field = m1.getNode().findField(p1.getSpecification().getName());
-            if (field == null) {
-                continue;
-            }
-            ActualParameter p2 = m2.findParameter(p1.getLocalName());
-
-            if (p1 != null && p2 != null && !Utils.typeEquals(p1.getActualType(), p2.getActualType())) {
-                int typeResult = compareActualParameter(typeSystem, p1, p2);
-                if (result == 0) {
-                    result = typeResult;
-                } else if (Math.signum(result) != Math.signum(typeResult)) {
-                    // We cannot define an order.
-                    return 0;
-                }
-            }
-        }
-        return result;
-    }
-
-    private static int compareActualParameter(TypeSystemData typeSystem, ActualParameter p1, ActualParameter p2) {
-        int index1 = typeSystem.findType(p1.getActualType());
-        int index2 = typeSystem.findType(p2.getActualType());
-
-        assert index1 != index2;
-        assert !(index1 == -1 ^ index2 == -1);
-
-        return index1 - index2;
+        return m1.compareBySignature(m2);
     }
 
     @Override

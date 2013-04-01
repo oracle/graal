@@ -51,7 +51,7 @@ public class GenericParser extends MethodParser<SpecializationData> {
         for (ExecutableTypeData type : execTypes) {
             types.add(type.getType().getPrimitiveType());
         }
-        return new ParameterSpec(valueName, types, false, Cardinality.ONE);
+        return new ParameterSpec(valueName, types, false, Cardinality.ONE, true);
     }
 
     @Override

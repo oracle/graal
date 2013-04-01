@@ -31,7 +31,6 @@ import javax.lang.model.type.*;
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
-import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class SpecializationMethodParser extends MethodParser<SpecializationData> {
 
@@ -54,7 +53,7 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
         return Specialization.class;
     }
 
-    private SpecializationData parseSpecialization(TemplateMethod method) {
+    private static SpecializationData parseSpecialization(TemplateMethod method) {
         int order = Utils.getAnnotationValue(Integer.class, method.getMarkerAnnotation(), "order");
         if (order < 0 && order != Specialization.DEFAULT_ORDER) {
             method.addError("Invalid order attribute %d. The value must be >= 0 or the default value.");
@@ -80,76 +79,10 @@ public class SpecializationMethodParser extends MethodParser<SpecializationData>
             }
         });
         SpecializationData specialization = new SpecializationData(method, order, exceptionData);
-        AnnotationValue guardsValue = Utils.getAnnotationValue(method.getMarkerAnnotation(), "guards");
         List<String> guardDefs = Utils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
-        List<SpecializationGuardData> guardData = new ArrayList<>(guardDefs.size());
-        for (int i = 0; i < guardDefs.size(); i++) {
-            String guardMethod = guardDefs.get(i);
-
-            SpecializationGuardData assignedGuard = new SpecializationGuardData(specialization, guardsValue, guardMethod, true, true);
-
-            guardData.add(assignedGuard);
-
-            GuardData compatibleGuard = matchSpecializationGuard(specialization, assignedGuard);
-            if (compatibleGuard != null) {
-                assignedGuard.setGuardDeclaration(compatibleGuard);
-            }
-        }
-
-        specialization.setGuards(guardData);
+        specialization.setGuardDefinitions(guardDefs);
 
         return specialization;
-    }
-
-    private GuardData matchSpecializationGuard(SpecializationData specialization, SpecializationGuardData specializationGuard) {
-        List<GuardData> foundGuards = getNode().findGuards(specializationGuard.getGuardMethod());
-
-        GuardData compatibleGuard = null;
-        for (GuardData guardData : foundGuards) {
-            if (isGuardCompatible(specialization, guardData)) {
-                compatibleGuard = guardData;
-                break;
-            }
-        }
-
-        if (compatibleGuard == null) {
-            ParameterSpec returnTypeSpec = new ParameterSpec("returnValue", getContext().getType(boolean.class), false);
-            List<ParameterSpec> expectedParameterSpecs = new ArrayList<>();
-
-            for (ActualParameter param : specialization.getParameters()) {
-                ParameterSpec spec = param.getSpecification();
-                expectedParameterSpecs.add(new ParameterSpec(spec.getName(), param.getActualType(), false));
-            }
-            List<TypeDef> typeDefs = createTypeDefinitions(returnTypeSpec, expectedParameterSpecs);
-            String expectedSignature = TemplateMethodParser.createExpectedSignature(specializationGuard.getGuardMethod(), returnTypeSpec, expectedParameterSpecs, typeDefs);
-            specializationGuard.addError("No guard with signature '%s' found in type system.", expectedSignature);
-        }
-
-        return compatibleGuard;
-    }
-
-    private static boolean isGuardCompatible(SpecializationData specialization, GuardData guard) {
-        Iterator<ActualParameter> guardParameters = guard.getParameters().iterator();
-        for (ActualParameter param : specialization.getParameters()) {
-            if (param.getSpecification().isOptional()) {
-                continue;
-            }
-            if (!guardParameters.hasNext()) {
-                return false;
-            }
-            ActualParameter guardParam = guardParameters.next();
-            if (!Utils.typeEquals(guardParam.getActualType(), param.getActualType()) && !guardParam.getSpecification().isOptional()) {
-                return false;
-            }
-        }
-        while (guardParameters.hasNext()) {
-            ActualParameter param = guardParameters.next();
-            if (!param.getSpecification().isOptional()) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
 }

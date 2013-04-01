@@ -29,16 +29,18 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
+import com.oracle.truffle.codegen.processor.node.*;
 import com.oracle.truffle.codegen.processor.template.*;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
 
 public class GuardParser extends TemplateMethodParser<Template, GuardData> {
 
-    private final TypeSystemData typeSystem;
+    private final SpecializationData specialization;
+    private final String guardName;
 
-    public GuardParser(ProcessorContext context, Template template, TypeSystemData typeSystem) {
-        super(context, template);
-        this.typeSystem = typeSystem;
+    public GuardParser(ProcessorContext context, SpecializationData specialization, String guardName) {
+        super(context, specialization.getNode());
+        this.specialization = specialization;
+        this.guardName = guardName;
         setEmitErrors(false);
         setParseNullOnError(false);
     }
@@ -46,14 +48,16 @@ public class GuardParser extends TemplateMethodParser<Template, GuardData> {
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         List<ParameterSpec> specs = new ArrayList<>();
-        specs.add(new ParameterSpec("valueN", typeSystem, false, Cardinality.MULTIPLE));
-        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", getContext().getType(boolean.class), false);
+        for (ActualParameter parameter : specialization.getParameters()) {
+            specs.add(new ParameterSpec(parameter.getSpecification().getName(), parameter.getActualType(), true, true));
+        }
+        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", getContext().getType(boolean.class), false, false);
         return new MethodSpec(Collections.<TypeMirror> emptyList(), returnTypeSpec, specs);
     }
 
     @Override
     public boolean isParsable(ExecutableElement method) {
-        return true;
+        return method.getSimpleName().toString().equals(guardName);
     }
 
     @Override
