@@ -32,7 +32,7 @@ import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
-public class ExecutableTypeMethodParser extends MethodParser<ExecutableTypeData> {
+public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeData> {
 
     public ExecutableTypeMethodParser(ProcessorContext context, NodeData node) {
         super(context, node);

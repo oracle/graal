@@ -89,15 +89,15 @@ public class ParameterSpec {
         this.cardinality = cardinality;
     }
 
-    public final String getName() {
+    public String getName() {
         return name;
     }
 
-    public final boolean isOptional() {
+    public boolean isOptional() {
         return optional;
     }
 
-    public final Cardinality getCardinality() {
+    public Cardinality getCardinality() {
         return cardinality;
     }
 

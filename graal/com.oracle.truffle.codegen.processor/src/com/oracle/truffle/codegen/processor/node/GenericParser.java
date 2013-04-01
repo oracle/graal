@@ -32,7 +32,7 @@ import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 
-public class GenericParser extends MethodParser<SpecializationData> {
+public class GenericParser extends NodeMethodParser<SpecializationData> {
 
     public GenericParser(ProcessorContext context, NodeData node) {
         super(context, node);

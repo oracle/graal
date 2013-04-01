@@ -32,7 +32,7 @@ import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.node.*;
 import com.oracle.truffle.codegen.processor.template.*;
 
-public class GuardParser extends TemplateMethodParser<Template, GuardData> {
+public class GuardParser extends NodeMethodParser<GuardData> {
 
     private final SpecializationData specialization;
     private final String guardName;

@@ -30,7 +30,7 @@ import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 
-public class SpecializationListenerParser extends MethodParser<SpecializationListenerData> {
+public class SpecializationListenerParser extends NodeMethodParser<SpecializationListenerData> {
 
     public SpecializationListenerParser(ProcessorContext context, NodeData node) {
         super(context, node);

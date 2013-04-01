@@ -32,7 +32,7 @@ import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
 
-public class SpecializationMethodParser extends MethodParser<SpecializationData> {
+public class SpecializationMethodParser extends NodeMethodParser<SpecializationData> {
 
     public SpecializationMethodParser(ProcessorContext context, NodeData operation) {
         super(context, operation);
