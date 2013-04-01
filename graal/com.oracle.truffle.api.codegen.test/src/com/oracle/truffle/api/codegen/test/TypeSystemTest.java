@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,49 +22,97 @@
  */
 package com.oracle.truffle.api.codegen.test;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.api.codegen.test.RuntimeStringTest.RuntimeString;
+import com.oracle.truffle.api.codegen.test.BuiltinTest.Str;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 public class TypeSystemTest {
 
-    @TypeSystem({int.class, RuntimeString.class})
+    @TypeSystem({int.class, Str.class})
     static class SimpleTypes {
     }
 
     @TypeSystemReference(SimpleTypes.class)
     abstract static class ValueNode extends Node {
 
-        int executeInt() throws UnexpectedResultException {
-            return SimpleTypesGen.SIMPLETYPES.expectInteger(execute());
+        int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+            return SimpleTypesGen.SIMPLETYPES.expectInteger(execute(frame));
         }
 
-        RuntimeString executeString() {
-            return new RuntimeString(execute().toString());
+        Str executeStr(VirtualFrame frame) throws UnexpectedResultException {
+            return SimpleTypesGen.SIMPLETYPES.expectStr(execute(frame));
         }
 
-        @SuppressWarnings("static-method")
-        final long executeSpecial() {
-            return 42L;
-        }
-
-        abstract Object execute();
+        abstract Object execute(VirtualFrame frame);
     }
 
     @TypeSystemReference(SimpleTypes.class)
-    static class TestRootNode extends RootNode {
+    abstract static class ChildrenNode extends ValueNode {
 
-        @Child private ValueNode node;
+        @Children protected ValueNode[] children;
 
-        public TestRootNode(ValueNode node) {
+        public ChildrenNode(ValueNode... children) {
+            this.children = adoptChildren(children);
+        }
+
+        public ChildrenNode(ChildrenNode node) {
+            this(node.children);
+        }
+
+    }
+
+    @TypeSystemReference(SimpleTypes.class)
+    static class TestRootNode<E extends ValueNode> extends RootNode {
+
+        @Child private E node;
+
+        public TestRootNode(E node) {
             this.node = adoptChild(node);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return node.execute();
+            return node.execute(frame);
         }
+
+        public E getNode() {
+            return node;
+        }
+    }
+
+    static class TestArguments extends Arguments {
+
+        private final Object[] values;
+
+        public TestArguments(Object... values) {
+            this.values = values;
+        }
+
+        public Object[] getValues() {
+            return values;
+        }
+
+        public Object get(int index) {
+            return values[index];
+        }
+
+    }
+
+    static class ArgumentNode extends ValueNode {
+
+        final int index;
+
+        public ArgumentNode(int index) {
+            this.index = index;
+        }
+
+        @Override
+        Object execute(VirtualFrame frame) {
+            return ((TestArguments) frame.getArguments()).get(index);
+        }
+
     }
 
 }
