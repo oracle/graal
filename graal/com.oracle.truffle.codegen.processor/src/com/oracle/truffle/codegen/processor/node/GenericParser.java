@@ -31,7 +31,6 @@ import javax.lang.model.type.*;
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.*;
 
 public class GenericParser extends MethodParser<SpecializationData> {
 
@@ -51,7 +50,9 @@ public class GenericParser extends MethodParser<SpecializationData> {
         for (ExecutableTypeData type : execTypes) {
             types.add(type.getType().getPrimitiveType());
         }
-        return new ParameterSpec(valueName, types, false, Cardinality.ONE, true);
+        ParameterSpec spec = new ParameterSpec(valueName, types);
+        spec.setSignature(true);
+        return spec;
     }
 
     @Override

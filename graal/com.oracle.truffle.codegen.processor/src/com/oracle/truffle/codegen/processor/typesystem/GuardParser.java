@@ -49,9 +49,12 @@ public class GuardParser extends TemplateMethodParser<Template, GuardData> {
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         List<ParameterSpec> specs = new ArrayList<>();
         for (ActualParameter parameter : specialization.getParameters()) {
-            specs.add(new ParameterSpec(parameter.getSpecification().getName(), parameter.getActualType(), true, true));
+            ParameterSpec spec = new ParameterSpec(parameter.getSpecification().getName(), parameter.getActualType());
+            spec.setSignature(true);
+            spec.setOptional(true);
+            specs.add(spec);
         }
-        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", getContext().getType(boolean.class), false, false);
+        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", getContext().getType(boolean.class));
         return new MethodSpec(Collections.<TypeMirror> emptyList(), returnTypeSpec, specs);
     }
 

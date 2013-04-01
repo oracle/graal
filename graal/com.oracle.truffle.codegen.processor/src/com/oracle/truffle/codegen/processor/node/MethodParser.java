@@ -43,7 +43,22 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
     }
 
     protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData, boolean optional) {
-        return new ParameterSpec(valueName, nodeData, optional, Cardinality.ONE, true);
+        ParameterSpec spec = new ParameterSpec(valueName, nodeTypeMirrors(nodeData));
+        spec.setOptional(optional);
+        spec.setSignature(true);
+        return spec;
+    }
+
+    private static List<TypeMirror> nodeTypeMirrors(NodeData nodeData) {
+        Set<TypeMirror> typeMirrors = new LinkedHashSet<>();
+
+        for (ExecutableTypeData typeData : nodeData.getExecutableTypes()) {
+            typeMirrors.add(typeData.getType().getPrimitiveType());
+        }
+
+        typeMirrors.add(nodeData.getTypeSystem().getGenericType());
+
+        return new ArrayList<>(typeMirrors);
     }
 
     protected ParameterSpec createReturnParameterSpec() {
@@ -60,7 +75,9 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
         List<ParameterSpec> defaultParameters = new ArrayList<>();
 
         if (getNode().supportsFrame()) {
-            defaultParameters.add(new ParameterSpec("frame", getContext().getTruffleTypes().getFrame(), true, false));
+            ParameterSpec frameSpec = new ParameterSpec("frame", getContext().getTruffleTypes().getFrame());
+            frameSpec.setOptional(true);
+            defaultParameters.add(frameSpec);
         }
 
         TypeMirror declaredType = Utils.findNearestEnclosingType(method).asType();
@@ -73,7 +90,8 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
 
         for (NodeFieldData field : getNode().getFields()) {
             if (field.getKind() == FieldKind.FIELD) {
-                ParameterSpec spec = new ParameterSpec(field.getName(), field.getType(), true, false);
+                ParameterSpec spec = new ParameterSpec(field.getName(), field.getType());
+                spec.setOptional(true);
                 spec.setLocal(true);
                 defaultParameters.add(spec);
             }
@@ -97,7 +115,7 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
                     break;
                 }
 
-                defaultParameters.add(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class), false, false));
+                defaultParameters.add(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class)));
                 defaultParameters.add(createValueParameterSpec(valueName, field.getNodeData(), false));
             } else {
                 assert false;

@@ -43,7 +43,7 @@ public class SpecializationListenerParser extends MethodParser<SpecializationLis
 
     @Override
     protected ParameterSpec createReturnParameterSpec() {
-        return new ParameterSpec("void", getContext().getType(void.class), false, false);
+        return new ParameterSpec("void", getContext().getType(void.class));
     }
 
     @Override

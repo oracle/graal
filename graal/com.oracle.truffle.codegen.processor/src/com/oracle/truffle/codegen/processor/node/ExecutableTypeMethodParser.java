@@ -30,7 +30,6 @@ import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class ExecutableTypeMethodParser extends MethodParser<ExecutableTypeData> {
@@ -47,10 +46,13 @@ public class ExecutableTypeMethodParser extends MethodParser<ExecutableTypeData>
         types.addAll(getNode().getTypeSystem().getPrimitiveTypeMirrors());
         types.add(getContext().getType(void.class));
 
-        ParameterSpec returnTypeSpec = new ParameterSpec("executedValue", types, false, Cardinality.ONE, true);
+        ParameterSpec returnTypeSpec = new ParameterSpec("executedValue", types);
+        returnTypeSpec.setSignature(true);
 
         List<ParameterSpec> parameters = new ArrayList<>();
-        parameters.add(new ParameterSpec("frame", getContext().getTruffleTypes().getFrame(), true, false));
+        ParameterSpec frameSpec = new ParameterSpec("frame", getContext().getTruffleTypes().getFrame());
+        frameSpec.setOptional(true);
+        parameters.add(frameSpec);
         return new MethodSpec(new ArrayList<TypeMirror>(), returnTypeSpec, parameters);
     }
 

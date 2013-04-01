@@ -31,7 +31,6 @@ import javax.lang.model.type.*;
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.*;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
 
 class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
 
@@ -46,8 +45,12 @@ class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
             return null;
         }
         List<ParameterSpec> specs = new ArrayList<>();
-        specs.add(new ParameterSpec("value", getTypeSystem(), false, Cardinality.ONE, true));
-        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", targetType.getPrimitiveType(), false, true);
+        ParameterSpec valueSpec = new ParameterSpec("value", getTypeSystem().getPrimitiveTypeMirrors());
+        valueSpec.setSignature(true);
+        specs.add(valueSpec);
+
+        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", targetType.getPrimitiveType());
+        returnTypeSpec.setSignature(true);
         MethodSpec spec = new MethodSpec(Collections.<TypeMirror> emptyList(), returnTypeSpec, specs);
         return spec;
     }

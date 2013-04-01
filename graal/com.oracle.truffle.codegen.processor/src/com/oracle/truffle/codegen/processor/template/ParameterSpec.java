@@ -27,8 +27,6 @@ import java.util.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
-import com.oracle.truffle.codegen.processor.node.*;
-import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class ParameterSpec {
 
@@ -38,33 +36,33 @@ public class ParameterSpec {
 
     private final String name;
     private final List<TypeMirror> allowedTypes;
+
+    /** Cardinality one or multiple. */
     private Cardinality cardinality;
-    private final boolean optional;
-    private final boolean signature;
+    /** Type is optional can be dismissed. */
+    private boolean optional;
+    /** Type is part of the method signature. Relevant for comparisons. */
+    private boolean signature;
+    /** Type must be indexed when parsing. */
     private boolean indexed;
+    /** Type is bound to local final variable. */
     private boolean local;
 
-    public ParameterSpec(String name, List<TypeMirror> allowedTypes, boolean optional, Cardinality cardinality, boolean signature) {
-        this.allowedTypes = allowedTypes;
+    public ParameterSpec(String name, TypeMirror... allowedTypes) {
+        this(name, Arrays.asList(allowedTypes));
+    }
+
+    public ParameterSpec(String name, List<TypeMirror> allowedTypes) {
         this.name = name;
+        this.allowedTypes = allowedTypes;
+    }
+
+    public void setOptional(boolean optional) {
         this.optional = optional;
-        this.cardinality = cardinality;
+    }
+
+    public void setSignature(boolean signature) {
         this.signature = signature;
-    }
-
-    /** Type constructor. */
-    public ParameterSpec(String name, TypeMirror singleFixedType, boolean optional, boolean signature) {
-        this(name, Arrays.asList(singleFixedType), optional, Cardinality.ONE, signature);
-    }
-
-    /** Type system value constructor. */
-    public ParameterSpec(String name, TypeSystemData typeSystem, boolean optional, Cardinality cardinality, boolean signature) {
-        this(name, typeSystem.getPrimitiveTypeMirrors(), optional, cardinality, signature);
-    }
-
-    /** Node value constructor. */
-    public ParameterSpec(String name, NodeData nodeData, boolean optional, Cardinality cardinality, boolean signature) {
-        this(name, nodeTypeMirrors(nodeData), optional, cardinality, signature);
     }
 
     public void setLocal(boolean local) {
@@ -89,18 +87,6 @@ public class ParameterSpec {
 
     public void setCardinality(Cardinality cardinality) {
         this.cardinality = cardinality;
-    }
-
-    private static List<TypeMirror> nodeTypeMirrors(NodeData nodeData) {
-        Set<TypeMirror> typeMirrors = new LinkedHashSet<>();
-
-        for (ExecutableTypeData typeData : nodeData.getExecutableTypes()) {
-            typeMirrors.add(typeData.getType().getPrimitiveType());
-        }
-
-        typeMirrors.add(nodeData.getTypeSystem().getGenericType());
-
-        return new ArrayList<>(typeMirrors);
     }
 
     public final String getName() {
