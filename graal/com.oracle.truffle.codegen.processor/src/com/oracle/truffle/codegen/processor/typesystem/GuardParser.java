@@ -26,7 +26,6 @@ import java.lang.annotation.*;
 import java.util.*;
 
 import javax.lang.model.element.*;
-import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.node.*;
@@ -47,15 +46,22 @@ public class GuardParser extends NodeMethodParser<GuardData> {
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        List<ParameterSpec> specs = new ArrayList<>();
-        for (ActualParameter parameter : specialization.getParameters()) {
-            ParameterSpec spec = new ParameterSpec(parameter.getSpecification().getName(), parameter.getActualType());
-            spec.setSignature(true);
-            spec.setOptional(true);
-            specs.add(spec);
+        MethodSpec spec = createDefaultMethodSpec(method, mirror, null);
+        spec.setVariableRequiredArguments(true);
+        spec.getRequired().clear();
+
+        for (ActualParameter parameter : specialization.getRequiredParameters()) {
+            ParameterSpec paramSpec = new ParameterSpec(parameter.getLocalName(), parameter.getActualType(), getNode().getTypeSystem().getGenericType());
+            paramSpec.setSignature(true);
+            spec.addRequired(paramSpec);
         }
-        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", getContext().getType(boolean.class));
-        return new MethodSpec(Collections.<TypeMirror> emptyList(), returnTypeSpec, specs);
+
+        return spec;
+    }
+
+    @Override
+    protected ParameterSpec createReturnParameterSpec() {
+        return new ParameterSpec("returnType", getContext().getType(boolean.class));
     }
 
     @Override
@@ -65,7 +71,23 @@ public class GuardParser extends NodeMethodParser<GuardData> {
 
     @Override
     public GuardData create(TemplateMethod method) {
-        return new GuardData(method);
+        GuardData guard = new GuardData(method, specialization);
+        /*
+         * Update parameters in way that parameter specifications match again the node field names
+         * etc.
+         */
+        List<ActualParameter> newParameters = new ArrayList<>();
+        for (ActualParameter parameter : guard.getParameters()) {
+            ActualParameter specializationParameter = specialization.findParameter(parameter.getSpecification().getName());
+            if (specializationParameter == null) {
+                newParameters.add(parameter);
+            } else {
+                newParameters.add(new ActualParameter(specializationParameter.getSpecification(), parameter.getActualType(), specializationParameter.getIndex(), parameter.isImplicit()));
+            }
+        }
+        guard.setParameters(newParameters);
+
+        return guard;
     }
 
     @Override

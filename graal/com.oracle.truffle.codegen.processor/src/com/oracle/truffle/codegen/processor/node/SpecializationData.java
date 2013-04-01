@@ -95,6 +95,31 @@ public class SpecializationData extends TemplateMethod {
         return false;
     }
 
+    @Override
+    public int compareBySignature(TemplateMethod other) {
+        if (this == other) {
+            return 0;
+        } else if (!(other instanceof SpecializationData)) {
+            return super.compareBySignature(other);
+        }
+
+        SpecializationData m2 = (SpecializationData) other;
+
+        if (getOrder() != Specialization.DEFAULT_ORDER && m2.getOrder() != Specialization.DEFAULT_ORDER) {
+            return getOrder() - m2.getOrder();
+        } else if (isUninitialized() ^ m2.isUninitialized()) {
+            return isUninitialized() ? -1 : 1;
+        } else if (isGeneric() ^ m2.isGeneric()) {
+            return isGeneric() ? 1 : -1;
+        }
+
+        if (getTemplate() != m2.getTemplate()) {
+            throw new UnsupportedOperationException("Cannot compare two specializations with different templates.");
+        }
+
+        return super.compareBySignature(m2);
+    }
+
     public NodeData getNode() {
         return node;
     }
@@ -165,4 +190,8 @@ public class SpecializationData extends TemplateMethod {
         return !getGuards().isEmpty();
     }
 
+    @Override
+    public String toString() {
+        return String.format("%s [id = %s, method = %s, guards = %s]", getClass().getSimpleName(), getId(), getMethod(), getGuards());
+    }
 }

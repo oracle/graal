@@ -33,7 +33,7 @@ import com.oracle.truffle.codegen.processor.ast.*;
  */
 public class Log {
 
-    public static final boolean DEBUG = false;
+    public static final boolean DEBUG = true;
 
     private final ProcessingEnvironment processingEnv;
 

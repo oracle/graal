@@ -27,6 +27,7 @@ import java.util.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
+import com.oracle.truffle.codegen.processor.template.MethodSpec.TypeDef;
 
 public class ParameterSpec {
 
@@ -38,15 +39,15 @@ public class ParameterSpec {
     private final List<TypeMirror> allowedTypes;
 
     /** Cardinality one or multiple. */
-    private Cardinality cardinality;
-    /** Type is optional can be dismissed. */
-    private boolean optional;
+    private Cardinality cardinality = Cardinality.ONE;
     /** Type is part of the method signature. Relevant for comparisons. */
     private boolean signature;
     /** Type must be indexed when parsing. */
     private boolean indexed;
     /** Type is bound to local final variable. */
     private boolean local;
+
+    private TypeDef typeDefinition;
 
     public ParameterSpec(String name, TypeMirror... allowedTypes) {
         this(name, Arrays.asList(allowedTypes));
@@ -57,8 +58,12 @@ public class ParameterSpec {
         this.allowedTypes = allowedTypes;
     }
 
-    public void setOptional(boolean optional) {
-        this.optional = optional;
+    void setTypeDefinition(TypeDef typeDefinition) {
+        this.typeDefinition = typeDefinition;
+    }
+
+    TypeDef getTypeDefinition() {
+        return typeDefinition;
     }
 
     public void setSignature(boolean signature) {
@@ -93,10 +98,6 @@ public class ParameterSpec {
         return name;
     }
 
-    public boolean isOptional() {
-        return optional;
-    }
-
     public Cardinality getCardinality() {
         return cardinality;
     }
@@ -112,6 +113,27 @@ public class ParameterSpec {
             }
         }
         return false;
+    }
+
+    @Override
+    public String toString() {
+        return toSignatureString(false);
+    }
+
+    public String toSignatureString(boolean typeOnly) {
+        StringBuilder builder = new StringBuilder();
+        if (typeDefinition != null) {
+            builder.append("<" + typeDefinition.getName() + ">");
+        } else if (getAllowedTypes().size() >= 1) {
+            builder.append(Utils.getSimpleName(getAllowedTypes().get(0)));
+        } else {
+            builder.append("void");
+        }
+        if (!typeOnly) {
+            builder.append(" ");
+            builder.append(getName());
+        }
+        return builder.toString();
     }
 
 }

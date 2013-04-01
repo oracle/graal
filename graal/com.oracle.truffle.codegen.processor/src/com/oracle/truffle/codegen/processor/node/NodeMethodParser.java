@@ -32,9 +32,9 @@ import com.oracle.truffle.codegen.processor.node.NodeFieldData.*;
 import com.oracle.truffle.codegen.processor.template.*;
 import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
 
-public abstract class MethodParser<E extends TemplateMethod> extends TemplateMethodParser<NodeData, E> {
+public abstract class NodeMethodParser<E extends TemplateMethod> extends TemplateMethodParser<NodeData, E> {
 
-    public MethodParser(ProcessorContext context, NodeData node) {
+    public NodeMethodParser(ProcessorContext context, NodeData node) {
         super(context, node);
     }
 
@@ -42,9 +42,8 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
         return template;
     }
 
-    protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData, boolean optional) {
+    protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData) {
         ParameterSpec spec = new ParameterSpec(valueName, nodeTypeMirrors(nodeData));
-        spec.setOptional(optional);
         spec.setSignature(true);
         return spec;
     }
@@ -62,7 +61,7 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
     }
 
     protected ParameterSpec createReturnParameterSpec() {
-        return createValueParameterSpec("operation", getNode(), false);
+        return createValueParameterSpec("operation", getNode());
     }
 
     @Override
@@ -72,28 +71,19 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
 
     @SuppressWarnings("unused")
     protected final MethodSpec createDefaultMethodSpec(ExecutableElement method, AnnotationMirror mirror, String shortCircuitName) {
-        List<ParameterSpec> defaultParameters = new ArrayList<>();
+        MethodSpec methodSpec = new MethodSpec(createReturnParameterSpec());
 
         if (getNode().supportsFrame()) {
-            ParameterSpec frameSpec = new ParameterSpec("frame", getContext().getTruffleTypes().getFrame());
-            frameSpec.setOptional(true);
-            defaultParameters.add(frameSpec);
+            methodSpec.addOptional(new ParameterSpec("frame", getContext().getTruffleTypes().getFrame()));
         }
 
-        TypeMirror declaredType = Utils.findNearestEnclosingType(method).asType();
-
-        List<TypeMirror> prefixTypes = new ArrayList<>();
-
-        if (!method.getModifiers().contains(Modifier.STATIC) && !Utils.isAssignable(declaredType, template.getNodeType())) {
-            prefixTypes.add(getNode().getTemplateType().asType());
-        }
+        resolveAndAddImplicitThis(methodSpec, method);
 
         for (NodeFieldData field : getNode().getFields()) {
             if (field.getKind() == FieldKind.FIELD) {
                 ParameterSpec spec = new ParameterSpec(field.getName(), field.getType());
-                spec.setOptional(true);
                 spec.setLocal(true);
-                defaultParameters.add(spec);
+                methodSpec.addOptional(spec);
             }
         }
 
@@ -103,26 +93,34 @@ public abstract class MethodParser<E extends TemplateMethod> extends TemplateMet
             }
 
             if (field.getExecutionKind() == ExecutionKind.DEFAULT) {
-                ParameterSpec spec = createValueParameterSpec(field.getName(), field.getNodeData(), false);
+                ParameterSpec spec = createValueParameterSpec(field.getName(), field.getNodeData());
                 if (field.getKind() == FieldKind.CHILDREN) {
                     spec.setCardinality(Cardinality.MULTIPLE);
                     spec.setIndexed(true);
                 }
-                defaultParameters.add(spec);
+                methodSpec.addRequired(spec);
             } else if (field.getExecutionKind() == ExecutionKind.SHORT_CIRCUIT) {
                 String valueName = field.getName();
                 if (shortCircuitName != null && valueName.equals(shortCircuitName)) {
                     break;
                 }
 
-                defaultParameters.add(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class)));
-                defaultParameters.add(createValueParameterSpec(valueName, field.getNodeData(), false));
+                methodSpec.addRequired(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class)));
+                methodSpec.addRequired(createValueParameterSpec(valueName, field.getNodeData()));
             } else {
                 assert false;
             }
         }
 
-        return new MethodSpec(prefixTypes, createReturnParameterSpec(), defaultParameters);
+        return methodSpec;
+    }
+
+    protected void resolveAndAddImplicitThis(MethodSpec methodSpec, ExecutableElement method) {
+        TypeMirror declaredType = Utils.findNearestEnclosingType(method).asType();
+
+        if (!method.getModifiers().contains(Modifier.STATIC) && !Utils.isAssignable(declaredType, getContext().getTruffleTypes().getNode())) {
+            methodSpec.addImplicitRequiredType(getNode().getTemplateType().asType());
+        }
     }
 
     private static String shortCircuitValueName(String valueName) {

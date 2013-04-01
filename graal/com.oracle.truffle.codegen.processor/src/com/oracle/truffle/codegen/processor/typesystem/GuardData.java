@@ -22,12 +22,20 @@
  */
 package com.oracle.truffle.codegen.processor.typesystem;
 
+import com.oracle.truffle.codegen.processor.node.*;
 import com.oracle.truffle.codegen.processor.template.*;
 
 public class GuardData extends TemplateMethod {
 
-    public GuardData(TemplateMethod method) {
+    private final SpecializationData specialization;
+
+    public GuardData(TemplateMethod method, SpecializationData specialization) {
         super(method);
+        this.specialization = specialization;
+    }
+
+    public SpecializationData getSpecialization() {
+        return specialization;
     }
 
 }

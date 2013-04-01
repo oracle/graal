@@ -335,13 +335,7 @@ public class NodeParser extends TemplateParser<NodeData> {
             specializations.add(new SpecializationData(uninializedMethod, false, true));
         }
 
-        Collections.sort(specializations, new Comparator<SpecializationData>() {
-
-            @Override
-            public int compare(SpecializationData o1, SpecializationData o2) {
-                return compareSpecialization(o1, o2);
-            }
-        });
+        Collections.sort(specializations);
 
         node.setSpecializations(specializations);
 
@@ -372,27 +366,13 @@ public class NodeParser extends TemplateParser<NodeData> {
         for (String guardDefinition : specialization.getGuardDefinitions()) {
             GuardParser parser = new GuardParser(context, specialization, guardDefinition);
             List<GuardData> guards = parser.parse(methods);
-            Collections.sort(guards, new Comparator<GuardData>() {
-
-                @Override
-                public int compare(GuardData o1, GuardData o2) {
-                    int compare = o1.compareBySignature(o2);
-                    if (compare == 0) {
-                        compare = o1.getId().compareTo(o2.getId());
-                    }
-                    if (compare == 0) {
-                        TypeElement enclosingType1 = Utils.findNearestEnclosingType(o1.getMethod());
-                        TypeElement enclosingType2 = Utils.findNearestEnclosingType(o2.getMethod());
-                        compare = enclosingType1.getQualifiedName().toString().compareTo(enclosingType2.getQualifiedName().toString());
-                    }
-                    return compare;
-                }
-            });
             if (!guards.isEmpty()) {
                 foundGuards.add(guards.get(0));
             } else {
                 // error no guard found
-                specialization.addError("No guard found with with name '%s'.", guardDefinition);
+                MethodSpec spec = parser.createSpecification(specialization.getMethod(), null);
+                spec.applyTypeDefinitions("types");
+                specialization.addError("Guard with method name '%s' not found. Expected signature: %n%s", guardDefinition, spec.toSignatureString("guard"));
             }
         }
 
@@ -573,17 +553,17 @@ public class NodeParser extends TemplateParser<NodeData> {
         boolean valid = true;
         int args = -1;
         for (SpecializationData specializationData : nodeData.getSpecializations()) {
-            int specializationArgs = 0;
+            int signatureArgs = 0;
             for (ActualParameter param : specializationData.getParameters()) {
-                if (!param.getSpecification().isOptional()) {
-                    specializationArgs++;
+                if (param.getSpecification().isSignature()) {
+                    signatureArgs++;
                 }
             }
-            if (args != -1 && args != specializationArgs) {
+            if (args != -1 && args != signatureArgs) {
                 valid = false;
                 break;
             }
-            args = specializationArgs;
+            args = signatureArgs;
         }
         if (!valid) {
             for (SpecializationData specialization : nodeData.getSpecializations()) {
@@ -759,7 +739,11 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         NodeFieldData fieldData = new NodeFieldData(var, findAccessElement(var), mirror, kind, execution);
         if (type != null && mirror != null) {
-            NodeData fieldNodeData = resolveNode(Utils.fromTypeMirror(type));
+            TypeElement typeElement = Utils.fromTypeMirror(type);
+            if (typeElement == null) {
+                return null;
+            }
+            NodeData fieldNodeData = resolveNode(typeElement);
             fieldData.setNode(fieldNodeData);
 
             if (fieldNodeData == null) {
@@ -974,7 +958,7 @@ public class NodeParser extends TemplateParser<NodeData> {
             SpecializationData m1 = specializations.get(i);
             for (int j = i + 1; j < specializations.size(); j++) {
                 SpecializationData m2 = specializations.get(j);
-                int inferredOrder = compareSpecialization(m1, m2);
+                int inferredOrder = m1.compareBySignature(m2);
 
                 if (m1.getOrder() != Specialization.DEFAULT_ORDER && m2.getOrder() != Specialization.DEFAULT_ORDER) {
                     int specOrder = m1.getOrder() - m2.getOrder();
@@ -1012,26 +996,6 @@ public class NodeParser extends TemplateParser<NodeData> {
                 }
             }
         }
-    }
-
-    private static int compareSpecialization(SpecializationData m1, SpecializationData m2) {
-        if (m1 == m2) {
-            return 0;
-        }
-
-        if (m1.getOrder() != Specialization.DEFAULT_ORDER && m2.getOrder() != Specialization.DEFAULT_ORDER) {
-            return m1.getOrder() - m2.getOrder();
-        } else if (m1.isUninitialized() ^ m2.isUninitialized()) {
-            return m1.isUninitialized() ? -1 : 1;
-        } else if (m1.isGeneric() ^ m2.isGeneric()) {
-            return m1.isGeneric() ? 1 : -1;
-        }
-
-        if (m1.getTemplate() != m2.getTemplate()) {
-            throw new UnsupportedOperationException("Cannot compare two specializations with different templates.");
-        }
-
-        return m1.compareBySignature(m2);
     }
 
     @Override
