@@ -91,7 +91,11 @@ public class NewObjectSnippets implements Snippets {
             }
             result = memory.toObject();
         }
-        return unsafeCast(verifyOop(result), StampFactory.forNodeIntrinsic());
+        /**
+         * make sure that the unsafeCast is anchored after initialization,
+         * cf. {@link ReadAfterCheckCast} and {@link CheckCastSnippets} */
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        return unsafeCast(verifyOop(result), StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
     @Snippet

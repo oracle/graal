@@ -112,9 +112,6 @@ public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIR
     }
 
     @NodeIntrinsic
-    public static native <T> T unsafeCast(Object object, @ConstantNodeParameter Stamp stamp);
-
-    @NodeIntrinsic
     public static native <T> T unsafeCast(Object object, @ConstantNodeParameter Stamp stamp, ValueNode anchor);
 
     @SuppressWarnings("unused")
