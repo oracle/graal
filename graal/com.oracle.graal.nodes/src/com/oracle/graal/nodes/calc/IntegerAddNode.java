@@ -51,7 +51,8 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
                 // (a - b) + b
                 return sub.x();
             }
-        } else if (y() instanceof IntegerSubNode) {
+        }
+        if (y() instanceof IntegerSubNode) {
             IntegerSubNode sub = (IntegerSubNode) y();
             if (sub.y() == x()) {
                 // b + (a - b)
