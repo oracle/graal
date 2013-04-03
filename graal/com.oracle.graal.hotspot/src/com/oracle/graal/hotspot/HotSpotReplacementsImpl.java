@@ -42,7 +42,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
-    protected void installMethodSubstitution(Member originalMethod, Method substituteMethod) {
+    protected void registerMethodSubstitution(Member originalMethod, Method substituteMethod) {
         if (substituteMethod.getDeclaringClass() == IntegerSubstitutions.class || substituteMethod.getDeclaringClass() == LongSubstitutions.class) {
             if (substituteMethod.getName().equals("bitCount")) {
                 if (!config.usePopCountInstruction) {
@@ -58,6 +58,6 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
         }
-        super.installMethodSubstitution(originalMethod, substituteMethod);
+        super.registerMethodSubstitution(originalMethod, substituteMethod);
     }
 }
