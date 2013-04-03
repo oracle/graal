@@ -46,7 +46,7 @@ import com.oracle.graal.replacements.Snippet.DefaultSnippetInliningPolicy;
 import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.word.phases.*;
 
-public class ReplacementsInstaller implements Replacements {
+public class ReplacementsImpl implements Replacements {
 
     protected final MetaAccessProvider runtime;
     protected final TargetDescription target;
@@ -65,7 +65,7 @@ public class ReplacementsInstaller implements Replacements {
 
     private final ConcurrentMap<ResolvedJavaMethod, Class<? extends FixedWithNextNode>> macroNodeClasses;
 
-    public ReplacementsInstaller(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target) {
+    public ReplacementsImpl(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target) {
         this.runtime = runtime;
         this.target = target;
         this.assumptions = assumptions;

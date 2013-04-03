@@ -153,7 +153,7 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         // Replacements cannot have speculative optimizations since they have
         // to be valid for the entire run of the VM.
         Assumptions assumptions = new Assumptions(false);
-        replacements = new HotSpotReplacementsInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
+        replacements = new HotSpotReplacementsImpl(runtime, assumptions, runtime.getGraalRuntime().getTarget());
 
         backend = createBackend();
         GraalOptions.StackShadowPages = config.stackShadowPages;

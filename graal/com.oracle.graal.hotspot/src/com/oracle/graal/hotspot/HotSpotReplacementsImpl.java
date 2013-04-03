@@ -32,11 +32,11 @@ import com.oracle.graal.replacements.*;
 /**
  * Filters certain method substitutions based on whether there is underlying hardware support for them.
  */
-public class HotSpotReplacementsInstaller extends ReplacementsInstaller {
+public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
     private final HotSpotVMConfig config;
 
-    public HotSpotReplacementsInstaller(HotSpotRuntime runtime, Assumptions assumptions, TargetDescription target) {
+    public HotSpotReplacementsImpl(HotSpotRuntime runtime, Assumptions assumptions, TargetDescription target) {
         super(runtime, assumptions, target);
         this.config = runtime.config;
     }

@@ -49,7 +49,7 @@ import com.oracle.graal.replacements.SnippetTemplate.Key;
  * snippet. A concrete stub is defined a subclass of this class.
  * <p>
  * Implementation detail: The stub classes re-use some of the functionality for {@link Snippet}s
- * purely for convenience (e.g., can re-use the {@link ReplacementsInstaller}).
+ * purely for convenience (e.g., can re-use the {@link ReplacementsImpl}).
  */
 public abstract class Stub extends AbstractTemplates implements Snippets {
 
