@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.replacements.Snippet.Fold;
+import com.oracle.graal.word.*;
 
-/**
- * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition
- * to abstract methods from {@link LIRGenerator} and {@link LIRGeneratorTool}.
- */
-public interface HotSpotLIRGenerator {
+@ClassSubstitution(HotSpotInstalledCode.class)
+public class HotSpotInstalledCodeSubstitutions {
 
-    /**
-     * Emits an operation to make a tail call.
-     * 
-     * @param args the arguments of the call
-     * @param address the target address of the call
-     */
-    void emitTailcall(Value[] args, Value address);
+    @MethodSubstitution
+    public static Object executeHelper(long nmethod, long metaspaceMethod, final Object arg1, final Object arg2, final Object arg3) {
+        final int verifiedEntryPointOffset = HotSpotSnippetUtils.verifiedEntryPointOffset();
+        final Word callTarget = Word.unsigned(nmethod).readWord(verifiedEntryPointOffset);
+        return HotSpotInstalledCodeExecuteNode.call(Kind.Object, callTarget, metaspaceMethod, getSignature(), arg1, arg2, arg3);
+    }
 
-    void visitDirectCompareAndSwap(DirectCompareAndSwapNode x);
-
-    /**
-     * Gets a stack slot for a lock at a given lock nesting depth.
-     */
-    StackSlot getLockSlot(int lockDepth);
+    @Fold
+    private static Class[] getSignature() {
+        return new Class[]{Object.class, Object.class, Object.class};
+    }
 }

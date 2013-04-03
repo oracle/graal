@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.replacements.*;
 
-/**
- * An analog to {@link AccessNode} with the additional semantics of null-checking the receiver
- * object before the access.
- */
-public abstract class SafeAccessNode extends FixedWithNextNode {
+@ServiceProvider(ReplacementsProvider.class)
+public class HotSpotInstalledCodeIntrinsics implements ReplacementsProvider {
 
-    @Input private ValueNode object;
-    @Input private LocationNode location;
-
-    public SafeAccessNode(ValueNode object, LocationNode location, Stamp stamp) {
-        super(stamp);
-        this.object = object;
-        this.location = location;
-    }
-
-    public ValueNode object() {
-        return object;
-    }
-
-    public LocationNode location() {
-        return location;
+    @Override
+    public void installReplacements(ReplacementsInstaller installer) {
+        if (GraalOptions.IntrinsifyInstalledCodeMethods) {
+            installer.installSubstitutions(HotSpotInstalledCodeSubstitutions.class);
+        }
     }
 }

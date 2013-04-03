@@ -43,11 +43,6 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult);
 
     /**
-     * Returns the size in bytes for locking information on the stack.
-     */
-    int getSizeOfLockData();
-
-    /**
      * Returns a disassembly of some compiled code.
      * 
      * @param compResult some compiled code

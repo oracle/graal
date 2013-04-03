@@ -35,6 +35,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Address.*;
 import com.oracle.graal.compiler.amd64.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -83,6 +85,19 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
      * List of epilogue operations that need to restore RBP.
      */
     List<AMD64HotSpotEpilogueOp> epilogueOps = new ArrayList<>(2);
+
+    @SuppressWarnings("hiding")
+    @Override
+    protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
+        assert runtime().config.basicLockSize == 8;
+        HotSpotLockStack lockStack = new HotSpotLockStack(frameMap, Kind.Long);
+        return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
+    }
+
+    @Override
+    public StackSlot getLockSlot(int lockDepth) {
+        return ((HotSpotDebugInfoBuilder) debugInfoBuilder).lockStack().makeLockSlot(lockDepth);
+    }
 
     @Override
     protected void emitPrologue() {

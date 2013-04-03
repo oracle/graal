@@ -26,11 +26,54 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.virtual.nodes.*;
 
 public class GraphEffectList extends EffectList {
+
+    public void addCounterBefore(final String name, final int increment, final boolean addContext, final FixedNode position) {
+        if (!DynamicCounterNode.enabled) {
+            return;
+        }
+        add(new Effect() {
+
+            @Override
+            public String name() {
+                return "addCounterBefore";
+            }
+
+            @Override
+            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+                assert position.isAlive();
+                DynamicCounterNode node = graph.add(new DynamicCounterNode(name, increment, addContext));
+                graph.addBeforeFixed(position, node);
+                node.setProbability(position.probability());
+            }
+        });
+    }
+
+    public void addSurvivingCounterBefore(final String name, final int increment, final boolean addContext, final ValueNode checkedValue, final FixedNode position) {
+        if (!DynamicCounterNode.enabled) {
+            return;
+        }
+        add(new Effect() {
+
+            @Override
+            public String name() {
+                return "addSurvivingCounterBefore";
+            }
+
+            @Override
+            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+                assert position.isAlive();
+                DynamicCounterNode node = graph.add(new SurvivingCounterNode(name, increment, addContext, checkedValue));
+                graph.addBeforeFixed(position, node);
+                node.setProbability(position.probability());
+            }
+        });
+    }
 
     /**
      * Adds the given fixed node to the graph's control flow, before position (so that the original

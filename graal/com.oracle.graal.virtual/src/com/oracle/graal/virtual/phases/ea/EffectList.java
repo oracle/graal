@@ -53,8 +53,8 @@ public class EffectList implements Iterable<EffectList.Effect> {
                     try {
                         field.setAccessible(true);
                         str.append(str.length() > 0 ? ", " : "").append(name).append("=").append(format(field.get(this)));
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    } catch (SecurityException | IllegalAccessException e) {
+                        throw new RuntimeException(e);
                     }
                 }
             }
@@ -193,7 +193,7 @@ public class EffectList implements Iterable<EffectList.Effect> {
                 for (int i2 = 0; i2 < levelAt(i); i2++) {
                     str.append("    ");
                 }
-                str.append(effect).toString();
+                str.append(effect).append('\n');
             }
         }
         return str.toString();

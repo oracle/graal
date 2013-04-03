@@ -20,25 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
+package com.oracle.graal.hotspot.meta;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 
 /**
  * Represents lock information in the debug information.
  */
-public final class MonitorValue extends Value {
+public final class HotSpotMonitorValue extends Value {
 
     private static final long serialVersionUID = 8241681800464483691L;
 
     private Value owner;
-    private final Value lockData;
+    private final StackSlot slot;
     private final boolean eliminated;
 
-    public MonitorValue(Value owner, Value lockData, boolean eliminated) {
+    public HotSpotMonitorValue(Value owner, StackSlot slot, boolean eliminated) {
         super(Kind.Illegal);
         this.owner = owner;
-        this.lockData = lockData;
+        this.slot = slot;
         this.eliminated = eliminated;
     }
 
@@ -50,8 +51,8 @@ public final class MonitorValue extends Value {
         this.owner = newOwner;
     }
 
-    public Value getLockData() {
-        return lockData;
+    public Value getSlot() {
+        return slot;
     }
 
     public boolean isEliminated() {
@@ -60,6 +61,6 @@ public final class MonitorValue extends Value {
 
     @Override
     public String toString() {
-        return "monitor[" + owner + (lockData != null ? ", " + lockData : "") + (eliminated ? ", eliminated" : "") + "]";
+        return "monitor[" + owner + (slot != null ? ", " + slot : "") + (eliminated ? ", eliminated" : "") + "]";
     }
 }

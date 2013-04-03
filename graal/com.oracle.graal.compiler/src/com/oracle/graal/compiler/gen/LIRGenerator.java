@@ -63,7 +63,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected final TargetDescription target;
     protected final ResolvedJavaMethod method;
 
-    private final DebugInfoBuilder debugInfoBuilder;
+    protected final DebugInfoBuilder debugInfoBuilder;
 
     protected Block currentBlock;
     private ValueNode currentInstruction;
@@ -74,22 +74,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      * Mapping from blocks to the last encountered frame state at the end of the block.
      */
     private final BlockMap<FrameState> blockLastState;
-
-    /**
-     * The number of currently locked monitors.
-     */
-    private int currentLockCount;
-
-    /**
-     * Mapping from blocks to the number of locked monitors at the end of the block.
-     */
-    private final BlockMap<Integer> blockLastLockCount;
-
-    /**
-     * Contains the lock data slot for each lock depth (so these may be reused within a compiled
-     * method).
-     */
-    private final ArrayList<StackSlot> lockDataSlots;
 
     /**
      * Checks whether the supplied constant can be used without loading it into a register for store
@@ -109,10 +93,13 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         this.method = method;
         this.nodeOperands = graph.createNodeMap();
         this.lir = lir;
-        this.debugInfoBuilder = new DebugInfoBuilder(nodeOperands);
-        this.blockLastLockCount = new BlockMap<>(lir.cfg);
-        this.lockDataSlots = new ArrayList<>();
+        this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
         this.blockLastState = new BlockMap<>(lir.cfg);
+    }
+
+    @SuppressWarnings("hiding")
+    protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
+        return new DebugInfoBuilder(nodeOperands);
     }
 
     @Override
@@ -248,7 +235,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (needOnlyOopMaps()) {
             return new LIRFrameState(null, null, null, (short) -1);
         }
-        return debugInfoBuilder.build(state, lockDataSlots.subList(0, currentLockCount), lir.getDeoptimizationReasons().addSpeculation(reason), exceptionEdge);
+        return debugInfoBuilder.build(state, lir.getDeoptimizationReasons().addSpeculation(reason), exceptionEdge);
     }
 
     /**
@@ -297,22 +284,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         if (block == lir.cfg.getStartBlock()) {
             assert block.getPredecessorCount() == 0;
-            currentLockCount = 0;
             emitPrologue();
 
         } else {
             assert block.getPredecessorCount() > 0;
-
-            currentLockCount = -1;
-            for (Block pred : block.getPredecessors()) {
-                Integer predLocks = blockLastLockCount.get(pred);
-                if (currentLockCount == -1) {
-                    currentLockCount = predLocks;
-                } else {
-                    assert (predLocks == null && pred.isLoopEnd()) || currentLockCount == predLocks;
-                }
-            }
-
             FrameState fs = null;
 
             for (Block pred : block.getPredecessors()) {
@@ -401,7 +376,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         // share the frame state that flowed into the loop
         assert blockLastState.get(block) == null || blockLastState.get(block) == lastState;
 
-        blockLastLockCount.put(currentBlock, currentLockCount);
         blockLastState.put(block, lastState);
         currentBlock = null;
 
@@ -478,36 +452,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     public void emitIncomingValues(Value[] params) {
         append(new ParametersOp(params));
-    }
-
-    /**
-     * Increases the number of currently locked monitors and makes sure that a lock data slot is
-     * available for the new lock.
-     */
-    public void lock() {
-        if (lockDataSlots.size() == currentLockCount) {
-            lockDataSlots.add(frameMap.allocateStackBlock(runtime.getSizeOfLockData(), false));
-        }
-        currentLockCount++;
-    }
-
-    /**
-     * Decreases the number of currently locked monitors.
-     * 
-     * @throws GraalInternalError if the number of currently locked monitors is already zero.
-     */
-    public void unlock() {
-        if (currentLockCount == 0) {
-            throw new GraalInternalError("unmatched locks");
-        }
-        currentLockCount--;
-    }
-
-    /**
-     * @return The lock data slot for the topmost locked monitor.
-     */
-    public StackSlot peekLock() {
-        return lockDataSlots.get(currentLockCount - 1);
     }
 
     @Override

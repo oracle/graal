@@ -51,6 +51,10 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
         return isDefault;
     }
 
+    public long getnmethod() {
+        return nmethod;
+    }
+
     @Override
     public ResolvedJavaMethod getMethod() {
         return method;
@@ -103,5 +107,9 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     @Override
     public byte[] getCode() {
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().getCode(nmethod);
+    }
+
+    public static Object executeHelper(long nmethod, long metaspaceMethod, Object arg1, Object arg2, Object arg3) {
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethod(metaspaceMethod, nmethod, arg1, arg2, arg3);
     }
 }

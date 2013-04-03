@@ -57,18 +57,18 @@ public class InliningPhase extends Phase implements InliningCallback {
     private final OptimisticOptimizations optimisticOpts;
     private CustomCanonicalizer customCanonicalizer;
 
+    private int inliningCount;
+
+    private int maxMethodPerInlining = Integer.MAX_VALUE;
+
     // Metrics
     private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
     private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
     private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
 
-    public InliningPhase(MetaAccessProvider runtime, Collection<Invoke> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public InliningPhase(MetaAccessProvider runtime, Map<Invoke, Double> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this(runtime, assumptions, cache, plan, createInliningPolicy(runtime, assumptions, optimisticOpts, hints), optimisticOpts);
-    }
-
-    public void setCustomCanonicalizer(CustomCanonicalizer customCanonicalizer) {
-        this.customCanonicalizer = customCanonicalizer;
     }
 
     public InliningPhase(MetaAccessProvider runtime, Assumptions assumptions, GraphCache cache, PhasePlan plan, InliningPolicy inliningPolicy, OptimisticOptimizations optimisticOpts) {
@@ -78,6 +78,18 @@ public class InliningPhase extends Phase implements InliningCallback {
         this.plan = plan;
         this.inliningPolicy = inliningPolicy;
         this.optimisticOpts = optimisticOpts;
+    }
+    
+    public void setCustomCanonicalizer(CustomCanonicalizer customCanonicalizer) {
+        this.customCanonicalizer = customCanonicalizer;
+    }
+    
+    public void setMaxMethodsPerInlining(int max) {
+        maxMethodPerInlining = max;
+    }
+    
+    public int getInliningCount() {
+        return inliningCount;
     }
 
     @Override
@@ -89,6 +101,7 @@ public class InliningPhase extends Phase implements InliningCallback {
 
             if (candidate != null) {
                 boolean isWorthInlining = inliningPolicy.isWorthInlining(candidate);
+                isWorthInlining &= candidate.numberOfMethods() <= maxMethodPerInlining;
 
                 metricInliningConsidered.increment();
                 if (isWorthInlining) {
@@ -102,6 +115,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                         if (GraalOptions.OptCanonicalizer) {
                             new CanonicalizerPhase(runtime, assumptions, invokeUsages, mark, customCanonicalizer).apply(graph);
                         }
+                        inliningCount++;
                         metricInliningPerformed.increment();
                     } catch (BailoutException bailout) {
                         throw bailout;
@@ -164,9 +178,9 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static class GreedySizeBasedInliningDecision implements InliningDecision {
 
         private final MetaAccessProvider runtime;
-        private final Collection<Invoke> hints;
+        private final Map<Invoke, Double> hints;
 
-        public GreedySizeBasedInliningDecision(MetaAccessProvider runtime, Collection<Invoke> hints) {
+        public GreedySizeBasedInliningDecision(MetaAccessProvider runtime, Map<Invoke, Double> hints) {
             this.runtime = runtime;
             this.hints = hints;
         }
@@ -185,9 +199,14 @@ public class InliningPhase extends Phase implements InliningCallback {
                 return InliningUtil.logInlinedMethod(info, "intrinsic");
             }
 
-            int bytecodeSize = bytecodeCodeSize(info);
-            int complexity = compilationComplexity(info);
-            int compiledCodeSize = compiledCodeSize(info);
+            double bonus = 1;
+            if (hints != null && hints.containsKey(info.invoke())) {
+                bonus = hints.get(info.invoke());
+            }
+
+            int bytecodeSize = (int) (bytecodeCodeSize(info) / bonus);
+            int complexity = (int) (compilationComplexity(info) / bonus);
+            int compiledCodeSize = (int) (compiledCodeSize(info) / bonus);
             double relevance = info.invoke().inliningRelevance();
 
             /*
@@ -213,13 +232,12 @@ public class InliningPhase extends Phase implements InliningCallback {
             int invokeUsages = countInvokeUsages(info);
             int moreSpecificArguments = countMoreSpecificArgumentInfo(info);
             int level = info.level();
-            boolean preferredInvoke = hints != null && hints.contains(info.invoke());
 
             // TODO (chaeubl): compute metric that is used to check if this method should be inlined
 
             return InliningUtil.logNotInlinedMethod(info,
-                            "(relevance=%f, bytecodes=%d, complexity=%d, codeSize=%d, probability=%f, transferredValues=%d, invokeUsages=%d, moreSpecificArguments=%d, level=%d, preferred=%b)",
-                            relevance, bytecodeSize, complexity, compiledCodeSize, probability, transferredValues, invokeUsages, moreSpecificArguments, level, preferredInvoke);
+                            "(relevance=%f, bytecodes=%d, complexity=%d, codeSize=%d, probability=%f, transferredValues=%d, invokeUsages=%d, moreSpecificArguments=%d, level=%d, bonus=%f)", relevance,
+                            bytecodeSize, complexity, compiledCodeSize, probability, transferredValues, invokeUsages, moreSpecificArguments, level, bonus);
         }
 
         private static boolean isTrivialInlining(int bytecodeSize, int complexity, int compiledCodeSize) {
@@ -329,16 +347,14 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static class CFInliningPolicy implements InliningPolicy {
 
         private final InliningDecision inliningDecision;
-        private final Collection<Invoke> hints;
         private final Assumptions assumptions;
         private final OptimisticOptimizations optimisticOpts;
         private final Deque<Invoke> sortedInvokes;
         private NodeBitMap visitedFixedNodes;
         private FixedNode invokePredecessor;
 
-        public CFInliningPolicy(InliningDecision inliningPolicy, Collection<Invoke> hints, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
+        public CFInliningPolicy(InliningDecision inliningPolicy, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
             this.inliningDecision = inliningPolicy;
-            this.hints = hints;
             this.assumptions = assumptions;
             this.optimisticOpts = optimisticOpts;
             this.sortedInvokes = new ArrayDeque<>();
@@ -371,9 +387,6 @@ public class InliningPhase extends Phase implements InliningCallback {
         public void initialize(StructuredGraph graph) {
             visitedFixedNodes = graph.createNodeBitMap(true);
             scanGraphForInvokes(graph.start());
-            if (hints != null) {
-                sortedInvokes.retainAll(hints);
-            }
         }
 
         public void scanInvokes(Iterable<? extends Node> newNodes) {
@@ -500,8 +513,8 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
-    private static InliningPolicy createInliningPolicy(MetaAccessProvider runtime, Assumptions assumptions, OptimisticOptimizations optimisticOpts, Collection<Invoke> hints) {
+    private static InliningPolicy createInliningPolicy(MetaAccessProvider runtime, Assumptions assumptions, OptimisticOptimizations optimisticOpts, Map<Invoke, Double> hints) {
         InliningDecision inliningDecision = new GreedySizeBasedInliningDecision(runtime, hints);
-        return new CFInliningPolicy(inliningDecision, hints, assumptions, optimisticOpts);
+        return new CFInliningPolicy(inliningDecision, assumptions, optimisticOpts);
     }
 }

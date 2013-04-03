@@ -73,6 +73,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return holder;
     }
 
+    public long getMetaspaceMethod() {
+        return metaspaceMethod;
+    }
+
     /**
      * Gets the address of the C++ Method object for this method.
      */

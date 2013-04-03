@@ -71,9 +71,13 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected final Backend backend;
 
     public GraalCompilerTest() {
-        DebugEnvironment.initialize(System.out);
         this.runtime = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
         this.backend = Graal.getRequiredCapability(Backend.class);
+    }
+
+    @BeforeClass
+    public static void initializeDebgging() {
+        DebugEnvironment.initialize(System.out);
     }
 
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph) {

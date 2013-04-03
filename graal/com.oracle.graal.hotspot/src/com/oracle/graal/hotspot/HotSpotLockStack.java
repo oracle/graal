@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,39 @@
  */
 package com.oracle.graal.hotspot;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.lir.*;
 
 /**
- * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition
- * to abstract methods from {@link LIRGenerator} and {@link LIRGeneratorTool}.
+ * Manages allocation and re-use of lock slots in a scoped manner. The slots are used in HotSpot's
+ * lightweight locking mechanism to store the mark word of an object being locked.
  */
-public interface HotSpotLIRGenerator {
+public class HotSpotLockStack {
+
+    private StackSlot[] locks;
+    private final FrameMap frameMap;
+    private final Kind slotKind;
+
+    public HotSpotLockStack(FrameMap frameMap, Kind slotKind) {
+        this.frameMap = frameMap;
+        this.slotKind = slotKind;
+    }
 
     /**
-     * Emits an operation to make a tail call.
-     * 
-     * @param args the arguments of the call
-     * @param address the target address of the call
+     * Gets a stack slot for a lock at a given lock nesting depth, allocating it first if necessary.
      */
-    void emitTailcall(Value[] args, Value address);
-
-    void visitDirectCompareAndSwap(DirectCompareAndSwapNode x);
-
-    /**
-     * Gets a stack slot for a lock at a given lock nesting depth.
-     */
-    StackSlot getLockSlot(int lockDepth);
+    public StackSlot makeLockSlot(int lockDepth) {
+        if (locks == null) {
+            locks = new StackSlot[lockDepth + 1];
+        } else if (locks.length < lockDepth + 1) {
+            locks = Arrays.copyOf(locks, lockDepth + 1);
+        }
+        if (locks[lockDepth] == null) {
+            locks[lockDepth] = frameMap.allocateSpillSlot(slotKind);
+        }
+        return locks[lockDepth];
+    }
 }

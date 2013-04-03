@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,18 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
-
 /**
- * An analog to {@link ReadNode} with the additional semantics of null-checking the receiver object
- * before reading from it.
+ * Denotes an instruction that references a monitor and wants to know its lock nesting depth.
  */
-public class SafeReadNode extends SafeAccessNode implements Lowerable {
+public interface MonitorReference {
 
-    public SafeReadNode(ValueNode object, LocationNode location, Stamp stamp) {
-        super(object, location, stamp);
-        assert object != null && location != null;
-    }
+    /**
+     * Sets the depth of the lock referenced by this operation.
+     */
+    void setLockDepth(int lockDepth);
 
-    @Override
-    public void lower(LoweringTool tool) {
-        StructuredGraph graph = (StructuredGraph) graph();
-        ValueNode guard = tool.createNullCheckGuard(object());
-        ReadNode read = graph.add(new ReadNode(object(), location(), stamp()));
-        read.dependencies().add(guard);
-
-        graph.replaceFixedWithFixed(this, read);
-    }
+    /**
+     * Gets the depth of the lock referenced by this operation.
+     */
+    int getLockDepth();
 }

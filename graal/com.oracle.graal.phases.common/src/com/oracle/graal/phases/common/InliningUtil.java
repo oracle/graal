@@ -1094,6 +1094,7 @@ public class InliningUtil {
 
         FrameState outerFrameState = null;
         double invokeProbability = invoke.node().probability();
+        int callerLockDepth = stateAfter.nestedLockDepth();
         for (Node node : duplicates.values()) {
             if (GraalOptions.ProbabilityAnalysis) {
                 if (node instanceof FixedNode) {
@@ -1136,6 +1137,10 @@ public class InliningUtil {
                         frameState.setOuterFrameState(outerFrameState);
                     }
                 }
+            }
+            if (callerLockDepth != 0 && node instanceof MonitorReference) {
+                MonitorReference monitor = (MonitorReference) node;
+                monitor.setLockDepth(monitor.getLockDepth() + callerLockDepth);
             }
         }
 

@@ -45,6 +45,20 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
         if (x().isConstant() && !y().isConstant()) {
             return graph().unique(new IntegerAddNode(kind(), y(), x()));
         }
+        if (x() instanceof IntegerSubNode) {
+            IntegerSubNode sub = (IntegerSubNode) x();
+            if (sub.y() == y()) {
+                // (a - b) + b
+                return sub.x();
+            }
+        }
+        if (y() instanceof IntegerSubNode) {
+            IntegerSubNode sub = (IntegerSubNode) y();
+            if (sub.y() == x()) {
+                // b + (a - b)
+                return sub.x();
+            }
+        }
         if (x().isConstant()) {
             if (kind() == Kind.Int) {
                 return ConstantNode.forInt(x().asConstant().asInt() + y().asConstant().asInt(), graph());
@@ -73,6 +87,8 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
         }
         if (x() instanceof NegateNode) {
             return IntegerArithmeticNode.sub(y(), ((NegateNode) x()).x());
+        } else if (y() instanceof NegateNode) {
+            return IntegerArithmeticNode.sub(x(), ((NegateNode) y()).x());
         }
         return this;
     }

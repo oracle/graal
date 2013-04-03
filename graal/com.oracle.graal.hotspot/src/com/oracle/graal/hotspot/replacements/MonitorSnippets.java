@@ -451,6 +451,9 @@ public class MonitorSnippets implements Snippets {
                     BeginLockScopeNode begin = (BeginLockScopeNode) n;
                     begin.setStateAfter(stateAfter);
                 }
+                if (n instanceof MonitorReference) {
+                    ((MonitorReference) n).setLockDepth(monitorenterNode.getLockDepth());
+                }
             }
         }
 
@@ -473,6 +476,9 @@ public class MonitorSnippets implements Snippets {
                 if (n instanceof EndLockScopeNode) {
                     EndLockScopeNode end = (EndLockScopeNode) n;
                     end.setStateAfter(stateAfter);
+                }
+                if (n instanceof MonitorReference) {
+                    ((MonitorReference) n).setLockDepth(monitorexitNode.getLockDepth());
                 }
             }
         }
