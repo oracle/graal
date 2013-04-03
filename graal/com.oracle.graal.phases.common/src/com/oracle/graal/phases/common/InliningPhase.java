@@ -79,15 +79,15 @@ public class InliningPhase extends Phase implements InliningCallback {
         this.inliningPolicy = inliningPolicy;
         this.optimisticOpts = optimisticOpts;
     }
-    
+
     public void setCustomCanonicalizer(CustomCanonicalizer customCanonicalizer) {
         this.customCanonicalizer = customCanonicalizer;
     }
-    
+
     public void setMaxMethodsPerInlining(int max) {
         maxMethodPerInlining = max;
     }
-    
+
     public int getInliningCount() {
         return inliningCount;
     }
