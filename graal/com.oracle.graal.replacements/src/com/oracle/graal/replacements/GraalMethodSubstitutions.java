@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements;
 
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.phases.*;
 
@@ -31,15 +32,15 @@ import com.oracle.graal.phases.*;
 @ServiceProvider(ReplacementsProvider.class)
 public class GraalMethodSubstitutions implements ReplacementsProvider {
 
-    public void installReplacements(ReplacementsInstaller installer) {
+    public void registerReplacements(Replacements replacements) {
         if (GraalOptions.Intrinsify) {
-            installer.installSubstitutions(MathSubstitutionsX86.class);
-            installer.installSubstitutions(DoubleSubstitutions.class);
-            installer.installSubstitutions(FloatSubstitutions.class);
-            installer.installSubstitutions(NodeClassSubstitutions.class);
-            installer.installSubstitutions(LongSubstitutions.class);
-            installer.installSubstitutions(IntegerSubstitutions.class);
-            installer.installSubstitutions(UnsignedMathSubstitutions.class);
+            replacements.registerSubstitutions(MathSubstitutionsX86.class);
+            replacements.registerSubstitutions(DoubleSubstitutions.class);
+            replacements.registerSubstitutions(FloatSubstitutions.class);
+            replacements.registerSubstitutions(NodeClassSubstitutions.class);
+            replacements.registerSubstitutions(LongSubstitutions.class);
+            replacements.registerSubstitutions(IntegerSubstitutions.class);
+            replacements.registerSubstitutions(UnsignedMathSubstitutions.class);
         }
     }
 }

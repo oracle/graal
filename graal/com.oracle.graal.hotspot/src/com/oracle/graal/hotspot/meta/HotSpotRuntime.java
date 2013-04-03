@@ -30,12 +30,14 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
+import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.replacements.Log.*;
 import static com.oracle.graal.replacements.MathSubstitutionsX86.*;
-import com.oracle.graal.replacements.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -50,7 +52,7 @@ import com.oracle.graal.api.code.CompilationResult.Safepoint;
 import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
@@ -69,6 +71,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.printer.*;
+import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -87,9 +90,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     private NewObjectSnippets.Templates newObjectSnippets;
     private MonitorSnippets.Templates monitorSnippets;
     private WriteBarrierSnippets.Templates writeBarrierSnippets;
-
-    private NewInstanceStub newInstanceStub;
-    private NewArrayStub newArrayStub;
 
     private final Map<Descriptor, HotSpotRuntimeCallTarget> runtimeCalls = new HashMap<>();
     private final Map<ResolvedJavaMethod, Stub> stubs = new HashMap<>();
@@ -303,67 +303,57 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         return kind == Kind.fromJavaClass(spec);
     }
 
-    /**
-     * Binds a snippet-base {@link Stub} to a runtime call descriptor.
-     * 
-     * @return the linkage information for a call to the stub
-     */
-    public HotSpotRuntimeCallTarget registerStub(Descriptor descriptor, Stub stub) {
-        HotSpotRuntimeCallTarget linkage = runtimeCalls.get(descriptor);
-        assert linkage != null;
-        linkage.setStub(stub);
-        stubs.put(stub.getMethod(), stub);
-        return linkage;
-    }
-
     protected abstract RegisterConfig createRegisterConfig(boolean globalStubConfig);
 
-    public void installReplacements(Backend backend, ReplacementsInstaller installer, Assumptions assumptions) {
+    public void registerReplacements(Replacements replacements) {
         if (GraalOptions.IntrinsifyObjectMethods) {
-            installer.installSubstitutions(ObjectSubstitutions.class);
+            replacements.registerSubstitutions(ObjectSubstitutions.class);
         }
         if (GraalOptions.IntrinsifySystemMethods) {
-            installer.installSubstitutions(SystemSubstitutions.class);
+            replacements.registerSubstitutions(SystemSubstitutions.class);
         }
         if (GraalOptions.IntrinsifyThreadMethods) {
-            installer.installSubstitutions(ThreadSubstitutions.class);
+            replacements.registerSubstitutions(ThreadSubstitutions.class);
         }
         if (GraalOptions.IntrinsifyUnsafeMethods) {
-            installer.installSubstitutions(UnsafeSubstitutions.class);
+            replacements.registerSubstitutions(UnsafeSubstitutions.class);
         }
         if (GraalOptions.IntrinsifyClassMethods) {
-            installer.installSubstitutions(ClassSubstitutions.class);
+            replacements.registerSubstitutions(ClassSubstitutions.class);
         }
         if (GraalOptions.IntrinsifyAESMethods) {
-            installer.installSubstitutions(AESCryptSubstitutions.class);
-            installer.installSubstitutions(CipherBlockChainingSubstitutions.class);
+            replacements.registerSubstitutions(AESCryptSubstitutions.class);
+            replacements.registerSubstitutions(CipherBlockChainingSubstitutions.class);
         }
         if (GraalOptions.IntrinsifyArrayCopy) {
-            installer.installSnippets(ArrayCopySnippets.class);
+            replacements.registerSnippets(ArrayCopySnippets.class);
         }
         if (GraalOptions.IntrinsifyObjectClone) {
-            installer.installSnippets(ObjectCloneSnippets.class);
+            replacements.registerSnippets(ObjectCloneSnippets.class);
         }
 
-        installer.installSnippets(CheckCastSnippets.class);
-        installer.installSnippets(InstanceOfSnippets.class);
-        installer.installSnippets(NewObjectSnippets.class);
-        installer.installSnippets(MonitorSnippets.class);
+        replacements.registerSnippets(CheckCastSnippets.class);
+        replacements.registerSnippets(InstanceOfSnippets.class);
+        replacements.registerSnippets(NewObjectSnippets.class);
+        replacements.registerSnippets(MonitorSnippets.class);
 
-        installer.installSnippets(NewInstanceStub.class);
-        installer.installSnippets(NewArrayStub.class);
-        installer.installSnippets(WriteBarrierSnippets.class);
+        replacements.registerSnippets(NewInstanceStub.class);
+        replacements.registerSnippets(NewArrayStub.class);
+        replacements.registerSnippets(WriteBarrierSnippets.class);
 
-        checkcastSnippets = new CheckCastSnippets.Templates(this, assumptions, graalRuntime.getTarget());
-        instanceofSnippets = new InstanceOfSnippets.Templates(this, assumptions, graalRuntime.getTarget());
-        newObjectSnippets = new NewObjectSnippets.Templates(this, assumptions, graalRuntime.getTarget(), config.useTLAB);
-        monitorSnippets = new MonitorSnippets.Templates(this, assumptions, graalRuntime.getTarget(), config.useFastLocking);
-        writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, assumptions, graalRuntime.getTarget());
+        checkcastSnippets = new CheckCastSnippets.Templates(this, replacements, graalRuntime.getTarget());
+        instanceofSnippets = new InstanceOfSnippets.Templates(this, replacements, graalRuntime.getTarget());
+        newObjectSnippets = new NewObjectSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useTLAB);
+        monitorSnippets = new MonitorSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useFastLocking);
+        writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, replacements, graalRuntime.getTarget());
 
-        newInstanceStub = new NewInstanceStub(this, assumptions, graalRuntime.getTarget());
-        newArrayStub = new NewArrayStub(this, assumptions, graalRuntime.getTarget());
-        newInstanceStub.install(backend);
-        newArrayStub.install(backend);
+        registerStub(new NewInstanceStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_INSTANCE)));
+        registerStub(new NewArrayStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_ARRAY)));
+    }
+
+    private void registerStub(Stub stub) {
+        stub.getLinkage().setStub(stub);
+        stubs.put(stub.getMethod(), stub);
     }
 
     public HotSpotGraalRuntime getGraalRuntime() {
@@ -827,8 +817,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     public HotSpotRuntimeCallTarget lookupRuntimeCall(Descriptor descriptor) {
-        assert runtimeCalls.containsKey(descriptor) : descriptor;
-        return runtimeCalls.get(descriptor);
+        HotSpotRuntimeCallTarget callTarget = runtimeCalls.get(descriptor);
+        assert runtimeCalls != null : descriptor;
+        callTarget.finalizeAddress(graalRuntime.getBackend());
+        return callTarget;
     }
 
     public ResolvedJavaMethod lookupJavaMethod(Method reflectionMethod) {

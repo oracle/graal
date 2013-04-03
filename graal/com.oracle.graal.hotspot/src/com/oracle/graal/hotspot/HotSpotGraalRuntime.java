@@ -29,6 +29,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.bridge.*;
@@ -119,6 +120,7 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     protected final HotSpotRuntime runtime;
     protected final TargetDescription target;
+    protected final Replacements replacements;
 
     private HotSpotRuntimeInterpreterInterface runtimeInterpreterInterface;
     private volatile HotSpotGraphCache cache;
@@ -147,6 +149,11 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         wordKind = target.wordKind;
 
         runtime = createRuntime();
+
+        // Replacements cannot have speculative optimizations since they have
+        // to be valid for the entire run of the VM.
+        Assumptions assumptions = new Assumptions(false);
+        replacements = new HotSpotReplacementsInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
 
         backend = createBackend();
         GraalOptions.StackShadowPages = config.stackShadowPages;
@@ -268,6 +275,9 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         }
         if (clazz == HotSpotRuntime.class) {
             return (T) runtime;
+        }
+        if (clazz == Replacements.class) {
+            return (T) replacements;
         }
         if (clazz == Backend.class) {
             return (T) getBackend();

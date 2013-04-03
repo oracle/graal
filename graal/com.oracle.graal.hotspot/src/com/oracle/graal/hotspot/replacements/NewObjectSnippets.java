@@ -34,6 +34,7 @@ import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -234,8 +235,8 @@ public class NewObjectSnippets implements Snippets {
         private final TargetDescription target;
         private final boolean useTLAB;
 
-        public Templates(CodeCacheProvider runtime, Assumptions assumptions, TargetDescription target, boolean useTLAB) {
-            super(runtime, assumptions, target, NewObjectSnippets.class);
+        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target, boolean useTLAB) {
+            super(runtime, replacements, target, NewObjectSnippets.class);
             this.target = target;
             this.useTLAB = useTLAB;
             allocate = snippet("allocate", int.class);
@@ -303,7 +304,7 @@ public class NewObjectSnippets implements Snippets {
                 Key key = new Key(allocateArrayAndInitialize).add("alignment", alignment).add("headerSize", headerSize).add("log2ElementSize", log2ElementSize).add("fillContents",
                                 newArrayNode.fillContents()).add("type", arrayType);
                 Arguments arguments = new Arguments().add("length", lengthNode);
-                SnippetTemplate template = cache.get(key, assumptions);
+                SnippetTemplate template = cache.get(key);
                 Debug.log("Lowering allocateArrayAndInitialize in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, arguments);
                 template.instantiate(runtime, newArrayNode, DEFAULT_REPLACER, arguments);
             }
@@ -315,7 +316,7 @@ public class NewObjectSnippets implements Snippets {
             ValueNode size = tlabAllocateNode.size();
             Key key = new Key(allocate);
             Arguments arguments = arguments("size", size);
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             Debug.log("Lowering fastAllocate in %s: node=%s, template=%s, arguments=%s", graph, tlabAllocateNode, template, arguments);
             template.instantiate(runtime, tlabAllocateNode, DEFAULT_REPLACER, arguments);
         }
@@ -330,7 +331,7 @@ public class NewObjectSnippets implements Snippets {
             Key key = new Key(initializeObject).add("size", size).add("fillContents", initializeNode.fillContents()).add("locked", initializeNode.locked());
             ValueNode memory = initializeNode.memory();
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord());
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             Debug.log("Lowering initializeObject in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, arguments);
             template.instantiate(runtime, initializeNode, DEFAULT_REPLACER, arguments);
         }
@@ -348,7 +349,7 @@ public class NewObjectSnippets implements Snippets {
             ValueNode memory = initializeNode.memory();
             Arguments arguments = arguments("memory", memory).add("hub", hub).add("prototypeMarkWord", type.prototypeMarkWord()).add("allocationSize", initializeNode.allocationSize()).add("length",
                             initializeNode.length());
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             Debug.log("Lowering initializeArray in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, arguments);
             template.instantiate(runtime, initializeNode, DEFAULT_REPLACER, arguments);
         }
@@ -365,7 +366,7 @@ public class NewObjectSnippets implements Snippets {
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             Key key = new Key(newmultiarray).add("dimensions", vargargs(new int[rank], StampFactory.forKind(Kind.Int))).add("rank", rank);
             Arguments arguments = arguments("dimensions", dims).add("hub", hub);
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             template.instantiate(runtime, newmultiarrayNode, DEFAULT_REPLACER, arguments);
         }
 

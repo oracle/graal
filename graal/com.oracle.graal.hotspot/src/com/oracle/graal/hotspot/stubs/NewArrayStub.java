@@ -28,6 +28,8 @@ import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
@@ -44,8 +46,8 @@ import com.oracle.graal.word.*;
  */
 public class NewArrayStub extends Stub {
 
-    public NewArrayStub(final HotSpotRuntime runtime, Assumptions assumptions, TargetDescription target) {
-        super(runtime, assumptions, target, NewArrayStubCall.NEW_ARRAY);
+    public NewArrayStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+        super(runtime, replacements, target, linkage);
     }
 
     @Override

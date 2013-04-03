@@ -28,6 +28,7 @@ import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -153,8 +154,8 @@ public class AMD64ConvertSnippets implements Snippets {
         private final ResolvedJavaMethod d2i;
         private final ResolvedJavaMethod d2l;
 
-        public Templates(CodeCacheProvider runtime, Assumptions assumptions, TargetDescription target) {
-            super(runtime, assumptions, target, AMD64ConvertSnippets.class);
+        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
+            super(runtime, replacements, target, AMD64ConvertSnippets.class);
             f2i = snippet("f2i", float.class, int.class);
             f2l = snippet("f2l", float.class, long.class);
             d2i = snippet("d2i", double.class, int.class);
@@ -185,7 +186,7 @@ public class AMD64ConvertSnippets implements Snippets {
             convert.replaceAtUsages(replacee);
             Key key = new Key(snippet);
             Arguments arguments = arguments("input", convert.value()).add("result", convert);
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             Debug.log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.opcode, graph, convert, template, arguments);
             template.instantiate(runtime, replacee, DEFAULT_REPLACER, tool, arguments);
         }

@@ -23,18 +23,21 @@
 package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode.*;
-import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.*;
-import com.oracle.graal.replacements.SnippetTemplate.*;
+import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.Snippet.Fold;
+import com.oracle.graal.replacements.Snippet.Parameter;
+import com.oracle.graal.replacements.SnippetTemplate.Key;
 import com.oracle.graal.word.*;
 
 /**
@@ -45,8 +48,8 @@ import com.oracle.graal.word.*;
  */
 public class NewInstanceStub extends Stub {
 
-    public NewInstanceStub(final HotSpotRuntime runtime, Assumptions assumptions, TargetDescription target) {
-        super(runtime, assumptions, target, NEW_INSTANCE);
+    public NewInstanceStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+        super(runtime, replacements, target, linkage);
     }
 
     @Override

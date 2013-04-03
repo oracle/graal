@@ -27,6 +27,7 @@ import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
@@ -155,8 +156,8 @@ public class WriteBarrierSnippets implements Snippets {
         private final ResolvedJavaMethod g1PreWriteBarrier;
         private final ResolvedJavaMethod g1PostWriteBarrier;
 
-        public Templates(CodeCacheProvider runtime, Assumptions assumptions, TargetDescription target) {
-            super(runtime, assumptions, target, WriteBarrierSnippets.class);
+        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
+            super(runtime, replacements, target, WriteBarrierSnippets.class);
             serialFieldWriteBarrier = snippet("serialFieldWriteBarrier", Object.class);
             serialArrayWriteBarrier = snippet("serialArrayWriteBarrier", Object.class, Object.class);
             g1PreWriteBarrier = snippet("g1PreWriteBarrier", Object.class, Object.class, Object.class, boolean.class);
@@ -169,7 +170,7 @@ public class WriteBarrierSnippets implements Snippets {
             Arguments arguments = new Arguments();
             arguments.add("object", arrayWriteBarrier.getObject());
             arguments.add("location", arrayWriteBarrier.getLocation());
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             template.instantiate(runtime, arrayWriteBarrier, DEFAULT_REPLACER, arguments);
         }
 
@@ -178,7 +179,7 @@ public class WriteBarrierSnippets implements Snippets {
             Key key = new Key(method);
             Arguments arguments = new Arguments();
             arguments.add("object", fieldWriteBarrier.getObject());
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             template.instantiate(runtime, fieldWriteBarrier, DEFAULT_REPLACER, arguments);
         }
 
@@ -190,7 +191,7 @@ public class WriteBarrierSnippets implements Snippets {
             arguments.add("object", writeBarrierPre.getObject());
             arguments.add("expectedObject", writeBarrierPre.getExpectedObject());
             arguments.add("location", writeBarrierPre.getLocation());
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             template.instantiate(runtime, writeBarrierPre, DEFAULT_REPLACER, arguments);
         }
 
@@ -202,7 +203,7 @@ public class WriteBarrierSnippets implements Snippets {
             arguments.add("object", writeBarrierPost.getObject());
             arguments.add("location", writeBarrierPost.getLocation());
             arguments.add("value", writeBarrierPost.getValue());
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             template.instantiate(runtime, writeBarrierPost, DEFAULT_REPLACER, arguments);
         }
 

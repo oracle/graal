@@ -34,6 +34,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.iterators.*;
@@ -410,8 +411,8 @@ public class MonitorSnippets implements Snippets {
         private final ResolvedJavaMethod checkCounter;
         private final boolean useFastLocking;
 
-        public Templates(CodeCacheProvider runtime, Assumptions assumptions, TargetDescription target, boolean useFastLocking) {
-            super(runtime, assumptions, target, MonitorSnippets.class);
+        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target, boolean useFastLocking) {
+            super(runtime, replacements, target, MonitorSnippets.class);
             monitorenter = snippet("monitorenter", Object.class, boolean.class, boolean.class);
             monitorexit = snippet("monitorexit", Object.class, boolean.class);
             monitorenterStub = snippet("monitorenterStub", Object.class, boolean.class, boolean.class);
@@ -444,7 +445,7 @@ public class MonitorSnippets implements Snippets {
             if (!eliminated) {
                 arguments.add("object", monitorenterNode.object());
             }
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             Map<Node, Node> nodes = template.instantiate(runtime, monitorenterNode, DEFAULT_REPLACER, arguments);
             for (Node n : nodes.values()) {
                 if (n instanceof BeginLockScopeNode) {
@@ -470,7 +471,7 @@ public class MonitorSnippets implements Snippets {
             if (!eliminated) {
                 arguments.add("object", monitorexitNode.object());
             }
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             Map<Node, Node> nodes = template.instantiate(runtime, monitorexitNode, DEFAULT_REPLACER, arguments);
             for (Node n : nodes.values()) {
                 if (n instanceof EndLockScopeNode) {
@@ -526,7 +527,8 @@ public class MonitorSnippets implements Snippets {
                     InvokeNode invoke = graph.add(new InvokeNode(callTarget, 0));
                     invoke.setStateAfter(graph.start().stateAfter());
                     graph.addAfterFixed(graph.start(), invoke);
-                    StructuredGraph inlineeGraph = (StructuredGraph) initCounter.getCompilerStorage().get(Snippet.class);
+
+                    StructuredGraph inlineeGraph = replacements.getSnippet(initCounter);
                     InliningUtil.inline(invoke, inlineeGraph, false);
 
                     List<ReturnNode> rets = graph.getNodes().filter(ReturnNode.class).snapshot();
@@ -540,7 +542,7 @@ public class MonitorSnippets implements Snippets {
                         FrameState stateAfter = new FrameState(graph.method(), FrameState.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], false, false);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
-                        inlineeGraph = (StructuredGraph) checkCounter.getCompilerStorage().get(Snippet.class);
+                        inlineeGraph = replacements.getSnippet(checkCounter);
                         InliningUtil.inline(invoke, inlineeGraph, false);
                     }
                 }
