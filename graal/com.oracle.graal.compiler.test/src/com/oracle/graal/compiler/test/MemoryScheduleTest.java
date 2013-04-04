@@ -221,7 +221,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                     Assumptions assumptions = new Assumptions(false);
                     new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
                 }
-                new LoweringPhase(null, runtime(), new Assumptions(false)).apply(graph);
+                new LoweringPhase(null, runtime(), replacements, new Assumptions(false)).apply(graph);
                 if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     for (Node node : graph.getNodes()) {
                         if (node instanceof StateSplit) {

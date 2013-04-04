@@ -65,6 +65,11 @@ public class LoweringPhase extends Phase {
         }
 
         @Override
+        public Replacements getReplacements() {
+            return replacements;
+        }
+
+        @Override
         public ValueNode createNullCheckGuard(ValueNode object) {
             return createGuard(object.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);
         }
@@ -113,13 +118,15 @@ public class LoweringPhase extends Phase {
 
     private final TargetDescription target;
     private final GraalCodeCacheProvider runtime;
+    private final Replacements replacements;
     private final Assumptions assumptions;
 
     private boolean deferred;
 
-    public LoweringPhase(TargetDescription target, GraalCodeCacheProvider runtime, Assumptions assumptions) {
+    public LoweringPhase(TargetDescription target, GraalCodeCacheProvider runtime, Replacements replacements, Assumptions assumptions) {
         this.target = target;
         this.runtime = runtime;
+        this.replacements = replacements;
         this.assumptions = assumptions;
     }
 
