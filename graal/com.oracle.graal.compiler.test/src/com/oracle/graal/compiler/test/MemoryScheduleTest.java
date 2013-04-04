@@ -219,7 +219,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 StructuredGraph graph = parse(snippet);
                 if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     Assumptions assumptions = new Assumptions(false);
-                    new InliningPhase(runtime(), null, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+                    new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
                 }
                 new LoweringPhase(null, runtime(), new Assumptions(false)).apply(graph);
                 if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {

@@ -119,8 +119,8 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
             PhasePlan phasePlan = new PhasePlan();
             GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-            final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), backend, runtime().getTarget(), stubMethod, graph, null, phasePlan, OptimisticOptimizations.ALL,
-                            new SpeculationLog());
+            final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), stubMethod, graph, null, phasePlan,
+                            OptimisticOptimizations.ALL, new SpeculationLog());
 
             stubCode = Debug.scope("CodeInstall", new Object[]{runtime(), stubMethod}, new Callable<InstalledCode>() {
 

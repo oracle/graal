@@ -89,7 +89,7 @@ public class IfBoxingEliminationTest extends GraalCompilerTest {
                 }
 
                 Assumptions assumptions = new Assumptions(false);
-                new InliningPhase(runtime(), hints, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
+                new InliningPhase(runtime(), hints, replacements, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
                 new CanonicalizerPhase(runtime(), assumptions).apply(graph);
                 new PhiStampPhase().apply(graph);
                 new CanonicalizerPhase(runtime(), assumptions).apply(graph);

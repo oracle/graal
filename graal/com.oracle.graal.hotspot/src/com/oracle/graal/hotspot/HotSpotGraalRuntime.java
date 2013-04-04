@@ -246,6 +246,10 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         return runtime;
     }
 
+    public Replacements getReplacements() {
+        return replacements;
+    }
+
     public void evictDeoptedGraphs() {
         if (cache != null) {
             long[] deoptedGraphs = getCompilerToVM().getDeoptedLeafGraphIds();

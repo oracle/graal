@@ -150,7 +150,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
                 n.node().setProbability(100000);
             }
             Assumptions assumptions = new Assumptions(false);
-            new InliningPhase(runtime(), null, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+            new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
             new CanonicalizerPhase(runtime(), assumptions).apply(graph);
             new PartialEscapeAnalysisPhase(runtime(), assumptions, false, false).apply(graph);
