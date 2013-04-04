@@ -931,7 +931,7 @@ public class InliningUtil {
 
     private static PiNode createAnchoredReceiver(StructuredGraph graph, FixedNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {
         // to avoid that floating reads on receiver fields float above the type check
-        return graph.unique(new PiNode(receiver, anchor, exact ? StampFactory.exactNonNull(commonType) : StampFactory.declaredNonNull(commonType)));
+        return graph.unique(new PiNode(receiver, exact ? StampFactory.exactNonNull(commonType) : StampFactory.declaredNonNull(commonType), anchor));
     }
 
     private static boolean checkInvokeConditions(Invoke invoke) {
