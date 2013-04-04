@@ -54,7 +54,10 @@ public class ReplacementsImpl implements Replacements {
 
     private BoxingMethodPool pool;
 
-    private final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphCache;
+    /**
+     * The preprocessed replacement graphs.
+     */
+    private final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphs;
 
     // These data structures are all fully initialized during single-threaded
     // compiler startup and so do not need to be concurrent.
@@ -66,7 +69,7 @@ public class ReplacementsImpl implements Replacements {
         this.runtime = runtime;
         this.target = target;
         this.assumptions = assumptions;
-        this.graphCache = new ConcurrentHashMap<>();
+        this.graphs = new ConcurrentHashMap<>();
         this.registeredMethodSubstitutions = new HashMap<>();
         this.registeredSnippets = new HashSet<>();
         this.registerMacroSubstitutions = new HashMap<>();
@@ -90,10 +93,10 @@ public class ReplacementsImpl implements Replacements {
         if (!registeredSnippets.contains(method)) {
             return null;
         }
-        StructuredGraph graph = graphCache.get(method);
+        StructuredGraph graph = graphs.get(method);
         if (graph == null) {
-            graph = createGraphMaker(null, null).makeGraph(method, inliningPolicy(method));
-            assert graph == graphCache.get(method);
+            graphs.putIfAbsent(method, makeGraph(method, null, inliningPolicy(method)));
+            graph = graphs.get(method);
         }
         return graph;
 
@@ -104,10 +107,10 @@ public class ReplacementsImpl implements Replacements {
         if (substitute == null) {
             return null;
         }
-        StructuredGraph graph = graphCache.get(original);
+        StructuredGraph graph = graphs.get(substitute);
         if (graph == null) {
-            graph = createGraphMaker(substitute, original).makeGraph(substitute, inliningPolicy(substitute));
-            assert graph == graphCache.get(substitute);
+            graphs.putIfAbsent(substitute, makeGraph(substitute, original, inliningPolicy(substitute)));
+            graph = graphs.get(substitute);
         }
         return graph;
 
@@ -210,51 +213,64 @@ public class ReplacementsImpl implements Replacements {
         }
     }
 
-    public StructuredGraph makeGraph(ResolvedJavaMethod method, SnippetInliningPolicy policy) {
-        return createGraphMaker(null, null).makeGraph(method, policy);
+    /**
+     * Creates a preprocessed graph for a snippet or method substitution.
+     * 
+     * @param method the snippet or method substitution for which a graph will be created
+     * @param original the original method if {@code method} is a {@linkplain MethodSubstitution
+     *            substitution} otherwise null
+     * @param policy the inlining policy to use during preprocessing
+     */
+    public StructuredGraph makeGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, SnippetInliningPolicy policy) {
+        return createGraphMaker(method, original).makeGraph(policy);
     }
 
+    /**
+     * Can be overridden to return an object that specializes various parts of graph preprocessing.
+     */
     protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original) {
         return new GraphMaker(substitute, original);
     }
 
+    /**
+     * Cache to speed up preprocessing of replacement graphs.
+     */
+    final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphCache = new ConcurrentHashMap<>();
+
+    /**
+     * Creates and preprocesses a graph for a replacement.
+     */
     protected class GraphMaker {
 
-        // These fields are used to detect calls from the substitute method to the original method.
-        protected final ResolvedJavaMethod substitute;
+        /**
+         * The method for which a graph is being created.
+         */
+        protected final ResolvedJavaMethod method;
+
+        /**
+         * The original method if {@link #method} is a {@linkplain MethodSubstitution substitution}
+         * otherwise null.
+         */
         protected final ResolvedJavaMethod original;
 
         boolean substituteCallsOriginal;
 
         protected GraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original) {
-            this.substitute = substitute;
+            this.method = substitute;
             this.original = original;
         }
 
-        /**
-         * Does final processing of a snippet graph.
-         */
-        protected void finalizeGraph(ResolvedJavaMethod method, StructuredGraph graph) {
-            new NodeIntrinsificationPhase(runtime, pool()).apply(graph);
-            assert SnippetTemplate.hasConstantParameter(method) || NodeIntrinsificationVerificationPhase.verify(graph);
-
-            if (substitute == null) {
-                new SnippetFrameStateCleanupPhase().apply(graph);
-                new DeadCodeEliminationPhase().apply(graph);
-                new InsertStateAfterPlaceholderPhase().apply(graph);
-            } else {
-                new DeadCodeEliminationPhase().apply(graph);
-            }
-        }
-
-        public StructuredGraph makeGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
+        public StructuredGraph makeGraph(final SnippetInliningPolicy policy) {
             return Debug.scope("BuildSnippetGraph", new Object[]{method}, new Callable<StructuredGraph>() {
 
                 @Override
                 public StructuredGraph call() throws Exception {
                     StructuredGraph graph = parseGraph(method, policy);
 
-                    finalizeGraph(method, graph);
+                    // Cannot have a finalized version of a graph in the cache
+                    graph = graph.copy();
+
+                    finalizeGraph(graph);
 
                     Debug.dump(graph, "%s: Final", method.getName());
 
@@ -263,11 +279,27 @@ public class ReplacementsImpl implements Replacements {
             });
         }
 
-        private StructuredGraph parseGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
-            StructuredGraph graph = graphCache.get(method);
+        /**
+         * Does final processing of a snippet graph.
+         */
+        protected void finalizeGraph(StructuredGraph graph) {
+            new NodeIntrinsificationPhase(runtime, pool()).apply(graph);
+            assert SnippetTemplate.hasConstantParameter(method) || NodeIntrinsificationVerificationPhase.verify(graph);
+
+            if (original == null) {
+                new SnippetFrameStateCleanupPhase().apply(graph);
+                new DeadCodeEliminationPhase().apply(graph);
+                new InsertStateAfterPlaceholderPhase().apply(graph);
+            } else {
+                new DeadCodeEliminationPhase().apply(graph);
+            }
+        }
+
+        private StructuredGraph parseGraph(final ResolvedJavaMethod methodToParse, final SnippetInliningPolicy policy) {
+            StructuredGraph graph = graphCache.get(methodToParse);
             if (graph == null) {
-                graphCache.putIfAbsent(method, buildGraph(method, policy == null ? inliningPolicy(method) : policy));
-                graph = graphCache.get(method);
+                graphCache.putIfAbsent(methodToParse, buildGraph(methodToParse, policy == null ? inliningPolicy(methodToParse) : policy));
+                graph = graphCache.get(methodToParse);
                 assert graph != null;
             }
             return graph;
@@ -276,13 +308,13 @@ public class ReplacementsImpl implements Replacements {
         /**
          * Builds the initial graph for a snippet.
          */
-        protected StructuredGraph buildInitialGraph(final ResolvedJavaMethod method) {
-            final StructuredGraph graph = new StructuredGraph(method);
+        protected StructuredGraph buildInitialGraph(final ResolvedJavaMethod methodToParse) {
+            final StructuredGraph graph = new StructuredGraph(methodToParse);
             GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
             GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config, OptimisticOptimizations.NONE);
             graphBuilder.apply(graph);
 
-            Debug.dump(graph, "%s: %s", method.getName(), GraphBuilderPhase.class.getSimpleName());
+            Debug.dump(graph, "%s: %s", methodToParse.getName(), GraphBuilderPhase.class.getSimpleName());
 
             new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
             new NodeIntrinsificationPhase(runtime, pool()).apply(graph);
@@ -317,14 +349,14 @@ public class ReplacementsImpl implements Replacements {
             }
         }
 
-        private StructuredGraph buildGraph(final ResolvedJavaMethod method, final SnippetInliningPolicy policy) {
-            assert !Modifier.isAbstract(method.getModifiers()) && !Modifier.isNative(method.getModifiers()) : method;
-            final StructuredGraph graph = buildInitialGraph(method);
+        private StructuredGraph buildGraph(final ResolvedJavaMethod methodToParse, final SnippetInliningPolicy policy) {
+            assert !Modifier.isAbstract(methodToParse.getModifiers()) && !Modifier.isNative(methodToParse.getModifiers()) : methodToParse;
+            final StructuredGraph graph = buildInitialGraph(methodToParse);
 
             for (Invoke invoke : graph.getInvokes()) {
                 MethodCallTargetNode callTarget = invoke.methodCallTarget();
                 ResolvedJavaMethod callee = callTarget.targetMethod();
-                if (callee == substitute) {
+                if (callee == method) {
                     final StructuredGraph originalGraph = new StructuredGraph(original);
                     new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(originalGraph);
                     InliningUtil.inline(invoke, originalGraph, true);
@@ -333,7 +365,7 @@ public class ReplacementsImpl implements Replacements {
                     afterInline(graph, originalGraph);
                     substituteCallsOriginal = true;
                 } else {
-                    if ((callTarget.invokeKind() == InvokeKind.Static || callTarget.invokeKind() == InvokeKind.Special) && policy.shouldInline(callee, method)) {
+                    if ((callTarget.invokeKind() == InvokeKind.Static || callTarget.invokeKind() == InvokeKind.Special) && policy.shouldInline(callee, methodToParse)) {
                         StructuredGraph targetGraph = parseGraph(callee, policy);
                         InliningUtil.inline(invoke, targetGraph, true);
                         Debug.dump(graph, "after inlining %s", callee);
