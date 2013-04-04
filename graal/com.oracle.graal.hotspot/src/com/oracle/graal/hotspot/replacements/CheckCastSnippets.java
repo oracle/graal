@@ -33,6 +33,7 @@ import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.*;
@@ -179,8 +180,8 @@ public class CheckCastSnippets implements Snippets {
         private final ResolvedJavaMethod secondary;
         private final ResolvedJavaMethod dynamic;
 
-        public Templates(CodeCacheProvider runtime, Assumptions assumptions, TargetDescription target) {
-            super(runtime, assumptions, target, CheckCastSnippets.class);
+        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
+            super(runtime, replacements, target, CheckCastSnippets.class);
             exact = snippet("checkcastExact", Object.class, Word.class, boolean.class);
             primary = snippet("checkcastPrimary", Word.class, Object.class, boolean.class, int.class);
             secondary = snippet("checkcastSecondary", Word.class, Object.class, Word[].class, boolean.class);
@@ -215,7 +216,7 @@ public class CheckCastSnippets implements Snippets {
                 arguments = arguments("hub", hub).add("object", object).add("hints", hints);
             }
 
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             Debug.log("Lowering checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, arguments);
             template.instantiate(runtime, checkcast, DEFAULT_REPLACER, arguments);
         }
@@ -232,7 +233,7 @@ public class CheckCastSnippets implements Snippets {
             Key key = new Key(dynamic).add("checkNull", checkNull);
             Arguments arguments = arguments("hub", hub).add("object", object);
 
-            SnippetTemplate template = cache.get(key, assumptions);
+            SnippetTemplate template = cache.get(key);
             Debug.log("Lowering dynamic checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, arguments);
             template.instantiate(runtime, checkcast, DEFAULT_REPLACER, arguments);
         }

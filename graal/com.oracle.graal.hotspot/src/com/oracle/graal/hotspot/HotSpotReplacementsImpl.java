@@ -32,17 +32,17 @@ import com.oracle.graal.replacements.*;
 /**
  * Filters certain method substitutions based on whether there is underlying hardware support for them.
  */
-public class HotSpotReplacementsInstaller extends ReplacementsInstaller {
+public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
     private final HotSpotVMConfig config;
 
-    public HotSpotReplacementsInstaller(HotSpotRuntime runtime, Assumptions assumptions, TargetDescription target) {
+    public HotSpotReplacementsImpl(HotSpotRuntime runtime, Assumptions assumptions, TargetDescription target) {
         super(runtime, assumptions, target);
         this.config = runtime.config;
     }
 
     @Override
-    protected void installMethodSubstitution(Member originalMethod, Method substituteMethod) {
+    protected void registerMethodSubstitution(Member originalMethod, Method substituteMethod) {
         if (substituteMethod.getDeclaringClass() == IntegerSubstitutions.class || substituteMethod.getDeclaringClass() == LongSubstitutions.class) {
             if (substituteMethod.getName().equals("bitCount")) {
                 if (!config.usePopCountInstruction) {
@@ -58,6 +58,6 @@ public class HotSpotReplacementsInstaller extends ReplacementsInstaller {
             assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
         }
-        super.installMethodSubstitution(originalMethod, substituteMethod);
+        super.registerMethodSubstitution(originalMethod, substituteMethod);
     }
 }

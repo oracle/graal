@@ -38,11 +38,11 @@ import com.oracle.graal.word.*;
  */
 public class WordTest extends GraalCompilerTest implements Snippets {
 
-    private final ReplacementsInstaller installer;
+    private final ReplacementsImpl installer;
 
     public WordTest() {
         TargetDescription target = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
-        installer = new ReplacementsInstaller(runtime, new Assumptions(false), target);
+        installer = new ReplacementsImpl(runtime, new Assumptions(false), target);
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();
@@ -50,7 +50,7 @@ public class WordTest extends GraalCompilerTest implements Snippets {
     @Override
     protected StructuredGraph parse(Method m) {
         ResolvedJavaMethod resolvedMethod = runtime.lookupJavaMethod(m);
-        return installer.makeGraph(resolvedMethod, inliningPolicy.get());
+        return installer.makeGraph(resolvedMethod, null, inliningPolicy.get());
     }
 
     @LongTest

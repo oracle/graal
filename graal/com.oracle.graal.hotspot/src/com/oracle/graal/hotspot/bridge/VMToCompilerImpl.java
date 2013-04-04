@@ -34,8 +34,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
@@ -146,19 +146,16 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         // Install intrinsics.
         final HotSpotRuntime runtime = graalRuntime.getCapability(HotSpotRuntime.class);
+        final Replacements replacements = graalRuntime.getCapability(Replacements.class);
         if (GraalOptions.Intrinsify) {
-            Debug.scope("InstallReplacements", new Object[]{new DebugDumpScope("InstallReplacements")}, new Runnable() {
+            Debug.scope("RegisterReplacements", new Object[]{new DebugDumpScope("RegisterReplacements")}, new Runnable() {
 
                 @Override
                 public void run() {
-                    // Replacements cannot have speculative optimizations since they have
-                    // to be valid for the entire run of the VM.
-                    Assumptions assumptions = new Assumptions(false);
-                    ReplacementsInstaller installer = new HotSpotReplacementsInstaller(runtime, assumptions, runtime.getGraalRuntime().getTarget());
                     for (ReplacementsProvider provider : ServiceLoader.loadInstalled(ReplacementsProvider.class)) {
-                        provider.installReplacements(installer);
+                        provider.registerReplacements(replacements);
                     }
-                    runtime.installReplacements(graalRuntime.getBackend(), installer, assumptions);
+                    runtime.registerReplacements(replacements);
                 }
             });
 

@@ -26,13 +26,14 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 
 public class ObjectCloneNode extends MacroNode implements VirtualizableAllocation, ArrayLengthProvider {
@@ -70,7 +71,8 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
             method = ObjectCloneSnippets.instanceCloneMethod;
         }
         ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(method);
-        StructuredGraph snippetGraph = (StructuredGraph) snippetMethod.getCompilerStorage().get(Snippet.class);
+        Replacements replacements = Graal.getRequiredCapability(Replacements.class);
+        StructuredGraph snippetGraph = replacements.getSnippet(snippetMethod);
 
         assert snippetGraph != null : "ObjectCloneSnippets should be installed";
         return snippetGraph;

@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.replacements;
 
+import com.oracle.graal.api.replacements.*;
+
 /**
- * Interface for service providers that install replacements into the compiler.
+ * Interface for service providers that register replacements with the compiler.
  */
 public interface ReplacementsProvider {
 
-    void installReplacements(ReplacementsInstaller installer);
+    void registerReplacements(Replacements replacements);
 }

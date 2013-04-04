@@ -28,8 +28,8 @@ import java.lang.reflect.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
@@ -49,7 +49,7 @@ import com.oracle.graal.replacements.SnippetTemplate.Key;
  * snippet. A concrete stub is defined a subclass of this class.
  * <p>
  * Implementation detail: The stub classes re-use some of the functionality for {@link Snippet}s
- * purely for convenience (e.g., can re-use the {@link ReplacementsInstaller}).
+ * purely for convenience (e.g., can re-use the {@link ReplacementsImpl}).
  */
 public abstract class Stub extends AbstractTemplates implements Snippets {
 
@@ -69,17 +69,17 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     protected InstalledCode stubCode;
 
     /**
-     * Creates a new stub container. The new stub still needs to be {@linkplain #install(Backend)
+     * Creates a new stub container. The new stub still needs to be {@linkplain #getAddress(Backend)
      * installed}.
      * 
-     * @param descriptor linkage details for a call to the stub
+     * @param linkage linkage details for a call to the stub
      */
     @SuppressWarnings("unchecked")
-    public Stub(HotSpotRuntime runtime, Assumptions assumptions, TargetDescription target, Descriptor descriptor) {
-        super(runtime, assumptions, target, null);
+    public Stub(HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+        super(runtime, replacements, target, null);
         stubMethod = findStubMethod(runtime, getClass());
-        linkage = runtime.registerStub(descriptor, this);
-        assert linkage != null;
+        this.linkage = linkage;
+
     }
 
     /**
@@ -103,38 +103,41 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     }
 
     /**
-     * Compiles the code for this stub, installs it and initializes the address used for calls to
-     * it.
+     * Ensures the code for this stub is installed.
+     * 
+     * @return the entry point address for calls to this stub
      */
-    public void install(Backend backend) {
-        StructuredGraph graph = (StructuredGraph) stubMethod.getCompilerStorage().get(Snippet.class);
+    public synchronized long getAddress(Backend backend) {
+        if (stubCode == null) {
+            StructuredGraph graph = replacements.getSnippet(stubMethod);
 
-        Key key = new Key(stubMethod);
-        populateKey(key);
-        SnippetTemplate template = cache.get(key, assumptions);
-        graph = template.copySpecializedGraph();
+            Key key = new Key(stubMethod);
+            populateKey(key);
+            SnippetTemplate template = cache.get(key);
+            graph = template.copySpecializedGraph();
 
-        PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
-        phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-        final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), backend, runtime().getTarget(), stubMethod, graph, null, phasePlan, OptimisticOptimizations.ALL,
-                        new SpeculationLog());
+            PhasePlan phasePlan = new PhasePlan();
+            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+            phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+            final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), backend, runtime().getTarget(), stubMethod, graph, null, phasePlan, OptimisticOptimizations.ALL,
+                            new SpeculationLog());
 
-        stubCode = Debug.scope("CodeInstall", new Object[]{runtime(), stubMethod}, new Callable<InstalledCode>() {
+            stubCode = Debug.scope("CodeInstall", new Object[]{runtime(), stubMethod}, new Callable<InstalledCode>() {
 
-            @Override
-            public InstalledCode call() {
-                InstalledCode installedCode = runtime().addMethod(stubMethod, compResult);
-                assert installedCode != null : "error installing stub " + stubMethod;
-                if (Debug.isDumpEnabled()) {
-                    Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
+                @Override
+                public InstalledCode call() {
+                    InstalledCode installedCode = runtime().addMethod(stubMethod, compResult);
+                    assert installedCode != null : "error installing stub " + stubMethod;
+                    if (Debug.isDumpEnabled()) {
+                        Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
+                    }
+                    return installedCode;
                 }
-                return installedCode;
-            }
-        });
+            });
 
-        assert stubCode != null : "error installing stub " + stubMethod;
-        linkage.setAddress(stubCode.getStart());
+            assert stubCode != null : "error installing stub " + stubMethod;
+        }
+        return stubCode.getStart();
     }
 
     /**

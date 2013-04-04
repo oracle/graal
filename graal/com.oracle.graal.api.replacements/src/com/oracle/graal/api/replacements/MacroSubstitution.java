@@ -20,13 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package com.oracle.graal.api.replacements;
 
 import java.lang.annotation.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.replacements.nodes.*;
 
 /**
  * Denotes a macro substitute method. This replaces a method invocation with an instance of the
@@ -64,8 +63,7 @@ public @interface MacroSubstitution {
     /**
      * The node class with which the method invocation should be replaced. It needs to be a subclass
      * of {@link FixedWithNextNode}, and it is expected to provide a public constructor that takes
-     * an InvokeNode as a parameter. For most cases this class should subclass {@link MacroNode} and
-     * use its constructor.
+     * an {@link InvokeNode} as a parameter.
      */
     Class<? extends FixedWithNextNode> macro();
 }
