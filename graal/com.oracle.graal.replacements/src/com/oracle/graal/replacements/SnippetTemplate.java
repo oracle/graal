@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.Map.Entry;
@@ -40,7 +42,10 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.Snippet.Parameter;
+import com.oracle.graal.replacements.Snippet.Varargs;
+import com.oracle.graal.replacements.Snippet.VarargsParameter;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 import com.oracle.graal.word.phases.*;
@@ -202,6 +207,7 @@ public class SnippetTemplate {
                 this.snippetsClass = snippetsClass;
             }
             this.cache = new Cache(runtime, replacements, target);
+            replacements.registerSnippets(this.snippetsClass);
         }
 
         protected ResolvedJavaMethod snippet(String name, Class<?>... parameterTypes) {
@@ -239,6 +245,9 @@ public class SnippetTemplate {
 
         // Copy snippet graph, replacing constant parameters with given arguments
         StructuredGraph snippetGraph = replacements.getSnippet(method);
+        if (snippetGraph == null) {
+            throw new GraalInternalError("Snippet has not been registered: %s", format("%H.%n(%p)", method));
+        }
         StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
         IdentityHashMap<Node, Node> nodeReplacements = new IdentityHashMap<>();
         nodeReplacements.put(snippetGraph.start(), snippetCopy.start());

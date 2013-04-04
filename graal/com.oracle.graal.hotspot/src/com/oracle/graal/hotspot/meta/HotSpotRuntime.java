@@ -331,15 +331,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             replacements.registerSnippets(ObjectCloneSnippets.class);
         }
 
-        replacements.registerSnippets(CheckCastSnippets.class);
-        replacements.registerSnippets(InstanceOfSnippets.class);
-        replacements.registerSnippets(NewObjectSnippets.class);
-        replacements.registerSnippets(MonitorSnippets.class);
-
-        replacements.registerSnippets(NewInstanceStub.class);
-        replacements.registerSnippets(NewArrayStub.class);
-        replacements.registerSnippets(WriteBarrierSnippets.class);
-
         checkcastSnippets = new CheckCastSnippets.Templates(this, replacements, graalRuntime.getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(this, replacements, graalRuntime.getTarget());
         newObjectSnippets = new NewObjectSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useTLAB);

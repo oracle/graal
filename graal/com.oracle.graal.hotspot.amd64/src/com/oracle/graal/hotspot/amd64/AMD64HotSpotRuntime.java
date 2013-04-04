@@ -207,7 +207,6 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
 
     @Override
     public void registerReplacements(Replacements replacements) {
-        replacements.registerSnippets(AMD64ConvertSnippets.class);
         convertSnippets = new AMD64ConvertSnippets.Templates(this, replacements, graalRuntime.getTarget());
         super.registerReplacements(replacements);
     }
