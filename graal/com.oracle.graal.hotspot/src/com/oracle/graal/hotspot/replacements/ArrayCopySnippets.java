@@ -308,12 +308,12 @@ public class ArrayCopySnippets implements Snippets {
         Word destNonVectorEnd = destStart.add(nonVectorBytes);
 
         while (destOffset.belowThan(destNonVectorEnd)) {
-            destOffset.writeByte(0, srcOffset.readByte(0, UNKNOWN_LOCATION), ANY_LOCATION);
+            destOffset.writeByte(0, srcOffset.readByte(0, ANY_LOCATION), ANY_LOCATION);
             destOffset = destOffset.add(1);
             srcOffset = srcOffset.add(1);
         }
         while (destOffset.belowThan(destEnd)) {
-            destOffset.writeWord(0, srcOffset.readWord(0, UNKNOWN_LOCATION), ANY_LOCATION);
+            destOffset.writeWord(0, srcOffset.readWord(0, ANY_LOCATION), ANY_LOCATION);
             destOffset = destOffset.add(wordSize());
             srcOffset = srcOffset.add(wordSize());
         }

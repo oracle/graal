@@ -146,7 +146,7 @@ public class FloatingReadPhase extends Phase {
             StructuredGraph graph = (StructuredGraph) accessNode.graph();
             assert accessNode.getNullCheck() == false;
             Object locationIdentity = accessNode.location().locationIdentity();
-            if (locationIdentity != LocationNode.UNKNOWN_LOCATION) {
+            if (locationIdentity != LocationNode.ANY_LOCATION) {
                 ValueNode lastLocationAccess = state.getLastLocationAccess(locationIdentity);
                 FloatingAccessNode floatingNode = accessNode.asFloatingNode(lastLocationAccess);
                 floatingNode.setNullCheck(accessNode.getNullCheck());

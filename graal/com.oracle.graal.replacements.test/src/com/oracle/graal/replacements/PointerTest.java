@@ -76,7 +76,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     @Test
     public void test_read3() {
         for (Kind kind : KINDS) {
-            assertRead(parse("read" + kind.name() + "3"), kind, false, LocationNode.UNKNOWN_LOCATION);
+            assertRead(parse("read" + kind.name() + "3"), kind, false, LocationNode.ANY_LOCATION);
         }
     }
 

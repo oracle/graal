@@ -41,7 +41,7 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
      * @param object the instruction producing the object
      */
     public CheckCastDynamicNode(ValueNode type, ValueNode object) {
-        super(StampFactory.object());
+        super(object.stamp());
         this.type = type;
         this.object = object;
     }

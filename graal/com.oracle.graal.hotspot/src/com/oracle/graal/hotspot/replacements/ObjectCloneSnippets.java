@@ -58,7 +58,7 @@ public class ObjectCloneSnippets implements Snippets {
 
         memory = Word.fromObject(result);
         for (int offset = 2 * wordSize(); offset < instanceSize; offset += wordSize()) {
-            memory.writeWord(offset, Word.fromObject(src).readWord(offset, UNKNOWN_LOCATION), ANY_LOCATION);
+            memory.writeWord(offset, Word.fromObject(src).readWord(offset, ANY_LOCATION), ANY_LOCATION);
         }
 
         return result;
@@ -76,7 +76,7 @@ public class ObjectCloneSnippets implements Snippets {
 
         memory = Word.fromObject(result);
         for (int offset = headerSize; offset < sizeInBytes; offset += wordSize()) {
-            memory.writeWord(offset, Word.fromObject(src).readWord(offset, UNKNOWN_LOCATION), ANY_LOCATION);
+            memory.writeWord(offset, Word.fromObject(src).readWord(offset, ANY_LOCATION), ANY_LOCATION);
         }
         return result;
     }

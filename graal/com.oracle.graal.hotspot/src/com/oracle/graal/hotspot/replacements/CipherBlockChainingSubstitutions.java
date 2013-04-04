@@ -65,7 +65,7 @@ public class CipherBlockChainingSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     static void encrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
-        Object embeddedCipher = Word.fromObject(rcvr).readObject(Word.unsigned(embeddedCipherOffset), UNKNOWN_LOCATION);
+        Object embeddedCipher = Word.fromObject(rcvr).readObject(Word.unsigned(embeddedCipherOffset), ANY_LOCATION);
         if (getAESCryptClass().isInstance(embeddedCipher)) {
             crypt(rcvr, in, inOffset, inLength, out, outOffset, embeddedCipher, true);
         } else {
@@ -74,8 +74,8 @@ public class CipherBlockChainingSubstitutions {
     }
 
     private static void crypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset, Object embeddedCipher, boolean encrypt) {
-        Word kAddr = Word.fromObject(embeddedCipher).readWord(Word.unsigned(AESCryptSubstitutions.kOffset), UNKNOWN_LOCATION).add(arrayBaseOffset(Kind.Byte));
-        Word rAddr = Word.unsigned(GetObjectAddressNode.get(rcvr)).readWord(Word.unsigned(rOffset), UNKNOWN_LOCATION).add(arrayBaseOffset(Kind.Byte));
+        Word kAddr = Word.fromObject(embeddedCipher).readWord(Word.unsigned(AESCryptSubstitutions.kOffset), ANY_LOCATION).add(arrayBaseOffset(Kind.Byte));
+        Word rAddr = Word.unsigned(GetObjectAddressNode.get(rcvr)).readWord(Word.unsigned(rOffset), ANY_LOCATION).add(arrayBaseOffset(Kind.Byte));
         Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
         Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + arrayBaseOffset(Kind.Byte) + outOffset);
         if (encrypt) {
@@ -88,7 +88,7 @@ public class CipherBlockChainingSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     static void decrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
-        Object embeddedCipher = Word.fromObject(rcvr).readObject(Word.unsigned(embeddedCipherOffset), UNKNOWN_LOCATION);
+        Object embeddedCipher = Word.fromObject(rcvr).readObject(Word.unsigned(embeddedCipherOffset), ANY_LOCATION);
         if (in != out && getAESCryptClass().isInstance(embeddedCipher)) {
             crypt(rcvr, in, inOffset, inLength, out, outOffset, embeddedCipher, false);
         } else {

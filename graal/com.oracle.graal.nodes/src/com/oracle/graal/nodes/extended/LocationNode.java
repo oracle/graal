@@ -60,15 +60,10 @@ public class LocationNode extends FloatingNode implements LIRLowerable, ValueNum
 
     /**
      * Denotes any location. A write to such a location kills all values in a memory map during an
-     * analysis of memory accesses in a graph.
+     * analysis of memory accesses in a graph. A read from this location cannot be moved or
+     * coalesced with other reads because its interaction with other reads is not known.
      */
     public static final Object ANY_LOCATION = createLocation("ANY_LOCATION");
-
-    /**
-     * Denotes an unknown location. A read from this location cannot be moved or coalesced with
-     * other reads because its interaction with other reads is not known.
-     */
-    public static final Object UNKNOWN_LOCATION = createLocation("UNKNOWN_LOCATION");
 
     /**
      * Denotes the location of a value that is guaranteed to be final.

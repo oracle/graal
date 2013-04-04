@@ -45,7 +45,7 @@ public class ThreadSubstitutions {
         Object thread = javaThread.readObject(threadObjectOffset(), FINAL_LOCATION);
         if (thisObject == thread) {
             Word osThread = javaThread.readWord(osThreadOffset(), FINAL_LOCATION);
-            boolean interrupted = osThread.readInt(osThreadInterruptedOffset(), UNKNOWN_LOCATION) != 0;
+            boolean interrupted = osThread.readInt(osThreadInterruptedOffset(), ANY_LOCATION) != 0;
             if (!interrupted || !clearInterrupted) {
                 return interrupted;
             }

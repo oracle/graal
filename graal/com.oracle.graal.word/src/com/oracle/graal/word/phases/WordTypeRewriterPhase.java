@@ -140,7 +140,7 @@ public class WordTypeRewriterPhase extends Phase {
                     case READ:
                         assert arguments.size() == 2 || arguments.size() == 3;
                         Kind readKind = asKind(callTargetNode.returnType());
-                        Object readLocation = arguments.size() == 2 ? LocationNode.UNKNOWN_LOCATION : arguments.get(2).asConstant().asObject();
+                        Object readLocation = arguments.size() == 2 ? LocationNode.ANY_LOCATION : arguments.get(2).asConstant().asObject();
                         replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke, readKind, readLocation));
                         break;
 
