@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.replacements;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.loop.phases.*;
@@ -93,7 +92,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
             return null;
         }
 
-        Replacements replacements = Graal.getRequiredCapability(Replacements.class);
+        Replacements replacements = tool.getReplacements();
         StructuredGraph snippetGraph = selectSnippet(tool, replacements);
         if (snippetGraph == null) {
             ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.genericArraycopySnippet);
