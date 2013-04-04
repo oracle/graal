@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
  * Interface for service providers that register replacements with the compiler.

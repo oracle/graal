@@ -28,6 +28,7 @@ import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
 /**

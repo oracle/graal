@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.replacements;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.IterableNodeType;

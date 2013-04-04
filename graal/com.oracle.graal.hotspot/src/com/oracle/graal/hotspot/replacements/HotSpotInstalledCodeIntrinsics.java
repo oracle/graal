@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 

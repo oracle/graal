@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.replacements;
+package com.oracle.graal.nodes.spi;
 
 import java.lang.annotation.*;
 
