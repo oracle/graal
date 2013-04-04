@@ -123,7 +123,7 @@ public abstract class LIRGeneratorTool {
     public abstract void visitCompareAndSwap(CompareAndSwapNode i);
 
     // These methods define the contract a runtime specific backend must provide.
-    public abstract void visitExceptionObject(ExceptionObjectNode i);
+    public abstract void visitLoadException(LoadExceptionObjectNode i);
 
     public abstract void visitReturn(ReturnNode i);
 

@@ -166,7 +166,7 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
     }
 
     @Override
-    public void visitExceptionObject(ExceptionObjectNode x) {
+    public void visitLoadException(LoadExceptionObjectNode x) {
         HotSpotVMConfig config = runtime().config;
         RegisterValue thread = runtime().threadRegister().asValue();
         Value exception = emitLoad(Kind.Object, thread, config.threadExceptionOopOffset, Value.ILLEGAL, 0, false);

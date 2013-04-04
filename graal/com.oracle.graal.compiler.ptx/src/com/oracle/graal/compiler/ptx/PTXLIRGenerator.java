@@ -458,7 +458,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitExceptionObject(ExceptionObjectNode i) {
+    public void visitLoadException(LoadExceptionObjectNode i) {
         throw new InternalError("NYI");
     }
 
