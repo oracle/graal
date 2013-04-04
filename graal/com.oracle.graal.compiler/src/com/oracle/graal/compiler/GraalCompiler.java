@@ -122,7 +122,7 @@ public class GraalCompiler {
 
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
             if (GraalOptions.IterativeInlining) {
-                new IterativeInliningPhase(runtime, assumptions, cache, plan, optimisticOpts).apply(graph);
+                new IterativeInliningPhase(runtime, assumptions, cache, plan, optimisticOpts, GraalOptions.OptEarlyReadElimination).apply(graph);
             } else {
                 new InliningPhase(runtime, null, assumptions, cache, plan, optimisticOpts).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
@@ -153,7 +153,7 @@ public class GraalCompiler {
         }
 
         if (GraalOptions.PartialEscapeAnalysis && !plan.isPhaseDisabled(PartialEscapeAnalysisPhase.class)) {
-            new PartialEscapeAnalysisPhase(runtime, assumptions, true).apply(graph);
+            new PartialEscapeAnalysisPhase(runtime, assumptions, true, GraalOptions.OptEarlyReadElimination).apply(graph);
         }
 
         if (GraalOptions.OptConvertDeoptsToGuards) {

@@ -47,13 +47,15 @@ public class PartialEscapeAnalysisPhase extends Phase {
     private final Assumptions assumptions;
     private CustomCanonicalizer customCanonicalizer;
     private final boolean iterative;
+    private final boolean readElimination;
 
     private boolean changed;
 
-    public PartialEscapeAnalysisPhase(MetaAccessProvider runtime, Assumptions assumptions, boolean iterative) {
+    public PartialEscapeAnalysisPhase(MetaAccessProvider runtime, Assumptions assumptions, boolean iterative, boolean readElimination) {
         this.runtime = runtime;
         this.assumptions = assumptions;
         this.iterative = iterative;
+        this.readElimination = readElimination;
     }
 
     public boolean hasChanged() {
@@ -76,7 +78,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
             return;
         }
 
-        if (!GraalOptions.PEAReadCache) {
+        if (!readElimination) {
             boolean analyzableNodes = false;
             for (Node node : graph.getNodes()) {
                 if (node instanceof VirtualizableAllocation) {
@@ -127,9 +129,11 @@ public class PartialEscapeAnalysisPhase extends Phase {
             });
         }
 
-        for (Node node : graph.getNodes()) {
-            if (node instanceof LoadFieldNode) {
-                DynamicCounterNode.addCounterBefore("load non-elim", 1, false, (FixedNode) node);
+        if (DynamicCounterNode.enabled && readElimination) {
+            for (Node node : graph.getNodes()) {
+                if (node instanceof LoadFieldNode) {
+                    DynamicCounterNode.addCounterBefore("load non-elim", 1, false, (FixedNode) node);
+                }
             }
         }
     }
