@@ -486,15 +486,10 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             effects.incLevel();
             LoopInfo<BlockState> info = ReentrantBlockIterator.processLoop(this, loop, state.cloneState());
 
-            List<BlockState> loopEndStates = info.endStates;
-            List<Block> predecessors = loop.header.getPredecessors();
             HashSet<VirtualObjectNode> additionalMaterializations = new HashSet<>();
             HashSet<ReadCacheEntry> additionalKilledReads = new HashSet<>();
             int oldPhiCount = phis.size();
-            for (int i = 1; i < predecessors.size(); i++) {
-                processLoopEnd(loop.loopBegin(), (LoopEndNode) predecessors.get(i).getEndNode(), state, loopEndStates.get(i - 1), successEffects, additionalMaterializations, additionalKilledReads,
-                                phis);
-            }
+            processLoopEnds(loop, state, info.endStates, successEffects, additionalMaterializations, additionalKilledReads, phis);
             if (additionalMaterializations.isEmpty() && additionalKilledReads.isEmpty() && oldPhiCount == phis.size()) {
                 effects.addAll(successEffects);
 
@@ -610,18 +605,98 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         }
     }
 
-    private void processLoopEnd(LoopBeginNode loopBegin, LoopEndNode loopEnd, BlockState initialState, BlockState loopEndState, GraphEffectList successEffects,
-                    Set<VirtualObjectNode> additionalMaterializations, HashSet<ReadCacheEntry> additionalKilledReads, HashSet<PhiDesc> phis) {
-        assert loopEnd.loopBegin() == loopBegin;
+    private void processLoopEnds(Loop loop, BlockState initialState, List<BlockState> loopEndStates, GraphEffectList successEffects, Set<VirtualObjectNode> additionalMaterializations,
+                    HashSet<ReadCacheEntry> additionalKilledReads, HashSet<PhiDesc> phis) {
+        LoopBeginNode loopBegin = loop.loopBegin();
+        int loopEndCount = loop.header.getPredecessorCount() - 1;
+
         boolean materialized;
         do {
             materialized = false;
             for (ObjectState state : initialState.getStates()) {
+                for (int loopEndIndex = 0; loopEndIndex < loopEndCount; loopEndIndex++) {
+                    BlockState loopEndState = loopEndStates.get(loopEndIndex);
+
+                    ObjectState endState = loopEndState.getObjectState(state.virtual);
+                    if (state.isVirtual()) {
+                        if (endState.isVirtual()) {
+                            assert state.getEntries().length == endState.getEntries().length;
+                            for (int i = 0; endState.isVirtual() && i < state.getEntries().length; i++) {
+                                ValueNode value = state.getEntry(i);
+                                ValueNode endValue = endState.getEntry(i);
+                                ObjectState valueObj = initialState.getObjectState(value);
+                                ObjectState endValueObj = loopEndState.getObjectState(endValue);
+
+                                if (valueObj != null) {
+                                    if (valueObj.isVirtual()) {
+                                        if (endValueObj == null || !endValueObj.isVirtual() || valueObj.virtual != endValueObj.virtual) {
+                                            additionalMaterializations.add(valueObj.virtual);
+                                        } else {
+                                            /*
+                                             * endValue is also virtual and refers to the same
+                                             * virtual object, so we're good.
+                                             */
+                                        }
+                                    }
+                                } else {
+                                    if (value instanceof PhiNode && ((PhiNode) value).merge() == loopBegin) {
+                                        if (endValueObj != null) {
+                                            if (endValueObj.isVirtual()) {
+                                                METRIC_MATERIALIZATIONS_LOOP_END.increment();
+                                                FixedNode endNode = loop.header.getPredecessors().get(loopEndIndex + 1).getEndNode();
+                                                loopEndState.materializeBefore(endNode, endValueObj.virtual, EscapeState.Global, successEffects);
+                                                materialized = true;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            additionalMaterializations.add(state.virtual);
+                        }
+                    }
+                }
+            }
+
+            for (PhiNode phi : loopBegin.phis()) {
+                if (usages.isMarked(phi) && phi.type() == PhiType.Value) {
+                    ObjectState initialObj = initialState.getObjectState(phi.valueAt(0));
+                    boolean initialMaterialized = initialObj == null || !initialObj.isVirtual();
+
+                    for (int loopEndIndex = 0; loopEndIndex < loopEndCount; loopEndIndex++) {
+                        BlockState loopEndState = loopEndStates.get(loopEndIndex);
+                        LoopEndNode endNode = (LoopEndNode) loop.header.getPredecessors().get(loopEndIndex + 1).getEndNode();
+                        ObjectState loopEndObj = loopEndState.getObjectState(phi.valueAt(endNode));
+                        if (loopEndObj == null || !loopEndObj.isVirtual()) {
+                            if (loopEndObj != null) {
+                                successEffects.setPhiInput(phi, loopBegin.phiPredecessorIndex(endNode), loopEndObj.getMaterializedValue());
+                            }
+                            if (!initialMaterialized) {
+                                additionalMaterializations.add(initialObj.virtual);
+                            }
+                        } else {
+                            if (initialMaterialized) {
+                                loopEndState.materializeBefore(endNode, loopEndObj.virtual, EscapeState.Global, successEffects);
+                                materialized = true;
+                            } else {
+                                if (loopEndObj.virtual != initialObj.virtual) {
+                                    additionalMaterializations.add(initialObj.virtual);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        } while (materialized);
+
+        for (ObjectState state : initialState.getStates()) {
+            for (BlockState loopEndState : loopEndStates) {
                 ObjectState endState = loopEndState.getObjectState(state.virtual);
                 if (state.isVirtual()) {
                     if (endState.isVirtual()) {
                         assert state.getEntries().length == endState.getEntries().length;
-                        for (int i = 0; endState.isVirtual() && i < state.getEntries().length; i++) {
+                        for (int i = 0; i < state.getEntries().length; i++) {
                             ValueNode value = state.getEntry(i);
                             ValueNode endValue = endState.getEntry(i);
                             ObjectState valueObj = initialState.getObjectState(value);
@@ -630,123 +705,69 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                             if (valueObj != null) {
                                 if (valueObj.isVirtual()) {
                                     if (endValueObj == null || !endValueObj.isVirtual() || valueObj.virtual != endValueObj.virtual) {
-                                        additionalMaterializations.add(valueObj.virtual);
+                                        assert !additionalMaterializations.isEmpty();
                                     } else {
-                                        // endValue is also virtual and refers to the same virtual
-                                        // object, so we're
-                                        // good.
+                                        /*
+                                         * endValue is also virtual and refers to the same virtual
+                                         * object, so we're good.
+                                         */
+                                    }
+                                } else {
+                                    if ((endValueObj != null && endValueObj.getMaterializedValue() != valueObj.getMaterializedValue()) ||
+                                                    (endValueObj == null && valueObj.getMaterializedValue() != endValue)) {
+                                        phis.add(new PhiDesc(state.virtual, i));
+                                    } else {
+                                        /*
+                                         * either endValue has the same materialized value as value
+                                         * or endValue is the same as the materialized value, so
+                                         * we're good.
+                                         */
                                     }
                                 }
                             } else {
                                 if (value instanceof PhiNode && ((PhiNode) value).merge() == loopBegin) {
                                     if (endValueObj != null) {
                                         if (endValueObj.isVirtual()) {
-                                            METRIC_MATERIALIZATIONS_LOOP_END.increment();
-                                            loopEndState.materializeBefore(loopEnd, endValueObj.virtual, EscapeState.Global, successEffects);
-                                            materialized = true;
+                                            assert !additionalMaterializations.isEmpty();
                                         }
+                                        successEffects.addPhiInput((PhiNode) value, endValueObj.getMaterializedValue());
+                                    } else {
+                                        successEffects.addPhiInput((PhiNode) value, endValue);
                                     }
-                                }
-                            }
-                        }
-                    } else {
-                        additionalMaterializations.add(state.virtual);
-                    }
-                }
-            }
-            for (PhiNode phi : loopBegin.phis()) {
-                if (usages.isMarked(phi) && phi.type() == PhiType.Value) {
-                    ObjectState initialObj = initialState.getObjectState(phi.valueAt(0));
-                    boolean initialMaterialized = initialObj == null || !initialObj.isVirtual();
-
-                    ObjectState loopEndObj = loopEndState.getObjectState(phi.valueAt(loopEnd));
-                    if (loopEndObj == null || !loopEndObj.isVirtual()) {
-                        if (loopEndObj != null) {
-                            successEffects.setPhiInput(phi, loopBegin.phiPredecessorIndex(loopEnd), loopEndObj.getMaterializedValue());
-                        }
-                        if (!initialMaterialized) {
-                            additionalMaterializations.add(initialObj.virtual);
-                        }
-                    } else {
-                        if (initialMaterialized) {
-                            loopEndState.materializeBefore(loopEnd, loopEndObj.virtual, EscapeState.Global, successEffects);
-                            materialized = true;
-                        } else {
-                            if (loopEndObj.virtual != initialObj.virtual) {
-                                additionalMaterializations.add(initialObj.virtual);
-                            }
-                        }
-                    }
-                }
-            }
-        } while (materialized);
-
-        for (ObjectState state : initialState.getStates()) {
-            ObjectState endState = loopEndState.getObjectState(state.virtual);
-            if (state.isVirtual()) {
-                if (endState.isVirtual()) {
-                    assert state.getEntries().length == endState.getEntries().length;
-                    for (int i = 0; i < state.getEntries().length; i++) {
-                        ValueNode value = state.getEntry(i);
-                        ValueNode endValue = endState.getEntry(i);
-                        ObjectState valueObj = initialState.getObjectState(value);
-                        ObjectState endValueObj = loopEndState.getObjectState(endValue);
-
-                        if (valueObj != null) {
-                            if (valueObj.isVirtual()) {
-                                if (endValueObj == null || !endValueObj.isVirtual() || valueObj.virtual != endValueObj.virtual) {
-                                    assert !additionalMaterializations.isEmpty();
-                                } else {
-                                    // endValue is also virtual and refers to the same virtual
-                                    // object, so we're
-                                    // good.
-                                }
-                            } else {
-                                if ((endValueObj != null && endValueObj.getMaterializedValue() != valueObj.getMaterializedValue()) ||
-                                                (endValueObj == null && valueObj.getMaterializedValue() != endValue)) {
+                                } else if (value != endValue) {
                                     phis.add(new PhiDesc(state.virtual, i));
-                                } else {
-                                    // either endValue has the same materialized value as value or
-                                    // endValue is the
-                                    // same as the materialized value, so we're good.
                                 }
-                            }
-                        } else {
-                            if (value instanceof PhiNode && ((PhiNode) value).merge() == loopBegin) {
-                                if (endValueObj != null) {
-                                    if (endValueObj.isVirtual()) {
-                                        assert !additionalMaterializations.isEmpty();
-                                    }
-                                    successEffects.addPhiInput((PhiNode) value, endValueObj.getMaterializedValue());
-                                } else {
-                                    successEffects.addPhiInput((PhiNode) value, endValue);
-                                }
-                            } else if (value != endValue) {
-                                phis.add(new PhiDesc(state.virtual, i));
                             }
                         }
+                    } else {
+                        // endState.materializedValue != null
+                        assert !additionalMaterializations.isEmpty();
                     }
                 } else {
-                    // endState.materializedValue != null
-                    assert !additionalMaterializations.isEmpty();
-                }
-            } else {
-                // state.materializedValue != null
-                if (endState.isVirtual()) {
-                    // throw new GraalInternalError("un-materialized object state at %s", loopEnd);
-                } else {
-                    if (state.getMaterializedValue() != endState.getMaterializedValue()) {
-                        // throw new
-                        // GraalInternalError("changed materialized value during loop: %s vs %s",
-                        // state.materializedValue, endState.materializedValue);
+                    // state.materializedValue != null
+                    if (endState.isVirtual()) {
+                        /*
+                         * throw new GraalInternalError("un-materialized object state at %s",
+                         * loopEnd);
+                         */
+                    } else {
+                        if (state.getMaterializedValue() != endState.getMaterializedValue()) {
+                            /*
+                             * throw new
+                             * GraalInternalError("changed materialized value during loop: %s vs %s"
+                             * , state.materializedValue, endState.materializedValue);
+                             */
+                        }
                     }
                 }
             }
         }
 
         for (Map.Entry<ReadCacheEntry, ValueNode> entry : initialState.getReadCache().entrySet()) {
-            if (loopEndState.getReadCache().get(entry.getKey()) != entry.getValue()) {
-                additionalKilledReads.add(entry.getKey());
+            for (BlockState loopEndState : loopEndStates) {
+                if (loopEndState.getReadCache().get(entry.getKey()) != entry.getValue()) {
+                    additionalKilledReads.add(entry.getKey());
+                }
             }
         }
     }
