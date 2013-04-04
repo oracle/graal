@@ -40,13 +40,15 @@ public class IterativeInliningPhase extends Phase {
     private final Assumptions assumptions;
     private final GraphCache cache;
     private final OptimisticOptimizations optimisticOpts;
+    private final boolean readElimination;
 
-    public IterativeInliningPhase(GraalCodeCacheProvider runtime, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public IterativeInliningPhase(GraalCodeCacheProvider runtime, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, boolean readElimination) {
         this.runtime = runtime;
         this.assumptions = assumptions;
         this.cache = cache;
         this.plan = plan;
         this.optimisticOpts = optimisticOpts;
+        this.readElimination = readElimination;
     }
 
     public static final void trace(String format, Object... obj) {
@@ -69,7 +71,7 @@ public class IterativeInliningPhase extends Phase {
                 @Override
                 public Boolean call() {
                     boolean progress = false;
-                    PartialEscapeAnalysisPhase ea = new PartialEscapeAnalysisPhase(runtime, assumptions, false);
+                    PartialEscapeAnalysisPhase ea = new PartialEscapeAnalysisPhase(runtime, assumptions, false, readElimination);
                     ea.apply(graph);
                     progress |= ea.hasChanged();
 
