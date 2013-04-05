@@ -776,7 +776,7 @@ public class GraphBuilderPhase extends Phase {
         } else {
             ResolvedJavaType uniqueSubtype = type.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
-                return new JavaTypeProfile(0.0D, new ProfiledType(uniqueSubtype, 1.0D));
+                return new JavaTypeProfile(profilingInfo.getNullSeen(bci()), 0.0D, new ProfiledType(uniqueSubtype, 1.0D));
             } else {
                 return profilingInfo.getTypeProfile(bci());
             }

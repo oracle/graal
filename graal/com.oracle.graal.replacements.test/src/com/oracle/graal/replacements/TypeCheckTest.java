@@ -25,6 +25,7 @@ package com.oracle.graal.replacements;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 
@@ -48,6 +49,10 @@ public abstract class TypeCheckTest extends GraalCompilerTest {
     }
 
     protected JavaTypeProfile profile(Class... types) {
+        return profile(TriState.UNKNOWN, types);
+    }
+
+    protected JavaTypeProfile profile(TriState nullSeen, Class... types) {
         if (types.length == 0) {
             return null;
         }
@@ -55,7 +60,7 @@ public abstract class TypeCheckTest extends GraalCompilerTest {
         for (int i = 0; i < types.length; i++) {
             ptypes[i] = new ProfiledType(runtime.lookupJavaType(types[i]), 1.0D / types.length);
         }
-        return new JavaTypeProfile(0.0D, ptypes);
+        return new JavaTypeProfile(nullSeen, 0.0D, ptypes);
     }
 
     protected void test(String name, JavaTypeProfile profile, Object... args) {

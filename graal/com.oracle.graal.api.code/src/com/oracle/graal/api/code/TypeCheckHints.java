@@ -57,9 +57,9 @@ public class TypeCheckHints {
      * @param profile the profiling information available for the instruction (if any)
      * @param assumptions the object in which speculations are recorded. This is null if
      *            speculations are not supported.
-     * @param minHintHitProbability if the probability that the type check will hit one the profiled
-     *            types (up to {@code maxHints}) is below this value, then {@link #types} will be
-     *            null
+     * @param minHintHitProbability if the probability that the type check will hit one of the
+     *            profiled types (up to {@code maxHints}) is below this value, then {@link #types}
+     *            will be null
      * @param maxHints the maximum length of {@link #types}
      */
     public TypeCheckHints(ResolvedJavaType type, JavaTypeProfile profile, Assumptions assumptions, double minHintHitProbability, int maxHints) {
