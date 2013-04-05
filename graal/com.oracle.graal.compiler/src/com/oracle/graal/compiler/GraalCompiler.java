@@ -179,6 +179,13 @@ public class GraalCompiler {
 
         new LoweringPhase(target, runtime, replacements, assumptions).apply(graph);
 
+        if (GraalOptions.OptPushThroughPi) {
+            new PushNodesThroughPi().apply(graph);
+            if (GraalOptions.OptCanonicalizer) {
+                new CanonicalizerPhase(runtime, assumptions).apply(graph);
+            }
+        }
+
         if (GraalOptions.OptFloatingReads) {
             int mark = graph.getMark();
             new FloatingReadPhase().apply(graph);

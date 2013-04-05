@@ -203,6 +203,8 @@ public final class GraalOptions {
     public static boolean OptEliminatePartiallyRedundantGuards = true;
     public static boolean OptFilterProfiledTypes             = true;
     public static boolean OptDevirtualizeInvokesOptimistically = true;
+    public static boolean OptPushThroughPi                   = true;
+
 
     // Intrinsification settings
     public static boolean IntrinsifyObjectClone              = ____;
