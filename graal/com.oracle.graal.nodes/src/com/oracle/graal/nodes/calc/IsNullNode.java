@@ -80,7 +80,8 @@ public final class IsNullNode extends LogicNode implements Canonicalizable, LIRL
     }
 
     @Override
-    public void push(PiNode parent) {
+    public boolean push(PiNode parent) {
         replaceFirstInput(parent, parent.object());
+        return true;
     }
 }

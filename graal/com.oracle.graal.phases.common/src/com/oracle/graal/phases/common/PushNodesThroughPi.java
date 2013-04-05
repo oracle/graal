@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.phases.common;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -29,13 +30,17 @@ import com.oracle.graal.phases.*;
 
 public class PushNodesThroughPi extends Phase {
 
+    public static final DebugMetric PUSHED_NODES = Debug.metric("NodesPushedThroughPi");
+
     @Override
     protected void run(StructuredGraph graph) {
         for (PiNode pi : graph.getNodes(PiNode.class)) {
             for (Node n : pi.usages().snapshot()) {
                 if (n instanceof PiPushable) {
                     PiPushable pip = (PiPushable) n;
-                    pip.push(pi);
+                    if (pip.push(pi)) {
+                        PUSHED_NODES.add(1);
+                    }
                 }
             }
         }

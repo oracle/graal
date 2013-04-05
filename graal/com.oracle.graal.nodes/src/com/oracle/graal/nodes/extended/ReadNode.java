@@ -99,7 +99,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
     }
 
     @Override
-    public void push(PiNode parent) {
+    public boolean push(PiNode parent) {
         Object locId = location().locationIdentity();
         if (locId instanceof ResolvedJavaField) {
             ResolvedJavaType fieldType = ((ResolvedJavaField) locId).getDeclaringClass();
@@ -107,8 +107,10 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
             if (fieldType.isAssignableFrom(beforePiType)) {
                 replaceFirstInput(parent, parent.object());
+                return true;
             }
         }
+        return false;
     }
 
     /**
