@@ -20,9 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
-
-import com.oracle.graal.nodes.spi.*;
+package com.oracle.graal.nodes.spi;
 
 /**
  * Interface for service providers that register replacements with the compiler.
