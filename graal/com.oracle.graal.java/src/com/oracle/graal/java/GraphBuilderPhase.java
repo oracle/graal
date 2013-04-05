@@ -23,6 +23,7 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
+import static com.oracle.graal.api.code.TypeCheckHints.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static java.lang.reflect.Modifier.*;
@@ -771,7 +772,7 @@ public class GraphBuilderPhase extends Phase {
     }
 
     private JavaTypeProfile getProfileForTypeCheck(ResolvedJavaType type) {
-        if (!optimisticOpts.useTypeCheckHints() || TypeCheckHints.canHaveSubtype(type)) {
+        if (!optimisticOpts.useTypeCheckHints() || !canHaveSubtype(type)) {
             return null;
         } else {
             ResolvedJavaType uniqueSubtype = type.findUniqueConcreteSubtype();
