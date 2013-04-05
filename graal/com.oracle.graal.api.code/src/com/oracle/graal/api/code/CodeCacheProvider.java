@@ -60,13 +60,6 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     RegisterConfig lookupRegisterConfig();
 
     /**
-     * Custom area on the stack of each compiled method that the VM can use for its own purposes.
-     * 
-     * @return the size of the custom area in bytes
-     */
-    int getCustomStackAreaSize();
-
-    /**
      * Minimum size of the stack area reserved for outgoing parameters. This area is reserved in all
      * cases, even when the compiled method has no regular call instructions.
      * 

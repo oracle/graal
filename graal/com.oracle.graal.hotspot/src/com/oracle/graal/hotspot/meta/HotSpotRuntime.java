@@ -478,15 +478,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         return regConfig;
     }
 
-    /**
-     * HotSpots needs an area suitable for storing a program counter for temporary use during the
-     * deoptimization process.
-     */
-    @Override
-    public int getCustomStackAreaSize() {
-        return graalRuntime.getTarget().wordSize;
-    }
-
     @Override
     public int getMinimumOutgoingSize() {
         return config.runtimeCallStackSize;
