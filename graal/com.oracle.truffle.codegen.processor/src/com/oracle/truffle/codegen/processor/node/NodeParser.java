@@ -152,6 +152,10 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         NodeData nodeData = parseNodeData(type, nodeType);
 
+        if (nodeData.hasErrors()) {
+            return nodeData; // error sync point
+        }
+
         if (Utils.typeEquals(nodeType.asType(), type.asType())) {
             // filter fields if they were not split. (field are accessible anyway)
             for (ListIterator<NodeFieldData> iterator = nodeData.getFields().listIterator(); iterator.hasNext();) {
@@ -160,10 +164,6 @@ public class NodeParser extends TemplateParser<NodeData> {
                     iterator.remove();
                 }
             }
-        }
-
-        if (nodeData.hasErrors()) {
-            return nodeData; // error sync point
         }
 
         List<Element> elements = new ArrayList<>(context.getEnvironment().getElementUtils().getAllMembers(type));
