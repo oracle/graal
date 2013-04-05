@@ -29,8 +29,8 @@ import org.junit.Test;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.common.*;
 
@@ -50,39 +50,43 @@ public class PushNodesThroughPiTest extends GraalCompilerTest {
         B b = (B) a;
         long ret = b.x; // this can be moved before the checkcast
         ret += b.y;
+        // the null-check should be canonicalized with the null-check of the checkcast
+        ret += b != null ? 100 : 200;
         return ret;
     }
 
     @Test
     public void test1() {
-        test("test1Snippet");
-    }
-
-    private void test(final String snippet) {
+        final String snippet = "test1Snippet";
         Debug.scope("PushThroughPi", new DebugDumpScope(snippet), new Runnable() {
 
             public void run() {
-                StructuredGraph graph = parse(snippet);
-                new LoweringPhase(null, runtime(), new Assumptions(false)).apply(graph);
-                new CanonicalizerPhase(runtime(), null).apply(graph);
-                new PushNodesThroughPi().apply(graph);
-                new CanonicalizerPhase(runtime(), null).apply(graph);
+                StructuredGraph graph = compileTestSnippet(snippet);
 
-                for (Node n : graph.getNodes()) {
-                    if (n instanceof ReadNode) {
-                        ReadNode rn = (ReadNode) n;
-                        Object locId = rn.location().locationIdentity();
-                        if (locId instanceof ResolvedJavaField) {
-                            ResolvedJavaField field = (ResolvedJavaField) locId;
-                            if (field.getName().equals("x")) {
-                                Assert.assertTrue(rn.object() instanceof LocalNode);
-                            } else {
-                                Assert.assertTrue(rn.object() instanceof UnsafeCastNode);
-                            }
+                for (ReadNode rn : graph.getNodes().filter(ReadNode.class)) {
+                    Object locId = rn.location().locationIdentity();
+                    if (locId instanceof ResolvedJavaField) {
+                        ResolvedJavaField field = (ResolvedJavaField) locId;
+                        if (field.getName().equals("x")) {
+                            Assert.assertTrue(rn.object() instanceof LocalNode);
+                        } else {
+                            Assert.assertTrue(rn.object() instanceof UnsafeCastNode);
                         }
                     }
                 }
+
+                Assert.assertTrue(graph.getNodes().filter(IsNullNode.class).count() == 1);
             }
         });
+    }
+
+    private StructuredGraph compileTestSnippet(final String snippet) {
+        StructuredGraph graph = parse(snippet);
+        new LoweringPhase(null, runtime(), replacements, new Assumptions(false)).apply(graph);
+        new CanonicalizerPhase(runtime(), null).apply(graph);
+        new PushNodesThroughPi().apply(graph);
+        new CanonicalizerPhase(runtime(), null).apply(graph);
+
+        return graph;
     }
 }
