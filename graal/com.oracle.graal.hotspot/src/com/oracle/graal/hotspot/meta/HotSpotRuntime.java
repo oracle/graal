@@ -89,6 +89,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     private NewObjectSnippets.Templates newObjectSnippets;
     private MonitorSnippets.Templates monitorSnippets;
     private WriteBarrierSnippets.Templates writeBarrierSnippets;
+    private LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
 
     private final Map<Descriptor, HotSpotRuntimeCallTarget> runtimeCalls = new HashMap<>();
     private final Map<ResolvedJavaMethod, Stub> stubs = new HashMap<>();
@@ -336,6 +337,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         newObjectSnippets = new NewObjectSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useTLAB);
         monitorSnippets = new MonitorSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useFastLocking);
         writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, replacements, graalRuntime.getTarget());
+        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, replacements, graalRuntime.getTarget());
 
         registerStub(new NewInstanceStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_INSTANCE)));
         registerStub(new NewArrayStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_ARRAY)));
@@ -767,10 +769,12 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             newObjectSnippets.lower((InitializeArrayNode) n, tool);
         } else if (n instanceof NewMultiArrayNode) {
             newObjectSnippets.lower((NewMultiArrayNode) n, tool);
+        } else if (n instanceof LoadExceptionObjectNode) {
+            exceptionObjectSnippets.lower((LoadExceptionObjectNode) n);
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
             // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
             // zero and the MIN_VALUE / -1 cases.
-        } else if (n instanceof UnwindNode || n instanceof ExceptionObjectNode) {
+        } else if (n instanceof UnwindNode) {
             // Nothing to do, using direct LIR lowering for these nodes.
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;

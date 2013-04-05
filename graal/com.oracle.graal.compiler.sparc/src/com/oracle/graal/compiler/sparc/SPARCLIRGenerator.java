@@ -346,12 +346,6 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitLoadException(LoadExceptionObjectNode i) {
-        // SPARC: Auto-generated method stub
-
-    }
-
-    @Override
     public void visitSafepointNode(SafepointNode i) {
         // SPARC: Auto-generated method stub
 

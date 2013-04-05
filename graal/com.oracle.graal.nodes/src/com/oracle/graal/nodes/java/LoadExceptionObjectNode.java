@@ -30,14 +30,14 @@ import com.oracle.graal.nodes.type.*;
  * Loads an exception object passed by the runtime from a callee to an exception handler in a
  * caller. The node is only produced when lowering an {@link ExceptionObjectNode}.
  */
-public class LoadExceptionObjectNode extends AbstractStateSplit implements LIRLowerable {
+public class LoadExceptionObjectNode extends AbstractStateSplit implements Lowerable {
 
     public LoadExceptionObjectNode(Stamp stamp) {
         super(stamp);
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitLoadException(this);
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 }

@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable, MemoryCheckpoint {
 
     public ExceptionObjectNode(MetaAccessProvider runtime) {
-        super(StampFactory.declared(runtime.lookupJavaType(Throwable.class)));
+        super(StampFactory.declaredNonNull(runtime.lookupJavaType(Throwable.class)));
     }
 
     @Override

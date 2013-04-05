@@ -62,6 +62,20 @@ public class HotSpotSnippetUtils {
         return config().verifyOops;
     }
 
+    public static final Object EXCEPTION_OOP_LOCATION = LocationNode.createLocation("ExceptionOop");
+
+    @Fold
+    public static int threadExceptionOopOffset() {
+        return config().threadExceptionOopOffset;
+    }
+
+    public static final Object EXCEPTION_PC_LOCATION = LocationNode.createLocation("ExceptionPc");
+
+    @Fold
+    public static int threadExceptionPcOffset() {
+        return config().threadExceptionPcOffset;
+    }
+
     public static final Object TLAB_TOP_LOCATION = LocationNode.createLocation("TlabTop");
 
     @Fold
@@ -81,6 +95,18 @@ public class HotSpotSnippetUtils {
     @Fold
     private static int threadTlabStartOffset() {
         return config().threadTlabStartOffset;
+    }
+
+    public static Object readExceptionOop(Word thread) {
+        return thread.readObject(threadExceptionOopOffset(), EXCEPTION_OOP_LOCATION);
+    }
+
+    public static void writeExceptionOop(Word thread, Object value) {
+        thread.writeObject(threadExceptionOopOffset(), value, EXCEPTION_OOP_LOCATION);
+    }
+
+    public static void writeExceptionPc(Word thread, Word value) {
+        thread.writeWord(threadExceptionPcOffset(), value, EXCEPTION_PC_LOCATION);
     }
 
     public static Word readTlabTop(Word thread) {

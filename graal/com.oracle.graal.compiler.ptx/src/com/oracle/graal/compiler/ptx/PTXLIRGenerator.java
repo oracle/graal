@@ -458,11 +458,6 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitLoadException(LoadExceptionObjectNode i) {
-        throw new InternalError("NYI");
-    }
-
-    @Override
     public void visitSafepointNode(SafepointNode i) {
         throw new InternalError("NYI");
     }
