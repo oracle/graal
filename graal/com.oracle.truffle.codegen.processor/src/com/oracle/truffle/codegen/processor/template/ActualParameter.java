@@ -49,6 +49,10 @@ public class ActualParameter {
         this.localName = valueName;
     }
 
+    public ActualParameter(ActualParameter parameter, TypeMirror otherType) {
+        this(parameter.specification, otherType, parameter.index, parameter.implicit);
+    }
+
     public boolean isImplicit() {
         return implicit;
     }

@@ -40,7 +40,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     private final MethodSpec specification;
     private final ExecutableElement method;
     private final AnnotationMirror markerAnnotation;
-    private final ActualParameter returnType;
+    private ActualParameter returnType;
     private List<ActualParameter> parameters;
 
     public TemplateMethod(String id, Template template, MethodSpec specification, ExecutableElement method, AnnotationMirror markerAnnotation, ActualParameter returnType,
@@ -104,6 +104,21 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return returnType;
     }
 
+    public void replaceParameter(String localName, ActualParameter newParameter) {
+        if (returnType.getLocalName().equals(localName)) {
+            returnType = newParameter;
+            returnType.setMethod(this);
+        }
+
+        for (ListIterator<ActualParameter> iterator = parameters.listIterator(); iterator.hasNext();) {
+            ActualParameter parameter = iterator.next();
+            if (parameter.getLocalName().equals(localName)) {
+                iterator.set(newParameter);
+                newParameter.setMethod(this);
+            }
+        }
+    }
+
     public List<ActualParameter> getRequiredParameters() {
         List<ActualParameter> requiredParameters = new ArrayList<>();
         for (ActualParameter parameter : getParameters()) {
@@ -119,7 +134,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     }
 
     public ActualParameter findParameter(String valueName) {
-        for (ActualParameter param : getParameters()) {
+        for (ActualParameter param : getReturnTypeAndParameters()) {
             if (param.getLocalName().equals(valueName)) {
                 return param;
             }

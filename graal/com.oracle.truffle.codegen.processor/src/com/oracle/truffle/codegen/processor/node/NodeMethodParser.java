@@ -61,7 +61,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     }
 
     protected ParameterSpec createReturnParameterSpec() {
-        return createValueParameterSpec("operation", getNode());
+        return createValueParameterSpec("returnValue", getNode());
     }
 
     @Override

@@ -117,7 +117,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         }
     }
 
-    private CodeTree createTemplateMethodCall(CodeTreeBuilder parent, TemplateMethod sourceMethod, TemplateMethod targetMethod, String unexpectedValueName) {
+    private static CodeTree createTemplateMethodCall(CodeTreeBuilder parent, TemplateMethod sourceMethod, TemplateMethod targetMethod, String unexpectedValueName) {
         CodeTreeBuilder builder = parent.create();
 
         boolean castedValues = sourceMethod != targetMethod;
@@ -153,6 +153,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                         break;
                     }
                 }
+                ActualParameter sourceParameter = sourceMethod.findParameter(parameter.getLocalName());
                 assert parameter != null;
 
                 if (castedValues) {
@@ -160,12 +161,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     if (field == null) {
                         builder.string(valueName(parameter));
                     } else {
-                        NodeData fieldNode = field.getNodeData();
-                        ExecutableTypeData execType = fieldNode.findExecutableType(parameter.getActualTypeData(node.getTypeSystem()));
-                        if (execType.hasUnexpectedValue(getContext())) {
-                            builder.string(castValueName(parameter));
-                        } else {
+                        if (Utils.typeEquals(sourceParameter.getActualType(), parameter.getActualType())) {
                             builder.string(valueName(parameter));
+                        } else {
+                            builder.string(castValueName(parameter));
                         }
                     }
                 } else {
@@ -326,7 +325,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         return builder.getRoot();
     }
 
-    private CodeTree createExplicitGuards(CodeTreeBuilder parent, String conditionPrefix, SpecializationData valueSpecialization, SpecializationData guardedSpecialization) {
+    private static CodeTree createExplicitGuards(CodeTreeBuilder parent, String conditionPrefix, SpecializationData valueSpecialization, SpecializationData guardedSpecialization) {
         CodeTreeBuilder builder = new CodeTreeBuilder(parent);
         String andOperator = conditionPrefix != null ? conditionPrefix + " && " : "";
         if (guardedSpecialization.getGuards().size() > 0) {

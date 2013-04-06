@@ -194,4 +194,5 @@ public class SpecializationData extends TemplateMethod {
     public String toString() {
         return String.format("%s [id = %s, method = %s, guards = %s]", getClass().getSimpleName(), getId(), getMethod(), getGuards());
     }
+
 }
