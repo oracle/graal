@@ -1476,7 +1476,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.end(); // call replace
             builder.end(); // statement
 
-            String generatedMethodName = generatedGenericMethodName(specialization.findNextSpecialization());
+            String generatedMethodName;
+            if (specialization.getNode().getGenericSpecialization().isUseSpecializationsForGeneric()) {
+                generatedMethodName = generatedGenericMethodName(null);
+            } else {
+                generatedMethodName = generatedGenericMethodName(specialization.findNextSpecialization());
+            }
             ExecutableElement generatedGeneric = clazz.getEnclosingClass().getMethod(generatedMethodName);
 
             CodeTreeBuilder genericExecute = CodeTreeBuilder.createBuilder();
