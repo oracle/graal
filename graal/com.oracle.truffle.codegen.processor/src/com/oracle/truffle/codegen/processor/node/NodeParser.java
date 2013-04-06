@@ -108,8 +108,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         NodeData rootNode = parseNode(rootType);
-        boolean hasErrors = rootNode != null ? rootNode.hasErrors() : false;
-        if ((rootNode == null || hasErrors) && children.size() > 0) {
+        if (rootNode == null && children.size() > 0) {
             rootNode = new NodeData(rootType, rootType.getSimpleName().toString());
         }
 
