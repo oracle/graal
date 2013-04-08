@@ -698,8 +698,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             monitorSnippets.lower((MonitorEnterNode) n, tool);
         } else if (n instanceof MonitorExitNode) {
             monitorSnippets.lower((MonitorExitNode) n, tool);
-        } else if (n instanceof FieldWriteBarrier) {
-            writeBarrierSnippets.lower((FieldWriteBarrier) n, tool);
         } else if (n instanceof ArrayWriteBarrier) {
             writeBarrierSnippets.lower((ArrayWriteBarrier) n, tool);
         } else if (n instanceof TLABAllocateNode) {

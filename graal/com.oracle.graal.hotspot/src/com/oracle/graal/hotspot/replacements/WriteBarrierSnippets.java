@@ -40,21 +40,6 @@ import com.oracle.graal.word.*;
 public class WriteBarrierSnippets implements Snippets {
 
     @Snippet
-    public static void serialFieldWriteBarrier(@Parameter("object") Object obj) {
-        Object object = FixedValueAnchorNode.getObject(obj);
-        Pointer oop = Word.fromObject(object);
-        Word base = (Word) oop.unsignedShiftRight(cardTableShift());
-        long startAddress = cardTableStart();
-        int displacement = 0;
-        if (((int) startAddress) == startAddress) {
-            displacement = (int) startAddress;
-        } else {
-            base = base.add(Word.unsigned(cardTableStart()));
-        }
-        base.writeByte(displacement, (byte) 0);
-    }
-
-    @Snippet
     public static void serialArrayWriteBarrier(@Parameter("object") Object obj, @Parameter("location") Object location, @ConstantParameter("usePrecise") boolean usePrecise) {
         Object object = FixedValueAnchorNode.getObject(obj);
         Pointer oop;
@@ -76,12 +61,10 @@ public class WriteBarrierSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates<WriteBarrierSnippets> {
 
-        private final ResolvedJavaMethod serialFieldWriteBarrier;
         private final ResolvedJavaMethod serialArrayWriteBarrier;
 
         public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
             super(runtime, replacements, target, WriteBarrierSnippets.class);
-            serialFieldWriteBarrier = snippet("serialFieldWriteBarrier", Object.class);
             serialArrayWriteBarrier = snippet("serialArrayWriteBarrier", Object.class, Object.class, boolean.class);
         }
 
@@ -95,15 +78,5 @@ public class WriteBarrierSnippets implements Snippets {
             SnippetTemplate template = cache.get(key);
             template.instantiate(runtime, arrayWriteBarrier, DEFAULT_REPLACER, arguments);
         }
-
-        public void lower(FieldWriteBarrier fieldWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
-            ResolvedJavaMethod method = serialFieldWriteBarrier;
-            Key key = new Key(method);
-            Arguments arguments = new Arguments();
-            arguments.add("object", fieldWriteBarrier.getObject());
-            SnippetTemplate template = cache.get(key);
-            template.instantiate(runtime, fieldWriteBarrier, DEFAULT_REPLACER, arguments);
-        }
-
     }
 }
