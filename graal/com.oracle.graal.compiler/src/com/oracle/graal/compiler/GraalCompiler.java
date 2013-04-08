@@ -180,7 +180,7 @@ public class GraalCompiler {
         new LoweringPhase(target, runtime, replacements, assumptions).apply(graph);
 
         if (GraalOptions.OptPushThroughPi) {
-            new PushNodesThroughPi().apply(graph);
+            new PushThroughPiPhase().apply(graph);
             if (GraalOptions.OptCanonicalizer) {
                 new CanonicalizerPhase(runtime, assumptions).apply(graph);
             }

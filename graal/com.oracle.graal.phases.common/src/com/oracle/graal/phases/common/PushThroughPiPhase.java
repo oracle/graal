@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 
-public class PushNodesThroughPi extends Phase {
+public class PushThroughPiPhase extends Phase {
 
     public static final DebugMetric PUSHED_NODES = Debug.metric("NodesPushedThroughPi");
 
