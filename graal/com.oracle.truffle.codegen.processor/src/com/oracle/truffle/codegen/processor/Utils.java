@@ -210,6 +210,8 @@ public class Utils {
                 return b.toString();
             case TYPEVAR:
                 return "Any";
+            case ERROR:
+                throw new CompileErrorException("Type error " + mirror);
             default:
                 throw new RuntimeException("Unknown type specified " + mirror.getKind() + " mirror: " + mirror);
         }
@@ -247,6 +249,8 @@ public class Utils {
                 return getWildcardName((WildcardType) mirror);
             case TYPEVAR:
                 return "?";
+            case ERROR:
+                throw new CompileErrorException("Type error " + mirror);
             default:
                 throw new RuntimeException("Unknown type specified " + mirror.getKind() + " mirror: " + mirror);
         }
@@ -313,6 +317,8 @@ public class Utils {
                 return "void";
             case TYPEVAR:
                 return getSimpleName(mirror);
+            case ERROR:
+                throw new CompileErrorException("Type error " + mirror);
             default:
                 throw new RuntimeException("Unknown type specified " + mirror + " mirror: " + mirror);
         }

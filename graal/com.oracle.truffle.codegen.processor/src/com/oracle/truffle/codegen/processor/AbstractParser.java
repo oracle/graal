@@ -27,6 +27,7 @@ import java.util.*;
 
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
+import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.codegen.processor.template.*;
 
@@ -49,6 +50,7 @@ public abstract class AbstractParser<M extends Template> {
 
     public final M parse(RoundEnvironment env, Element element) {
         this.roundEnv = env;
+        M model = null;
         try {
             AnnotationMirror mirror = null;
             if (getAnnotationType() != null) {
@@ -58,13 +60,16 @@ public abstract class AbstractParser<M extends Template> {
             if (!context.getTruffleTypes().verify(context, element, mirror)) {
                 return null;
             }
-            M model = parse(element, mirror);
+            model = parse(element, mirror);
             if (model == null) {
                 return null;
             }
 
             model.emitMessages((TypeElement) element, log);
             return filterErrorElements(model);
+        } catch (CompileErrorException e) {
+            log.message(Kind.WARNING, element, null, null, "The truffle processor could not parse class due to error: %s", e.getMessage());
+            return null;
         } finally {
             this.roundEnv = null;
         }
