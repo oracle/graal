@@ -365,9 +365,13 @@ public class NodeParser extends TemplateParser<NodeData> {
                 needsId.add(specialization);
             }
         }
-        List<String> ids = calculateSpecializationIds(needsId);
-        for (int i = 0; i < ids.size(); i++) {
-            needsId.get(i).setId(ids.get(i));
+
+        // verify specialization parameter length
+        if (verifySpecializationParameters(node)) {
+            List<String> ids = calculateSpecializationIds(needsId);
+            for (int i = 0; i < ids.size(); i++) {
+                needsId.get(i).setId(ids.get(i));
+            }
         }
     }
 
@@ -509,9 +513,6 @@ public class NodeParser extends TemplateParser<NodeData> {
     }
 
     private void verifyNode(NodeData nodeData) {
-        // verify specialization parameter length
-        verifySpecializationParameters(nodeData);
-
         // verify order is not ambiguous
         verifySpecializationOrder(nodeData);
 
@@ -520,14 +521,6 @@ public class NodeParser extends TemplateParser<NodeData> {
         assignShortCircuitsToSpecializations(nodeData);
 
         verifyConstructors(nodeData);
-
-// if (!verifyNamingConvention(specializations, "do")) {
-// return null;
-// }
-//
-// if (!verifyNamesUnique(specializations)) {
-// return null;
-// }
 
         verifyNamingConvention(nodeData.getShortCircuits(), "needs");
 
@@ -565,7 +558,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         return nodeData;
     }
 
-    private static void verifySpecializationParameters(NodeData nodeData) {
+    private static boolean verifySpecializationParameters(NodeData nodeData) {
         boolean valid = true;
         int args = -1;
         for (SpecializationData specializationData : nodeData.getSpecializations()) {
@@ -586,6 +579,7 @@ public class NodeParser extends TemplateParser<NodeData> {
                 specialization.addError("All specializations must have the same number of arguments.");
             }
         }
+        return valid;
     }
 
     private void verifyMissingAbstractMethods(NodeData nodeData) {
