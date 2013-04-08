@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.nodes.virtual;
 
+import java.util.*;
+
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.phases.*;
 
-public class ExpandBoxingNodesPhase extends Phase {
+public class VirtualBoxingNode extends VirtualInstanceNode {
 
-    private final BoxingMethodPool pool;
+    private final Kind boxingKind;
 
-    public ExpandBoxingNodesPhase(BoxingMethodPool pool) {
-        this.pool = pool;
+    public VirtualBoxingNode(ResolvedJavaType type, Kind boxingKind) {
+        super(type);
+        this.boxingKind = boxingKind;
     }
 
     @Override
-    protected void run(StructuredGraph graph) {
-        for (BoxNode boxNode : graph.getNodes(BoxNode.class)) {
-            boxNode.expand(pool);
-        }
+    public VirtualBoxingNode duplicate() {
+        return new VirtualBoxingNode(type(), boxingKind);
+    }
 
-        for (UnboxNode unboxNode : graph.getNodes(UnboxNode.class)) {
-            unboxNode.expand(pool);
-        }
+    @Override
+    public boolean hasIdentity() {
+        return false;
     }
 }

@@ -37,7 +37,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.*;
@@ -51,8 +50,6 @@ public class ReplacementsImpl implements Replacements {
     protected final MetaAccessProvider runtime;
     protected final TargetDescription target;
     protected final Assumptions assumptions;
-
-    private BoxingMethodPool pool;
 
     /**
      * The preprocessed replacement graphs.
@@ -204,7 +201,7 @@ public class ReplacementsImpl implements Replacements {
             policyClass = snippet.inlining();
         }
         if (policyClass == SnippetInliningPolicy.class) {
-            return new DefaultSnippetInliningPolicy(runtime, pool());
+            return new DefaultSnippetInliningPolicy(runtime);
         }
         try {
             return policyClass.getConstructor().newInstance();
@@ -283,7 +280,7 @@ public class ReplacementsImpl implements Replacements {
          * Does final processing of a snippet graph.
          */
         protected void finalizeGraph(StructuredGraph graph) {
-            new NodeIntrinsificationPhase(runtime, pool()).apply(graph);
+            new NodeIntrinsificationPhase(runtime).apply(graph);
             assert SnippetTemplate.hasConstantParameter(method) || NodeIntrinsificationVerificationPhase.verify(graph);
 
             if (original == null) {
@@ -317,7 +314,6 @@ public class ReplacementsImpl implements Replacements {
             Debug.dump(graph, "%s: %s", methodToParse.getName(), GraphBuilderPhase.class.getSimpleName());
 
             new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
-            new NodeIntrinsificationPhase(runtime, pool()).apply(graph);
 
             return graph;
         }
@@ -339,7 +335,7 @@ public class ReplacementsImpl implements Replacements {
          * Called after all inlining for a given graph is complete.
          */
         protected void afterInlining(StructuredGraph graph) {
-            new NodeIntrinsificationPhase(runtime, pool()).apply(graph);
+            new NodeIntrinsificationPhase(runtime).apply(graph);
 
             new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
 
@@ -366,7 +362,13 @@ public class ReplacementsImpl implements Replacements {
                     substituteCallsOriginal = true;
                 } else {
                     if ((callTarget.invokeKind() == InvokeKind.Static || callTarget.invokeKind() == InvokeKind.Special) && policy.shouldInline(callee, methodToParse)) {
-                        StructuredGraph targetGraph = parseGraph(callee, policy);
+                        StructuredGraph targetGraph;
+                        StructuredGraph intrinsicGraph = InliningUtil.getIntrinsicGraph(callee);
+                        if (intrinsicGraph != null && policy.shouldUseReplacement(callee, methodToParse)) {
+                            targetGraph = intrinsicGraph;
+                        } else {
+                            targetGraph = parseGraph(callee, policy);
+                        }
                         InliningUtil.inline(invoke, targetGraph, true);
                         Debug.dump(graph, "after inlining %s", callee);
                         afterInline(graph, targetGraph);
@@ -465,14 +467,6 @@ public class ReplacementsImpl implements Replacements {
         } catch (NoSuchMethodException | SecurityException e) {
             throw new GraalInternalError(e);
         }
-    }
-
-    protected BoxingMethodPool pool() {
-        if (pool == null) {
-            // A race to create the pool is ok
-            pool = new BoxingMethodPool(runtime);
-        }
-        return pool;
     }
 
     @Override

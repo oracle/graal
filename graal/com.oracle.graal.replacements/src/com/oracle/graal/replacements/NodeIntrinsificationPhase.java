@@ -28,16 +28,18 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.Fold;
 
 /**
  * Replaces calls to {@link NodeIntrinsic}s with nodes and calls to methods annotated with
@@ -46,19 +48,22 @@ import com.oracle.graal.replacements.Snippet.*;
 public class NodeIntrinsificationPhase extends Phase {
 
     private final MetaAccessProvider runtime;
-    private final BoxingMethodPool pool;
 
-    public NodeIntrinsificationPhase(MetaAccessProvider runtime, BoxingMethodPool pool) {
+    public NodeIntrinsificationPhase(MetaAccessProvider runtime) {
         this.runtime = runtime;
-        this.pool = pool;
     }
 
     @Override
     protected void run(StructuredGraph graph) {
+        ArrayList<Node> cleanUpReturnList = new ArrayList<>();
         for (Invoke i : graph.getInvokes()) {
             if (i.callTarget() instanceof MethodCallTargetNode) {
-                tryIntrinsify(i);
+                tryIntrinsify(i, cleanUpReturnList);
             }
+        }
+
+        for (Node node : cleanUpReturnList) {
+            cleanUpReturnCheckCast(node);
         }
     }
 
@@ -76,7 +81,7 @@ public class NodeIntrinsificationPhase extends Phase {
         return result;
     }
 
-    private boolean tryIntrinsify(Invoke invoke) {
+    private boolean tryIntrinsify(Invoke invoke, List<Node> cleanUpReturnList) {
         ResolvedJavaMethod target = invoke.methodCallTarget().targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         ResolvedJavaType declaringClass = target.getDeclaringClass();
@@ -103,7 +108,7 @@ public class NodeIntrinsificationPhase extends Phase {
             invoke.intrinsify(newInstance);
 
             // Clean up checkcast instructions inserted by javac if the return type is generic.
-            cleanUpReturnCheckCast(newInstance);
+            cleanUpReturnList.add(newInstance);
         } else if (target.getAnnotation(Fold.class) != null) {
             Class<?>[] parameterTypes = signatureToTypes(target.getSignature(), receiverType, declaringClass);
 
@@ -129,7 +134,7 @@ public class NodeIntrinsificationPhase extends Phase {
                 invoke.intrinsify(node);
 
                 // Clean up checkcast instructions inserted by javac if the return type is generic.
-                cleanUpReturnCheckCast(node);
+                cleanUpReturnList.add(node);
             } else {
                 // Remove the invoke
                 invoke.intrinsify(null);
@@ -154,7 +159,7 @@ public class NodeIntrinsificationPhase extends Phase {
             if (!invoke.methodCallTarget().isStatic()) {
                 parameterIndex--;
             }
-            ValueNode argument = tryBoxingElimination(parameterIndex, target, arguments.get(i));
+            ValueNode argument = arguments.get(i);
             if (folding || MetaUtil.getParameterAnnotation(ConstantNodeParameter.class, parameterIndex, target) != null) {
                 if (!(argument instanceof ConstantNode)) {
                     return null;
@@ -193,47 +198,6 @@ public class NodeIntrinsificationPhase extends Phase {
         }
         assert Node.class.isAssignableFrom(result);
         return result;
-    }
-
-    private ValueNode tryBoxingElimination(int parameterIndex, ResolvedJavaMethod target, ValueNode node) {
-        if (parameterIndex >= 0) {
-            Type type = target.getGenericParameterTypes()[parameterIndex];
-            if (type instanceof TypeVariable) {
-                TypeVariable typeVariable = (TypeVariable) type;
-                if (typeVariable.getBounds().length == 1) {
-                    Type boundType = typeVariable.getBounds()[0];
-                    if (boundType instanceof Class && ((Class) boundType).getSuperclass() == null) {
-                        // Unbound generic => try boxing elimination
-                        if (node.usages().count() == 2) {
-                            if (node instanceof Invoke) {
-                                Invoke invokeNode = (Invoke) node;
-                                MethodCallTargetNode callTarget = invokeNode.methodCallTarget();
-                                if (pool.isBoxingMethod(callTarget.targetMethod())) {
-                                    FrameState stateAfter = invokeNode.stateAfter();
-                                    assert stateAfter.usages().count() == 1;
-                                    invokeNode.node().replaceAtUsages(null);
-                                    ValueNode result = callTarget.arguments().get(0);
-                                    StructuredGraph graph = (StructuredGraph) node.graph();
-                                    if (invokeNode instanceof InvokeWithExceptionNode) {
-                                        // Destroy exception edge & clear stateAfter.
-                                        InvokeWithExceptionNode invokeWithExceptionNode = (InvokeWithExceptionNode) invokeNode;
-
-                                        invokeWithExceptionNode.killExceptionEdge();
-                                        graph.removeSplit(invokeWithExceptionNode, invokeWithExceptionNode.next());
-                                    } else {
-                                        graph.removeFixed((InvokeNode) invokeNode);
-                                    }
-                                    stateAfter.safeDelete();
-                                    GraphUtil.propagateKill(callTarget);
-                                    return result;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return node;
     }
 
     private static Class asBoxedType(Class type) {
@@ -379,32 +343,25 @@ public class NodeIntrinsificationPhase extends Phase {
                     if (checkCastUsage instanceof ValueAnchorNode) {
                         ValueAnchorNode valueAnchorNode = (ValueAnchorNode) checkCastUsage;
                         graph.removeFixed(valueAnchorNode);
+                    } else if (checkCastUsage instanceof UnboxNode) {
+                        UnboxNode unbox = (UnboxNode) checkCastUsage;
+                        unbox.replaceAtUsages(newInstance);
+                        graph.removeFixed(unbox);
                     } else if (checkCastUsage instanceof MethodCallTargetNode) {
                         MethodCallTargetNode checkCastCallTarget = (MethodCallTargetNode) checkCastUsage;
-                        if (pool.isUnboxingMethod(checkCastCallTarget.targetMethod())) {
-                            Invoke invokeNode = checkCastCallTarget.invoke();
-                            invokeNode.node().replaceAtUsages(newInstance);
-                            if (invokeNode instanceof InvokeWithExceptionNode) {
-                                // Destroy exception edge & clear stateAfter.
-                                InvokeWithExceptionNode invokeWithExceptionNode = (InvokeWithExceptionNode) invokeNode;
-
-                                invokeWithExceptionNode.killExceptionEdge();
-                                graph.removeSplit(invokeWithExceptionNode, invokeWithExceptionNode.next());
-                            } else {
-                                graph.removeFixed((InvokeNode) invokeNode);
-                            }
-                            checkCastCallTarget.safeDelete();
-                        } else {
-                            assert checkCastCallTarget.targetMethod().getAnnotation(NodeIntrinsic.class) != null : "checkcast at " + sourceLocation(checkCastNode) +
-                                            " not used by an unboxing method or node intrinsic, but by a call at " + sourceLocation(checkCastCallTarget.usages().first()) + " to " +
-                                            checkCastCallTarget.targetMethod();
-                            checkCastUsage.replaceFirstInput(checkCastNode, checkCastNode.object());
-                        }
+                        assert checkCastCallTarget.targetMethod().getAnnotation(NodeIntrinsic.class) != null : "checkcast at " + sourceLocation(checkCastNode) +
+                                        " not used by an unboxing method or node intrinsic, but by a call at " + sourceLocation(checkCastCallTarget.usages().first()) + " to " +
+                                        checkCastCallTarget.targetMethod();
+                        checkCastUsage.replaceFirstInput(checkCastNode, checkCastNode.object());
                     } else if (checkCastUsage instanceof FrameState) {
                         checkCastUsage.replaceFirstInput(checkCastNode, null);
                     } else if (checkCastUsage instanceof ReturnNode && checkCastNode.object().stamp() == StampFactory.forNodeIntrinsic()) {
                         checkCastUsage.replaceFirstInput(checkCastNode, checkCastNode.object());
+                    } else if (checkCastUsage instanceof IsNullNode) {
+                        assert checkCastUsage.usages().count() == 1 && checkCastUsage.usages().first().predecessor() == checkCastNode;
+                        graph.replaceFloating((FloatingNode) checkCastUsage, LogicConstantNode.contradiction(graph));
                     } else {
+                        Debug.dump(graph, "exception");
                         assert false : sourceLocation(checkCastUsage) + " has unexpected usage " + checkCastUsage + " of checkcast at " + sourceLocation(checkCastNode);
                     }
                 }

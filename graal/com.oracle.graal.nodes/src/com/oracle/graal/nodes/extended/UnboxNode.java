@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,47 +23,50 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class UnboxNode extends FixedWithNextNode implements Node.IterableNodeType, Canonicalizable {
+public class UnboxNode extends FixedWithNextNode implements VirtualizableAllocation, IterableNodeType, Lowerable, Canonicalizable {
 
-    @Input private ValueNode source;
-    private Kind destinationKind;
+    @Input private ValueNode value;
+    private final Kind boxingKind;
 
-    public UnboxNode(Kind kind, ValueNode source) {
-        super(StampFactory.forKind(kind));
-        this.source = source;
-        this.destinationKind = kind;
-        assert kind != Kind.Object : "can only unbox to primitive";
-        assert source.kind() == Kind.Object : "can only unbox objects";
+    public UnboxNode(ValueNode value, Kind boxingKind) {
+        super(StampFactory.forKind(boxingKind.getStackKind()));
+        this.value = value;
+        this.boxingKind = boxingKind;
     }
 
-    public ValueNode source() {
-        return source;
+    public Kind getBoxingKind() {
+        return boxingKind;
     }
 
-    public Kind destinationKind() {
-        return destinationKind;
+    public ValueNode getValue() {
+        return value;
     }
 
-    public void expand(BoxingMethodPool pool) {
-        ResolvedJavaField field = pool.getBoxField(kind());
-        LoadFieldNode loadField = graph().add(new LoadFieldNode(source, field));
-        loadField.setProbability(probability());
-        ((StructuredGraph) graph()).replaceFixedWithFixed(this, loadField);
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        State state = tool.getObjectState(value);
+        if (state != null && state.getState() == EscapeState.Virtual) {
+            tool.replaceWithValue(state.getEntry(0));
+        }
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (source.isConstant()) {
-            Constant constant = source.asConstant();
+        if (value.isConstant()) {
+            Constant constant = value.asConstant();
             Object o = constant.asObject();
             if (o != null) {
-                switch (destinationKind) {
+                switch (boxingKind) {
                     case Boolean:
                         return ConstantNode.forBoolean((Boolean) o, graph());
                     case Byte:
@@ -84,7 +87,42 @@ public final class UnboxNode extends FixedWithNextNode implements Node.IterableN
                         ValueNodeUtil.shouldNotReachHere();
                 }
             }
+        } else if (value instanceof BoxNode) {
+            return ((BoxNode) value).getValue();
+        }
+        if (usages().isEmpty()) {
+            return null;
         }
         return this;
     }
+
+    /*
+     * Normally, all these variants wouldn't be needed because this can be accomplished by using a
+     * generic method with automatic unboxing. These intrinsics, however, are themselves used for
+     * recognizing boxings, which means that there would be a circularity issue.
+     */
+
+    @NodeIntrinsic
+    public static native boolean unbox(Boolean value, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native byte unbox(Byte value, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native char unbox(Character value, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native double unbox(Double value, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native float unbox(Float value, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native int unbox(Integer value, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native long unbox(Long value, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native short unbox(Short value, @ConstantNodeParameter Kind kind);
 }

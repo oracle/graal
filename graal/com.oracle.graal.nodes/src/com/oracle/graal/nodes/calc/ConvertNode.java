@@ -172,5 +172,15 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
     }
 
     @NodeIntrinsic
-    public static native <S, T> S convert(@ConstantNodeParameter Op op, T value);
+    public static native float convert(@ConstantNodeParameter Op op, int value);
+
+    @NodeIntrinsic
+    public static native int convert(@ConstantNodeParameter Op op, float value);
+
+    @NodeIntrinsic
+    public static native double convert(@ConstantNodeParameter Op op, long value);
+
+    @NodeIntrinsic
+    public static native long convert(@ConstantNodeParameter Op op, double value);
+
 }
