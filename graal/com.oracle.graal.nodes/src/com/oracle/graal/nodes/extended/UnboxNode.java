@@ -23,12 +23,11 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public class UnboxNode extends FixedWithNextNode implements VirtualizableAllocation, IterableNodeType, Lowerable, Canonicalizable {
+public class UnboxNode extends FixedWithNextNode implements Virtualizable, Lowerable, Canonicalizable {
 
     @Input private ValueNode value;
     private final Kind boxingKind;
