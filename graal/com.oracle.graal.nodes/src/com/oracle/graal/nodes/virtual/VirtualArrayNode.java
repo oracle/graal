@@ -22,10 +22,14 @@
  */
 package com.oracle.graal.nodes.virtual;
 
+import java.util.*;
+
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(nameTemplate = "VirtualArray {p#componentType/s}[{p#length}]")
@@ -136,5 +140,20 @@ public class VirtualArrayNode extends VirtualObjectNode {
     @Override
     public VirtualArrayNode duplicate() {
         return new VirtualArrayNode(componentType, length);
+    }
+
+    @Override
+    public void materializeAt(FixedWithNextNode materializeNode, List<ValueNode> values, boolean defaultValuesOnly, int lockCount) {
+        StructuredGraph graph = (StructuredGraph) graph();
+        ResolvedJavaType element = componentType();
+        NewArrayNode newArray = graph.add(new NewArrayNode(element, ConstantNode.forInt(entryCount(), graph), defaultValuesOnly, lockCount > 0));
+        materializeNode.replaceAtUsages(newArray);
+        graph.addBeforeFixed(materializeNode, newArray);
+        if (!defaultValuesOnly) {
+            for (int i = 0; i < entryCount(); i++) {
+                graph.addBeforeFixed(materializeNode, graph.add(new StoreIndexedNode(newArray, ConstantNode.forInt(i, graph), element.getKind(), values.get(i))));
+            }
+        }
+        graph.removeFixed(materializeNode);
     }
 }

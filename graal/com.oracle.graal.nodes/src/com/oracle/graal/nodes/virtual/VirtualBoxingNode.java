@@ -46,4 +46,13 @@ public class VirtualBoxingNode extends VirtualInstanceNode {
     public boolean hasIdentity() {
         return false;
     }
+
+    @Override
+    public void materializeAt(FixedWithNextNode materializeNode, List<ValueNode> values, boolean defaultValuesOnly, int lockCount) {
+        assert values.size() == 1;
+        assert lockCount == 0;
+        StructuredGraph graph = (StructuredGraph) graph();
+        BoxNode valueOf = graph.add(new BoxNode(values.get(0), type(), boxingKind));
+        graph.replaceFixedWithFixed(materializeNode, valueOf);
+    }
 }

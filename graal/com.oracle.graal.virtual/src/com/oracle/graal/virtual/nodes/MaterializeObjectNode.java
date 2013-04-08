@@ -25,7 +25,6 @@ package com.oracle.graal.virtual.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
@@ -73,38 +72,7 @@ public final class MaterializeObjectNode extends FixedWithNextNode implements Vi
 
     @Override
     public void lower(LoweringTool tool) {
-        StructuredGraph graph = (StructuredGraph) graph();
-
-        boolean defaultValuesOnly = isDefault();
-
-        if (virtualObject instanceof VirtualInstanceNode) {
-            VirtualInstanceNode virtual = (VirtualInstanceNode) virtualObject;
-
-            NewInstanceNode newInstance = graph.add(new NewInstanceNode(virtual.type(), defaultValuesOnly, lockCount > 0));
-            this.replaceAtUsages(newInstance);
-            graph.addBeforeFixed(this, newInstance);
-
-            if (!defaultValuesOnly) {
-                for (int i = 0; i < virtual.entryCount(); i++) {
-                    graph.addBeforeFixed(this, graph.add(new StoreFieldNode(newInstance, virtual.field(i), values.get(i))));
-                }
-            }
-        } else {
-            assert virtualObject instanceof VirtualArrayNode;
-            VirtualArrayNode virtual = (VirtualArrayNode) virtualObject;
-
-            ResolvedJavaType element = virtual.componentType();
-            NewArrayNode newArray = graph.add(new NewArrayNode(element, ConstantNode.forInt(virtual.entryCount(), graph), defaultValuesOnly, lockCount > 0));
-            this.replaceAtUsages(newArray);
-            graph.addBeforeFixed(this, newArray);
-
-            if (!defaultValuesOnly) {
-                for (int i = 0; i < virtual.entryCount(); i++) {
-                    graph.addBeforeFixed(this, graph.add(new StoreIndexedNode(newArray, ConstantNode.forInt(i, graph), element.getKind(), values.get(i))));
-                }
-            }
-        }
-        graph.removeFixed(this);
+        virtualObject.materializeAt(this, values, isDefault(), lockCount);
     }
 
     @Override
