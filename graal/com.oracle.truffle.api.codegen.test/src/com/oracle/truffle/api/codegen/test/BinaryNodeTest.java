@@ -55,8 +55,8 @@ public class BinaryNodeTest {
         @Child protected ValueNode rightNode;
 
         public BinaryNode(ValueNode left, ValueNode right) {
-            this.leftNode = left;
-            this.rightNode = right;
+            this.leftNode = adoptChild(left);
+            this.rightNode = adoptChild(right);
         }
 
         public BinaryNode(BinaryNode prev) {
