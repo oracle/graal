@@ -55,4 +55,8 @@ public abstract class VirtualObjectNode extends ValueNode implements LIRLowerabl
     public abstract Kind entryKind(int index);
 
     public abstract VirtualObjectNode duplicate();
+
+    public boolean hasIdentity() {
+        return true;
+    }
 }
