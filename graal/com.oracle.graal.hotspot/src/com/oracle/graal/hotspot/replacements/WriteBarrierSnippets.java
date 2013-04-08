@@ -28,6 +28,7 @@ import static com.oracle.graal.replacements.SnippetTemplate.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -68,7 +69,7 @@ public class WriteBarrierSnippets implements Snippets {
             serialArrayWriteBarrier = snippet("serialArrayWriteBarrier", Object.class, Object.class, boolean.class);
         }
 
-        public void lower(ArrayWriteBarrier arrayWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
+        public void lower(SerialWriteBarrier arrayWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
             ResolvedJavaMethod method = serialArrayWriteBarrier;
             Key key = new Key(method);
             key.add("usePrecise", arrayWriteBarrier.usePrecise());

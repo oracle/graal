@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.nodes;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class ArrayWriteBarrier extends FixedWithNextNode implements Lowerable {
+public final class SerialWriteBarrier extends FixedWithNextNode implements Lowerable {
 
     @Input private ValueNode object;
     @Input private LocationNode location;
@@ -45,7 +45,7 @@ public final class ArrayWriteBarrier extends FixedWithNextNode implements Lowera
         return precise;
     }
 
-    public ArrayWriteBarrier(ValueNode object, LocationNode location, boolean precise) {
+    public SerialWriteBarrier(ValueNode object, LocationNode location, boolean precise) {
         super(StampFactory.forVoid());
         this.object = object;
         this.location = location;
