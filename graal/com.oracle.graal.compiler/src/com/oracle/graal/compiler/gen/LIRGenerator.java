@@ -225,6 +225,13 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return stateFor(deopt.getDeoptimizationState(), deopt.getDeoptimizationReason());
     }
 
+    public LIRFrameState stateWithExceptionEdge(DeoptimizingNode deopt, LabelRef exceptionEdge) {
+        if (!deopt.canDeoptimize()) {
+            return null;
+        }
+        return stateForWithExceptionEdge(deopt.getDeoptimizationState(), deopt.getDeoptimizationReason(), exceptionEdge);
+    }
+
     public LIRFrameState stateFor(FrameState state, DeoptimizationReason reason) {
         return stateForWithExceptionEdge(state, reason, null);
     }
@@ -233,6 +240,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (needOnlyOopMaps()) {
             return new LIRFrameState(null, null, null, (short) -1);
         }
+        assert state != null;
         return debugInfoBuilder.build(state, lir.getDeoptimizationReasons().addSpeculation(reason), exceptionEdge);
     }
 
@@ -603,13 +611,13 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         Value[] parameters = visitInvokeArguments(cc, callTarget.arguments());
 
-        LIRFrameState callState = null;
-        if (x.stateAfter() != null) {
-            callState = stateForWithExceptionEdge(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null);
+        LabelRef exceptionEdge = null;
+        if (x instanceof InvokeWithExceptionNode) {
+            exceptionEdge = getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge());
         }
+        LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
 
         Value result = cc.getReturn();
-
         if (callTarget instanceof DirectCallTargetNode) {
             emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, cc.getTemporaries(), callState);
         } else if (callTarget instanceof IndirectCallTargetNode) {
