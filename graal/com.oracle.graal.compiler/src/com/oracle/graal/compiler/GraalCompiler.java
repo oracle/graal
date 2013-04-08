@@ -47,8 +47,9 @@ import com.oracle.graal.virtual.phases.ea.*;
 
 public class GraalCompiler {
 
-    public static CompilationResult compileMethod(final GraalCodeCacheProvider runtime, final Backend backend, final TargetDescription target, final ResolvedJavaMethod method,
-                    final StructuredGraph graph, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts, final SpeculationLog speculationLog) {
+    public static CompilationResult compileMethod(final GraalCodeCacheProvider runtime, final Replacements replacements, final Backend backend, final TargetDescription target,
+                    final ResolvedJavaMethod method, final StructuredGraph graph, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
+                    final SpeculationLog speculationLog) {
         assert (method.getModifiers() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
 
         final CompilationResult compilationResult = new CompilationResult();
@@ -59,7 +60,7 @@ public class GraalCompiler {
                 final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
 
                     public LIR call() {
-                        return emitHIR(runtime, target, graph, assumptions, cache, plan, optimisticOpts, speculationLog);
+                        return emitHIR(runtime, target, graph, replacements, assumptions, cache, plan, optimisticOpts, speculationLog);
                     }
                 });
                 final LIRGenerator lirGen = Debug.scope("BackEnd", lir, new Callable<LIRGenerator>() {
@@ -98,7 +99,7 @@ public class GraalCompiler {
      * 
      * @param target
      */
-    public static LIR emitHIR(GraalCodeCacheProvider runtime, TargetDescription target, StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhasePlan plan,
+    public static LIR emitHIR(GraalCodeCacheProvider runtime, TargetDescription target, StructuredGraph graph, Replacements replacements, Assumptions assumptions, GraphCache cache, PhasePlan plan,
                     OptimisticOptimizations optimisticOpts, final SpeculationLog speculationLog) {
 
         if (speculationLog != null) {
@@ -122,9 +123,9 @@ public class GraalCompiler {
 
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
             if (GraalOptions.IterativeInlining) {
-                new IterativeInliningPhase(runtime, assumptions, cache, plan, optimisticOpts, GraalOptions.OptEarlyReadElimination).apply(graph);
+                new IterativeInliningPhase(runtime, replacements, assumptions, cache, plan, optimisticOpts, GraalOptions.OptEarlyReadElimination).apply(graph);
             } else {
-                new InliningPhase(runtime, null, assumptions, cache, plan, optimisticOpts).apply(graph);
+                new InliningPhase(runtime, null, replacements, assumptions, cache, plan, optimisticOpts).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
 
                 if (GraalOptions.ConditionalElimination && GraalOptions.OptCanonicalizer) {
@@ -176,7 +177,14 @@ public class GraalCompiler {
             new CanonicalizerPhase(runtime, assumptions).apply(graph);
         }
 
-        new LoweringPhase(target, runtime, assumptions).apply(graph);
+        new LoweringPhase(target, runtime, replacements, assumptions).apply(graph);
+
+        if (GraalOptions.OptPushThroughPi) {
+            new PushThroughPiPhase().apply(graph);
+            if (GraalOptions.OptCanonicalizer) {
+                new CanonicalizerPhase(runtime, assumptions).apply(graph);
+            }
+        }
 
         if (GraalOptions.OptFloatingReads) {
             int mark = graph.getMark();
@@ -212,10 +220,10 @@ public class GraalCompiler {
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
-        new GuardLoweringPhase(target).apply(graph);
-
         // Add safepoints to loops
         new SafepointInsertionPhase().apply(graph);
+
+        new GuardLoweringPhase(target).apply(graph);
 
         final SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);

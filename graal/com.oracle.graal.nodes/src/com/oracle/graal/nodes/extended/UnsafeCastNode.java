@@ -24,29 +24,20 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code UnsafeCastNode} produces the same value as its input, but with a different type.
  */
-public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIRLowerable {
-
-    @Input private ValueNode object;
-
-    public ValueNode object() {
-        return object;
-    }
+public class UnsafeCastNode extends PiNode implements Canonicalizable, LIRLowerable {
 
     public UnsafeCastNode(ValueNode object, Stamp stamp) {
-        super(stamp);
-        this.object = object;
+        super(object, stamp);
     }
 
     public UnsafeCastNode(ValueNode object, Stamp stamp, ValueNode anchor) {
-        super(stamp, anchor);
-        this.object = object;
+        super(object, stamp, anchor);
     }
 
     public UnsafeCastNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
@@ -72,13 +63,13 @@ public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIR
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (kind() != object.kind()) {
+        if (kind() != object().kind()) {
             return this;
         }
 
         if (kind() == Kind.Object) {
             ObjectStamp my = objectStamp();
-            ObjectStamp other = object.objectStamp();
+            ObjectStamp other = object().objectStamp();
 
             if (my.type() == null || other.type() == null) {
                 return this;
@@ -93,21 +84,21 @@ public class UnsafeCastNode extends FloatingNode implements Canonicalizable, LIR
                 return this;
             }
         }
-        return object;
+        return object();
     }
 
     @Override
     public void generate(LIRGeneratorTool generator) {
-        if (kind() != object.kind()) {
-            assert generator.target().sizeInBytes(kind()) == generator.target().sizeInBytes(object.kind()) : "unsafe cast cannot be used to change the size of a value";
+        if (kind() != object().kind()) {
+            assert generator.target().sizeInBytes(kind()) == generator.target().sizeInBytes(object().kind()) : "unsafe cast cannot be used to change the size of a value";
             Value result = generator.newVariable(kind());
-            generator.emitMove(result, generator.operand(object));
+            generator.emitMove(result, generator.operand(object()));
             generator.setResult(this, result);
         } else {
             // The LIR only cares about the kind of an operand, not the actual type of an object. So
             // we do not have to
             // introduce a new operand when the kind is the same.
-            generator.setResult(this, generator.operand(object));
+            generator.setResult(this, generator.operand(object()));
         }
     }
 

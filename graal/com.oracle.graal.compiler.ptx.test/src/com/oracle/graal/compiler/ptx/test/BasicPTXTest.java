@@ -73,7 +73,7 @@ public class BasicPTXTest extends GraalCompilerTest {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new PTXPhase());
         new PTXPhase().apply(graph);
-        CompilationResult result = GraalCompiler.compileMethod(runtime, ptxBackend, target, graph.method(), graph, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog());
+        CompilationResult result = GraalCompiler.compileMethod(runtime, replacements, ptxBackend, target, graph.method(), graph, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog());
         return result;
     }
 

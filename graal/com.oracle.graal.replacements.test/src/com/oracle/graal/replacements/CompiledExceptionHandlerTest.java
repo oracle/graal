@@ -20,53 +20,60 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package com.oracle.graal.replacements;
 
-import java.util.*;
+import java.lang.reflect.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 
-public class InvokeExceptionTest extends GraalCompilerTest {
+/**
+ * Tests compilation of a hot exception handler.
+ */
+public class CompiledExceptionHandlerTest extends GraalCompilerTest {
 
-    public static synchronized void throwException(int i) {
-        if (i == 1) {
-            throw new RuntimeException();
-        }
+    @Override
+    protected void editPhasePlan(ResolvedJavaMethod method, StructuredGraph graph, PhasePlan phasePlan) {
+        phasePlan.disablePhase(InliningPhase.class);
+    }
+
+    @Override
+    protected StructuredGraph parse(Method m) {
+        StructuredGraph graph = super.parse(m);
+        int handlers = graph.getNodes().filter(ExceptionObjectNode.class).count();
+        Assert.assertEquals(1, handlers);
+        return graph;
+    }
+
+    private static void raiseException(String s) {
+        throw new RuntimeException(s);
     }
 
     @Test
     public void test1() {
-        // fill the profiling data...
+        // Ensure the profile shows a hot exception
         for (int i = 0; i < 10000; i++) {
+            test1Snippet("");
+            test1Snippet(null);
+        }
+
+        test("test1Snippet", "a string");
+    }
+
+    public static String test1Snippet(String message) {
+        if (message != null) {
             try {
-                throwException(i & 1);
-                test1Snippet(0);
-            } catch (Throwable t) {
-                // nothing to do...
+                raiseException(message);
+            } catch (Exception e) {
+                return message;
             }
         }
-        test("test1Snippet");
-    }
-
-    @SuppressWarnings("all")
-    public static void test1Snippet(int a) {
-        throwException(a);
-    }
-
-    private void test(String snippet) {
-        StructuredGraph graph = parseProfiled(snippet);
-        Map<Invoke, Double> hints = new HashMap<>();
-        for (Invoke invoke : graph.getInvokes()) {
-            hints.put(invoke, 1000d);
-        }
-        Assumptions assumptions = new Assumptions(false);
-        new InliningPhase(runtime(), hints, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-        new CanonicalizerPhase(runtime(), assumptions).apply(graph);
-        new DeadCodeEliminationPhase().apply(graph);
+        return null;
     }
 }

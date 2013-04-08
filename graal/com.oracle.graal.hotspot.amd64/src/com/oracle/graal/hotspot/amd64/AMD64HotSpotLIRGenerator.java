@@ -33,7 +33,7 @@ import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.amd64.AMD64Address.*;
+import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
@@ -42,13 +42,13 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.ParametersOp;
 import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.amd64.AMD64Move.*;
+import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
+import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.
@@ -161,18 +161,8 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
 
     @Override
     public void visitSafepointNode(SafepointNode i) {
-        LIRFrameState info = state();
+        LIRFrameState info = state(i);
         append(new AMD64SafepointOp(info, runtime().config, this));
-    }
-
-    @Override
-    public void visitExceptionObject(ExceptionObjectNode x) {
-        HotSpotVMConfig config = runtime().config;
-        RegisterValue thread = runtime().threadRegister().asValue();
-        Value exception = emitLoad(Kind.Object, thread, config.threadExceptionOopOffset, Value.ILLEGAL, 0, false);
-        emitStore(Kind.Object, thread, config.threadExceptionOopOffset, Value.ILLEGAL, 0, Constant.NULL_OBJECT, false);
-        emitStore(Kind.Long, thread, config.threadExceptionPcOffset, Value.ILLEGAL, 0, Constant.LONG_0, false);
-        setResult(x, exception);
     }
 
     @SuppressWarnings("hiding")
@@ -242,8 +232,8 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
     }
 
     @Override
-    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
-        append(new AMD64DeoptimizeOp(action, reason, state()));
+    public void emitDeoptimize(DeoptimizationAction action, DeoptimizingNode deopting) {
+        append(new AMD64DeoptimizeOp(action, deopting.getDeoptimizationReason(), state(deopting)));
     }
 
     @Override

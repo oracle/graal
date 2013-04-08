@@ -28,11 +28,11 @@ import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.Fold;
@@ -95,9 +95,6 @@ public class NewInstanceStub extends Stub {
      *         operation was unsuccessful
      */
     static Word refillAllocate(Word intArrayHub, int sizeInBytes, boolean log) {
-        if (useG1GC()) {
-            return Word.zero();
-        }
         if (!useTLAB()) {
             return edenAllocate(Word.unsigned(sizeInBytes), log);
         }

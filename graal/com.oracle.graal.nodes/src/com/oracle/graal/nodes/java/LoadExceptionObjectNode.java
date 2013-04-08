@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,38 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.nodes.java;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRLowerable {
+/**
+ * Loads an exception object passed by the runtime from a callee to an exception handler in a
+ * caller. The node is only produced when lowering an {@link ExceptionObjectNode}.
+ */
+public class LoadExceptionObjectNode extends AbstractStateSplit implements Lowerable {
 
-    @Input public ValueNode object;
-
-    public NullCheckNode(ValueNode object) {
-        super(StampFactory.dependency());
-        this.object = object;
-    }
-
-    public ValueNode getObject() {
-        return object;
+    public LoadExceptionObjectNode(Stamp stamp) {
+        super(stamp);
     }
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
-        generator.emitNullCheck(object, this);
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return true;
-    }
-
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return DeoptimizationReason.NullCheckException;
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 }

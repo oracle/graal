@@ -22,21 +22,20 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.phases.common.InliningUtil.*;
 
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import static com.oracle.graal.nodes.StructuredGraph.*;
 
 public final class CompilationTask implements Runnable, Comparable<CompilationTask> {
 
@@ -144,7 +143,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                     @Override
                     public CompilationResult call() throws Exception {
                         graalRuntime.evictDeoptedGraphs();
-                        Replacements replacements = Graal.getRequiredCapability(Replacements.class);
+                        Replacements replacements = graalRuntime.getReplacements();
                         StructuredGraph graph = replacements.getMethodSubstitution(method);
                         if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
                             graph = new StructuredGraph(method, entryBCI);
@@ -153,7 +152,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                             graph = graph.copy();
                         }
                         InlinedBytecodes.add(method.getCodeSize());
-                        return GraalCompiler.compileMethod(graalRuntime.getRuntime(), graalRuntime.getBackend(), graalRuntime.getTarget(), method, graph, graalRuntime.getCache(), plan,
+                        return GraalCompiler.compileMethod(graalRuntime.getRuntime(), replacements, graalRuntime.getBackend(), graalRuntime.getTarget(), method, graph, graalRuntime.getCache(), plan,
                                         optimisticOpts, method.getSpeculationLog());
                     }
                 });

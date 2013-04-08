@@ -20,12 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.replacements;
+package com.oracle.graal.nodes.spi;
 
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 
 /**

@@ -29,16 +29,13 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code ExceptionObject} instruction represents the incoming exception object to an exception
- * handler.
+ * The entry to an exception handler with the exception coming from a call (as opposed to a local
+ * throw instruction or implicit exception).
  */
-public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable, LIRLowerable, MemoryCheckpoint {
+public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable, MemoryCheckpoint {
 
-    /**
-     * Constructs a new ExceptionObject instruction.
-     */
     public ExceptionObjectNode(MetaAccessProvider runtime) {
-        super(StampFactory.declared(runtime.lookupJavaType(Throwable.class)));
+        super(StampFactory.declaredNonNull(runtime.lookupJavaType(Throwable.class)));
     }
 
     @Override
@@ -47,23 +44,25 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitExceptionObject(this);
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
-    }
-
-    @Override
     public void simplify(SimplifierTool tool) {
         //
     }
 
     @Override
+    public void lower(LoweringTool tool) {
+        StructuredGraph graph = (StructuredGraph) graph();
+        LoadExceptionObjectNode loadException = graph.add(new LoadExceptionObjectNode(stamp()));
+        loadException.setStateAfter(stateAfter());
+        replaceAtUsages(loadException);
+        graph.addAfterFixed(this, loadException);
+        tool.setLastFixedNode(loadException);
+        setStateAfter(null);
+        setStamp(StampFactory.forVoid());
+    }
+
+    @Override
     public boolean verify() {
-        assertTrue(stateAfter() != null, "an exception handler needs a frame state");
+        assertTrue(stateAfter() != null || stamp() == StampFactory.forVoid(), "an exception handler needs a frame state");
         return super.verify();
     }
 }

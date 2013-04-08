@@ -222,7 +222,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
         graph = parse(snippet);
         new ComputeProbabilityPhase().apply(graph);
         Assumptions assumptions = new Assumptions(false);
-        new InliningPhase(runtime(), null, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+        new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
         new PartialEscapeAnalysisPhase(runtime(), assumptions, false, true).apply(graph);
     }
 }

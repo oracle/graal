@@ -28,12 +28,12 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;

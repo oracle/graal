@@ -29,7 +29,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.bridge.*;
@@ -244,6 +243,10 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     public HotSpotRuntime getRuntime() {
         return runtime;
+    }
+
+    public Replacements getReplacements() {
+        return replacements;
     }
 
     public void evictDeoptedGraphs() {

@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -30,23 +31,23 @@ import com.oracle.graal.nodes.type.*;
  * A node that changes the type of its input, usually narrowing it. For example, a PI node refines
  * the type of a receiver during type-guarded inlining to be the type tested by the guard.
  */
-public class PiNode extends FloatingNode implements LIRLowerable, Virtualizable {
+public class PiNode extends FloatingNode implements LIRLowerable, Virtualizable, Node.IterableNodeType {
 
     @Input private ValueNode object;
-    @Input(notDataflow = true) private final FixedNode anchor;
 
     public ValueNode object() {
         return object;
     }
 
-    public FixedNode anchor() {
-        return anchor;
-    }
-
-    public PiNode(ValueNode object, FixedNode anchor, Stamp stamp) {
+    public PiNode(ValueNode object, Stamp stamp) {
         super(stamp);
         this.object = object;
-        this.anchor = anchor;
+    }
+
+    public PiNode(ValueNode object, Stamp stamp, ValueNode anchor) {
+        super(stamp, anchor);
+        assert anchor instanceof FixedNode;
+        this.object = object;
     }
 
     @Override

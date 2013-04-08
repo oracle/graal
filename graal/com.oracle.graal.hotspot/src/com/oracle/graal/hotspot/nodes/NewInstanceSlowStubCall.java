@@ -35,7 +35,7 @@ import com.oracle.graal.word.*;
 /**
  * Node implementing a call to HotSpot's {@code new_instance} stub.
  */
-public class NewInstanceSlowStubCall extends FixedWithNextNode implements LIRGenLowerable {
+public class NewInstanceSlowStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
@@ -60,7 +60,7 @@ public class NewInstanceSlowStubCall extends FixedWithNextNode implements LIRGen
     @Override
     public void generate(LIRGenerator gen) {
         RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NEW_INSTANCE_SLOW);
-        Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub));
+        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(hub));
         gen.setResult(this, result);
     }
 

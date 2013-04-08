@@ -46,7 +46,6 @@ import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.test.*;
-import com.oracle.graal.virtual.nodes.*;
 
 /**
  * Base class for Graal compiler unit tests.
@@ -70,10 +69,12 @@ import com.oracle.graal.virtual.nodes.*;
 public abstract class GraalCompilerTest extends GraalTest {
 
     protected final GraalCodeCacheProvider runtime;
+    protected final Replacements replacements;
     protected final Backend backend;
 
     public GraalCompilerTest() {
         this.runtime = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
+        this.replacements = Graal.getRequiredCapability(Replacements.class);
         this.backend = Graal.getRequiredCapability(Backend.class);
     }
 
@@ -406,7 +407,8 @@ public abstract class GraalCompilerTest extends GraalTest {
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 editPhasePlan(method, graph, phasePlan);
-                CompilationResult compResult = GraalCompiler.compileMethod(runtime(), backend, runtime().getTarget(), method, graph, null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog());
+                CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), method, graph, null, phasePlan, OptimisticOptimizations.ALL,
+                                new SpeculationLog());
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
                 }

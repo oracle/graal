@@ -57,13 +57,13 @@ public class TypeCheckHints {
      * @param profile the profiling information available for the instruction (if any)
      * @param assumptions the object in which speculations are recorded. This is null if
      *            speculations are not supported.
-     * @param minHintHitProbability if the probability that the type check will hit one the profiled
-     *            types (up to {@code maxHints}) is below this value, then {@link #types} will be
-     *            null
+     * @param minHintHitProbability if the probability that the type check will hit one of the
+     *            profiled types (up to {@code maxHints}) is below this value, then {@link #types}
+     *            will be null
      * @param maxHints the maximum length of {@link #types}
      */
     public TypeCheckHints(ResolvedJavaType type, JavaTypeProfile profile, Assumptions assumptions, double minHintHitProbability, int maxHints) {
-        if (type != null && canHaveSubtype(type)) {
+        if (type != null && !canHaveSubtype(type)) {
             types = new ResolvedJavaType[]{type};
             exact = true;
         } else {
@@ -113,9 +113,9 @@ public class TypeCheckHints {
      * Determines if a given type can have subtypes other than itself. This analysis is purely
      * static; no assumptions are made.
      * 
-     * @return true if {@code type} has no subtype(s)
+     * @return true if {@code type} can have subtypes
      */
     public static boolean canHaveSubtype(ResolvedJavaType type) {
-        return isFinal(getElementalType(type).getModifiers());
+        return !isFinal(getElementalType(type).getModifiers());
     }
 }

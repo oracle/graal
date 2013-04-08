@@ -364,12 +364,12 @@ public final class HotSpotMethodData extends CompilerObject {
             }
 
             totalCount += getTypesNotRecordedExecutionCount(data, position);
-            return createTypeProfile(types, counts, totalCount, entries);
+            return createTypeProfile(getNullSeen(data, position), types, counts, totalCount, entries);
         }
 
         protected abstract long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position);
 
-        private static JavaTypeProfile createTypeProfile(ResolvedJavaType[] types, long[] counts, long totalCount, int entries) {
+        private static JavaTypeProfile createTypeProfile(TriState nullSeen, ResolvedJavaType[] types, long[] counts, long totalCount, int entries) {
             if (entries <= 0 || totalCount < GraalOptions.MatureExecutionsTypeProfile) {
                 return null;
             }
@@ -387,7 +387,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
             double notRecordedTypeProbability = entries < config.typeProfileWidth ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
             assert notRecordedTypeProbability == 0 || entries == config.typeProfileWidth;
-            return new JavaTypeProfile(notRecordedTypeProbability, ptypes);
+            return new JavaTypeProfile(nullSeen, notRecordedTypeProbability, ptypes);
         }
 
         private static int getReceiverOffset(int row) {

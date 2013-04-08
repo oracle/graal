@@ -28,8 +28,6 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -54,6 +52,7 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     private final MetaAccessProvider runtime;
     private final Assumptions assumptions;
+    private final Replacements replacements;
     private final GraphCache cache;
     private final InliningPolicy inliningPolicy;
     private final OptimisticOptimizations optimisticOpts;
@@ -69,12 +68,15 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
     private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
 
-    public InliningPhase(MetaAccessProvider runtime, Map<Invoke, Double> hints, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
-        this(runtime, assumptions, cache, plan, createInliningPolicy(runtime, assumptions, optimisticOpts, hints), optimisticOpts);
+    public InliningPhase(MetaAccessProvider runtime, Map<Invoke, Double> hints, Replacements replacements, Assumptions assumptions, GraphCache cache, PhasePlan plan,
+                    OptimisticOptimizations optimisticOpts) {
+        this(runtime, replacements, assumptions, cache, plan, createInliningPolicy(runtime, replacements, assumptions, optimisticOpts, hints), optimisticOpts);
     }
 
-    public InliningPhase(MetaAccessProvider runtime, Assumptions assumptions, GraphCache cache, PhasePlan plan, InliningPolicy inliningPolicy, OptimisticOptimizations optimisticOpts) {
+    public InliningPhase(MetaAccessProvider runtime, Replacements replacements, Assumptions assumptions, GraphCache cache, PhasePlan plan, InliningPolicy inliningPolicy,
+                    OptimisticOptimizations optimisticOpts) {
         this.runtime = runtime;
+        this.replacements = replacements;
         this.assumptions = assumptions;
         this.cache = cache;
         this.plan = plan;
@@ -110,7 +112,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                     int mark = graph.getMark();
                     try {
                         List<Node> invokeUsages = candidate.invoke().node().usages().snapshot();
-                        candidate.inline(graph, runtime, this, assumptions);
+                        candidate.inline(graph, runtime, replacements, this, assumptions);
                         Debug.dump(graph, "after %s", candidate);
                         Iterable<Node> newNodes = graph.getNewNodes(mark);
                         inliningPolicy.scanInvokes(newNodes);
@@ -180,10 +182,12 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static class GreedySizeBasedInliningDecision implements InliningDecision {
 
         private final MetaAccessProvider runtime;
+        private final Replacements replacements;
         private final Map<Invoke, Double> hints;
 
-        public GreedySizeBasedInliningDecision(MetaAccessProvider runtime, Map<Invoke, Double> hints) {
+        public GreedySizeBasedInliningDecision(MetaAccessProvider runtime, Replacements replacements, Map<Invoke, Double> hints) {
             this.runtime = runtime;
+            this.replacements = replacements;
             this.hints = hints;
         }
 
@@ -198,11 +202,11 @@ public class InliningPhase extends Phase implements InliningCallback {
              */
 
             if (GraalOptions.AlwaysInlineIntrinsics) {
-                if (onlyIntrinsics(info)) {
+                if (onlyIntrinsics(replacements, info)) {
                     return InliningUtil.logInlinedMethod(info, "intrinsic");
                 }
             } else {
-                if (onlyForcedIntrinsics(info)) {
+                if (onlyForcedIntrinsics(replacements, info)) {
                     return InliningUtil.logInlinedMethod(info, "intrinsic");
                 }
             }
@@ -342,21 +346,20 @@ public class InliningPhase extends Phase implements InliningCallback {
             return result;
         }
 
-        private static boolean onlyIntrinsics(InlineInfo info) {
+        private static boolean onlyIntrinsics(Replacements replacements, InlineInfo info) {
             for (int i = 0; i < info.numberOfMethods(); i++) {
-                if (!InliningUtil.canIntrinsify(info.methodAt(i))) {
+                if (!InliningUtil.canIntrinsify(replacements, info.methodAt(i))) {
                     return false;
                 }
             }
             return true;
         }
 
-        private static boolean onlyForcedIntrinsics(InlineInfo info) {
+        private static boolean onlyForcedIntrinsics(Replacements replacements, InlineInfo info) {
             for (int i = 0; i < info.numberOfMethods(); i++) {
-                if (!InliningUtil.canIntrinsify(info.methodAt(i))) {
+                if (!InliningUtil.canIntrinsify(replacements, info.methodAt(i))) {
                     return false;
                 }
-                Replacements replacements = Graal.getRequiredCapability(Replacements.class);
                 if (!replacements.isForcedSubstitution(info.methodAt(i))) {
                     return false;
                 }
@@ -369,13 +372,15 @@ public class InliningPhase extends Phase implements InliningCallback {
 
         private final InliningDecision inliningDecision;
         private final Assumptions assumptions;
+        private final Replacements replacements;
         private final OptimisticOptimizations optimisticOpts;
         private final Deque<Invoke> sortedInvokes;
         private NodeBitMap visitedFixedNodes;
         private FixedNode invokePredecessor;
 
-        public CFInliningPolicy(InliningDecision inliningPolicy, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
+        public CFInliningPolicy(InliningDecision inliningPolicy, Replacements replacements, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
             this.inliningDecision = inliningPolicy;
+            this.replacements = replacements;
             this.assumptions = assumptions;
             this.optimisticOpts = optimisticOpts;
             this.sortedInvokes = new ArrayDeque<>();
@@ -393,7 +398,7 @@ public class InliningPhase extends Phase implements InliningCallback {
 
         public InlineInfo next() {
             Invoke invoke = sortedInvokes.pop();
-            InlineInfo info = InliningUtil.getInlineInfo(invoke, assumptions, optimisticOpts);
+            InlineInfo info = InliningUtil.getInlineInfo(invoke, replacements, assumptions, optimisticOpts);
             if (info != null) {
                 invokePredecessor = (FixedNode) info.invoke().predecessor();
                 assert invokePredecessor.isAlive();
@@ -534,8 +539,8 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
-    private static InliningPolicy createInliningPolicy(MetaAccessProvider runtime, Assumptions assumptions, OptimisticOptimizations optimisticOpts, Map<Invoke, Double> hints) {
-        InliningDecision inliningDecision = new GreedySizeBasedInliningDecision(runtime, hints);
-        return new CFInliningPolicy(inliningDecision, assumptions, optimisticOpts);
+    private static InliningPolicy createInliningPolicy(MetaAccessProvider runtime, Replacements replacements, Assumptions assumptions, OptimisticOptimizations optimisticOpts, Map<Invoke, Double> hints) {
+        InliningDecision inliningDecision = new GreedySizeBasedInliningDecision(runtime, replacements, hints);
+        return new CFInliningPolicy(inliningDecision, replacements, assumptions, optimisticOpts);
     }
 }

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.Map.Entry;
@@ -29,7 +31,6 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.*;
@@ -205,6 +206,7 @@ public class SnippetTemplate {
                 this.snippetsClass = snippetsClass;
             }
             this.cache = new Cache(runtime, replacements, target);
+            replacements.registerSnippets(this.snippetsClass);
         }
 
         protected ResolvedJavaMethod snippet(String name, Class<?>... parameterTypes) {
@@ -242,6 +244,9 @@ public class SnippetTemplate {
 
         // Copy snippet graph, replacing constant parameters with given arguments
         StructuredGraph snippetGraph = replacements.getSnippet(method);
+        if (snippetGraph == null) {
+            throw new GraalInternalError("Snippet has not been registered: %s", format("%H.%n(%p)", method));
+        }
         StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
         IdentityHashMap<Node, Node> nodeReplacements = new IdentityHashMap<>();
         nodeReplacements.put(snippetGraph.start(), snippetCopy.start());

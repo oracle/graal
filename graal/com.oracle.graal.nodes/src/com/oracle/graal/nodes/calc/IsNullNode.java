@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * An IsNullNode will be true if the supplied value is null, and false if it is non-null.
  */
-public final class IsNullNode extends LogicNode implements Canonicalizable, LIRLowerable, Virtualizable {
+public final class IsNullNode extends LogicNode implements Canonicalizable, LIRLowerable, Virtualizable, PiPushable {
 
     @Input private ValueNode object;
 
@@ -77,5 +77,11 @@ public final class IsNullNode extends LogicNode implements Canonicalizable, LIRL
         if (tool.getObjectState(object) != null) {
             tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
         }
+    }
+
+    @Override
+    public boolean push(PiNode parent) {
+        replaceFirstInput(parent, parent.object());
+        return true;
     }
 }

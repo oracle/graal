@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,14 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.type.*;
 
-/**
- * Interface for service providers that register replacements with the compiler.
- */
-public interface ReplacementsProvider {
+public class DeoptimizingStubCall extends DeoptimizingFixedWithNextNode {
 
-    void registerReplacements(Replacements replacements);
+    public DeoptimizingStubCall(Stamp stamp) {
+        super(stamp);
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public DeoptimizationReason getDeoptimizationReason() {
+        return null;
+    }
 }

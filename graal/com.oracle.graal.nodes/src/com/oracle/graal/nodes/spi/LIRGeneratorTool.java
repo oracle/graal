@@ -57,9 +57,9 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitMove(Value dst, Value src);
 
-    public abstract Value emitLoad(Kind kind, Value base, int displacement, Value index, int scale, boolean canTrap);
+    public abstract Value emitLoad(Kind kind, Value base, int displacement, Value index, int scale, DeoptimizingNode deopting);
 
-    public abstract void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value input, boolean canTrap);
+    public abstract void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value input, DeoptimizingNode deopting);
 
     public abstract Value emitLea(Value base, int displacement, Value index, int scale);
 
@@ -73,13 +73,13 @@ public abstract class LIRGeneratorTool {
 
     public abstract Value emitMul(Value a, Value b);
 
-    public abstract Value emitDiv(Value a, Value b);
+    public abstract Value emitDiv(Value a, Value b, DeoptimizingNode deopting);
 
-    public abstract Value emitRem(Value a, Value b);
+    public abstract Value emitRem(Value a, Value b, DeoptimizingNode deopting);
 
-    public abstract Value emitUDiv(Value a, Value b);
+    public abstract Value emitUDiv(Value a, Value b, DeoptimizingNode deopting);
 
-    public abstract Value emitURem(Value a, Value b);
+    public abstract Value emitURem(Value a, Value b, DeoptimizingNode deopting);
 
     public abstract Value emitAnd(Value a, Value b);
 
@@ -97,11 +97,11 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitMembar(int barriers);
 
-    public abstract void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason);
+    public abstract void emitDeoptimize(DeoptimizationAction action, DeoptimizingNode deopting);
 
-    public abstract void emitNullCheck(ValueNode v);
+    public abstract void emitNullCheck(ValueNode v, DeoptimizingNode deopting);
 
-    public abstract Value emitCall(RuntimeCallTarget callTarget, CallingConvention cc, boolean canTrap, Value... args);
+    public abstract Value emitCall(RuntimeCallTarget callTarget, CallingConvention cc, DeoptimizingNode info, Value... args);
 
     public abstract void emitIf(IfNode i);
 
@@ -123,7 +123,6 @@ public abstract class LIRGeneratorTool {
     public abstract void visitCompareAndSwap(CompareAndSwapNode i);
 
     // These methods define the contract a runtime specific backend must provide.
-    public abstract void visitExceptionObject(ExceptionObjectNode i);
 
     public abstract void visitReturn(ReturnNode i);
 

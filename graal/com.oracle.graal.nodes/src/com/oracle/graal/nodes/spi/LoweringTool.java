@@ -34,6 +34,8 @@ public interface LoweringTool {
 
     GraalCodeCacheProvider getRuntime();
 
+    Replacements getReplacements();
+
     ValueNode createNullCheckGuard(ValueNode object);
 
     ValueNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action);

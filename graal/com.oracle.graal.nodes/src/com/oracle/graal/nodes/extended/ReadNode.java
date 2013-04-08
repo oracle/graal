@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Reads an {@linkplain AccessNode accessed} value.
  */
-public final class ReadNode extends FloatableAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
+public final class ReadNode extends FloatableAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable, PiPushable {
 
     public ReadNode(ValueNode object, ValueNode location, Stamp stamp) {
         super(object, location, stamp);
@@ -57,7 +57,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.setResult(this, location().generateLoad(gen, object(), getNullCheck()));
+        gen.setResult(this, location().generateLoad(gen, object(), this));
     }
 
     @Override
@@ -96,6 +96,21 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
             }
         }
         return read;
+    }
+
+    @Override
+    public boolean push(PiNode parent) {
+        Object locId = location().locationIdentity();
+        if (locId instanceof ResolvedJavaField) {
+            ResolvedJavaType fieldType = ((ResolvedJavaField) locId).getDeclaringClass();
+            ResolvedJavaType beforePiType = parent.object().objectStamp().type();
+
+            if (fieldType.isAssignableFrom(beforePiType)) {
+                replaceFirstInput(parent, parent.object());
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

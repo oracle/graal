@@ -34,7 +34,6 @@ import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -92,7 +91,10 @@ public class NewObjectSnippets implements Snippets {
             }
             result = memory.toObject();
         }
-        return unsafeCast(verifyOop(result), StampFactory.forNodeIntrinsic());
+        /* make sure that the unsafeCast is anchored after initialization,
+         * see ReadAfterCheckCast and CheckCastSnippets */
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        return unsafeCast(verifyOop(result), StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
     @Snippet
@@ -123,7 +125,8 @@ public class NewObjectSnippets implements Snippets {
             formatArray(hub, allocationSize, length, headerSize, memory, prototypeMarkWord, fillContents);
             result = memory.toObject();
         }
-        return unsafeArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        return unsafeArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
     /**

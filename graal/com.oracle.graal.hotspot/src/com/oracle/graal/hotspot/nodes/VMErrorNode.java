@@ -28,7 +28,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
@@ -51,15 +50,7 @@ public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowera
 
     @Override
     public void generate(LIRGenerator gen) {
-        String where;
-        try {
-            LIRFrameState state = gen.state();
-            BytecodePosition pos = state.topFrame;
-            where = "near or " + CodeUtil.append(new StringBuilder(100), pos).toString().replace(CodeUtil.NEW_LINE, CodeUtil.NEW_LINE + "\t");
-        } catch (Throwable t) {
-            // Report a less accurate location when debug info cannot be obtained
-            where = "in compiled code for " + MetaUtil.format("%H.%n(%p)", gen.method());
-        }
+        String where = "in compiled code for " + MetaUtil.format("%H.%n(%p)", gen.method());
 
         HotSpotRuntime runtime = (HotSpotRuntime) gen.getRuntime();
         Constant whereArg = Constant.forObject(runtime.registerGCRoot(where));
@@ -71,7 +62,7 @@ public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowera
         }
 
         RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(VMErrorNode.VM_ERROR);
-        gen.emitCall(stub, stub.getCallingConvention(), false, whereArg, formatArg, gen.operand(value));
+        gen.emitCall(stub, stub.getCallingConvention(), null, whereArg, formatArg, gen.operand(value));
     }
 
     @NodeIntrinsic

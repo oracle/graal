@@ -52,7 +52,6 @@ import com.oracle.graal.api.code.CompilationResult.Safepoint;
 import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
@@ -91,6 +90,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     private MonitorSnippets.Templates monitorSnippets;
     private WriteBarrierSnippets.Templates writeBarrierSnippets;
     private BoxingSnippets.Templates boxingSnippets;
+    private LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
 
     private final Map<Descriptor, HotSpotRuntimeCallTarget> runtimeCalls = new HashMap<>();
     private final Map<ResolvedJavaMethod, Stub> stubs = new HashMap<>();
@@ -333,15 +333,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             replacements.registerSnippets(ObjectCloneSnippets.class);
         }
 
-        replacements.registerSnippets(CheckCastSnippets.class);
-        replacements.registerSnippets(InstanceOfSnippets.class);
-        replacements.registerSnippets(NewObjectSnippets.class);
-        replacements.registerSnippets(MonitorSnippets.class);
-
-        replacements.registerSnippets(NewInstanceStub.class);
-        replacements.registerSnippets(NewArrayStub.class);
-        replacements.registerSnippets(WriteBarrierSnippets.class);
-
         replacements.registerSnippets(BoxingSnippets.class);
         for (Class<?> clazz : BoxingSubstitutions.getClasses()) {
             replacements.registerSubstitutions(clazz);
@@ -353,6 +344,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         monitorSnippets = new MonitorSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useFastLocking);
         writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, replacements, graalRuntime.getTarget());
         boxingSnippets = new BoxingSnippets.Templates(this, replacements, graalRuntime.getTarget());
+        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, replacements, graalRuntime.getTarget());
 
         registerStub(new NewInstanceStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_INSTANCE)));
         registerStub(new NewArrayStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_ARRAY)));
@@ -493,15 +485,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         return regConfig;
     }
 
-    /**
-     * HotSpots needs an area suitable for storing a program counter for temporary use during the
-     * deoptimization process.
-     */
-    @Override
-    public int getCustomStackAreaSize() {
-        return graalRuntime.getTarget().wordSize;
-    }
-
     @Override
     public int getMinimumOutgoingSize() {
         return config.runtimeCallStackSize;
@@ -572,16 +555,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             LoadFieldNode loadField = (LoadFieldNode) n;
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) loadField.field();
             ValueNode object = loadField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : loadField.object();
-            LocationNode location = LocationNode.create(field, field.getKind(), field.offset(), graph);
             assert loadField.kind() != Kind.Illegal;
             ReadNode memoryRead = graph.add(new ReadNode(object, LocationNode.create(field, field.getKind(), field.offset(), graph), loadField.stamp()));
             memoryRead.dependencies().add(tool.createNullCheckGuard(object));
 
             graph.replaceFixedWithFixed(loadField, memoryRead);
-            if (config.useG1GC && field.getKind() == Kind.Object && field.getDeclaringClass().getName().toString().equals("Ljava/lang/ref/Reference;") && field.getName().equals("referent")) {
-                WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(memoryRead.object(), memoryRead, location, false));
-                graph.addAfterFixed(memoryRead, writeBarrierPre);
-            }
 
             if (loadField.isVolatile()) {
                 MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_READ));
@@ -602,18 +580,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             FixedWithNextNode first = memoryWrite;
 
             if (field.getKind() == Kind.Object && !memoryWrite.value().objectStamp().alwaysNull()) {
-                if (config.useG1GC) {
-                    WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(memoryWrite.object(), null, memoryWrite.location(), true));
-                    WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(memoryWrite.object(), memoryWrite.value(), memoryWrite.location(), false));
-                    graph.addBeforeFixed(memoryWrite, writeBarrierPre);
-                    graph.addAfterFixed(memoryWrite, writeBarrierPost);
-                    first = writeBarrierPre;
-                    last = writeBarrierPost;
-                } else {
-                    FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(memoryWrite.object()));
-                    graph.addAfterFixed(memoryWrite, writeBarrier);
-                    last = writeBarrier;
-                }
+                FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(memoryWrite.object()));
+                graph.addAfterFixed(memoryWrite, writeBarrier);
+                last = writeBarrier;
             }
             if (storeField.isVolatile()) {
                 MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_WRITE));
@@ -630,23 +599,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 ResolvedJavaType type = cas.object().objectStamp().type();
                 if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
                     // Use a field write barrier since it's not an array store
-                    if (config.useG1GC) {
-                        WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(cas.object(), null, location, true));
-                        WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(cas.object(), cas.newValue(), location, false));
-                        graph.addBeforeFixed(cas, writeBarrierPre);
-                        graph.addAfterFixed(cas, writeBarrierPost);
-                    } else {
-                        graph.addAfterFixed(cas, graph.add(new FieldWriteBarrier(cas.object())));
-                    }
+                    graph.addAfterFixed(cas, graph.add(new FieldWriteBarrier(cas.object())));
                 } else {
                     // This may be an array store so use an array write barrier
-                    if (config.useG1GC) {
-                        WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(cas.object(), null, location, true));
-                        graph.addBeforeFixed(cas, writeBarrierPre);
-                        graph.addAfterFixed(cas, graph.add(new WriteBarrierPost(cas.object(), cas.newValue(), location, true)));
-                    } else {
-                        graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location)));
-                    }
+                    graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location)));
                 }
             }
         } else if (n instanceof LoadIndexedNode) {
@@ -690,14 +646,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 
             if (elementKind == Kind.Object && !value.objectStamp().alwaysNull()) {
-                if (config.useG1GC) {
-                    WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(array, null, arrayLocation, true));
-                    graph.addBeforeFixed(memoryWrite, writeBarrierPre);
-                    WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(array, value, arrayLocation, true));
-                    graph.addAfterFixed(memoryWrite, writeBarrierPost);
-                } else {
-                    graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation)));
-                }
+                graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation)));
             }
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
@@ -720,22 +669,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 // WriteBarrier writeBarrier;
                 if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
                     // Use a field write barrier since it's not an array store
-                    if (config.useG1GC) {
-                        WriteBarrierPre writeBarrierPre = new WriteBarrierPre(object, null, location, true);
-                        graph.addBeforeFixed(write, graph.add(writeBarrierPre));
-                        graph.addAfterFixed(write, graph.add(new WriteBarrierPost(object, write.value(), location, false)));
-                    } else {
-                        graph.addAfterFixed(write, graph.add(new FieldWriteBarrier(object)));
-                    }
+                    graph.addAfterFixed(write, graph.add(new FieldWriteBarrier(object)));
                 } else {
                     // This may be an array store so use an array write barrier
-                    if (config.useG1GC) {
-                        WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(object, null, location, true));
-                        graph.addBeforeFixed(write, writeBarrierPre);
-                        graph.addAfterFixed(write, graph.add(new WriteBarrierPost(object, write.value(), location, true)));
-                    } else {
-                        graph.addAfterFixed(write, graph.add(new ArrayWriteBarrier(object, location)));
-                    }
+                    graph.addAfterFixed(write, graph.add(new ArrayWriteBarrier(object, location)));
                 }
             }
         } else if (n instanceof LoadHubNode) {
@@ -772,10 +709,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             writeBarrierSnippets.lower((FieldWriteBarrier) n, tool);
         } else if (n instanceof ArrayWriteBarrier) {
             writeBarrierSnippets.lower((ArrayWriteBarrier) n, tool);
-        } else if (n instanceof WriteBarrierPre) {
-            writeBarrierSnippets.lower((WriteBarrierPre) n, tool);
-        } else if (n instanceof WriteBarrierPost) {
-            writeBarrierSnippets.lower((WriteBarrierPost) n, tool);
         } else if (n instanceof TLABAllocateNode) {
             newObjectSnippets.lower((TLABAllocateNode) n, tool);
         } else if (n instanceof InitializeObjectNode) {
@@ -784,10 +717,12 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             newObjectSnippets.lower((InitializeArrayNode) n, tool);
         } else if (n instanceof NewMultiArrayNode) {
             newObjectSnippets.lower((NewMultiArrayNode) n, tool);
+        } else if (n instanceof LoadExceptionObjectNode) {
+            exceptionObjectSnippets.lower((LoadExceptionObjectNode) n);
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
             // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
             // zero and the MIN_VALUE / -1 cases.
-        } else if (n instanceof UnwindNode || n instanceof ExceptionObjectNode) {
+        } else if (n instanceof UnwindNode) {
             // Nothing to do, using direct LIR lowering for these nodes.
         } else if (n instanceof BoxNode) {
             boxingSnippets.lower((BoxNode) n);

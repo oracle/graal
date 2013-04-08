@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Node implementing a call to HotSpot's ThreadIsInterrupted stub.
  */
-public class ThreadIsInterruptedStubCall extends FixedWithNextNode implements LIRGenLowerable {
+public class ThreadIsInterruptedStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
     @Input private final ValueNode thread;
     @Input private final ValueNode clearIsInterrupted;
@@ -52,7 +52,7 @@ public class ThreadIsInterruptedStubCall extends FixedWithNextNode implements LI
     @Override
     public void generate(LIRGenerator gen) {
         RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(ThreadIsInterruptedStubCall.THREAD_IS_INTERRUPTED);
-        Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(thread), gen.operand(clearIsInterrupted));
+        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(thread), gen.operand(clearIsInterrupted));
         gen.setResult(this, result);
     }
 

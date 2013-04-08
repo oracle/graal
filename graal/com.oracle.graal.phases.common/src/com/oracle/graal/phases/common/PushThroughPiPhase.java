@@ -20,38 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.phases.common;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.phases.*;
 
-public class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRLowerable {
+public class PushThroughPiPhase extends Phase {
 
-    @Input public ValueNode object;
-
-    public NullCheckNode(ValueNode object) {
-        super(StampFactory.dependency());
-        this.object = object;
-    }
-
-    public ValueNode getObject() {
-        return object;
-    }
+    public static final DebugMetric PUSHED_NODES = Debug.metric("NodesPushedThroughPi");
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
-        generator.emitNullCheck(object, this);
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return true;
-    }
-
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return DeoptimizationReason.NullCheckException;
+    protected void run(StructuredGraph graph) {
+        for (PiNode pi : graph.getNodes(PiNode.class)) {
+            for (Node n : pi.usages().snapshot()) {
+                if (n instanceof PiPushable) {
+                    PiPushable pip = (PiPushable) n;
+                    if (pip.push(pi)) {
+                        PUSHED_NODES.add(1);
+                    }
+                }
+            }
+        }
     }
 }

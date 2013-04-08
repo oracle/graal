@@ -29,7 +29,6 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
@@ -37,6 +36,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.replacements.*;
@@ -119,8 +119,8 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
             PhasePlan phasePlan = new PhasePlan();
             GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-            final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), backend, runtime().getTarget(), stubMethod, graph, null, phasePlan, OptimisticOptimizations.ALL,
-                            new SpeculationLog());
+            final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), stubMethod, graph, null, phasePlan,
+                            OptimisticOptimizations.ALL, new SpeculationLog());
 
             stubCode = Debug.scope("CodeInstall", new Object[]{runtime(), stubMethod}, new Callable<InstalledCode>() {
 

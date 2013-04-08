@@ -107,11 +107,11 @@ public class LocationNode extends FloatingNode implements LIRLowerable, ValueNum
         return gen.emitLea(gen.operand(base), displacement(), Value.ILLEGAL, 0);
     }
 
-    public Value generateLoad(LIRGeneratorTool gen, ValueNode base, boolean canTrap) {
-        return gen.emitLoad(getValueKind(), gen.operand(base), displacement(), Value.ILLEGAL, 0, canTrap);
+    public Value generateLoad(LIRGeneratorTool gen, ValueNode base, DeoptimizingNode deopting) {
+        return gen.emitLoad(getValueKind(), gen.operand(base), displacement(), Value.ILLEGAL, 0, deopting);
     }
 
-    public void generateStore(LIRGeneratorTool gen, ValueNode base, ValueNode value, boolean canTrap) {
-        gen.emitStore(getValueKind(), gen.operand(base), displacement(), Value.ILLEGAL, 0, gen.operand(value), canTrap);
+    public void generateStore(LIRGeneratorTool gen, ValueNode base, ValueNode value, DeoptimizingNode deopting) {
+        gen.emitStore(getValueKind(), gen.operand(base), displacement(), Value.ILLEGAL, 0, gen.operand(value), deopting);
     }
 }

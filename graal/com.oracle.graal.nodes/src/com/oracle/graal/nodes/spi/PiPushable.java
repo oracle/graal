@@ -20,38 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-public class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRLowerable {
+/**
+ * This interface marks nodes, which are able to be pushed through a PiNode.
+ */
+public interface PiPushable {
 
-    @Input public ValueNode object;
-
-    public NullCheckNode(ValueNode object) {
-        super(StampFactory.dependency());
-        this.object = object;
-    }
-
-    public ValueNode getObject() {
-        return object;
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool generator) {
-        generator.emitNullCheck(object, this);
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return true;
-    }
-
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return DeoptimizationReason.NullCheckException;
-    }
+    /**
+     * 
+     * @param parent PiNode
+     * @return true if node was moved
+     */
+    boolean push(PiNode parent);
 }
