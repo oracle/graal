@@ -25,12 +25,14 @@ package com.oracle.graal.hotspot;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.replacements.*;
 
 /**
- * Filters certain method substitutions based on whether there is underlying hardware support for them.
+ * Filters certain method substitutions based on whether there is underlying hardware support for
+ * them.
  */
 public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
@@ -42,22 +44,22 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
-    protected void registerMethodSubstitution(Member originalMethod, Method substituteMethod) {
+    protected ResolvedJavaMethod registerMethodSubstitution(Member originalMethod, Method substituteMethod) {
         if (substituteMethod.getDeclaringClass() == IntegerSubstitutions.class || substituteMethod.getDeclaringClass() == LongSubstitutions.class) {
             if (substituteMethod.getName().equals("bitCount")) {
                 if (!config.usePopCountInstruction) {
-                    return;
+                    return null;
                 }
             }
         } else if (substituteMethod.getDeclaringClass() == AESCryptSubstitutions.class || substituteMethod.getDeclaringClass() == CipherBlockChainingSubstitutions.class) {
             if (!config.useAESIntrinsics) {
-                return;
+                return null;
             }
             assert config.aescryptEncryptBlockStub != 0L;
             assert config.aescryptDecryptBlockStub != 0L;
             assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
         }
-        super.registerMethodSubstitution(originalMethod, substituteMethod);
+        return super.registerMethodSubstitution(originalMethod, substituteMethod);
     }
 }

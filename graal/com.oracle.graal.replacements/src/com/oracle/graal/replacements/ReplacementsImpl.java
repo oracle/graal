@@ -61,6 +61,7 @@ public class ReplacementsImpl implements Replacements {
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> registeredMethodSubstitutions;
     private final Set<ResolvedJavaMethod> registeredSnippets;
     private final Map<ResolvedJavaMethod, Class<? extends FixedWithNextNode>> registerMacroSubstitutions;
+    private final Set<ResolvedJavaMethod> forcedSubstitutions;
 
     public ReplacementsImpl(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target) {
         this.runtime = runtime;
@@ -70,6 +71,7 @@ public class ReplacementsImpl implements Replacements {
         this.registeredMethodSubstitutions = new HashMap<>();
         this.registeredSnippets = new HashSet<>();
         this.registerMacroSubstitutions = new HashMap<>();
+        this.forcedSubstitutions = new HashSet<>();
     }
 
     public void registerSnippets(Class<?> snippets) {
@@ -145,7 +147,10 @@ public class ReplacementsImpl implements Replacements {
                 Class[] originalParameters = originalParameters(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
                 Member originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
                 if (originalMethod != null) {
-                    registerMethodSubstitution(originalMethod, substituteMethod);
+                    ResolvedJavaMethod original = registerMethodSubstitution(originalMethod, substituteMethod);
+                    if (original != null && methodSubstitution.isForcedInlining()) {
+                        forcedSubstitutions.add(original);
+                    }
                 }
             }
             if (macroSubstitution != null) {
@@ -153,7 +158,10 @@ public class ReplacementsImpl implements Replacements {
                 Class[] originalParameters = originalParameters(substituteMethod, macroSubstitution.signature(), macroSubstitution.isStatic());
                 Member originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
                 if (originalMethod != null) {
-                    registerMacroSubstitution(originalMethod, macroSubstitution.macro());
+                    ResolvedJavaMethod original = registerMacroSubstitution(originalMethod, macroSubstitution.macro());
+                    if (original != null && macroSubstitution.isForcedInlining()) {
+                        forcedSubstitutions.add(original);
+                    }
                 }
             }
         }
@@ -164,8 +172,9 @@ public class ReplacementsImpl implements Replacements {
      * 
      * @param originalMember a method or constructor being substituted
      * @param substituteMethod the substitute method
+     * @return the original method
      */
-    protected void registerMethodSubstitution(Member originalMember, Method substituteMethod) {
+    protected ResolvedJavaMethod registerMethodSubstitution(Member originalMember, Method substituteMethod) {
         ResolvedJavaMethod substitute = runtime.lookupJavaMethod(substituteMethod);
         ResolvedJavaMethod original;
         if (originalMember instanceof Method) {
@@ -176,6 +185,7 @@ public class ReplacementsImpl implements Replacements {
         Debug.log("substitution: " + MetaUtil.format("%H.%n(%p)", original) + " --> " + MetaUtil.format("%H.%n(%p)", substitute));
 
         registeredMethodSubstitutions.put(original, substitute);
+        return original;
     }
 
     /**
@@ -183,8 +193,9 @@ public class ReplacementsImpl implements Replacements {
      * 
      * @param originalMethod a method or constructor being substituted
      * @param macro the substitute macro node class
+     * @return the original method
      */
-    protected void registerMacroSubstitution(Member originalMethod, Class<? extends FixedWithNextNode> macro) {
+    protected ResolvedJavaMethod registerMacroSubstitution(Member originalMethod, Class<? extends FixedWithNextNode> macro) {
         ResolvedJavaMethod originalJavaMethod;
         if (originalMethod instanceof Method) {
             originalJavaMethod = runtime.lookupJavaMethod((Method) originalMethod);
@@ -192,6 +203,7 @@ public class ReplacementsImpl implements Replacements {
             originalJavaMethod = runtime.lookupJavaConstructor((Constructor) originalMethod);
         }
         registerMacroSubstitutions.put(originalJavaMethod, macro);
+        return originalJavaMethod;
     }
 
     private SnippetInliningPolicy inliningPolicy(ResolvedJavaMethod method) {
@@ -476,5 +488,10 @@ public class ReplacementsImpl implements Replacements {
         result.addAll(registeredMethodSubstitutions.keySet());
         result.addAll(registerMacroSubstitutions.keySet());
         return result;
+    }
+
+    @Override
+    public boolean isForcedSubstitution(ResolvedJavaMethod method) {
+        return forcedSubstitutions.contains(method);
     }
 }

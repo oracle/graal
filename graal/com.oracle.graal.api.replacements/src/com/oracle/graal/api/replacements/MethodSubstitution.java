@@ -54,4 +54,10 @@ public @interface MethodSubstitution {
      * is the same as the substitute method.
      */
     String signature() default "";
+
+    /**
+     * Determines if this method should be substituted in all cases, even if inlining thinks it is
+     * not important.
+     */
+    boolean isForcedInlining() default false;
 }
