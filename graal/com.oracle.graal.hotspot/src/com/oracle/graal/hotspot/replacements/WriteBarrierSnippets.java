@@ -30,7 +30,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.Parameter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
