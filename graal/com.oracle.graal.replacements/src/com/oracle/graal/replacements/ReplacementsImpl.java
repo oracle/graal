@@ -146,7 +146,7 @@ public class ReplacementsImpl implements Replacements {
                 }
                 String originalName = originalName(substituteMethod, methodSubstitution.value());
                 Class[] originalParameters = originalParameters(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
-                Member originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
+                Member originalMethod = originalMethod(classSubstitution, methodSubstitution.optional(), originalName, originalParameters);
                 if (originalMethod != null) {
                     ResolvedJavaMethod original = registerMethodSubstitution(originalMethod, substituteMethod);
                     if (original != null && methodSubstitution.isForcedInlining()) {
@@ -157,7 +157,7 @@ public class ReplacementsImpl implements Replacements {
             if (macroSubstitution != null) {
                 String originalName = originalName(substituteMethod, macroSubstitution.value());
                 Class[] originalParameters = originalParameters(substituteMethod, macroSubstitution.signature(), macroSubstitution.isStatic());
-                Member originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
+                Member originalMethod = originalMethod(classSubstitution, macroSubstitution.optional(), originalName, originalParameters);
                 if (originalMethod != null) {
                     ResolvedJavaMethod original = registerMacroSubstitution(originalMethod, macroSubstitution.macro());
                     if (original != null && macroSubstitution.isForcedInlining()) {
@@ -462,7 +462,7 @@ public class ReplacementsImpl implements Replacements {
         return parameters;
     }
 
-    private static Member originalMethod(ClassSubstitution classSubstitution, String name, Class[] parameters) {
+    private static Member originalMethod(ClassSubstitution classSubstitution, boolean optional, String name, Class[] parameters) {
         Class<?> originalClass = classSubstitution.value();
         if (originalClass == ClassSubstitution.class) {
             originalClass = resolveType(classSubstitution.className(), classSubstitution.optional());
@@ -478,6 +478,9 @@ public class ReplacementsImpl implements Replacements {
                 return originalClass.getDeclaredMethod(name, parameters);
             }
         } catch (NoSuchMethodException | SecurityException e) {
+            if (optional) {
+                return null;
+            }
             throw new GraalInternalError(e);
         }
     }

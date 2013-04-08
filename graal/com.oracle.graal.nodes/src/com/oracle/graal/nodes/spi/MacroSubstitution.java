@@ -61,6 +61,13 @@ public @interface MacroSubstitution {
     String signature() default "";
 
     /**
+     * Determines if the substitution is for a method that may not be part of the runtime. For
+     * example, a method introduced in a later JDK version. Substitutions for such methods are
+     * omitted if the original method cannot be found.
+     */
+    boolean optional() default false;
+
+    /**
      * The node class with which the method invocation should be replaced. It needs to be a subclass
      * of {@link FixedWithNextNode}, and it is expected to provide a public constructor that takes
      * an {@link InvokeNode} as a parameter.
