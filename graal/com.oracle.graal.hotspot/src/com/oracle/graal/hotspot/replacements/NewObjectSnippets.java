@@ -125,7 +125,8 @@ public class NewObjectSnippets implements Snippets {
             formatArray(hub, allocationSize, length, headerSize, memory, prototypeMarkWord, fillContents);
             result = memory.toObject();
         }
-        return unsafeArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        return unsafeArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
     /**
