@@ -1104,25 +1104,23 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 }
             }
 
+            TypeData primaryType = specialization.getReturnType().getActualTypeData(node.getTypeSystem());
+
             for (ExecutableTypeData execType : node.getExecutableTypes()) {
                 if (execType.isFinal()) {
                     continue;
                 }
-                CodeExecutableElement method = CodeExecutableElement.clone(getContext().getEnvironment(), execType.getMethod());
-                if (method.getParameters().size() == 1) {
-                    CodeVariableElement var = CodeVariableElement.clone(method.getParameters().get(0));
-                    var.setName("frameValue");
-                    method.getParameters().set(0, var);
-                }
-                method.getModifiers().remove(Modifier.ABSTRACT);
-                clazz.add(method);
 
-                TypeData primaryType = specialization.getReturnType().getActualTypeData(node.getTypeSystem());
                 if (primaryType == execType.getType()) {
-                    buildFunctionalExecuteMethod(method.createBuilder(), specialization);
-                } else {
-                    buildCastingExecuteMethod(method.createBuilder(), specialization, execType.getType());
+                    CodeExecutableElement executeMethod = createExecutableTypeOverride(execType);
+                    clazz.add(executeMethod);
+                    executeMethod.setBodyTree(createFunctionalExecute(executeMethod.createBuilder(), specialization));
+                } else if (needsCastingExecuteMethod(execType, primaryType)) {
+                    CodeExecutableElement executeMethod = createExecutableTypeOverride(execType);
+                    clazz.add(executeMethod);
+                    executeMethod.setBodyTree(createCastingExecute(executeMethod.createBuilder(), specialization, execType.getType()));
                 }
+
             }
 
             if (node.needsRewrites(getContext()) && !specialization.isGeneric() && !specialization.isUninitialized()) {
@@ -1130,7 +1128,32 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
         }
 
-        private void buildCastingExecuteMethod(CodeTreeBuilder builder, SpecializationData specialization, TypeData type) {
+        private CodeExecutableElement createExecutableTypeOverride(ExecutableTypeData execType) {
+            CodeExecutableElement method = CodeExecutableElement.clone(getContext().getEnvironment(), execType.getMethod());
+            if (method.getParameters().size() == 1) {
+                CodeVariableElement var = CodeVariableElement.clone(method.getParameters().get(0));
+                var.setName("frameValue");
+                method.getParameters().set(0, var);
+            }
+            method.getModifiers().remove(Modifier.ABSTRACT);
+            return method;
+        }
+
+        private boolean needsCastingExecuteMethod(ExecutableTypeData execType, TypeData primaryType) {
+            if (execType.isAbstract()) {
+                return true;
+            }
+            if (Utils.isPrimitiveOrVoid(primaryType.getPrimitiveType()) && Utils.isPrimitiveOrVoid(execType.getType().getPrimitiveType())) {
+                return true;
+            }
+            if (execType.getType().isGeneric()) {
+                return true;
+            }
+            return false;
+        }
+
+        private CodeTree createCastingExecute(CodeTreeBuilder parent, SpecializationData specialization, TypeData type) {
+            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
             NodeData node = specialization.getNode();
             TypeSystemData typeSystem = node.getTypeSystem();
 
@@ -1143,7 +1166,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             CodeTree primaryExecuteCall = null;
 
-            CodeTreeBuilder executeBuilder = CodeTreeBuilder.createBuilder();
+            CodeTreeBuilder executeBuilder = new CodeTreeBuilder(builder);
             buildExecute(executeBuilder, null, null, execType);
             primaryExecuteCall = executeBuilder.getRoot();
 
@@ -1186,6 +1209,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     builder.end();
                 }
             }
+
+            return builder.getRoot();
         }
 
         private CodeTree createExpectType(NodeData node, ExecutableTypeData castedType, CodeTree value) {
@@ -1211,7 +1236,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return builder.getRoot();
         }
 
-        private void buildFunctionalExecuteMethod(CodeTreeBuilder builder, SpecializationData specialization) {
+        private CodeTree createFunctionalExecute(CodeTreeBuilder parent, SpecializationData specialization) {
+            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
             if (specialization.isUninitialized()) {
                 builder.tree(createDeoptimize(builder));
             }
@@ -1230,6 +1256,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 returnSpecialized = createReturnSpecializeAndExecute(builder, next, null);
             }
             builder.tree(createGuardAndCast(builder, null, specialization, specialization, true, executeNode, returnSpecialized));
+
+            return builder.getRoot();
         }
 
         private CodeTree createDeoptimize(CodeTreeBuilder parent) {

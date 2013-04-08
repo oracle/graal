@@ -332,6 +332,10 @@ public class Utils {
         return mirror.getKind().isPrimitive();
     }
 
+    public static boolean isPrimitiveOrVoid(TypeMirror mirror) {
+        return isPrimitive(mirror) || isVoid(mirror);
+    }
+
     public static List<String> getQualifiedSuperTypeNames(TypeElement element) {
         List<TypeElement> types = getSuperTypes(element);
         List<String> qualifiedNames = new ArrayList<>();

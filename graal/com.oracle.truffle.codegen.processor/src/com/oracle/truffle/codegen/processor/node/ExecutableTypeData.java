@@ -59,6 +59,10 @@ public class ExecutableTypeData extends TemplateMethod {
         return getMethod().getModifiers().contains(Modifier.FINAL);
     }
 
+    public boolean isAbstract() {
+        return getMethod().getModifiers().contains(Modifier.ABSTRACT);
+    }
+
     @Override
     public int hashCode() {
         return type.hashCode();
