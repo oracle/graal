@@ -46,7 +46,6 @@ public class NodeData extends Template {
 
     private List<SpecializationData> specializations;
     private List<SpecializationListenerData> specializationListeners;
-    private List<GuardData> guards;
     private List<ExecutableTypeData> executableTypes;
     private List<ShortCircuitData> shortCircuits;
 
@@ -64,7 +63,6 @@ public class NodeData extends Template {
         this.nodeType = splitSource.nodeType;
         this.specializations = splitSource.specializations;
         this.specializationListeners = splitSource.specializationListeners;
-        this.guards = splitSource.guards;
         this.executableTypes = splitSource.executableTypes;
         this.shortCircuits = splitSource.shortCircuits;
         this.fields = splitSource.fields;
@@ -92,9 +90,6 @@ public class NodeData extends Template {
         }
         if (specializationListeners != null) {
             children.addAll(specializationListeners);
-        }
-        if (guards != null) {
-            children.addAll(guards);
         }
         if (executableTypes != null) {
             children.addAll(executableTypes);
@@ -412,10 +407,6 @@ public class NodeData extends Template {
         return specializationListeners;
     }
 
-    public List<GuardData> getGuards() {
-        return guards;
-    }
-
     public List<ExecutableTypeData> getExecutableTypes() {
         return executableTypes;
     }
@@ -435,10 +426,6 @@ public class NodeData extends Template {
 
     void setSpecializationListeners(List<SpecializationListenerData> specializationListeners) {
         this.specializationListeners = specializationListeners;
-    }
-
-    void setGuards(List<GuardData> guards) {
-        this.guards = guards;
     }
 
     void setExecutableTypes(List<ExecutableTypeData> executableTypes) {
