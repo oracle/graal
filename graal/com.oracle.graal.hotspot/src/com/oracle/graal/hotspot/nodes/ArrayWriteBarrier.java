@@ -31,6 +31,7 @@ public final class ArrayWriteBarrier extends FixedWithNextNode implements Lowera
 
     @Input private ValueNode object;
     @Input private LocationNode location;
+    private final boolean precise;
 
     public ValueNode getObject() {
         return object;
@@ -40,12 +41,18 @@ public final class ArrayWriteBarrier extends FixedWithNextNode implements Lowera
         return location;
     }
 
-    public ArrayWriteBarrier(ValueNode object, LocationNode location) {
+    public boolean usePrecise() {
+        return precise;
+    }
+
+    public ArrayWriteBarrier(ValueNode object, LocationNode location, boolean precise) {
         super(StampFactory.forVoid());
         this.object = object;
         this.location = location;
+        this.precise = precise;
     }
 
+    @Override
     public void lower(LoweringTool generator) {
         generator.getRuntime().lower(this, generator);
     }

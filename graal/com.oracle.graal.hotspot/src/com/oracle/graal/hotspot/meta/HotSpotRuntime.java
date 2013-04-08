@@ -573,7 +573,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             FixedWithNextNode first = memoryWrite;
 
             if (field.getKind() == Kind.Object && !memoryWrite.value().objectStamp().alwaysNull()) {
-                FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(memoryWrite.object()));
+                ArrayWriteBarrier writeBarrier = graph.add(new ArrayWriteBarrier(memoryWrite.object(), location, false));
                 graph.addAfterFixed(memoryWrite, writeBarrier);
                 last = writeBarrier;
             }
@@ -592,10 +592,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 ResolvedJavaType type = cas.object().objectStamp().type();
                 if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
                     // Use a field write barrier since it's not an array store
-                    graph.addAfterFixed(cas, graph.add(new FieldWriteBarrier(cas.object())));
+                    graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location, false)));
                 } else {
                     // This may be an array store so use an array write barrier
-                    graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location)));
+                    graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location, true)));
                 }
             }
         } else if (n instanceof LoadIndexedNode) {
@@ -639,7 +639,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 
             if (elementKind == Kind.Object && !value.objectStamp().alwaysNull()) {
-                graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation)));
+                graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation, true)));
             }
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
@@ -662,10 +662,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 // WriteBarrier writeBarrier;
                 if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
                     // Use a field write barrier since it's not an array store
-                    graph.addAfterFixed(write, graph.add(new FieldWriteBarrier(object)));
+                    graph.addAfterFixed(write, graph.add(new ArrayWriteBarrier(object, location, false)));
                 } else {
                     // This may be an array store so use an array write barrier
-                    graph.addAfterFixed(write, graph.add(new ArrayWriteBarrier(object, location)));
+                    graph.addAfterFixed(write, graph.add(new ArrayWriteBarrier(object, location, true)));
                 }
             }
         } else if (n instanceof LoadHubNode) {
