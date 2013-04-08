@@ -91,7 +91,7 @@ public final class SchedulePhase extends Phase {
         }
 
         @Override
-        protected HashSet<FloatingReadNode> merge(MergeNode merge, List<HashSet<FloatingReadNode>> states) {
+        protected HashSet<FloatingReadNode> merge(Block merge, List<HashSet<FloatingReadNode>> states) {
             HashSet<FloatingReadNode> state = new HashSet<>(states.get(0));
             for (int i = 1; i < states.size(); i++) {
                 state.retainAll(states.get(i));
