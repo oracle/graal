@@ -54,4 +54,11 @@ public @interface MethodSubstitution {
      * is the same as the substitute method.
      */
     String signature() default "";
+
+    /**
+     * Determines if the substitution is for a method that may not be part of the runtime. For
+     * example, a method introduced in a later JDK version. Substitutions for such methods are
+     * omitted if the original method cannot be found.
+     */
+    boolean optional() default false;
 }
