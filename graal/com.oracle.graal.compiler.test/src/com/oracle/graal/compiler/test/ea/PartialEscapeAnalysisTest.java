@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
+import java.util.concurrent.*;
+
 import junit.framework.*;
-import junit.framework.Assert;
 
 import org.junit.Test;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -72,8 +74,8 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
     }
 
     @SuppressWarnings("all")
-    public static Object test1Snippet(int a, int b) {
-        TestObject obj = new TestObject(1, 2);
+    public static Object test1Snippet(int a, int b, Object x, Object y) {
+        TestObject2 obj = new TestObject2(x, y);
         if (a < 0) {
             if (b < 0) {
                 return obj;
@@ -90,9 +92,9 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
         testMaterialize("test2Snippet", 1.5, 3, LoadIndexedNode.class);
     }
 
-    public static Object test2Snippet(int a) {
-        TestObject2 obj = new TestObject2(1, 2);
-        obj.x = new TestObject2(obj, 3);
+    public static Object test2Snippet(int a, Object x, Object y, Object z) {
+        TestObject2 obj = new TestObject2(x, y);
+        obj.x = new TestObject2(obj, z);
         if (a < 0) {
             ((TestObject2) obj.x).y = null;
             obj.y = null;
@@ -125,42 +127,49 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
     @SafeVarargs
     final void testMaterialize(final String snippet, double expectedProbability, int expectedCount, Class<? extends Node>... invalidNodeClasses) {
         StructuredGraph result = processMethod(snippet);
-        Assert.assertTrue("partial escape analysis should have removed all NewInstanceNode allocations", result.getNodes(NewInstanceNode.class).isEmpty());
-        Assert.assertTrue("partial escape analysis should have removed all NewArrayNode allocations", result.getNodes(NewArrayNode.class).isEmpty());
-        double probabilitySum = 0;
-        int materializeCount = 0;
-        for (MaterializeObjectNode materialize : result.getNodes(MaterializeObjectNode.class)) {
-            probabilitySum += materialize.probability();
-            materializeCount++;
-        }
-        Assert.assertEquals("unexpected number of MaterializeObjectNodes", expectedCount, materializeCount);
-        Assert.assertEquals("unexpected probability of MaterializeObjectNodes", expectedProbability, probabilitySum, 0.01);
-        for (Node node : result.getNodes()) {
-            for (Class<? extends Node> clazz : invalidNodeClasses) {
-                Assert.assertFalse("instance of invalid class: " + clazz.getSimpleName(), clazz.isInstance(node) && node.usages().isNotEmpty());
+        try {
+            Assert.assertTrue("partial escape analysis should have removed all NewInstanceNode allocations", result.getNodes(NewInstanceNode.class).isEmpty());
+            Assert.assertTrue("partial escape analysis should have removed all NewArrayNode allocations", result.getNodes(NewArrayNode.class).isEmpty());
+            double probabilitySum = 0;
+            int materializeCount = 0;
+            for (MaterializeObjectNode materialize : result.getNodes(MaterializeObjectNode.class)) {
+                probabilitySum += materialize.probability();
+                materializeCount++;
             }
+            Assert.assertEquals("unexpected number of MaterializeObjectNodes", expectedCount, materializeCount);
+            Assert.assertEquals("unexpected probability of MaterializeObjectNodes", expectedProbability, probabilitySum, 0.01);
+            for (Node node : result.getNodes()) {
+                for (Class<? extends Node> clazz : invalidNodeClasses) {
+                    Assert.assertFalse("instance of invalid class: " + clazz.getSimpleName(), clazz.isInstance(node) && node.usages().isNotEmpty());
+                }
+            }
+        } catch (AssertionError e) {
+            TypeSystemTest.outputGraph(result, snippet + ": " + e.getMessage());
+            throw e;
         }
     }
 
     private StructuredGraph processMethod(final String snippet) {
-        StructuredGraph graph = parse(snippet);
-        try {
-            new ComputeProbabilityPhase().apply(graph);
-            for (Invoke n : graph.getInvokes()) {
-                n.node().setProbability(100000);
-            }
-            Assumptions assumptions = new Assumptions(false);
-            new InliningPhase(runtime(), null, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-            new DeadCodeEliminationPhase().apply(graph);
-            new CanonicalizerPhase(runtime(), assumptions).apply(graph);
-            new PartialEscapeAnalysisPhase(runtime(), assumptions, false, false).apply(graph);
+        return Debug.scope("PartialEscapeAnalysisTest " + snippet, new DebugDumpScope(snippet), new Callable<StructuredGraph>() {
 
-            new CullFrameStatesPhase().apply(graph);
-            new DeadCodeEliminationPhase().apply(graph);
-            new CanonicalizerPhase(runtime(), assumptions).apply(graph);
-            return graph;
-        } catch (AssertionFailedError t) {
-            throw new RuntimeException(t.getMessage() + "\n" + getCanonicalGraphString(graph), t);
-        }
+            @Override
+            public StructuredGraph call() {
+                StructuredGraph graph = parse(snippet);
+                new ComputeProbabilityPhase().apply(graph);
+                for (Invoke n : graph.getInvokes()) {
+                    n.node().setProbability(100000);
+                }
+                Assumptions assumptions = new Assumptions(false);
+                new InliningPhase(runtime(), null, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+                new DeadCodeEliminationPhase().apply(graph);
+                new CanonicalizerPhase(runtime(), assumptions).apply(graph);
+                new PartialEscapeAnalysisPhase(runtime(), assumptions, false, false).apply(graph);
+
+                new CullFrameStatesPhase().apply(graph);
+                new DeadCodeEliminationPhase().apply(graph);
+                new CanonicalizerPhase(runtime(), assumptions).apply(graph);
+                return graph;
+            }
+        });
     }
 }
