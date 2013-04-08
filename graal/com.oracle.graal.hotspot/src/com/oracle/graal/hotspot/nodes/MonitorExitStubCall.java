@@ -35,7 +35,7 @@ import com.oracle.graal.word.*;
 /**
  * Node implementing a call to HotSpot's {@code graal_monitorexit} stub.
  */
-public class MonitorExitStubCall extends FixedWithNextNode implements LIRGenLowerable, MonitorReference {
+public class MonitorExitStubCall extends DeoptimizingStubCall implements LIRGenLowerable, MonitorReference {
 
     @Input private final ValueNode object;
     private int lockDepth;
@@ -60,7 +60,7 @@ public class MonitorExitStubCall extends FixedWithNextNode implements LIRGenLowe
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen;
         StackSlot slot = hsGen.getLockSlot(lockDepth);
         RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(MonitorExitStubCall.MONITOREXIT);
-        gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object), gen.emitLea(slot));
+        gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(object), gen.emitLea(slot));
     }
 
     @NodeIntrinsic

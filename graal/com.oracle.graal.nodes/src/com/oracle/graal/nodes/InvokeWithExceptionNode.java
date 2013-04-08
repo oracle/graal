@@ -221,4 +221,29 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     public double probability(BeginNode successor) {
         return successor == next ? 1 - EXCEPTION_PROBA : EXCEPTION_PROBA;
     }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public DeoptimizationReason getDeoptimizationReason() {
+        return null;
+    }
+
+    @Override
+    public FrameState getDeoptimizationState() {
+        return stateDuring();
+    }
+
+    @Override
+    public void setDeoptimizationState(FrameState f) {
+        throw new IllegalStateException();
+    }
+
+    @Override
+    public boolean isCallSiteDeoptimization() {
+        return true;
+    }
 }

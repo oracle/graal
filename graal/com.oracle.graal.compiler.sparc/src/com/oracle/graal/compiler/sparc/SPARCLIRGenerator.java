@@ -214,13 +214,13 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitLoad(Kind kind, Value base, int displacement, Value index, int scale, boolean canTrap) {
+    public Value emitLoad(Kind kind, Value base, int displacement, Value index, int scale, DeoptimizingNode canTrap) {
         // SPARC: Auto-generated method stub
         return null;
     }
 
     @Override
-    public void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value input, boolean canTrap) {
+    public void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value input, DeoptimizingNode canTrap) {
         // SPARC: Auto-generated method stub
 
     }
@@ -262,25 +262,25 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitDiv(Value a, Value b) {
+    public Value emitDiv(Value a, Value b, DeoptimizingNode deopting) {
         // SPARC: Auto-generated method stub
         return null;
     }
 
     @Override
-    public Value emitRem(Value a, Value b) {
+    public Value emitRem(Value a, Value b, DeoptimizingNode deopting) {
         // SPARC: Auto-generated method stub
         return null;
     }
 
     @Override
-    public Value emitUDiv(Value a, Value b) {
+    public Value emitUDiv(Value a, Value b, DeoptimizingNode deopting) {
         // SPARC: Auto-generated method stub
         return null;
     }
 
     @Override
-    public Value emitURem(Value a, Value b) {
+    public Value emitURem(Value a, Value b, DeoptimizingNode deopting) {
         // SPARC: Auto-generated method stub
         return null;
     }
@@ -334,7 +334,7 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
+    public void emitDeoptimize(DeoptimizationAction action, DeoptimizingNode deopting) {
         // SPARC: Auto-generated method stub
 
     }
@@ -364,7 +364,7 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitNullCheck(ValueNode v) {
+    public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
         // SPARC: Auto-generated method stub
 
     }

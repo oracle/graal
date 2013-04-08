@@ -33,7 +33,7 @@ import com.oracle.graal.word.*;
 /**
  * Node implementing a call to HotSpot's {@code graal_monitorenter} stub.
  */
-public class MonitorEnterStubCall extends FixedWithNextNode implements LIRGenLowerable {
+public class MonitorEnterStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
     @Input private final ValueNode object;
     @Input private final ValueNode lock;
@@ -48,7 +48,7 @@ public class MonitorEnterStubCall extends FixedWithNextNode implements LIRGenLow
     @Override
     public void generate(LIRGenerator gen) {
         RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(MonitorEnterStubCall.MONITORENTER);
-        gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object), gen.operand(lock));
+        gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(object), gen.operand(lock));
     }
 
     @NodeIntrinsic

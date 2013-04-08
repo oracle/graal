@@ -53,6 +53,6 @@ public final class FloatDivNode extends FloatArithmeticNode implements Canonical
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.setResult(this, gen.emitDiv(gen.operand(x()), gen.operand(y())));
+        gen.setResult(this, gen.emitDiv(gen.operand(x()), gen.operand(y()), null));
     }
 }

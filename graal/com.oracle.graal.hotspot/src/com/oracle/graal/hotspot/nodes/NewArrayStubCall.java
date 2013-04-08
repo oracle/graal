@@ -36,7 +36,7 @@ import com.oracle.graal.word.*;
 /**
  * A call to the {@link NewArrayStub}.
  */
-public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerable {
+public class NewArrayStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
@@ -63,7 +63,7 @@ public class NewArrayStubCall extends FixedWithNextNode implements LIRGenLowerab
     @Override
     public void generate(LIRGenerator gen) {
         RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NEW_ARRAY);
-        Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub), gen.operand(length));
+        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(hub), gen.operand(length));
         gen.setResult(this, result);
     }
 

@@ -36,7 +36,7 @@ import com.oracle.graal.word.*;
 /**
  * Node implementing a call to HotSpot's {@code new_multi_array} stub.
  */
-public class NewMultiArrayStubCall extends FixedWithNextNode implements LIRGenLowerable {
+public class NewMultiArrayStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
@@ -65,7 +65,7 @@ public class NewMultiArrayStubCall extends FixedWithNextNode implements LIRGenLo
     @Override
     public void generate(LIRGenerator gen) {
         RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NewMultiArrayStubCall.NEW_MULTI_ARRAY);
-        Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(hub), Constant.forInt(rank), gen.operand(dims));
+        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(hub), Constant.forInt(rank), gen.operand(dims));
         gen.setResult(this, result);
     }
 

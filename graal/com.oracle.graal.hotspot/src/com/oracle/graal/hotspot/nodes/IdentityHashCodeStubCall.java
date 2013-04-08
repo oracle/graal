@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Node implementing a call to HotSpot's {@code graal_identityhashcode} stub.
  */
-public class IdentityHashCodeStubCall extends FixedWithNextNode implements LIRGenLowerable {
+public class IdentityHashCodeStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
     @Input private final ValueNode object;
     public static final Descriptor IDENTITY_HASHCODE = new Descriptor("identity_hashcode", false, int.class, Object.class);
@@ -47,7 +47,7 @@ public class IdentityHashCodeStubCall extends FixedWithNextNode implements LIRGe
     @Override
     public void generate(LIRGenerator gen) {
         RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(IdentityHashCodeStubCall.IDENTITY_HASHCODE);
-        Variable result = gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object));
+        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(object));
         gen.setResult(this, result);
     }
 
