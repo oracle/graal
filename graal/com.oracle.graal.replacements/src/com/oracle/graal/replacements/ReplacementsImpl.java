@@ -474,4 +474,13 @@ public class ReplacementsImpl implements Replacements {
         }
         return pool;
     }
+
+    @Override
+    public Collection<ResolvedJavaMethod> getAllReplacements() {
+        HashSet<ResolvedJavaMethod> result = new HashSet<>();
+        result.addAll(registeredSnippets);
+        result.addAll(registeredMethodSubstitutions.keySet());
+        result.addAll(registerMacroSubstitutions.keySet());
+        return result;
+    }
 }
