@@ -57,7 +57,7 @@ public final class InitializeObjectNode extends FixedWithNextNode implements Low
     }
 
     public boolean fillContents() {
-        return HotSpotSnippetUtils.useG1GC() ? true : fillContents;
+        return fillContents;
     }
 
     public boolean locked() {

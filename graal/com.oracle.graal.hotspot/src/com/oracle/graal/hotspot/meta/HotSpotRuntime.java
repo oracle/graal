@@ -554,10 +554,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             memoryRead.dependencies().add(tool.createNullCheckGuard(object));
 
             graph.replaceFixedWithFixed(loadField, memoryRead);
-            if (config.useG1GC && field.getKind() == Kind.Object && field.getDeclaringClass().getName().toString().equals("Ljava/lang/ref/Reference;") && field.getName().equals("referent")) {
-                WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(memoryRead.object(), memoryRead, location, false));
-                graph.addAfterFixed(memoryRead, writeBarrierPre);
-            }
 
             if (loadField.isVolatile()) {
                 MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_READ));
@@ -578,18 +574,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             FixedWithNextNode first = memoryWrite;
 
             if (field.getKind() == Kind.Object && !memoryWrite.value().objectStamp().alwaysNull()) {
-                if (config.useG1GC) {
-                    WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(memoryWrite.object(), null, memoryWrite.location(), true));
-                    WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(memoryWrite.object(), memoryWrite.value(), memoryWrite.location(), false));
-                    graph.addBeforeFixed(memoryWrite, writeBarrierPre);
-                    graph.addAfterFixed(memoryWrite, writeBarrierPost);
-                    first = writeBarrierPre;
-                    last = writeBarrierPost;
-                } else {
-                    FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(memoryWrite.object()));
-                    graph.addAfterFixed(memoryWrite, writeBarrier);
-                    last = writeBarrier;
-                }
+                FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(memoryWrite.object()));
+                graph.addAfterFixed(memoryWrite, writeBarrier);
+                last = writeBarrier;
             }
             if (storeField.isVolatile()) {
                 MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_WRITE));
@@ -606,23 +593,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 ResolvedJavaType type = cas.object().objectStamp().type();
                 if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
                     // Use a field write barrier since it's not an array store
-                    if (config.useG1GC) {
-                        WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(cas.object(), null, location, true));
-                        WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(cas.object(), cas.newValue(), location, false));
-                        graph.addBeforeFixed(cas, writeBarrierPre);
-                        graph.addAfterFixed(cas, writeBarrierPost);
-                    } else {
-                        graph.addAfterFixed(cas, graph.add(new FieldWriteBarrier(cas.object())));
-                    }
+                    graph.addAfterFixed(cas, graph.add(new FieldWriteBarrier(cas.object())));
                 } else {
                     // This may be an array store so use an array write barrier
-                    if (config.useG1GC) {
-                        WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(cas.object(), null, location, true));
-                        graph.addBeforeFixed(cas, writeBarrierPre);
-                        graph.addAfterFixed(cas, graph.add(new WriteBarrierPost(cas.object(), cas.newValue(), location, true)));
-                    } else {
-                        graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location)));
-                    }
+                    graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location)));
                 }
             }
         } else if (n instanceof LoadIndexedNode) {
@@ -666,14 +640,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 
             if (elementKind == Kind.Object && !value.objectStamp().alwaysNull()) {
-                if (config.useG1GC) {
-                    WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(array, null, arrayLocation, true));
-                    graph.addBeforeFixed(memoryWrite, writeBarrierPre);
-                    WriteBarrierPost writeBarrierPost = graph.add(new WriteBarrierPost(array, value, arrayLocation, true));
-                    graph.addAfterFixed(memoryWrite, writeBarrierPost);
-                } else {
-                    graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation)));
-                }
+                graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation)));
             }
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
@@ -696,22 +663,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 // WriteBarrier writeBarrier;
                 if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
                     // Use a field write barrier since it's not an array store
-                    if (config.useG1GC) {
-                        WriteBarrierPre writeBarrierPre = new WriteBarrierPre(object, null, location, true);
-                        graph.addBeforeFixed(write, graph.add(writeBarrierPre));
-                        graph.addAfterFixed(write, graph.add(new WriteBarrierPost(object, write.value(), location, false)));
-                    } else {
-                        graph.addAfterFixed(write, graph.add(new FieldWriteBarrier(object)));
-                    }
+                    graph.addAfterFixed(write, graph.add(new FieldWriteBarrier(object)));
                 } else {
                     // This may be an array store so use an array write barrier
-                    if (config.useG1GC) {
-                        WriteBarrierPre writeBarrierPre = graph.add(new WriteBarrierPre(object, null, location, true));
-                        graph.addBeforeFixed(write, writeBarrierPre);
-                        graph.addAfterFixed(write, graph.add(new WriteBarrierPost(object, write.value(), location, true)));
-                    } else {
-                        graph.addAfterFixed(write, graph.add(new ArrayWriteBarrier(object, location)));
-                    }
+                    graph.addAfterFixed(write, graph.add(new ArrayWriteBarrier(object, location)));
                 }
             }
         } else if (n instanceof LoadHubNode) {
@@ -748,10 +703,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             writeBarrierSnippets.lower((FieldWriteBarrier) n, tool);
         } else if (n instanceof ArrayWriteBarrier) {
             writeBarrierSnippets.lower((ArrayWriteBarrier) n, tool);
-        } else if (n instanceof WriteBarrierPre) {
-            writeBarrierSnippets.lower((WriteBarrierPre) n, tool);
-        } else if (n instanceof WriteBarrierPost) {
-            writeBarrierSnippets.lower((WriteBarrierPost) n, tool);
         } else if (n instanceof TLABAllocateNode) {
             newObjectSnippets.lower((TLABAllocateNode) n, tool);
         } else if (n instanceof InitializeObjectNode) {

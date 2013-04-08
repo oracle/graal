@@ -40,85 +40,6 @@ import com.oracle.graal.word.*;
 public class WriteBarrierSnippets implements Snippets {
 
     @Snippet
-    public static void g1PreWriteBarrier(@Parameter("object") Object obj, @Parameter("expectedObject") Object expobj, @Parameter("location") Object location,
-                    @ConstantParameter("doLoad") boolean doLoad) {
-        Word thread = thread();
-        Object object = FixedValueAnchorNode.getObject(obj);
-        Object expectedObject = FixedValueAnchorNode.getObject(expobj);
-        Word field = (Word) Word.fromArray(object, location);
-        Word previousOop = (Word) Word.fromObject(expectedObject);
-        byte markingValue = thread.readByte(HotSpotSnippetUtils.g1SATBQueueMarkingOffset());
-
-        Word bufferAddress = thread.readWord(HotSpotSnippetUtils.g1SATBQueueBufferOffset());
-        Word indexAddress = thread.add(HotSpotSnippetUtils.g1SATBQueueIndexOffset());
-        Word indexValue = indexAddress.readWord(0);
-
-        if (markingValue != (byte) 0) {
-            if (doLoad) {
-                previousOop = field.readWord(0);
-            }
-            if (previousOop.notEqual(Word.zero())) {
-                if (indexValue.notEqual(Word.zero())) {
-                    Word nextIndex = indexValue.subtract(HotSpotSnippetUtils.wordSize());
-                    Word logAddress = bufferAddress.add(nextIndex);
-                    logAddress.writeWord(0, previousOop);
-                    indexAddress.writeWord(0, nextIndex);
-                } else {
-                    WriteBarrierPreStubCall.call(previousOop);
-
-                }
-            }
-        }
-    }
-
-    @Snippet
-    public static void g1PostWriteBarrier(@Parameter("object") Object obj, @Parameter("value") Object value, @Parameter("location") Object location, @ConstantParameter("usePrecise") boolean usePrecise) {
-        Word thread = thread();
-        Object object = FixedValueAnchorNode.getObject(obj);
-        Object wrObject = FixedValueAnchorNode.getObject(value);
-        Word oop = (Word) Word.fromObject(object);
-        Word field;
-        if (usePrecise) {
-            field = (Word) Word.fromArray(object, location);
-        } else {
-            field = oop;
-        }
-        Word writtenValue = (Word) Word.fromObject(wrObject);
-        Word bufferAddress = thread.readWord(HotSpotSnippetUtils.g1CardQueueBufferOffset());
-        Word indexAddress = thread.add(HotSpotSnippetUtils.g1CardQueueIndexOffset());
-        Word indexValue = thread.readWord(HotSpotSnippetUtils.g1CardQueueIndexOffset());
-        Word xorResult = (field.xor(writtenValue)).unsignedShiftRight(HotSpotSnippetUtils.logOfHRGrainBytes());
-
-        // Card Table
-        Word cardBase = field.unsignedShiftRight(cardTableShift());
-        long startAddress = cardTableStart();
-        int displacement = 0;
-        if (((int) startAddress) == startAddress) {
-            displacement = (int) startAddress;
-        } else {
-            cardBase = cardBase.add(Word.unsigned(cardTableStart()));
-        }
-        Word cardAddress = cardBase.add(displacement);
-
-        if (xorResult.notEqual(Word.zero())) {
-            if (writtenValue.notEqual(Word.zero())) {
-                byte cardByte = cardAddress.readByte(0);
-                if (cardByte != (byte) 0) {
-                    cardAddress.writeByte(0, (byte) 0); // smash zero into card
-                    if (indexValue.notEqual(Word.zero())) {
-                        Word nextIndex = indexValue.subtract(HotSpotSnippetUtils.wordSize());
-                        Word logAddress = bufferAddress.add(nextIndex);
-                        logAddress.writeWord(0, cardAddress);
-                        indexAddress.writeWord(0, nextIndex);
-                    } else {
-                        WriteBarrierPostStubCall.call(object, cardAddress);
-                    }
-                }
-            }
-        }
-    }
-
-    @Snippet
     public static void serialFieldWriteBarrier(@Parameter("object") Object obj) {
         Object object = FixedValueAnchorNode.getObject(obj);
         Pointer oop = Word.fromObject(object);
@@ -152,15 +73,11 @@ public class WriteBarrierSnippets implements Snippets {
 
         private final ResolvedJavaMethod serialFieldWriteBarrier;
         private final ResolvedJavaMethod serialArrayWriteBarrier;
-        private final ResolvedJavaMethod g1PreWriteBarrier;
-        private final ResolvedJavaMethod g1PostWriteBarrier;
 
         public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
             super(runtime, replacements, target, WriteBarrierSnippets.class);
             serialFieldWriteBarrier = snippet("serialFieldWriteBarrier", Object.class);
             serialArrayWriteBarrier = snippet("serialArrayWriteBarrier", Object.class, Object.class);
-            g1PreWriteBarrier = snippet("g1PreWriteBarrier", Object.class, Object.class, Object.class, boolean.class);
-            g1PostWriteBarrier = snippet("g1PostWriteBarrier", Object.class, Object.class, Object.class, boolean.class);
         }
 
         public void lower(ArrayWriteBarrier arrayWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
@@ -180,30 +97,6 @@ public class WriteBarrierSnippets implements Snippets {
             arguments.add("object", fieldWriteBarrier.getObject());
             SnippetTemplate template = cache.get(key);
             template.instantiate(runtime, fieldWriteBarrier, DEFAULT_REPLACER, arguments);
-        }
-
-        public void lower(WriteBarrierPre writeBarrierPre, @SuppressWarnings("unused") LoweringTool tool) {
-            ResolvedJavaMethod method = g1PreWriteBarrier;
-            Key key = new Key(method);
-            key.add("doLoad", writeBarrierPre.doLoad());
-            Arguments arguments = new Arguments();
-            arguments.add("object", writeBarrierPre.getObject());
-            arguments.add("expectedObject", writeBarrierPre.getExpectedObject());
-            arguments.add("location", writeBarrierPre.getLocation());
-            SnippetTemplate template = cache.get(key);
-            template.instantiate(runtime, writeBarrierPre, DEFAULT_REPLACER, arguments);
-        }
-
-        public void lower(WriteBarrierPost writeBarrierPost, @SuppressWarnings("unused") LoweringTool tool) {
-            ResolvedJavaMethod method = g1PostWriteBarrier;
-            Key key = new Key(method);
-            key.add("usePrecise", writeBarrierPost.usePrecise());
-            Arguments arguments = new Arguments();
-            arguments.add("object", writeBarrierPost.getObject());
-            arguments.add("location", writeBarrierPost.getLocation());
-            arguments.add("value", writeBarrierPost.getValue());
-            SnippetTemplate template = cache.get(key);
-            template.instantiate(runtime, writeBarrierPost, DEFAULT_REPLACER, arguments);
         }
 
     }

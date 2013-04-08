@@ -95,9 +95,6 @@ public class NewInstanceStub extends Stub {
      *         operation was unsuccessful
      */
     static Word refillAllocate(Word intArrayHub, int sizeInBytes, boolean log) {
-        if (useG1GC()) {
-            return Word.zero();
-        }
         if (!useTLAB()) {
             return edenAllocate(Word.unsigned(sizeInBytes), log);
         }
