@@ -26,6 +26,7 @@ import java.math.*;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.*;
 
 public abstract class TypedNode extends ConditionNode {
 
@@ -38,15 +39,28 @@ public abstract class TypedNode extends ConditionNode {
         }
     }
 
-    public abstract boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException;
-
-    public abstract int executeInteger(VirtualFrame frame) throws UnexpectedResultException;
-
-    public abstract BigInteger executeBigInteger(VirtualFrame frame) throws UnexpectedResultException;
-
-    public abstract String executeString(VirtualFrame frame) throws UnexpectedResultException;
-
     public abstract Object executeGeneric(VirtualFrame frame);
+
+    public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
+        return SLTypesGen.SLTYPES.expectBoolean(executeGeneric(frame));
+    }
+
+    public int executeInteger(VirtualFrame frame) throws UnexpectedResultException {
+        return SLTypesGen.SLTYPES.expectInteger(executeGeneric(frame));
+    }
+
+    public BigInteger executeBigInteger(VirtualFrame frame) throws UnexpectedResultException {
+        return SLTypesGen.SLTYPES.expectBigInteger(executeGeneric(frame));
+    }
+
+    public String executeString(VirtualFrame frame) throws UnexpectedResultException {
+        return SLTypesGen.SLTYPES.expectString(executeGeneric(frame));
+    }
+
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        executeGeneric(frame);
+    }
 
     public boolean isString(Object a, Object b) {
         return a instanceof String || b instanceof String;

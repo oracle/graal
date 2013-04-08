@@ -28,4 +28,9 @@ public abstract class ConditionNode extends StatementNode {
 
     public abstract boolean executeCondition(VirtualFrame frame);
 
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        executeCondition(frame);
+    }
+
 }
