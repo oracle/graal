@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Node implementing a call to HotSpot's object pointer verification stub.
  */
-public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowerable {
+public class VerifyOopStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
     @Input private final ValueNode object;
     public static final Descriptor VERIFY_OOP = new Descriptor("verify_oop", false, void.class, Object.class);
@@ -45,7 +45,7 @@ public class VerifyOopStubCall extends FixedWithNextNode implements LIRGenLowera
     @Override
     public void generate(LIRGenerator gen) {
         RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(VerifyOopStubCall.VERIFY_OOP);
-        gen.emitCall(stub, stub.getCallingConvention(), true, gen.operand(object));
+        gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(object));
     }
 
     @NodeIntrinsic

@@ -30,9 +30,10 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(nameTemplate = "RuntimeCall#{p#descriptor/s}")
-public final class RuntimeCallNode extends AbstractCallNode implements LIRLowerable {
+public final class RuntimeCallNode extends AbstractCallNode implements LIRLowerable, DeoptimizingNode {
 
     private final Descriptor descriptor;
+    @Input private FrameState deoptState;
 
     public RuntimeCallNode(Descriptor descriptor, ValueNode... arguments) {
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())), arguments);
@@ -64,5 +65,42 @@ public final class RuntimeCallNode extends AbstractCallNode implements LIRLowera
             return super.toString(verbosity) + "#" + descriptor;
         }
         return super.toString(verbosity);
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public FrameState getDeoptimizationState() {
+        if (deoptState != null) {
+            return deoptState;
+        } else if (stateAfter() != null) {
+            FrameState stateDuring = stateAfter();
+            if ((stateDuring.stackSize() > 0 && stateDuring.stackAt(stateDuring.stackSize() - 1) == this) || (stateDuring.stackSize() > 1 && stateDuring.stackAt(stateDuring.stackSize() - 2) == this)) {
+                stateDuring = stateDuring.duplicateModified(stateDuring.bci, stateDuring.rethrowException(), this.kind());
+            }
+            return stateDuring;
+        }
+        return null;
+    }
+
+    @Override
+    public void setDeoptimizationState(FrameState f) {
+        if (deoptState != null) {
+            throw new IllegalStateException();
+        }
+        deoptState = f;
+    }
+
+    @Override
+    public DeoptimizationReason getDeoptimizationReason() {
+        return null;
+    }
+
+    @Override
+    public boolean isCallSiteDeoptimization() {
+        return stateAfter() != null;
     }
 }

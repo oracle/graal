@@ -69,7 +69,7 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
             parameters.add(frameState.localAt(slot));
         }
         Value[] args = gen.visitInvokeArguments(cc, parameters);
-        Value entry = gen.emitLoad(Kind.Long, gen.operand(target), config.nmethodEntryOffset, Value.ILLEGAL, 0, false);
+        Value entry = gen.emitLoad(Kind.Long, gen.operand(target), config.nmethodEntryOffset, Value.ILLEGAL, 0, null);
         HotSpotLIRGenerator hsgen = (HotSpotLIRGenerator) gen;
         hsgen.emitTailcall(args, entry);
     }

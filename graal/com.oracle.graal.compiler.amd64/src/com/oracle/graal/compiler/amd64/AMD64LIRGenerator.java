@@ -212,17 +212,17 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLoad(Kind kind, Value base, int displacement, Value index, int scale, boolean canTrap) {
+    public Variable emitLoad(Kind kind, Value base, int displacement, Value index, int scale, DeoptimizingNode deopting) {
         AMD64AddressValue loadAddress = prepareAddress(kind, base, displacement, index, scale);
         Variable result = newVariable(loadAddress.getKind());
-        append(new LoadOp(result, loadAddress, canTrap ? state() : null));
+        append(new LoadOp(result, loadAddress, deopting != null ? state(deopting) : null));
         return result;
     }
 
     @Override
-    public void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value inputVal, boolean canTrap) {
+    public void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value inputVal, DeoptimizingNode deopting) {
         AMD64AddressValue storeAddress = prepareAddress(kind, base, displacement, index, scale);
-        LIRFrameState state = canTrap ? state() : null;
+        LIRFrameState state = deopting != null ? state(deopting) : null;
 
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
@@ -369,11 +369,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitNullCheck(ValueNode v) {
+    public void emitNullCheck(ValueNode v, DeoptimizingNode deoping) {
         assert v.kind() == Kind.Object;
         Variable obj = newVariable(Kind.Object);
         emitMove(obj, operand(v));
-        append(new AMD64Move.NullCheckOp(obj, state()));
+        append(new AMD64Move.NullCheckOp(obj, state(deoping)));
     }
 
     @Override
@@ -509,7 +509,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 if (((fixedWithNextNode instanceof IntegerDivNode) || (fixedWithNextNode instanceof IntegerRemNode)) && fixedWithNextNode.getClass() != divRem.getClass()) {
                     FixedBinaryNode otherDivRem = (FixedBinaryNode) fixedWithNextNode;
                     if (otherDivRem.x() == divRem.x() && otherDivRem.y() == divRem.y() && operand(otherDivRem) == null) {
-                        Value[] results = emitIntegerDivRem(operand(divRem.x()), operand(divRem.y()));
+                        Value[] results = emitIntegerDivRem(operand(divRem.x()), operand(divRem.y()), (DeoptimizingNode) valueNode);
                         if (divRem instanceof IntegerDivNode) {
                             setResult(divRem, results[0]);
                             setResult(otherDivRem, results[1]);
@@ -526,19 +526,20 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return false;
     }
 
-    private void emitDivRem(AMD64Arithmetic op, Value a, Value b) {
+    private void emitDivRem(AMD64Arithmetic op, Value a, Value b, LIRFrameState state) {
         AllocatableValue rax = AMD64.rax.asValue(a.getKind());
         emitMove(rax, a);
-        append(new DivRemOp(op, rax, asAllocatable(b), state()));
+        append(new DivRemOp(op, rax, asAllocatable(b), state));
     }
 
-    public Value[] emitIntegerDivRem(Value a, Value b) {
+    public Value[] emitIntegerDivRem(Value a, Value b, DeoptimizingNode deopting) {
+        LIRFrameState state = state(deopting);
         switch (a.getKind()) {
             case Int:
-                emitDivRem(IDIVREM, a, b);
+                emitDivRem(IDIVREM, a, b, state);
                 return new Value[]{emitMove(RAX_I), emitMove(RDX_I)};
             case Long:
-                emitDivRem(LDIVREM, a, b);
+                emitDivRem(LDIVREM, a, b, state);
                 return new Value[]{emitMove(RAX_L), emitMove(RDX_L)};
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -546,13 +547,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitDiv(Value a, Value b) {
+    public Value emitDiv(Value a, Value b, DeoptimizingNode deopting) {
         switch (a.getKind()) {
             case Int:
-                emitDivRem(IDIV, a, b);
+                emitDivRem(IDIV, a, b, state(deopting));
                 return emitMove(RAX_I);
             case Long:
-                emitDivRem(LDIV, a, b);
+                emitDivRem(LDIV, a, b, state(deopting));
                 return emitMove(RAX_L);
             case Float: {
                 Variable result = newVariable(a.getKind());
@@ -570,21 +571,21 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitRem(Value a, Value b) {
+    public Value emitRem(Value a, Value b, DeoptimizingNode deopting) {
         switch (a.getKind()) {
             case Int:
-                emitDivRem(IREM, a, b);
+                emitDivRem(IREM, a, b, state(deopting));
                 return emitMove(RDX_I);
             case Long:
-                emitDivRem(LREM, a, b);
+                emitDivRem(LREM, a, b, state(deopting));
                 return emitMove(RDX_L);
             case Float: {
                 RuntimeCallTarget stub = runtime.lookupRuntimeCall(ARITHMETIC_FREM);
-                return emitCall(stub, stub.getCallingConvention(), false, a, b);
+                return emitCall(stub, stub.getCallingConvention(), null, a, b);
             }
             case Double: {
                 RuntimeCallTarget stub = runtime.lookupRuntimeCall(ARITHMETIC_DREM);
-                return emitCall(stub, stub.getCallingConvention(), false, a, b);
+                return emitCall(stub, stub.getCallingConvention(), null, a, b);
             }
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -592,13 +593,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitUDiv(Value a, Value b) {
+    public Variable emitUDiv(Value a, Value b, DeoptimizingNode deopting) {
+        LIRFrameState state = state(deopting);
         switch (a.getKind()) {
             case Int:
-                emitDivRem(IUDIV, a, b);
+                emitDivRem(IUDIV, a, b, state);
                 return emitMove(RAX_I);
             case Long:
-                emitDivRem(LUDIV, a, b);
+                emitDivRem(LUDIV, a, b, state);
                 return emitMove(RAX_L);
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -606,13 +608,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitURem(Value a, Value b) {
+    public Variable emitURem(Value a, Value b, DeoptimizingNode deopting) {
+        LIRFrameState state = state(deopting);
         switch (a.getKind()) {
             case Int:
-                emitDivRem(IUREM, a, b);
+                emitDivRem(IUREM, a, b, state);
                 return emitMove(RDX_I);
             case Long:
-                emitDivRem(LUREM, a, b);
+                emitDivRem(LUREM, a, b, state);
                 return emitMove(RDX_L);
             default:
                 throw GraalInternalError.shouldNotReachHere();

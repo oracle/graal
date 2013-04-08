@@ -161,7 +161,7 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
 
     @Override
     public void visitSafepointNode(SafepointNode i) {
-        LIRFrameState info = state();
+        LIRFrameState info = state(i);
         append(new AMD64SafepointOp(info, runtime().config, this));
     }
 
@@ -232,8 +232,8 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
     }
 
     @Override
-    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
-        append(new AMD64DeoptimizeOp(action, reason, state()));
+    public void emitDeoptimize(DeoptimizationAction action, DeoptimizingNode deopting) {
+        append(new AMD64DeoptimizeOp(action, deopting.getDeoptimizationReason(), state(deopting)));
     }
 
     @Override

@@ -220,10 +220,10 @@ public class GraalCompiler {
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
-        new GuardLoweringPhase(target).apply(graph);
-
         // Add safepoints to loops
         new SafepointInsertionPhase().apply(graph);
+
+        new GuardLoweringPhase(target).apply(graph);
 
         final SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);

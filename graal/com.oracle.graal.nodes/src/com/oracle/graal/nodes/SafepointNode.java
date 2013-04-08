@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -29,7 +30,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Marks a position in the graph where a safepoint should be emitted.
  */
-public class SafepointNode extends FixedWithNextNode implements LIRLowerable, Node.IterableNodeType {
+public class SafepointNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, Node.IterableNodeType {
 
     public SafepointNode() {
         this(StampFactory.forVoid());
@@ -42,5 +43,15 @@ public class SafepointNode extends FixedWithNextNode implements LIRLowerable, No
     @Override
     public void generate(LIRGeneratorTool gen) {
         gen.visitSafepointNode(this);
+    }
+
+    @Override
+    public DeoptimizationReason getDeoptimizationReason() {
+        return null;
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
     }
 }

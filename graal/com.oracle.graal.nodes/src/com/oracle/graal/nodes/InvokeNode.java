@@ -175,4 +175,29 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
             stateAfter.safeDelete();
         }
     }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public DeoptimizationReason getDeoptimizationReason() {
+        return null;
+    }
+
+    @Override
+    public FrameState getDeoptimizationState() {
+        return stateDuring();
+    }
+
+    @Override
+    public void setDeoptimizationState(FrameState f) {
+        throw new IllegalStateException();
+    }
+
+    @Override
+    public boolean isCallSiteDeoptimization() {
+        return true;
+    }
 }

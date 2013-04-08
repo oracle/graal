@@ -29,7 +29,9 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "Deopt", nameTemplate = "Deopt {p#reason/s}")
-public class DeoptimizeNode extends ControlSinkNode implements Node.IterableNodeType, LIRLowerable {
+public class DeoptimizeNode extends ControlSinkNode implements Node.IterableNodeType, LIRLowerable, DeoptimizingNode {
+
+    @Input private FrameState deoptState;
 
     private final DeoptimizationAction action;
     private final DeoptimizationReason reason;
@@ -50,9 +52,34 @@ public class DeoptimizeNode extends ControlSinkNode implements Node.IterableNode
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitDeoptimize(action, reason);
+        gen.emitDeoptimize(action, this);
     }
 
     @NodeIntrinsic
     public static native void deopt(@ConstantNodeParameter DeoptimizationAction action, @ConstantNodeParameter DeoptimizationReason reason);
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public FrameState getDeoptimizationState() {
+        return deoptState;
+    }
+
+    @Override
+    public void setDeoptimizationState(FrameState f) {
+        deoptState = f;
+    }
+
+    @Override
+    public DeoptimizationReason getDeoptimizationReason() {
+        return reason;
+    }
+
+    @Override
+    public boolean isCallSiteDeoptimization() {
+        return false;
+    }
 }
