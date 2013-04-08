@@ -142,7 +142,7 @@ public class GraphEffectList extends EffectList {
                 graph.addBeforeFixed(position, graph.add(node));
                 node.setProbability(position.probability());
                 for (int i = 0; i < values.length; i++) {
-                    node.values().set(i, values[i]);
+                    node.getValues().set(i, values[i]);
                 }
             }
         });
