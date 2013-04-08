@@ -23,13 +23,12 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 
-public class BoxNode extends FixedWithNextNode implements VirtualizableAllocation, IterableNodeType, Lowerable, Canonicalizable {
+public class BoxNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Canonicalizable {
 
     @Input private ValueNode value;
     private final Kind boxingKind;
@@ -59,31 +58,10 @@ public class BoxNode extends FixedWithNextNode implements VirtualizableAllocatio
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
-            Constant sourceConstant = value.asConstant();
-            switch (boxingKind) {
-                case Boolean:
-                    return ConstantNode.forObject(Boolean.valueOf(sourceConstant.asBoolean()), tool.runtime(), graph());
-                case Byte:
-                    return ConstantNode.forObject(Byte.valueOf((byte) sourceConstant.asInt()), tool.runtime(), graph());
-                case Char:
-                    return ConstantNode.forObject(Character.valueOf((char) sourceConstant.asInt()), tool.runtime(), graph());
-                case Short:
-                    return ConstantNode.forObject(Short.valueOf((short) sourceConstant.asInt()), tool.runtime(), graph());
-                case Int:
-                    return ConstantNode.forObject(Integer.valueOf(sourceConstant.asInt()), tool.runtime(), graph());
-                case Long:
-                    return ConstantNode.forObject(Long.valueOf(sourceConstant.asLong()), tool.runtime(), graph());
-                case Float:
-                    return ConstantNode.forObject(Float.valueOf(sourceConstant.asFloat()), tool.runtime(), graph());
-                case Double:
-                    return ConstantNode.forObject(Double.valueOf(sourceConstant.asDouble()), tool.runtime(), graph());
-                default:
-                    assert false : "Unexpected source kind for boxing";
-                    break;
-
-            }
-        }
+        /*
+         * Constant values are not canonicalized into their constant boxing objects because this
+         * would mean that the information that they came from a valueOf is lost.
+         */
         if (usages().isEmpty()) {
             return null;
         }
@@ -101,12 +79,6 @@ public class BoxNode extends FixedWithNextNode implements VirtualizableAllocatio
         tool.createVirtualObject(newVirtual, new ValueNode[]{v}, 0);
         tool.replaceWithVirtual(newVirtual);
     }
-
-    /*
-     * Normally, all these variants wouldn't be needed because this can be accomplished by using a
-     * generic method with automatic unboxing. These intrinsics, however, are themselves used for
-     * recognizing boxings, which means that there would be a circularity issue.
-     */
 
     @NodeIntrinsic
     public static native Boolean box(boolean value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);

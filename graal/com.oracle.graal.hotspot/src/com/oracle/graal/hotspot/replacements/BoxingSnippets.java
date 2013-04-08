@@ -31,6 +31,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
@@ -170,6 +172,35 @@ public class BoxingSnippets implements Snippets {
         return value.shortValue();
     }
 
+    public static FloatingNode canonicalizeBoxing(BoxNode box, MetaAccessProvider runtime) {
+        ValueNode value = box.getValue();
+        if (value.isConstant()) {
+            Constant sourceConstant = value.asConstant();
+            switch (box.getBoxingKind()) {
+                case Boolean:
+                    return ConstantNode.forObject(Boolean.valueOf(sourceConstant.asInt() != 0), runtime, box.graph());
+                case Byte:
+                    return ConstantNode.forObject(Byte.valueOf((byte) sourceConstant.asInt()), runtime, box.graph());
+                case Char:
+                    return ConstantNode.forObject(Character.valueOf((char) sourceConstant.asInt()), runtime, box.graph());
+                case Short:
+                    return ConstantNode.forObject(Short.valueOf((short) sourceConstant.asInt()), runtime, box.graph());
+                case Int:
+                    return ConstantNode.forObject(Integer.valueOf(sourceConstant.asInt()), runtime, box.graph());
+                case Long:
+                    return ConstantNode.forObject(Long.valueOf(sourceConstant.asLong()), runtime, box.graph());
+                case Float:
+                    return ConstantNode.forObject(Float.valueOf(sourceConstant.asFloat()), runtime, box.graph());
+                case Double:
+                    return ConstantNode.forObject(Double.valueOf(sourceConstant.asDouble()), runtime, box.graph());
+                default:
+                    assert false : "Unexpected source kind for boxing";
+                    break;
+            }
+        }
+        return null;
+    }
+
     public static class Templates extends AbstractTemplates<BoxingSnippets> {
 
         private final ResolvedJavaMethod[] valueOfMethods = new ResolvedJavaMethod[Kind.values().length];
@@ -193,12 +224,17 @@ public class BoxingSnippets implements Snippets {
             return unboxMethods[kind.ordinal()];
         }
 
-        public void lower(BoxNode boxingValueOf) {
-            Key key = new Key(getValueOf(boxingValueOf.getBoxingKind()));
-            Arguments arguments = new Arguments().add("value", boxingValueOf.getValue());
-            SnippetTemplate template = cache.get(key);
-            Debug.log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", boxingValueOf.graph(), boxingValueOf, template, arguments);
-            template.instantiate(runtime, boxingValueOf, DEFAULT_REPLACER, arguments);
+        public void lower(BoxNode box) {
+            FloatingNode canonical = canonicalizeBoxing(box, runtime);
+            if (canonical != null) {
+                ((StructuredGraph) box.graph()).replaceFixedWithFloating(box, canonical);
+            } else {
+                Key key = new Key(getValueOf(box.getBoxingKind()));
+                Arguments arguments = new Arguments().add("value", box.getValue());
+                SnippetTemplate template = cache.get(key);
+                Debug.log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", box.graph(), box, template, arguments);
+                template.instantiate(runtime, box, DEFAULT_REPLACER, arguments);
+            }
         }
 
         public void lower(UnboxNode unbox) {
