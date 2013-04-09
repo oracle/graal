@@ -239,7 +239,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
                 copy.remove(copy.size() - 1);
             }
             ValueNode lastSlot = copy.get(copy.size() - 1);
-            assert lastSlot.kind().getStackKind() == popKind.getStackKind() || (lastSlot instanceof BoxedVirtualObjectNode && popKind == Kind.Object);
+            assert lastSlot.kind().getStackKind() == popKind.getStackKind();
             copy.remove(copy.size() - 1);
         }
         Collections.addAll(copy, pushedValues);

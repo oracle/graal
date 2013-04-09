@@ -20,28 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.graph.test;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.phases.*;
+public interface TestNodeInterface {
 
-public class ExpandBoxingNodesPhase extends Phase {
-
-    private final BoxingMethodPool pool;
-
-    public ExpandBoxingNodesPhase(BoxingMethodPool pool) {
-        this.pool = pool;
-    }
-
-    @Override
-    protected void run(StructuredGraph graph) {
-        for (BoxNode boxNode : graph.getNodes(BoxNode.class)) {
-            boxNode.expand(pool);
-        }
-
-        for (UnboxNode unboxNode : graph.getNodes(UnboxNode.class)) {
-            unboxNode.expand(pool);
-        }
-    }
+    String getName();
 }

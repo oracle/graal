@@ -68,7 +68,8 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
     private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
 
-    public InliningPhase(MetaAccessProvider runtime, Map<Invoke, Double> hints, Replacements replacements, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public InliningPhase(MetaAccessProvider runtime, Map<Invoke, Double> hints, Replacements replacements, Assumptions assumptions, GraphCache cache, PhasePlan plan,
+                    OptimisticOptimizations optimisticOpts) {
         this(runtime, replacements, assumptions, cache, plan, createInliningPolicy(runtime, replacements, assumptions, optimisticOpts, hints), optimisticOpts);
     }
 
@@ -200,8 +201,14 @@ public class InliningPhase extends Phase implements InliningCallback {
              * also getting queued in the compilation queue concurrently)
              */
 
-            if (GraalOptions.AlwaysInlineIntrinsics && onlyIntrinsics(replacements, info)) {
-                return InliningUtil.logInlinedMethod(info, "intrinsic");
+            if (GraalOptions.AlwaysInlineIntrinsics) {
+                if (onlyIntrinsics(replacements, info)) {
+                    return InliningUtil.logInlinedMethod(info, "intrinsic");
+                }
+            } else {
+                if (onlyForcedIntrinsics(replacements, info)) {
+                    return InliningUtil.logInlinedMethod(info, "intrinsic");
+                }
             }
 
             double bonus = 1;
@@ -342,6 +349,18 @@ public class InliningPhase extends Phase implements InliningCallback {
         private static boolean onlyIntrinsics(Replacements replacements, InlineInfo info) {
             for (int i = 0; i < info.numberOfMethods(); i++) {
                 if (!InliningUtil.canIntrinsify(replacements, info.methodAt(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean onlyForcedIntrinsics(Replacements replacements, InlineInfo info) {
+            for (int i = 0; i < info.numberOfMethods(); i++) {
+                if (!InliningUtil.canIntrinsify(replacements, info.methodAt(i))) {
+                    return false;
+                }
+                if (!replacements.isForcedSubstitution(info.methodAt(i))) {
                     return false;
                 }
             }

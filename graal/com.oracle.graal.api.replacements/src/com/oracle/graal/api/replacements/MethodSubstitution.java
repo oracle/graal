@@ -56,6 +56,12 @@ public @interface MethodSubstitution {
     String signature() default "";
 
     /**
+     * Determines if this method should be substituted in all cases, even if inlining thinks it is
+     * not important.
+     */
+    boolean isForcedInlining() default false;
+
+    /**
      * Determines if the substitution is for a method that may not be part of the runtime. For
      * example, a method introduced in a later JDK version. Substitutions for such methods are
      * omitted if the original method cannot be found.

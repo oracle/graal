@@ -96,7 +96,9 @@ public class BasicPTXTest extends GraalCompilerTest {
         for (Method m : methods) {
             if (m.getAnnotation(Test.class) != null) {
                 String name = m.getName() + "Snippet";
+                // CheckStyle: stop system..print check
                 System.out.println(name + ": \n" + new String(basicPTXTest.test(name).getTargetCode()));
+                // CheckStyle: resume system..print check
             }
         }
     }

@@ -186,5 +186,5 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
     }
 
     @NodeIntrinsic
-    public static native <T> T anchor(@ConstantNodeParameter Stamp stamp);
+    public static native BeginNode anchor(@ConstantNodeParameter Stamp stamp);
 }

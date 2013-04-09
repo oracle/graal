@@ -89,6 +89,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     private NewObjectSnippets.Templates newObjectSnippets;
     private MonitorSnippets.Templates monitorSnippets;
     private WriteBarrierSnippets.Templates writeBarrierSnippets;
+    private BoxingSnippets.Templates boxingSnippets;
     private LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
 
     private final Map<Descriptor, HotSpotRuntimeCallTarget> runtimeCalls = new HashMap<>();
@@ -332,11 +333,17 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             replacements.registerSnippets(ObjectCloneSnippets.class);
         }
 
+        replacements.registerSnippets(BoxingSnippets.class);
+        for (Class<?> clazz : BoxingSubstitutions.getClasses()) {
+            replacements.registerSubstitutions(clazz);
+        }
+
         checkcastSnippets = new CheckCastSnippets.Templates(this, replacements, graalRuntime.getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(this, replacements, graalRuntime.getTarget());
         newObjectSnippets = new NewObjectSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useTLAB);
         monitorSnippets = new MonitorSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useFastLocking);
         writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, replacements, graalRuntime.getTarget());
+        boxingSnippets = new BoxingSnippets.Templates(this, replacements, graalRuntime.getTarget());
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, replacements, graalRuntime.getTarget());
 
         registerStub(new NewInstanceStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_INSTANCE)));
@@ -704,6 +711,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             // zero and the MIN_VALUE / -1 cases.
         } else if (n instanceof UnwindNode) {
             // Nothing to do, using direct LIR lowering for these nodes.
+        } else if (n instanceof BoxNode) {
+            boxingSnippets.lower((BoxNode) n);
+        } else if (n instanceof UnboxNode) {
+            boxingSnippets.lower((UnboxNode) n);
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
             throw GraalInternalError.shouldNotReachHere();

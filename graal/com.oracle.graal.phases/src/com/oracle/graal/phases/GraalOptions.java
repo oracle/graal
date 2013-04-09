@@ -116,6 +116,7 @@ public final class GraalOptions {
     // Debug settings:
     public static boolean Debug                              = true;
     public static boolean DebugReplacements                  = ____;
+    public static boolean BootstrapReplacements              = ____;
     public static boolean PerThreadDebugValues               = ____;
     public static boolean SummarizeDebugValues               = ____;
     public static boolean SummarizePerPhase                  = ____;
@@ -217,6 +218,7 @@ public final class GraalOptions {
     public static boolean IntrinsifyMathMethods              = true;
     public static boolean IntrinsifyAESMethods               = true;
     public static boolean IntrinsifyInstalledCodeMethods     = true;
+    public static boolean IntrinsifyCallSiteTarget           = true;
     /**
      * Counts the various paths taken through snippets.
      */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,38 +25,34 @@ package com.oracle.graal.nodes.virtual;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.extended.*;
 
-@NodeInfo(nameTemplate = "VirtualObject {p#type}")
-public abstract class VirtualObjectNode extends ValueNode implements LIRLowerable {
+public class VirtualBoxingNode extends VirtualInstanceNode {
 
-    public VirtualObjectNode() {
-        super(StampFactory.virtual());
+    private final Kind boxingKind;
+
+    public VirtualBoxingNode(ResolvedJavaType type, Kind boxingKind) {
+        super(type);
+        this.boxingKind = boxingKind;
     }
-
-    public abstract ResolvedJavaType type();
-
-    public abstract int entryCount();
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        // nothing to do...
+    public VirtualBoxingNode duplicate() {
+        return new VirtualBoxingNode(type(), boxingKind);
     }
 
-    public abstract String fieldName(int i);
-
-    public abstract void materializeAt(FixedWithNextNode materializeNode, List<ValueNode> values, boolean defaultValuesOnly, int lockCount);
-
-    public abstract int entryIndexForOffset(long constantOffset);
-
-    public abstract Kind entryKind(int index);
-
-    public abstract VirtualObjectNode duplicate();
-
+    @Override
     public boolean hasIdentity() {
-        return true;
+        return false;
+    }
+
+    @Override
+    public void materializeAt(FixedWithNextNode materializeNode, List<ValueNode> values, boolean defaultValuesOnly, int lockCount) {
+        assert values.size() == 1;
+        assert lockCount == 0;
+        StructuredGraph graph = (StructuredGraph) graph();
+        BoxNode valueOf = graph.add(new BoxNode(values.get(0), type(), boxingKind));
+        graph.replaceFixedWithFixed(materializeNode, valueOf);
     }
 }

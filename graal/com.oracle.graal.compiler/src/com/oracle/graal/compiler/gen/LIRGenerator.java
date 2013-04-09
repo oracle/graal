@@ -338,14 +338,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             if (instr instanceof StateSplit) {
                 stateAfter = ((StateSplit) instr).stateAfter();
             }
-            if (instr instanceof DeoptimizingNode) {
-                DeoptimizingNode deopt = (DeoptimizingNode) instr;
-                if (deopt.canDeoptimize() && deopt.getDeoptimizationState() == null) {
-                    deopt.setDeoptimizationState(lastState);
-                }
-            }
             if (instr instanceof ValueNode) {
-
                 ValueNode valueNode = (ValueNode) instr;
                 if (operand(valueNode) == null) {
                     if (!peephole(valueNode)) {
