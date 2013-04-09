@@ -191,7 +191,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
                 }
             }
         }
-
+        // CheckStyle: stop system..print check
         boolean success = true;
         for (Node node : obsoleteNodes) {
             if (flood.isMarked(node)) {
@@ -207,6 +207,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
                 success = false;
             }
         }
+        // CheckStyle: resume system..print check
         return success;
     }
 

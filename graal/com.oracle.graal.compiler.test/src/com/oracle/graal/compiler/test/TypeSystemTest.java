@@ -205,6 +205,7 @@ public class TypeSystemTest extends GraalCompilerTest {
         }
     }
 
+    // CheckStyle: stop system..print check
     public static void outputGraph(StructuredGraph graph, String message) {
         System.out.println("========================= " + message);
         SchedulePhase schedule = new SchedulePhase();
@@ -238,6 +239,7 @@ public class TypeSystemTest extends GraalCompilerTest {
         }
     }
 
+    // CheckStyle: resume system..print check
     private <T extends Node & Node.IterableNodeType> void test(String snippet, Class<T> clazz) {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");

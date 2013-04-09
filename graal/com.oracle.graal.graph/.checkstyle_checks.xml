@@ -197,4 +197,14 @@
     <property name="format" value="\r\n"/>
     <property name="message" value="illegal Windows line ending"/>
   </module>
+  <module name="SuppressionCommentFilter">
+    <property name="offCommentFormat" value="CheckStyle: stop system..print check"/>
+    <property name="onCommentFormat" value="CheckStyle: resume system..print check"/>
+    <property name="checkFormat" value="RegexpSingleline"/>
+    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable System.(out|err).print checks"/>
+  </module>
+  <module name="RegexpSingleline">
+    <property name="format" value="System\.(out|err)\.print"/>
+    <property name="fileExtensions" value="java"/>
+  </module>
 </module>

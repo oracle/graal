@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.bridge;
 
+import java.io.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.debug.*;
@@ -65,10 +66,10 @@ final class MetricRateInPhase {
         return (int) (v / t);
     }
 
-    public void printAll(String label) {
+    public void printAll(String label, PrintStream stream) {
         MetricRateInPhase rs = this;
         while (rs != null) {
-            System.out.println(label + "@" + rs.phase + ": " + rs.rate());
+            stream.println(label + "@" + rs.phase + ": " + rs.rate());
             rs = rs.previous;
         }
     }

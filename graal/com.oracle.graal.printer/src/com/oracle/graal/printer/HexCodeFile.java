@@ -288,7 +288,9 @@ public class HexCodeFile {
         }
 
         void warning(int offset, String message) {
+            // CheckStyle: stop system..print check
             System.err.println("Warning: " + errorMessage(offset, message));
+            // CheckStyle: resume system..print check
         }
 
         String errorMessage(int offset, String message) {
@@ -316,8 +318,10 @@ public class HexCodeFile {
             int lineStart = input.lastIndexOf(HexCodeFile.NEW_LINE, index) + 1;
 
             String l = input.substring(lineStart, lineStart + 10);
+            // CheckStyle: stop system..print check
             System.out.println("YYY" + input.substring(index, index + 10) + "...");
             System.out.println("XXX" + l + "...");
+            // CheckStyle: resume system..print check
 
             int pos = input.indexOf(HexCodeFile.NEW_LINE, 0);
             int line = 1;
