@@ -23,11 +23,14 @@
 package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.code.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.GenericStamp.GenericStampType;
 
 public class StampFactory {
+
+    // JaCoCo Exclude
 
     private static final Stamp[] stampCache = new Stamp[Kind.values().length];
     private static final Stamp objectStamp = new ObjectStamp(null, false, false, false);
