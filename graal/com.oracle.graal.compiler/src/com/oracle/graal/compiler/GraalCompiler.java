@@ -135,8 +135,6 @@ public class GraalCompiler {
             }
         }
 
-        // new ConvertUnreachedToGuardPhase(optimisticOpts).apply(graph);
-
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
 
         if (GraalOptions.FullUnroll) {
