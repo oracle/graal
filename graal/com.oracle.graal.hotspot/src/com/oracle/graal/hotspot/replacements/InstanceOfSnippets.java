@@ -192,7 +192,7 @@ public class InstanceOfSnippets implements Snippets {
                 Arguments arguments;
                 Key key;
                 if (hintInfo.exact) {
-                    ConstantNode[] hints = createHints(hintInfo, runtime, hub.graph());
+                    ConstantNode[] hints = createHints(hintInfo, runtime, true, hub.graph()).hubs;
                     assert hints.length == 1;
                     key = new Key(instanceofExact).add("checkNull", checkNull);
                     arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
@@ -200,7 +200,7 @@ public class InstanceOfSnippets implements Snippets {
                     key = new Key(instanceofPrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
                     arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
                 } else {
-                    ConstantNode[] hints = createHints(hintInfo, runtime, hub.graph());
+                    ConstantNode[] hints = createHints(hintInfo, runtime, true, hub.graph()).hubs;
                     key = new Key(instanceofSecondary).add("hints", Varargs.vargargs(new Word[hints.length], StampFactory.forKind(wordKind()))).add("checkNull", checkNull);
                     arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
                 }
