@@ -135,8 +135,6 @@ public class GraalCompiler {
             }
         }
 
-        // new ConvertUnreachedToGuardPhase(optimisticOpts).apply(graph);
-
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
 
         if (GraalOptions.FullUnroll) {
@@ -218,12 +216,16 @@ public class GraalCompiler {
 
         plan.runPhases(PhasePosition.MID_LEVEL, graph);
 
-        plan.runPhases(PhasePosition.LOW_LEVEL, graph);
-
         // Add safepoints to loops
         new SafepointInsertionPhase().apply(graph);
 
         new GuardLoweringPhase(target).apply(graph);
+
+        plan.runPhases(PhasePosition.LOW_LEVEL, graph);
+
+        new LoweringPhase(target, runtime, replacements, assumptions).apply(graph);
+
+        new FrameStateAssignementPhase().apply(graph);
 
         final SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);

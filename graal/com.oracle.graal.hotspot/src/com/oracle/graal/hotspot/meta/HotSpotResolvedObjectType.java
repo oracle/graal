@@ -135,7 +135,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         assert name.charAt(0) != '[' || sizeOrSpecies == ARRAY_SPECIES_VALUE : name + " " + Long.toHexString(sizeOrSpecies);
         assert javaMirror.isArray() == isArray();
         assert javaMirror.isInterface() == isInterface();
-        // System.out.println("0x" + Long.toHexString(metaspaceKlass) + ": " + name);
     }
 
     @Override

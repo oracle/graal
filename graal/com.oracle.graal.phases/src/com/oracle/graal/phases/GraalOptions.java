@@ -218,6 +218,7 @@ public final class GraalOptions {
     public static boolean IntrinsifyMathMethods              = true;
     public static boolean IntrinsifyAESMethods               = true;
     public static boolean IntrinsifyInstalledCodeMethods     = true;
+    public static boolean IntrinsifyCallSiteTarget           = true;
     /**
      * Counts the various paths taken through snippets.
      */

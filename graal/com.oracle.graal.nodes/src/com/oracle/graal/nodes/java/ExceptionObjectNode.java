@@ -48,8 +48,15 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
         //
     }
 
+    private boolean isLowered() {
+        return (stamp() == StampFactory.forVoid());
+    }
+
     @Override
     public void lower(LoweringTool tool) {
+        if (isLowered()) {
+            return;
+        }
         StructuredGraph graph = (StructuredGraph) graph();
         LoadExceptionObjectNode loadException = graph.add(new LoadExceptionObjectNode(stamp()));
         loadException.setStateAfter(stateAfter());
@@ -62,6 +69,9 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
 
     @Override
     public boolean verify() {
+        if (isLowered()) {
+            return true;
+        }
         assertTrue(stateAfter() != null || stamp() == StampFactory.forVoid(), "an exception handler needs a frame state");
         return super.verify();
     }

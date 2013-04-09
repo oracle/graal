@@ -182,7 +182,6 @@ public class SnippetTemplate {
                         return new SnippetTemplate(runtime, replacements, target, key);
                     }
                 });
-                // System.out.println(key + " -> " + template);
                 templates.put(key, template);
             }
             return template;

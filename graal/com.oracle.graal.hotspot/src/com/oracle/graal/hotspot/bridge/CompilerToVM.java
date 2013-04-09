@@ -221,4 +221,6 @@ public interface CompilerToVM {
      * @param metaspaceMethod the metaspace Method object
      */
     void reprofile(long metaspaceMethod);
+
+    Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi);
 }

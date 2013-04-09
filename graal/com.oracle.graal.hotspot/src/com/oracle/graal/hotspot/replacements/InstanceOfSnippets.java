@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
+import static com.oracle.graal.replacements.Snippet.Varargs.*;
 import static com.oracle.graal.replacements.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
@@ -114,6 +115,7 @@ public class InstanceOfSnippets implements Snippets {
                     @Parameter("trueValue") Object trueValue,
                     @Parameter("falseValue") Object falseValue,
                     @VarargsParameter("hints") Word[] hints,
+                    @VarargsParameter("hintIsPositive") boolean[] hintIsPositive,
                     @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
             probability(NOT_FREQUENT_PROBABILITY);
@@ -125,10 +127,11 @@ public class InstanceOfSnippets implements Snippets {
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < hints.length; i++) {
             Word hintHub = hints[i];
+            boolean positive = hintIsPositive[i];
             if (hintHub.equal(objectHub)) {
                 probability(NOT_FREQUENT_PROBABILITY);
                 hintsHit.inc();
-                return trueValue;
+                return positive ? trueValue : falseValue;
             }
         }
         if (!checkSecondarySubType(hub, objectHub)) {
@@ -174,7 +177,7 @@ public class InstanceOfSnippets implements Snippets {
             super(runtime, replacements, target, InstanceOfSnippets.class);
             instanceofExact = snippet("instanceofExact", Object.class, Word.class, Object.class, Object.class, boolean.class);
             instanceofPrimary = snippet("instanceofPrimary", Word.class, Object.class, Object.class, Object.class, boolean.class, int.class);
-            instanceofSecondary = snippet("instanceofSecondary", Word.class, Object.class, Object.class, Object.class, Word[].class, boolean.class);
+            instanceofSecondary = snippet("instanceofSecondary", Word.class, Object.class, Object.class, Object.class, Word[].class, boolean[].class, boolean.class);
             instanceofDynamic = snippet("instanceofDynamic", Class.class, Object.class, Object.class, Object.class, boolean.class);
         }
 
@@ -200,9 +203,13 @@ public class InstanceOfSnippets implements Snippets {
                     key = new Key(instanceofPrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
                     arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
                 } else {
-                    ConstantNode[] hints = createHints(hintInfo, runtime, true, hub.graph()).hubs;
-                    key = new Key(instanceofSecondary).add("hints", Varargs.vargargs(new Word[hints.length], StampFactory.forKind(wordKind()))).add("checkNull", checkNull);
-                    arguments = arguments("hub", hub).add("object", object).add("hints", hints).add("trueValue", trueValue).add("falseValue", falseValue);
+                    Hints hints = createHints(hintInfo, runtime, false, hub.graph());
+                    ConstantNode[] hintHubs = hints.hubs;
+                    boolean[] hintIsPositive = hints.isPositive;
+                    Varargs hintsParam = vargargs(new Word[hintHubs.length], StampFactory.forKind(wordKind()));
+                    Varargs hintIsPositiveParam = vargargs(new boolean[hintIsPositive.length], StampFactory.forKind(Kind.Boolean));
+                    key = new Key(instanceofSecondary).add("hints", hintsParam).add("hintIsPositive", hintIsPositiveParam).add("checkNull", checkNull);
+                    arguments = arguments("hub", hub).add("object", object).add("hints", hintHubs).add("hintIsPositive", hintIsPositive).add("trueValue", trueValue).add("falseValue", falseValue);
                 }
                 return new KeyAndArguments(key, arguments);
             } else {

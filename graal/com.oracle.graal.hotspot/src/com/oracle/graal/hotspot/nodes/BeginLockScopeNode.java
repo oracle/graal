@@ -70,7 +70,6 @@ public final class BeginLockScopeNode extends AbstractStateSplit implements LIRG
     @Override
     public void generate(LIRGenerator gen) {
         assert lockDepth != -1;
-        assert stateAfter() != null;
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen;
         StackSlot slot = hsGen.getLockSlot(lockDepth);
         if (!eliminated) {

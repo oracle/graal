@@ -168,6 +168,16 @@ public final class BytecodeStream {
     }
 
     /**
+     * Reads a constant pool index for an invokedynamic instruction.
+     * 
+     * @return the constant pool index
+     */
+    public int readCPI4() {
+        assert opcode == Bytecodes.INVOKEDYNAMIC;
+        return Bytes.beS4(code, curBCI + 1);
+    }
+
+    /**
      * Reads a signed, 1-byte value for the current instruction (e.g. BIPUSH).
      * 
      * @return the byte

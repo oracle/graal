@@ -38,6 +38,7 @@ import com.oracle.graal.hotspot.logging.*;
  */
 public class InvocationSocket {
 
+    // CheckStyle: stop system..print check
     private static final boolean DEBUG = false;
     private static final boolean COUNT_CALLS = false;
 
@@ -279,4 +280,5 @@ public class InvocationSocket {
         output.writeObject(new Result(obj));
         output.flush();
     }
+    // CheckStyle: resume system..print check
 }
