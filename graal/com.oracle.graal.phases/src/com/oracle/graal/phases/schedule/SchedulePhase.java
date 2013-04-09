@@ -466,7 +466,7 @@ public final class SchedulePhase extends Phase {
                     if (!(usage instanceof FrameState)) {
                         throw new SchedulingError(usage.toString());
                     }
-                    if (!(unscheduledUsage instanceof StateSplit)) {
+                    if (!(unscheduledUsage instanceof StateSplit || unscheduledUsage instanceof DeoptimizingNode)) {
                         throw new SchedulingError(unscheduledUsage.toString());
                     }
                     // Otherwise: Put the input into the same block as the usage.
