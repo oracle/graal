@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 public class AMD64Call {
 
     @Opcode("CALL_DIRECT")
-    public static class DirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+    public static class DirectCallOp extends AMD64LIRInstruction {
 
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
@@ -58,10 +58,15 @@ public class AMD64Call {
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             directCall(tasm, masm, callTarget, null, true, state);
         }
+
+        @Override
+        public boolean hasCall() {
+            return true;
+        }
     }
 
     @Opcode("CALL_NEAR_RUNTIME")
-    public static class DirectNearRuntimeCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+    public static class DirectNearRuntimeCallOp extends AMD64LIRInstruction {
 
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
@@ -83,10 +88,15 @@ public class AMD64Call {
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             directCall(tasm, masm, callTarget, null, false, state);
         }
+
+        @Override
+        public boolean hasCall() {
+            return !callTarget.preservesRegisters();
+        }
     }
 
     @Opcode("CALL_FAR_RUNTIME")
-    public static class DirectFarRuntimeCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+    public static class DirectFarRuntimeCallOp extends AMD64LIRInstruction {
 
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
@@ -110,10 +120,15 @@ public class AMD64Call {
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             directCall(tasm, masm, callTarget, ((RegisterValue) callTemp).getRegister(), false, state);
         }
+
+        @Override
+        public boolean hasCall() {
+            return !callTarget.preservesRegisters();
+        }
     }
 
     @Opcode("CALL_INDIRECT")
-    public static class IndirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+    public static class IndirectCallOp extends AMD64LIRInstruction {
 
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
@@ -142,6 +157,11 @@ public class AMD64Call {
         protected void verify() {
             super.verify();
             assert isRegister(targetAddress) : "The current register allocator cannot handle variables to be used at call sites, it must be in a fixed register for now";
+        }
+
+        @Override
+        public boolean hasCall() {
+            return true;
         }
     }
 
