@@ -25,6 +25,8 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -98,12 +100,45 @@ public class TypeCheckSnippetUtils {
         return false;
     }
 
-    static ConstantNode[] createHints(TypeCheckHints hints, MetaAccessProvider runtime, Graph graph) {
-        ConstantNode[] hintHubs = new ConstantNode[hints.types.length];
-        for (int i = 0; i < hintHubs.length; i++) {
-            hintHubs[i] = ConstantNode.forConstant(((HotSpotResolvedObjectType) hints.types[i]).klass(), runtime, graph);
+    /**
+     * A set of type check hints ordered by decreasing probabilities.
+     */
+    public static class Hints {
+
+        /**
+         * The hubs of the hint types.
+         */
+        public final ConstantNode[] hubs;
+
+        /**
+         * A predicate over {@link #hubs} specifying whether the corresponding hint type is a
+         * sub-type of the checked type.
+         */
+        public final boolean[] isPositive;
+
+        Hints(ConstantNode[] hints, boolean[] hintIsPositive) {
+            this.hubs = hints;
+            this.isPositive = hintIsPositive;
         }
-        return hintHubs;
+    }
+
+    static Hints createHints(TypeCheckHints hints, MetaAccessProvider runtime, boolean positiveOnly, Graph graph) {
+        ConstantNode[] hubs = new ConstantNode[hints.hints.length];
+        boolean[] isPositive = new boolean[hints.hints.length];
+        int index = 0;
+        for (int i = 0; i < hubs.length; i++) {
+            if (!positiveOnly || hints.hints[i].positive) {
+                hubs[index] = ConstantNode.forConstant(((HotSpotResolvedObjectType) hints.hints[i].type).klass(), runtime, graph);
+                isPositive[index] = hints.hints[i].positive;
+                index++;
+            }
+        }
+        if (positiveOnly && index != hubs.length) {
+            assert index < hubs.length;
+            hubs = Arrays.copyOf(hubs, index);
+            isPositive = Arrays.copyOf(isPositive, index);
+        }
+        return new Hints(hubs, isPositive);
     }
 
     static Word loadSecondarySupersElement(Word metaspaceArray, int index) {
