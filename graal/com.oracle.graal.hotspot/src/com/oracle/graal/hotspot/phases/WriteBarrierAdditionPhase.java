@@ -42,14 +42,14 @@ public class WriteBarrierAdditionPhase extends Phase {
         }
     }
 
-    private void addWriteNodeBarriers(WriteNode node, StructuredGraph graph) {
+    private static void addWriteNodeBarriers(WriteNode node, StructuredGraph graph) {
         if (node.needsWriteBarrier()) {
             graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.location(), node.usePreciseWriteBarriers())));
         }
 
     }
 
-    private void addCASBarriers(CompareAndSwapNode node, StructuredGraph graph) {
+    private static void addCASBarriers(CompareAndSwapNode node, StructuredGraph graph) {
         if (node.needsWriteBarrier()) {
             LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, node.expected().kind(), node.displacement(), node.offset(), graph, 1);
             graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), location, node.usePreciseWriteBarriers())));
