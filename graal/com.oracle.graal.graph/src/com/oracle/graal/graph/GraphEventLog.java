@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.graph;
 
+import java.io.*;
 import java.util.*;
 
 public class GraphEventLog {
@@ -32,10 +33,10 @@ public class GraphEventLog {
         this.events.add(e);
     }
 
-    public void printEvents() {
+    public void printEvents(PrintStream stream) {
         StackTraceElement[] last = new StackTraceElement[0];
         for (GraphEvent e : events) {
-            last = e.print(last);
+            last = e.print(last, stream);
         }
     }
 }

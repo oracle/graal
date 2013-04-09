@@ -445,8 +445,8 @@ public class VMToCompilerImpl implements VMToCompiler {
         phaseTransition("final");
 
         if (graalRuntime.getConfig().ciTime) {
-            parsedBytecodesPerSecond.printAll("ParsedBytecodesPerSecond");
-            inlinedBytecodesPerSecond.printAll("InlinedBytecodesPerSecond");
+            parsedBytecodesPerSecond.printAll("ParsedBytecodesPerSecond", System.out);
+            inlinedBytecodesPerSecond.printAll("InlinedBytecodesPerSecond", System.out);
         }
 
         SnippetCounter.printGroups(TTY.out().out());

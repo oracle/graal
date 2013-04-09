@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.test;
 
 import java.lang.reflect.*;
 
-import org.junit.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
@@ -36,8 +34,8 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
     private static final int ITERATIONS = 100000000;
 
-    @Ignore
-    @Test
+    // TODO this is not a test, move it somewhere else
+    // CheckStyle: stop system..print check
     public void test1() throws NoSuchMethodException, SecurityException {
 
         final Method benchrMethod = InstalledCodeExecuteHelperTest.class.getMethod("bench", long.class, long.class);
@@ -62,6 +60,8 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
         System.out.println("WITH replaced InstalledCode.execute:" + benchCode.executeVarargs(nmethod, metaspacemethod));
 
     }
+
+    // CheckStyle: resume system..print check
 
     public static Long bench(long nmethod, long metaspacemethod) {
         long start = System.currentTimeMillis();

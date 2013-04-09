@@ -70,6 +70,7 @@ public class Logger {
         }
     }
 
+    // CheckStyle: stop system..print check
     public static void info(String message) {
         if (ENABLED) {
             log(message);
@@ -123,6 +124,8 @@ public class Logger {
             logger.open = logger.openStack.pop();
         }
     }
+
+    // CheckStyle: resume system..print check
 
     private static String[] spaces = new String[50];
 
