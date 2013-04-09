@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package com.oracle.graal.replacements.test;
 
 import com.oracle.graal.test.*;
 import com.oracle.graal.compiler.test.*;

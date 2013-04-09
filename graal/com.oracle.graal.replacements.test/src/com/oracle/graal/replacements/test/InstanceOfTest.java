@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package com.oracle.graal.replacements.test;
 
 import java.util.*;
 
@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.replacements.CheckCastTest.*;
+import com.oracle.graal.replacements.test.CheckCastTest.*;
 
 /**
  * Tests the implementation of instanceof, allowing profiling information to be manually specified.
