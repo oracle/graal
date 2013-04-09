@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.hotspot.test;
 
 import org.junit.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.replacements.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.test.*;
 
 /**
  * Tests HotSpot specific {@link MethodSubstitution}s.

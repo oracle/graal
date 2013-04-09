@@ -766,7 +766,8 @@ public class GraphBuilderPhase extends Phase {
     }
 
     private void eagerResolvingForSnippets(int cpi, int bytecode) {
-        if (graphBuilderConfig.eagerResolving()) {
+        // (aw) cannot eager-resolve invokedynamic
+        if (graphBuilderConfig.eagerResolving() && bytecode != Bytecodes.INVOKEDYNAMIC) {
             constantPool.loadReferencedType(cpi, bytecode);
         }
     }
@@ -1051,6 +1052,19 @@ public class GraphBuilderPhase extends Phase {
             genInvokeIndirect(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
         } else {
             handleUnresolvedInvoke(target, InvokeKind.Interface);
+        }
+    }
+
+    private void genInvokeDynamic(JavaMethod target) {
+        if (target instanceof ResolvedJavaMethod) {
+            Object appendix = constantPool.lookupAppendix(stream.readCPI4());
+            if (appendix != null) {
+                frameState.apush(ConstantNode.forObject(appendix, runtime, currentGraph));
+            }
+            ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(false), target.getSignature().getParameterCount(false));
+            appendInvoke(InvokeKind.Static, (ResolvedJavaMethod) target, args);
+        } else {
+            handleUnresolvedInvoke(target, InvokeKind.Static);
         }
     }
 
@@ -1937,6 +1951,7 @@ public class GraphBuilderPhase extends Phase {
             case INVOKESPECIAL  : cpi = stream.readCPI(); genInvokeSpecial(lookupMethod(cpi, opcode)); break;
             case INVOKESTATIC   : cpi = stream.readCPI(); genInvokeStatic(lookupMethod(cpi, opcode)); break;
             case INVOKEINTERFACE: cpi = stream.readCPI(); genInvokeInterface(lookupMethod(cpi, opcode)); break;
+            case INVOKEDYNAMIC  : cpi = stream.readCPI4(); genInvokeDynamic(lookupMethod(cpi, opcode)); break;
             case NEW            : genNewInstance(stream.readCPI()); break;
             case NEWARRAY       : genNewPrimitiveArray(stream.readLocalIndex()); break;
             case ANEWARRAY      : genNewObjectArray(stream.readCPI()); break;

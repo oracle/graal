@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package com.oracle.graal.replacements.test;
 
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.replacements.UnsafeSubstitutions.*;
@@ -35,6 +35,7 @@ import sun.misc.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 
 /**

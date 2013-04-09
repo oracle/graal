@@ -25,6 +25,7 @@ package com.oracle.graal.api.code;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 
 import java.io.*;
+import java.lang.invoke.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -178,6 +179,45 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         @Override
         public String toString() {
             return "MethodContents[method=" + format("%H.%n(%p)", method) + "]";
+        }
+    }
+
+    /**
+     * Assumption that a call site's method handle did not change.
+     */
+    public static final class CallSiteTargetValue extends Assumption {
+
+        private static final long serialVersionUID = 1732459941784550371L;
+
+        public final CallSite callSite;
+        public final MethodHandle methodHandle;
+
+        public CallSiteTargetValue(CallSite callSite, MethodHandle methodHandle) {
+            this.callSite = callSite;
+            this.methodHandle = methodHandle;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + callSite.hashCode();
+            result = prime * result + methodHandle.hashCode();
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof CallSiteTargetValue) {
+                CallSiteTargetValue other = (CallSiteTargetValue) obj;
+                return other.callSite == callSite && other.methodHandle == methodHandle;
+            }
+            return false;
+        }
+
+        @Override
+        public String toString() {
+            return "CallSiteTargetValue[callSite=" + callSite + ", methodHandle=" + methodHandle + "]";
         }
     }
 

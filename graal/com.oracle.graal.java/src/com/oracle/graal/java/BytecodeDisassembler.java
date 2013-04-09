@@ -102,6 +102,13 @@ public class BytecodeDisassembler {
                         buf.append(String.format("#%-10s // %s", cpi + ", " + stream.readUByte(bci + 3), calleeDesc));
                         break;
                     }
+                    case INVOKEDYNAMIC: {
+                        int cpi = stream.readCPI4();
+                        JavaMethod callee = cp.lookupMethod(cpi, opcode);
+                        String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? MetaUtil.format("%n:(%P)%R", callee) : MetaUtil.format("%H.%n:(%P)%R", callee);
+                        buf.append(String.format("#%-10d // %s", cpi, calleeDesc));
+                        break;
+                    }
                     case LDC            :
                     case LDC_W          :
                     case LDC2_W         : {

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package com.oracle.graal.replacements.test;
 
 import java.util.*;
 
@@ -32,9 +32,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.replacements.CheckCastTest.Depth12;
-import com.oracle.graal.replacements.CheckCastTest.Depth13;
-import com.oracle.graal.replacements.CheckCastTest.Depth14;
+import com.oracle.graal.replacements.test.CheckCastTest.Depth12;
+import com.oracle.graal.replacements.test.CheckCastTest.Depth13;
+import com.oracle.graal.replacements.test.CheckCastTest.Depth14;
 import com.oracle.graal.test.*;
 
 /**
