@@ -31,6 +31,7 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.Parameter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
@@ -60,13 +61,31 @@ public class WriteBarrierSnippets implements Snippets {
         base.writeByte(displacement, (byte) 0);
     }
 
+    @Snippet
+    public static void serialArrayRangeWriteBarrier(@Parameter("dstObject") Object destObject, @Parameter("destPos") int destPos, @Parameter("length") int length) {
+        Object dest = FixedValueAnchorNode.getObject(destObject);
+        int cardShift = cardTableShift();
+        long cardStart = cardTableStart();
+        final int scale = arrayIndexScale(Kind.Object);
+        int header = arrayBaseOffset(Kind.Object);
+        long dstAddr = GetObjectAddressNode.get(dest);
+        long start = (dstAddr + header + (long) destPos * scale) >>> cardShift;
+        long end = (dstAddr + header + ((long) destPos + length - 1) * scale) >>> cardShift;
+        long count = end - start + 1;
+        while (count-- > 0) {
+            DirectStoreNode.store((start + cardStart) + count, false, Kind.Boolean);
+        }
+    }
+
     public static class Templates extends AbstractTemplates<WriteBarrierSnippets> {
 
         private final ResolvedJavaMethod serialArrayWriteBarrier;
+        private final ResolvedJavaMethod serialArrayRangeWriteBarrier;
 
         public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
             super(runtime, replacements, target, WriteBarrierSnippets.class);
             serialArrayWriteBarrier = snippet("serialArrayWriteBarrier", Object.class, Object.class, boolean.class);
+            serialArrayRangeWriteBarrier = snippet("serialArrayRangeWriteBarrier", Object.class, int.class, int.class);
         }
 
         public void lower(SerialWriteBarrier arrayWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
@@ -78,6 +97,17 @@ public class WriteBarrierSnippets implements Snippets {
             arguments.add("location", arrayWriteBarrier.getLocation());
             SnippetTemplate template = cache.get(key);
             template.instantiate(runtime, arrayWriteBarrier, DEFAULT_REPLACER, arguments);
+        }
+
+        public void lower(SerialArrayRangeWriteBarrier arrayRangeWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
+            ResolvedJavaMethod method = serialArrayRangeWriteBarrier;
+            Key key = new Key(method);
+            Arguments arguments = new Arguments();
+            arguments.add("dstObject", arrayRangeWriteBarrier.getDstObject());
+            arguments.add("destPos", arrayRangeWriteBarrier.getDstPos());
+            arguments.add("length", arrayRangeWriteBarrier.getLength());
+            SnippetTemplate template = cache.get(key);
+            template.instantiate(runtime, arrayRangeWriteBarrier, DEFAULT_REPLACER, arguments);
         }
     }
 }

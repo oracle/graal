@@ -102,7 +102,9 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object);
         if (state != null && state.getState() == EscapeState.Virtual) {
-            tool.replaceWithVirtual(state.getVirtualObject());
+            if (type.isAssignableFrom(state.getVirtualObject().type())) {
+                tool.replaceWithVirtual(state.getVirtualObject());
+            }
         }
     }
 }
