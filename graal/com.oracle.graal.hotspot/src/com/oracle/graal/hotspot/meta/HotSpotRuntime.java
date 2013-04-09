@@ -585,7 +585,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             // Separate out GC barrier semantics
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
             ValueNode expected = cas.expected();
-            LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
             if (expected.kind() == Kind.Object && !cas.newValue().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = cas.object().objectStamp().type();
                 final boolean precise = (type != null && type.isArray() && !MetaUtil.isJavaLangObject(type));
