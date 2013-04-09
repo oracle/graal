@@ -24,17 +24,18 @@ package com.oracle.graal.replacements.test;
 
 import java.util.*;
 
-
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.code.CompilationResult.Site;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.replacements.test.CheckCastTest.*;
+import com.oracle.graal.replacements.test.CheckCastTest.Depth12;
+import com.oracle.graal.replacements.test.CheckCastTest.Depth13;
+import com.oracle.graal.replacements.test.CheckCastTest.Depth14;
+import com.oracle.graal.test.*;
 
 /**
  * Tests the implementation of instanceof, allowing profiling information to be manually specified.
@@ -125,6 +126,7 @@ public class InstanceOfTest extends TypeCheckTest {
         test("isMap", profile(), Object.class);
         test("isMap", profile(HashMap.class), Object.class);
         test("isMap", profile(TreeMap.class, HashMap.class), Object.class);
+        test("isMap", profile(String.class, HashMap.class), Object.class);
     }
 
     @LongTest
@@ -150,6 +152,7 @@ public class InstanceOfTest extends TypeCheckTest {
         test("isDepth12", profile(), o);
         test("isDepth12", profile(Depth13.class), o);
         test("isDepth12", profile(Depth13.class, Depth14.class), o);
+        test("isDepth12", profile(String.class, HashMap.class), o);
     }
 
     @LongTest

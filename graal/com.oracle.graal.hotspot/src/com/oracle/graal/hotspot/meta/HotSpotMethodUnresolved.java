@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import com.oracle.graal.api.meta.*;
 
 /**
@@ -51,6 +53,6 @@ public final class HotSpotMethodUnresolved extends HotSpotMethod {
 
     @Override
     public String toString() {
-        return "HotSpotMethod<" + holder.getName() + ". " + name + ", unresolved>";
+        return format("HotSpotMethod<%H.%n(%p), unresolved>", this);
     }
 }

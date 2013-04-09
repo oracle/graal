@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import com.oracle.graal.api.meta.*;
 
 /**
@@ -60,6 +62,6 @@ public class HotSpotUnresolvedField implements JavaField {
      */
     @Override
     public String toString() {
-        return MetaUtil.format("%H.%n [unresolved]", this);
+        return format("HotSpotField<%H.%n %t, unresolved>", this);
     }
 }

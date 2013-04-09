@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.graph.FieldIntrospection.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
@@ -186,7 +187,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public String toString() {
-        return "HotSpotMethod<" + MetaUtil.format("%h.%n", this) + ">";
+        return format("HotSpotMethod<%H.%n(%p)>", this);
     }
 
     public int getCompiledCodeSize() {

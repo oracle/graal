@@ -23,7 +23,10 @@
 
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.lang.annotation.*;
+import java.lang.invoke.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
@@ -97,6 +100,8 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
                 if (assumeNonStaticFinalFieldsAsFinal(receiver.asObject().getClass()) || !value.isDefaultForKind()) {
                     return value;
                 }
+            } else if (receiver.asObject() instanceof ConstantCallSite) {
+                return readValue(receiver);
             }
         }
         return null;
@@ -150,7 +155,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
     @Override
     public String toString() {
-        return "HotSpotField<" + MetaUtil.format("%h.%n", this) + ":" + offset + ">";
+        return format("HotSpotField<%H.%n %t:", this) + offset + ">";
     }
 
     @Override

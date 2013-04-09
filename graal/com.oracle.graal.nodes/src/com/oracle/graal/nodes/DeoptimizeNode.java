@@ -70,6 +70,7 @@ public class DeoptimizeNode extends ControlSinkNode implements Node.IterableNode
 
     @Override
     public void setDeoptimizationState(FrameState f) {
+        updateUsages(deoptState, f);
         deoptState = f;
     }
 
