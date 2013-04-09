@@ -25,14 +25,22 @@ package com.oracle.graal.nodes.extended;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.graph.*;
 
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain AccessNode memory location}.
  */
-public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint {
+public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint, Node.IterableNodeType {
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
+
+    /*
+     * The field below instructs the snippet to use the address of the object or the effective
+     * address of the object element of an array when calculating the card offset.
+     */
+    private final boolean usePreciseWriteBarriers;
+    private boolean needsWriteBarrier;
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -52,9 +60,22 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
         return value;
     }
 
-    public WriteNode(ValueNode object, ValueNode value, ValueNode location) {
+    public boolean usePreciseWriteBarriers() {
+        return usePreciseWriteBarriers;
+    }
+
+    public boolean needsWriteBarrier() {
+        return needsWriteBarrier;
+    }
+
+    public void setWriteBarrier() {
+        this.needsWriteBarrier = true;
+    }
+
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, boolean usePreciseWriteBarriers) {
         super(object, location, StampFactory.forVoid());
         this.value = value;
+        this.usePreciseWriteBarriers = usePreciseWriteBarriers;
     }
 
     @Override

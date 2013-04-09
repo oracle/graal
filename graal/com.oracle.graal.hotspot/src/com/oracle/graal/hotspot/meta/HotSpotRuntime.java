@@ -565,7 +565,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
             ValueNode object = storeField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : storeField.object();
             LocationNode location = LocationNode.create(field, field.getKind(), field.offset(), graph);
-            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), location));
+            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), location, false));
             memoryWrite.dependencies().add(tool.createNullCheckGuard(object));
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
@@ -573,9 +573,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             FixedWithNextNode first = memoryWrite;
 
             if (field.getKind() == Kind.Object && !memoryWrite.value().objectStamp().alwaysNull()) {
-                SerialWriteBarrier writeBarrier = graph.add(new SerialWriteBarrier(memoryWrite.object(), location, false));
-                graph.addAfterFixed(memoryWrite, writeBarrier);
-                last = writeBarrier;
+                memoryWrite.setWriteBarrier();
             }
             if (storeField.isVolatile()) {
                 MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_WRITE));
@@ -590,13 +588,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
             if (expected.kind() == Kind.Object && !cas.newValue().objectStamp().alwaysNull()) {
                 ResolvedJavaType type = cas.object().objectStamp().type();
-                if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
-                    // Use a field write barrier since it's not an array store
-                    graph.addAfterFixed(cas, graph.add(new SerialWriteBarrier(cas.object(), location, false)));
-                } else {
-                    // This may be an array store so use an array write barrier
-                    graph.addAfterFixed(cas, graph.add(new SerialWriteBarrier(cas.object(), location, true)));
-                }
+                final boolean precise = (type != null && type.isArray() && !MetaUtil.isJavaLangObject(type));
+                cas.setWriteBarrier();
+                cas.setPreciseWriteBarrier(precise);
             }
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;
@@ -633,13 +627,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                     value = checkcast;
                 }
             }
-            WriteNode memoryWrite = graph.add(new WriteNode(array, value, arrayLocation));
+            WriteNode memoryWrite = graph.add(new WriteNode(array, value, arrayLocation, true));
             memoryWrite.dependencies().add(boundsCheck);
             memoryWrite.setStateAfter(storeIndexed.stateAfter());
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 
             if (elementKind == Kind.Object && !value.objectStamp().alwaysNull()) {
-                graph.addAfterFixed(memoryWrite, graph.add(new SerialWriteBarrier(array, arrayLocation, true)));
+                memoryWrite.setWriteBarrier();
             }
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
@@ -654,19 +648,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             UnsafeStoreNode store = (UnsafeStoreNode) n;
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, store.accessKind(), store.displacement(), store.offset(), graph, 1);
             ValueNode object = store.object();
-            WriteNode write = graph.add(new WriteNode(object, store.value(), location));
+            ResolvedJavaType type = object.objectStamp().type();
+            final boolean precise = (type != null && type.isArray() && !MetaUtil.isJavaLangObject(type));
+            WriteNode write = graph.add(new WriteNode(object, store.value(), location, precise));
             write.setStateAfter(store.stateAfter());
             graph.replaceFixedWithFixed(store, write);
             if (write.value().kind() == Kind.Object && !write.value().objectStamp().alwaysNull()) {
-                ResolvedJavaType type = object.objectStamp().type();
-                // WriteBarrier writeBarrier;
-                if (type != null && !type.isArray() && !MetaUtil.isJavaLangObject(type)) {
-                    // Use a field write barrier since it's not an array store
-                    graph.addAfterFixed(write, graph.add(new SerialWriteBarrier(object, location, false)));
-                } else {
-                    // This may be an array store so use an array write barrier
-                    graph.addAfterFixed(write, graph.add(new SerialWriteBarrier(object, location, true)));
-                }
+                write.setWriteBarrier();
             }
         } else if (n instanceof LoadHubNode) {
             LoadHubNode loadHub = (LoadHubNode) n;

@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.java;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,13 +35,19 @@ import com.oracle.graal.nodes.type.*;
  * Represents an atomic compare-and-swap operation The result is a boolean that contains whether the
  * value matched the expected value.
  */
-public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit, LIRLowerable, Lowerable, MemoryCheckpoint {
+public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit, LIRLowerable, Lowerable, MemoryCheckpoint, Node.IterableNodeType {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;
     @Input private ValueNode expected;
     @Input private ValueNode newValue;
     private final int displacement;
+    /*
+     * The field below instructs the snippet to use the address of the object or the effective
+     * address of the object element of an array when calculating the card offset.
+     */
+    private boolean usePreciseWriteBarriers;
+    private boolean needsWriteBarrier;
 
     public ValueNode object() {
         return object;
@@ -62,6 +69,22 @@ public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit
         return displacement;
     }
 
+    public boolean usePreciseWriteBarriers() {
+        return usePreciseWriteBarriers;
+    }
+
+    public boolean needsWriteBarrier() {
+        return needsWriteBarrier;
+    }
+
+    public void setWriteBarrier() {
+        this.needsWriteBarrier = true;
+    }
+
+    public void setPreciseWriteBarrier(boolean precise) {
+        this.usePreciseWriteBarriers = precise;
+    }
+
     public CompareAndSwapNode(ValueNode object, int displacement, ValueNode offset, ValueNode expected, ValueNode newValue) {
         super(StampFactory.forKind(Kind.Boolean.getStackKind()));
         assert expected.kind() == newValue.kind();
@@ -70,6 +93,7 @@ public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit
         this.expected = expected;
         this.newValue = newValue;
         this.displacement = displacement;
+        this.usePreciseWriteBarriers = false;
     }
 
     @Override
