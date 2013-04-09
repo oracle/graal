@@ -122,7 +122,9 @@ public final class JavaTypeProfile implements Serializable {
     }
 
     /**
-     * A list of types for which the runtime has recorded probability information.
+     * A list of types for which the runtime has recorded probability information. Note that this
+     * includes both positive and negative types where a positive type is a subtype of the checked
+     * type and a negative type is not.
      */
     public ProfiledType[] getTypes() {
         return ptypes;

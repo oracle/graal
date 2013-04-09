@@ -496,7 +496,7 @@ public class SnippetTemplate {
                 } else {
                     Kind kind = ((LocalNode) parameter).kind();
                     assert argument != null || kind == Kind.Object : this + " cannot accept null for non-object parameter named " + name;
-                    Constant constant = Constant.forBoxed(kind, argument);
+                    Constant constant = forBoxed(argument, kind);
                     replacements.put((LocalNode) parameter, ConstantNode.forConstant(constant, runtime, replaceeGraph));
                 }
             } else if (parameter instanceof LocalNode[]) {
@@ -520,7 +520,7 @@ public class SnippetTemplate {
                     if (value instanceof ValueNode) {
                         replacements.put(local, (ValueNode) value);
                     } else {
-                        Constant constant = Constant.forBoxed(local.kind(), value);
+                        Constant constant = forBoxed(value, local.kind());
                         ConstantNode element = ConstantNode.forConstant(constant, runtime, replaceeGraph);
                         replacements.put(local, element);
                     }
@@ -530,6 +530,32 @@ public class SnippetTemplate {
             }
         }
         return replacements;
+    }
+
+    /**
+     * Converts a Java boxed value to a {@link Constant} of the right kind. This adjusts for the
+     * limitation that a {@link Local}'s kind is a {@linkplain Kind#getStackKind() stack kind} and
+     * so cannot be used for re-boxing primitives smaller than an int.
+     * 
+     * @param argument a Java boxed value
+     * @param localKind the kind of the {@link Local} to which {@code argument} will be bound
+     */
+    protected Constant forBoxed(Object argument, Kind localKind) {
+        assert localKind == localKind.getStackKind();
+        if (localKind == Kind.Int && !(argument instanceof Integer)) {
+            if (argument instanceof Boolean) {
+                return Constant.forBoxed(Kind.Boolean, argument);
+            }
+            if (argument instanceof Byte) {
+                return Constant.forBoxed(Kind.Byte, argument);
+            }
+            if (argument instanceof Short) {
+                return Constant.forBoxed(Kind.Short, argument);
+            }
+            assert argument instanceof Character;
+            return Constant.forBoxed(Kind.Char, argument);
+        }
+        return Constant.forBoxed(localKind, argument);
     }
 
     /**
