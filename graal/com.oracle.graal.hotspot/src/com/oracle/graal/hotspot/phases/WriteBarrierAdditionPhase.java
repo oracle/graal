@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.phases;
 
-import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
