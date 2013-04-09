@@ -72,6 +72,31 @@ public class AMD64Call {
         }
     }
 
+    @Opcode("CALL_INDIRECT")
+    public static class IndirectCallOp extends CallOp {
+
+        @Use({REG}) protected Value targetAddress;
+
+        protected final InvokeTarget callTarget;
+
+        public IndirectCallOp(InvokeTarget callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
+            super(result, parameters, temps, state);
+            this.callTarget = callTarget;
+            this.targetAddress = targetAddress;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            indirectCall(tasm, masm, asRegister(targetAddress), callTarget, state);
+        }
+
+        @Override
+        protected void verify() {
+            super.verify();
+            assert isRegister(targetAddress) : "The current register allocator cannot handle variables to be used at call sites, it must be in a fixed register for now";
+        }
+    }
+
     public abstract static class RuntimeCallOp extends CallOp {
 
         protected final RuntimeCallTarget callTarget;
@@ -113,31 +138,6 @@ public class AMD64Call {
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             directCall(tasm, masm, callTarget, ((RegisterValue) callTemp).getRegister(), false, state);
-        }
-    }
-
-    @Opcode("CALL_INDIRECT")
-    public static class IndirectCallOp extends CallOp {
-
-        @Use({REG}) protected Value targetAddress;
-
-        protected final InvokeTarget callTarget;
-
-        public IndirectCallOp(InvokeTarget callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
-            super(result, parameters, temps, state);
-            this.callTarget = callTarget;
-            this.targetAddress = targetAddress;
-        }
-
-        @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            indirectCall(tasm, masm, asRegister(targetAddress), callTarget, state);
-        }
-
-        @Override
-        protected void verify() {
-            super.verify();
-            assert isRegister(targetAddress) : "The current register allocator cannot handle variables to be used at call sites, it must be in a fixed register for now";
         }
     }
 
