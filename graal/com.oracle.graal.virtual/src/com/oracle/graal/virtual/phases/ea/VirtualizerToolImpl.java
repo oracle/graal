@@ -36,13 +36,12 @@ import com.oracle.graal.phases.*;
 
 class VirtualizerToolImpl implements VirtualizerTool {
 
-    private final GraphEffectList effects;
     private final NodeBitMap usages;
     private final MetaAccessProvider metaAccess;
     private final Assumptions assumptions;
+    private GraphEffectList effects;
 
-    VirtualizerToolImpl(GraphEffectList effects, NodeBitMap usages, MetaAccessProvider metaAccess, Assumptions assumptions) {
-        this.effects = effects;
+    VirtualizerToolImpl(NodeBitMap usages, MetaAccessProvider metaAccess, Assumptions assumptions) {
         this.usages = usages;
         this.metaAccess = metaAccess;
         this.assumptions = assumptions;
@@ -52,7 +51,6 @@ class VirtualizerToolImpl implements VirtualizerTool {
     private boolean customAction;
     private BlockState state;
     private ValueNode current;
-    private int newVirtualObjectCount = 0;
 
     @Override
     public MetaAccessProvider getMetaAccessProvider() {
@@ -62,6 +60,10 @@ class VirtualizerToolImpl implements VirtualizerTool {
     @Override
     public Assumptions getAssumptions() {
         return assumptions;
+    }
+
+    public void setEffects(GraphEffectList effects) {
+        this.effects = effects;
     }
 
     public void reset(BlockState newState, ValueNode newCurrent) {
@@ -77,10 +79,6 @@ class VirtualizerToolImpl implements VirtualizerTool {
 
     public boolean isCustomAction() {
         return customAction;
-    }
-
-    public int getNewVirtualObjectCount() {
-        return newVirtualObjectCount;
     }
 
     @Override
@@ -155,7 +153,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
         if (virtualObject.isAlive()) {
             state.addAndMarkAlias(virtualObject, virtualObject, usages);
         } else {
-            effects.addFloatingNode(virtualObject);
+            effects.addFloatingNode(virtualObject, "newVirtualObject");
         }
         for (int i = 0; i < entryState.length; i++) {
             entryState[i] = state.getScalarAlias(entryState[i]);
@@ -163,7 +161,6 @@ class VirtualizerToolImpl implements VirtualizerTool {
         state.addObject(virtualObject, new ObjectState(virtualObject, entryState, EscapeState.Virtual, lockCount));
         state.addAndMarkAlias(virtualObject, virtualObject, usages);
         PartialEscapeClosure.METRIC_ALLOCATION_REMOVED.increment();
-        newVirtualObjectCount++;
     }
 
     @Override

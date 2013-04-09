@@ -73,4 +73,10 @@ public @interface MacroSubstitution {
      * an {@link InvokeNode} as a parameter.
      */
     Class<? extends FixedWithNextNode> macro();
+
+    /**
+     * Determines if this method should be substituted in all cases, even if inlining thinks it is
+     * not important.
+     */
+    boolean isForcedInlining() default false;
 }

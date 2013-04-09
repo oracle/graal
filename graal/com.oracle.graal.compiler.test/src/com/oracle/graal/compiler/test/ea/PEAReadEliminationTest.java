@@ -143,10 +143,11 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     }
 
     @SuppressWarnings("all")
-    public static int testBadLoopSnippet(TestObject obj, int a, int b) {
+    public static int testBadLoopSnippet(TestObject obj, TestObject obj2, int a, int b) {
         obj.x = a;
         for (int i = 0; i < 10; i++) {
             staticField = obj;
+            obj2.x = 10;
             obj.x = 0;
         }
         return obj.x;
@@ -155,6 +156,24 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testBadLoop() {
         ValueNode result = getReturn("testBadLoopSnippet").result();
+        assertEquals(0, graph.getNodes(LoadFieldNode.class).count());
+        assertTrue(result instanceof ProxyNode);
+        assertTrue(((ProxyNode) result).value() instanceof PhiNode);
+    }
+
+    @SuppressWarnings("all")
+    public static int testBadLoop2Snippet(TestObject obj, TestObject obj2, int a, int b) {
+        obj.x = a;
+        for (int i = 0; i < 10; i++) {
+            obj.x = 0;
+            obj2.x = 10;
+        }
+        return obj.x;
+    }
+
+    @Test
+    public void testBadLoop2() {
+        ValueNode result = getReturn("testBadLoop2Snippet").result();
         assertEquals(1, graph.getNodes(LoadFieldNode.class).count());
         assertTrue(result instanceof LoadFieldNode);
     }

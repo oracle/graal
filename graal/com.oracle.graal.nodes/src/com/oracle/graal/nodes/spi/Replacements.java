@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
@@ -70,4 +72,15 @@ public interface Replacements {
      * macro} substitutions defined by a given class.
      */
     void registerSubstitutions(Class<?> substitutions);
+
+    /**
+     * Returns all methods that are currently registered as method/macro substitution or as a
+     * snippet.
+     */
+    Collection<ResolvedJavaMethod> getAllReplacements();
+
+    /**
+     * Determines whether the replacement of this method is flagged as being inlined always.
+     */
+    boolean isForcedSubstitution(ResolvedJavaMethod methodAt);
 }

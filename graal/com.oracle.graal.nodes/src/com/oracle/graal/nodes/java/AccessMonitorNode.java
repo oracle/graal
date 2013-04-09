@@ -28,6 +28,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code AccessMonitorNode} is the base class of both monitor acquisition and release.
@@ -72,7 +73,7 @@ public abstract class AccessMonitorNode extends AbstractStateSplit implements St
     @Override
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object);
-        if (state != null && state.getState() == EscapeState.Virtual) {
+        if (state != null && state.getState() == EscapeState.Virtual && state.getVirtualObject().getClass() == VirtualInstanceNode.class) {
             Debug.log("monitor operation %s on %s\n", this, state);
             int newLockCount = state.getLockCount() + (this instanceof MonitorEnterNode ? 1 : -1);
             state.setLockCount(newLockCount);
