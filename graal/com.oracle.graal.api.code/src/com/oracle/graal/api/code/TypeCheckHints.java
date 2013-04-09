@@ -74,7 +74,7 @@ public class TypeCheckHints {
     /**
      * Derives hint information for use when generating the code for a type check instruction.
      * 
-     * @param type the target type of the type check
+     * @param targetType the target type of the type check
      * @param profile the profiling information available for the instruction (if any)
      * @param assumptions the object in which speculations are recorded. This is null if
      *            speculations are not supported.
@@ -83,16 +83,16 @@ public class TypeCheckHints {
      *            will be null
      * @param maxHints the maximum length of {@link #hints}
      */
-    public TypeCheckHints(ResolvedJavaType type, JavaTypeProfile profile, Assumptions assumptions, double minHintHitProbability, int maxHints) {
-        if (type != null && !canHaveSubtype(type)) {
-            hints = new Hint[]{new Hint(type, true)};
+    public TypeCheckHints(ResolvedJavaType targetType, JavaTypeProfile profile, Assumptions assumptions, double minHintHitProbability, int maxHints) {
+        if (targetType != null && !canHaveSubtype(targetType)) {
+            hints = new Hint[]{new Hint(targetType, true)};
             exact = true;
         } else {
-            ResolvedJavaType uniqueSubtype = type == null ? null : type.findUniqueConcreteSubtype();
+            ResolvedJavaType uniqueSubtype = targetType == null ? null : targetType.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
                 hints = new Hint[]{new Hint(uniqueSubtype, true)};
                 if (assumptions.useOptimisticAssumptions()) {
-                    assumptions.recordConcreteSubtype(type, uniqueSubtype);
+                    assumptions.recordConcreteSubtype(targetType, uniqueSubtype);
                     exact = true;
                 } else {
                     exact = false;
@@ -109,8 +109,9 @@ public class TypeCheckHints {
                         int hintCount = 0;
                         double totalHintProbability = 0.0d;
                         for (ProfiledType ptype : ptypes) {
-                            if (type != null) {
-                                hintsBuf[hintCount++] = new Hint(type, type.isAssignableFrom(ptype.getType()));
+                            if (targetType != null) {
+                                ResolvedJavaType hintType = ptype.getType();
+                                hintsBuf[hintCount++] = new Hint(hintType, targetType.isAssignableFrom(hintType));
                                 totalHintProbability += ptype.getProbability();
                             }
                         }
