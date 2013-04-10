@@ -24,7 +24,7 @@ package com.oracle.graal.api.runtime;
 
 import java.lang.annotation.*;
 
-@Retention(RetentionPolicy.SOURCE)
+@Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
 public @interface ServiceProvider {
 
