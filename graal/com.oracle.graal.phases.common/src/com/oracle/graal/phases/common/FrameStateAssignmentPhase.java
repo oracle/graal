@@ -33,13 +33,13 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 
-public class FrameStateAssignementPhase extends Phase {
+public class FrameStateAssignmentPhase extends Phase {
 
-    private static class FrameStateAssignementState {
+    private static class FrameStateAssignmentState {
 
         private FrameState framestate;
 
-        public FrameStateAssignementState(FrameState framestate) {
+        public FrameStateAssignmentState(FrameState framestate) {
             this.framestate = framestate;
         }
 
@@ -58,10 +58,10 @@ public class FrameStateAssignementPhase extends Phase {
         }
     }
 
-    private static class FrameStateAssignementClosure extends BlockIteratorClosure<FrameStateAssignementState> {
+    private static class FrameStateAssignementClosure extends BlockIteratorClosure<FrameStateAssignmentState> {
 
         @Override
-        protected void processBlock(Block block, FrameStateAssignementState currentState) {
+        protected void processBlock(Block block, FrameStateAssignmentState currentState) {
             FixedNode node = block.getBeginNode();
             while (node != null) {
                 if (node instanceof DeoptimizingNode) {
@@ -88,21 +88,21 @@ public class FrameStateAssignementPhase extends Phase {
         }
 
         @Override
-        protected FrameStateAssignementState merge(Block mergeBlock, List<FrameStateAssignementState> states) {
+        protected FrameStateAssignmentState merge(Block mergeBlock, List<FrameStateAssignmentState> states) {
             MergeNode merge = (MergeNode) mergeBlock.getBeginNode();
             if (merge.stateAfter() != null) {
-                return new FrameStateAssignementState(merge.stateAfter());
+                return new FrameStateAssignmentState(merge.stateAfter());
             }
-            return new FrameStateAssignementState(singleFrameState(states));
+            return new FrameStateAssignmentState(singleFrameState(states));
         }
 
         @Override
-        protected FrameStateAssignementState cloneState(FrameStateAssignementState oldState) {
-            return new FrameStateAssignementState(oldState.getFramestate());
+        protected FrameStateAssignmentState cloneState(FrameStateAssignmentState oldState) {
+            return new FrameStateAssignmentState(oldState.getFramestate());
         }
 
         @Override
-        protected List<FrameStateAssignementState> processLoop(Loop loop, FrameStateAssignementState initialState) {
+        protected List<FrameStateAssignmentState> processLoop(Loop loop, FrameStateAssignmentState initialState) {
             return ReentrantBlockIterator.processLoop(this, loop, initialState).exitStates;
         }
 
@@ -112,7 +112,7 @@ public class FrameStateAssignementPhase extends Phase {
     protected void run(StructuredGraph graph) {
         assert checkFixedDeopts(graph);
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
-        ReentrantBlockIterator.apply(new FrameStateAssignementClosure(), cfg.getStartBlock(), new FrameStateAssignementState(null), null);
+        ReentrantBlockIterator.apply(new FrameStateAssignementClosure(), cfg.getStartBlock(), new FrameStateAssignmentState(null), null);
     }
 
     private static boolean checkFixedDeopts(StructuredGraph graph) {
@@ -125,8 +125,8 @@ public class FrameStateAssignementPhase extends Phase {
         return true;
     }
 
-    private static FrameState singleFrameState(List<FrameStateAssignementState> states) {
-        Iterator<FrameStateAssignementState> it = states.iterator();
+    private static FrameState singleFrameState(List<FrameStateAssignmentState> states) {
+        Iterator<FrameStateAssignmentState> it = states.iterator();
         assert it.hasNext();
         FrameState first = it.next().getFramestate();
         while (it.hasNext()) {

@@ -28,14 +28,14 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 
+/**
+ * This node represents the boxing of a primitive value. This corresponds to a call to the valueOf
+ * methods in Integer, Long, etc.
+ */
 public class BoxNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Canonicalizable {
 
     @Input private ValueNode value;
     private final Kind boxingKind;
-
-    public BoxNode(Invoke invoke) {
-        this(invoke.methodCallTarget().arguments().get(0), invoke.node().objectStamp().type(), invoke.methodCallTarget().targetMethod().getSignature().getParameterKind(0));
-    }
 
     public BoxNode(ValueNode value, ResolvedJavaType resultType, Kind boxingKind) {
         super(StampFactory.exactNonNull(resultType));

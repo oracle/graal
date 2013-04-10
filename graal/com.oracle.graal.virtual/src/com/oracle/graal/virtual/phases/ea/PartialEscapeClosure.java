@@ -24,7 +24,6 @@ package com.oracle.graal.virtual.phases.ea;
 
 import static com.oracle.graal.virtual.phases.ea.PartialEscapeAnalysisPhase.*;
 
-import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -47,7 +46,7 @@ import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.virtual.nodes.*;
 import com.oracle.graal.virtual.phases.ea.BlockState.ReadCacheEntry;
-import com.oracle.graal.virtual.phases.ea.EffectList.*;
+import com.oracle.graal.virtual.phases.ea.EffectList.Effect;
 
 class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
@@ -90,21 +89,17 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
         return changed;
     }
 
-    private static void trace2(String format, Object... args) {
-        Debug.log(format, args);
-    }
-
     public List<Node> applyEffects(final StructuredGraph graph) {
         final ArrayList<Node> obsoleteNodes = new ArrayList<>();
         BlockIteratorClosure<Object> closure = new BlockIteratorClosure<Object>() {
 
             private void apply(GraphEffectList effects, Object context) {
                 if (!effects.isEmpty()) {
-                    trace2(" ==== effects for %s", context);
+                    Debug.log(" ==== effects for %s", context);
                     for (Effect effect : effects) {
                         effect.apply(graph, obsoleteNodes);
                         if (effect.isVisible()) {
-                            trace2("    %s", effect);
+                            Debug.log("    %s", effect);
                         }
                     }
                 }
@@ -331,8 +326,6 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
     }
 
-    static PrintStream out = System.out;
-
     @Override
     protected BlockState cloneState(BlockState oldState) {
         return oldState.cloneState();
@@ -394,7 +387,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     ValueNode value = obj.getEntry(i);
                     ObjectState valueObj = exitState.getObjectState(value);
                     if (valueObj == null) {
-                        if ((value instanceof PhiNode && ((PhiNode) value).merge() == exitNode.loopBegin()) || initialObj == null || !initialObj.isVirtual() || initialObj.getEntry(i) != value) {
+                        if (exitNode.loopBegin().isPhiAtMerge(value) || initialObj == null || !initialObj.isVirtual() || initialObj.getEntry(i) != value) {
                             ProxyNode proxy = new ProxyNode(value, exitNode, PhiType.Value, null);
                             obj.setEntry(i, proxy);
                             effects.addFloatingNode(proxy, "virtualProxy");
@@ -413,11 +406,9 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     }
                     obj.updateMaterializedValue(proxy);
                 } else {
-                    // assert initialObj.getMaterializedValue() == obj.getMaterializedValue() :
-                    // "materialized value is not allowed to change within loops: " +
-// initialObj.getMaterializedValue()
-                    // +
-                    // " vs. " + obj.getMaterializedValue() + " at " + exitNode;
+                    if (initialObj.getMaterializedValue() == obj.getMaterializedValue()) {
+                        Debug.log("materialized value changes within loop: %s vs. %s at %s", initialObj.getMaterializedValue(), obj.getMaterializedValue(), exitNode);
+                    }
                 }
             }
         }

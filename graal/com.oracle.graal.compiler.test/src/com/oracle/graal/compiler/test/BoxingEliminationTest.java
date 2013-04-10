@@ -189,6 +189,42 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         return result;
     }
 
+    @Test
+    public void testComparison() {
+        compareGraphs("testComparison1Snippet", "referenceComparisonSnippet");
+        compareGraphs("testComparison2Snippet", "referenceComparisonSnippet");
+    }
+
+    @SuppressWarnings("cast")
+    public static boolean testComparison1Snippet(int a, int b) {
+        return ((Integer) a) == b;
+    }
+
+    public static boolean testComparison2Snippet(int a, int b) {
+        Integer x = a;
+        Integer y = b;
+        return x == y;
+    }
+
+    public static boolean referenceComparisonSnippet(int a, int b) {
+        return a == b;
+    }
+
+    @Test
+    public void testLateCanonicalization() {
+        compareGraphs("testLateCanonicalizationSnippet", "referenceLateCanonicalizationSnippet");
+    }
+
+    public static boolean testLateCanonicalizationSnippet(int a) {
+        Integer x = a;
+        Integer y = 1000;
+        return x == y;
+    }
+
+    public static boolean referenceLateCanonicalizationSnippet(int a) {
+        return a == 1000;
+    }
+
     private StructuredGraph graph;
 
     public static Integer materializeReferenceSnippet(int a) {
