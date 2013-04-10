@@ -26,13 +26,24 @@ import com.oracle.graal.api.code.*;
 
 public class PTXAssembler extends AbstractPTXAssembler {
 
-    @SuppressWarnings("unused")
-    public PTXAssembler(TargetDescription target, RegisterConfig registerConfig) {
+    public PTXAssembler(TargetDescription target, @SuppressWarnings("unused") RegisterConfig registerConfig) {
         super(target);
     }
 
     public final void at() {
         emitString("@%p" + " " + "");
+    }
+
+    public final void atq() {
+        emitString("@%q" + " " + "");
+    }
+
+    public final void add_f32(Register d, Register a, Register b) {
+        emitString("add.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void add_f64(Register d, Register a, Register b) {
+        emitString("add.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
     public final void add_s16(Register d, Register a, Register b) {
@@ -57,6 +68,14 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public final void add_s64(Register d, Register a, long s64) {
         emitString("add.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + s64 + ";" + "");
+    }
+
+    public final void add_f32(Register d, Register a, float f32) {
+        emitString("add.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + f32 + ";" + "");
+    }
+
+    public final void add_f64(Register d, Register a, double f64) {
+        emitString("add.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + f64 + ";" + "");
     }
 
     public final void add_u16(Register d, Register a, Register b) {
@@ -123,7 +142,63 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("bra.uni" + " " + tgt + ";" + "");
     }
 
-    public final void div_s16(Register d, Register a, Register b) {
+    public final void cvt_s32_f32(Register d, Register a) {
+        emitString("cvt.s32.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void cvt_s64_f32(Register d, Register a) {
+        emitString("cvt.s64.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void cvt_f64_f32(Register d, Register a) {
+        emitString("cvt.f64.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void cvt_f32_f64(Register d, Register a) {
+        emitString("cvt.f32.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void cvt_s32_f64(Register d, Register a) {
+        emitString("cvt.s32.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void cvt_s64_f64(Register d, Register a) {
+        emitString("cvt.s64.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void cvt_f32_s32(Register d, Register a) {
+        emitString("cvt.f32.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void cvt_f64_s32(Register d, Register a) {
+        emitString("cvt.f64.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void cvt_s8_s32(Register d, Register a) {
+        emitString("cvt.s8.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void cvt_b16_s32(Register d, Register a) {
+        emitString("cvt.b16.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void cvt_s64_s32(Register d, Register a) {
+        emitString("cvt.s64.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void cvt_s32_s64(Register d, Register a) {
+        emitString("cvt.s32.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void div_f32(Register d, Register a, Register b) {
+        emitString("div.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void div_f64(Register d, Register a, Register b) {
+        emitString("div.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+   public final void div_s16(Register d, Register a, Register b) {
         emitString("div.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
@@ -143,8 +218,28 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("div.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + s32 + ";" + "");
     }
 
+    public final void div_s32(Register d, int s32, Register b) {
+        emitString("div.s32" + " " + "%r" + d.encoding() + ", " + s32 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void div_f32(Register d, float f32, Register b) {
+        emitString("div.f32" + " " + "%r" + d.encoding() + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void div_f64(Register d, double f64, Register b) {
+        emitString("div.f64" + " " + "%r" + d.encoding() + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    }
+
     public final void div_s64(Register d, Register a, long s64) {
         emitString("div.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + s64 + ";" + "");
+    }
+
+    public final void div_f32(Register d, Register a, float f32) {
+        emitString("div.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + f32 + ";" + "");
+    }
+
+    public final void div_f64(Register d, Register a, double f64) {
+        emitString("div.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + f64 + ";" + "");
     }
 
     public final void div_u16(Register d, Register a, Register b) {
@@ -255,6 +350,11 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("mov.u64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
     }
 
+    public final void mov_u64(@SuppressWarnings("unused") Register d,
+                              @SuppressWarnings("unused") AbstractAddress a) {
+        // emitString("mov.u64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
     public final void mov_s16(Register d, Register a) {
         emitString("mov.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
     }
@@ -319,6 +419,14 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("mov.f64" + " " + "%r" + d.encoding() + ", " + f64 + ";" + "");
     }
 
+    public final void mul_f32(Register d, Register a, Register b) {
+        emitString("mul.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void mul_f64(Register d, Register a, Register b) {
+        emitString("smul.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
     public final void mul_s16(Register d, Register a, Register b) {
         emitString("mul.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
@@ -341,6 +449,14 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public final void mul_s64(Register d, Register a, long s64) {
         emitString("mul.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + s64 + ";" + "");
+    }
+
+    public final void mul_f32(Register d, Register a, float f32) {
+        emitString("mul.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + f32 + ";" + "");
+    }
+
+    public final void mul_f64(Register d, Register a, double f64) {
+        emitString("mul.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + f64 + ";" + "");
     }
 
     public final void mul_u16(Register d, Register a, Register b) {
@@ -367,6 +483,14 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("mul.u64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + u64 + ";" + "");
     }
 
+    public final void neg_f32(Register d, Register a) {
+        emitString("neg.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void neg_f64(Register d, Register a) {
+        emitString("neg.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
     public final void neg_s16(Register d, Register a) {
         emitString("neg.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
     }
@@ -377,6 +501,42 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public final void neg_s64(Register d, Register a) {
         emitString("neg.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void not_s16(Register d, Register a) {
+        emitString("not.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void not_s32(Register d, Register a) {
+        emitString("not.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void not_s64(Register d, Register a) {
+        emitString("not.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+    }
+
+    public final void or_b16(Register d, Register a, Register b) {
+        emitString("or.b16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void or_b32(Register d, Register a, Register b) {
+        emitString("or.b32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void or_b64(Register d, Register a, Register b) {
+        emitString("or.b64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void or_b16(Register d, Register a, short b16) {
+        emitString("or.b16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + b16 + ";" + "");
+    }
+
+    public final void or_b32(Register d, Register a, int b32) {
+        emitString("or.b32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + b32 + ";" + "");
+    }
+
+    public final void or_b64(Register d, Register a, long b64) {
+        emitString("or.b64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + b64 + ";" + "");
     }
 
     public final void popc_b32(Register d, Register a) {
@@ -441,6 +601,86 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public final void ret_uni() {
         emitString("ret.uni;" + " " + "");
+    }
+
+    public final void setp_eq_f32(Register a, Register b) {
+        emitString("setp.eq.f32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_ne_f32(Register a, Register b) {
+        emitString("setp.ne.f32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_lt_f32(Register a, Register b) {
+        emitString("setp.lt.f32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_le_f32(Register a, Register b) {
+        emitString("setp.le.f32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_gt_f32(Register a, Register b) {
+        emitString("setp.gt.f32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_ge_f32(Register a, Register b) {
+        emitString("setp.ge.f32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_eq_f32(float f32, Register b) {
+        emitString("setp.eq.f32" + " " + "%p" + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_ne_f32(float f32, Register b) {
+        emitString("setp.ne.f32" + " " + "%p" + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_lt_f32(float f32, Register b) {
+        emitString("setp.lt.f32" + " " + "%p" + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_le_f32(float f32, Register b) {
+        emitString("setp.le.f32" + " " + "%p" + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_gt_f32(float f32, Register b) {
+        emitString("setp.gt.f32" + " " + "%p" + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_ge_f32(float f32, Register b) {
+        emitString("setp.ge.f32" + " " + "%p" + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_eq_f64(double f64, Register b) {
+        emitString("setp.eq.f64" + " " + "%p" + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_ne_f64(double f64, Register b) {
+        emitString("setp.ne.f64" + " " + "%p" + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_lt_f64(double f64, Register b) {
+        emitString("setp.lt.f64" + " " + "%p" + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_le_f64(double f64, Register b) {
+        emitString("setp.le.f64" + " " + "%p" + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_gt_f64(double f64, Register b) {
+        emitString("setp.gt.f64" + " " + "%p" + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_ge_f64(double f64, Register b) {
+        emitString("setp.ge.f64" + " " + "%p" + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_eq_s64(Register a, Register b) {
+        emitString("setp.eq.s64" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void setp_eq_s64(long s64, Register b) {
+        emitString("setp.eq.s64" + " " + "%p" + ", " + s64 + ", %r" + b.encoding() + ";" + "");
     }
 
     public final void setp_eq_s32(Register a, Register b) {
@@ -587,6 +827,54 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("setp.ge.u32" + " " + "%p" + ", " + u32 + ", %r" + b.encoding() + ";" + "");
     }
 
+    public final void shl_s16(Register d, Register a, Register b) {
+        emitString("shl.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void shl_s32(Register d, Register a, Register b) {
+        emitString("shl.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void shl_s64(Register d, Register a, Register b) {
+        emitString("shl.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void shl_s16(Register d, Register a, int u32) {
+        emitString("shl.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    }
+
+    public final void shl_s32(Register d, Register a, int u32) {
+        emitString("shl.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    }
+
+    public final void shl_s64(Register d, Register a, int u32) {
+        emitString("shl.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    }
+
+    public final void shl_u16(Register d, Register a, Register b) {
+        emitString("shl.u16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void shl_u32(Register d, Register a, Register b) {
+        emitString("shl.u32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void shl_u64(Register d, Register a, Register b) {
+        emitString("shl.u64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void shl_u16(Register d, Register a, int u32) {
+        emitString("shl.u16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    }
+
+    public final void shl_u32(Register d, Register a, int u32) {
+        emitString("shl.u32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    }
+
+    public final void shl_u64(Register d, Register a, int u32) {
+        emitString("shl.u64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    }
+
     public final void shr_s16(Register d, Register a, Register b) {
         emitString("shr.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
@@ -631,8 +919,8 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("shr.u32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + u32 + ";" + "");
     }
 
-    public final void shr_u64(Register d, Register a, int u32) {
-        emitString("shr.u64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    public final void shr_u64(Register d, Register a, long u64) {
+        emitString("shr.u64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + u64 + ";" + "");
     }
 
     public final void st_global_b8(Register a, long immOff, Register b) {
@@ -691,6 +979,14 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("st.global.f64" + " " + "[%r" + a.encoding() + " + " + immOff + "], %r" + b.encoding() + ";" + "");
     }
 
+    public final void sub_f32(Register d, Register a, Register b) {
+        emitString("sub.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void sub_f64(Register d, Register a, Register b) {
+        emitString("sub.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
     public final void sub_s16(Register d, Register a, Register b) {
         emitString("sub.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
@@ -711,8 +1007,20 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("sub.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + s32 + ";" + "");
     }
 
+    public final void sub_s64(Register d, Register a, int s32) {
+        emitString("sub.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + s32 + ";" + "");
+    }
+
     public final void sub_s64(Register d, Register a, long s64) {
         emitString("sub.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + s64 + ";" + "");
+    }
+
+    public final void sub_f32(Register d, Register a, float f32) {
+        emitString("sub.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + f32 + ";" + "");
+    }
+
+    public final void sub_f64(Register d, Register a, double f64) {
+        emitString("sub.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + f64 + ";" + "");
     }
 
     public final void sub_s16(Register d, short s16, Register b) {
@@ -727,6 +1035,14 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("sub.s64" + " " + "%r" + d.encoding() + ", " + s64 + ", %r" + b.encoding() + ";" + "");
     }
 
+    public final void sub_f32(Register d, float f32, Register b) {
+        emitString("sub.f32" + " " + "%r" + d.encoding() + ", %r" + b.encoding() + ", " + f32 + ";" + "");
+    }
+
+    public final void sub_f64(Register d, double f64, Register b) {
+        emitString("sub.f64" + " " + "%r" + d.encoding() + ", %r" + b.encoding() + ", " + f64 + ";" + "");
+    }
+
     public final void sub_sat_s32(Register d, Register a, Register b) {
         emitString("sub.sat.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
@@ -737,6 +1053,30 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public final void sub_sat_s32(Register d, int s32, Register b) {
         emitString("sub.sat.s32" + " " + "%r" + d.encoding() + ", " + s32 + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void xor_b16(Register d, Register a, Register b) {
+        emitString("xor.b16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void xor_b32(Register d, Register a, Register b) {
+        emitString("xor.b32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void xor_b64(Register d, Register a, Register b) {
+        emitString("xor.b64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    }
+
+    public final void xor_b16(Register d, Register a, short b16) {
+        emitString("xor.b16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + b16 + ";" + "");
+    }
+
+    public final void xor_b32(Register d, Register a, int b32) {
+        emitString("xor.b32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + b32 + ";" + "");
+    }
+
+    public final void xor_b64(Register d, Register a, long b64) {
+        emitString("xor.b64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + b64 + ";" + "");
     }
 
     @Override

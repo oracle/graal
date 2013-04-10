@@ -65,11 +65,15 @@ public enum PTXCompare {
 
     public static void emit(TargetMethodAssembler tasm, PTXAssembler masm, PTXCompare opcode, Condition condition, Value x, Value y) {
         if (isConstant(x)) {
-            int a = tasm.asIntConst(x);
-            Register b = asIntReg(y);
             switch (opcode) {
                 case ICMP:
-                    emitCompareConstReg(masm, condition, a, b);
+                    emitCompareConstReg(masm, condition, tasm.asIntConst(x), asIntReg(y));
+                    break;
+                case FCMP:
+                    emitCompareConstReg(masm, condition, tasm.asFloatConst(x), asFloatReg(y));
+                    break;
+                case DCMP:
+                    emitCompareConstReg(masm, condition, tasm.asDoubleConst(x), asDoubleReg(y));
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -101,15 +105,72 @@ public enum PTXCompare {
                     throw GraalInternalError.shouldNotReachHere();
             }
         } else {
-            Register a = asIntReg(x);
-            Register b = asIntReg(y);
             switch (opcode) {
                 case ICMP:
-                    emitCompareRegReg(masm, condition, a, b);
+                    emitCompareRegReg(masm, condition, asIntReg(x), asIntReg(y));
+                    break;
+                case LCMP:
+                    emitCompareRegReg(masm, condition, asLongReg(x), asLongReg(y));
+                    break;
+                case FCMP:
+                    emitCompareRegReg(masm, condition, asFloatReg(x), asFloatReg(y));
+                    break;
+                case DCMP:
+                    emitCompareRegReg(masm, condition, asDoubleReg(x), asDoubleReg(y));
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw GraalInternalError.shouldNotReachHere("missing: "  + opcode);
             }
+        }
+    }
+
+    private static void emitCompareConstReg(PTXAssembler masm, Condition condition, float a, Register b) {
+        switch (condition) {
+        case EQ:
+            masm.setp_eq_f32(a, b);
+            break;
+        case NE:
+            masm.setp_ne_f32(a, b);
+            break;
+        case LT:
+            masm.setp_lt_f32(a, b);
+            break;
+        case LE:
+            masm.setp_le_f32(a, b);
+            break;
+        case GT:
+            masm.setp_gt_f32(a, b);
+            break;
+        case GE:
+            masm.setp_ge_f32(a, b);
+            break;
+        default:
+            throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    private static void emitCompareConstReg(PTXAssembler masm, Condition condition, double a, Register b) {
+        switch (condition) {
+        case EQ:
+            masm.setp_eq_f64(a, b);
+            break;
+        case NE:
+            masm.setp_ne_f64(a, b);
+            break;
+        case LT:
+            masm.setp_lt_f64(a, b);
+            break;
+        case LE:
+            masm.setp_le_f64(a, b);
+            break;
+        case GT:
+            masm.setp_gt_f64(a, b);
+            break;
+        case GE:
+            masm.setp_ge_f64(a, b);
+            break;
+        default:
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 

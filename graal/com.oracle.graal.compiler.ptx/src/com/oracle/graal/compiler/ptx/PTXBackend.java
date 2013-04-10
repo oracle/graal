@@ -94,7 +94,7 @@ public class PTXBackend extends Backend {
         codeBuffer.emitString("");
 
         // XXX For now declare one predicate and all registers
-        codeBuffer.emitString("  .reg .pred %p;");
+        codeBuffer.emitString("  .reg .pred %p,%q;");
         codeBuffer.emitString("  .reg .u32 %r<16>;");
 
         // Emit code for the LIR
