@@ -44,6 +44,7 @@ import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.Encryp
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.DecryptAESCryptStubCall.*;
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.EncryptAESCryptStubCall.*;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -71,13 +72,13 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /*             ret */ ret(Kind.Void));
 
         addRuntimeCall(ARITHMETIC_FREM, config.arithmeticFremStub,
-                /*           temps */ null,
+                /*           temps */ new Register[]{AMD64.rax},
                 /*             ret */ ret(Kind.Float),
                 /* arg0:         a */ javaCallingConvention(Kind.Float,
                 /* arg1:         b */                       Kind.Float));
 
         addRuntimeCall(ARITHMETIC_DREM, config.arithmeticDremStub,
-                /*           temps */ null,
+                /*           temps */ new Register[]{AMD64.rax},
                 /*             ret */ ret(Kind.Double),
                 /* arg0:         a */ javaCallingConvention(Kind.Double,
                 /* arg1:         b */                       Kind.Double));
