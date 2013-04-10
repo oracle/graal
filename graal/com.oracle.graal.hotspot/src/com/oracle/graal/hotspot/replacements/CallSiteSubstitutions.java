@@ -40,25 +40,25 @@ public class CallSiteSubstitutions implements ReplacementsProvider {
             replacements.registerSubstitutions(VolatileCallSiteSubstitutions.class);
         }
     }
-}
 
-@ClassSubstitution(ConstantCallSite.class)
-class ConstantCallSiteSubstitutions {
+    @ClassSubstitution(ConstantCallSite.class)
+    private static class ConstantCallSiteSubstitutions {
 
-    @MacroSubstitution(isStatic = false, macro = CallSiteTargetNode.class)
-    public static native MethodHandle getTarget(ConstantCallSite callSite);
-}
+        @MacroSubstitution(isStatic = false, macro = CallSiteTargetNode.class)
+        public static native MethodHandle getTarget(ConstantCallSite callSite);
+    }
 
-@ClassSubstitution(MutableCallSite.class)
-class MutableCallSiteSubstitutions {
+    @ClassSubstitution(MutableCallSite.class)
+    private static class MutableCallSiteSubstitutions {
 
-    @MacroSubstitution(isStatic = false, macro = CallSiteTargetNode.class)
-    public static native MethodHandle getTarget(MutableCallSite callSite);
-}
+        @MacroSubstitution(isStatic = false, macro = CallSiteTargetNode.class)
+        public static native MethodHandle getTarget(MutableCallSite callSite);
+    }
 
-@ClassSubstitution(VolatileCallSite.class)
-class VolatileCallSiteSubstitutions {
+    @ClassSubstitution(VolatileCallSite.class)
+    private static class VolatileCallSiteSubstitutions {
 
-    @MacroSubstitution(isStatic = false, macro = CallSiteTargetNode.class)
-    public static native MethodHandle getTarget(VolatileCallSite callSite);
+        @MacroSubstitution(isStatic = false, macro = CallSiteTargetNode.class)
+        public static native MethodHandle getTarget(VolatileCallSite callSite);
+    }
 }
