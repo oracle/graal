@@ -31,12 +31,12 @@ public class BoxingSubstitutions {
     @ClassSubstitution(Boolean.class)
     private static class BooleanSubstitutions {
 
-        @MethodSubstitution(isForcedInlining = true)
+        @MethodSubstitution(forced = true)
         public static Boolean valueOf(boolean value) {
             return BoxNode.box(value, Boolean.class, Kind.Boolean);
         }
 
-        @MethodSubstitution(isStatic = false, isForcedInlining = true)
+        @MethodSubstitution(isStatic = false, forced = true)
         public static boolean booleanValue(Boolean value) {
             return UnboxNode.unbox(value, Kind.Boolean);
         }
@@ -45,12 +45,12 @@ public class BoxingSubstitutions {
     @ClassSubstitution(Byte.class)
     private static class ByteSubstitutions {
 
-        @MethodSubstitution(isForcedInlining = true)
+        @MethodSubstitution(forced = true)
         public static Byte valueOf(byte value) {
             return BoxNode.box(value, Byte.class, Kind.Byte);
         }
 
-        @MethodSubstitution(isStatic = false, isForcedInlining = true)
+        @MethodSubstitution(isStatic = false, forced = true)
         public static byte byteValue(Byte value) {
             return UnboxNode.unbox(value, Kind.Byte);
         }
@@ -59,12 +59,12 @@ public class BoxingSubstitutions {
     @ClassSubstitution(Character.class)
     private static class CharacterSubstitutions {
 
-        @MethodSubstitution(isForcedInlining = true)
+        @MethodSubstitution(forced = true)
         public static Character valueOf(char value) {
             return BoxNode.box(value, Character.class, Kind.Char);
         }
 
-        @MethodSubstitution(isStatic = false, isForcedInlining = true)
+        @MethodSubstitution(isStatic = false, forced = true)
         public static char charValue(Character value) {
             return UnboxNode.unbox(value, Kind.Char);
         }
@@ -73,12 +73,12 @@ public class BoxingSubstitutions {
     @ClassSubstitution(Double.class)
     private static class DoubleSubstitutions {
 
-        @MethodSubstitution(isForcedInlining = true)
+        @MethodSubstitution(forced = true)
         public static Double valueOf(double value) {
             return BoxNode.box(value, Double.class, Kind.Double);
         }
 
-        @MethodSubstitution(isStatic = false, isForcedInlining = true)
+        @MethodSubstitution(isStatic = false, forced = true)
         public static double doubleValue(Double value) {
             return UnboxNode.unbox(value, Kind.Double);
         }
@@ -87,12 +87,12 @@ public class BoxingSubstitutions {
     @ClassSubstitution(Float.class)
     private static class FloatSubstitutions {
 
-        @MethodSubstitution(isForcedInlining = true)
+        @MethodSubstitution(forced = true)
         public static Float valueOf(float value) {
             return BoxNode.box(value, Float.class, Kind.Float);
         }
 
-        @MethodSubstitution(isStatic = false, isForcedInlining = true)
+        @MethodSubstitution(isStatic = false, forced = true)
         public static float floatValue(Float value) {
             return UnboxNode.unbox(value, Kind.Float);
         }
@@ -101,12 +101,12 @@ public class BoxingSubstitutions {
     @ClassSubstitution(Integer.class)
     private static class IntegerSubstitutions {
 
-        @MethodSubstitution(isForcedInlining = true)
+        @MethodSubstitution(forced = true)
         public static Integer valueOf(int value) {
             return BoxNode.box(value, Integer.class, Kind.Int);
         }
 
-        @MethodSubstitution(isStatic = false, isForcedInlining = true)
+        @MethodSubstitution(isStatic = false, forced = true)
         public static int intValue(Integer value) {
             return UnboxNode.unbox(value, Kind.Int);
         }
@@ -115,12 +115,12 @@ public class BoxingSubstitutions {
     @ClassSubstitution(Long.class)
     private static class LongSubstitutions {
 
-        @MethodSubstitution(isForcedInlining = true)
+        @MethodSubstitution(forced = true)
         public static Long valueOf(long value) {
             return BoxNode.box(value, Long.class, Kind.Long);
         }
 
-        @MethodSubstitution(isStatic = false, isForcedInlining = true)
+        @MethodSubstitution(isStatic = false, forced = true)
         public static long longValue(Long value) {
             return UnboxNode.unbox(value, Kind.Long);
         }
@@ -129,12 +129,12 @@ public class BoxingSubstitutions {
     @ClassSubstitution(Short.class)
     private static class ShortSubstitutions {
 
-        @MethodSubstitution(isForcedInlining = true)
+        @MethodSubstitution(forced = true)
         public static Short valueOf(short value) {
             return BoxNode.box(value, Short.class, Kind.Short);
         }
 
-        @MethodSubstitution(isStatic = false, isForcedInlining = true)
+        @MethodSubstitution(isStatic = false, forced = true)
         public static short shortValue(Short value) {
             return UnboxNode.unbox(value, Kind.Short);
         }

@@ -77,6 +77,9 @@ public @interface MacroSubstitution {
     /**
      * Determines if this method should be substituted in all cases, even if inlining thinks it is
      * not important.
+     * 
+     * Not that this is still depending on whether inlining sees the correct call target, so it's
+     * only a hard guarantee for static and special invocations.
      */
-    boolean isForcedInlining() default false;
+    boolean forced() default false;
 }

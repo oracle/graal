@@ -149,7 +149,7 @@ public class ReplacementsImpl implements Replacements {
                 Member originalMethod = originalMethod(classSubstitution, methodSubstitution.optional(), originalName, originalParameters);
                 if (originalMethod != null) {
                     ResolvedJavaMethod original = registerMethodSubstitution(originalMethod, substituteMethod);
-                    if (original != null && methodSubstitution.isForcedInlining()) {
+                    if (original != null && methodSubstitution.forced()) {
                         forcedSubstitutions.add(original);
                     }
                 }
@@ -160,7 +160,7 @@ public class ReplacementsImpl implements Replacements {
                 Member originalMethod = originalMethod(classSubstitution, macroSubstitution.optional(), originalName, originalParameters);
                 if (originalMethod != null) {
                     ResolvedJavaMethod original = registerMacroSubstitution(originalMethod, macroSubstitution.macro());
-                    if (original != null && macroSubstitution.isForcedInlining()) {
+                    if (original != null && macroSubstitution.forced()) {
                         forcedSubstitutions.add(original);
                     }
                 }

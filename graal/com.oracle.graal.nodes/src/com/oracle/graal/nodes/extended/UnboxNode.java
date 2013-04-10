@@ -95,12 +95,6 @@ public class UnboxNode extends FixedWithNextNode implements Virtualizable, Lower
         return this;
     }
 
-    /*
-     * Normally, all these variants wouldn't be needed because this can be accomplished by using a
-     * generic method with automatic unboxing. These intrinsics, however, are themselves used for
-     * recognizing boxings, which means that there would be a circularity issue.
-     */
-
     @NodeIntrinsic
     public static native boolean unbox(Boolean value, @ConstantNodeParameter Kind kind);
 
