@@ -232,17 +232,17 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /*             ret */ ret(Kind.Long));
 
         addRuntimeCall(ARITHMETIC_SIN, config.arithmeticSinStub,
-                        /*           temps */ null,
+                        /*           temps */ this.regConfig.getCallerSaveRegisters(),
                         /*             ret */ ret(Kind.Double),
                         /* arg0:     index */ javaCallingConvention(Kind.Double));
 
         addRuntimeCall(ARITHMETIC_COS, config.arithmeticCosStub,
-                        /*           temps */ null,
+                        /*           temps */ this.regConfig.getCallerSaveRegisters(),
                         /*             ret */ ret(Kind.Double),
                         /* arg0:     index */ javaCallingConvention(Kind.Double));
 
         addRuntimeCall(ARITHMETIC_TAN, config.arithmeticTanStub,
-                        /*           temps */ null,
+                        /*           temps */ this.regConfig.getCallerSaveRegisters(),
                         /*             ret */ ret(Kind.Double),
                         /* arg0:     index */ javaCallingConvention(Kind.Double));
 
