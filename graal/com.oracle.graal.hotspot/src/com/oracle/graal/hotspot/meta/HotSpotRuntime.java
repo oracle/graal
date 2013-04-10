@@ -224,11 +224,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg0:     index */ javaCallingConvention(Kind.Int));
 
         addRuntimeCall(JAVA_TIME_MILLIS, config.javaTimeMillisStub,
-                        /*           temps */ null,
+                        /*           temps */ this.regConfig.getCallerSaveRegisters(),
                         /*             ret */ ret(Kind.Long));
 
         addRuntimeCall(JAVA_TIME_NANOS, config.javaTimeNanosStub,
-                        /*           temps */ null,
+                        /*           temps */ this.regConfig.getCallerSaveRegisters(),
                         /*             ret */ ret(Kind.Long));
 
         addRuntimeCall(ARITHMETIC_SIN, config.arithmeticSinStub,
@@ -278,7 +278,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
      * @param ret where the call returns its result
      * @param args where arguments are passed to the call
      */
-    protected void addRuntimeCall(Descriptor descriptor, long address, Register[] tempRegs, Value ret, Value... args) {
+    protected RuntimeCallTarget addRuntimeCall(Descriptor descriptor, long address, Register[] tempRegs, Value ret, Value... args) {
         Value[] temps = tempRegs == null || tempRegs.length == 0 ? Value.NONE : new Value[tempRegs.length];
         for (int i = 0; i < temps.length; i++) {
             temps[i] = tempRegs[i].asValue();
@@ -291,6 +291,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         }
         HotSpotRuntimeCallTarget runtimeCall = new HotSpotRuntimeCallTarget(descriptor, address, new CallingConvention(temps, 0, ret, args), graalRuntime.getCompilerToVM());
         runtimeCalls.put(descriptor, runtimeCall);
+        return runtimeCall;
     }
 
     private boolean checkAssignable(Class spec, Value value) {
