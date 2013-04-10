@@ -62,15 +62,15 @@ public class WriteBarrierSnippets implements Snippets {
     }
 
     @Snippet
-    public static void serialArrayRangeWriteBarrier(@Parameter("dstObject") Object destObject, @Parameter("destPos") int destPos, @Parameter("length") int length) {
-        Object dest = FixedValueAnchorNode.getObject(destObject);
+    public static void serialArrayRangeWriteBarrier(@Parameter("dstObject") Object destinationObject, @Parameter("destPos") int destinationStartingIndex, @Parameter("length") int length) {
+        Object dest = FixedValueAnchorNode.getObject(destinationObject);
         int cardShift = cardTableShift();
         long cardStart = cardTableStart();
         final int scale = arrayIndexScale(Kind.Object);
         int header = arrayBaseOffset(Kind.Object);
         long dstAddr = GetObjectAddressNode.get(dest);
-        long start = (dstAddr + header + (long) destPos * scale) >>> cardShift;
-        long end = (dstAddr + header + ((long) destPos + length - 1) * scale) >>> cardShift;
+        long start = (dstAddr + header + (long) destinationStartingIndex * scale) >>> cardShift;
+        long end = (dstAddr + header + ((long) destinationStartingIndex + length - 1) * scale) >>> cardShift;
         long count = end - start + 1;
         while (count-- > 0) {
             DirectStoreNode.store((start + cardStart) + count, false, Kind.Boolean);
@@ -103,8 +103,8 @@ public class WriteBarrierSnippets implements Snippets {
             ResolvedJavaMethod method = serialArrayRangeWriteBarrier;
             Key key = new Key(method);
             Arguments arguments = new Arguments();
-            arguments.add("dstObject", arrayRangeWriteBarrier.getDstObject());
-            arguments.add("destPos", arrayRangeWriteBarrier.getDstPos());
+            arguments.add("dstObject", arrayRangeWriteBarrier.getDestinationObject());
+            arguments.add("destPos", arrayRangeWriteBarrier.getDestinationStartingIndex());
             arguments.add("length", arrayRangeWriteBarrier.getLength());
             SnippetTemplate template = cache.get(key);
             template.instantiate(runtime, arrayRangeWriteBarrier, DEFAULT_REPLACER, arguments);
