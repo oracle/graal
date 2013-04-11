@@ -155,7 +155,7 @@ public class PTXLIRGenerator extends LIRGenerator {
             baseRegister = asAllocatable(base);
         }
 
-        if (index != Value.ILLEGAL) {
+        if (index != Value.ILLEGAL && scale != 0) {
             if (isConstant(index)) {
                 finalDisp += asConstant(index).asLong() * scale;
             } else {
@@ -169,6 +169,9 @@ public class PTXLIRGenerator extends LIRGenerator {
                 if (baseRegister == AllocatableValue.UNUSED) {
                     baseRegister = asAllocatable(indexRegister);
                 } else {
+                    Variable newBase = newVariable(Kind.Int);
+                    emitMove(newBase, baseRegister);
+                    baseRegister = newBase;
                     baseRegister = emitAdd(baseRegister, indexRegister);
                 }
             }
