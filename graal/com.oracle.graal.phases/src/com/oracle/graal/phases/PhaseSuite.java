@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,23 @@
  */
 package com.oracle.graal.phases;
 
+import java.util.*;
+
 import com.oracle.graal.nodes.*;
 
-/**
- * Base class for compiler phases that don't need a context object.
- */
-public abstract class Phase extends BasePhase<Object> {
+public class PhaseSuite<C> extends BasePhase<C> {
 
-    protected Phase() {
-    }
+    private final List<BasePhase<? super C>> phases;
 
-    protected Phase(String name) {
+    public PhaseSuite(String name, List<BasePhase<? super C>> phases) {
         super(name);
+        this.phases = phases;
     }
-
-    public final void apply(final StructuredGraph graph) {
-        apply(graph, true);
-    }
-
-    public final void apply(final StructuredGraph graph, final boolean dumpGraph) {
-        apply(graph, null, dumpGraph);
-    }
-
-    protected abstract void run(StructuredGraph graph);
 
     @Override
-    protected final void run(StructuredGraph graph, Object context) {
-        run(graph);
+    protected void run(StructuredGraph graph, C context) {
+        for (BasePhase<? super C> phase : phases) {
+            phase.apply(graph, context);
+        }
     }
 }

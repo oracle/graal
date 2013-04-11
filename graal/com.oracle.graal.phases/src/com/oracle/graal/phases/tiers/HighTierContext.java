@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,34 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases;
+package com.oracle.graal.phases.tiers;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 
-/**
- * Base class for compiler phases that don't need a context object.
- */
-public abstract class Phase extends BasePhase<Object> {
+public class HighTierContext {
 
-    protected Phase() {
+    private final MetaAccessProvider runtime;
+    private final Assumptions assumptions;
+
+    public HighTierContext(MetaAccessProvider runtime, Assumptions assumptions) {
+        this.runtime = runtime;
+        this.assumptions = assumptions;
     }
 
-    protected Phase(String name) {
-        super(name);
+    public MetaAccessProvider getRuntime() {
+        return runtime;
     }
 
-    public final void apply(final StructuredGraph graph) {
-        apply(graph, true);
-    }
-
-    public final void apply(final StructuredGraph graph, final boolean dumpGraph) {
-        apply(graph, null, dumpGraph);
-    }
-
-    protected abstract void run(StructuredGraph graph);
-
-    @Override
-    protected final void run(StructuredGraph graph, Object context) {
-        run(graph);
+    public Assumptions getAssumptions() {
+        return assumptions;
     }
 }
