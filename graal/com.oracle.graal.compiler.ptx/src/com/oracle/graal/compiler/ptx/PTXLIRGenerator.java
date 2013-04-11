@@ -472,4 +472,9 @@ public class PTXLIRGenerator extends LIRGenerator {
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
         throw new InternalError("NYI");
     }
+
+    @Override
+    public void visitInfopointNode(InfopointNode i) {
+        throw new InternalError("NYI");
+    }
 }

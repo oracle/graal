@@ -137,4 +137,6 @@ public abstract class LIRGeneratorTool {
      */
     public void beforeRegisterAllocation() {
     }
+
+    public abstract void visitInfopointNode(InfopointNode i);
 }

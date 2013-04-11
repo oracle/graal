@@ -63,11 +63,11 @@ public class AMD64SafepointOp extends AMD64LIRInstruction {
         if (config.isPollingPageFar) {
             asm.movq(scratch.getRegister(), config.safepointPollingAddress + offset);
             tasm.recordMark(Marks.MARK_POLL_FAR);
-            tasm.recordSafepoint(pos, state);
+            tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
             asm.movq(scratch.getRegister(), new AMD64Address(scratch.getRegister()));
         } else {
             tasm.recordMark(Marks.MARK_POLL_NEAR);
-            tasm.recordSafepoint(pos, state);
+            tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
             // The C++ code transforms the polling page offset into an RIP displacement
             // to the real address at that offset in the polling page.
             asm.movq(scratch.getRegister(), new AMD64Address(rip, offset));

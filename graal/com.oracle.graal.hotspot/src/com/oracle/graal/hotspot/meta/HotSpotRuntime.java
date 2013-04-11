@@ -48,7 +48,7 @@ import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Mark;
-import com.oracle.graal.api.code.CompilationResult.Safepoint;
+import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
@@ -373,18 +373,18 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             addExceptionHandlersComment(compResult, hcf);
             Register fp = regConfig.getFrameRegister();
             RefMapFormatter slotFormatter = new RefMapFormatter(target.arch, target.wordSize, fp, 0);
-            for (Safepoint safepoint : compResult.getSafepoints()) {
-                if (safepoint instanceof Call) {
-                    Call call = (Call) safepoint;
+            for (Infopoint infopoint : compResult.getInfopoints()) {
+                if (infopoint instanceof Call) {
+                    Call call = (Call) infopoint;
                     if (call.debugInfo != null) {
                         hcf.addComment(call.pcOffset + call.size, CodeUtil.append(new StringBuilder(100), call.debugInfo, slotFormatter).toString());
                     }
                     addOperandComment(hcf, call.pcOffset, "{" + getTargetName(call) + "}");
                 } else {
-                    if (safepoint.debugInfo != null) {
-                        hcf.addComment(safepoint.pcOffset, CodeUtil.append(new StringBuilder(100), safepoint.debugInfo, slotFormatter).toString());
+                    if (infopoint.debugInfo != null) {
+                        hcf.addComment(infopoint.pcOffset, CodeUtil.append(new StringBuilder(100), infopoint.debugInfo, slotFormatter).toString());
                     }
-                    addOperandComment(hcf, safepoint.pcOffset, "{safepoint}");
+                    addOperandComment(hcf, infopoint.pcOffset, "{infopoint: " + infopoint.reason + "}");
                 }
             }
             for (DataPatch site : compResult.getDataReferences()) {

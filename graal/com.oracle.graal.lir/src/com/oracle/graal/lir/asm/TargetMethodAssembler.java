@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,7 +101,7 @@ public class TargetMethodAssembler {
 
         Debug.metric("TargetMethods").increment();
         Debug.metric("CodeBytesEmitted").add(compilationResult.getTargetCodeSize());
-        Debug.metric("SafepointsEmitted").add(compilationResult.getSafepoints().size());
+        Debug.metric("SafepointsEmitted").add(compilationResult.getInfopoints().size());
         Debug.metric("DataPatches").add(compilationResult.getDataReferences().size());
         Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
         Debug.log("Finished target method %s, isStub %b", name, isStub);
@@ -122,7 +122,7 @@ public class TargetMethodAssembler {
     public void recordImplicitException(int pcOffset, LIRFrameState info) {
         // record an implicit exception point
         if (info != null) {
-            compilationResult.recordSafepoint(pcOffset, info.debugInfo());
+            compilationResult.recordInfopoint(pcOffset, info.debugInfo(), InfopointReason.IMPLICIT_EXCEPTION);
             assert info.exceptionEdge == null;
         }
     }
@@ -137,10 +137,10 @@ public class TargetMethodAssembler {
         compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
     }
 
-    public void recordSafepoint(int pos, LIRFrameState info) {
-        // safepoints always need debug info
+    public void recordInfopoint(int pos, LIRFrameState info, InfopointReason reason) {
+        // infopoints always need debug info
         DebugInfo debugInfo = info.debugInfo();
-        compilationResult.recordSafepoint(pos, debugInfo);
+        compilationResult.recordInfopoint(pos, debugInfo, reason);
     }
 
     public AbstractAddress recordDataReferenceInCode(Constant data, int alignment, boolean inlined) {

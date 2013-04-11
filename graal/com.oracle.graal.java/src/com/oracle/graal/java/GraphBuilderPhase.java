@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,6 +75,10 @@ public class GraphBuilderPhase extends Phase {
      */
     public static final int TRACELEVEL_STATE = 2;
 
+    private LineNumberTable lnt;
+    private int previousLineNumber;
+    private int currentLineNumber;
+
     protected StructuredGraph currentGraph;
 
     private final MetaAccessProvider runtime;
@@ -141,6 +145,10 @@ public class GraphBuilderPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         method = graph.method();
+        if (graphBuilderConfig.eagerInfopointMode()) {
+            lnt = method.getLineNumberTable();
+            previousLineNumber = -1;
+        }
         entryBCI = graph.getEntryBCI();
         profilingInfo = method.getProfilingInfo();
         assert method.getCode() != null : "method must contain bytecodes: " + method;
@@ -192,6 +200,13 @@ public class GraphBuilderPhase extends Phase {
             lastInstr = genMonitorEnter(methodSynchronizedObject);
         }
         frameState.clearNonLiveLocals(blockMap.startBlock.localsLiveIn);
+
+        if (graphBuilderConfig.eagerInfopointMode()) {
+            ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
+            InfopointNode ipn = currentGraph.add(new InfopointNode(InfopointReason.METHOD_START));
+            lastInstr.setNext(ipn);
+            lastInstr = ipn;
+        }
 
         // finish the start block
         ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
@@ -1493,7 +1508,7 @@ public class GraphBuilderPhase extends Phase {
     }
 
     private void processBlock(Block block) {
-        // Ignore blocks that have no predecessors by the time it their bytecodes are parsed
+        // Ignore blocks that have no predecessors by the time their bytecodes are parsed
         if (block == null || block.firstInstruction == null) {
             Debug.log("Ignoring block %s", block);
             return;
@@ -1573,6 +1588,12 @@ public class GraphBuilderPhase extends Phase {
             throw new BailoutException("unbalanced monitors");
         }
         ReturnNode returnNode = currentGraph.add(new ReturnNode(x));
+
+        if (graphBuilderConfig.eagerInfopointMode()) {
+            InfopointNode ipn = currentGraph.add(new InfopointNode(InfopointReason.METHOD_END));
+            ipn.setStateAfter(frameState.create(FrameState.AFTER_BCI));
+            append(ipn);
+        }
 
         append(returnNode);
     }
@@ -1684,6 +1705,16 @@ public class GraphBuilderPhase extends Phase {
         BytecodesParsed.add(block.endBci - bci);
 
         while (bci < endBCI) {
+            if (graphBuilderConfig.eagerInfopointMode() && lnt != null) {
+                currentLineNumber = lnt.getLineNumber(bci);
+                if (currentLineNumber != previousLineNumber) {
+                    InfopointNode ipn = currentGraph.add(new InfopointNode(InfopointReason.LINE_NUMBER));
+                    ipn.setStateAfter(frameState.create(bci));
+                    append(ipn);
+                    previousLineNumber = currentLineNumber;
+                }
+            }
+
             // read the opcode
             int opcode = stream.currentBC();
             traceState();
