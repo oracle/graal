@@ -152,7 +152,8 @@ public class VMToCompilerImpl implements VMToCompiler {
 
                 @Override
                 public void run() {
-                    for (ReplacementsProvider provider : ServiceLoader.loadInstalled(ReplacementsProvider.class)) {
+                    ServiceLoader<ReplacementsProvider> serviceLoader = ServiceLoader.loadInstalled(ReplacementsProvider.class);
+                    for (ReplacementsProvider provider : serviceLoader) {
                         provider.registerReplacements(replacements);
                     }
                     runtime.registerReplacements(replacements);

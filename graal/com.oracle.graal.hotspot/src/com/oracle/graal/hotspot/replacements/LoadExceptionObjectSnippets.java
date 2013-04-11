@@ -27,16 +27,13 @@ import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
-import com.oracle.graal.replacements.SnippetTemplate.Key;
+import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.*;
 
 /**
@@ -53,23 +50,17 @@ public class LoadExceptionObjectSnippets implements Snippets {
         return unsafeCast(exception, StampFactory.forNodeIntrinsic());
     }
 
-    public static class Templates extends AbstractTemplates<LoadExceptionObjectSnippets> {
+    public static class Templates extends AbstractTemplates {
 
-        private final ResolvedJavaMethod loadException;
+        private final SnippetInfo loadException = snippet(LoadExceptionObjectSnippets.class, "loadException");
 
         public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target, LoadExceptionObjectSnippets.class);
-            loadException = snippet("loadException");
+            super(runtime, replacements, target);
         }
 
         public void lower(LoadExceptionObjectNode loadExceptionObject) {
-            StructuredGraph graph = (StructuredGraph) loadExceptionObject.graph();
-            Arguments arguments = new Arguments();
-
-            Key key = new Key(loadException);
-            SnippetTemplate template = cache.get(key);
-            Debug.log("Lowering exception object in %s: node=%s, template=%s, arguments=%s", graph, loadExceptionObject, template, arguments);
-            template.instantiate(runtime, loadExceptionObject, DEFAULT_REPLACER, arguments);
+            Arguments args = new Arguments(loadException);
+            template(args).instantiate(runtime, loadExceptionObject, DEFAULT_REPLACER, args);
         }
     }
 }

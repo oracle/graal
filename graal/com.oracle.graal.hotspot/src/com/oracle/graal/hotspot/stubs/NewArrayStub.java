@@ -27,15 +27,15 @@ import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.*;
-import com.oracle.graal.replacements.SnippetTemplate.*;
+import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.SnippetTemplate.Arguments;
+import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.*;
 
 /**
@@ -47,14 +47,19 @@ import com.oracle.graal.word.*;
 public class NewArrayStub extends Stub {
 
     public NewArrayStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
-        super(runtime, replacements, target, linkage);
+        super(runtime, replacements, target, linkage, "newArray");
     }
 
     @Override
-    protected void populateKey(Key key) {
+    protected Arguments makeArguments(SnippetInfo stub) {
         HotSpotResolvedObjectType intArrayType = (HotSpotResolvedObjectType) runtime.lookupJavaType(int[].class);
-        Constant intArrayHub = intArrayType.klass();
-        key.add("intArrayHub", intArrayHub).add("log", Boolean.getBoolean("graal.logNewArrayStub"));
+
+        Arguments args = new Arguments(stub);
+        args.add("hub", null);
+        args.add("length", null);
+        args.addConst("intArrayHub", intArrayType.klass());
+        args.addConst("log", Boolean.getBoolean("graal.logNewArrayStub"));
+        return args;
     }
 
     /**
@@ -67,7 +72,7 @@ public class NewArrayStub extends Stub {
      * @param log specifies if logging is enabled
      */
     @Snippet
-    private static Object newArray(@Parameter("hub") Word hub, @Parameter("length") int length, @ConstantParameter("intArrayHub") Word intArrayHub, @ConstantParameter("log") boolean log) {
+    private static Object newArray(Word hub, int length, @ConstantParameter Word intArrayHub, @ConstantParameter boolean log) {
         int layoutHelper = hub.readInt(layoutHelperOffset(), FINAL_LOCATION);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();

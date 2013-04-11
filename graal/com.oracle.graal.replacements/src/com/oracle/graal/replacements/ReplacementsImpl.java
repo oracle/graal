@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,7 +60,6 @@ public class ReplacementsImpl implements Replacements {
     // These data structures are all fully initialized during single-threaded
     // compiler startup and so do not need to be concurrent.
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> registeredMethodSubstitutions;
-    private final Set<ResolvedJavaMethod> registeredSnippets;
     private final Map<ResolvedJavaMethod, Class<? extends FixedWithNextNode>> registerMacroSubstitutions;
     private final Set<ResolvedJavaMethod> forcedSubstitutions;
 
@@ -70,36 +69,20 @@ public class ReplacementsImpl implements Replacements {
         this.assumptions = assumptions;
         this.graphs = new ConcurrentHashMap<>();
         this.registeredMethodSubstitutions = new HashMap<>();
-        this.registeredSnippets = new HashSet<>();
         this.registerMacroSubstitutions = new HashMap<>();
         this.forcedSubstitutions = new HashSet<>();
     }
 
-    public void registerSnippets(Class<?> snippets) {
-        assert Snippets.class.isAssignableFrom(snippets);
-        for (Method method : snippets.getDeclaredMethods()) {
-            if (method.getAnnotation(Snippet.class) != null) {
-                int modifiers = method.getModifiers();
-                if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-                    throw new RuntimeException("Snippet must not be abstract or native");
-                }
-                ResolvedJavaMethod snippet = runtime.lookupJavaMethod(method);
-                registeredSnippets.add(snippet);
-            }
-        }
-    }
-
     public StructuredGraph getSnippet(ResolvedJavaMethod method) {
-        if (!registeredSnippets.contains(method)) {
-            return null;
-        }
+        assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
+        assert !Modifier.isAbstract(method.getModifiers()) && !Modifier.isNative(method.getModifiers()) : "Snippet must not be abstract or native";
+
         StructuredGraph graph = graphs.get(method);
         if (graph == null) {
             graphs.putIfAbsent(method, makeGraph(method, null, inliningPolicy(method)));
             graph = graphs.get(method);
         }
         return graph;
-
     }
 
     public StructuredGraph getMethodSubstitution(ResolvedJavaMethod original) {
@@ -488,7 +471,6 @@ public class ReplacementsImpl implements Replacements {
     @Override
     public Collection<ResolvedJavaMethod> getAllReplacements() {
         HashSet<ResolvedJavaMethod> result = new HashSet<>();
-        result.addAll(registeredSnippets);
         result.addAll(registeredMethodSubstitutions.keySet());
         result.addAll(registerMacroSubstitutions.keySet());
         return result;
