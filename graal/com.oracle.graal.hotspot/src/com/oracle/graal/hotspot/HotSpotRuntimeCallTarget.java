@@ -90,4 +90,9 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
             address = stub.getAddress(backend);
         }
     }
+
+    @Override
+    public boolean preservesRegisters() {
+        return stub == null;
+    }
 }

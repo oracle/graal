@@ -39,7 +39,6 @@ import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.virtual.nodes.*;
-import com.oracle.graal.virtual.phases.ea.EffectList.Effect;
 
 public class PartialEscapeAnalysisPhase extends Phase {
 
@@ -109,11 +108,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
                     changed = true;
 
                     // apply the effects collected during the escape analysis iteration
-                    ArrayList<Node> obsoleteNodes = new ArrayList<>();
-                    for (Effect effect : closure.getEffects()) {
-                        effect.apply(graph, obsoleteNodes);
-                    }
-                    trace("%s\n", closure.getEffects());
+                    List<Node> obsoleteNodes = closure.applyEffects(graph);
 
                     Debug.dump(graph, "after PartialEscapeAnalysis iteration");
                     assert noObsoleteNodes(graph, obsoleteNodes);
@@ -146,7 +141,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
         return true;
     }
 
-    static boolean noObsoleteNodes(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+    static boolean noObsoleteNodes(StructuredGraph graph, List<Node> obsoleteNodes) {
         // helper code that determines the paths that keep obsolete nodes alive:
 
         NodeFlood flood = graph.createNodeFlood();
@@ -196,7 +191,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
                 }
             }
         }
-
+        // CheckStyle: stop system..print check
         boolean success = true;
         for (Node node : obsoleteNodes) {
             if (flood.isMarked(node)) {
@@ -212,6 +207,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
                 success = false;
             }
         }
+        // CheckStyle: resume system..print check
         return success;
     }
 

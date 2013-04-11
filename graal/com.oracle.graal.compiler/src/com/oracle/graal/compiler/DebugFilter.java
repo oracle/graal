@@ -132,9 +132,6 @@ class DebugFilter {
                 }
             }
         }
-        // if (match) {
-        // System.out.println(this + " matches " + input);
-        // }
         return match;
     }
 

@@ -139,6 +139,10 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         compilerToVm.initializeConfiguration(config);
         config.check();
 
+        // Set some global options:
+        GraalOptions.HotSpotPrintCompilation = config.printCompilation;
+        GraalOptions.HotSpotPrintInlining = config.printInlining;
+
         if (Boolean.valueOf(System.getProperty("graal.printconfig"))) {
             printConfig(config);
         }

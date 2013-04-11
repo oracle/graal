@@ -118,13 +118,6 @@ public class StandardOp {
     }
 
     /**
-     * Marker interface for a LIR operation that calls a method, i.e., destroys all caller-saved
-     * registers.
-     */
-    public interface CallOp {
-    }
-
-    /**
      * Meta-operation that defines the incoming method parameters. In the LIR, every register and
      * variable must be defined before it is used. This operation is the definition point of method
      * parameters, but is otherwise a no-op. In particular, it is not the actual method prologue.

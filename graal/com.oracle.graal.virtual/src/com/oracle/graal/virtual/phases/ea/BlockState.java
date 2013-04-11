@@ -40,7 +40,7 @@ class BlockState {
     private final IdentityHashMap<VirtualObjectNode, ObjectState> objectStates = new IdentityHashMap<>();
     private final IdentityHashMap<ValueNode, VirtualObjectNode> objectAliases;
     private final IdentityHashMap<ValueNode, ValueNode> scalarAliases;
-    private final HashMap<ReadCacheEntry, ValueNode> readCache;
+    final HashMap<ReadCacheEntry, ValueNode> readCache;
 
     static class ReadCacheEntry {
 
@@ -167,8 +167,6 @@ class BlockState {
 
         ValueNode[] fieldState = obj.getEntries();
 
-        // some entries are not default constants - do the materialization
-        virtual.materializeAt(fixed);
         MaterializeObjectNode materialize = new MaterializeObjectNode(virtual, obj.getLockCount());
         ValueNode[] values = new ValueNode[obj.getEntries().length];
         materialize.setProbability(fixed.probability());
@@ -249,70 +247,13 @@ class BlockState {
         return objectStates.values();
     }
 
-    public Iterable<VirtualObjectNode> getVirtualObjects() {
+    public Collection<VirtualObjectNode> getVirtualObjects() {
         return objectAliases.values();
     }
 
     @Override
     public String toString() {
-        return objectStates.toString();
-    }
-
-    public void mergeReadCache(List<BlockState> states, MergeNode merge, GraphEffectList effects) {
-        for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
-            ReadCacheEntry key = entry.getKey();
-            ValueNode value = entry.getValue();
-            boolean phi = false;
-            for (int i = 1; i < states.size(); i++) {
-                ValueNode otherValue = states.get(i).readCache.get(key);
-                if (otherValue == null) {
-                    value = null;
-                    phi = false;
-                    break;
-                }
-                if (!phi && otherValue != value) {
-                    phi = true;
-                }
-            }
-            if (phi) {
-                PhiNode phiNode = new PhiNode(value.kind(), merge);
-                effects.addFloatingNode(phiNode);
-                for (int i = 0; i < states.size(); i++) {
-                    effects.addPhiInput(phiNode, states.get(i).getReadCache(key.object, key.identity));
-                }
-                readCache.put(key, phiNode);
-            } else if (value != null) {
-                readCache.put(key, value);
-            }
-        }
-        for (PhiNode phi : merge.phis()) {
-            if (phi.kind() == Kind.Object) {
-                for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
-                    if (entry.getKey().object == phi.valueAt(0)) {
-                        mergeReadCachePhi(phi, entry.getKey().identity, states, merge, effects);
-                    }
-                }
-
-            }
-        }
-    }
-
-    private void mergeReadCachePhi(PhiNode phi, Object identity, List<BlockState> states, MergeNode merge, GraphEffectList effects) {
-        ValueNode[] values = new ValueNode[phi.valueCount()];
-        for (int i = 0; i < phi.valueCount(); i++) {
-            ValueNode value = states.get(i).getReadCache(phi.valueAt(i), identity);
-            if (value == null) {
-                return;
-            }
-            values[i] = value;
-        }
-
-        PhiNode phiNode = new PhiNode(values[0].kind(), merge);
-        effects.addFloatingNode(phiNode);
-        for (int i = 0; i < values.length; i++) {
-            effects.addPhiInput(phiNode, values[i]);
-        }
-        readCache.put(new ReadCacheEntry(identity, phi), phiNode);
+        return objectStates + " " + readCache;
     }
 
     public static BlockState meetAliases(List<BlockState> states) {
@@ -347,6 +288,40 @@ class BlockState {
 
     public Map<ReadCacheEntry, ValueNode> getReadCache() {
         return readCache;
+    }
+
+    public boolean equivalentTo(BlockState other) {
+        if (this == other) {
+            return true;
+        }
+        boolean objectAliasesEqual = compareMaps(objectAliases, other.objectAliases);
+        boolean objectStatesEqual = compareMaps(objectStates, other.objectStates);
+        boolean readCacheEqual = compareMapsNoSize(readCache, other.readCache);
+        boolean scalarAliasesEqual = scalarAliases.equals(other.scalarAliases);
+        return objectAliasesEqual && objectStatesEqual && readCacheEqual && scalarAliasesEqual;
+    }
+
+    private static <K, V> boolean compareMaps(Map<K, V> left, Map<K, V> right) {
+        if (left.size() != right.size()) {
+            return false;
+        }
+        return compareMapsNoSize(left, right);
+    }
+
+    private static <K, V> boolean compareMapsNoSize(Map<K, V> left, Map<K, V> right) {
+        if (left == right) {
+            return true;
+        }
+        for (Map.Entry<K, V> entry : right.entrySet()) {
+            K key = entry.getKey();
+            V value = entry.getValue();
+            assert value != null;
+            V otherValue = left.get(key);
+            if (otherValue != value && !value.equals(otherValue)) {
+                return false;
+            }
+        }
+        return true;
     }
 
 }

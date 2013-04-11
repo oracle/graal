@@ -73,13 +73,47 @@ public class InliningUtil {
         boolean isWorthInlining(InlineInfo info);
     }
 
-    public static boolean logNotInlinedMethod(InlineInfo info, String msg, Object... args) {
+    /**
+     * Print a HotSpot-style inlining message to the console.
+     */
+    private static void printInlining(final InlineInfo info, final boolean success, final String msg, final Object... args) {
+        printInlining(info.methodAt(0), info.invoke(), success, msg, args);
+    }
 
+    /**
+     * Print a HotSpot-style inlining message to the console.
+     */
+    private static void printInlining(final ResolvedJavaMethod method, final Invoke invoke, final boolean success, final String msg, final Object... args) {
+        if (GraalOptions.HotSpotPrintInlining) {
+            final int mod = method.getModifiers();
+            // 1234567
+            TTY.print("        ");     // print timestamp
+            // 1234
+            TTY.print("     ");        // print compilation number
+            // % s ! b n
+            TTY.print("%c%c%c%c%c ", ' ', Modifier.isSynchronized(mod) ? 's' : ' ', ' ', ' ', Modifier.isNative(mod) ? 'n' : ' ');
+            TTY.print("     ");        // more indent
+            TTY.print("    ");         // initial inlining indent
+            final int level = computeInliningLevel(invoke);
+            for (int i = 0; i < level; i++) {
+                TTY.print("  ");
+            }
+            TTY.println(String.format("@ %d  %s   %s%s", invoke.bci(), methodName(method, null), success ? "" : "not inlining ", String.format(msg, args)));
+        }
+    }
+
+    public static boolean logInlinedMethod(InlineInfo info, String msg, Object... args) {
+        logInliningDecision(info, true, msg, args);
+        return true;
+    }
+
+    public static boolean logNotInlinedMethod(InlineInfo info, String msg, Object... args) {
         logInliningDecision(info, false, msg, args);
         return false;
     }
 
     public static void logInliningDecision(InlineInfo info, boolean success, String msg, final Object... args) {
+        printInlining(info, success, msg, args);
         if (shouldLogInliningDecision()) {
             logInliningDecision(methodName(info), success, msg, args);
         }
@@ -92,11 +126,6 @@ public class InliningUtil {
                 Debug.log(msg, args);
             }
         });
-    }
-
-    public static boolean logInlinedMethod(InlineInfo info, String string, Object... args) {
-        logInliningDecision(info, true, string, args);
-        return true;
     }
 
     private static boolean logNotInlinedMethodAndReturnFalse(Invoke invoke, String msg) {
@@ -112,6 +141,7 @@ public class InliningUtil {
     }
 
     private static InlineInfo logNotInlinedMethodAndReturnNull(Invoke invoke, ResolvedJavaMethod method, String msg, Object... args) {
+        printInlining(method, invoke, false, msg, args);
         if (shouldLogInliningDecision()) {
             String methodString = methodName(method, invoke);
             logInliningDecision(methodString, false, msg, args);
@@ -120,6 +150,7 @@ public class InliningUtil {
     }
 
     private static boolean logNotInlinedMethodAndReturnFalse(Invoke invoke, ResolvedJavaMethod method, String msg) {
+        printInlining(method, invoke, false, msg, new Object[0]);
         if (shouldLogInliningDecision()) {
             String methodString = methodName(method, invoke);
             logInliningDecision(methodString, false, msg, new Object[0]);

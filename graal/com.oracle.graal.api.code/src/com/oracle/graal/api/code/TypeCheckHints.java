@@ -36,10 +36,31 @@ import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
  */
 public class TypeCheckHints {
 
-    private static final ResolvedJavaType[] NO_TYPES = {};
+    /**
+     * A receiver type profiled in a type check instruction.
+     */
+    public static class Hint {
+
+        /**
+         * A type seen while profiling a type check instruction.
+         */
+        public final ResolvedJavaType type;
+
+        /**
+         * Specifies if {@link #type} was a sub-type of the checked type.
+         */
+        public final boolean positive;
+
+        Hint(ResolvedJavaType type, boolean positive) {
+            this.type = type;
+            this.positive = positive;
+        }
+    }
+
+    private static final Hint[] NO_HINTS = {};
 
     /**
-     * If true, then {@link #types} contains the only possible type that could pass the type check
+     * If true, then {@link #hints} contains the only possible type that could pass the type check
      * because the target of the type check is a final class or has been speculated to be a final
      * class.
      */
@@ -48,63 +69,63 @@ public class TypeCheckHints {
     /**
      * The most likely types that the type check instruction will see.
      */
-    public final ResolvedJavaType[] types;
+    public final Hint[] hints;
 
     /**
      * Derives hint information for use when generating the code for a type check instruction.
      * 
-     * @param type the target type of the type check
+     * @param targetType the target type of the type check
      * @param profile the profiling information available for the instruction (if any)
      * @param assumptions the object in which speculations are recorded. This is null if
      *            speculations are not supported.
      * @param minHintHitProbability if the probability that the type check will hit one of the
-     *            profiled types (up to {@code maxHints}) is below this value, then {@link #types}
+     *            profiled types (up to {@code maxHints}) is below this value, then {@link #hints}
      *            will be null
-     * @param maxHints the maximum length of {@link #types}
+     * @param maxHints the maximum length of {@link #hints}
      */
-    public TypeCheckHints(ResolvedJavaType type, JavaTypeProfile profile, Assumptions assumptions, double minHintHitProbability, int maxHints) {
-        if (type != null && !canHaveSubtype(type)) {
-            types = new ResolvedJavaType[]{type};
+    public TypeCheckHints(ResolvedJavaType targetType, JavaTypeProfile profile, Assumptions assumptions, double minHintHitProbability, int maxHints) {
+        if (targetType != null && !canHaveSubtype(targetType)) {
+            hints = new Hint[]{new Hint(targetType, true)};
             exact = true;
         } else {
-            ResolvedJavaType uniqueSubtype = type == null ? null : type.findUniqueConcreteSubtype();
+            ResolvedJavaType uniqueSubtype = targetType == null ? null : targetType.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
-                types = new ResolvedJavaType[]{uniqueSubtype};
+                hints = new Hint[]{new Hint(uniqueSubtype, true)};
                 if (assumptions.useOptimisticAssumptions()) {
-                    assumptions.recordConcreteSubtype(type, uniqueSubtype);
+                    assumptions.recordConcreteSubtype(targetType, uniqueSubtype);
                     exact = true;
                 } else {
                     exact = false;
                 }
             } else {
                 exact = false;
-                ResolvedJavaType[] hintTypes = NO_TYPES;
+                Hint[] hintsBuf = NO_HINTS;
                 JavaTypeProfile typeProfile = profile;
                 if (typeProfile != null) {
                     double notRecordedTypes = typeProfile.getNotRecordedProbability();
                     ProfiledType[] ptypes = typeProfile.getTypes();
                     if (notRecordedTypes < (1D - minHintHitProbability) && ptypes != null && ptypes.length > 0) {
-                        hintTypes = new ResolvedJavaType[ptypes.length];
+                        hintsBuf = new Hint[ptypes.length];
                         int hintCount = 0;
                         double totalHintProbability = 0.0d;
                         for (ProfiledType ptype : ptypes) {
-                            ResolvedJavaType hint = ptype.getType();
-                            if (type != null && type.isAssignableFrom(hint)) {
-                                hintTypes[hintCount++] = hint;
+                            if (targetType != null) {
+                                ResolvedJavaType hintType = ptype.getType();
+                                hintsBuf[hintCount++] = new Hint(hintType, targetType.isAssignableFrom(hintType));
                                 totalHintProbability += ptype.getProbability();
                             }
                         }
                         if (totalHintProbability >= minHintHitProbability) {
-                            if (hintTypes.length != hintCount || hintCount > maxHints) {
-                                hintTypes = Arrays.copyOf(hintTypes, Math.min(maxHints, hintCount));
+                            if (hintsBuf.length != hintCount || hintCount > maxHints) {
+                                hintsBuf = Arrays.copyOf(hintsBuf, Math.min(maxHints, hintCount));
                             }
                         } else {
-                            hintTypes = NO_TYPES;
+                            hintsBuf = NO_HINTS;
                         }
 
                     }
                 }
-                this.types = hintTypes;
+                this.hints = hintsBuf;
             }
         }
     }

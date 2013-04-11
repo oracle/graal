@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,11 @@ import static com.oracle.graal.replacements.SnippetTemplate.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.Parameter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
@@ -39,9 +42,14 @@ import com.oracle.graal.word.*;
 public class WriteBarrierSnippets implements Snippets {
 
     @Snippet
-    public static void serialFieldWriteBarrier(@Parameter("object") Object obj) {
+    public static void serialArrayWriteBarrier(@Parameter("object") Object obj, @Parameter("location") Object location, @ConstantParameter("usePrecise") boolean usePrecise) {
         Object object = FixedValueAnchorNode.getObject(obj);
-        Pointer oop = Word.fromObject(object);
+        Pointer oop;
+        if (usePrecise) {
+            oop = Word.fromArray(object, location);
+        } else {
+            oop = Word.fromObject(object);
+        }
         Word base = (Word) oop.unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
         int displacement = 0;
@@ -54,34 +62,36 @@ public class WriteBarrierSnippets implements Snippets {
     }
 
     @Snippet
-    public static void serialArrayWriteBarrier(@Parameter("object") Object obj, @Parameter("location") Object location) {
-        Object object = FixedValueAnchorNode.getObject(obj);
-        Pointer oop = Word.fromArray(object, location);
-        Word base = (Word) oop.unsignedShiftRight(cardTableShift());
-        long startAddress = cardTableStart();
-        int displacement = 0;
-        if (((int) startAddress) == startAddress) {
-            displacement = (int) startAddress;
-        } else {
-            base = base.add(Word.unsigned(cardTableStart()));
+    public static void serialArrayRangeWriteBarrier(@Parameter("object") Object object, @Parameter("startIndex") int startIndex, @Parameter("length") int length) {
+        Object dest = FixedValueAnchorNode.getObject(object);
+        int cardShift = cardTableShift();
+        long cardStart = cardTableStart();
+        final int scale = arrayIndexScale(Kind.Object);
+        int header = arrayBaseOffset(Kind.Object);
+        long dstAddr = GetObjectAddressNode.get(dest);
+        long start = (dstAddr + header + (long) startIndex * scale) >>> cardShift;
+        long end = (dstAddr + header + ((long) startIndex + length - 1) * scale) >>> cardShift;
+        long count = end - start + 1;
+        while (count-- > 0) {
+            DirectStoreNode.store((start + cardStart) + count, false, Kind.Boolean);
         }
-        base.writeByte(displacement, (byte) 0);
     }
 
     public static class Templates extends AbstractTemplates<WriteBarrierSnippets> {
 
-        private final ResolvedJavaMethod serialFieldWriteBarrier;
         private final ResolvedJavaMethod serialArrayWriteBarrier;
+        private final ResolvedJavaMethod serialArrayRangeWriteBarrier;
 
         public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
             super(runtime, replacements, target, WriteBarrierSnippets.class);
-            serialFieldWriteBarrier = snippet("serialFieldWriteBarrier", Object.class);
-            serialArrayWriteBarrier = snippet("serialArrayWriteBarrier", Object.class, Object.class);
+            serialArrayWriteBarrier = snippet("serialArrayWriteBarrier", Object.class, Object.class, boolean.class);
+            serialArrayRangeWriteBarrier = snippet("serialArrayRangeWriteBarrier", Object.class, int.class, int.class);
         }
 
-        public void lower(ArrayWriteBarrier arrayWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
+        public void lower(SerialWriteBarrier arrayWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
             ResolvedJavaMethod method = serialArrayWriteBarrier;
             Key key = new Key(method);
+            key.add("usePrecise", arrayWriteBarrier.usePrecise());
             Arguments arguments = new Arguments();
             arguments.add("object", arrayWriteBarrier.getObject());
             arguments.add("location", arrayWriteBarrier.getLocation());
@@ -89,14 +99,15 @@ public class WriteBarrierSnippets implements Snippets {
             template.instantiate(runtime, arrayWriteBarrier, DEFAULT_REPLACER, arguments);
         }
 
-        public void lower(FieldWriteBarrier fieldWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
-            ResolvedJavaMethod method = serialFieldWriteBarrier;
+        public void lower(SerialArrayRangeWriteBarrier arrayRangeWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
+            ResolvedJavaMethod method = serialArrayRangeWriteBarrier;
             Key key = new Key(method);
             Arguments arguments = new Arguments();
-            arguments.add("object", fieldWriteBarrier.getObject());
+            arguments.add("object", arrayRangeWriteBarrier.getObject());
+            arguments.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
+            arguments.add("length", arrayRangeWriteBarrier.getLength());
             SnippetTemplate template = cache.get(key);
-            template.instantiate(runtime, fieldWriteBarrier, DEFAULT_REPLACER, arguments);
+            template.instantiate(runtime, arrayRangeWriteBarrier, DEFAULT_REPLACER, arguments);
         }
-
     }
 }

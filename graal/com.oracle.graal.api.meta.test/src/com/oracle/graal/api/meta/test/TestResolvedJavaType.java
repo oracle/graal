@@ -402,7 +402,7 @@ public class TestResolvedJavaType {
                 if (!isStatic(m.getModifiers()) && !isPrivate(m.getModifiers())) {
                     Method overridden = vtable.methods.put(new NameAndSignature(m), m);
                     if (overridden != null) {
-                        // System.out.println(m + " overrides " + overridden);
+                        // println(m + " overrides " + overridden);
                     }
                 }
             }

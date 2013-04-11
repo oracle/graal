@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.phases.common.InliningUtil.*;
 
+import java.lang.reflect.Modifier;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
@@ -133,6 +134,9 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                 TTY.println(String.format("%-6d Graal %-70s %-45s %-50s %s...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature(),
                                 entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "(OSR@" + entryBCI + ") "));
             }
+            if (GraalOptions.HotSpotPrintCompilation) {
+                printCompilation();
+            }
 
             CompilationResult result = null;
             TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
@@ -181,6 +185,16 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             }
         }
         stats.finish(method);
+    }
+
+    /**
+     * Print a HotSpot-style compilation message to the console.
+     */
+    private void printCompilation() {
+        final boolean isOSR = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
+        final int mod = method.getModifiers();
+        TTY.println(String.format("%7d %4d %c%c%c%c%c       %s %s(%d bytes)", 0, id, isOSR ? '%' : ' ', Modifier.isSynchronized(mod) ? 's' : ' ', ' ', ' ', Modifier.isNative(mod) ? 'n' : ' ',
+                        MetaUtil.format("%H::%n(%p)", method), isOSR ? "@ " + entryBCI + " " : "", method.getCodeSize()));
     }
 
     private void installMethod(final CompilationResult compResult) {

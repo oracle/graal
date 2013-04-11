@@ -260,8 +260,8 @@ public abstract class LIRInstruction {
      * Returns true when this instruction is a call instruction that destroys all caller-saved
      * registers.
      */
-    public final boolean hasCall() {
-        return this instanceof StandardOp.CallOp;
+    public boolean hasCall() {
+        return false;
     }
 
     public final void forEachInput(ValueProcedure proc) {

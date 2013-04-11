@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import java.util.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
@@ -143,5 +145,49 @@ class ObjectState extends Virtualizable.State {
         }
 
         return str.append('}').toString();
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + Arrays.hashCode(entries);
+        result = prime * result + lockCount;
+        result = prime * result + ((materializedValue == null) ? 0 : materializedValue.hashCode());
+        result = prime * result + ((state == null) ? 0 : state.hashCode());
+        result = prime * result + ((virtual == null) ? 0 : virtual.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        ObjectState other = (ObjectState) obj;
+        if (!Arrays.equals(entries, other.entries)) {
+            return false;
+        }
+        if (lockCount != other.lockCount) {
+            return false;
+        }
+        if (materializedValue == null) {
+            if (other.materializedValue != null) {
+                return false;
+            }
+        } else if (!materializedValue.equals(other.materializedValue)) {
+            return false;
+        }
+        if (state != other.state) {
+            return false;
+        }
+        assert virtual != null && other.virtual != null;
+        if (!virtual.equals(other.virtual)) {
+            return false;
+        }
+        return true;
     }
 }

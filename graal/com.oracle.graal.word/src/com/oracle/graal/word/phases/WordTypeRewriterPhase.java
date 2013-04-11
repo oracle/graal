@@ -277,7 +277,7 @@ public class WordTypeRewriterPhase extends Phase {
 
     private static ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode offset, ValueNode value, Invoke invoke, Kind writeKind, Object locationIdentity) {
         IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, writeKind, 0, offset, graph, 1);
-        WriteNode write = graph.add(new WriteNode(base, value, location));
+        WriteNode write = graph.add(new WriteNode(base, value, location, false));
         write.setStateAfter(invoke.stateAfter());
         graph.addBeforeFixed(invoke.node(), write);
         return write;

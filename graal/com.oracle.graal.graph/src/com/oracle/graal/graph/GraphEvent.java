@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.graph;
 
+import java.io.*;
+
 public abstract class GraphEvent {
 
     private Exception exceptionContext;
@@ -43,9 +45,9 @@ public abstract class GraphEvent {
         }
 
         @Override
-        public StackTraceElement[] print(StackTraceElement[] last) {
-            System.out.println(type.toString() + ", " + nodeString);
-            return super.print(last);
+        public StackTraceElement[] print(StackTraceElement[] last, PrintStream stream) {
+            stream.println(type.toString() + ", " + nodeString);
+            return super.print(last, stream);
         }
     }
 
@@ -72,7 +74,7 @@ public abstract class GraphEvent {
         exceptionContext = new Exception();
     }
 
-    public StackTraceElement[] print(StackTraceElement[] last) {
+    public StackTraceElement[] print(StackTraceElement[] last, PrintStream stream) {
         StackTraceElement[] stackTrace = exceptionContext.getStackTrace();
 
         boolean atTop = true;
@@ -90,7 +92,7 @@ public abstract class GraphEvent {
                     continue;
                 }
             }
-            System.out.println(String.format("%s.%s(%s:%d)", elem.getClassName(), elem.getMethodName(), elem.getFileName(), elem.getLineNumber()));
+            stream.println(String.format("%s.%s(%s:%d)", elem.getClassName(), elem.getMethodName(), elem.getFileName(), elem.getLineNumber()));
         }
         return stackTrace;
     }

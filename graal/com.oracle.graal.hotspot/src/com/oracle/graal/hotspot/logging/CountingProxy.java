@@ -41,7 +41,9 @@ public class CountingProxy<T> implements InvocationHandler {
 
     public CountingProxy(T delegate) {
         assert ENABLED;
+        // CheckStyle: stop system..print check
         System.out.println("Counting proxy for " + delegate.getClass().getSimpleName() + " created");
+        // CheckStyle: resume system..print check
         this.delegate = delegate;
         proxies.add(this);
     }
@@ -92,6 +94,7 @@ public class CountingProxy<T> implements InvocationHandler {
         }
     }
 
+    // CheckStyle: stop system..print check
     protected void print() {
         long sum = 0;
         for (Map.Entry<Method, AtomicLong> entry : calls.entrySet()) {
@@ -102,4 +105,5 @@ public class CountingProxy<T> implements InvocationHandler {
         }
         System.out.println(delegate.getClass().getSimpleName() + " calls: " + sum);
     }
+    // CheckStyle: resume system..print check
 }

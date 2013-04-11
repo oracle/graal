@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,6 @@ public class TailDuplicationPhase extends Phase {
     /*
      * Various metrics on the circumstances in which tail duplication was/wasn't performed.
      */
-    private static final DebugMetric metricDuplicationMonitors = Debug.metric("DuplicationMonitors");
     private static final DebugMetric metricDuplicationEnd = Debug.metric("DuplicationEnd");
     private static final DebugMetric metricDuplicationEndPerformed = Debug.metric("DuplicationEndPerformed");
     private static final DebugMetric metricDuplicationOther = Debug.metric("DuplicationOther");
@@ -168,20 +167,11 @@ public class TailDuplicationPhase extends Phase {
         assert replacements == null || replacements.size() == merge.forwardEndCount();
         FixedNode fixed = merge;
         int fixedCount = 0;
-        boolean containsMonitor = false;
         while (fixed instanceof FixedWithNextNode) {
-            if (fixed instanceof MonitorEnterNode || fixed instanceof MonitorExitNode) {
-                containsMonitor = true;
-            }
             fixed = ((FixedWithNextNode) fixed).next();
             fixedCount++;
         }
-        if (containsMonitor) {
-            // cannot currently be handled
-            // TODO (ls) re-evaluate this limitation after changes to the lock representation and
-            // the LIR generator
-            metricDuplicationMonitors.increment();
-        } else if (fixedCount > 1) {
+        if (fixedCount > 1) {
             if (fixed instanceof EndNode && !(((EndNode) fixed).merge() instanceof LoopBeginNode)) {
                 metricDuplicationEnd.increment();
                 if (decision.doTransform(merge, fixedCount)) {

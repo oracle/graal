@@ -202,7 +202,7 @@ public class CheckCastSnippets implements Snippets {
 
             assert type != null;
             if (hintInfo.exact) {
-                ConstantNode[] hints = createHints(hintInfo, runtime, graph);
+                ConstantNode[] hints = createHints(hintInfo, runtime, true, graph).hubs;
                 assert hints.length == 1;
                 key = new Key(exact).add("checkNull", checkNull);
                 arguments = arguments("object", object).add("exactHub", hints[0]);
@@ -210,7 +210,7 @@ public class CheckCastSnippets implements Snippets {
                 key = new Key(primary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
                 arguments = arguments("hub", hub).add("object", object);
             } else {
-                ConstantNode[] hints = createHints(hintInfo, runtime, graph);
+                ConstantNode[] hints = createHints(hintInfo, runtime, true, graph).hubs;
                 key = new Key(secondary).add("hints", Varargs.vargargs(new Word[hints.length], StampFactory.forKind(wordKind()))).add("checkNull", checkNull);
                 arguments = arguments("hub", hub).add("object", object).add("hints", hints);
             }

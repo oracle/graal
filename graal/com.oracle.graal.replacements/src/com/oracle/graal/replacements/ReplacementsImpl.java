@@ -37,7 +37,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
@@ -53,8 +52,6 @@ public class ReplacementsImpl implements Replacements {
     protected final TargetDescription target;
     protected final Assumptions assumptions;
 
-    private BoxingMethodPool pool;
-
     /**
      * The preprocessed replacement graphs.
      */
@@ -65,6 +62,7 @@ public class ReplacementsImpl implements Replacements {
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> registeredMethodSubstitutions;
     private final Set<ResolvedJavaMethod> registeredSnippets;
     private final Map<ResolvedJavaMethod, Class<? extends FixedWithNextNode>> registerMacroSubstitutions;
+    private final Set<ResolvedJavaMethod> forcedSubstitutions;
 
     public ReplacementsImpl(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target) {
         this.runtime = runtime;
@@ -74,6 +72,7 @@ public class ReplacementsImpl implements Replacements {
         this.registeredMethodSubstitutions = new HashMap<>();
         this.registeredSnippets = new HashSet<>();
         this.registerMacroSubstitutions = new HashMap<>();
+        this.forcedSubstitutions = new HashSet<>();
     }
 
     public void registerSnippets(Class<?> snippets) {
@@ -147,17 +146,23 @@ public class ReplacementsImpl implements Replacements {
                 }
                 String originalName = originalName(substituteMethod, methodSubstitution.value());
                 Class[] originalParameters = originalParameters(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
-                Member originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
+                Member originalMethod = originalMethod(classSubstitution, methodSubstitution.optional(), originalName, originalParameters);
                 if (originalMethod != null) {
-                    registerMethodSubstitution(originalMethod, substituteMethod);
+                    ResolvedJavaMethod original = registerMethodSubstitution(originalMethod, substituteMethod);
+                    if (original != null && methodSubstitution.forced()) {
+                        forcedSubstitutions.add(original);
+                    }
                 }
             }
             if (macroSubstitution != null) {
                 String originalName = originalName(substituteMethod, macroSubstitution.value());
                 Class[] originalParameters = originalParameters(substituteMethod, macroSubstitution.signature(), macroSubstitution.isStatic());
-                Member originalMethod = originalMethod(classSubstitution, originalName, originalParameters);
+                Member originalMethod = originalMethod(classSubstitution, macroSubstitution.optional(), originalName, originalParameters);
                 if (originalMethod != null) {
-                    registerMacroSubstitution(originalMethod, macroSubstitution.macro());
+                    ResolvedJavaMethod original = registerMacroSubstitution(originalMethod, macroSubstitution.macro());
+                    if (original != null && macroSubstitution.forced()) {
+                        forcedSubstitutions.add(original);
+                    }
                 }
             }
         }
@@ -168,8 +173,9 @@ public class ReplacementsImpl implements Replacements {
      * 
      * @param originalMember a method or constructor being substituted
      * @param substituteMethod the substitute method
+     * @return the original method
      */
-    protected void registerMethodSubstitution(Member originalMember, Method substituteMethod) {
+    protected ResolvedJavaMethod registerMethodSubstitution(Member originalMember, Method substituteMethod) {
         ResolvedJavaMethod substitute = runtime.lookupJavaMethod(substituteMethod);
         ResolvedJavaMethod original;
         if (originalMember instanceof Method) {
@@ -180,6 +186,7 @@ public class ReplacementsImpl implements Replacements {
         Debug.log("substitution: " + MetaUtil.format("%H.%n(%p)", original) + " --> " + MetaUtil.format("%H.%n(%p)", substitute));
 
         registeredMethodSubstitutions.put(original, substitute);
+        return original;
     }
 
     /**
@@ -187,8 +194,9 @@ public class ReplacementsImpl implements Replacements {
      * 
      * @param originalMethod a method or constructor being substituted
      * @param macro the substitute macro node class
+     * @return the original method
      */
-    protected void registerMacroSubstitution(Member originalMethod, Class<? extends FixedWithNextNode> macro) {
+    protected ResolvedJavaMethod registerMacroSubstitution(Member originalMethod, Class<? extends FixedWithNextNode> macro) {
         ResolvedJavaMethod originalJavaMethod;
         if (originalMethod instanceof Method) {
             originalJavaMethod = runtime.lookupJavaMethod((Method) originalMethod);
@@ -196,6 +204,7 @@ public class ReplacementsImpl implements Replacements {
             originalJavaMethod = runtime.lookupJavaConstructor((Constructor) originalMethod);
         }
         registerMacroSubstitutions.put(originalJavaMethod, macro);
+        return originalJavaMethod;
     }
 
     private SnippetInliningPolicy inliningPolicy(ResolvedJavaMethod method) {
@@ -205,7 +214,7 @@ public class ReplacementsImpl implements Replacements {
             policyClass = snippet.inlining();
         }
         if (policyClass == SnippetInliningPolicy.class) {
-            return new DefaultSnippetInliningPolicy(runtime, pool());
+            return new DefaultSnippetInliningPolicy(runtime);
         }
         try {
             return policyClass.getConstructor().newInstance();
@@ -284,7 +293,7 @@ public class ReplacementsImpl implements Replacements {
          * Does final processing of a snippet graph.
          */
         protected void finalizeGraph(StructuredGraph graph) {
-            new NodeIntrinsificationPhase(runtime, pool()).apply(graph);
+            new NodeIntrinsificationPhase(runtime).apply(graph);
             assert SnippetTemplate.hasConstantParameter(method) || NodeIntrinsificationVerificationPhase.verify(graph);
 
             if (original == null) {
@@ -318,7 +327,6 @@ public class ReplacementsImpl implements Replacements {
             Debug.dump(graph, "%s: %s", methodToParse.getName(), GraphBuilderPhase.class.getSimpleName());
 
             new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
-            new NodeIntrinsificationPhase(runtime, pool()).apply(graph);
 
             return graph;
         }
@@ -340,7 +348,7 @@ public class ReplacementsImpl implements Replacements {
          * Called after all inlining for a given graph is complete.
          */
         protected void afterInlining(StructuredGraph graph) {
-            new NodeIntrinsificationPhase(runtime, pool()).apply(graph);
+            new NodeIntrinsificationPhase(runtime).apply(graph);
 
             new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
 
@@ -367,7 +375,13 @@ public class ReplacementsImpl implements Replacements {
                     substituteCallsOriginal = true;
                 } else {
                     if ((callTarget.invokeKind() == InvokeKind.Static || callTarget.invokeKind() == InvokeKind.Special) && policy.shouldInline(callee, methodToParse)) {
-                        StructuredGraph targetGraph = parseGraph(callee, policy);
+                        StructuredGraph targetGraph;
+                        StructuredGraph intrinsicGraph = InliningUtil.getIntrinsicGraph(ReplacementsImpl.this, callee);
+                        if (intrinsicGraph != null && policy.shouldUseReplacement(callee, methodToParse)) {
+                            targetGraph = intrinsicGraph;
+                        } else {
+                            targetGraph = parseGraph(callee, policy);
+                        }
                         InliningUtil.inline(invoke, targetGraph, true);
                         Debug.dump(graph, "after inlining %s", callee);
                         afterInline(graph, targetGraph);
@@ -448,7 +462,7 @@ public class ReplacementsImpl implements Replacements {
         return parameters;
     }
 
-    private static Member originalMethod(ClassSubstitution classSubstitution, String name, Class[] parameters) {
+    private static Member originalMethod(ClassSubstitution classSubstitution, boolean optional, String name, Class[] parameters) {
         Class<?> originalClass = classSubstitution.value();
         if (originalClass == ClassSubstitution.class) {
             originalClass = resolveType(classSubstitution.className(), classSubstitution.optional());
@@ -464,15 +478,24 @@ public class ReplacementsImpl implements Replacements {
                 return originalClass.getDeclaredMethod(name, parameters);
             }
         } catch (NoSuchMethodException | SecurityException e) {
+            if (optional) {
+                return null;
+            }
             throw new GraalInternalError(e);
         }
     }
 
-    protected BoxingMethodPool pool() {
-        if (pool == null) {
-            // A race to create the pool is ok
-            pool = new BoxingMethodPool(runtime);
-        }
-        return pool;
+    @Override
+    public Collection<ResolvedJavaMethod> getAllReplacements() {
+        HashSet<ResolvedJavaMethod> result = new HashSet<>();
+        result.addAll(registeredSnippets);
+        result.addAll(registeredMethodSubstitutions.keySet());
+        result.addAll(registerMacroSubstitutions.keySet());
+        return result;
+    }
+
+    @Override
+    public boolean isForcedSubstitution(ResolvedJavaMethod method) {
+        return forcedSubstitutions.contains(method);
     }
 }

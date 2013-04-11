@@ -167,6 +167,36 @@ public class TargetMethodAssembler {
     }
 
     /**
+     * Returns the float value of any constant that can be represented by a 32-bit float value.
+     */
+    public float asFloatConst(Value value) {
+        assert (value.getKind().getStackKind() == Kind.Float && isConstant(value));
+        Constant constant = (Constant) value;
+        assert !runtime.needsDataPatch(constant) : constant + " should be in a DataPatch";
+        return constant.asFloat();
+    }
+
+    /**
+     * Returns the long value of any constant that can be represented by a 64-bit long value.
+     */
+    public long asLongConst(Value value) {
+        assert (value.getKind().getStackKind() == Kind.Long && isConstant(value));
+        Constant constant = (Constant) value;
+        assert !runtime.needsDataPatch(constant) : constant + " should be in a DataPatch";
+        return constant.asLong();
+    }
+
+    /**
+     * Returns the double value of any constant that can be represented by a 64-bit float value.
+     */
+    public double asDoubleConst(Value value) {
+        assert (value.getKind().getStackKind() == Kind.Double && isConstant(value));
+        Constant constant = (Constant) value;
+        assert !runtime.needsDataPatch(constant) : constant + " should be in a DataPatch";
+        return constant.asDouble();
+    }
+
+    /**
      * Returns the address of a float constant that is embedded as a data references into the code.
      */
     public AbstractAddress asFloatConstRef(Value value) {

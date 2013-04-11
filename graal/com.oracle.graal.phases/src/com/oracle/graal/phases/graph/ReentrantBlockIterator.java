@@ -39,7 +39,7 @@ public final class ReentrantBlockIterator {
 
         protected abstract void processBlock(Block block, StateT currentState);
 
-        protected abstract StateT merge(MergeNode merge, List<StateT> states);
+        protected abstract StateT merge(Block merge, List<StateT> states);
 
         protected abstract StateT cloneState(StateT oldState);
 
@@ -161,12 +161,11 @@ public final class ReentrantBlockIterator {
                     assert current.getPredecessors().size() > 1;
                     MergeNode merge = (MergeNode) current.getBeginNode();
                     ArrayList<StateT> mergedStates = new ArrayList<>(merge.forwardEndCount());
-                    for (int i = 0; i < merge.forwardEndCount(); i++) {
-                        StateT other = states.get(merge.forwardEndAt(i));
-                        assert other != null;
-                        mergedStates.add(other);
+                    for (Block predecessor : current.getPredecessors()) {
+                        EndNode end = (EndNode) predecessor.getEndNode();
+                        mergedStates.add(states.get(end));
                     }
-                    state = closure.merge(merge, mergedStates);
+                    state = closure.merge(current, mergedStates);
                 }
                 assert state != null;
             }

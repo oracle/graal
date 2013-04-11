@@ -27,7 +27,6 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
@@ -55,6 +54,13 @@ public @interface Snippet {
          * Determines if {@code method} should be inlined into {@code caller}.
          */
         boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller);
+
+        /**
+         * Determines if {@code method} should be inlined using its replacement graph.
+         * 
+         * @return true if the replacement graph should be used, false for normal inlining.
+         */
+        boolean shouldUseReplacement(ResolvedJavaMethod callee, ResolvedJavaMethod methodToParse);
     }
 
     /**
@@ -70,11 +76,9 @@ public @interface Snippet {
     public static class DefaultSnippetInliningPolicy implements SnippetInliningPolicy {
 
         private final MetaAccessProvider metaAccess;
-        private final BoxingMethodPool pool;
 
-        public DefaultSnippetInliningPolicy(MetaAccessProvider metaAccess, BoxingMethodPool pool) {
+        public DefaultSnippetInliningPolicy(MetaAccessProvider metaAccess) {
             this.metaAccess = metaAccess;
-            this.pool = pool;
         }
 
         @Override
@@ -89,16 +93,18 @@ public @interface Snippet {
                 return false;
             }
             if (metaAccess.lookupJavaType(Throwable.class).isAssignableFrom(method.getDeclaringClass())) {
-                if (method.getName().equals("<init>")) {
+                if (method.isConstructor()) {
                     return false;
                 }
             }
             if (method.getAnnotation(Word.Operation.class) != null) {
                 return false;
             }
-            if (pool.isSpecialMethod(method)) {
-                return false;
-            }
+            return true;
+        }
+
+        @Override
+        public boolean shouldUseReplacement(ResolvedJavaMethod callee, ResolvedJavaMethod methodToParse) {
             return true;
         }
     }

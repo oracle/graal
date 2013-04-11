@@ -73,48 +73,47 @@ public class EffectList implements Iterable<EffectList.Effect> {
         public abstract void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes);
     }
 
-    private Effect[] effects = new Effect[16];
-    private int[] level = new int[16];
+    private static final Effect[] EMPTY_ARRAY = new Effect[0];
+
+    private Effect[] effects = EMPTY_ARRAY;
     private int size;
-    private int currentLevel;
+
+    private void enlarge(int elements) {
+        int length = effects.length;
+        if (size + elements > length) {
+            while (size + elements > length) {
+                length = Math.max(length * 2, 4);
+            }
+            effects = Arrays.copyOf(effects, length);
+        }
+    }
 
     public void add(Effect effect) {
-        if (effects.length == size) {
-            effects = Arrays.copyOf(effects, effects.length * 2);
-            level = Arrays.copyOf(level, effects.length);
-        }
-        level[size] = currentLevel;
+        assert effect != null;
+        enlarge(1);
         effects[size++] = effect;
     }
 
     public void addAll(Collection<? extends Effect> list) {
-        int length = effects.length;
-        if (size + list.size() > length) {
-            while (size + list.size() > length) {
-                length *= 2;
-            }
-            effects = Arrays.copyOf(effects, length);
-            level = Arrays.copyOf(level, effects.length);
-        }
+        enlarge(list.size());
         for (Effect effect : list) {
-            level[size] = currentLevel;
+            assert effect != null;
             effects[size++] = effect;
         }
     }
 
     public void addAll(EffectList list) {
-        int length = effects.length;
-        if (size + list.size > length) {
-            while (size + list.size > length) {
-                length *= 2;
-            }
-            effects = Arrays.copyOf(effects, length);
-            level = Arrays.copyOf(level, effects.length);
-        }
-        for (Effect effect : list) {
-            level[size] = currentLevel;
-            effects[size++] = effect;
-        }
+        enlarge(list.size);
+        System.arraycopy(list.effects, 0, effects, size, list.size);
+        size += list.size;
+    }
+
+    public void insertAll(EffectList list, int position) {
+        assert position >= 0 && position <= size;
+        enlarge(list.size);
+        System.arraycopy(effects, position, effects, position + list.size, size - position);
+        System.arraycopy(list.effects, 0, effects, position, list.size);
+        size += list.size;
     }
 
     public int checkpoint() {
@@ -154,26 +153,11 @@ public class EffectList implements Iterable<EffectList.Effect> {
         };
     }
 
-    public void incLevel() {
-        currentLevel++;
-    }
-
-    public void decLevel() {
-        currentLevel--;
-    }
-
     public Effect get(int index) {
         if (index >= size) {
             throw new IndexOutOfBoundsException();
         }
         return effects[index];
-    }
-
-    public int levelAt(int index) {
-        if (index >= size) {
-            throw new IndexOutOfBoundsException();
-        }
-        return level[index];
     }
 
     public void clear() {
@@ -190,9 +174,6 @@ public class EffectList implements Iterable<EffectList.Effect> {
         for (int i = 0; i < size(); i++) {
             Effect effect = get(i);
             if (effect.isVisible()) {
-                for (int i2 = 0; i2 < levelAt(i); i2++) {
-                    str.append("    ");
-                }
                 str.append(effect).append('\n');
             }
         }

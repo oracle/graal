@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,80 +23,84 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
-public final class BoxNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, Canonicalizable {
+/**
+ * This node represents the boxing of a primitive value. This corresponds to a call to the valueOf
+ * methods in Integer, Long, etc.
+ */
+public class BoxNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Canonicalizable {
 
-    @Input private ValueNode source;
-    private final int bci;
-    private final Kind sourceKind;
+    @Input private ValueNode value;
+    private final Kind boxingKind;
 
-    public BoxNode(ValueNode value, ResolvedJavaType type, Kind sourceKind, int bci) {
-        super(StampFactory.exactNonNull(type));
-        this.source = value;
-        this.bci = bci;
-        this.sourceKind = sourceKind;
-        assert value.kind() != Kind.Object : "can only box from primitive type";
+    public BoxNode(ValueNode value, ResolvedJavaType resultType, Kind boxingKind) {
+        super(StampFactory.exactNonNull(resultType));
+        this.value = value;
+        this.boxingKind = boxingKind;
     }
 
-    public ValueNode source() {
-        return source;
+    public Kind getBoxingKind() {
+        return boxingKind;
     }
 
-    public Kind getSourceKind() {
-        return sourceKind;
+    public ValueNode getValue() {
+        return value;
     }
 
-    public void expand(BoxingMethodPool pool) {
-        ResolvedJavaMethod boxingMethod = pool.getBoxingMethod(sourceKind);
-        MethodCallTargetNode callTarget = graph().add(
-                        new MethodCallTargetNode(InvokeKind.Static, boxingMethod, new ValueNode[]{source}, boxingMethod.getSignature().getReturnType(boxingMethod.getDeclaringClass())));
-        InvokeNode invokeNode = graph().add(new InvokeNode(callTarget, bci));
-        invokeNode.setProbability(this.probability());
-        invokeNode.setStateAfter(stateAfter());
-        ((StructuredGraph) graph()).replaceFixedWithFixed(this, invokeNode);
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-
-        if (source.isConstant()) {
-            Constant sourceConstant = source.asConstant();
-            switch (sourceKind) {
-                case Boolean:
-                    return ConstantNode.forObject(Boolean.valueOf(sourceConstant.asBoolean()), tool.runtime(), graph());
-                case Byte:
-                    return ConstantNode.forObject(Byte.valueOf((byte) sourceConstant.asInt()), tool.runtime(), graph());
-                case Char:
-                    return ConstantNode.forObject(Character.valueOf((char) sourceConstant.asInt()), tool.runtime(), graph());
-                case Short:
-                    return ConstantNode.forObject(Short.valueOf((short) sourceConstant.asInt()), tool.runtime(), graph());
-                case Int:
-                    return ConstantNode.forObject(Integer.valueOf(sourceConstant.asInt()), tool.runtime(), graph());
-                case Long:
-                    return ConstantNode.forObject(Long.valueOf(sourceConstant.asLong()), tool.runtime(), graph());
-                case Float:
-                    return ConstantNode.forObject(Float.valueOf(sourceConstant.asFloat()), tool.runtime(), graph());
-                case Double:
-                    return ConstantNode.forObject(Double.valueOf(sourceConstant.asDouble()), tool.runtime(), graph());
-                default:
-                    assert false : "Unexpected source kind for boxing";
-                    break;
-
-            }
+        /*
+         * Constant values are not canonicalized into their constant boxing objects because this
+         * would mean that the information that they came from a valueOf is lost.
+         */
+        if (usages().isEmpty()) {
+            return null;
         }
-
-        for (Node usage : usages()) {
-            if (usage != stateAfter()) {
-                return this;
-            }
-        }
-        replaceAtUsages(null);
-        return null;
+        return this;
     }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        ValueNode v = tool.getReplacedValue(getValue());
+        ResolvedJavaType type = objectStamp().type();
+
+        VirtualBoxingNode newVirtual = new VirtualBoxingNode(type, boxingKind);
+        assert newVirtual.getFields().length == 1;
+
+        tool.createVirtualObject(newVirtual, new ValueNode[]{v}, 0);
+        tool.replaceWithVirtual(newVirtual);
+    }
+
+    @NodeIntrinsic
+    public static native Boolean box(boolean value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native Byte box(byte value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native Character box(char value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native Double box(double value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native Float box(float value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native Integer box(int value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native Long box(long value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
+
+    @NodeIntrinsic
+    public static native Short box(short value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
 }

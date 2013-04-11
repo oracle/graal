@@ -46,6 +46,7 @@ public class System_setOut extends JTTTest {
         return sum;
     }
 
+    // CheckStyle: stop system..print check
     private static void doPrint(int n) {
         for (int i = 0; i < n; i++) {
             System.out.print('x');
@@ -55,6 +56,8 @@ public class System_setOut extends JTTTest {
     public static void main(String[] args) throws Exception {
         System.out.println(test(10000));
     }
+
+    // CheckStyle: resume system..print check
 
     @LongTest
     public void run0() throws Throwable {

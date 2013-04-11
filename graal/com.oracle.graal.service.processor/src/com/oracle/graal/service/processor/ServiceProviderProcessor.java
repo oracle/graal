@@ -29,6 +29,7 @@ import javax.annotation.processing.*;
 import javax.lang.model.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
+import javax.lang.model.util.*;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.*;
 
@@ -81,27 +82,57 @@ public class ServiceProviderProcessor extends AbstractProcessor {
         return true;
     }
 
-    @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        if (roundEnv.processingOver()) {
-            generateServicesFiles();
-            return true;
-        }
-
-        for (Element element : roundEnv.getElementsAnnotatedWith(ServiceProvider.class)) {
-            assert element.getKind().isClass();
-            ServiceProvider annotation = element.getAnnotation(ServiceProvider.class);
+    private void processElement(TypeElement serviceProvider) {
+        ServiceProvider annotation = serviceProvider.getAnnotation(ServiceProvider.class);
+        if (annotation != null) {
             try {
                 annotation.value();
             } catch (MirroredTypeException ex) {
                 TypeMirror serviceInterface = ex.getTypeMirror();
-                TypeElement serviceProvider = (TypeElement) element;
                 if (verifyAnnotation(serviceInterface, serviceProvider)) {
                     String interfaceName = ex.getTypeMirror().toString();
                     addProvider(interfaceName, serviceProvider);
                 }
             }
         }
+    }
+
+    private void processOldElements() {
+        Filer filer = processingEnv.getFiler();
+        Elements elements = processingEnv.getElementUtils();
+        for (String key : serviceMap.keySet()) {
+            String filename = "META-INF/services/" + key;
+            try {
+                FileObject servicesFile = filer.getResource(StandardLocation.CLASS_OUTPUT, "", filename);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(servicesFile.openInputStream(), "UTF-8"));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    TypeElement serviceProvider = elements.getTypeElement(line);
+                    if (serviceProvider != null) {
+                        processElement(serviceProvider);
+                    }
+                }
+                reader.close();
+                servicesFile.delete();
+            } catch (IOException e) {
+                // old services file not found: do nothing
+            }
+        }
+    }
+
+    @Override
+    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        if (roundEnv.processingOver()) {
+            processOldElements();
+            generateServicesFiles();
+            return true;
+        }
+
+        for (Element element : roundEnv.getElementsAnnotatedWith(ServiceProvider.class)) {
+            assert element.getKind().isClass();
+            processElement((TypeElement) element);
+        }
+
         return true;
     }
 }

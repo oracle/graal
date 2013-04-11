@@ -165,8 +165,14 @@ public class PTXMove {
                 case Int:
                     masm.st_global_s32(addr.getBase(), addr.getDisplacement(), asRegister(input));
                     break;
+                case Byte:
+                    masm.st_global_s8(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
+                case Object:
+                    masm.st_global_s32(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw GraalInternalError.shouldNotReachHere("missing: " + address.getKind());
             }
         }
     }
@@ -250,11 +256,20 @@ public class PTXMove {
             case Int:
                 masm.mov_s32(asRegister(result), asRegister(input));
                 break;
+            case Long:
+                masm.mov_s64(asRegister(result), asRegister(input));
+                break;
+            case Float:
+                masm.mov_f32(asRegister(result), asRegister(input));
+                break;
+            case Double:
+                masm.mov_f64(asRegister(result), asRegister(input));
+                break;
             case Object:
                 masm.mov_u64(asRegister(result), asRegister(input));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere("kind=" + result.getKind());
+                throw GraalInternalError.shouldNotReachHere("missing: " + input.getKind());
         }
     }
 
@@ -266,8 +281,24 @@ public class PTXMove {
                 }
                 masm.mov_s32(asRegister(result), input.asInt());
                 break;
+            case Long:
+                if (tasm.runtime.needsDataPatch(input)) {
+                    tasm.recordDataReferenceInCode(input, 0, true);
+                }
+                masm.mov_s64(asRegister(result), input.asLong());
+                break;
+            case Object:
+                if (input.isNull()) {
+                    masm.mov_u64(asRegister(result), 0x0L);
+                } else if (tasm.target.inlineObjects) {
+                    tasm.recordDataReferenceInCode(input, 0, true);
+                    masm.mov_u64(asRegister(result), 0xDEADDEADDEADDEADL);
+                } else {
+                    masm.mov_u64(asRegister(result), tasm.recordDataReferenceInCode(input, 0, false));
+                }
+                break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("missing: " + input.getKind());
         }
     }
 

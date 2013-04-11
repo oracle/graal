@@ -23,6 +23,8 @@
 
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 
@@ -150,7 +152,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
     @Override
     public String toString() {
-        return "HotSpotField<" + MetaUtil.format("%h.%n", this) + ":" + offset + ">";
+        return format("HotSpotField<%H.%n %t:", this) + offset + ">";
     }
 
     @Override
