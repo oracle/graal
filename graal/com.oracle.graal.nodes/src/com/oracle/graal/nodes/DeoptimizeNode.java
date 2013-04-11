@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "Deopt", nameTemplate = "Deopt {p#reason/s}")
-public class DeoptimizeNode extends ControlSinkNode implements Node.IterableNodeType, LIRLowerable, DeoptimizingNode {
+public class DeoptimizeNode extends ControlSinkNode implements Node.IterableNodeType, Lowerable, LIRLowerable, DeoptimizingNode {
 
     @Input private FrameState deoptState;
 
@@ -48,6 +48,11 @@ public class DeoptimizeNode extends ControlSinkNode implements Node.IterableNode
 
     public DeoptimizationReason reason() {
         return reason;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 
     @Override
