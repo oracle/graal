@@ -199,9 +199,9 @@ public interface CompilerToVM {
 
     StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
-    Object executeCompiledMethod(long metaspaceMethod, long nmethod, Object arg1, Object arg2, Object arg3);
+    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nativeMethod);
 
-    Object executeCompiledMethodVarargs(long metaspaceMethod, long nmethod, Object... args);
+    Object executeCompiledMethodVarargs(Object[] args, long nativeMethod);
 
     int getVtableEntryOffset(long metaspaceMethod);
 

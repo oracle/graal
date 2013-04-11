@@ -133,10 +133,10 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
     @Override
-    public native Object executeCompiledMethod(long metaspaceMethod, long nmethod, Object arg1, Object arg2, Object arg3);
+    public native Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nativeMethod);
 
     @Override
-    public native Object executeCompiledMethodVarargs(long metaspaceMethod, long nmethod, Object... args);
+    public native Object executeCompiledMethodVarargs(Object[] args, long nativeMethod);
 
     @Override
     public native int getVtableEntryOffset(long metaspaceMethod);
