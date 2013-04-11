@@ -62,7 +62,12 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     @Override
     public boolean isValid() {
-        return nmethod != 0;
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().isInstalledCodeValid(nmethod);
+    }
+
+    @Override
+    public void invalidate() {
+        HotSpotGraalRuntime.getInstance().getCompilerToVM().invalidateInstalledCode(nmethod);
     }
 
     @Override

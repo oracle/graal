@@ -67,7 +67,11 @@ public abstract class AssemblerTest extends GraalTest {
     protected Object runTest(String methodName, CodeGenTest test, Object... args) {
         Method method = getMethod(methodName);
         InstalledCode code = assembleMethod(method, test);
-        return code.executeVarargs(args);
+        try {
+            return code.executeVarargs(args);
+        } catch (InvalidInstalledCodeException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     protected void assertReturn(String methodName, CodeGenTest test, Object expected, Object... args) {

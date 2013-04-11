@@ -27,7 +27,6 @@ import java.lang.reflect.*;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.InstalledCode.MethodInvalidatedException;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
@@ -59,7 +58,7 @@ public class SynchronizedMethodDeoptimizationTest extends GraalCompilerTest {
         try {
             Object result = compiledMethod.executeVarargs(testString);
             Assert.assertEquals(testString, result);
-        } catch (MethodInvalidatedException t) {
+        } catch (InvalidInstalledCodeException t) {
             Assert.fail("method invalidated");
         }
 
@@ -67,7 +66,7 @@ public class SynchronizedMethodDeoptimizationTest extends GraalCompilerTest {
             Object result = compiledMethod.executeVarargs(new Object[]{null});
             Assert.assertEquals(null, result);
             Assert.assertFalse(compiledMethod.isValid());
-        } catch (MethodInvalidatedException t) {
+        } catch (InvalidInstalledCodeException t) {
             Assert.fail("method invalidated");
         }
     }

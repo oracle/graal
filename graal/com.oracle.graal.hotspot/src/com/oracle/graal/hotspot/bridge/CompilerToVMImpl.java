@@ -161,4 +161,10 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public native Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi);
+
+    @Override
+    public native void invalidateInstalledCode(long nativeMethod);
+
+    @Override
+    public native boolean isInstalledCodeValid(long nativeMethod);
 }

@@ -75,7 +75,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         try {
             Object result = compiledMethod.execute("1", "2", "3");
             Assert.assertEquals("1-2-3", result);
-        } catch (MethodInvalidatedException t) {
+        } catch (InvalidInstalledCodeException t) {
             Assert.fail("method invalidated");
         }
     }
@@ -89,7 +89,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         try {
             Object result = compiledMethod.executeVarargs("1", "2", "3");
             Assert.assertEquals("1 2 3", result);
-        } catch (MethodInvalidatedException t) {
+        } catch (InvalidInstalledCodeException t) {
             Assert.fail("method invalidated");
         }
     }
@@ -104,98 +104,8 @@ public class CompiledMethodTest extends GraalCompilerTest {
             f1 = "0";
             Object result = compiledMethod.executeVarargs(this, "1", "2", "3");
             Assert.assertEquals("0 1 2 3", result);
-        } catch (MethodInvalidatedException t) {
+        } catch (InvalidInstalledCodeException t) {
             Assert.fail("method invalidated");
-        }
-    }
-
-    @LongTest
-    public void test2() throws NoSuchMethodException, SecurityException {
-        Method method = CompilableObjectImpl.class.getDeclaredMethod("executeHelper", ObjectCompiler.class, String.class);
-        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
-        StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.NONE).apply(graph);
-        new CanonicalizerPhase(runtime, new Assumptions(false)).apply(graph);
-        new DeadCodeEliminationPhase().apply(graph);
-
-        for (Node node : graph.getNodes()) {
-            if (node instanceof ConstantNode) {
-                ConstantNode constant = (ConstantNode) node;
-                if (constant.kind() == Kind.Object && "1 ".equals(constant.value.asObject())) {
-                    graph.replaceFloating(constant, ConstantNode.forObject("1-", runtime, graph));
-                }
-            }
-        }
-
-        InstalledCode compiledMethod = getCode(javaMethod, graph);
-        final CompilableObject compilableObject = new CompilableObjectImpl(0);
-
-        Object result;
-        result = compilableObject.execute(new ObjectCompilerImpl(compiledMethod), "3");
-        Assert.assertEquals("1-3", result);
-    }
-
-    public abstract class CompilableObject {
-
-        private CompiledObject compiledObject;
-        private final int compileThreshold;
-        private int counter;
-
-        public CompilableObject(int compileThreshold) {
-            this.compileThreshold = compileThreshold;
-        }
-
-        public final Object execute(ObjectCompiler compiler, String args) {
-            if (counter++ < compileThreshold || compiler == null) {
-                return executeHelper(compiler, args);
-            } else {
-                compiledObject = compiler.compile(this);
-                return compiledObject.execute(compiler, args);
-            }
-        }
-
-        protected abstract Object executeHelper(ObjectCompiler context, String args);
-    }
-
-    private final class CompilableObjectImpl extends CompilableObject {
-
-        private CompilableObjectImpl(int compileThreshold) {
-            super(compileThreshold);
-        }
-
-        @Override
-        protected Object executeHelper(ObjectCompiler compiler, String args) {
-            return "1 " + args;
-        }
-    }
-
-    public interface CompiledObject {
-
-        Object execute(ObjectCompiler context, String args);
-    }
-
-    public interface ObjectCompiler {
-
-        CompiledObject compile(CompilableObject node);
-    }
-
-    private final class ObjectCompilerImpl implements ObjectCompiler {
-
-        private final InstalledCode compiledMethod;
-
-        private ObjectCompilerImpl(InstalledCode compiledMethod) {
-            this.compiledMethod = compiledMethod;
-        }
-
-        @Override
-        public CompiledObject compile(final CompilableObject node) {
-            return new CompiledObject() {
-
-                @Override
-                public Object execute(ObjectCompiler compiler, String args) {
-                    return compiledMethod.execute(node, compiler, args);
-                }
-            };
         }
     }
 }

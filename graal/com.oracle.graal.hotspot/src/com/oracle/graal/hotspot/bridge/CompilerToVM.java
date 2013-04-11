@@ -223,4 +223,8 @@ public interface CompilerToVM {
     void reprofile(long metaspaceMethod);
 
     Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi);
+
+    void invalidateInstalledCode(long nativeMethod);
+
+    boolean isInstalledCodeValid(long nativeMethod);
 }
