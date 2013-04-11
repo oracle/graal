@@ -49,4 +49,14 @@ public class InfopointNode extends AbstractStateSplit implements LIRLowerable, I
         return false;
     }
 
+    @Override
+    public void setStateAfter(FrameState state) {
+        // shield this node from frame state removal
+        // TODO turn InfopointNode into a FixedWithNextNode subclass with a self-maintained
+        // FrameState that is correctly dealt with by scheduling and partial escape analysis
+        if (state != null) {
+            super.setStateAfter(state);
+        }
+    }
+
 }

@@ -68,13 +68,7 @@ import com.oracle.graal.lir.ptx.PTXMove.LoadOp;
 import com.oracle.graal.lir.ptx.PTXMove.MoveFromRegOp;
 import com.oracle.graal.lir.ptx.PTXMove.MoveToRegOp;
 import com.oracle.graal.lir.ptx.PTXMove.StoreOp;
-import com.oracle.graal.nodes.BreakpointNode;
-import com.oracle.graal.nodes.DeoptimizingNode;
-import com.oracle.graal.nodes.DirectCallTargetNode;
-import com.oracle.graal.nodes.IndirectCallTargetNode;
-import com.oracle.graal.nodes.SafepointNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.Condition;
 import com.oracle.graal.nodes.calc.ConvertNode;
 import com.oracle.graal.nodes.java.CompareAndSwapNode;
@@ -400,7 +394,7 @@ public class PTXLIRGenerator extends LIRGenerator {
             case Double:
                 append(new Op2Stack(DMUL, result, a, loadNonConst(b)));
                 break;
-           default:
+            default:
                 throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
         }
         return result;
@@ -415,17 +409,17 @@ public class PTXLIRGenerator extends LIRGenerator {
     @Override
     public Value emitDiv(Value a, Value b, DeoptimizingNode deopting) {
         Variable result = newVariable(a.getKind());
-       switch (a.getKind()) {
-           case Int:
-             append(new Op2Reg(IDIV, result, a, loadNonConst(b)));
-               break;
+        switch (a.getKind()) {
+            case Int:
+                append(new Op2Reg(IDIV, result, a, loadNonConst(b)));
+                break;
             case Long:
                 append(new Op2Reg(LDIV, result, a, loadNonConst(b)));
-               break;
+                break;
             case Float:
                 append(new Op2Stack(FDIV, result, a, loadNonConst(b)));
                 break;
-           case Double:
+            case Double:
                 append(new Op2Stack(DDIV, result, a, loadNonConst(b)));
                 break;
             default:
@@ -488,7 +482,7 @@ public class PTXLIRGenerator extends LIRGenerator {
                 append(new Op2Stack(LOR, result, a, loadNonConst(b)));
                 break;
             default:
-               throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
+                throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
         }
         return result;
     }
@@ -507,7 +501,7 @@ public class PTXLIRGenerator extends LIRGenerator {
                 throw GraalInternalError.shouldNotReachHere();
         }
         return result;
-     }
+    }
 
     @Override
     public Variable emitShl(Value a, Value b) {

@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test.inlining;
 
 import static org.junit.Assert.*;
 
+import java.lang.reflect.*;
 import java.util.concurrent.*;
 
 import org.junit.*;
@@ -45,12 +46,6 @@ public class InliningTest extends GraalCompilerTest {
         assertInlined(getGraph("invokeStaticOnInstanceSnippet", false));
     }
 
-    @Test
-    public void testInvokeStaticInliningIP() {
-        assertInlineInfopoints(assertInlined(getGraph("invokeStaticSnippet", true)));
-        assertInlineInfopoints(assertInlined(getGraph("invokeStaticOnInstanceSnippet", true)));
-    }
-
     @SuppressWarnings("all")
     public static Boolean invokeStaticSnippet(boolean value) {
         return Boolean.valueOf(value);
@@ -70,9 +65,9 @@ public class InliningTest extends GraalCompilerTest {
 
     @Test
     public void testStaticBindableInliningIP() {
-        assertInlineInfopoints(assertInlined(getGraph("invokeConstructorSnippet", true)));
-        assertInlineInfopoints(assertInlined(getGraph("invokeFinalMethodSnippet", true)));
-        assertInlineInfopoints(assertInlined(getGraph("invokeMethodOnFinalClassSnippet", true)));
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeConstructorSnippet", true)));
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeFinalMethodSnippet", true)));
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeMethodOnFinalClassSnippet", true)));
     }
 
     @SuppressWarnings("all")
@@ -106,16 +101,16 @@ public class InliningTest extends GraalCompilerTest {
 
     @Test
     public void testClassHierarchyAnalysisIP() {
-        assertInlineInfopoints(assertInlined(getGraph("invokeLeafClassMethodSnippet", true)));
-        assertInlineInfopoints(assertInlined(getGraph("invokeConcreteMethodSnippet", true)));
-        assertInlineInfopoints(assertInlined(getGraph("invokeSingleImplementorInterfaceSnippet", true)));
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeLeafClassMethodSnippet", true)));
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeConcreteMethodSnippet", true)));
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeSingleImplementorInterfaceSnippet", true)));
         //@formatter:off
         // assertInlineInfopoints(assertInlined(getGraph("invokeConcreteInterfaceMethodSnippet", true)));
         //@formatter:on
 
-        assertNoInlineInfopoints(assertNotInlined(getGraph("invokeOverriddenPublicMethodSnippet", true)));
-        assertNoInlineInfopoints(assertNotInlined(getGraph("invokeOverriddenProtectedMethodSnippet", true)));
-        assertNoInlineInfopoints(assertNotInlined(getGraph("invokeOverriddenInterfaceMethodSnippet", true)));
+        assertFewMethodInfopoints(assertNotInlined(getGraph("invokeOverriddenPublicMethodSnippet", true)));
+        assertFewMethodInfopoints(assertNotInlined(getGraph("invokeOverriddenProtectedMethodSnippet", true)));
+        assertFewMethodInfopoints(assertNotInlined(getGraph("invokeOverriddenInterfaceMethodSnippet", true)));
     }
 
     @SuppressWarnings("all")
@@ -158,7 +153,8 @@ public class InliningTest extends GraalCompilerTest {
 
             @Override
             public StructuredGraph call() {
-                StructuredGraph graph = parse(snippet);
+                Method method = getMethod(snippet);
+                StructuredGraph graph = eagerInfopointMode ? parseDebug(method) : parse(method);
                 PhasePlan phasePlan = getDefaultPhasePlan(eagerInfopointMode);
                 Assumptions assumptions = new Assumptions(true);
                 new ComputeProbabilityPhase().apply(graph);
@@ -199,7 +195,7 @@ public class InliningTest extends GraalCompilerTest {
         return graph;
     }
 
-    private static StructuredGraph assertInlineInfopoints(StructuredGraph graph) {
+    private static int[] countMethodInfopoints(StructuredGraph graph) {
         int start = 0;
         int end = 0;
         for (InfopointNode ipn : graph.getNodes(InfopointNode.class)) {
@@ -209,17 +205,21 @@ public class InliningTest extends GraalCompilerTest {
                 ++end;
             }
         }
-        if (start < 1 || end < 1) {
-            fail(String.format("Graph does not contain required inline infopoints: %d starts, %d ends.", start, end));
+        return new int[]{start, end};
+    }
+
+    private static StructuredGraph assertManyMethodInfopoints(StructuredGraph graph) {
+        int[] counts = countMethodInfopoints(graph);
+        if (counts[0] <= 1 || counts[1] <= 1) {
+            fail(String.format("Graph contains too few required method boundary infopoints: %d starts, %d ends.", counts[0], counts[1]));
         }
         return graph;
     }
 
-    private static StructuredGraph assertNoInlineInfopoints(StructuredGraph graph) {
-        for (InfopointNode ipn : graph.getNodes(InfopointNode.class)) {
-            if (ipn.reason == InfopointReason.METHOD_START || ipn.reason == InfopointReason.METHOD_END) {
-                fail("Graph contains inline infopoints.");
-            }
+    private static StructuredGraph assertFewMethodInfopoints(StructuredGraph graph) {
+        int[] counts = countMethodInfopoints(graph);
+        if (counts[0] > 1 || counts[1] > 1) {
+            fail(String.format("Graph contains too many method boundary infopoints: %d starts, %d ends.", counts[0], counts[1]));
         }
         return graph;
     }
