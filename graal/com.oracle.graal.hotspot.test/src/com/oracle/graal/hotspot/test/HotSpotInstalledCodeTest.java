@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.test;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -36,11 +37,23 @@ public class HotSpotInstalledCodeTest extends GraalCompilerTest {
         final ResolvedJavaMethod testJavaMethod = runtime.lookupJavaMethod(getMethod("foo"));
         final StructuredGraph graph = parse("otherFoo");
         final HotSpotInstalledCode installedCode = (HotSpotInstalledCode) getCode(testJavaMethod, graph);
-        Object result = installedCode.execute(null, null, null);
-        assertEquals(43, result);
+        Assert.assertTrue(installedCode.isValid());
+        Object result;
+        try {
+            result = installedCode.execute("a", "b", "c");
+            assertEquals(43, result);
+        } catch (InvalidInstalledCodeException e) {
+            Assert.fail("Code was invalidated");
+        }
+        Assert.assertTrue(installedCode.isValid());
         installedCode.invalidate();
-        result = installedCode.execute(null, null, null);
-        System.out.println(result);
+        Assert.assertFalse(installedCode.isValid());
+        try {
+            result = installedCode.execute(null, null, null);
+            Assert.fail("Code was not invalidated");
+        } catch (InvalidInstalledCodeException e) {
+        }
+        Assert.assertFalse(installedCode.isValid());
     }
 
     @SuppressWarnings("unused")

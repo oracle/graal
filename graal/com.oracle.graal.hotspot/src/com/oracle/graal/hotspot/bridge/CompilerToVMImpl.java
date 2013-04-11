@@ -133,9 +133,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
     @Override
-    public native Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nativeMethod);
-
-    @Override
     public native Object executeCompiledMethodVarargs(Object[] args, long nativeMethod);
 
     @Override
@@ -167,4 +164,11 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public native boolean isInstalledCodeValid(long nativeMethod);
+
+    @Override
+    public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nativeMethod) throws InvalidInstalledCodeException {
+        return executeCompiledMethodIntrinsic(arg1, arg2, arg3, nativeMethod);
+    }
+
+    private static native Object executeCompiledMethodIntrinsic(Object arg1, Object arg2, Object arg3, long nativeMethod);
 }

@@ -76,7 +76,7 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     }
 
     @Override
-    public Object execute(Object arg1, Object arg2, Object arg3) {
+    public Object execute(Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
         assert method.getSignature().getParameterCount(!Modifier.isStatic(method.getModifiers())) == 3;
         assert method.getSignature().getParameterKind(0) == Kind.Object;
         assert method.getSignature().getParameterKind(1) == Kind.Object;
@@ -99,7 +99,7 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     }
 
     @Override
-    public Object executeVarargs(Object... args) {
+    public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         assert checkArgs(args);
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethodVarargs(args, nmethod);
     }
@@ -114,7 +114,8 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().getCode(nmethod);
     }
 
-    public static Object executeHelper(long nmethod, long metaspaceMethod, Object arg1, Object arg2, Object arg3) {
+    @SuppressWarnings("unused")
+    public static Object executeHelper(long nmethod, long metaspaceMethod, Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethod(arg1, arg2, arg3, nmethod);
     }
 }

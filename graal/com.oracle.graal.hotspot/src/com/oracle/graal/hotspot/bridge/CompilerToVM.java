@@ -199,9 +199,9 @@ public interface CompilerToVM {
 
     StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
-    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nativeMethod);
+    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nativeMethod) throws InvalidInstalledCodeException;
 
-    Object executeCompiledMethodVarargs(Object[] args, long nativeMethod);
+    Object executeCompiledMethodVarargs(Object[] args, long nativeMethod) throws InvalidInstalledCodeException;
 
     int getVtableEntryOffset(long metaspaceMethod);
 
