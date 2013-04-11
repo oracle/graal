@@ -1071,7 +1071,7 @@ public class GraphBuilderPhase extends Phase {
 
     private void genInvokeDynamic(JavaMethod target) {
         if (target instanceof ResolvedJavaMethod) {
-            Object appendix = constantPool.lookupAppendix(stream.readCPI4());
+            Object appendix = constantPool.lookupAppendix(stream.readCPI4(), Bytecodes.INVOKEDYNAMIC);
             if (appendix != null) {
                 frameState.apush(ConstantNode.forObject(appendix, runtime, currentGraph));
             }
@@ -1084,8 +1084,20 @@ public class GraphBuilderPhase extends Phase {
 
     private void genInvokeVirtual(JavaMethod target) {
         if (target instanceof ResolvedJavaMethod) {
-            ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
-            genInvokeIndirect(InvokeKind.Virtual, (ResolvedJavaMethod) target, args);
+            // Special handling for runtimes that rewrite an invocation of MethodHandle.invoke(...)
+            // or MethodHandle.invokeExact(...) to a static adapter. HotSpot does this - see
+            // https://wikis.oracle.com/display/HotSpotInternals/Method+handles+and+invokedynamic
+            boolean hasReceiver = !isStatic(((ResolvedJavaMethod) target).getModifiers());
+            Object appendix = constantPool.lookupAppendix(stream.readCPI(), Bytecodes.INVOKEVIRTUAL);
+            if (appendix != null) {
+                frameState.apush(ConstantNode.forObject(appendix, runtime, currentGraph));
+            }
+            ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(hasReceiver), target.getSignature().getParameterCount(hasReceiver));
+            if (hasReceiver) {
+                genInvokeIndirect(InvokeKind.Virtual, (ResolvedJavaMethod) target, args);
+            } else {
+                appendInvoke(InvokeKind.Static, (ResolvedJavaMethod) target, args);
+            }
         } else {
             handleUnresolvedInvoke(target, InvokeKind.Virtual);
         }

@@ -138,6 +138,8 @@ public interface CompilerToVM {
 
     void lookupReferencedTypeInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
 
+    Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
+
     // Must be kept in sync with enum in graalEnv.hpp
     public enum CodeInstallResult {
         OK, DEPENDENCIES_FAILED, CACHE_FULL
@@ -221,6 +223,4 @@ public interface CompilerToVM {
      * @param metaspaceMethod the metaspace Method object
      */
     void reprofile(long metaspaceMethod);
-
-    Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi);
 }

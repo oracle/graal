@@ -160,5 +160,5 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void reprofile(long metaspaceMethod);
 
     @Override
-    public native Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi);
+    public native Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
 }
