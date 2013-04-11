@@ -152,6 +152,10 @@ public final class GraalOptions {
     public static boolean ExitVMOnBailout                    = ____;
     public static boolean ExitVMOnException                  = true;
 
+    // HotSpot command line options
+    public static boolean HotSpotPrintCompilation            = ____;
+    public static boolean HotSpotPrintInlining               = ____;
+
     // Register allocator debugging
     public static String  RegisterPressure                   = null;
 

@@ -113,6 +113,7 @@ public class ServiceProviderProcessor extends AbstractProcessor {
                     }
                 }
                 reader.close();
+                servicesFile.delete();
             } catch (IOException e) {
                 // old services file not found: do nothing
             }

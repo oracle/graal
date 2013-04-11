@@ -22,42 +22,23 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import java.lang.reflect.Method;
+import com.oracle.graal.api.meta.Kind;
+import com.oracle.graal.nodes.LocalNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.type.StampFactory;
+import com.oracle.graal.phases.Phase;
 
-import org.junit.Test;
 
-/**
- * Test class for small Java methods compiled to PTX kernels.
- */
-public class BasicPTXTest extends PTXTestBase {
-
-    @Test
-    public void testAdd() {
-        compile("testAddSnippet");
-    }
-
-    public static int testAddSnippet(int a) {
-        return a + 1;
-    }
-
-    @Test
-    public void testArray() {
-        compile("testArraySnippet");
-    }
-
-    public static int testArraySnippet(int[] array) {
-        return array[0];
-    }
-
-    public static void main(String[] args) {
-        BasicPTXTest test = new BasicPTXTest();
-        Method[] methods = BasicPTXTest.class.getMethods();
-        for (Method m : methods) {
-            if (m.getAnnotation(Test.class) != null) {
-                String name = m.getName() + "Snippet";
-                // CheckStyle: stop system..print check
-                System.out.println(name + ": \n" + new String(test.compile(name).getTargetCode()));
-                // CheckStyle: resume system..print check
+public class PTXPhase extends Phase {
+    @Override
+    protected void run(StructuredGraph graph) {
+        /*
+         * Assume that null checks would be done on the CPU caller side prior
+         * to copying data onto the GPU.
+         */
+        for (LocalNode local : graph.getNodes(LocalNode.class)) {
+            if (local.kind() == Kind.Object) {
+                local.setStamp(StampFactory.declaredNonNull(local.objectStamp().type()));
             }
         }
     }

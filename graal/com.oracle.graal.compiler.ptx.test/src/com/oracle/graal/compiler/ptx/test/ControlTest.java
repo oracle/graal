@@ -22,39 +22,70 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import java.lang.reflect.Method;
-
 import org.junit.Test;
 
-/**
- * Test class for small Java methods compiled to PTX kernels.
- */
-public class BasicPTXTest extends PTXTestBase {
+import java.lang.reflect.Method;
+
+public class ControlTest extends PTXTestBase {
 
     @Test
-    public void testAdd() {
-        compile("testAddSnippet");
+    public void testControl() {
+        compile("testSwitch1I");
+        compile("testStatic");
+        compile("testCall");
+        compile("testLookupSwitch1I");
     }
 
-    public static int testAddSnippet(int a) {
-        return a + 1;
+    public static int testSwitch1I(int a) {
+        switch (a) {
+        case 1:
+            return 2;
+        case 2:
+            return 3;
+        default:
+            return 4;
+        }
     }
 
-    @Test
-    public void testArray() {
-        compile("testArraySnippet");
+    public static int testLookupSwitch1I(int a) {
+        switch (a) {
+        case 0:  return 1;
+        case 1:  return 2;
+        case 2:  return 3;
+        case 3:  return 1;
+        case 4:  return 2;
+        case 5:  return 3;
+        case 6:  return 1;
+        case 7:  return 2;
+        case 8:  return 3;
+        case 9:  return 1;
+        case 10: return 2;
+        case 11: return 3;
+        default: return -1;
+        }
     }
 
-    public static int testArraySnippet(int[] array) {
-        return array[0];
+    @SuppressWarnings("unused")
+    private static Object foo = null;
+
+    public static boolean testStatic(Object o) {
+        foo = o;
+        return true;
+    }
+
+    private static int method(int a, int b) {
+        return a + b;
+    }
+
+    public static int testCall(@SuppressWarnings("unused") Object o, int a, int b) {
+        return method(a, b);
     }
 
     public static void main(String[] args) {
-        BasicPTXTest test = new BasicPTXTest();
-        Method[] methods = BasicPTXTest.class.getMethods();
-        for (Method m : methods) {
-            if (m.getAnnotation(Test.class) != null) {
-                String name = m.getName() + "Snippet";
+        ControlTest test = new ControlTest();
+        for (Method m : ControlTest.class.getMethods()) {
+            String name = m.getName();
+            if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
                 // CheckStyle: stop system..print check
                 System.out.println(name + ": \n" + new String(test.compile(name).getTargetCode()));
                 // CheckStyle: resume system..print check

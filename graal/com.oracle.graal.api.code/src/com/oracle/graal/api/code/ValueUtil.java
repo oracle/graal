@@ -89,13 +89,19 @@ public final class ValueUtil {
     }
 
     public static Register asIntReg(Value value) {
-        assert value.getKind() == Kind.Int;
-        return asRegister(value);
+        if (value.getKind() != Kind.Int) {
+            throw new InternalError("needed Int got: " + value.getKind());
+        } else {
+            return asRegister(value);
+        }
     }
 
     public static Register asLongReg(Value value) {
-        assert value.getKind() == Kind.Long : value.getKind();
-        return asRegister(value);
+        if (value.getKind() != Kind.Long) {
+            throw new InternalError("needed Long got: " + value.getKind());
+        } else {
+            return asRegister(value);
+        }
     }
 
     public static Register asObjectReg(Value value) {
