@@ -25,7 +25,6 @@ package com.oracle.graal.virtual.phases.ea;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -37,31 +36,23 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.nodes.*;
 
-public class PartialEscapeAnalysisPhase extends Phase {
+public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
 
-    private final MetaAccessProvider runtime;
-    private final Assumptions assumptions;
-    private CustomCanonicalizer customCanonicalizer;
+    private final CustomCanonicalizer customCanonicalizer;
     private final boolean iterative;
     private final boolean readElimination;
 
-    private boolean changed;
+    public PartialEscapeAnalysisPhase(boolean iterative, boolean readElimination) {
+        this(null, iterative, readElimination);
+    }
 
-    public PartialEscapeAnalysisPhase(MetaAccessProvider runtime, Assumptions assumptions, boolean iterative, boolean readElimination) {
-        this.runtime = runtime;
-        this.assumptions = assumptions;
+    public PartialEscapeAnalysisPhase(CustomCanonicalizer customCanonicalizer, boolean iterative, boolean readElimination) {
+        this.customCanonicalizer = customCanonicalizer;
         this.iterative = iterative;
         this.readElimination = readElimination;
-    }
-
-    public boolean hasChanged() {
-        return changed;
-    }
-
-    public void setCustomCanonicalizer(CustomCanonicalizer customCanonicalizer) {
-        this.customCanonicalizer = customCanonicalizer;
     }
 
     public static final void trace(String format, Object... obj) {
@@ -71,9 +62,13 @@ public class PartialEscapeAnalysisPhase extends Phase {
     }
 
     @Override
-    protected void run(final StructuredGraph graph) {
+    protected void run(StructuredGraph graph, HighTierContext context) {
+        runAnalysis(graph, context);
+    }
+
+    public boolean runAnalysis(final StructuredGraph graph, final HighTierContext context) {
         if (!matches(graph, GraalOptions.EscapeAnalyzeOnly)) {
-            return;
+            return false;
         }
 
         if (!readElimination) {
@@ -85,26 +80,26 @@ public class PartialEscapeAnalysisPhase extends Phase {
                 }
             }
             if (!analyzableNodes) {
-                return;
+                return false;
             }
         }
 
-        Boolean continueIteration = true;
+        boolean continueIteration = true;
+        boolean changed = false;
         for (int iteration = 0; iteration < GraalOptions.EscapeAnalysisIterations && continueIteration; iteration++) {
-            continueIteration = Debug.scope("iteration " + iteration, new Callable<Boolean>() {
+            boolean currentChanged = Debug.scope("iteration " + iteration, new Callable<Boolean>() {
 
                 @Override
                 public Boolean call() {
 
                     SchedulePhase schedule = new SchedulePhase();
                     schedule.apply(graph, false);
-                    PartialEscapeClosure closure = new PartialEscapeClosure(graph.createNodeBitMap(), schedule, runtime, assumptions);
+                    PartialEscapeClosure closure = new PartialEscapeClosure(graph.createNodeBitMap(), schedule, context.getRuntime(), context.getAssumptions());
                     ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock(), new BlockState(), null);
 
                     if (!closure.hasChanged()) {
                         return false;
                     }
-                    changed = true;
 
                     // apply the effects collected during the escape analysis iteration
                     List<Node> obsoleteNodes = closure.applyEffects(graph);
@@ -115,13 +110,17 @@ public class PartialEscapeAnalysisPhase extends Phase {
                     new DeadCodeEliminationPhase().apply(graph);
 
                     if (GraalOptions.OptCanonicalizer) {
-                        new CanonicalizerPhase(runtime, assumptions, null, customCanonicalizer).apply(graph);
+                        new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), null, customCanonicalizer).apply(graph);
                     }
 
-                    return iterative;
+                    return true;
                 }
             });
+            continueIteration = currentChanged && iterative;
+            changed |= currentChanged;
         }
+
+        return changed;
     }
 
     private static boolean matches(StructuredGraph graph, String filter) {

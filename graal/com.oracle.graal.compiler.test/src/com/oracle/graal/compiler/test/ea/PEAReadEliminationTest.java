@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
 public class PEAReadEliminationTest extends GraalCompilerTest {
@@ -222,7 +223,8 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
         graph = parse(snippet);
         new ComputeProbabilityPhase().apply(graph);
         Assumptions assumptions = new Assumptions(false);
+        HighTierContext context = new HighTierContext(runtime(), assumptions);
         new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-        new PartialEscapeAnalysisPhase(runtime(), assumptions, false, true).apply(graph);
+        new PartialEscapeAnalysisPhase(false, true).apply(graph, context);
     }
 }

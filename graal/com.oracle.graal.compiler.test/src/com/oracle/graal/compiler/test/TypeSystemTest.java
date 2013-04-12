@@ -186,13 +186,13 @@ public class TypeSystemTest extends GraalCompilerTest {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
         Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase(runtime(), assumptions).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
         new ConditionalEliminationPhase(runtime()).apply(graph);
-        new CanonicalizerPhase(runtime(), assumptions).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
         // a second canonicalizer is needed to process nested MaterializeNodes
-        new CanonicalizerPhase(runtime(), assumptions).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
         StructuredGraph referenceGraph = parse(referenceSnippet);
-        new CanonicalizerPhase(runtime(), assumptions).apply(referenceGraph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(referenceGraph);
         assertEquals(referenceGraph, graph);
     }
 
@@ -244,9 +244,9 @@ public class TypeSystemTest extends GraalCompilerTest {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
         Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase(runtime(), assumptions).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
         new ConditionalEliminationPhase(runtime()).apply(graph);
-        new CanonicalizerPhase(runtime(), assumptions).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
         Debug.dump(graph, "Graph");
         Assert.assertFalse("shouldn't have nodes of type " + clazz, graph.getNodes(clazz).iterator().hasNext());
     }

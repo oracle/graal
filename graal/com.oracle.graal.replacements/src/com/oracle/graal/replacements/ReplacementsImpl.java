@@ -323,7 +323,7 @@ public class ReplacementsImpl implements Replacements {
         protected void afterInline(StructuredGraph caller, StructuredGraph callee) {
             if (GraalOptions.OptCanonicalizer) {
                 new WordTypeRewriterPhase(runtime, target.wordKind).apply(caller);
-                new CanonicalizerPhase(runtime, assumptions).apply(caller);
+                new CanonicalizerPhase.Instance(runtime, assumptions).apply(caller);
             }
         }
 
@@ -337,7 +337,7 @@ public class ReplacementsImpl implements Replacements {
 
             new DeadCodeEliminationPhase().apply(graph);
             if (GraalOptions.OptCanonicalizer) {
-                new CanonicalizerPhase(runtime, assumptions).apply(graph);
+                new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
             }
         }
 

@@ -375,7 +375,7 @@ public class SnippetTemplate {
             new NodeIntrinsificationPhase(runtime).apply(snippetCopy);
             new WordTypeRewriterPhase(runtime, target.wordKind).apply(snippetCopy);
 
-            new CanonicalizerPhase(runtime, replacements.getAssumptions(), 0, null).apply(snippetCopy);
+            new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), 0, null).apply(snippetCopy);
         }
         assert NodeIntrinsificationVerificationPhase.verify(snippetCopy);
 
@@ -432,7 +432,7 @@ public class SnippetTemplate {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     int mark = snippetCopy.getMark();
                     LoopTransformations.fullUnroll(loop, runtime, null);
-                    new CanonicalizerPhase(runtime, replacements.getAssumptions(), mark, null).apply(snippetCopy);
+                    new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), mark, null).apply(snippetCopy);
                 }
                 FixedNode explodeLoopNext = explodeLoop.next();
                 explodeLoop.clearSuccessors();

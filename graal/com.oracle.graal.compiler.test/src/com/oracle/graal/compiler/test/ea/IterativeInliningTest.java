@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
 public class IterativeInliningTest extends GraalCompilerTest {
@@ -102,6 +103,7 @@ public class IterativeInliningTest extends GraalCompilerTest {
         graph = parse(snippet);
         new ComputeProbabilityPhase().apply(graph);
         GraalOptions.OptEarlyReadElimination = true;
-        new IterativeInliningPhase(runtime(), replacements, new Assumptions(false), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL, false).apply(graph);
+        HighTierContext context = new HighTierContext(runtime(), new Assumptions(false));
+        new IterativeInliningPhase(replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL, false).apply(graph, context);
     }
 }
