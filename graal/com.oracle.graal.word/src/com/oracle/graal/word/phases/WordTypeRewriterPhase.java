@@ -29,6 +29,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.extended.WriteNode.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
@@ -277,7 +278,7 @@ public class WordTypeRewriterPhase extends Phase {
 
     private static ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode offset, ValueNode value, Invoke invoke, Kind writeKind, Object locationIdentity) {
         IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, writeKind, 0, offset, graph, 1);
-        WriteNode write = graph.add(new WriteNode(base, value, location, false));
+        WriteNode write = graph.add(new WriteNode(base, value, location, WriteBarrierType.NONE));
         write.setStateAfter(invoke.stateAfter());
         graph.addBeforeFixed(invoke.node(), write);
         return write;

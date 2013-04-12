@@ -34,13 +34,25 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
+    private final WriteBarrierType barrierType;
 
     /*
-     * The field below instructs the snippet to use the address of the object or the effective
-     * address of the object element of an array when calculating the card offset.
+     * The types of write barriers attached to stores.
      */
-    private final boolean usePreciseWriteBarriers;
-    private boolean needsWriteBarrier;
+    public enum WriteBarrierType {
+        /*
+         * Primitive stores which do not necessitate write barriers.
+         */
+        NONE,
+        /*
+         * Array object stores which necessitate precise write barriers.
+         */
+        PRECISE,
+        /*
+         * Field object stores which necessitate imprecise write barriers.
+         */
+        IMPRECISE
+    }
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -60,22 +72,14 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
         return value;
     }
 
-    public boolean usePreciseWriteBarriers() {
-        return usePreciseWriteBarriers;
+    public WriteBarrierType getWriteBarrierType() {
+        return barrierType;
     }
 
-    public boolean needsWriteBarrier() {
-        return needsWriteBarrier;
-    }
-
-    public void setWriteBarrier() {
-        this.needsWriteBarrier = true;
-    }
-
-    public WriteNode(ValueNode object, ValueNode value, ValueNode location, boolean usePreciseWriteBarriers) {
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, WriteBarrierType barrierType) {
         super(object, location, StampFactory.forVoid());
         this.value = value;
-        this.usePreciseWriteBarriers = usePreciseWriteBarriers;
+        this.barrierType = barrierType;
     }
 
     @Override

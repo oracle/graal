@@ -64,6 +64,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.extended.WriteNode.WriteBarrierType;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
@@ -573,16 +574,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
             ValueNode object = storeField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : storeField.object();
             LocationNode location = LocationNode.create(field, field.getKind(), field.offset(), graph);
-            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), location, false));
+            WriteBarrierType barrierType = getFieldStoreBarrier(storeField);
+            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), location, barrierType));
             memoryWrite.dependencies().add(tool.createNullCheckGuard(object));
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
             FixedWithNextNode last = memoryWrite;
             FixedWithNextNode first = memoryWrite;
 
-            if (field.getKind() == Kind.Object && !memoryWrite.value().objectStamp().alwaysNull()) {
-                memoryWrite.setWriteBarrier();
-            }
             if (storeField.isVolatile()) {
                 MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_WRITE));
                 graph.addBeforeFixed(first, preMembar);
@@ -592,13 +591,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof CompareAndSwapNode) {
             // Separate out GC barrier semantics
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
-            ValueNode expected = cas.expected();
-            if (expected.kind() == Kind.Object && !cas.newValue().objectStamp().alwaysNull()) {
-                ResolvedJavaType type = cas.object().objectStamp().type();
-                final boolean precise = (type != null && type.isArray() && !MetaUtil.isJavaLangObject(type));
-                cas.setWriteBarrier();
-                cas.setPreciseWriteBarrier(precise);
-            }
+            cas.setWriteBarrierType(getCompareAndSwapBarrier(cas));
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;
             ValueNode boundsCheck = createBoundsCheck(loadIndexed, tool);
@@ -634,14 +627,12 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                     value = checkcast;
                 }
             }
-            WriteNode memoryWrite = graph.add(new WriteNode(array, value, arrayLocation, true));
+            WriteBarrierType barrierType = getArrayStoreBarrier(storeIndexed);
+            WriteNode memoryWrite = graph.add(new WriteNode(array, value, arrayLocation, barrierType));
             memoryWrite.dependencies().add(boundsCheck);
             memoryWrite.setStateAfter(storeIndexed.stateAfter());
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 
-            if (elementKind == Kind.Object && !value.objectStamp().alwaysNull()) {
-                memoryWrite.setWriteBarrier();
-            }
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
             assert load.kind() != Kind.Illegal;
@@ -655,14 +646,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             UnsafeStoreNode store = (UnsafeStoreNode) n;
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, store.accessKind(), store.displacement(), store.offset(), graph, 1);
             ValueNode object = store.object();
-            ResolvedJavaType type = object.objectStamp().type();
-            final boolean precise = (type != null && type.isArray() && !MetaUtil.isJavaLangObject(type));
-            WriteNode write = graph.add(new WriteNode(object, store.value(), location, precise));
+            WriteBarrierType barrierType = getUnsafeStoreBarrier(store);
+            WriteNode write = graph.add(new WriteNode(object, store.value(), location, barrierType));
             write.setStateAfter(store.stateAfter());
             graph.replaceFixedWithFixed(store, write);
-            if (write.value().kind() == Kind.Object && !write.value().objectStamp().alwaysNull()) {
-                write.setWriteBarrier();
-            }
+
         } else if (n instanceof LoadHubNode) {
             LoadHubNode loadHub = (LoadHubNode) n;
             assert loadHub.kind() == wordKind;
@@ -720,6 +708,48 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             assert false : "Node implementing Lowerable not handled: " + n;
             throw GraalInternalError.shouldNotReachHere();
         }
+    }
+
+    private static WriteBarrierType getFieldStoreBarrier(StoreFieldNode storeField) {
+        WriteBarrierType barrierType = WriteBarrierType.NONE;
+        if (storeField.field().getKind() == Kind.Object && !storeField.value().objectStamp().alwaysNull()) {
+            barrierType = WriteBarrierType.IMPRECISE;
+        }
+        return barrierType;
+    }
+
+    private static WriteBarrierType getArrayStoreBarrier(StoreIndexedNode store) {
+        WriteBarrierType barrierType = WriteBarrierType.NONE;
+        if (store.elementKind() == Kind.Object && !store.value().objectStamp().alwaysNull()) {
+            barrierType = WriteBarrierType.PRECISE;
+        }
+        return barrierType;
+    }
+
+    private static WriteBarrierType getUnsafeStoreBarrier(UnsafeStoreNode store) {
+        WriteBarrierType barrierType = WriteBarrierType.NONE;
+        if (store.value().kind() == Kind.Object && !store.value().objectStamp().alwaysNull()) {
+            ResolvedJavaType type = store.object().objectStamp().type();
+            if ((type != null && type.isArray() && !MetaUtil.isJavaLangObject(type))) {
+                barrierType = WriteBarrierType.PRECISE;
+            } else {
+                barrierType = WriteBarrierType.IMPRECISE;
+            }
+        }
+        return barrierType;
+    }
+
+    private static WriteBarrierType getCompareAndSwapBarrier(CompareAndSwapNode cas) {
+        WriteBarrierType barrierType = WriteBarrierType.NONE;
+        if (cas.expected().kind() == Kind.Object && !cas.newValue().objectStamp().alwaysNull()) {
+            ResolvedJavaType type = cas.object().objectStamp().type();
+            if ((type != null && type.isArray() && !MetaUtil.isJavaLangObject(type))) {
+                barrierType = WriteBarrierType.PRECISE;
+            } else {
+                barrierType = WriteBarrierType.IMPRECISE;
+            }
+        }
+        return barrierType;
     }
 
     private IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {
