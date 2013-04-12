@@ -30,7 +30,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -122,14 +121,6 @@ public class PartialEscapeAnalysisPhase extends Phase {
                     return iterative;
                 }
             });
-        }
-
-        if (DynamicCounterNode.enabled && readElimination) {
-            for (Node node : graph.getNodes()) {
-                if (node instanceof LoadFieldNode) {
-                    DynamicCounterNode.addCounterBefore("load non-elim", 1, false, (FixedNode) node);
-                }
-            }
         }
     }
 

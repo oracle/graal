@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -205,9 +206,22 @@ public class VMToCompilerImpl implements VMToCompiler {
             t.start();
         }
 
-        if (GraalOptions.BenchmarkDynamicCounters) {
-            System.setErr(new PrintStream(new BenchmarkCountersOutputStream(System.err, " starting =====", " PASSED in ", "\n")));
-            System.setOut(new PrintStream(new BenchmarkCountersOutputStream(System.out, "Iteration ~ (~s) begins: ", "Iteration ~ (~s) ends:   ", "\n")));
+        if (GraalOptions.BenchmarkDynamicCounters != null) {
+            String[] arguments = GraalOptions.BenchmarkDynamicCounters.split(",");
+            if (arguments.length == 0 || (arguments.length % 3) != 0) {
+                throw new GraalInternalError("invalid arguments to BenchmarkDynamicCounters: (err|out),start,end,(err|out),start,end,... (~ matches multiple digits)");
+            }
+            for (int i = 0; i < arguments.length; i += 3) {
+                if (arguments[i].equals("err")) {
+                    System.setErr(new PrintStream(new BenchmarkCountersOutputStream(System.err, arguments[i + 1], arguments[i + 2])));
+                } else if (arguments[i].equals("out")) {
+                    System.setOut(new PrintStream(new BenchmarkCountersOutputStream(System.out, arguments[i + 1], arguments[i + 2])));
+                } else {
+                    throw new GraalInternalError("invalid arguments to BenchmarkDynamicCounters: err|out");
+                }
+                // dacapo: "err, starting =====, PASSED in "
+                // specjvm2008: "out,Iteration ~ (~s) begins: ,Iteration ~ (~s) ends:   "
+            }
             DynamicCounterNode.excludedClassPrefix = "Lcom/oracle/graal/";
             DynamicCounterNode.enabled = true;
         }
@@ -222,8 +236,8 @@ public class VMToCompilerImpl implements VMToCompiler {
         private long startTime;
         private boolean waitingForEnd;
 
-        private BenchmarkCountersOutputStream(PrintStream delegate, String... patterns) {
-            super(delegate, patterns);
+        private BenchmarkCountersOutputStream(PrintStream delegate, String start, String end) {
+            super(delegate, new String[]{start, end, "\n"});
         }
 
         @Override
