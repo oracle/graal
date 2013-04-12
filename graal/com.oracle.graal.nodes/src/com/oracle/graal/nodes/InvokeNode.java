@@ -140,7 +140,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     }
 
     @Override
-    public FixedNode node() {
+    public FixedNode asNode() {
         return this;
     }
 

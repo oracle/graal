@@ -114,12 +114,12 @@ public class GuardLoweringPhase extends Phase {
                 Access fixedAccess = access;
                 if (access instanceof FloatingAccessNode) {
                     fixedAccess = ((FloatingAccessNode) access).asFixedNode();
-                    replaceCurrent((FixedWithNextNode) fixedAccess.node());
+                    replaceCurrent((FixedWithNextNode) fixedAccess.asNode());
                 }
                 assert fixedAccess instanceof FixedNode;
                 fixedAccess.setNullCheck(true);
                 LogicNode condition = guard.condition();
-                guard.replaceAndDelete(fixedAccess.node());
+                guard.replaceAndDelete(fixedAccess.asNode());
                 if (condition.usages().isEmpty()) {
                     GraphUtil.killWithUnusedFloatingInputs(condition);
                 }

@@ -76,7 +76,7 @@ public abstract class FloatingAccessNode extends FloatingNode implements Access 
     }
 
     @Override
-    public Node node() {
+    public Node asNode() {
         return this;
     }
 

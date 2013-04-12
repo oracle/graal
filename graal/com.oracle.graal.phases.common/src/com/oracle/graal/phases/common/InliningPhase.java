@@ -111,7 +111,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                 if (isWorthInlining) {
                     int mark = graph.getMark();
                     try {
-                        List<Node> invokeUsages = candidate.invoke().node().usages().snapshot();
+                        List<Node> invokeUsages = candidate.invoke().asNode().usages().snapshot();
                         candidate.inline(graph, runtime, replacements, this, assumptions);
                         Debug.dump(graph, "after %s", candidate);
                         Iterable<Node> newNodes = graph.getNewNodes(mark);
@@ -278,7 +278,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         private static int countInvokeUsages(InlineInfo info) {
             // inlining calls with lots of usages simplifies the caller
             int usages = 0;
-            for (Node n : info.invoke().node().usages()) {
+            for (Node n : info.invoke().asNode().usages()) {
                 if (!(n instanceof FrameState)) {
                     usages++;
                 }
