@@ -34,15 +34,10 @@ public class LoopFullUnrollPhase extends Phase {
     private static final DebugMetric FULLY_UNROLLED_LOOPS = Debug.metric("FullUnrolls");
     private final GraalCodeCacheProvider runtime;
     private final Assumptions assumptions;
-    private int unrollCount;
 
     public LoopFullUnrollPhase(GraalCodeCacheProvider runtime, Assumptions assumptions) {
         this.runtime = runtime;
         this.assumptions = assumptions;
-    }
-
-    public int getUnrollCount() {
-        return unrollCount;
     }
 
     @Override
@@ -60,7 +55,6 @@ public class LoopFullUnrollPhase extends Phase {
                         FULLY_UNROLLED_LOOPS.increment();
                         Debug.dump(graph, "After fullUnroll %s", loop);
                         peeled = true;
-                        unrollCount++;
                         break;
                     }
                 }

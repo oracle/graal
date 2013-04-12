@@ -127,21 +127,13 @@ public class TailDuplicationPhase extends Phase {
         }
     };
 
-    private int tailDuplicationCount;
-
-    public int getTailDuplicationCount() {
-        return tailDuplicationCount;
-    }
-
     @Override
     protected void run(StructuredGraph graph) {
         // A snapshot is taken here, so that new MergeNode instances aren't considered for tail
         // duplication.
         for (MergeNode merge : graph.getNodes(MergeNode.class).snapshot()) {
             if (!(merge instanceof LoopBeginNode) && merge.probability() >= GraalOptions.TailDuplicationProbability) {
-                if (tailDuplicate(merge, DEFAULT_DECISION, null)) {
-                    tailDuplicationCount++;
-                }
+                tailDuplicate(merge, DEFAULT_DECISION, null);
             }
         }
     }
