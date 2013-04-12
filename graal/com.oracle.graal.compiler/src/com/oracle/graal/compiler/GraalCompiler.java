@@ -142,7 +142,7 @@ public class GraalCompiler {
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
 
         if (GraalOptions.FullUnroll) {
-            new LoopFullUnrollPhase(runtime, assumptions).apply(graph);
+            new LoopFullUnrollPhase().apply(graph, highTierContext);
             if (GraalOptions.OptCanonicalizer) {
                 new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
             }

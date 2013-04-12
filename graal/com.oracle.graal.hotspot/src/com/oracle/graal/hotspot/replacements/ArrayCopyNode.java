@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.nodes.*;
 
 public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableNodeType, Lowerable {
@@ -81,9 +82,10 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         }
         // the canonicalization before loop unrolling is needed to propagate the length into
         // additions, etc.
-        new CanonicalizerPhase.Instance(tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
-        new LoopFullUnrollPhase(tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
-        new CanonicalizerPhase.Instance(tool.getRuntime(), tool.assumptions()).apply(snippetGraph);
+        HighTierContext context = new HighTierContext(tool.getRuntime(), tool.assumptions());
+        new CanonicalizerPhase().apply(snippetGraph, context);
+        new LoopFullUnrollPhase().apply(snippetGraph, context);
+        new CanonicalizerPhase().apply(snippetGraph, context);
     }
 
     @Override
