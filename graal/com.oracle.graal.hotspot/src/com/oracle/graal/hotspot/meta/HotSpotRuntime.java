@@ -905,7 +905,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     public String disassemble(InstalledCode code) {
         if (code.isValid()) {
-            long nmethod = ((HotSpotInstalledCode) code).nmethod;
+            long nmethod = ((HotSpotInstalledCode) code).getnmethod();
             return graalRuntime.getCompilerToVM().disassembleNMethod(nmethod);
         }
         return null;

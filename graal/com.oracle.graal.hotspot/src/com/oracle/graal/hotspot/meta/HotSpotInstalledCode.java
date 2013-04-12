@@ -39,10 +39,11 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     private final HotSpotResolvedJavaMethod method;
     private final boolean isDefault;
-    long nmethod;
+    private final long nmethod; // This field is set by the runtime upon code installation.
     long start;
 
     public HotSpotInstalledCode(HotSpotResolvedJavaMethod method, boolean isDefault) {
+        this.nmethod = 0;
         this.method = method;
         this.isDefault = isDefault;
     }
