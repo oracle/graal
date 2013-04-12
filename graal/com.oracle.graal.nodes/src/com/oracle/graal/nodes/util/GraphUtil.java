@@ -202,7 +202,7 @@ public class GraphUtil {
         while (n != null) {
             if (n instanceof MethodCallTargetNode) {
                 elements.add(((MethodCallTargetNode) n).targetMethod().asStackTraceElement(-1));
-                n = ((MethodCallTargetNode) n).invoke().node();
+                n = ((MethodCallTargetNode) n).invoke().asNode();
             }
 
             if (n instanceof StateSplit) {

@@ -368,4 +368,10 @@ public class SPARCLIRGenerator extends LIRGenerator {
         // SPARC: Auto-generated method stub
 
     }
+
+    @Override
+    public void visitInfopointNode(InfopointNode i) {
+        // SPARC: Auto-generated method stub
+
+    }
 }

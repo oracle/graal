@@ -34,7 +34,9 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.replacements.SnippetTemplate.*;
+import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
+import com.oracle.graal.replacements.SnippetTemplate.Arguments;
+import com.oracle.graal.replacements.SnippetTemplate.UsageReplacer;
 
 /**
  * Helper class for lowering {@link InstanceOfNode}s with snippets. The majority of the complexity
@@ -49,31 +51,16 @@ import com.oracle.graal.replacements.SnippetTemplate.*;
  * {@link IfNode}. This avoids materializing the instanceof test as a boolean which is then retested
  * by the {@link IfNode}.
  */
-public abstract class InstanceOfSnippetsTemplates<T extends Snippets> extends AbstractTemplates<T> {
+public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
-    public InstanceOfSnippetsTemplates(MetaAccessProvider runtime, Replacements replacements, TargetDescription target, Class<T> snippetsClass) {
-        super(runtime, replacements, target, snippetsClass);
+    public InstanceOfSnippetsTemplates(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
+        super(runtime, replacements, target);
     }
 
     /**
-     * The key and arguments used to retrieve and instantiate an instanceof snippet template.
+     * Gets the arguments used to retrieve and instantiate an instanceof snippet template.
      */
-    public static class KeyAndArguments {
-
-        public final Key key;
-        public final Arguments arguments;
-
-        public KeyAndArguments(Key key, Arguments arguments) {
-            this.key = key;
-            this.arguments = arguments;
-        }
-
-    }
-
-    /**
-     * Gets the key and arguments used to retrieve and instantiate an instanceof snippet template.
-     */
-    protected abstract KeyAndArguments getKeyAndArguments(InstanceOfUsageReplacer replacer, LoweringTool tool);
+    protected abstract Arguments makeArguments(InstanceOfUsageReplacer replacer, LoweringTool tool);
 
     public void lower(FloatingNode instanceOf, LoweringTool tool) {
         assert instanceOf instanceof InstanceOfNode || instanceOf instanceof InstanceOfDynamicNode;
@@ -90,9 +77,8 @@ public abstract class InstanceOfSnippetsTemplates<T extends Snippets> extends Ab
                 // No need to re-instantiate the snippet - just re-use its result
                 replacer.replaceUsingInstantiation();
             } else {
-                KeyAndArguments keyAndArguments = getKeyAndArguments(replacer, tool);
-                SnippetTemplate template = cache.get(keyAndArguments.key);
-                template.instantiate(runtime, instanceOf, replacer, tool, keyAndArguments.arguments);
+                Arguments args = makeArguments(replacer, tool);
+                template(args).instantiate(runtime, instanceOf, replacer, tool, args);
             }
         }
 

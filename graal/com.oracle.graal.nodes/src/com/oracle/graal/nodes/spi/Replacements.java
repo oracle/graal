@@ -63,11 +63,6 @@ public interface Replacements {
     Assumptions getAssumptions();
 
     /**
-     * Registers all the snippet methods defined by a given class.
-     */
-    void registerSnippets(Class<?> snippets);
-
-    /**
      * Registers all the {@linkplain MethodSubstitution method} and {@linkplain MacroSubstitution
      * macro} substitutions defined by a given class.
      */

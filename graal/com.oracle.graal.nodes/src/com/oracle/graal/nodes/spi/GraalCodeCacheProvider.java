@@ -23,12 +23,25 @@
 package com.oracle.graal.nodes.spi;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 
 /**
  * Graal-specific extensions for the code cache provider interface.
  */
 public interface GraalCodeCacheProvider extends CodeCacheProvider {
+
+    /**
+     * Adds the given compilation result as an implementation of the given method without making it
+     * the default implementation. The graph might be inlined later on.
+     * 
+     * @param method a method to which the executable code is begin added
+     * @param compResult the compilation result to be added
+     * @param graph the graph that represents the method
+     * @return a reference to the compiled and ready-to-run code or null if the code installation
+     *         failed
+     */
+    InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, Graph graph);
 
     void lower(Node n, LoweringTool tool);
 }

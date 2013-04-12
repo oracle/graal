@@ -128,7 +128,7 @@ public final class GraalOptions {
     public static String  MethodFilter                       = null;
     public static boolean DumpOnError                        = ____;
     public static boolean GenericDynamicCounters             = ____;
-    public static boolean BenchmarkDynamicCounters           = ____;
+    public static String  BenchmarkDynamicCounters           = null;
 
     // Ideal graph visualizer output settings
     public static boolean PrintBinaryGraphs                  = true;
@@ -151,6 +151,10 @@ public final class GraalOptions {
     public static int     TraceBytecodeParserLevel           = 0;
     public static boolean ExitVMOnBailout                    = ____;
     public static boolean ExitVMOnException                  = true;
+
+    // HotSpot command line options
+    public static boolean HotSpotPrintCompilation            = ____;
+    public static boolean HotSpotPrintInlining               = ____;
 
     // Register allocator debugging
     public static String  RegisterPressure                   = null;

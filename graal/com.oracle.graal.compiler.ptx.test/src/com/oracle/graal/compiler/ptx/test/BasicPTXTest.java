@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,82 +22,32 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Method;
 
-import org.junit.*;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.ptx.*;
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
-import com.oracle.graal.ptx.*;
+import org.junit.Test;
 
 /**
  * Test class for small Java methods compiled to PTX kernels.
  */
-public class BasicPTXTest extends GraalCompilerTest {
+public class BasicPTXTest extends PTXTestBase {
 
     @Test
     public void testAdd() {
-        test("testAddSnippet");
+        compile("testAddConst1I");
     }
 
-    public static int testAddSnippet(int a) {
+    public static int testAddConst1I(int a) {
         return a + 1;
     }
 
-    @Test
-    public void testArray() {
-        test("testArraySnippet");
-    }
-
-    public static int testArraySnippet(int[] array) {
-        return array[0];
-    }
-
-    private CompilationResult test(String snippet) {
-        StructuredGraph graph = parse(snippet);
-        Debug.dump(graph, "Graph");
-        TargetDescription target = new TargetDescription(new PTX(), true, 1, 0, true);
-        PTXBackend ptxBackend = new PTXBackend(Graal.getRequiredCapability(CodeCacheProvider.class), target);
-        PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
-        phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-        phasePlan.addPhase(PhasePosition.AFTER_PARSING, new PTXPhase());
-        new PTXPhase().apply(graph);
-        CompilationResult result = GraalCompiler.compileMethod(runtime, replacements, ptxBackend, target, graph.method(), graph, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog());
-        return result;
-    }
-
-    private static class PTXPhase extends Phase {
-
-        @Override
-        protected void run(StructuredGraph graph) {
-            for (LocalNode local : graph.getNodes(LocalNode.class)) {
-                if (local.kind() == Kind.Object) {
-                    local.setStamp(StampFactory.declaredNonNull(local.objectStamp().type()));
-                }
-            }
-        }
-
-    }
-
     public static void main(String[] args) {
-        BasicPTXTest basicPTXTest = new BasicPTXTest();
+        BasicPTXTest test = new BasicPTXTest();
         Method[] methods = BasicPTXTest.class.getMethods();
         for (Method m : methods) {
-            if (m.getAnnotation(Test.class) != null) {
-                String name = m.getName() + "Snippet";
+            String name = m.getName();
+            if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
                 // CheckStyle: stop system..print check
-                System.out.println(name + ": \n" + new String(basicPTXTest.test(name).getTargetCode()));
+                System.out.println(name + ": \n" + new String(test.compile(name).getTargetCode()));
                 // CheckStyle: resume system..print check
             }
         }

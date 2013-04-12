@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test.inlining;
 
 import static org.junit.Assert.*;
 
+import java.lang.reflect.*;
 import java.util.concurrent.*;
 
 import org.junit.*;
@@ -35,14 +36,15 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.test.*;
 
 @SuppressWarnings("unused")
 public class InliningTest extends GraalCompilerTest {
 
     @Test
     public void testInvokeStaticInlining() {
-        assertInlined(getGraph("invokeStaticSnippet"));
-        assertInlined(getGraph("invokeStaticOnInstanceSnippet"));
+        assertInlined(getGraph("invokeStaticSnippet", false));
+        assertInlined(getGraph("invokeStaticOnInstanceSnippet", false));
     }
 
     @SuppressWarnings("all")
@@ -57,9 +59,16 @@ public class InliningTest extends GraalCompilerTest {
 
     @Test
     public void testStaticBindableInlining() {
-        assertInlined(getGraph("invokeConstructorSnippet"));
-        assertInlined(getGraph("invokeFinalMethodSnippet"));
-        assertInlined(getGraph("invokeMethodOnFinalClassSnippet"));
+        assertInlined(getGraph("invokeConstructorSnippet", false));
+        assertInlined(getGraph("invokeFinalMethodSnippet", false));
+        assertInlined(getGraph("invokeMethodOnFinalClassSnippet", false));
+    }
+
+    @LongTest
+    public void testStaticBindableInliningIP() {
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeConstructorSnippet", true)));
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeFinalMethodSnippet", true)));
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeMethodOnFinalClassSnippet", true)));
     }
 
     @SuppressWarnings("all")
@@ -81,14 +90,28 @@ public class InliningTest extends GraalCompilerTest {
 
     @Test
     public void testClassHierarchyAnalysis() {
-        assertInlined(getGraph("invokeLeafClassMethodSnippet"));
-        assertInlined(getGraph("invokeConcreteMethodSnippet"));
-        assertInlined(getGraph("invokeSingleImplementorInterfaceSnippet"));
-        // assertInlined(getGraph("invokeConcreteInterfaceMethodSnippet"));
+        assertInlined(getGraph("invokeLeafClassMethodSnippet", false));
+        assertInlined(getGraph("invokeConcreteMethodSnippet", false));
+        assertInlined(getGraph("invokeSingleImplementorInterfaceSnippet", false));
+        // assertInlined(getGraph("invokeConcreteInterfaceMethodSnippet", false));
 
-        assertNotInlined(getGraph("invokeOverriddenPublicMethodSnippet"));
-        assertNotInlined(getGraph("invokeOverriddenProtectedMethodSnippet"));
-        assertNotInlined(getGraph("invokeOverriddenInterfaceMethodSnippet"));
+        assertNotInlined(getGraph("invokeOverriddenPublicMethodSnippet", false));
+        assertNotInlined(getGraph("invokeOverriddenProtectedMethodSnippet", false));
+        assertNotInlined(getGraph("invokeOverriddenInterfaceMethodSnippet", false));
+    }
+
+    @LongTest
+    public void testClassHierarchyAnalysisIP() {
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeLeafClassMethodSnippet", true)));
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeConcreteMethodSnippet", true)));
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeSingleImplementorInterfaceSnippet", true)));
+        //@formatter:off
+        // assertInlineInfopoints(assertInlined(getGraph("invokeConcreteInterfaceMethodSnippet", true)));
+        //@formatter:on
+
+        assertFewMethodInfopoints(assertNotInlined(getGraph("invokeOverriddenPublicMethodSnippet", true)));
+        assertFewMethodInfopoints(assertNotInlined(getGraph("invokeOverriddenProtectedMethodSnippet", true)));
+        assertFewMethodInfopoints(assertNotInlined(getGraph("invokeOverriddenInterfaceMethodSnippet", true)));
     }
 
     @SuppressWarnings("all")
@@ -126,19 +149,20 @@ public class InliningTest extends GraalCompilerTest {
         return superClass.protectedOverriddenMethod();
     }
 
-    private StructuredGraph getGraph(final String snippet) {
+    private StructuredGraph getGraph(final String snippet, final boolean eagerInfopointMode) {
         return Debug.scope("InliningTest", new DebugDumpScope(snippet), new Callable<StructuredGraph>() {
 
             @Override
             public StructuredGraph call() {
-                StructuredGraph graph = parse(snippet);
-                PhasePlan phasePlan = getDefaultPhasePlan();
+                Method method = getMethod(snippet);
+                StructuredGraph graph = eagerInfopointMode ? parseDebug(method) : parse(method);
+                PhasePlan phasePlan = getDefaultPhasePlan(eagerInfopointMode);
                 Assumptions assumptions = new Assumptions(true);
                 new ComputeProbabilityPhase().apply(graph);
                 Debug.dump(graph, "Graph");
                 new InliningPhase(runtime(), null, replacements, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
                 Debug.dump(graph, "Graph");
-                new CanonicalizerPhase(runtime(), assumptions).apply(graph);
+                new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
                 return graph;
             }
@@ -169,6 +193,35 @@ public class InliningTest extends GraalCompilerTest {
             }
         }
         fail("Graph does not contain a node of class " + clazz.getName());
+        return graph;
+    }
+
+    private static int[] countMethodInfopoints(StructuredGraph graph) {
+        int start = 0;
+        int end = 0;
+        for (InfopointNode ipn : graph.getNodes(InfopointNode.class)) {
+            if (ipn.reason == InfopointReason.METHOD_START) {
+                ++start;
+            } else if (ipn.reason == InfopointReason.METHOD_END) {
+                ++end;
+            }
+        }
+        return new int[]{start, end};
+    }
+
+    private static StructuredGraph assertManyMethodInfopoints(StructuredGraph graph) {
+        int[] counts = countMethodInfopoints(graph);
+        if (counts[0] <= 1 || counts[1] <= 1) {
+            fail(String.format("Graph contains too few required method boundary infopoints: %d starts, %d ends.", counts[0], counts[1]));
+        }
+        return graph;
+    }
+
+    private static StructuredGraph assertFewMethodInfopoints(StructuredGraph graph) {
+        int[] counts = countMethodInfopoints(graph);
+        if (counts[0] > 1 || counts[1] > 1) {
+            fail(String.format("Graph contains too many method boundary infopoints: %d starts, %d ends.", counts[0], counts[1]));
+        }
         return graph;
     }
 

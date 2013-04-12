@@ -362,4 +362,9 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         }
         return speculationLog;
     }
+
+    public int intrinsicId() {
+        HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
+        return unsafe.getByte(metaspaceMethod + config.methodIntrinsicIdOffset) & 0xff;
+    }
 }

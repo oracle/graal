@@ -30,9 +30,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 
-/**
- * The {@code StoreFieldNode} represents a write to a static or instance field.
- */
 @NodeInfo(nameTemplate = "MaterializeStore#{p#target/s}")
 public final class CyclicMaterializeStoreNode extends FixedWithNextNode implements Lowerable, Virtualizable {
 

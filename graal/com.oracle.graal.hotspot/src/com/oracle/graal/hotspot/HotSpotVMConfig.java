@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,8 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int codeEntryAlignment;
     public boolean verifyOops;
     public boolean ciTime;
+    public boolean printCompilation;
+    public boolean printInlining;
     public boolean useFastLocking;
     public boolean useTLAB;
     public boolean useBiasedLocking;
@@ -183,6 +185,11 @@ public final class HotSpotVMConfig extends CompilerObject {
      * Offset of _access_flags in a metaspace Method object.
      */
     public int methodAccessFlagsOffset;
+
+    /**
+     * Offset of _intrinsic_id in a metaspace Method object.
+     */
+    public int methodIntrinsicIdOffset;
 
     /**
      * Offset of _max_locals in a metaspace Method object.
@@ -375,6 +382,12 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int deoptActionReinterpret;
     public int deoptActionMakeNotEntrant;
     public int deoptActionMakeNotCompilable;
+
+    public int vmIntrinsicInvokeBasic;
+    public int vmIntrinsicLinkToVirtual;
+    public int vmIntrinsicLinkToStatic;
+    public int vmIntrinsicLinkToSpecial;
+    public int vmIntrinsicLinkToInterface;
 
     public void check() {
         assert codeEntryAlignment > 0;

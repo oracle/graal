@@ -25,28 +25,24 @@ package com.oracle.graal.virtual.phases.ea;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 
-public class IterativeInliningPhase extends Phase {
+public class IterativeInliningPhase extends BasePhase<HighTierContext> {
 
     private final PhasePlan plan;
 
-    private final GraalCodeCacheProvider runtime;
     private final Replacements replacements;
-    private final Assumptions assumptions;
     private final GraphCache cache;
     private final OptimisticOptimizations optimisticOpts;
     private final boolean readElimination;
 
-    public IterativeInliningPhase(GraalCodeCacheProvider runtime, Replacements replacements, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, boolean readElimination) {
-        this.runtime = runtime;
+    public IterativeInliningPhase(Replacements replacements, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, boolean readElimination) {
         this.replacements = replacements;
-        this.assumptions = assumptions;
         this.cache = cache;
         this.plan = plan;
         this.optimisticOpts = optimisticOpts;
@@ -60,12 +56,12 @@ public class IterativeInliningPhase extends Phase {
     }
 
     @Override
-    protected void run(final StructuredGraph graph) {
-        runIterations(graph, true);
-        runIterations(graph, false);
+    protected void run(final StructuredGraph graph, final HighTierContext context) {
+        runIterations(graph, true, context);
+        runIterations(graph, false, context);
     }
 
-    private void runIterations(final StructuredGraph graph, final boolean simple) {
+    private void runIterations(final StructuredGraph graph, final boolean simple, final HighTierContext context) {
         Boolean continueIteration = true;
         for (int iteration = 0; iteration < GraalOptions.EscapeAnalysisIterations && continueIteration; iteration++) {
             continueIteration = Debug.scope("iteration " + iteration, new Callable<Boolean>() {
@@ -73,13 +69,13 @@ public class IterativeInliningPhase extends Phase {
                 @Override
                 public Boolean call() {
                     boolean progress = false;
-                    PartialEscapeAnalysisPhase ea = new PartialEscapeAnalysisPhase(runtime, assumptions, false, readElimination);
-                    ea.apply(graph);
-                    progress |= ea.hasChanged();
+                    PartialEscapeAnalysisPhase ea = new PartialEscapeAnalysisPhase(false, readElimination);
+                    boolean eaResult = ea.runAnalysis(graph, context);
+                    progress |= eaResult;
 
                     Map<Invoke, Double> hints = GraalOptions.PEAInliningHints ? PartialEscapeAnalysisPhase.getHints(graph) : null;
 
-                    InliningPhase inlining = new InliningPhase(runtime, hints, replacements, assumptions, cache, plan, optimisticOpts);
+                    InliningPhase inlining = new InliningPhase(context.getRuntime(), hints, replacements, context.getAssumptions(), cache, plan, optimisticOpts);
                     inlining.setMaxMethodsPerInlining(simple ? 1 : Integer.MAX_VALUE);
                     inlining.apply(graph);
                     progress |= inlining.getInliningCount() > 0;
@@ -87,8 +83,8 @@ public class IterativeInliningPhase extends Phase {
                     new DeadCodeEliminationPhase().apply(graph);
 
                     if (GraalOptions.ConditionalElimination && GraalOptions.OptCanonicalizer) {
-                        new CanonicalizerPhase(runtime, assumptions).apply(graph);
-                        new IterativeConditionalEliminationPhase(runtime, assumptions).apply(graph);
+                        new CanonicalizerPhase().apply(graph, context);
+                        new IterativeConditionalEliminationPhase(context.getRuntime(), context.getAssumptions()).apply(graph);
                     }
 
                     return progress;

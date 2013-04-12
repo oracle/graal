@@ -162,7 +162,6 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                         state.killReadCache(store.field());
 
                         if (cachedValue == store.value()) {
-                            effects.addCounterBefore("store elim", 1, false, lastFixedNode.next());
                             effects.deleteFixedNode(store);
                             changed = true;
                         } else {
@@ -173,7 +172,6 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                         ValueNode cachedValue = state.getReadCache(load.object(), load.field());
                         if (cachedValue != null) {
                             METRIC_LOADFIELD_ELIMINATED.increment();
-                            effects.addCounterBefore("load elim", 1, false, lastFixedNode.next());
                             effects.replaceAtUsages(load, cachedValue);
                             state.addScalarAlias(load, cachedValue);
                             changed = true;

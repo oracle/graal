@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static java.lang.reflect.Modifier.*;
-
-import java.lang.reflect.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
@@ -42,7 +39,8 @@ import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
-import com.oracle.graal.replacements.SnippetTemplate.Key;
+import com.oracle.graal.replacements.SnippetTemplate.Arguments;
+import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 
 /**
  * Base class for implementing some low level code providing the out-of-line slow path for a
@@ -56,7 +54,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     /**
      * The method implementing the stub.
      */
-    protected final HotSpotResolvedJavaMethod stubMethod;
+    protected final SnippetInfo stubInfo;
 
     /**
      * The linkage information for the stub.
@@ -69,15 +67,14 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     protected InstalledCode stubCode;
 
     /**
-     * Creates a new stub container. The new stub still needs to be {@linkplain #getAddress(Backend)
-     * installed}.
+     * Creates a new stub container. The new stub still needs to be
+     * {@linkplain #getAddress(Backend) installed}.
      * 
      * @param linkage linkage details for a call to the stub
      */
-    @SuppressWarnings("unchecked")
-    public Stub(HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
-        super(runtime, replacements, target, null);
-        stubMethod = findStubMethod(runtime, getClass());
+    public Stub(HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage, String methodName) {
+        super(runtime, replacements, target);
+        this.stubInfo = snippet(getClass(), methodName);
         this.linkage = linkage;
 
     }
@@ -85,7 +82,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     /**
      * Adds the {@linkplain ConstantParameter constant} arguments of this stub.
      */
-    protected abstract void populateKey(Key key);
+    protected abstract Arguments makeArguments(SnippetInfo stub);
 
     protected HotSpotRuntime runtime() {
         return (HotSpotRuntime) runtime;
@@ -95,7 +92,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      * Gets the method implementing this stub.
      */
     public ResolvedJavaMethod getMethod() {
-        return stubMethod;
+        return stubInfo.getMethod();
     }
 
     public HotSpotRuntimeCallTarget getLinkage() {
@@ -109,25 +106,22 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      */
     public synchronized long getAddress(Backend backend) {
         if (stubCode == null) {
-            StructuredGraph graph = replacements.getSnippet(stubMethod);
-
-            Key key = new Key(stubMethod);
-            populateKey(key);
-            SnippetTemplate template = cache.get(key);
-            graph = template.copySpecializedGraph();
+            Arguments args = makeArguments(stubInfo);
+            SnippetTemplate template = template(args);
+            StructuredGraph graph = template.copySpecializedGraph();
 
             PhasePlan phasePlan = new PhasePlan();
             GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-            final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), stubMethod, graph, null, phasePlan,
-                            OptimisticOptimizations.ALL, new SpeculationLog());
+            final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), getMethod(), graph, null, phasePlan, OptimisticOptimizations.ALL,
+                            new SpeculationLog());
 
-            stubCode = Debug.scope("CodeInstall", new Object[]{runtime(), stubMethod}, new Callable<InstalledCode>() {
+            stubCode = Debug.scope("CodeInstall", new Object[]{runtime(), getMethod()}, new Callable<InstalledCode>() {
 
                 @Override
                 public InstalledCode call() {
-                    InstalledCode installedCode = runtime().addMethod(stubMethod, compResult);
-                    assert installedCode != null : "error installing stub " + stubMethod;
+                    InstalledCode installedCode = runtime().addMethod(getMethod(), compResult);
+                    assert installedCode != null : "error installing stub " + getMethod();
                     if (Debug.isDumpEnabled()) {
                         Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                     }
@@ -135,24 +129,8 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
                 }
             });
 
-            assert stubCode != null : "error installing stub " + stubMethod;
+            assert stubCode != null : "error installing stub " + getMethod();
         }
         return stubCode.getStart();
-    }
-
-    /**
-     * Finds the static method annotated with {@link Snippet} in a given class of which there must
-     * be exactly one.
-     */
-    private static HotSpotResolvedJavaMethod findStubMethod(HotSpotRuntime runtime, Class<?> stubClass) {
-        HotSpotResolvedJavaMethod m = null;
-        for (Method candidate : stubClass.getDeclaredMethods()) {
-            if (isStatic(candidate.getModifiers()) && candidate.getAnnotation(Snippet.class) != null) {
-                assert m == null : "more than one method annotated with @" + Snippet.class.getSimpleName() + " in " + stubClass;
-                m = (HotSpotResolvedJavaMethod) runtime.lookupJavaMethod(candidate);
-            }
-        }
-        assert m != null : "no static method annotated with @" + Snippet.class.getSimpleName() + " in " + stubClass;
-        return m;
     }
 }

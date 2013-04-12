@@ -127,21 +127,13 @@ public class TailDuplicationPhase extends Phase {
         }
     };
 
-    private int tailDuplicationCount;
-
-    public int getTailDuplicationCount() {
-        return tailDuplicationCount;
-    }
-
     @Override
     protected void run(StructuredGraph graph) {
         // A snapshot is taken here, so that new MergeNode instances aren't considered for tail
         // duplication.
         for (MergeNode merge : graph.getNodes(MergeNode.class).snapshot()) {
             if (!(merge instanceof LoopBeginNode) && merge.probability() >= GraalOptions.TailDuplicationProbability) {
-                if (tailDuplicate(merge, DEFAULT_DECISION, null)) {
-                    tailDuplicationCount++;
-                }
+                tailDuplicate(merge, DEFAULT_DECISION, null);
             }
         }
     }
@@ -251,7 +243,6 @@ public class TailDuplicationPhase extends Phase {
             final HashSet<Node> duplicatedNodes = buildDuplicatedNodeSet(fixedNodes, stateAfter);
             mergeAfter.clearEnds();
             expandDuplicated(duplicatedNodes, mergeAfter);
-            retargetDependencies(duplicatedNodes, anchor);
 
             List<EndNode> endSnapshot = merge.forwardEnds().snapshot();
             List<PhiNode> phiSnapshot = merge.phis().snapshot();
@@ -519,29 +510,6 @@ public class TailDuplicationPhase extends Phase {
                         if (duplicateInput) {
                             duplicatedNodes.add(input);
                             worklist.add(input);
-                        }
-                    }
-                }
-            }
-        }
-
-        /**
-         * Moves all depdendencies that point outside the duplicated area to the supplied value
-         * anchor node.
-         * 
-         * @param duplicatedNodes The set of duplicated nodes.
-         * @param anchor The node that will be the new target for all dependencies that point
-         *            outside the duplicated set of nodes.
-         */
-        private static void retargetDependencies(HashSet<Node> duplicatedNodes, ValueAnchorNode anchor) {
-            for (Node node : duplicatedNodes) {
-                if (node instanceof ValueNode) {
-                    NodeInputList<ValueNode> dependencies = ((ValueNode) node).dependencies();
-                    for (int i = 0; i < dependencies.size(); i++) {
-                        Node dependency = dependencies.get(i);
-                        if (dependency != null && !duplicatedNodes.contains(dependency)) {
-                            Debug.log("retargeting dependency %s to %s on %s", dependency, anchor, node);
-                            dependencies.set(i, anchor);
                         }
                     }
                 }

@@ -79,7 +79,7 @@ public abstract class AccessNode extends DeoptimizingFixedWithNextNode implement
     }
 
     @Override
-    public Node node() {
+    public Node asNode() {
         return this;
     }
 

@@ -26,6 +26,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 
 /**
@@ -39,11 +40,13 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     private final HotSpotResolvedJavaMethod method;
     private final boolean isDefault;
+    private final Graph graph;
     long nmethod;
     long start;
 
-    public HotSpotInstalledCode(HotSpotResolvedJavaMethod method, boolean isDefault) {
+    public HotSpotInstalledCode(HotSpotResolvedJavaMethod method, Graph graph, boolean isDefault) {
         this.method = method;
+        this.graph = graph;
         this.isDefault = isDefault;
     }
 
@@ -51,8 +54,12 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
         return isDefault;
     }
 
-    public long getnmethod() {
+    public long getMethodAddress() {
         return nmethod;
+    }
+
+    public Graph getGraph() {
+        return graph;
     }
 
     @Override
@@ -62,7 +69,12 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     @Override
     public boolean isValid() {
-        return nmethod != 0;
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().isInstalledCodeValid(nmethod);
+    }
+
+    @Override
+    public void invalidate() {
+        HotSpotGraalRuntime.getInstance().getCompilerToVM().invalidateInstalledCode(nmethod);
     }
 
     @Override
@@ -71,12 +83,12 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     }
 
     @Override
-    public Object execute(Object arg1, Object arg2, Object arg3) {
+    public Object execute(Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
         assert method.getSignature().getParameterCount(!Modifier.isStatic(method.getModifiers())) == 3;
         assert method.getSignature().getParameterKind(0) == Kind.Object;
         assert method.getSignature().getParameterKind(1) == Kind.Object;
         assert !Modifier.isStatic(method.getModifiers()) || method.getSignature().getParameterKind(2) == Kind.Object;
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethod(method.metaspaceMethod, nmethod, arg1, arg2, arg3);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethod(arg1, arg2, arg3, nmethod);
     }
 
     private boolean checkArgs(Object... args) {
@@ -94,9 +106,9 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     }
 
     @Override
-    public Object executeVarargs(Object... args) {
+    public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         assert checkArgs(args);
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethodVarargs(method.metaspaceMethod, nmethod, args);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethodVarargs(args, nmethod);
     }
 
     @Override
@@ -107,9 +119,5 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     @Override
     public byte[] getCode() {
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().getCode(nmethod);
-    }
-
-    public static Object executeHelper(long nmethod, long metaspaceMethod, Object arg1, Object arg2, Object arg3) {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethod(metaspaceMethod, nmethod, arg1, arg2, arg3);
     }
 }

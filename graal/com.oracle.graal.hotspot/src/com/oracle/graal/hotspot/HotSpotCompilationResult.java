@@ -67,7 +67,7 @@ public final class HotSpotCompilationResult extends CompilerObject {
     }
 
     private static Site[] getSortedSites(CompilationResult target) {
-        List<?>[] lists = new List<?>[]{target.getSafepoints(), target.getDataReferences(), target.getMarks()};
+        List<?>[] lists = new List<?>[]{target.getInfopoints(), target.getDataReferences(), target.getMarks()};
         int count = 0;
         for (List<?> list : lists) {
             count += list.size();

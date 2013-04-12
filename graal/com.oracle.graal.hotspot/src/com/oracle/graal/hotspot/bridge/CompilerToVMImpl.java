@@ -133,10 +133,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
     @Override
-    public native Object executeCompiledMethod(long metaspaceMethod, long nmethod, Object arg1, Object arg2, Object arg3);
-
-    @Override
-    public native Object executeCompiledMethodVarargs(long metaspaceMethod, long nmethod, Object... args);
+    public native Object executeCompiledMethodVarargs(Object[] args, long nativeMethod);
 
     @Override
     public native int getVtableEntryOffset(long metaspaceMethod);
@@ -160,5 +157,25 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void reprofile(long metaspaceMethod);
 
     @Override
-    public native Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi);
+    public native Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
+
+    @Override
+    public native void invalidateInstalledCode(long nativeMethod);
+
+    @Override
+    public native boolean isInstalledCodeValid(long nativeMethod);
+
+    @Override
+    public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nativeMethod) throws InvalidInstalledCodeException {
+        return executeCompiledMethodIntrinsic(arg1, arg2, arg3, nativeMethod);
+    }
+
+    /**
+     * Direct call to the given nativeMethod with three object arguments and an object return value.
+     * This method does not have an implementation on the C++ side, but its entry points (from
+     * interpreter and from compiled code) are directly pointing to a manually generated assembly
+     * stub that does the necessary argument shuffling and a tail call via an indirect jump to the
+     * verified entry point of the given native method.
+     */
+    private static native Object executeCompiledMethodIntrinsic(Object arg1, Object arg2, Object arg3, long nativeMethod);
 }

@@ -335,7 +335,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 TTY.println("LIRGen for " + instr);
             }
             FrameState stateAfter = null;
-            if (instr instanceof StateSplit) {
+            if (instr instanceof StateSplit && !(instr instanceof InfopointNode)) {
                 stateAfter = ((StateSplit) instr).stateAfter();
             }
             if (instr instanceof ValueNode) {
@@ -599,7 +599,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     @Override
     public void emitInvoke(Invoke x) {
         AbstractCallTargetNode callTarget = (AbstractCallTargetNode) x.callTarget();
-        CallingConvention cc = frameMap.registerConfig.getCallingConvention(callTarget.callType(), x.node().stamp().javaType(runtime), callTarget.signature(), target(), false);
+        CallingConvention cc = frameMap.registerConfig.getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(runtime), callTarget.signature(), target(), false);
         frameMap.callsMethod(cc);
 
         Value[] parameters = visitInvokeArguments(cc, callTarget.arguments());
@@ -620,7 +620,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
 
         if (isLegal(result)) {
-            setResult(x.node(), emitMove(result));
+            setResult(x.asNode(), emitMove(result));
         }
     }
 

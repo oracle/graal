@@ -31,14 +31,6 @@ import com.oracle.graal.api.meta.*;
 public interface InstalledCode {
 
     /**
-     * Exception thrown by the runtime in case an invalidated machine code is called.
-     */
-    public abstract class MethodInvalidatedException extends RuntimeException {
-
-        private static final long serialVersionUID = -3540232440794244844L;
-    }
-
-    /**
      * Returns the method (if any) to which the installed code belongs.
      */
     ResolvedJavaMethod getMethod();
@@ -61,6 +53,12 @@ public interface InstalledCode {
     boolean isValid();
 
     /**
+     * Invalidates this installed code such that any subsequent invocation will throw an
+     * {@link InvalidInstalledCodeException}.
+     */
+    void invalidate();
+
+    /**
      * Executes the installed code with three object arguments.
      * 
      * @param arg1 the first argument
@@ -68,7 +66,7 @@ public interface InstalledCode {
      * @param arg3 the third argument
      * @return the value returned by the executed code
      */
-    Object execute(Object arg1, Object arg2, Object arg3);
+    Object execute(Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException;
 
     /**
      * Executes the installed code with a variable number of arguments.
@@ -76,5 +74,5 @@ public interface InstalledCode {
      * @param args the array of object arguments
      * @return the value returned by the executed code
      */
-    Object executeVarargs(Object... args);
+    Object executeVarargs(Object... args) throws InvalidInstalledCodeException;
 }

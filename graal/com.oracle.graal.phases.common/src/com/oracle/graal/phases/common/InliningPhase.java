@@ -111,13 +111,13 @@ public class InliningPhase extends Phase implements InliningCallback {
                 if (isWorthInlining) {
                     int mark = graph.getMark();
                     try {
-                        List<Node> invokeUsages = candidate.invoke().node().usages().snapshot();
+                        List<Node> invokeUsages = candidate.invoke().asNode().usages().snapshot();
                         candidate.inline(graph, runtime, replacements, this, assumptions);
                         Debug.dump(graph, "after %s", candidate);
                         Iterable<Node> newNodes = graph.getNewNodes(mark);
                         inliningPolicy.scanInvokes(newNodes);
                         if (GraalOptions.OptCanonicalizer) {
-                            new CanonicalizerPhase(runtime, assumptions, invokeUsages, mark, customCanonicalizer).apply(graph);
+                            new CanonicalizerPhase.Instance(runtime, assumptions, invokeUsages, mark, customCanonicalizer).apply(graph);
                         }
                         inliningCount++;
                         metricInliningPerformed.increment();
@@ -161,7 +161,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                     new ComputeProbabilityPhase().apply(newGraph);
                 }
                 if (GraalOptions.OptCanonicalizer) {
-                    new CanonicalizerPhase(runtime, assumptions).apply(newGraph);
+                    new CanonicalizerPhase.Instance(runtime, assumptions).apply(newGraph);
                 }
                 if (GraalOptions.CullFrameStates) {
                     new CullFrameStatesPhase().apply(newGraph);
@@ -278,7 +278,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         private static int countInvokeUsages(InlineInfo info) {
             // inlining calls with lots of usages simplifies the caller
             int usages = 0;
-            for (Node n : info.invoke().node().usages()) {
+            for (Node n : info.invoke().asNode().usages()) {
                 if (!(n instanceof FrameState)) {
                     usages++;
                 }

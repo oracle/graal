@@ -405,6 +405,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 }
                 long start = System.currentTimeMillis();
                 PhasePlan phasePlan = new PhasePlan();
+                StructuredGraph graphCopy = graph.copy();
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 phasePlan.addPhase(PhasePosition.LOW_LEVEL, new WriteBarrierAdditionPhase());
@@ -414,7 +415,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
                 }
-                return addMethod(method, compResult);
+                return addMethod(method, compResult, graphCopy);
             }
         });
 
@@ -424,12 +425,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         return installedCode;
     }
 
-    protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult) {
+    protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult, final StructuredGraph graph) {
         return Debug.scope("CodeInstall", new Object[]{runtime, method}, new Callable<InstalledCode>() {
 
             @Override
             public InstalledCode call() throws Exception {
-                InstalledCode installedCode = runtime.addMethod(method, compResult);
+                InstalledCode installedCode = runtime.addMethod(method, compResult, graph);
                 if (Debug.isDumpEnabled()) {
                     Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                 }
@@ -452,25 +453,41 @@ public abstract class GraalCompilerTest extends GraalTest {
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parse(Method m) {
-        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(m);
-        StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
-        return graph;
+        return parse0(m, GraphBuilderConfiguration.getEagerDefault());
     }
 
     /**
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parseProfiled(Method m) {
+        return parse0(m, GraphBuilderConfiguration.getDefault());
+    }
+
+    /**
+     * Parses a Java method in debug mode to produce a graph with extra infopoints.
+     */
+    protected StructuredGraph parseDebug(Method m) {
+        GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getEagerDefault();
+        gbConf.setEagerInfopointMode(true);
+        return parse0(m, gbConf);
+    }
+
+    private StructuredGraph parse0(Method m, GraphBuilderConfiguration conf) {
         ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(m);
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase(runtime, conf, OptimisticOptimizations.ALL).apply(graph);
         return graph;
     }
 
     protected PhasePlan getDefaultPhasePlan() {
+        return getDefaultPhasePlan(false);
+    }
+
+    protected PhasePlan getDefaultPhasePlan(boolean eagerInfopointMode) {
         PhasePlan plan = new PhasePlan();
-        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL));
+        GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getEagerDefault();
+        gbConf.setEagerInfopointMode(eagerInfopointMode);
+        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(runtime, gbConf, OptimisticOptimizations.ALL));
         return plan;
     }
 }
