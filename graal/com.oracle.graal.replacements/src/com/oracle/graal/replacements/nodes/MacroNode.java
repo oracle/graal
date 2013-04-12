@@ -41,7 +41,7 @@ public class MacroNode extends AbstractStateSplit implements Lowerable {
     private final JavaType returnType;
 
     protected MacroNode(Invoke invoke) {
-        super(invoke.node().stamp(), invoke.stateAfter());
+        super(invoke.asNode().stamp(), invoke.stateAfter());
         this.arguments = new NodeInputList<>(this, invoke.methodCallTarget().arguments());
         this.bci = invoke.bci();
         this.targetMethod = invoke.methodCallTarget().targetMethod();

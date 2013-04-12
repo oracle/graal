@@ -33,5 +33,5 @@ public interface Access extends DeoptimizingNode {
 
     void setNullCheck(boolean check);
 
-    Node node();
+    Node asNode();
 }

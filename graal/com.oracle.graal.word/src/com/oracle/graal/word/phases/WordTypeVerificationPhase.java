@@ -80,9 +80,9 @@ public class WordTypeVerificationPhase extends Phase {
                             ValueNode receiver = arguments.get(argc);
                             if (receiver == node && isWord(node)) {
                                 ResolvedJavaMethod resolvedMethod = wordAccess.getWordImplType().resolveMethod(method);
-                                verify(resolvedMethod != null, node, invoke.node(), "cannot resolve method on Word class: " + MetaUtil.format("%H.%n(%P) %r", method));
+                                verify(resolvedMethod != null, node, invoke.asNode(), "cannot resolve method on Word class: " + MetaUtil.format("%H.%n(%P) %r", method));
                                 Operation operation = resolvedMethod.getAnnotation(Word.Operation.class);
-                                verify(operation != null, node, invoke.node(), "cannot dispatch on word value to non @Operation annotated method " + resolvedMethod);
+                                verify(operation != null, node, invoke.asNode(), "cannot dispatch on word value to non @Operation annotated method " + resolvedMethod);
                             }
                             argc++;
                         }
@@ -91,7 +91,7 @@ public class WordTypeVerificationPhase extends Phase {
                             ValueNode argument = arguments.get(argc);
                             if (argument == node) {
                                 ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
-                                verify(isWord(type) == isWord(argument), node, invoke.node(), "cannot pass word value to non-word parameter " + i + " or vice-versa");
+                                verify(isWord(type) == isWord(argument), node, invoke.asNode(), "cannot pass word value to non-word parameter " + i + " or vice-versa");
                             }
                             argc++;
                         }

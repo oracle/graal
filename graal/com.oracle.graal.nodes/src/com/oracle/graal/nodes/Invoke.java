@@ -41,7 +41,7 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode {
 
     int bci();
 
-    FixedNode node();
+    FixedNode asNode();
 
     FrameState stateDuring();
 

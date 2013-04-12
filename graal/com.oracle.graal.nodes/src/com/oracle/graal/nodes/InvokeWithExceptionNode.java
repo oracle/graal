@@ -126,7 +126,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     }
 
     @Override
-    public FixedNode node() {
+    public FixedNode asNode() {
         return this;
     }
 

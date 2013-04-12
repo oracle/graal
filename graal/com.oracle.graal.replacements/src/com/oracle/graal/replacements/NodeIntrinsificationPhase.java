@@ -104,7 +104,7 @@ public class NodeIntrinsificationPhase extends Phase {
             Node newInstance = createNodeInstance(runtime, c, parameterTypes, returnType, intrinsic.setStampFromReturnType(), nodeConstructorArguments);
 
             // Replace the invoke with the new node.
-            invoke.node().graph().add(newInstance);
+            invoke.asNode().graph().add(newInstance);
             invoke.intrinsify(newInstance);
 
             // Clean up checkcast instructions inserted by javac if the return type is generic.
@@ -130,7 +130,7 @@ public class NodeIntrinsificationPhase extends Phase {
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
-                ConstantNode node = ConstantNode.forConstant(constant, runtime, invoke.node().graph());
+                ConstantNode node = ConstantNode.forConstant(constant, runtime, invoke.asNode().graph());
                 invoke.intrinsify(node);
 
                 // Clean up checkcast instructions inserted by javac if the return type is generic.
