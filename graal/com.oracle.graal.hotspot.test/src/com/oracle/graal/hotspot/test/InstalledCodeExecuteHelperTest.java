@@ -38,14 +38,9 @@ import com.oracle.graal.nodes.*;
 
 public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
-    private static final int ITERATIONS = 1000000;
+    private static final int ITERATIONS = 100000;
     private final MetaAccessProvider metaAccessProvider;
     Object[] argsToBind;
-
-    public static void main(String[] args) throws NoSuchMethodException, SecurityException, InvalidInstalledCodeException {
-        InstalledCodeExecuteHelperTest main = new InstalledCodeExecuteHelperTest();
-        main.testWithTime();
-    }
 
     public InstalledCodeExecuteHelperTest() {
         this.metaAccessProvider = Graal.getRequiredCapability(MetaAccessProvider.class);
@@ -69,32 +64,12 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
     }
 
-    public void testWithTime() throws NoSuchMethodException, SecurityException, InvalidInstalledCodeException {
-        final Method fooMethod = InstalledCodeExecuteHelperTest.class.getMethod("foo", Object.class, Object.class, Object.class);
-        final HotSpotResolvedJavaMethod fooJavaMethod = (HotSpotResolvedJavaMethod) metaAccessProvider.lookupJavaMethod(fooMethod);
-        final HotSpotInstalledCode fooCode = (HotSpotInstalledCode) getCode(fooJavaMethod, parse(fooMethod));
-
-        argsToBind = new Object[]{fooCode};
-
-        final Method benchmarkMethod = InstalledCodeExecuteHelperTest.class.getMethod("benchmark", HotSpotInstalledCode.class);
-        final ResolvedJavaMethod benchmarkJavaMethod = metaAccessProvider.lookupJavaMethod(benchmarkMethod);
-        final HotSpotInstalledCode installedBenchmarkCodeotInstalledCode = (HotSpotInstalledCode) getCode(benchmarkJavaMethod, parse(benchmarkMethod));
-
-        long start = System.currentTimeMillis();
-        benchmark(fooCode);
-        long end = System.currentTimeMillis();
-        System.out.println((end - start));
-
-        start = System.currentTimeMillis();
-        installedBenchmarkCodeotInstalledCode.executeVarargs(argsToBind[0]);
-        end = System.currentTimeMillis();
-        System.out.println((end - start));
-    }
-
     public static Integer benchmark(HotSpotInstalledCode code) throws InvalidInstalledCodeException {
         int val = 0;
-        for (int i = 0; i < ITERATIONS; i++) {
-            val = (Integer) code.execute(null, null, null);
+        for (int j = 0; j < 100; j++) {
+            for (int i = 0; i < ITERATIONS; i++) {
+                val = (Integer) code.execute(null, null, null);
+            }
         }
         return val;
     }

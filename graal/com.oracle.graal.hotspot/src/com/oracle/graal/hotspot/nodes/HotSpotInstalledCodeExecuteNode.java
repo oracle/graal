@@ -55,7 +55,10 @@ public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements
         if (code.isConstant() && code.asConstant().asObject() instanceof HotSpotInstalledCode) {
             HotSpotInstalledCode hsCode = (HotSpotInstalledCode) code.asConstant().asObject();
             InvokeNode invoke = replaceWithInvoke(tool.getRuntime());
-            InliningUtil.inline(invoke, (StructuredGraph) hsCode.getGraph(), false);
+            StructuredGraph graph = (StructuredGraph) hsCode.getGraph();
+            if (graph != null) {
+                InliningUtil.inline(invoke, (StructuredGraph) hsCode.getGraph(), false);
+            }
         } else {
             replaceWithInvoke(tool.getRuntime());
         }
