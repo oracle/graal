@@ -121,6 +121,9 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
 
     @Override
     public void lower(LoweringTool tool) {
+        if (!enabled) {
+            throw new GraalInternalError("counter nodes shouldn't exist when not enabled");
+        }
         StructuredGraph graph = (StructuredGraph) graph();
         if (excludedClassPrefix == null || !graph.method().getDeclaringClass().getName().startsWith(excludedClassPrefix)) {
             int index = addContext ? getIndex(name + " @ " + MetaUtil.format("%h.%n", ((StructuredGraph) graph()).method())) : getIndex(name);
