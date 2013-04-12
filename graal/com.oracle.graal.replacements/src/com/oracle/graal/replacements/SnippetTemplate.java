@@ -60,8 +60,8 @@ public class SnippetTemplate {
     public static class SnippetInfo {
 
         protected final ResolvedJavaMethod method;
-        protected final ConstantParameter[] constantParameters;
-        protected final VarargsParameter[] varargsParameters;
+        protected final boolean[] constantParameters;
+        protected final boolean[] varargsParameters;
 
         /**
          * The parameter names, taken from the local variables table. Only used for assertion
@@ -74,11 +74,11 @@ public class SnippetTemplate {
 
             assert Modifier.isStatic(method.getModifiers()) : "snippet method must be static: " + MetaUtil.format("%H.%n", method);
             int count = method.getSignature().getParameterCount(false);
-            constantParameters = new ConstantParameter[count];
-            varargsParameters = new VarargsParameter[count];
+            constantParameters = new boolean[count];
+            varargsParameters = new boolean[count];
             for (int i = 0; i < count; i++) {
-                constantParameters[i] = MetaUtil.getParameterAnnotation(ConstantParameter.class, i, method);
-                varargsParameters[i] = MetaUtil.getParameterAnnotation(VarargsParameter.class, i, method);
+                constantParameters[i] = MetaUtil.getParameterAnnotation(ConstantParameter.class, i, method) != null;
+                varargsParameters[i] = MetaUtil.getParameterAnnotation(VarargsParameter.class, i, method) != null;
 
                 assert !isConstantParameter(i) || !isVarargsParameter(i) : "Parameter cannot be annotated with both @" + ConstantParameter.class.getSimpleName() + " and @" +
                                 VarargsParameter.class.getSimpleName();
@@ -109,11 +109,11 @@ public class SnippetTemplate {
         }
 
         public boolean isConstantParameter(int paramIdx) {
-            return constantParameters[paramIdx] != null;
+            return constantParameters[paramIdx];
         }
 
         public boolean isVarargsParameter(int paramIdx) {
-            return varargsParameters[paramIdx] != null;
+            return varargsParameters[paramIdx];
         }
     }
 
