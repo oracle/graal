@@ -39,12 +39,13 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     private final HotSpotResolvedJavaMethod method;
     private final boolean isDefault;
-    private final long nmethod; // This field is set by the runtime upon code installation.
+    private final Graph graph;
+    long nmethod;
     long start;
 
-    public HotSpotInstalledCode(HotSpotResolvedJavaMethod method, boolean isDefault) {
-        this.nmethod = 0;
+    public HotSpotInstalledCode(HotSpotResolvedJavaMethod method, Graph graph, boolean isDefault) {
         this.method = method;
+        this.graph = graph;
         this.isDefault = isDefault;
     }
 
@@ -52,8 +53,12 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
         return isDefault;
     }
 
-    public long getnmethod() {
+    public long getMethodAddress() {
         return nmethod;
+    }
+
+    public Graph getGraph() {
+        return graph;
     }
 
     @Override
@@ -113,10 +118,5 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     @Override
     public byte[] getCode() {
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().getCode(nmethod);
-    }
-
-    @SuppressWarnings("unused")
-    public static Object executeHelper(long nmethod, long metaspaceMethod, Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethod(arg1, arg2, arg3, nmethod);
     }
 }

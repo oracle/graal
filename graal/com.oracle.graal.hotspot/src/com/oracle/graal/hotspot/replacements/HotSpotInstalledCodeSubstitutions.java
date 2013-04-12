@@ -22,25 +22,28 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.graph.UnsafeAccess.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.replacements.Snippet.Fold;
-import com.oracle.graal.word.*;
 
 @ClassSubstitution(HotSpotInstalledCode.class)
 public class HotSpotInstalledCodeSubstitutions {
 
-    @MethodSubstitution
-    public static Object executeHelper(long nmethod, long metaspaceMethod, final Object arg1, final Object arg2, final Object arg3) {
-        final int verifiedEntryPointOffset = HotSpotSnippetUtils.verifiedEntryPointOffset();
-        final Word callTarget = Word.unsigned(nmethod).readWord(verifiedEntryPointOffset);
-        return HotSpotInstalledCodeExecuteNode.call(Kind.Object, callTarget, metaspaceMethod, getSignature(), arg1, arg2, arg3);
+    @MethodSubstitution(isStatic = false)
+    public static Object execute(HotSpotInstalledCode code, final Object arg1, final Object arg2, final Object arg3) {
+        return HotSpotInstalledCodeExecuteNode.call(Kind.Object, getSignature(), code, arg1, arg2, arg3);
     }
 
     @Fold
     private static Class[] getSignature() {
         return new Class[]{Object.class, Object.class, Object.class};
     }
+
+
+
 }
