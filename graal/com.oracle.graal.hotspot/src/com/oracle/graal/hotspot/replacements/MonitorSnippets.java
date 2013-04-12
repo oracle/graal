@@ -46,7 +46,10 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
+import com.oracle.graal.replacements.SnippetTemplate.Arguments;
+import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.*;
 
 /**
@@ -73,7 +76,7 @@ public class MonitorSnippets implements Snippets {
     public static final boolean CHECK_BALANCED_MONITORS = Boolean.getBoolean("graal.monitors.checkBalanced");
 
     @Snippet
-    public static void monitorenter(@Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull, @ConstantParameter("trace") boolean trace) {
+    public static void monitorenter(Object object, @ConstantParameter boolean checkNull, @ConstantParameter boolean trace) {
         verifyOop(object);
 
         if (checkNull && object == null) {
@@ -262,7 +265,7 @@ public class MonitorSnippets implements Snippets {
      * Calls straight out to the monitorenter stub.
      */
     @Snippet
-    public static void monitorenterStub(@Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull, @ConstantParameter("trace") boolean trace) {
+    public static void monitorenterStub(Object object, @ConstantParameter boolean checkNull, @ConstantParameter boolean trace) {
         verifyOop(object);
         incCounter();
         if (checkNull && object == null) {
@@ -276,7 +279,7 @@ public class MonitorSnippets implements Snippets {
     }
 
     @Snippet
-    public static void monitorexit(@Parameter("object") Object object, @ConstantParameter("trace") boolean trace) {
+    public static void monitorexit(Object object, @ConstantParameter boolean trace) {
         trace(trace, "           object: 0x%016lx\n", Word.fromObject(object));
         if (useBiasedLocking()) {
             // Check for biased locking unlock case, which is a no-op
@@ -328,7 +331,7 @@ public class MonitorSnippets implements Snippets {
      * Calls straight out to the monitorexit stub.
      */
     @Snippet
-    public static void monitorexitStub(@Parameter("object") Object object, @ConstantParameter("trace") boolean trace) {
+    public static void monitorexitStub(Object object, @ConstantParameter boolean trace) {
         verifyOop(object);
         traceObject(trace, "-lock{stub}", object);
         MonitorExitStubCall.call(object);
@@ -398,54 +401,45 @@ public class MonitorSnippets implements Snippets {
         }
     }
 
-    public static class Templates extends AbstractTemplates<MonitorSnippets> {
+    public static class Templates extends AbstractTemplates {
 
-        private final ResolvedJavaMethod monitorenter;
-        private final ResolvedJavaMethod monitorexit;
-        private final ResolvedJavaMethod monitorenterStub;
-        private final ResolvedJavaMethod monitorexitStub;
-        private final ResolvedJavaMethod monitorenterEliminated;
-        private final ResolvedJavaMethod monitorexitEliminated;
-        private final ResolvedJavaMethod initCounter;
-        private final ResolvedJavaMethod checkCounter;
+        private final SnippetInfo monitorenter = snippet(MonitorSnippets.class, "monitorenter");
+        private final SnippetInfo monitorexit = snippet(MonitorSnippets.class, "monitorexit");
+        private final SnippetInfo monitorenterStub = snippet(MonitorSnippets.class, "monitorenterStub");
+        private final SnippetInfo monitorexitStub = snippet(MonitorSnippets.class, "monitorexitStub");
+        private final SnippetInfo monitorenterEliminated = snippet(MonitorSnippets.class, "monitorenterEliminated");
+        private final SnippetInfo monitorexitEliminated = snippet(MonitorSnippets.class, "monitorexitEliminated");
+        private final SnippetInfo initCounter = snippet(MonitorSnippets.class, "initCounter");
+        private final SnippetInfo checkCounter = snippet(MonitorSnippets.class, "checkCounter");
+
         private final boolean useFastLocking;
 
         public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target, boolean useFastLocking) {
-            super(runtime, replacements, target, MonitorSnippets.class);
-            monitorenter = snippet("monitorenter", Object.class, boolean.class, boolean.class);
-            monitorexit = snippet("monitorexit", Object.class, boolean.class);
-            monitorenterStub = snippet("monitorenterStub", Object.class, boolean.class, boolean.class);
-            monitorexitStub = snippet("monitorexitStub", Object.class, boolean.class);
-            monitorenterEliminated = snippet("monitorenterEliminated");
-            monitorexitEliminated = snippet("monitorexitEliminated");
-            initCounter = snippet("initCounter");
-            checkCounter = snippet("checkCounter", String.class);
+            super(runtime, replacements, target);
             this.useFastLocking = useFastLocking;
         }
 
         public void lower(MonitorEnterNode monitorenterNode, @SuppressWarnings("unused") LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) monitorenterNode.graph();
-
             checkBalancedMonitors(graph);
-
             FrameState stateAfter = monitorenterNode.stateAfter();
-            boolean eliminated = monitorenterNode.eliminated();
-            ResolvedJavaMethod method = eliminated ? monitorenterEliminated : useFastLocking ? monitorenter : monitorenterStub;
-            boolean checkNull = !monitorenterNode.object().stamp().nonNull();
-            Key key = new Key(method);
-            if (method != monitorenterEliminated) {
-                key.add("checkNull", checkNull);
-            }
-            if (!eliminated) {
-                key.add("trace", isTracingEnabledForType(monitorenterNode.object()) || isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
+
+            Arguments args;
+            if (monitorenterNode.eliminated()) {
+                args = new Arguments(monitorenterEliminated);
+            } else {
+                if (useFastLocking) {
+                    args = new Arguments(monitorenter);
+                } else {
+                    args = new Arguments(monitorenterStub);
+                }
+                args.add("object", monitorenterNode.object());
+                args.addConst("checkNull", !monitorenterNode.object().stamp().nonNull());
+                args.addConst("trace", isTracingEnabledForType(monitorenterNode.object()) || isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
             }
 
-            Arguments arguments = new Arguments();
-            if (!eliminated) {
-                arguments.add("object", monitorenterNode.object());
-            }
-            SnippetTemplate template = cache.get(key);
-            Map<Node, Node> nodes = template.instantiate(runtime, monitorenterNode, DEFAULT_REPLACER, arguments);
+            Map<Node, Node> nodes = template(args).instantiate(runtime, monitorenterNode, DEFAULT_REPLACER, args);
+
             for (Node n : nodes.values()) {
                 if (n instanceof BeginLockScopeNode) {
                     BeginLockScopeNode begin = (BeginLockScopeNode) n;
@@ -460,18 +454,22 @@ public class MonitorSnippets implements Snippets {
         public void lower(MonitorExitNode monitorexitNode, @SuppressWarnings("unused") LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) monitorexitNode.graph();
             FrameState stateAfter = monitorexitNode.stateAfter();
-            boolean eliminated = monitorexitNode.eliminated();
-            ResolvedJavaMethod method = eliminated ? monitorexitEliminated : useFastLocking ? monitorexit : monitorexitStub;
-            Key key = new Key(method);
-            if (!eliminated) {
-                key.add("trace", isTracingEnabledForType(monitorexitNode.object()) || isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
+
+            Arguments args;
+            if (monitorexitNode.eliminated()) {
+                args = new Arguments(monitorexitEliminated);
+            } else {
+                if (useFastLocking) {
+                    args = new Arguments(monitorexit);
+                } else {
+                    args = new Arguments(monitorexitStub);
+                }
+                args.add("object", monitorexitNode.object());
+                args.addConst("trace", isTracingEnabledForType(monitorexitNode.object()) || isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
             }
-            Arguments arguments = new Arguments();
-            if (!eliminated) {
-                arguments.add("object", monitorexitNode.object());
-            }
-            SnippetTemplate template = cache.get(key);
-            Map<Node, Node> nodes = template.instantiate(runtime, monitorexitNode, DEFAULT_REPLACER, arguments);
+
+            Map<Node, Node> nodes = template(args).instantiate(runtime, monitorexitNode, DEFAULT_REPLACER, args);
+
             for (Node n : nodes.values()) {
                 if (n instanceof EndLockScopeNode) {
                     EndLockScopeNode end = (EndLockScopeNode) n;
@@ -521,27 +519,27 @@ public class MonitorSnippets implements Snippets {
                 NodeIterable<MonitorCounterNode> nodes = graph.getNodes().filter(MonitorCounterNode.class);
                 if (nodes.isEmpty()) {
                     // Only insert the nodes if this is the first monitorenter being lowered.
-                    JavaType returnType = initCounter.getSignature().getReturnType(initCounter.getDeclaringClass());
-                    MethodCallTargetNode callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, initCounter, new ValueNode[0], returnType));
+                    JavaType returnType = initCounter.getMethod().getSignature().getReturnType(initCounter.getMethod().getDeclaringClass());
+                    MethodCallTargetNode callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, initCounter.getMethod(), new ValueNode[0], returnType));
                     InvokeNode invoke = graph.add(new InvokeNode(callTarget, 0));
                     invoke.setStateAfter(graph.start().stateAfter());
                     graph.addAfterFixed(graph.start(), invoke);
 
-                    StructuredGraph inlineeGraph = replacements.getSnippet(initCounter);
+                    StructuredGraph inlineeGraph = replacements.getSnippet(initCounter.getMethod());
                     InliningUtil.inline(invoke, inlineeGraph, false);
 
                     List<ReturnNode> rets = graph.getNodes().filter(ReturnNode.class).snapshot();
                     for (ReturnNode ret : rets) {
-                        returnType = checkCounter.getSignature().getReturnType(checkCounter.getDeclaringClass());
+                        returnType = checkCounter.getMethod().getSignature().getReturnType(checkCounter.getMethod().getDeclaringClass());
                         Object msg = ((HotSpotRuntime) runtime).registerGCRoot("unbalanced monitors in " + MetaUtil.format("%H.%n(%p)", graph.method()) + ", count = %d");
                         ConstantNode errMsg = ConstantNode.forObject(msg, runtime, graph);
-                        callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter, new ValueNode[]{errMsg}, returnType));
+                        callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnType));
                         invoke = graph.add(new InvokeNode(callTarget, 0));
                         List<ValueNode> stack = Collections.emptyList();
                         FrameState stateAfter = new FrameState(graph.method(), FrameState.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], false, false);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
-                        inlineeGraph = replacements.getSnippet(checkCounter);
+                        inlineeGraph = replacements.getSnippet(checkCounter.getMethod());
                         InliningUtil.inline(invoke, inlineeGraph, false);
                     }
                 }

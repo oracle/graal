@@ -133,10 +133,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
     @Override
-    public native Object executeCompiledMethod(long metaspaceMethod, long nmethod, Object arg1, Object arg2, Object arg3);
-
-    @Override
-    public native Object executeCompiledMethodVarargs(long metaspaceMethod, long nmethod, Object... args);
+    public native Object executeCompiledMethodVarargs(Object[] args, long nativeMethod);
 
     @Override
     public native int getVtableEntryOffset(long metaspaceMethod);
@@ -160,5 +157,18 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void reprofile(long metaspaceMethod);
 
     @Override
-    public native Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi);
+    public native Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
+
+    @Override
+    public native void invalidateInstalledCode(long nativeMethod);
+
+    @Override
+    public native boolean isInstalledCodeValid(long nativeMethod);
+
+    @Override
+    public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nativeMethod) throws InvalidInstalledCodeException {
+        return executeCompiledMethodIntrinsic(arg1, arg2, arg3, nativeMethod);
+    }
+
+    private static native Object executeCompiledMethodIntrinsic(Object arg1, Object arg2, Object arg3, long nativeMethod);
 }

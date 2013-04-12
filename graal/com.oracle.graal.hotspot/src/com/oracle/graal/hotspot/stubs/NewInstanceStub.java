@@ -36,8 +36,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.Fold;
-import com.oracle.graal.replacements.Snippet.Parameter;
-import com.oracle.graal.replacements.SnippetTemplate.Key;
+import com.oracle.graal.replacements.SnippetTemplate.Arguments;
+import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.*;
 
 /**
@@ -49,14 +49,18 @@ import com.oracle.graal.word.*;
 public class NewInstanceStub extends Stub {
 
     public NewInstanceStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
-        super(runtime, replacements, target, linkage);
+        super(runtime, replacements, target, linkage, "newInstance");
     }
 
     @Override
-    protected void populateKey(Key key) {
+    protected Arguments makeArguments(SnippetInfo stub) {
         HotSpotResolvedObjectType intArrayType = (HotSpotResolvedObjectType) runtime.lookupJavaType(int[].class);
-        Constant intArrayHub = intArrayType.klass();
-        key.add("intArrayHub", intArrayHub).add("log", Boolean.getBoolean("graal.logNewInstanceStub"));
+
+        Arguments args = new Arguments(stub);
+        args.add("hub", null);
+        args.addConst("intArrayHub", intArrayType.klass());
+        args.addConst("log", Boolean.getBoolean("graal.logNewInstanceStub"));
+        return args;
     }
 
     /**
@@ -67,7 +71,7 @@ public class NewInstanceStub extends Stub {
      * @param intArrayHub the hub for {@code int[].class}
      */
     @Snippet
-    private static Object newInstance(@Parameter("hub") Word hub, @ConstantParameter("intArrayHub") Word intArrayHub, @ConstantParameter("log") boolean log) {
+    private static Object newInstance(Word hub, @ConstantParameter Word intArrayHub, @ConstantParameter boolean log) {
         int sizeInBytes = hub.readInt(klassInstanceSizeOffset(), FINAL_LOCATION);
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
             if (hub.readInt(klassStateOffset(), CLASS_STATE_LOCATION) == klassStateFullyInitialized()) {

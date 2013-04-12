@@ -28,6 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
 
 /**
@@ -61,5 +62,25 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
         }
         return super.registerMethodSubstitution(originalMethod, substituteMethod);
+    }
+
+    @Override
+    public Class<? extends FixedWithNextNode> getMacroSubstitution(ResolvedJavaMethod method) {
+        HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
+        int intrinsicId = hsMethod.intrinsicId();
+        if (intrinsicId != 0) {
+            if (intrinsicId == config.vmIntrinsicInvokeBasic) {
+                return MethodHandleInvokeBasicNode.class;
+            } else if (intrinsicId == config.vmIntrinsicLinkToInterface) {
+                return MethodHandleLinkToInterfaceNode.class;
+            } else if (intrinsicId == config.vmIntrinsicLinkToSpecial) {
+                return MethodHandleLinkToSpecialNode.class;
+            } else if (intrinsicId == config.vmIntrinsicLinkToStatic) {
+                return MethodHandleLinkToStaticNode.class;
+            } else if (intrinsicId == config.vmIntrinsicLinkToVirtual) {
+                return MethodHandleLinkToVirtualNode.class;
+            }
+        }
+        return super.getMacroSubstitution(method);
     }
 }

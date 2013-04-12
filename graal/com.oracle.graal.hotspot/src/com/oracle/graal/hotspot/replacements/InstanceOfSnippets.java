@@ -24,21 +24,22 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
-import static com.oracle.graal.replacements.Snippet.Varargs.*;
-import static com.oracle.graal.replacements.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.Hints;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.*;
-import com.oracle.graal.replacements.SnippetTemplate.*;
+import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.Snippet.VarargsParameter;
+import com.oracle.graal.replacements.SnippetTemplate.Arguments;
+import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
@@ -52,18 +53,11 @@ import com.oracle.graal.word.*;
  */
 public class InstanceOfSnippets implements Snippets {
 
-    // @formatter:off
-
     /**
      * A test against a final type.
      */
     @Snippet
-    public static Object instanceofExact(
-                    @Parameter("object") Object object,
-                    @Parameter("exactHub") Word exactHub,
-                    @Parameter("trueValue") Object trueValue,
-                    @Parameter("falseValue") Object falseValue,
-                    @ConstantParameter("checkNull") boolean checkNull) {
+    public static Object instanceofExact(Object object, Word exactHub, Object trueValue, Object falseValue, @ConstantParameter boolean checkNull) {
         if (checkNull && object == null) {
             probability(NOT_FREQUENT_PROBABILITY);
             isNull.inc();
@@ -83,13 +77,7 @@ public class InstanceOfSnippets implements Snippets {
      * A test against a primary type.
      */
     @Snippet
-    public static Object instanceofPrimary(
-                    @Parameter("hub") Word hub,
-                    @Parameter("object") Object object,
-                    @Parameter("trueValue") Object trueValue,
-                    @Parameter("falseValue") Object falseValue,
-                    @ConstantParameter("checkNull") boolean checkNull,
-                    @ConstantParameter("superCheckOffset") int superCheckOffset) {
+    public static Object instanceofPrimary(Word hub, Object object, @ConstantParameter int superCheckOffset, Object trueValue, Object falseValue, @ConstantParameter boolean checkNull) {
         if (checkNull && object == null) {
             probability(NOT_FREQUENT_PROBABILITY);
             isNull.inc();
@@ -109,14 +97,8 @@ public class InstanceOfSnippets implements Snippets {
      * A test against a restricted secondary type type.
      */
     @Snippet
-    public static Object instanceofSecondary(
-                    @Parameter("hub") Word hub,
-                    @Parameter("object") Object object,
-                    @Parameter("trueValue") Object trueValue,
-                    @Parameter("falseValue") Object falseValue,
-                    @VarargsParameter("hints") Word[] hints,
-                    @VarargsParameter("hintIsPositive") boolean[] hintIsPositive,
-                    @ConstantParameter("checkNull") boolean checkNull) {
+    public static Object instanceofSecondary(Word hub, Object object, @VarargsParameter Word[] hints, @VarargsParameter boolean[] hintIsPositive, Object trueValue, Object falseValue,
+                    @ConstantParameter boolean checkNull) {
         if (checkNull && object == null) {
             probability(NOT_FREQUENT_PROBABILITY);
             isNull.inc();
@@ -144,12 +126,7 @@ public class InstanceOfSnippets implements Snippets {
      * Type test used when the type being tested against is not known at compile time.
      */
     @Snippet
-    public static Object instanceofDynamic(
-                    @Parameter("mirror") Class mirror,
-                    @Parameter("object") Object object,
-                    @Parameter("trueValue") Object trueValue,
-                    @Parameter("falseValue") Object falseValue,
-                    @ConstantParameter("checkNull") boolean checkNull) {
+    public static Object instanceofDynamic(Class mirror, Object object, Object trueValue, Object falseValue, @ConstantParameter boolean checkNull) {
         if (checkNull && object == null) {
             probability(NOT_FREQUENT_PROBABILITY);
             isNull.inc();
@@ -164,65 +141,63 @@ public class InstanceOfSnippets implements Snippets {
         return trueValue;
     }
 
-    // @formatter:on
+    public static class Templates extends InstanceOfSnippetsTemplates {
 
-    public static class Templates extends InstanceOfSnippetsTemplates<InstanceOfSnippets> {
-
-        private final ResolvedJavaMethod instanceofExact;
-        private final ResolvedJavaMethod instanceofPrimary;
-        private final ResolvedJavaMethod instanceofSecondary;
-        private final ResolvedJavaMethod instanceofDynamic;
+        private final SnippetInfo instanceofExact = snippet(InstanceOfSnippets.class, "instanceofExact");
+        private final SnippetInfo instanceofPrimary = snippet(InstanceOfSnippets.class, "instanceofPrimary");
+        private final SnippetInfo instanceofSecondary = snippet(InstanceOfSnippets.class, "instanceofSecondary");
+        private final SnippetInfo instanceofDynamic = snippet(InstanceOfSnippets.class, "instanceofDynamic");
 
         public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target, InstanceOfSnippets.class);
-            instanceofExact = snippet("instanceofExact", Object.class, Word.class, Object.class, Object.class, boolean.class);
-            instanceofPrimary = snippet("instanceofPrimary", Word.class, Object.class, Object.class, Object.class, boolean.class, int.class);
-            instanceofSecondary = snippet("instanceofSecondary", Word.class, Object.class, Object.class, Object.class, Word[].class, boolean[].class, boolean.class);
-            instanceofDynamic = snippet("instanceofDynamic", Class.class, Object.class, Object.class, Object.class, boolean.class);
+            super(runtime, replacements, target);
         }
 
         @Override
-        protected KeyAndArguments getKeyAndArguments(InstanceOfUsageReplacer replacer, LoweringTool tool) {
+        protected Arguments makeArguments(InstanceOfUsageReplacer replacer, LoweringTool tool) {
             if (replacer.instanceOf instanceof InstanceOfNode) {
                 InstanceOfNode instanceOf = (InstanceOfNode) replacer.instanceOf;
-                ValueNode trueValue = replacer.trueValue;
-                ValueNode falseValue = replacer.falseValue;
                 ValueNode object = instanceOf.object();
                 TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), GraalOptions.InstanceOfMinHintHitProbability, GraalOptions.InstanceOfMaxHints);
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type();
                 ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, instanceOf.graph());
-                boolean checkNull = !object.stamp().nonNull();
-                Arguments arguments;
-                Key key;
+
+                Arguments args;
                 if (hintInfo.exact) {
                     ConstantNode[] hints = createHints(hintInfo, runtime, true, hub.graph()).hubs;
                     assert hints.length == 1;
-                    key = new Key(instanceofExact).add("checkNull", checkNull);
-                    arguments = arguments("object", object).add("exactHub", hints[0]).add("trueValue", trueValue).add("falseValue", falseValue);
+                    args = new Arguments(instanceofExact);
+                    args.add("object", object);
+                    args.add("exactHub", hints[0]);
                 } else if (type.isPrimaryType()) {
-                    key = new Key(instanceofPrimary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
-                    arguments = arguments("hub", hub).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
+                    args = new Arguments(instanceofPrimary);
+                    args.add("hub", hub);
+                    args.add("object", object);
+                    args.addConst("superCheckOffset", type.superCheckOffset());
                 } else {
                     Hints hints = createHints(hintInfo, runtime, false, hub.graph());
-                    ConstantNode[] hintHubs = hints.hubs;
-                    boolean[] hintIsPositive = hints.isPositive;
-                    Varargs hintsParam = vargargs(new Word[hintHubs.length], StampFactory.forKind(wordKind()));
-                    Varargs hintIsPositiveParam = vargargs(new boolean[hintIsPositive.length], StampFactory.forKind(Kind.Boolean));
-                    key = new Key(instanceofSecondary).add("hints", hintsParam).add("hintIsPositive", hintIsPositiveParam).add("checkNull", checkNull);
-                    arguments = arguments("hub", hub).add("object", object).add("hints", hintHubs).add("hintIsPositive", hintIsPositive).add("trueValue", trueValue).add("falseValue", falseValue);
+                    args = new Arguments(instanceofSecondary);
+                    args.add("hub", hub);
+                    args.add("object", object);
+                    args.addVarargs("hints", Word.class, StampFactory.forKind(wordKind()), hints.hubs);
+                    args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(Kind.Boolean), hints.isPositive);
                 }
-                return new KeyAndArguments(key, arguments);
+                args.add("trueValue", replacer.trueValue);
+                args.add("falseValue", replacer.falseValue);
+                args.addConst("checkNull", !object.stamp().nonNull());
+                return args;
+
             } else {
                 assert replacer.instanceOf instanceof InstanceOfDynamicNode;
                 InstanceOfDynamicNode instanceOf = (InstanceOfDynamicNode) replacer.instanceOf;
-                ValueNode trueValue = replacer.trueValue;
-                ValueNode falseValue = replacer.falseValue;
                 ValueNode object = instanceOf.object();
-                ValueNode mirror = instanceOf.mirror();
-                boolean checkNull = !object.stamp().nonNull();
-                Key key = new Key(instanceofDynamic).add("checkNull", checkNull);
-                Arguments arguments = arguments("mirror", mirror).add("object", object).add("trueValue", trueValue).add("falseValue", falseValue);
-                return new KeyAndArguments(key, arguments);
+
+                Arguments args = new Arguments(instanceofDynamic);
+                args.add("mirror", instanceOf.mirror());
+                args.add("object", object);
+                args.add("trueValue", replacer.trueValue);
+                args.add("falseValue", replacer.falseValue);
+                args.addConst("checkNull", !object.stamp().nonNull());
+                return args;
             }
         }
     }

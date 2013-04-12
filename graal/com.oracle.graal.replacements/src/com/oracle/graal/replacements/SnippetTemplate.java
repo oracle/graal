@@ -22,11 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
-
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
@@ -42,8 +39,6 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
-import com.oracle.graal.replacements.Snippet.Parameter;
-import com.oracle.graal.replacements.Snippet.Varargs;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
@@ -53,173 +48,274 @@ import com.oracle.graal.word.phases.*;
  * A snippet template is a graph created by parsing a snippet method and then specialized by binding
  * constants to the snippet's {@link ConstantParameter} parameters.
  * 
- * Snippet templates can be managed in a {@link Cache}.
+ * Snippet templates can be managed in a cache maintained by {@link AbstractTemplates}.
  */
 public class SnippetTemplate {
 
     /**
-     * A snippet template key encapsulates the method from which a snippet was built and the
-     * arguments used to specialize the snippet.
-     * 
-     * @see Cache
+     * Holds the {@link ResolvedJavaMethod} of the snippet, together with some information about the
+     * method that needs to be computed only once. The {@link SnippetInfo} should be created once
+     * per snippet an then cached.
      */
-    public static class Key implements Iterable<Map.Entry<String, Object>> {
+    public static class SnippetInfo {
 
-        public final ResolvedJavaMethod method;
-        private final HashMap<String, Object> map = new HashMap<>();
-        private int hash;
+        protected final ResolvedJavaMethod method;
+        protected final ConstantParameter[] constantParameters;
+        protected final VarargsParameter[] varargsParameters;
 
-        public Key(ResolvedJavaMethod method) {
+        /**
+         * The parameter names, taken from the local variables table. Only used for assertion
+         * checking, so use only within an assert statement.
+         */
+        protected final String[] names;
+
+        protected SnippetInfo(ResolvedJavaMethod method) {
             this.method = method;
-            this.hash = method.hashCode();
+
+            assert Modifier.isStatic(method.getModifiers()) : "snippet method must be static: " + MetaUtil.format("%H.%n", method);
+            int count = method.getSignature().getParameterCount(false);
+            constantParameters = new ConstantParameter[count];
+            varargsParameters = new VarargsParameter[count];
+            for (int i = 0; i < count; i++) {
+                constantParameters[i] = MetaUtil.getParameterAnnotation(ConstantParameter.class, i, method);
+                varargsParameters[i] = MetaUtil.getParameterAnnotation(VarargsParameter.class, i, method);
+
+                assert !isConstantParameter(i) || !isVarargsParameter(i) : "Parameter cannot be annotated with both @" + ConstantParameter.class.getSimpleName() + " and @" +
+                                VarargsParameter.class.getSimpleName();
+            }
+
+            names = new String[count];
+            // Retrieve the names only when assertions are turned on.
+            assert initNames();
         }
 
-        public Key add(String name, Object value) {
-            assert !map.containsKey(name);
-            map.put(name, value);
-            hash = hash ^ name.hashCode();
-            if (value != null) {
-                hash *= (value.hashCode() + 1);
+        private boolean initNames() {
+            int slotIdx = 0;
+            for (int i = 0; i < names.length; i++) {
+                names[i] = method.getLocalVariableTable().getLocal(slotIdx, 0).getName();
+
+                Kind kind = method.getSignature().getParameterKind(i);
+                slotIdx += kind == Kind.Long || kind == Kind.Double ? 2 : 1;
             }
+            return true;
+        }
+
+        public ResolvedJavaMethod getMethod() {
+            return method;
+        }
+
+        public int getParameterCount() {
+            return constantParameters.length;
+        }
+
+        public boolean isConstantParameter(int paramIdx) {
+            return constantParameters[paramIdx] != null;
+        }
+
+        public boolean isVarargsParameter(int paramIdx) {
+            return varargsParameters[paramIdx] != null;
+        }
+    }
+
+    /**
+     * Values that are bound to the snippet method parameters. The methods {@link #add},
+     * {@link #addConst}, and {@link #addVarargs} must be called in the same order as in the
+     * signature of the snippet method. The parameter name is passed to the add methods for
+     * assertion checking, i.e., to enforce that the order matches. Which method needs to be called
+     * depends on the annotation of the snippet method parameter:
+     * <ul>
+     * <li>Use {@link #add} for a parameter without an annotation. The value is bound when the
+     * {@link SnippetTemplate} is {@link SnippetTemplate#instantiate instantiated}.
+     * <li>Use {@link #addConst} for a parameter annotated with {@link ConstantParameter}. The value
+     * is bound when the {@link SnippetTemplate} is {@link SnippetTemplate#SnippetTemplate created}.
+     * <li>Use {@link #addVarargs} for an array parameter annotated with {@link VarargsParameter}. A
+     * separate {@link SnippetTemplate} is {@link SnippetTemplate#SnippetTemplate created} for every
+     * distinct array length. The actual values are bound when the {@link SnippetTemplate} is
+     * {@link SnippetTemplate#instantiate instantiated}
+     * </ul>
+     */
+    public static class Arguments {
+
+        protected final SnippetInfo info;
+        protected final CacheKey cacheKey;
+        protected final Object[] values;
+
+        protected int nextParamIdx;
+
+        public Arguments(SnippetInfo info) {
+            this.info = info;
+            this.cacheKey = new CacheKey(info);
+            this.values = new Object[info.getParameterCount()];
+        }
+
+        public Arguments add(String name, Object value) {
+            assert check(name, false, false);
+            values[nextParamIdx] = value;
+            nextParamIdx++;
             return this;
         }
 
-        public int length() {
-            return map.size();
+        public Arguments addConst(String name, Object value) {
+            assert check(name, true, false);
+            values[nextParamIdx] = value;
+            cacheKey.setParam(nextParamIdx, value);
+            nextParamIdx++;
+            return this;
         }
 
-        public Object get(String name) {
-            return map.get(name);
+        public Arguments addVarargs(String name, Class componentType, Stamp argStamp, Object value) {
+            assert check(name, false, true);
+            Varargs varargs = new Varargs(componentType, argStamp, value);
+            values[nextParamIdx] = varargs;
+            // A separate template is necessary for every distinct array length
+            cacheKey.setParam(nextParamIdx, varargs.length);
+            nextParamIdx++;
+            return this;
+        }
+
+        private boolean check(String name, boolean constParam, boolean varargsParam) {
+            assert nextParamIdx < info.getParameterCount() : "too many parameters: " + name + "  " + this;
+            assert info.names[nextParamIdx].equals(name) : "wrong parameter name: " + name + "  " + this;
+            assert constParam == info.isConstantParameter(nextParamIdx) : "Parameter " + (constParam ? "not " : "") + "annotated with @" + ConstantParameter.class.getSimpleName() + ": " + name +
+                            "  " + this;
+            assert varargsParam == info.isVarargsParameter(nextParamIdx) : "Parameter " + (varargsParam ? "not " : "") + "annotated with @" + VarargsParameter.class.getSimpleName() + ": " + name +
+                            "  " + this;
+            return true;
         }
 
         @Override
-        public Iterator<Entry<String, Object>> iterator() {
-            return map.entrySet().iterator();
+        public String toString() {
+            StringBuilder result = new StringBuilder();
+            result.append("Parameters<").append(MetaUtil.format("%H.%n", info.method)).append(" [");
+            String sep = "";
+            for (int i = 0; i < info.getParameterCount(); i++) {
+                result.append(sep);
+                if (info.isConstantParameter(i)) {
+                    result.append("const ");
+                } else if (info.isVarargsParameter(i)) {
+                    result.append("varargs ");
+                }
+                result.append(info.names[i]).append(" = ").append(values[i]);
+                sep = ", ";
+            }
+            result.append(">");
+            return result.toString();
+        }
+    }
+
+    /**
+     * Wrapper for the prototype value of a {@linkplain VarargsParameter varargs} parameter.
+     */
+    static class Varargs {
+
+        protected final Class componentType;
+        protected final Stamp stamp;
+        protected final Object value;
+        protected final int length;
+
+        protected Varargs(Class componentType, Stamp stamp, Object value) {
+            this.componentType = componentType;
+            this.stamp = stamp;
+            this.value = value;
+            if (value instanceof List) {
+                this.length = ((List) value).size();
+            } else {
+                this.length = Array.getLength(value);
+            }
+        }
+    }
+
+    static class CacheKey {
+
+        private final ResolvedJavaMethod method;
+        private final Object[] values;
+        private int hash;
+
+        protected CacheKey(SnippetInfo info) {
+            this.method = info.method;
+            this.values = new Object[info.getParameterCount()];
+            this.hash = info.method.hashCode();
+        }
+
+        protected void setParam(int paramIdx, Object value) {
+            values[paramIdx] = value;
+            hash = (hash * 31) ^ (value == null ? 0 : value.hashCode());
         }
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof Key) {
-                Key other = (Key) obj;
-                return other.method == method && other.map.equals(map);
+            if (!(obj instanceof CacheKey)) {
+                return false;
             }
-            return false;
+            CacheKey other = (CacheKey) obj;
+            if (method != other.method) {
+                return false;
+            }
+            for (int i = 0; i < values.length; i++) {
+                if (values[i] != null && !values[i].equals(other.values[i])) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         @Override
         public int hashCode() {
             return hash;
         }
-
-        @Override
-        public String toString() {
-            return MetaUtil.format("%h.%n", method) + map.toString();
-        }
-
-        public Set<String> names() {
-            return map.keySet();
-        }
     }
 
     /**
-     * Arguments used to instantiate a template.
+     * Base class for snippet classes. It provides a cache for {@link SnippetTemplate}s.
      */
-    public static class Arguments implements Iterable<Map.Entry<String, Object>> {
+    public abstract static class AbstractTemplates {
 
-        private final HashMap<String, Object> map = new HashMap<>();
+        protected final MetaAccessProvider runtime;
+        protected final Replacements replacements;
+        protected final TargetDescription target;
+        private final ConcurrentHashMap<CacheKey, SnippetTemplate> templates;
 
-        public static Arguments arguments(String name, Object value) {
-            return new Arguments().add(name, value);
-        }
-
-        public Arguments add(String name, Object value) {
-            assert !map.containsKey(name);
-            map.put(name, value);
-            return this;
-        }
-
-        public int length() {
-            return map.size();
-        }
-
-        @Override
-        public Iterator<Entry<String, Object>> iterator() {
-            return map.entrySet().iterator();
-        }
-
-        @Override
-        public String toString() {
-            return map.toString();
-        }
-    }
-
-    /**
-     * A collection of snippet templates accessed by a {@link Key} instance.
-     */
-    public static class Cache {
-
-        private final ConcurrentHashMap<SnippetTemplate.Key, SnippetTemplate> templates = new ConcurrentHashMap<>();
-        private final MetaAccessProvider runtime;
-        private final TargetDescription target;
-        private final Replacements replacements;
-
-        public Cache(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
+        protected AbstractTemplates(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
             this.runtime = runtime;
             this.replacements = replacements;
             this.target = target;
+            this.templates = new ConcurrentHashMap<>();
+        }
+
+        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName) {
+            Method found = null;
+            for (Method method : declaringClass.getDeclaredMethods()) {
+                if (method.getAnnotation(Snippet.class) != null && method.getName().equals(methodName)) {
+                    assert found == null : "found more than one @" + Snippet.class.getSimpleName() + " method " + methodName + " in " + declaringClass;
+                    found = method;
+                }
+            }
+            assert found != null : "did not find @" + Snippet.class.getSimpleName() + " method " + methodName + " in " + declaringClass;
+
+            return new SnippetInfo(runtime.lookupJavaMethod(found));
         }
 
         /**
          * Gets a template for a given key, creating it first if necessary.
          */
-        public SnippetTemplate get(final SnippetTemplate.Key key) {
-            SnippetTemplate template = templates.get(key);
+        protected SnippetTemplate template(final Arguments args) {
+            SnippetTemplate template = templates.get(args.cacheKey);
             if (template == null) {
-                template = Debug.scope("SnippetSpecialization", key.method, new Callable<SnippetTemplate>() {
+                template = Debug.scope("SnippetSpecialization", args.info.method, new Callable<SnippetTemplate>() {
 
                     @Override
                     public SnippetTemplate call() throws Exception {
-                        return new SnippetTemplate(runtime, replacements, target, key);
+                        return new SnippetTemplate(runtime, replacements, target, args);
                     }
                 });
-                templates.put(key, template);
+                templates.put(args.cacheKey, template);
             }
             return template;
         }
     }
 
-    public abstract static class AbstractTemplates<T extends Snippets> {
-
-        protected final Cache cache;
-        protected final MetaAccessProvider runtime;
-        protected final Replacements replacements;
-        protected Class<?> snippetsClass;
-
-        public AbstractTemplates(MetaAccessProvider runtime, Replacements replacements, TargetDescription target, Class<T> snippetsClass) {
-            this.runtime = runtime;
-            this.replacements = replacements;
-            if (snippetsClass == null) {
-                assert this instanceof Snippets;
-                this.snippetsClass = getClass();
-            } else {
-                this.snippetsClass = snippetsClass;
-            }
-            this.cache = new Cache(runtime, replacements, target);
-            replacements.registerSnippets(this.snippetsClass);
-        }
-
-        protected ResolvedJavaMethod snippet(String name, Class<?>... parameterTypes) {
-            try {
-                ResolvedJavaMethod snippet = runtime.lookupJavaMethod(snippetsClass.getDeclaredMethod(name, parameterTypes));
-                assert snippet.getAnnotation(Snippet.class) != null : "snippet is not annotated with @" + Snippet.class.getSimpleName();
-                return snippet;
-            } catch (NoSuchMethodException e) {
-                throw new GraalInternalError(e);
-            }
-        }
-    }
-
     private static final Object UNUSED_PARAMETER = "DEAD PARAMETER";
+    private static final Object CONSTANT_PARAMETER = "CONSTANT";
 
     /**
      * Determines if any parameter of a given method is annotated with {@link ConstantParameter}.
@@ -236,31 +332,25 @@ public class SnippetTemplate {
     /**
      * Creates a snippet template.
      */
-    public SnippetTemplate(MetaAccessProvider runtime, Replacements replacements, TargetDescription target, SnippetTemplate.Key key) {
-        ResolvedJavaMethod method = key.method;
-        assert Modifier.isStatic(method.getModifiers()) : "snippet method must be static: " + method;
+    protected SnippetTemplate(MetaAccessProvider runtime, Replacements replacements, TargetDescription target, Arguments args) {
+        StructuredGraph snippetGraph = replacements.getSnippet(args.info.method);
+
+        ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
 
         // Copy snippet graph, replacing constant parameters with given arguments
-        StructuredGraph snippetGraph = replacements.getSnippet(method);
-        if (snippetGraph == null) {
-            throw new GraalInternalError("Snippet has not been registered: %s", format("%H.%n(%p)", method));
-        }
         StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
         IdentityHashMap<Node, Node> nodeReplacements = new IdentityHashMap<>();
         nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
-        int parameterCount = signature.getParameterCount(false);
-        assert checkTemplate(runtime, key, parameterCount, method, signature);
+        assert checkTemplate(runtime, args, method, signature);
 
-        Parameter[] parameterAnnotations = new Parameter[parameterCount];
-        VarargsParameter[] varargsParameterAnnotations = new VarargsParameter[parameterCount];
+        int parameterCount = args.info.getParameterCount();
         ConstantNode[] placeholders = new ConstantNode[parameterCount];
+
         for (int i = 0; i < parameterCount; i++) {
-            ConstantParameter c = MetaUtil.getParameterAnnotation(ConstantParameter.class, i, method);
-            if (c != null) {
-                String name = c.value();
-                Object arg = key.get(name);
+            if (args.info.isConstantParameter(i)) {
+                Object arg = args.values[i];
                 Kind kind = signature.getParameterKind(i);
                 Constant constantArg;
                 if (arg instanceof Constant) {
@@ -269,19 +359,12 @@ public class SnippetTemplate {
                     constantArg = Constant.forBoxed(kind, arg);
                 }
                 nodeReplacements.put(snippetGraph.getLocal(i), ConstantNode.forConstant(constantArg, runtime, snippetCopy));
-            } else {
-                VarargsParameter vp = MetaUtil.getParameterAnnotation(VarargsParameter.class, i, method);
-                if (vp != null) {
-                    String name = vp.value();
-                    Varargs varargs = (Varargs) key.get(name);
-                    Object array = varargs.getArray();
-                    ConstantNode placeholder = ConstantNode.forObject(array, runtime, snippetCopy);
-                    nodeReplacements.put(snippetGraph.getLocal(i), placeholder);
-                    placeholders[i] = placeholder;
-                    varargsParameterAnnotations[i] = vp;
-                } else {
-                    parameterAnnotations[i] = MetaUtil.getParameterAnnotation(Parameter.class, i, method);
-                }
+            } else if (args.info.isVarargsParameter(i)) {
+                Varargs varargs = (Varargs) args.values[i];
+                Object array = Array.newInstance(varargs.componentType, varargs.length);
+                ConstantNode placeholder = ConstantNode.forObject(array, runtime, snippetCopy);
+                nodeReplacements.put(snippetGraph.getLocal(i), placeholder);
+                placeholders[i] = placeholder;
             }
         }
         snippetCopy.addDuplicates(snippetGraph.getNodes(), nodeReplacements);
@@ -297,23 +380,23 @@ public class SnippetTemplate {
         assert NodeIntrinsificationVerificationPhase.verify(snippetCopy);
 
         // Gather the template parameters
-        parameters = new HashMap<>();
+        parameters = new Object[parameterCount];
         for (int i = 0; i < parameterCount; i++) {
-            VarargsParameter vp = varargsParameterAnnotations[i];
-            if (vp != null) {
+            if (args.info.isConstantParameter(i)) {
+                parameters[i] = CONSTANT_PARAMETER;
+            } else if (args.info.isVarargsParameter(i)) {
                 assert snippetCopy.getLocal(i) == null;
-                Varargs varargs = (Varargs) key.get(vp.value());
-                Object array = varargs.getArray();
-                int length = Array.getLength(array);
+                Varargs varargs = (Varargs) args.values[i];
+                int length = varargs.length;
                 LocalNode[] locals = new LocalNode[length];
-                Stamp stamp = varargs.getArgStamp();
+                Stamp stamp = varargs.stamp;
                 for (int j = 0; j < length; j++) {
                     assert (parameterCount & 0xFFFF) == parameterCount;
                     int idx = i << 16 | j;
                     LocalNode local = snippetCopy.unique(new LocalNode(idx, stamp));
                     locals[j] = local;
                 }
-                parameters.put(vp.value(), locals);
+                parameters[i] = locals;
 
                 ConstantNode placeholder = placeholders[i];
                 assert placeholder != null;
@@ -327,15 +410,12 @@ public class SnippetTemplate {
                     }
                 }
             } else {
-                Parameter p = parameterAnnotations[i];
-                if (p != null) {
-                    LocalNode local = snippetCopy.getLocal(i);
-                    if (local == null) {
-                        // Parameter value was eliminated
-                        parameters.put(p.value(), UNUSED_PARAMETER);
-                    } else {
-                        parameters.put(p.value(), local);
-                    }
+                LocalNode local = snippetCopy.getLocal(i);
+                if (local == null) {
+                    // Parameter value was eliminated
+                    parameters[i] = UNUSED_PARAMETER;
+                } else {
+                    parameters[i] = local;
                 }
             }
         }
@@ -434,11 +514,11 @@ public class SnippetTemplate {
         return true;
     }
 
-    private static boolean checkVarargs(final ResolvedJavaMethod method, Signature signature, int i, String name, Varargs varargs) {
-        Object arg = varargs.getArray();
+    private static boolean checkVarargs(MetaAccessProvider runtime, final ResolvedJavaMethod method, Signature signature, int i, String name, Varargs varargs) {
         ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
         assert type.isArray() : "varargs parameter must be an array type";
-        assert type.isInstance(Constant.forObject(arg)) : "value for " + name + " is not a " + MetaUtil.toJavaName(type) + " instance: " + arg;
+        assert type.getComponentType().isAssignableFrom(runtime.lookupJavaType(varargs.componentType)) : "componentType for " + name + " not matching " + MetaUtil.toJavaName(type) + " instance: " +
+                        varargs.componentType;
         return true;
     }
 
@@ -453,7 +533,7 @@ public class SnippetTemplate {
      * {@link LocalNode} instance or a {@link LocalNode} array. For an eliminated parameter, the
      * value is identical to the key.
      */
-    private final Map<String, Object> parameters;
+    private final Object[] parameters;
 
     /**
      * The return node (if any) of the snippet.
@@ -481,33 +561,33 @@ public class SnippetTemplate {
      * 
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
-    private IdentityHashMap<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider runtime, SnippetTemplate.Arguments args) {
+    private IdentityHashMap<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider runtime, Arguments args) {
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
-        assert args.length() == parameters.size() : "number of args (" + args.length() + ") != number of parameters (" + parameters.size() + ")";
-        for (Map.Entry<String, Object> e : args) {
-            String name = e.getKey();
-            Object parameter = parameters.get(name);
-            assert parameter != null : this + " has no parameter named " + name;
-            Object argument = e.getValue();
+        assert args.info.getParameterCount() == parameters.length : "number of args (" + args.info.getParameterCount() + ") != number of parameters (" + parameters.length + ")";
+        for (int i = 0; i < parameters.length; i++) {
+            Object parameter = parameters[i];
+            assert parameter != null : this + " has no parameter named " + args.info.names[i];
+            Object argument = args.values[i];
             if (parameter instanceof LocalNode) {
                 if (argument instanceof ValueNode) {
                     replacements.put((LocalNode) parameter, (ValueNode) argument);
                 } else {
                     Kind kind = ((LocalNode) parameter).kind();
-                    assert argument != null || kind == Kind.Object : this + " cannot accept null for non-object parameter named " + name;
+                    assert argument != null || kind == Kind.Object : this + " cannot accept null for non-object parameter named " + args.info.names[i];
                     Constant constant = forBoxed(argument, kind);
                     replacements.put((LocalNode) parameter, ConstantNode.forConstant(constant, runtime, replaceeGraph));
                 }
             } else if (parameter instanceof LocalNode[]) {
                 LocalNode[] locals = (LocalNode[]) parameter;
+                Varargs varargs = (Varargs) argument;
                 int length = locals.length;
                 List list = null;
                 Object array = null;
-                if (argument instanceof List) {
-                    list = (List) argument;
+                if (varargs.value instanceof List) {
+                    list = (List) varargs.value;
                     assert list.size() == length : length + " != " + list.size();
                 } else {
-                    array = argument;
+                    array = varargs.value;
                     assert array != null && array.getClass().isArray();
                     assert Array.getLength(array) == length : length + " != " + Array.getLength(array);
                 }
@@ -525,7 +605,7 @@ public class SnippetTemplate {
                     }
                 }
             } else {
-                assert parameter == UNUSED_PARAMETER : "unexpected entry for parameter: " + name + " -> " + parameter;
+                assert parameter == CONSTANT_PARAMETER || parameter == UNUSED_PARAMETER : "unexpected entry for parameter: " + args.info.names[i] + " -> " + parameter;
             }
         }
         return replacements;
@@ -592,7 +672,7 @@ public class SnippetTemplate {
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      * @return the map of duplicated nodes (original -> duplicate)
      */
-    public Map<Node, Node> instantiate(MetaAccessProvider runtime, FixedNode replacee, UsageReplacer replacer, SnippetTemplate.Arguments args) {
+    public Map<Node, Node> instantiate(MetaAccessProvider runtime, FixedNode replacee, UsageReplacer replacer, Arguments args) {
 
         // Inline the snippet nodes, replacing parameters with the given args in the process
         String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
@@ -668,7 +748,7 @@ public class SnippetTemplate {
      * @param replacer object that replaces the usages of {@code replacee}
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      */
-    public void instantiate(MetaAccessProvider runtime, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, SnippetTemplate.Arguments args) {
+    public void instantiate(MetaAccessProvider runtime, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
 
         // Inline the snippet nodes, replacing parameters with the given args in the process
         String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
@@ -727,12 +807,14 @@ public class SnippetTemplate {
     public String toString() {
         StringBuilder buf = new StringBuilder(snippet.toString()).append('(');
         String sep = "";
-        for (Map.Entry<String, Object> e : parameters.entrySet()) {
-            String name = e.getKey();
-            Object value = e.getValue();
+        for (int i = 0; i < parameters.length; i++) {
+            String name = "[" + i + "]";
+            Object value = parameters[i];
             buf.append(sep);
             sep = ", ";
-            if (value == UNUSED_PARAMETER) {
+            if (value == null) {
+                buf.append("<null> ").append(name);
+            } else if (value == UNUSED_PARAMETER) {
                 buf.append("<unused> ").append(name);
             } else if (value instanceof LocalNode) {
                 LocalNode local = (LocalNode) value;
@@ -746,41 +828,17 @@ public class SnippetTemplate {
         return buf.append(')').toString();
     }
 
-    private static boolean checkTemplate(MetaAccessProvider runtime, SnippetTemplate.Key key, int parameterCount, ResolvedJavaMethod method, Signature signature) {
-        Set<String> expected = new HashSet<>();
-        for (int i = 0; i < parameterCount; i++) {
-            ConstantParameter c = MetaUtil.getParameterAnnotation(ConstantParameter.class, i, method);
-            VarargsParameter vp = MetaUtil.getParameterAnnotation(VarargsParameter.class, i, method);
-            Parameter p = MetaUtil.getParameterAnnotation(Parameter.class, i, method);
-            if (c != null) {
-                assert vp == null && p == null;
-                String name = c.value();
-                expected.add(name);
+    private static boolean checkTemplate(MetaAccessProvider runtime, Arguments args, ResolvedJavaMethod method, Signature signature) {
+        for (int i = 0; i < args.info.getParameterCount(); i++) {
+            if (args.info.isConstantParameter(i)) {
                 Kind kind = signature.getParameterKind(i);
-                assert key.names().contains(name) : "key for " + method + " is missing \"" + name + "\": " + key;
-                assert checkConstantArgument(runtime, method, signature, i, c.value(), key.get(name), kind);
-            } else if (vp != null) {
-                assert p == null;
-                String name = vp.value();
-                expected.add(name);
-                assert key.names().contains(name) : "key for " + method + " is missing \"" + name + "\": " + key;
-                assert key.get(name) instanceof Varargs;
-                Varargs varargs = (Varargs) key.get(name);
-                assert checkVarargs(method, signature, i, name, varargs);
-            } else {
-                assert p != null : method + ": parameter " + i + " must be annotated with exactly one of " + "@" + ConstantParameter.class.getSimpleName() + " or " + "@" +
-                                VarargsParameter.class.getSimpleName() + " or " + "@" + Parameter.class.getSimpleName();
+                assert checkConstantArgument(runtime, method, signature, i, args.info.names[i], args.values[i], kind);
+
+            } else if (args.info.isVarargsParameter(i)) {
+                assert args.values[i] instanceof Varargs;
+                Varargs varargs = (Varargs) args.values[i];
+                assert checkVarargs(runtime, method, signature, i, args.info.names[i], varargs);
             }
-        }
-        if (!key.names().containsAll(expected)) {
-            expected.removeAll(key.names());
-            assert false : expected + " missing from key " + key;
-        }
-        if (!expected.containsAll(key.names())) {
-            Set<String> namesCopy = new HashSet<>(key.names());
-            namesCopy.removeAll(expected);
-            assert false : "parameter(s) " + namesCopy + " should be annotated with @" + ConstantParameter.class.getSimpleName() + " or @" + VarargsParameter.class.getSimpleName() + " in " +
-                            MetaUtil.format("%H.%n(%p)", method);
         }
         return true;
     }

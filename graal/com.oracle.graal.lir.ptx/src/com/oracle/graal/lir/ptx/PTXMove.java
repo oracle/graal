@@ -133,8 +133,26 @@ public class PTXMove {
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
             PTXAddress addr = address.toAddress();
             switch (address.getKind()) {
+                case Byte:
+                    masm.ld_global_s8(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Short:
+                    masm.ld_global_s16(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Char:
+                    masm.ld_global_u16(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
                 case Int:
                     masm.ld_global_s32(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Long:
+                    masm.ld_global_s64(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Float:
+                    masm.ld_global_f32(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Double:
+                    masm.ld_global_f64(asRegister(result), addr.getBase(), addr.getDisplacement());
                     break;
                 case Object:
                     masm.ld_global_u32(asRegister(result), addr.getBase(), addr.getDisplacement());
@@ -162,11 +180,23 @@ public class PTXMove {
             assert isRegister(input);
             PTXAddress addr = address.toAddress();
             switch (address.getKind()) {
+                case Byte:
+                    masm.st_global_s8(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
+                case Short:
+                    masm.st_global_s8(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
                 case Int:
                     masm.st_global_s32(addr.getBase(), addr.getDisplacement(), asRegister(input));
                     break;
-                case Byte:
-                    masm.st_global_s8(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                case Long:
+                    masm.st_global_s64(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
+                case Float:
+                    masm.st_global_f32(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
+                case Double:
+                    masm.st_global_f64(addr.getBase(), addr.getDisplacement(), asRegister(input));
                     break;
                 case Object:
                     masm.st_global_s32(addr.getBase(), addr.getDisplacement(), asRegister(input));

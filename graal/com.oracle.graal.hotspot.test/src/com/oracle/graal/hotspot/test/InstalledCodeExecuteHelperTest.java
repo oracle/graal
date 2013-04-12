@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.test;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
@@ -36,7 +37,7 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
     // TODO this is not a test, move it somewhere else
     // CheckStyle: stop system..print check
-    public void test1() throws NoSuchMethodException, SecurityException {
+    public void test1() throws NoSuchMethodException, SecurityException, InvalidInstalledCodeException {
 
         final Method benchrMethod = InstalledCodeExecuteHelperTest.class.getMethod("bench", long.class, long.class);
         final ResolvedJavaMethod benchJavaMethod = Graal.getRequiredCapability(GraalCodeCacheProvider.class).lookupJavaMethod(benchrMethod);
@@ -63,7 +64,7 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
     // CheckStyle: resume system..print check
 
-    public static Long bench(long nmethod, long metaspacemethod) {
+    public static Long bench(long nmethod, long metaspacemethod) throws InvalidInstalledCodeException {
         long start = System.currentTimeMillis();
 
         for (int i = 0; i < ITERATIONS; i++) {
@@ -78,7 +79,7 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
         return 42;
     }
 
-    public static Object executeWrapper(long nmethod, long metaspaceMethod, Object arg1, Object arg2, Object arg3) {
+    public static Object executeWrapper(long nmethod, long metaspaceMethod, Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
         return HotSpotInstalledCode.executeHelper(nmethod, metaspaceMethod, arg1, arg2, arg3);
     }
 

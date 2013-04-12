@@ -138,6 +138,8 @@ public interface CompilerToVM {
 
     void lookupReferencedTypeInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
 
+    Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
+
     // Must be kept in sync with enum in graalEnv.hpp
     public enum CodeInstallResult {
         OK, DEPENDENCIES_FAILED, CACHE_FULL
@@ -199,9 +201,9 @@ public interface CompilerToVM {
 
     StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
-    Object executeCompiledMethod(long metaspaceMethod, long nmethod, Object arg1, Object arg2, Object arg3);
+    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nativeMethod) throws InvalidInstalledCodeException;
 
-    Object executeCompiledMethodVarargs(long metaspaceMethod, long nmethod, Object... args);
+    Object executeCompiledMethodVarargs(Object[] args, long nativeMethod) throws InvalidInstalledCodeException;
 
     int getVtableEntryOffset(long metaspaceMethod);
 
@@ -222,5 +224,7 @@ public interface CompilerToVM {
      */
     void reprofile(long metaspaceMethod);
 
-    Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi);
+    void invalidateInstalledCode(long nativeMethod);
+
+    boolean isInstalledCodeValid(long nativeMethod);
 }

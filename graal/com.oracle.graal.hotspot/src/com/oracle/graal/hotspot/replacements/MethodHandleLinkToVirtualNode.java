@@ -20,36 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.ptx.test;
+package com.oracle.graal.hotspot.replacements;
 
-import java.lang.reflect.Method;
+import java.lang.invoke.*;
 
-import org.junit.Test;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.replacements.nodes.*;
 
 /**
- * Test class for small Java methods compiled to PTX kernels.
+ * Macro node for {@link MethodHandle}{@code .linkToVirtual(Object...)}.
  */
-public class BasicPTXTest extends PTXTestBase {
+public class MethodHandleLinkToVirtualNode extends MacroNode {
 
-    @Test
-    public void testAdd() {
-        compile("testAddConst1I");
-    }
-
-    public static int testAddConst1I(int a) {
-        return a + 1;
-    }
-
-    public static void main(String[] args) {
-        BasicPTXTest test = new BasicPTXTest();
-        Method[] methods = BasicPTXTest.class.getMethods();
-        for (Method m : methods) {
-            String name = m.getName();
-            if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
-                // CheckStyle: stop system..print check
-                System.out.println(name + ": \n" + new String(test.compile(name).getTargetCode()));
-                // CheckStyle: resume system..print check
-            }
-        }
+    public MethodHandleLinkToVirtualNode(Invoke invoke) {
+        super(invoke);
     }
 }

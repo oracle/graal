@@ -327,17 +327,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             replacements.registerSubstitutions(AESCryptSubstitutions.class);
             replacements.registerSubstitutions(CipherBlockChainingSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyArrayCopy) {
-            replacements.registerSnippets(ArrayCopySnippets.class);
-        }
-        if (GraalOptions.IntrinsifyObjectClone) {
-            replacements.registerSnippets(ObjectCloneSnippets.class);
-        }
-
-        replacements.registerSnippets(BoxingSnippets.class);
-        for (Class<?> clazz : BoxingSubstitutions.getClasses()) {
-            replacements.registerSubstitutions(clazz);
-        }
 
         checkcastSnippets = new CheckCastSnippets.Templates(this, replacements, graalRuntime.getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(this, replacements, graalRuntime.getTarget());
@@ -710,7 +699,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
             // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
             // zero and the MIN_VALUE / -1 cases.
-        } else if (n instanceof UnwindNode) {
+        } else if (n instanceof UnwindNode || n instanceof DeoptimizeNode) {
             // Nothing to do, using direct LIR lowering for these nodes.
         } else if (n instanceof BoxNode) {
             boxingSnippets.lower((BoxNode) n);
@@ -905,7 +894,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     public String disassemble(InstalledCode code) {
         if (code.isValid()) {
-            long nmethod = ((HotSpotInstalledCode) code).nmethod;
+            long nmethod = ((HotSpotInstalledCode) code).getnmethod();
             return graalRuntime.getCompilerToVM().disassembleNMethod(nmethod);
         }
         return null;

@@ -28,11 +28,9 @@ import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
 import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
-import static com.oracle.graal.replacements.SnippetTemplate.Arguments.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.*;
@@ -42,7 +40,11 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.Snippet.VarargsParameter;
+import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
+import com.oracle.graal.replacements.SnippetTemplate.Arguments;
+import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
@@ -58,16 +60,11 @@ public class CheckCastSnippets implements Snippets {
     @NodeIntrinsic(BreakpointNode.class)
     static native void bkpt(Object object, Word hub, Word objectHub);
 
-    // @formatter:off
-
     /**
      * Type test used when the type being tested against is a final type.
      */
     @Snippet
-    public static Object checkcastExact(
-                    @Parameter("object") Object object,
-                    @Parameter("exactHub") Word exactHub,
-                    @ConstantParameter("checkNull") boolean checkNull) {
+    public static Object checkcastExact(Object object, Word exactHub, @ConstantParameter boolean checkNull) {
         if (checkNull && object == null) {
             probability(NOT_FREQUENT_PROBABILITY);
             isNull.inc();
@@ -76,30 +73,25 @@ public class CheckCastSnippets implements Snippets {
             if (objectHub.notEqual(exactHub)) {
                 probability(DEOPT_PATH_PROBABILITY);
                 exactMiss.inc();
-                //bkpt(object, exactHub, objectHub);
                 DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
             }
             exactHit.inc();
         }
-        /* make sure that the unsafeCast is done *after* the check above,
-         * cf. ReadAfterCheckCast */
+        /*
+         * make sure that the unsafeCast is done *after* the check above, cf. ReadAfterCheckCast
+         */
         BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
         return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
     /**
      * Type test used when the type being tested against is a restricted primary type.
-     *
-     * This test ignores use of hints altogether as the display-based type check only
-     * involves one extra load where the second load should hit the same cache line as the
-     * first.
+     * 
+     * This test ignores use of hints altogether as the display-based type check only involves one
+     * extra load where the second load should hit the same cache line as the first.
      */
     @Snippet
-    public static Object checkcastPrimary(
-                    @Parameter("hub") Word hub,
-                    @Parameter("object") Object object,
-                    @ConstantParameter("checkNull") boolean checkNull,
-                    @ConstantParameter("superCheckOffset") int superCheckOffset) {
+    public static Object checkcastPrimary(Word hub, Object object, @ConstantParameter int superCheckOffset, @ConstantParameter boolean checkNull) {
         if (checkNull && object == null) {
             probability(NOT_FREQUENT_PROBABILITY);
             isNull.inc();
@@ -120,11 +112,7 @@ public class CheckCastSnippets implements Snippets {
      * Type test used when the type being tested against is a restricted secondary type.
      */
     @Snippet
-    public static Object checkcastSecondary(
-                    @Parameter("hub") Word hub,
-                    @Parameter("object") Object object,
-                    @VarargsParameter("hints") Word[] hints,
-                    @ConstantParameter("checkNull") boolean checkNull) {
+    public static Object checkcastSecondary(Word hub, Object object, @VarargsParameter Word[] hints, @ConstantParameter boolean checkNull) {
         if (checkNull && object == null) {
             probability(NOT_FREQUENT_PROBABILITY);
             isNull.inc();
@@ -149,14 +137,11 @@ public class CheckCastSnippets implements Snippets {
     }
 
     /**
-     * Type test used when the type being tested against is not known at compile time (e.g. the type test
-     * in an object array store check).
+     * Type test used when the type being tested against is not known at compile time (e.g. the type
+     * test in an object array store check).
      */
     @Snippet
-    public static Object checkcastDynamic(
-                    @Parameter("hub") Word hub,
-                    @Parameter("object") Object object,
-                    @ConstantParameter("checkNull") boolean checkNull) {
+    public static Object checkcastDynamic(Word hub, Object object, @ConstantParameter boolean checkNull) {
         if (checkNull && object == null) {
             probability(NOT_FREQUENT_PROBABILITY);
             isNull.inc();
@@ -170,21 +155,15 @@ public class CheckCastSnippets implements Snippets {
         return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
-    // @formatter:on
+    public static class Templates extends AbstractTemplates {
 
-    public static class Templates extends AbstractTemplates<CheckCastSnippets> {
-
-        private final ResolvedJavaMethod exact;
-        private final ResolvedJavaMethod primary;
-        private final ResolvedJavaMethod secondary;
-        private final ResolvedJavaMethod dynamic;
+        private final SnippetInfo exact = snippet(CheckCastSnippets.class, "checkcastExact");
+        private final SnippetInfo primary = snippet(CheckCastSnippets.class, "checkcastPrimary");
+        private final SnippetInfo secondary = snippet(CheckCastSnippets.class, "checkcastSecondary");
+        private final SnippetInfo dynamic = snippet(CheckCastSnippets.class, "checkcastDynamic");
 
         public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target, CheckCastSnippets.class);
-            exact = snippet("checkcastExact", Object.class, Word.class, boolean.class);
-            primary = snippet("checkcastPrimary", Word.class, Object.class, boolean.class, int.class);
-            secondary = snippet("checkcastSecondary", Word.class, Object.class, Word[].class, boolean.class);
-            dynamic = snippet("checkcastDynamic", Word.class, Object.class, boolean.class);
+            super(runtime, replacements, target);
         }
 
         /**
@@ -193,31 +172,34 @@ public class CheckCastSnippets implements Snippets {
         public void lower(CheckCastNode checkcast, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) checkcast.graph();
             ValueNode object = checkcast.object();
-            final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) checkcast.type();
+            HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) checkcast.type();
             TypeCheckHints hintInfo = new TypeCheckHints(checkcast.type(), checkcast.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
             ValueNode hub = ConstantNode.forConstant(type.klass(), runtime, checkcast.graph());
-            boolean checkNull = !object.stamp().nonNull();
-            Arguments arguments;
-            Key key;
 
-            assert type != null;
+            Arguments args;
             if (hintInfo.exact) {
                 ConstantNode[] hints = createHints(hintInfo, runtime, true, graph).hubs;
                 assert hints.length == 1;
-                key = new Key(exact).add("checkNull", checkNull);
-                arguments = arguments("object", object).add("exactHub", hints[0]);
+                args = new Arguments(exact);
+                args.add("object", object);
+                args.add("exactHub", hints[0]);
             } else if (type.isPrimaryType()) {
-                key = new Key(primary).add("checkNull", checkNull).add("superCheckOffset", type.superCheckOffset());
-                arguments = arguments("hub", hub).add("object", object);
+                args = new Arguments(primary);
+                args.add("hub", hub);
+                args.add("object", object);
+                args.addConst("superCheckOffset", type.superCheckOffset());
             } else {
                 ConstantNode[] hints = createHints(hintInfo, runtime, true, graph).hubs;
-                key = new Key(secondary).add("hints", Varargs.vargargs(new Word[hints.length], StampFactory.forKind(wordKind()))).add("checkNull", checkNull);
-                arguments = arguments("hub", hub).add("object", object).add("hints", hints);
+                args = new Arguments(secondary);
+                args.add("hub", hub);
+                args.add("object", object);
+                args.addVarargs("hints", Word.class, StampFactory.forKind(wordKind()), hints);
             }
+            args.addConst("checkNull", !object.stamp().nonNull());
 
-            SnippetTemplate template = cache.get(key);
-            Debug.log("Lowering checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, arguments);
-            template.instantiate(runtime, checkcast, DEFAULT_REPLACER, arguments);
+            SnippetTemplate template = template(args);
+            Debug.log("Lowering checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, args);
+            template.instantiate(runtime, checkcast, DEFAULT_REPLACER, args);
         }
 
         /**
@@ -225,16 +207,16 @@ public class CheckCastSnippets implements Snippets {
          */
         public void lower(CheckCastDynamicNode checkcast) {
             StructuredGraph graph = (StructuredGraph) checkcast.graph();
-            ValueNode hub = checkcast.type();
             ValueNode object = checkcast.object();
-            boolean checkNull = !object.stamp().nonNull();
 
-            Key key = new Key(dynamic).add("checkNull", checkNull);
-            Arguments arguments = arguments("hub", hub).add("object", object);
+            Arguments args = new Arguments(dynamic);
+            args.add("hub", checkcast.type());
+            args.add("object", object);
+            args.addConst("checkNull", !object.stamp().nonNull());
 
-            SnippetTemplate template = cache.get(key);
-            Debug.log("Lowering dynamic checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, arguments);
-            template.instantiate(runtime, checkcast, DEFAULT_REPLACER, arguments);
+            SnippetTemplate template = template(args);
+            Debug.log("Lowering dynamic checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, args);
+            template.instantiate(runtime, checkcast, DEFAULT_REPLACER, args);
         }
     }
 }

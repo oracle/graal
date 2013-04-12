@@ -51,5 +51,5 @@ public final class UnsafeArrayCastNode extends UnsafeCastNode implements ArrayLe
     }
 
     @NodeIntrinsic
-    public static native <T> T unsafeArrayCast(Object object, int length, @ConstantNodeParameter Stamp stamp, ValueNode anchor);
+    public static native <T> T unsafeArrayCast(Object object, int length, @ConstantNodeParameter Stamp stamp, Object anchor);
 }

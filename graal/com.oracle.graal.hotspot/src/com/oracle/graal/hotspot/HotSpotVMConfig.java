@@ -187,6 +187,11 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int methodAccessFlagsOffset;
 
     /**
+     * Offset of _intrinsic_id in a metaspace Method object.
+     */
+    public int methodIntrinsicIdOffset;
+
+    /**
      * Offset of _max_locals in a metaspace Method object.
      */
     public int methodMaxLocalsOffset;
@@ -377,6 +382,12 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int deoptActionReinterpret;
     public int deoptActionMakeNotEntrant;
     public int deoptActionMakeNotCompilable;
+
+    public int vmIntrinsicInvokeBasic;
+    public int vmIntrinsicLinkToVirtual;
+    public int vmIntrinsicLinkToStatic;
+    public int vmIntrinsicLinkToSpecial;
+    public int vmIntrinsicLinkToInterface;
 
     public void check() {
         assert codeEntryAlignment > 0;
