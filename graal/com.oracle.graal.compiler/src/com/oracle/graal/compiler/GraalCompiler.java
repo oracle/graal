@@ -36,7 +36,6 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
@@ -141,29 +140,7 @@ public class GraalCompiler {
 
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
 
-        if (GraalOptions.FullUnroll) {
-            new LoopFullUnrollPhase().apply(graph, highTierContext);
-            if (GraalOptions.OptCanonicalizer) {
-                new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
-            }
-        }
-
-        if (GraalOptions.OptTailDuplication) {
-            new TailDuplicationPhase().apply(graph);
-            if (GraalOptions.OptCanonicalizer) {
-                new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
-            }
-        }
-
-        if (GraalOptions.PartialEscapeAnalysis) {
-            new PartialEscapeAnalysisPhase(true, GraalOptions.OptEarlyReadElimination).apply(graph, highTierContext);
-        }
-
         Suites.HIGH_TIER.apply(graph, highTierContext);
-
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
-        }
 
         new LoweringPhase(target, runtime, replacements, assumptions).apply(graph);
 
