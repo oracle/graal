@@ -22,65 +22,77 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+import static java.lang.reflect.Modifier.*;
+
 import java.lang.reflect.*;
+
+import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.*;
 
 public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
-    private static final int ITERATIONS = 100000000;
+    private static final int ITERATIONS = 100000;
+    private final MetaAccessProvider metaAccessProvider;
+    Object[] argsToBind;
 
-    // TODO this is not a test, move it somewhere else
-    // CheckStyle: stop system..print check
+    public InstalledCodeExecuteHelperTest() {
+        this.metaAccessProvider = Graal.getRequiredCapability(MetaAccessProvider.class);
+    }
+
+    @Test
     public void test1() throws NoSuchMethodException, SecurityException, InvalidInstalledCodeException {
-
-        final Method benchrMethod = InstalledCodeExecuteHelperTest.class.getMethod("bench", long.class, long.class);
-        final ResolvedJavaMethod benchJavaMethod = Graal.getRequiredCapability(GraalCodeCacheProvider.class).lookupJavaMethod(benchrMethod);
-        HotSpotInstalledCode benchCode = (HotSpotInstalledCode) getCode(benchJavaMethod, parse(benchrMethod));
-
-        final Method wrapperMethod = InstalledCodeExecuteHelperTest.class.getMethod("executeWrapper", long.class, long.class, Object.class, Object.class, Object.class);
-        final ResolvedJavaMethod wrapperJavaMethod = Graal.getRequiredCapability(GraalCodeCacheProvider.class).lookupJavaMethod(wrapperMethod);
-        HotSpotInstalledCode wrapperCode = (HotSpotInstalledCode) getCode(wrapperJavaMethod, parse(wrapperMethod));
-
         final Method fooMethod = InstalledCodeExecuteHelperTest.class.getMethod("foo", Object.class, Object.class, Object.class);
-        final HotSpotResolvedJavaMethod fooJavaMethod = (HotSpotResolvedJavaMethod) Graal.getRequiredCapability(GraalCodeCacheProvider.class).lookupJavaMethod(fooMethod);
-        HotSpotInstalledCode fooCode = (HotSpotInstalledCode) getCode(fooJavaMethod, parse(fooMethod));
+        final HotSpotResolvedJavaMethod fooJavaMethod = (HotSpotResolvedJavaMethod) metaAccessProvider.lookupJavaMethod(fooMethod);
+        final HotSpotInstalledCode fooCode = (HotSpotInstalledCode) getCode(fooJavaMethod, parse(fooMethod));
 
-        System.out.println(wrapperCode.executeVarargs(fooCode.getnmethod(), fooJavaMethod.getMetaspaceMethod(), null, null, null));
+        argsToBind = new Object[]{fooCode};
 
-        long nmethod = fooCode.getnmethod();
-        long metaspacemethod = fooJavaMethod.getMetaspaceMethod();
+        final Method benchmarkMethod = InstalledCodeExecuteHelperTest.class.getMethod("benchmark", HotSpotInstalledCode.class);
+        final ResolvedJavaMethod benchmarkJavaMethod = metaAccessProvider.lookupJavaMethod(benchmarkMethod);
+        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(benchmarkJavaMethod, parse(benchmarkMethod));
 
-        System.out.println("Without replaced InstalledCode.execute:" + bench(nmethod, metaspacemethod));
+        Assert.assertEquals(Integer.valueOf(42), benchmark(fooCode));
 
-        System.out.println("WITH replaced InstalledCode.execute:" + benchCode.executeVarargs(nmethod, metaspacemethod));
+        Assert.assertEquals(Integer.valueOf(42), installedBenchmarkCode.executeVarargs(argsToBind[0]));
 
     }
 
-    // CheckStyle: resume system..print check
-
-    public static Long bench(long nmethod, long metaspacemethod) throws InvalidInstalledCodeException {
-        long start = System.currentTimeMillis();
-
-        for (int i = 0; i < ITERATIONS; i++) {
-            HotSpotInstalledCode.executeHelper(nmethod, metaspacemethod, null, null, null);
+    public static Integer benchmark(HotSpotInstalledCode code) throws InvalidInstalledCodeException {
+        int val = 0;
+        for (int j = 0; j < 100; j++) {
+            for (int i = 0; i < ITERATIONS; i++) {
+                val = (Integer) code.execute(null, null, null);
+            }
         }
-
-        long end = System.currentTimeMillis();
-        return (end - start);
+        return val;
     }
 
-    public static Object foo(@SuppressWarnings("unused") Object a1, @SuppressWarnings("unused") Object a2, @SuppressWarnings("unused") Object a3) {
+    public static Integer foo(@SuppressWarnings("unused") Object a1, @SuppressWarnings("unused") Object a2, @SuppressWarnings("unused") Object a3) {
         return 42;
     }
 
-    public static Object executeWrapper(long nmethod, long metaspaceMethod, Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
-        return HotSpotInstalledCode.executeHelper(nmethod, metaspaceMethod, arg1, arg2, arg3);
+    @Override
+    protected StructuredGraph parse(Method m) {
+        StructuredGraph graph = super.parse(m);
+        if (argsToBind != null) {
+            Object receiver = isStatic(m.getModifiers()) ? null : this;
+            Object[] args = argsWithReceiver(receiver, argsToBind);
+            JavaType[] parameterTypes = signatureToTypes(runtime.lookupJavaMethod(m));
+            assert parameterTypes.length == args.length;
+            for (int i = 0; i < argsToBind.length; i++) {
+                LocalNode local = graph.getLocal(i);
+                Constant c = Constant.forBoxed(parameterTypes[i].getKind(), argsToBind[i]);
+                ConstantNode replacement = ConstantNode.forConstant(c, runtime, graph);
+                local.replaceAtUsages(replacement);
+            }
+        }
+        return graph;
     }
-
 }

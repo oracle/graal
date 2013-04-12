@@ -816,6 +816,8 @@ public class SnippetTemplate {
                 buf.append("<null> ").append(name);
             } else if (value == UNUSED_PARAMETER) {
                 buf.append("<unused> ").append(name);
+            } else if (value == CONSTANT_PARAMETER) {
+                buf.append("<constant> ").append(name);
             } else if (value instanceof LocalNode) {
                 LocalNode local = (LocalNode) value;
                 buf.append(local.kind().getJavaName()).append(' ').append(name);
