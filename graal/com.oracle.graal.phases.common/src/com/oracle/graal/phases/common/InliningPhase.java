@@ -117,7 +117,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                         Iterable<Node> newNodes = graph.getNewNodes(mark);
                         inliningPolicy.scanInvokes(newNodes);
                         if (GraalOptions.OptCanonicalizer) {
-                            new CanonicalizerPhase(runtime, assumptions, invokeUsages, mark, customCanonicalizer).apply(graph);
+                            new CanonicalizerPhase.Instance(runtime, assumptions, invokeUsages, mark, customCanonicalizer).apply(graph);
                         }
                         inliningCount++;
                         metricInliningPerformed.increment();
@@ -161,7 +161,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                     new ComputeProbabilityPhase().apply(newGraph);
                 }
                 if (GraalOptions.OptCanonicalizer) {
-                    new CanonicalizerPhase(runtime, assumptions).apply(newGraph);
+                    new CanonicalizerPhase.Instance(runtime, assumptions).apply(newGraph);
                 }
                 if (GraalOptions.CullFrameStates) {
                     new CullFrameStatesPhase().apply(newGraph);

@@ -330,7 +330,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
                     new LoopTransformHighPhase().apply(graph);
                 }
                 new DeadCodeEliminationPhase().apply(graph);
-                new CanonicalizerPhase(runtime(), assumptions).apply(graph);
+                new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
                 new PartialEscapeAnalysisPhase(runtime(), assumptions, false, false).apply(graph);
 
                 for (MaterializeObjectNode materialize : graph.getNodes(MaterializeObjectNode.class)) {
@@ -339,12 +339,12 @@ public class BoxingEliminationTest extends GraalCompilerTest {
 
                 new CullFrameStatesPhase().apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
-                new CanonicalizerPhase(runtime(), assumptions).apply(graph);
+                new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
 
                 StructuredGraph referenceGraph = parse(referenceSnippet);
                 new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(referenceGraph);
                 new DeadCodeEliminationPhase().apply(referenceGraph);
-                new CanonicalizerPhase(runtime(), assumptions).apply(referenceGraph);
+                new CanonicalizerPhase.Instance(runtime(), assumptions).apply(referenceGraph);
                 assertEquals(referenceGraph, graph, excludeVirtual);
             }
         });

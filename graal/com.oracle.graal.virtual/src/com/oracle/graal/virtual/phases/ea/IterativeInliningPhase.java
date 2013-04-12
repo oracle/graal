@@ -87,7 +87,7 @@ public class IterativeInliningPhase extends Phase {
                     new DeadCodeEliminationPhase().apply(graph);
 
                     if (GraalOptions.ConditionalElimination && GraalOptions.OptCanonicalizer) {
-                        new CanonicalizerPhase(runtime, assumptions).apply(graph);
+                        new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
                         new IterativeConditionalEliminationPhase(runtime, assumptions).apply(graph);
                     }
 

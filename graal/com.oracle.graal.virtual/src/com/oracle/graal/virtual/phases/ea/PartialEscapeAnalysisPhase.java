@@ -115,7 +115,7 @@ public class PartialEscapeAnalysisPhase extends Phase {
                     new DeadCodeEliminationPhase().apply(graph);
 
                     if (GraalOptions.OptCanonicalizer) {
-                        new CanonicalizerPhase(runtime, assumptions, null, customCanonicalizer).apply(graph);
+                        new CanonicalizerPhase.Instance(runtime, assumptions, null, customCanonicalizer).apply(graph);
                     }
 
                     return iterative;
