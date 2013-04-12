@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.replacements;
 import java.lang.invoke.*;
 
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 
 /**
@@ -35,10 +34,5 @@ public class MethodHandleInvokeBasicNode extends MacroNode {
 
     public MethodHandleInvokeBasicNode(Invoke invoke) {
         super(invoke);
-    }
-
-    @Override
-    protected StructuredGraph getSnippetGraph(LoweringTool tool) {
-        return super.getSnippetGraph(tool);
     }
 }
