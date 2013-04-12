@@ -22,11 +22,8 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.replacements.Snippet.Fold;
@@ -43,7 +40,5 @@ public class HotSpotInstalledCodeSubstitutions {
     private static Class[] getSignature() {
         return new Class[]{Object.class, Object.class, Object.class};
     }
-
-
 
 }

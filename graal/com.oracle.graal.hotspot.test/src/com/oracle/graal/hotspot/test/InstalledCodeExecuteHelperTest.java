@@ -29,6 +29,7 @@ import java.lang.reflect.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
@@ -41,7 +42,7 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
     private final MetaAccessProvider metaAccessProvider;
     Object[] argsToBind;
 
-    public static void main(String[] args) throws NoSuchMethodException, SecurityException {
+    public static void main(String[] args) throws NoSuchMethodException, SecurityException, InvalidInstalledCodeException {
         InstalledCodeExecuteHelperTest main = new InstalledCodeExecuteHelperTest();
         main.testWithTime();
     }
@@ -52,7 +53,7 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
     @Ignore
     @Test
-    public void test1() throws NoSuchMethodException, SecurityException {
+    public void test1() throws NoSuchMethodException, SecurityException, InvalidInstalledCodeException {
         final Method fooMethod = InstalledCodeExecuteHelperTest.class.getMethod("foo", Object.class, Object.class, Object.class);
         final HotSpotResolvedJavaMethod fooJavaMethod = (HotSpotResolvedJavaMethod) metaAccessProvider.lookupJavaMethod(fooMethod);
         final HotSpotInstalledCode fooCode = (HotSpotInstalledCode) getCode(fooJavaMethod, parse(fooMethod));
@@ -69,7 +70,7 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
     }
 
-    public void testWithTime() throws NoSuchMethodException, SecurityException {
+    public void testWithTime() throws NoSuchMethodException, SecurityException, InvalidInstalledCodeException {
         final Method fooMethod = InstalledCodeExecuteHelperTest.class.getMethod("foo", Object.class, Object.class, Object.class);
         final HotSpotResolvedJavaMethod fooJavaMethod = (HotSpotResolvedJavaMethod) metaAccessProvider.lookupJavaMethod(fooMethod);
         final HotSpotInstalledCode fooCode = (HotSpotInstalledCode) getCode(fooJavaMethod, parse(fooMethod));
@@ -83,16 +84,15 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
         long start = System.currentTimeMillis();
         benchmark(fooCode);
         long end = System.currentTimeMillis();
-        @SuppressWarnings("unused")
-        long time = (end - start);
+        System.out.println((end - start));
 
         start = System.currentTimeMillis();
         installedBenchmarkCodeotInstalledCode.executeVarargs(argsToBind[0]);
         end = System.currentTimeMillis();
-        time = (end - start);
+        System.out.println((end - start));
     }
 
-    public static Integer benchmark(HotSpotInstalledCode code) {
+    public static Integer benchmark(HotSpotInstalledCode code) throws InvalidInstalledCodeException {
         int val = 0;
         for (int i = 0; i < ITERATIONS; i++) {
             val = (Integer) code.execute(null, null, null);
